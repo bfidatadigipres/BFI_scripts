@@ -1,0 +1,27 @@
+### This configuration file lists the mount points of ingest sources
+### and maximum Black Pearl ingest job sizes (bytes) for each mount
+### 5TB = 5497558138880 / 2TB = 2199023255552 / 1TB = 1099511627776 / 500GB = 536870912000 / 200GB = 214748364800
+
+### USE SPACES not TABS to avoid breakage
+
+Host_size:
+ - '/mnt/grack_f47/FILM'                        : 1099511627776
+ - '/mnt/qnap_07'                               : 1099511627776
+ - '/mnt/qnap_10'                               : 1099511627776
+ - '/mnt/qnap_video/Public/F47'                 : 2199023255552
+ - '/mnt/qnap_h22/Public'                       : 1099511627776
+ - '/mnt/grack_h22'                             : 1099511627776
+ - '/mnt/qnap_imagen_storage/Public/'           : 1099511627776
+ - '/mnt/qnap_imagen_renditions_1/Public/'      : 1099511627776
+ - '/mnt/isilon/special_collections/Finished'   : 1099511627776
+ - '/mnt/isilon/film_operations/Finished'       : 1099511627776
+ - '/mnt/isilon/video_operations/Finished'      : 1099511627776
+ - '/mnt/isilon/ingest/media'                   : 1099511627776
+ - '/mnt/isilon/audio_operations/Finished'      : 1099511627776
+ - '/mnt/isilon/digital_operations/Finished'    : 1099511627776
+ - '/mnt/grack_f47/F47 Video Operations'        : 1099511627776
+ - '/mnt/qnap_film/Public'                      : 1099511627776
+ - '/mnt/qnap_06'                               : 1099511627776
+ - '/mnt/qnap_08'                               : 10485760
+ - '/mnt/redux/content_recorder/ExtStorage'     : 1099511627776
+ - '/mnt/redux/content_recorder/content'        : 1099511627776

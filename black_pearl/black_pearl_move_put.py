@@ -16,6 +16,8 @@ Script actions:
    notification JSON is issued to validate PUT success.
 4. Use receieved job_id to rename the PUT subfolder.
 
+Threads hardcoded to 3 per script run / 5000 objects per job
+
 Joanna White / Stephen McConnachie
 2022
 '''
@@ -228,7 +230,7 @@ def main():
                     logs.append("WARNING! Renaming of folderpath to job id failed.")
                     logs.append(f"WARNING! Please ensure this folder {folderpth} is renamed manually to {job_list}")
         logs.append("No files or folders remaining to be processed. Script exiting.")
-        logs.append("======== END Black Pearl ingest %s END ========", sys.argv[1])
+        logs.append(f"======== END Black Pearl ingest {sys.argv[1]} END ========")
         sys.exit()
 
     while files:
@@ -298,7 +300,7 @@ def main():
         files = files_remaining
         logger_write(logs)
 
-    logs.append("======== END Black Pearl ingest %s END ========", sys.argv[1])
+    logs.append(f"======== END Black Pearl ingest {sys.argv[1]} END ========")
 
 
 def logger_write(logs):
@@ -318,7 +320,7 @@ def put_dir(directory_pth):
     Retrieve job number and launch json notification
     '''
     try:
-        put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=BUCKET, objects_per_bp_job=5000, max_threads=2)
+        put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=BUCKET, objects_per_bp_job=5000, max_threads=3)
     except Exception as err:
         logger.error('Exception: %s', err)
         print('Exception: %s', err)

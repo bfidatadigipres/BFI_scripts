@@ -23,5 +23,3 @@ Host_size:
  - '/mnt/qnap_film/Public'                      : 1099511627776
  - '/mnt/qnap_06'                               : 1099511627776
  - '/mnt/qnap_08'                               : 10485760
- - '/mnt/redux/content_recorder/ExtStorage'     : 1099511627776
- - '/mnt/redux/content_recorder/content'        : 1099511627776

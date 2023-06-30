@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 '''
-Script to clean up Black Pearl PUT jobs by retrieving
+Script which cleans up Black Pearl PUT jobs by retrieving
 JSON notifications, matching job id to folder name in
 black_pearl_ingest paths.
 
@@ -56,7 +56,7 @@ sys.path.append(CODE_PATH)
 import adlib
 
 # Global variables
-BPINGEST = 'autoingest/black_pearl_ingest'
+BPINGEST = 'autoingest/bp_reingest'
 LOG_PATH = os.environ['LOG_PATH']
 JSON_PATH = os.path.join(LOG_PATH, 'black_pearl')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
@@ -71,8 +71,8 @@ CLIENT = ds3.createClientFromEnv()
 BUCKET = 'imagen'
 
 # Setup logging
-logger = logging.getLogger('black_pearl_validate_make_record')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'black_pearl_validate_make_record.log'))
+logger = logging.getLogger('black_pearl_validate_reingest')
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'black_pearl_validate_reingest.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 logger.addHandler(HDLR)
@@ -183,13 +183,9 @@ def get_part_whole(fname):
     '''
     name = os.path.splitext(fname)[0]
     name_split = name.split('_')
-    if len(name_split) == 3:
-        part_whole = name_split[2]
-    elif len(name_split) == 4:
-        part_whole = name_split[3]
-    else:
-        part_whole = ''
-        return None
+    part_whole = name_split[-1]
+    if 'of' not in part_whole:
+        return (None, None)
 
     part, whole = part_whole.split('of')
     if part[0] == '0':
@@ -283,15 +279,17 @@ def check_for_media_record(fname):
     '''
 
     search = f"imagen.media.original_filename='{fname}'"
+    print(f"****** SEARCH USED: {search}")
 
     query = {'database': 'media',
              'search': search,
              'limit': '0',
              'output': 'json',
-             'fields': 'access_rendition.mp4, imagen.media.largeimage_umid'}
+             'fields': 'access_rendition.mp4'}
 
     try:
         result = CID.get(query)
+        print(f"************** RESULT FROM CID CHECK:\n{result.records}")
     except Exception as err:
         logger.exception('CID check for media record failed: %s', err)
         result = None
@@ -303,12 +301,14 @@ def check_for_media_record(fname):
         access_mp4 = result.records[0]['access_rendition.mp4'][0]
     except (KeyError, IndexError):
         access_mp4 = ''
-    try:
-        image = result.records[0]['imagen.media.largeimage_umid'][0]
-    except (KeyError, IndexError):
-        image = ''
+    if access_mp4:
+       return (priref, access_mp4)
 
-    return (priref, access_mp4, image)
+    try:
+        access_mp4 = result.records[0]['Access_rendition'][0]['access_rendition.mp4'][0]
+    except (KeyError, IndexError):
+        access_mp4 = ''
+    return (priref, access_mp4)
 
 
 def check_global_log(fname):
@@ -347,20 +347,17 @@ def main():
     cid_check()
     ingest_data = load_yaml(INGEST_CONFIG)
     hosts = ingest_data['Host_size']
-
+    print(hosts)
     for host in hosts:
-
-        # This path has own script
-        if 'qnap_imagen_storage/Public' in host:
-            continue
+        logger.info(host)
 
         for pth in host.keys():
             autoingest = os.path.join(pth, BPINGEST)
             print(autoingest)
             if not os.path.exists(autoingest):
-                print(f"**** Path does not exist: {autoingest}")
+                print(f"**** Path does not exist here: {autoingest}")
                 continue
-            logger.info("======== START Black Pearl validate/CID Media record START ========")
+            logger.info("======== START Black Pearl validate reingest START ========")
             logger.info("Looking for folders in Autoingest path: %s", autoingest)
 
             folders = [x for x in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, x))]
@@ -419,6 +416,15 @@ def main():
                     else:
                         logger.info("No files failed transfer to BP data tape for %s", folder2)
 
+                    # Follow up check that Status agrees with received notification
+                    status, size, cached = get_job_status(folder1)
+                    if 'COMPLETED' in status and size == cached:
+                        logger.info("Completed check < %s >.  Sizes match < %s : %s >", status, size, cached)
+                        # Iterate through files in folders and extract data / write logs / create CID record
+                    else:
+                        logger.info("Completed check failed: %s. Size %s. Cached size %s", status, size, cached)
+                        # continue
+
                     status, size, cached = get_job_status(folder2)
                     if 'COMPLETED' in status and size == cached:
                         logger.info("Completed check < %s >.  Sizes match < %s : %s >", status, size, cached)
@@ -453,6 +459,14 @@ def main():
                             shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
                     else:
                         logger.info("No files failed transfer to BP data tape")
+
+                    # Follow up check that Status agrees with received notification
+                    status, size, cached = get_job_status(folder)
+                    if 'COMPLETED' in status and size == cached:
+                        logger.info("Completed check < %s >.  Sizes match < %s : %s >", status, size, cached)
+                    else:
+                        logger.info("Completed absent or size mismatch:  %s. Size %s = %s", status, size, cached)
+                        # continue
 
                 success = process_files(autoingest, folder, '')
                 if not success:
@@ -514,7 +528,7 @@ def main():
                     except Exception:
                         logger.warning("JSON files failed to move to completed folder: %s - %s.", json_file1, json_file2)
 
-    logger.info("======== END Black Pearl validate/CID media record END ========")
+    logger.info("======== END Black Pearl validate reingest END ========")
 
 
 def process_files(autoingest, job_id, arg):
@@ -591,7 +605,6 @@ def process_files(autoingest, job_id, arg):
             persistence_log_message("BlackPearl has not persisted file to data tape but ObjectList exists", fpath, wpath, file)
             continue
 
-        # Make global log message [ THIS MESSAGE TO BE DEPRECATED, KEEPING FOR TIME BEING FOR CONSISTENCY ]
         logger.info("Writing persistence checking message to persistence_queue.csv.")
         persistence_log_message("Ready for persistence checking", fpath, wpath, file)
 
@@ -614,45 +627,31 @@ def process_files(autoingest, job_id, arg):
 
         # New section here to check for Media Record first and clean up file if found
         logger.info("Checking if Media record already exists for file: %s", file)
-        media_priref, access_mp4, image = check_for_media_record(file)
+        media_priref, access_mp4 = check_for_media_record(file)
+        root_path = os.path.split(autoingest)[0]
+
         if media_priref:
-            logger.info("Media record %s already exists for file: %s", media_priref, fpath)
-            # Check for previous 'deleted' message in global.log
-            deletion_confirm = check_global_log(file)
-            reingest_confirm = check_global_log_again(file)
-            if deletion_confirm:
-                logger.info("DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s", deletion_confirm)
-                try:
-                    os.remove(fpath)
-                    logger.info("Deleted file: %s", fpath)
-                    check_list.append(file)
-                except Exception as err:
-                    logger.warning("Unable to delete asset: %s", fpath)
-                    logger.warning("Manual inspection of asset required")
-            elif reingest_confirm and md5_match:
-                logger.info("File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion.")
-                persistence_log_message("Persistence checks passed: delete file", fpath, wpath, file)
-                # Move to transcode/ folder for autoingest deletion - may not be duplicate
-                root_path = os.path.split(autoingest)[0]
-                move_path = os.path.join(root_path, 'transcode', file)
-                try:
-                    shutil.move(fpath, move_path)
-                    check_list.append(file)
-                except Exception:
-                    logger.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
-            elif md5_match and not access_mp4:
-                persistence_log_message("Persistence checks passed: delete file", fpath, wpath, file)
-                logger.info("File has media record but has no Access MP4. Moving to transcode folder and updating global.log for deletion.")
-                # Move to transcode/ folder for autoingest deletion - may not be duplicate
-                root_path = os.path.split(autoingest)[0]
-                move_path = os.path.join(root_path, 'transcode', file)
-                try:
-                    shutil.move(fpath, move_path)
-                    check_list.append(file)
-                except Exception:
-                    logger.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
+            logger.info("Media record %s exists for file: %s", media_priref, fpath)
+            # Check md5_match, then check if MP4 found in media record
+            if not md5_match:
+                logger.warning("MD5 checksums do not match for reingest file %s. Leaving in place manual assistance needed.", file)
+                continue
+            logger.info("MD5 checksums match for reingested file: %s", file)
+            persistence_log_message("Persistence checks passed: delete file", fpath, wpath, file)
+            # Configure correct path for file
+            if str(access_mp4) in str(file):
+                logger.info("MP4 transcode has been created and confirmation added to Media Record: %s", access_mp4)
+                logger.info("Moving file straight to completed path.")
+                move_path = os.path.join(root_path, 'completed', file)
             else:
-                logger.warning("Problem with file %s: Has media record but no deletion message in global.log", fpath)
+                logger.info("File is being reingested and Media record exists but no MP4 file found. Moving to transcode folder.")
+                move_path = os.path.join(root_path, 'transcode', file)
+            # Move to transcode/completed folder for autoingest deletion - may not be duplicate
+            try:
+                shutil.move(fpath, move_path)
+                check_list.append(file)
+            except Exception:
+                logger.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
             continue
 
         # Create CID media record only if all BP checks pass and no CID Media record already exists
@@ -666,7 +665,6 @@ def process_files(autoingest, job_id, arg):
         if media_priref:
             check_list.append(file)
             # Make path to transcode folder
-            root_path = os.path.split(autoingest)[0]
             move_path = os.path.join(root_path, 'transcode', file)
 
             # Move file to transcode folder
@@ -698,7 +696,7 @@ def get_job_status(job_id):
     size = cached = status = ''
 
     job_status = CLIENT.get_job_spectra_s3(
-                   ds3.GetJobSpectraS3Request(job_id.strip()))
+                   ds3.GetJobSpectraS3Request(job_id))
 
     if job_status.result['CompletedSizeInBytes']:
         size = job_status.result['CompletedSizeInBytes']

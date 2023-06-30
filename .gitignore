@@ -1,3 +1,10 @@
+# File/folders to be ignored
+*.csv
+*.yaml
+*.txt
+*.ts
+*.tif
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

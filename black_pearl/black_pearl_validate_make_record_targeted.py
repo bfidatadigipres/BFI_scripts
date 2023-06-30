@@ -71,8 +71,8 @@ CLIENT = ds3.createClientFromEnv()
 BUCKET = 'imagen'
 
 # Setup logging
-logger = logging.getLogger('black_pearl_validate_make_record')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'black_pearl_validate_make_record.log'))
+logger = logging.getLogger('black_pearl_validate_make_record_targeted')
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'black_pearl_validate_make_record_targeted.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 logger.addHandler(HDLR)
@@ -350,8 +350,8 @@ def main():
 
     for host in hosts:
 
-        # This path has own script
-        if 'qnap_imagen_storage/Public' in host:
+        # Targets just this path
+        if 'qnap_imagen_storage/Public' not in host:
             continue
 
         for pth in host.keys():

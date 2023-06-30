@@ -83,6 +83,7 @@ LOG_PATHS = {'/mnt/qnap_08': os.environ['L_QNAP08'],
              '/mnt/qnap_h22/Public': os.environ['L_QNAP02'],
              '/mnt/grack_h22': os.environ['L_GRACK02'],
              '/mnt/qnap_06': os.environ['L_QNAP06'],
+             '/mnt/qnap_imagen_storage/Public': os.environ['L_QNAP04'],
              '/mnt/qnap_film/Public': os.environ['L_QNAP03'],
              '/mnt/isilon/special_collections/Finished': os.environ['L_IS_SPEC'],
              '/mnt/isilon/film_operations/Finished': os.environ['L_IS_FILM'],
@@ -349,9 +350,8 @@ def main():
     hosts = ingest_data['Host_size']
 
     for host in hosts:
-
         # Targets just this path
-        if 'qnap_imagen_storage/Public' not in host:
+        if not 'qnap_imagen_storage/Public' in str(host):
             continue
 
         for pth in host.keys():

@@ -113,14 +113,14 @@ def fetch_workflow_jobs():
     try:
         query_result = CID.get(query)
     except Exception as err:
-        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s", d)
+        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s\n%s", d, err)
+        print(err)
         query_result = None
-
-    try:
-        total_jobs = len(query_result.records)
-    except TypeError:
+    print(query_result)
+    if not query_result:
         return None
 
+    total_jobs = len(query_result.records)
     workflow_jobs = {}
     for num in range(total_jobs):
         try:

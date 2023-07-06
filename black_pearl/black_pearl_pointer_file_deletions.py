@@ -28,7 +28,8 @@ via saved search filtered by DigiOps.
    vi/ Also pulls out MP4 data and deletes associated
        MP4 access proxy video. Does not delete thumb
        or large image.
-   vii/ Updates completion of deletion to screen/log.
+   vii/ Updates completion of deletion to CID media
+       record and to screen/log.
 4. Closes up comms and script exits.
 
 NOTE: Accompanying 'undelete' script to be written
@@ -45,6 +46,7 @@ import json
 import time
 import logging
 import tenacity
+import requests
 from ds3 import ds3, ds3Helpers
 
 # Private package
@@ -159,7 +161,7 @@ def get_media_record_data(priref):
     except (TypeError, IndexError, KeyError):
         input_date = ''
     try:
-        approved = result.records[0]['notes'][0]
+        approved = result.records[0]['notes']
     except (TypeError, IndexError, KeyError):
         approved = ''
     try:
@@ -254,7 +256,11 @@ def main():
         print(f"Assessing {fname}: Priref {key}, Reference {ref_num}")
         LOGGER.info("Assessing %s: Priref %s. Filename %s", ref_num, priref, fname)
 
-        if approved.startswith('Confirmed for deletion') and len(ref_num) >= 7:
+        confirmation = []
+        for note in approved:
+            confirmation.append(f'<notes>{note}</notes>')
+
+        if 'Confirmed for deletion' in str(approved) and len(ref_num) >= 7:
             print(f"Confirmed for deletion: {key}, {ref_num}, {approved}")
             LOGGER.info("Confirmed for deletion: %s - %s. Priref %s", ref_num, fname, priref)
             LOGGER.info("Fetching version_id using reference number")
@@ -262,13 +268,21 @@ def main():
             if not version_id:
                 LOGGER.warning("Deletion of file %s not possible, unable to retreive version_id", ref_num)
                 print(f"WARNING: Deletion impossible, version_id not found for file {ref_num}")
+                confirmation.append("<notes>Black Pearl was not deleted - version_id not found</notes>")
+                succ = cid_media_append(priref, confirmation)
+                if succ:
+                    print("CID media record notes field updated")
                 continue
-            print(version_id)
+            print(f"Version id retrieved from Black Pearl: {version_id}")
 
             success = delete_black_pearl_object(ref_num, version_id)
             if not success:
                 LOGGER.warning("Deletion of asset failed: %s. Priref %s. Version id %s", ref_num, priref, version_id)
                 print(f"WARNING: Deletion of asset failed: {ref_num}.\n")
+                confirmation.append("<notes>Black Pearl was not deleted</notes>")
+                succ = cid_media_append(priref, confirmation)
+                if succ:
+                    print("CID media record notes field updated")
                 continue
 
             # Check for head object of deleted asset for confirmation
@@ -277,9 +291,18 @@ def main():
                 print(f"** DELETED FROM BLACK PEARL: {ref_num}")
                 LOGGER.info("** DELETED FROM BLACK PEARL: %s", ref_num)
                 deleted.append(f"{key} {ref_num}")
+                confirmation.append("<notes>Black Pearl asset deleted</notes>")
+                succ = cid_media_append(priref, confirmation)
+                if succ:
+                    print("CID media record notes field updated")
+
             else:
                 print(f"** FILE NOT DELETED FROM BLACK PEARL. ETAG {delete_check}")
                 LOGGER.warning("** FILE NOT DELETED FROM BLACK PEARL: %s", ref_num)
+                confirmation.append("<notes>Black Pearl asset was not deleted</notes>")
+                succ = cid_media_append(priref, confirmation)
+                if succ:
+                    print("CID media record notes field updated")
                 continue
 
             # Make MP4 paths and delete
@@ -300,12 +323,22 @@ def main():
                 LOGGER.warning("No associated MP4 found for file: %s %s", fname, input_date)
                 print(f"Access MP4 file {access_mp4} not found in either paths.\n")
 
-        elif approved.startswith('Confirmed for deletion') and len(ref_num) < 7:
+        elif 'Confirmed for deletion' in str(approved) and len(ref_num) < 7:
             LOGGER.warning("Skipping deletion. Reference number incomplete: %s", ref_num)
             print(f"Skipping deletion: Reference number {ref_num} seems incomplete.\n")
+            confirmation.append("<notes>Deletion skipped. Incomplete reference number.</notes>")
+            succ = cid_media_append(priref, confirmation)
+            if succ:
+                print("CID media record notes field updated")
+            continue
         else:
             LOGGER.warning("Skipping deletion. Approval absent from CID media record: %s", priref)
             print(f"Skipping deletion: Confirmation not supplied to Priref {key} for filename {ref_num}.\n")
+            confirmation.append("<notes>Deletion skipped. Confirmation not present in notes field.</notes>")
+            succ = cid_media_append(priref, confirmation)
+            if succ:
+                print("CID media record notes field updated")
+            continue
 
     print(f"Completed deletion of *{len(deleted)}* assets:")
     if len(deleted) == 0:
@@ -341,6 +374,26 @@ def get_mp4_paths(input_date, access_mp4):
     mp4_path2 = os.path.join(MP4_ACCESS2, f"{year}{month}/", access_mp4)
     mp4_path3 = os.path.join(MP4_ACCESS3, f"{year}{month}/", access_mp4)
     return mp4_path1, mp4_path2, mp4_path3
+
+
+def cid_media_append(priref, data):
+    '''
+    Receive data and priref and append to CID media record
+    '''
+    payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_mid = ''.join(data)
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload_head + payload_mid + payload_end
+
+    post_response = requests.post(
+        CID_API,
+        params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
+        data={'data': payload})
+    if "<error><info>" in str(post_response.text):
+        LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", priref, post_response.text)
+        return False
+    LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", priref)
+    return True
 
 
 if __name__ == '__main__':

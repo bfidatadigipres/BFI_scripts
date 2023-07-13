@@ -306,22 +306,25 @@ def main():
                 continue
 
             # Make MP4 paths and delete
-            mp4_path1, mp4_path2, mp4_path3 = get_mp4_paths(input_date, access_mp4)
-            if os.path.exists(mp4_path1):
-                LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path1)
-                print(f"Associated MP4 found, deleting now: {mp4_path1}.\n")
-                os.remove(mp4_path1)
-            elif os.path.exists(mp4_path2):
-                LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path2)
-                print(f"Associated MP4 found, deleting now: {mp4_path2}.\n")
-                os.remove(mp4_path2)
-            elif os.path.exists(mp4_path3):
-                LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path3)
-                print(f"Associated MP4 found, deleting now: {mp4_path3}.\n")
-                os.remove(mp4_path3)
+            if len(access_mp4) > 1:
+                mp4_path1, mp4_path2, mp4_path3 = get_mp4_paths(input_date, access_mp4)
+                if os.path.exists(mp4_path1):
+                    LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path1)
+                    print(f"Associated MP4 found, deleting now: {mp4_path1}.\n")
+                    os.remove(mp4_path1)
+                elif os.path.exists(mp4_path2):
+                    LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path2)
+                    print(f"Associated MP4 found, deleting now: {mp4_path2}.\n")
+                    os.remove(mp4_path2)
+                elif os.path.exists(mp4_path3):
+                    LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path3)
+                    print(f"Associated MP4 found, deleting now: {mp4_path3}.\n")
+                    os.remove(mp4_path3)
+                else:
+                    LOGGER.warning("No associated MP4 found for file: %s %s", fname, input_date)
+                    print(f"Access MP4 file {access_mp4} not found in either paths.\n")
             else:
-                LOGGER.warning("No associated MP4 found for file: %s %s", fname, input_date)
-                print(f"Access MP4 file {access_mp4} not found in either paths.\n")
+                print("No Access MP4 data retrieved from CID media record for this file")
 
         elif 'Confirmed for deletion' in str(approved) and len(ref_num) < 7:
             LOGGER.warning("Skipping deletion. Reference number incomplete: %s", ref_num)

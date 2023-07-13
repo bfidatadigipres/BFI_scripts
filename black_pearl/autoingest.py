@@ -501,17 +501,8 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
     filename_range = []
     for num in range(1, range_whole):
         filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}.{ext}")
-
-    try:
-        idx = filename_range.index(fname)
-        if idx > 1:
-            previous = idx - 1
-            print(f"Ingest asset filename range {idx + 1} and previous {previous + 1}")
-        else:
-            return 'No index'
-    except (IndexError, ValueError, KeyError):
-        return 'No index'
-
+    # Get previous parts index (hence -2)
+    previous = part - 2
     ingest_fnames = get_media_ingests(object_number)
     if not ingest_fnames:
         in_bp_ingest_folder = asset_is_next_ingest(fname, filename_range[previous], black_pearl_folder)

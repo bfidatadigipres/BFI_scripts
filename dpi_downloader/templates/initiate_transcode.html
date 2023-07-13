@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type= "text/css" href="{{ url_for('static',filename='styles/form.css') }}">
+    </head>
+    <body>
+        <div class="header">
+          <h1>BFI National Archive file download and transcode</h1>
+          <p>Request download and transcode of files from the Digital Preservation Infrastructure into a network storage path</P>
+        </div>
+        <div class="topnav">
+          <a href="{{ url_for('dpi_download_request') }}">Submit a request</a>
+          <a href="{{ url_for('dpi_download') }}">View requests</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/article/3399090177">Instructions</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/group/-1" class="split">Service Desk</a>
+        </div>
+        <form method="POST">
+            <!-- <label id="label">Enter name (surname and initial):</label> -->
+            <input type="text" name="name" placeholder="Enter name as surname and initial - eg smithj" required><br/>
+            <!-- <label id="label">Enter email:</label> -->
+            <input type="text" name="email" placeholder="Enter email address in full - only BFI emails are permitted - eg joe.smith@bfi.org.uk" required><br/>
+            <!-- <label id="label" for="download_type">Download single file or bulk download using saved search number:</label> -->
+            <select name="download_type" id="download_type">
+                <option value="single">Download single file only</option>
+                <option value="bulk">Download bulk files using saved search number</option>
+            </select><br/>
+            <!-- <label id="label">File to download one item or saved search number to download in bulk (maximum 50 items):</label> -->
+            <input type="text" name="fname" placeholder="Enter file to download or saved search number for bulk download" required><br/>
+            <!-- <label id="label" for="download_path">Choose download path in DPI network:</label> -->
+            <select name="download_path" id="download_path" required>
+                <option value="" disabled selected>Select download path in DPI network</option>
+                <option value="/mnt/grack_h22/hold/">Grack H22 / Hold</option>
+                <option value="/mnt/isilon/access/Archive_Sales/">Isilon / Access / Archive_Sales</option>
+                <option value="/mnt/isilon/access/ATS_MFA/">Isilon / Access / ATS_MFA</option>
+                <option value="/mnt/isilon/access/DMS/">Isilon / Access / DMS</option>
+                <option value="/mnt/isilon/access/Technical/">Isilon / Access / Technical</option>
+		<option value="/mnt/isilon/audio_operations/Downloads/">Isilon / Audio Operations / Downloads</option>
+                <option value="/mnt/isilon/curatorial/">Isilon / Curatorial</option>
+                <option value="/mnt/isilon/digital_operations/8-Restore/FromDPI/">Isilon / Digital Operations / 8-Restore / FromDPI</option>
+                <option value="/mnt/isilon/film_operations/DPI_Downloads/">Isilon / Film Operations / DPI_Downloads</option>
+                <option value="/mnt/isilon/ingest/media/restore/">Isilon / Ingest / Media / Restore</option>
+                <option value="/mnt/isilon/special_collections/">Isilon / Special Collections</option>
+                <option value="/mnt/isilon/video_operations/">Isilon / Video Operations</option>
+                <option value="/mnt/qnap_film/Public/DPI_Downloads/">QNAP 03 / DPI_Downloads</option>
+                <option value="/mnt/qnap_imagen_storage/Public/hold/">QNAP 04 / Hold</option>
+                <option value="/mnt/qnap_06/DPI_Downloads/">QNAP 06 / DPI_Downloads</option>
+                <option value="/mnt/qnap_07/DPI_Downloads/">QNAP 07 / DPI_Downloads</option>
+                <option value="/mnt/qnap_10/hold/">QNAP 10 / Hold</option>
+            </select><br/>
+            <!-- <label id="label">Enter folder name for file download:</label> -->
+            <input type="text" name="fpath" placeholder="Enter folder name for file download - only letters, numbers and _ are permitted - eg Jane_Download_1" required><br/>
+            <!-- <label id="label" for="transcode">Choose video transcode option or leave if none required:</label> -->
+            <select name="transcode" id="transcode">
+                <option value="none">No transcode option selected - download only</option>
+                <option value="prores">Download and transcode to ProRes MOV (delete DPI download)</option>
+                <option value="mp4_access">Download and transcode to H.264 MP4 (delete DPI download)</option>
+                <option value="mp4_access_watermark">Download and transcode to H.264 MP4 with watermark (delete DPI download)</option>
+                <option value="mp4_proxy">Download to create MP4 proxy and images for DPI Browser (delete DPI download)</option>
+            </select><br/>
+            <input type="submit" value="submit"/><br/>
+        </form>
+    </body>
+</html>

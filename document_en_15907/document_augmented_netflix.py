@@ -25,6 +25,7 @@ Steps:
    (contributors to be handled in diff script)
 6. Build CID records
 7. Create CID records
+8. Append contributors where available
 
 Joanna White
 2023

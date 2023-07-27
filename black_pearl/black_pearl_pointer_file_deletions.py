@@ -58,9 +58,8 @@ CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 BUCKET = 'imagen'
 CONTROL_JSON = os.environ['CONTROL_JSON']
-MP4_ACCESS1 = os.environ['MP4_ACCESS']
-MP4_ACCESS2 = os.environ['MP4_ACCESS_REDIRECT']
-MP4_ACCESS3 = os.environ['MP4_ACCESS2']
+MP4_ACCESS1 = os.environ['MP4_ACCESS_REDIRECT']
+MP4_ACCESS2 = os.environ['MP4_ACCESS2']
 LOGS = os.environ['LOG_PATH']
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
@@ -307,7 +306,7 @@ def main():
 
             # Make MP4 paths and delete
             if len(access_mp4) > 1:
-                mp4_path1, mp4_path2, mp4_path3 = get_mp4_paths(input_date, access_mp4)
+                mp4_path1, mp4_path2 = get_mp4_paths(input_date, access_mp4)
                 if os.path.exists(mp4_path1):
                     LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path1)
                     print(f"Associated MP4 found, deleting now: {mp4_path1}.\n")
@@ -316,10 +315,6 @@ def main():
                     LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path2)
                     print(f"Associated MP4 found, deleting now: {mp4_path2}.\n")
                     os.remove(mp4_path2)
-                elif os.path.exists(mp4_path3):
-                    LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path3)
-                    print(f"Associated MP4 found, deleting now: {mp4_path3}.\n")
-                    os.remove(mp4_path3)
                 else:
                     LOGGER.warning("No associated MP4 found for file: %s %s", fname, input_date)
                     print(f"Access MP4 file {access_mp4} not found in either paths.\n")
@@ -375,8 +370,7 @@ def get_mp4_paths(input_date, access_mp4):
     year, month = input_date.split('-')[:2]
     mp4_path1 = os.path.join(MP4_ACCESS1, f"{year}{month}/", access_mp4)
     mp4_path2 = os.path.join(MP4_ACCESS2, f"{year}{month}/", access_mp4)
-    mp4_path3 = os.path.join(MP4_ACCESS3, f"{year}{month}/", access_mp4)
-    return mp4_path1, mp4_path2, mp4_path3
+    return mp4_path1, mp4_path2
 
 
 def cid_media_append(priref, data):

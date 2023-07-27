@@ -540,10 +540,10 @@ def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
             work_dict['genres'] = all_genre
         if len(all_subject) > 0:
             work_dict['subjects'] = all_subject
-    if 'start_date' in cat_dct:
-        work_dict['title_date_start'] = cat_dct['start_date'][:10]
-    elif 'start_date' in json_dct:
+    if 'start_date' in json_dct:
         work_dict['title_date_start'] = json_dct['start_date'][:10]
+    elif 'start_date' in cat_dct:
+        work_dict['title_date_start'] = cat_dct['start_date'][:10]
     else:
         work_dict['title_date_start'] = ''
 

@@ -1353,7 +1353,7 @@ def create_item(man_priref, work_dict, record_defaults, item_default):
     item_values = []
     item_values.extend(record_defaults)
     item_values.extend(item_default)
-    item_values.append({'part_of_reference.lref': manifestation_id})
+    item_values.append({'part_of_reference.lref': man_priref})
     if 'title' in work_dict:
         item_values.append({'title': work_dict['title']})
         item_values.append({'title.language': 'English'})

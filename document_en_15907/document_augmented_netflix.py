@@ -20,12 +20,11 @@ Steps:
    Check for existing CID records that
    match the ID for programme, skip if found.
 4. Access JSONs data needed for:
-   Monographic work/manifestation
-   Episodic Series work/Work/Manifestation
-   (contributors to be handled in diff script)
-6. Build CID records
-7. Create CID records
-8. Append contributors where available
+   Monographic work/manifestation/item
+   Episodic Series work/work/manifestation/item
+5. Build CID records
+6. Create CID records
+7. Append contributors where available
 
 Joanna White
 2023
@@ -661,9 +660,12 @@ def main():
             data_dct = make_work_dictionary('', '', csv_data, cat_dct, mono_dct)
             print(f"Dictionary for monograph creation: \n{data_dct}")
             print("*************")
-            record, series_work, work, work_restricted, manifestation = build_defaults(data_dct)
+            record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
             priref_work = create_work('', data_dct, record, work, work_restricted)
-            print(priref_work)
+            if len(priref_work) == 0:
+                LOGGER.warning("Monograph work record creation failed, skipping all further record creations")
+                continue
+            print(f"PRIREF MONOGRAPH WORK: {priref_work}")
 
             # Create contributors if supplied / or in addition to solo contributors
             if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
@@ -676,9 +678,18 @@ def main():
 
             # Make monographic manifestation here
             priref_man = create_manifestation(priref_work, data_dct, record, manifestation)
+            if len(priref_man) == 0:
+                 LOGGER.warning("Monograph manifestation record creation failed, skipping all further record creations")
+                 continue
             print(f"PRIREF FOR MANIFESTATION: {priref_man}")
             # Append URLS if present
             append_url_data(priref_work, priref_man, data_dct)
+            # Make monographic item record here
+            priref_item = create_item(priref_man, data_dct, record, item)
+            if len(priref_item) == 0:
+                 LOGGER.warning("Monograph item record creation failed, skipping all further stages")
+                 continue
+            print(f"PRIREF FOR ITEM: {priref_item}")
 
         elif 'series' in level.lower():
             prog_path = os.path.join(NETFLIX, matched_folders[0])
@@ -698,7 +709,7 @@ def main():
                 series_data = retrieve_json(os.path.join(prog_path, series_json[0]))
                 series_dct = get_json_data(series_data)
                 series_data_dct = make_work_dictionary('', '', csv_data, None, series_dct)
-                record, series_work, work, work_restricted, manifestation = build_defaults(series_data_dct)
+                record, series_work, work, work_restricted, manifestation, item = build_defaults(series_data_dct)
                 # Make series work here
                 if not series_data_dct:
                     continue
@@ -750,8 +761,11 @@ def main():
                 data_dct = make_work_dictionary(num, episode_id, csv_data, ep_cat_dct, ep_dct)
                 print(f"Dictionary for Work creation:\n{data_dct}")
                 print('**************')
-                record, series_work, work, work_restricted, manifestation = build_defaults(data_dct)
+                record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
                 priref_episode = create_work(series_priref, data_dct, record, work, work_restricted)
+                if len(priref_episode) == 0:
+                    LOGGER.warning("Episodic Work record creation failed, skipping all further record creations")
+                    continue
                 print(f"Episode work priref: {priref_episode}")
 
                 # Create contributors if supplied / or in addition to solo contributors
@@ -763,11 +777,21 @@ def main():
                     else:
                         LOGGER.warning("Failure to write contributor data to Work record: %s", priref_episode)
 
-                # Make monographic manifestation here
+                # Make episodic manifestation here
                 priref_ep_man = create_manifestation(priref_episode, data_dct, record, manifestation)
-                print(f"Episode manifestation priref: {priref_ep_man}")
+                if len(priref_ep_man) == 0:
+                    LOGGER.warning("Episodic manifestation record creation failed, skipping all further record creations")
+                    continue
+                print(f"PRIREF EP MANIFESTATION: {priref_ep_man}")
                 # Append URLS if present
                 append_url_data(priref_episode, priref_ep_man, data_dct)
+
+                # Make episodic item record here
+                priref_ep_item = create_item(priref_ep_man, data_dct, record, item)
+                if len(priref_ep_item) == 0:
+                    LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
+                    continue
+                print(f"PRIREF FOR ITEM: {priref_ep_item}")
 
             if episode_count != int(episode_num):
                 print("============ Episodes found in NETFLIX folder do not match total episodes supplied =============")
@@ -869,7 +893,16 @@ def build_defaults(data):
                       {'country_manifestation': 'United Kingdom'},
                       {'notes': 'Manifestation representing the UK streaming platform release of the Work.'}])
 
-    return (record, series_work, work, work_restricted, manifestation)
+    item = ([{'record_type': 'ITEM'},
+             {'item_type': 'DIGITAL'},
+             {'copy_status': 'M'},
+             {'copy_usage.lref': '131560'},
+             {'file_type.lref': '401103'}, # IMP
+             {'code_type.lref': '400945'}]) # Mixed
+             # {'source_device': 'STORA'}, # Unknown
+             # {'acquisition.method': 'Off-Air'}])
+
+    return (record, series_work, work, work_restricted, manifestation, item)
 
 
 def create_series_work(patv_id, series_dct, csv_data, series_work, work_restricted, record):
@@ -1308,6 +1341,49 @@ def append_url_data(work_priref, man_priref, data=None):
             unlock_record('works', work_priref)
         else:
             LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", work_priref)
+
+
+def create_item(man_priref, work_dict, record_defaults, item_default):
+    '''
+    Create item record,
+    link to manifestation
+    '''
+    item_id = ''
+    item_object_number = ''
+    item_values = []
+    item_values.extend(record_defaults)
+    item_values.extend(item_default)
+    item_values.append({'part_of_reference.lref': manifestation_id})
+    if 'title' in work_dict:
+        item_values.append({'title': work_dict['title']})
+        item_values.append({'title.language': 'English'})
+        item_values.append({'title.type': '05_MAIN'})
+    if 'title_article' in work_dict:
+        item_values.append({'title.article': title_article})
+
+    except (KeyError, IndexError, TypeError):
+        print("Title article is not present")
+    print(item_values)
+    try:
+        i = CUR.create_record(database='items',
+                              data=item_values,
+                              output='json',
+                              write=True)
+
+        if i.records:
+            try:
+                item_id = i.records[0]['priref'][0]
+                item_object_number = i.records[0]['object_number'][0]
+                print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
+                LOGGER.info('Item record created with priref %s', item_id)
+            except Exception as err:
+                LOGGER.warning("Item data could not be retrieved from the record: %s", err)
+
+    except Exception as err:
+        LOGGER.critical('PROBLEM: Unable to create Item record for <%s> manifestation', man_priref)
+        print(f"** PROBLEM: Unable to create Item record attached to manifestation: {man_priref}\nError: {err}")
+
+    return item_object_number, item_id
 
 
 def write_lock(database, priref):

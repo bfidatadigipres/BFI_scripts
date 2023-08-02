@@ -41,9 +41,9 @@ import pandas
 import yaml
 
 # Local packages
-from document_augmented_netflix_cast import create_contributors
 sys.path.append(os.environ['CODE'])
 import adlib
+from document_augmented_netflix_cast import create_contributors
 
 # Global variables
 STORAGE = os.environ.get('QNAP_IMAGEN')
@@ -150,8 +150,8 @@ def get_folder_match(foldername):
     '''
     folder_list = [x for x in os.listdir(NETFLIX) if x.startswith(foldername)]
     for fr in folder_list:
-        id = fr.split(foldername)[-1]
-        if '_' in id:
+        id_ = fr.split(foldername)[-1]
+        if '_' in id_:
             print(f"SKIPPING: Title match has additional title items: {fr}")
             folder_list.remove(fr)
     return folder_list
@@ -266,7 +266,7 @@ def get_cat_data(data=None):
     except (IndexError, TypeError, KeyError):
         pass
     try:
-        cat_data['contributors'] = data['contributor']
+        c_data['contributors'] = data['contributor']
     except (IndexError, TypeError, KeyError):
         pass
 
@@ -564,17 +564,15 @@ def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
 def main():
     '''
     Retrieve CSV path from sys.argv[1]
-    Check file exists then load columns
-    into Python dictionary to iterate
-    and create CID work/man records.
+    Load into Python dictionary to iterate
+    and create CID work/man/item records.
     Check in CID for alternative_number
     matches to episodes, in case of
     repeat runs of CSV and skip.
     Retrieve metadata by title matching
     to NETFLIX programme folders
-    Build Work/manifestations for all
-    items and where a series, create a
-    series work. Link all as needed.
+    Where an episodic series, create a
+    series work. Link all records as needed.
     '''
     csv_path = sys.argv[1]
     if not os.path.isfile(csv_path):
@@ -592,7 +590,6 @@ def main():
         season_num = int(prog_dct['series_number'][num])
         genres = prog_dct['genre'][num]
         episode_num = int(prog_dct['episode_number'][num])
-        notes = prog_dct['notes'][num]
         platform = prog_dct['platform'][num]
         year_release = prog_dct['year_of_release'][num]
 
@@ -601,13 +598,6 @@ def main():
 
         # Make season number a list
         csv_data = [year_release, title, article, nfa, level, season_num, genres, episode_num]
-
-        monograph = series = False
-        # Film, programme or series
-        if 'film' in level.lower() or 'programme' in level.lower():
-            monograph = True
-        if 'series' in level.lower():
-            series = True
 
         # Match NETFLIX folder to article/title
         foldertitle = get_folder_title(article, title)
@@ -734,7 +724,8 @@ def main():
                 # Check CID work exists / Make work if needed
                 hits, priref_episode = cid_check_works(episode_id)
                 if int(hits) > 0:
-                    print(f"PRIREF FOUND FOR WORK: {priref_episode}")
+                    print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
+                    LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
                     continue
                 print("New episode_id found for Work. Linking to series work")
 
@@ -912,7 +903,6 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
     link all episodes to
     [year_release, title, article, nfa, level, season_num, genres, episode_num]
     '''
-    series_work_genres = []
     series_work_values = []
     series_work_values.extend(record)
     series_work_values.extend(series_work)
@@ -981,14 +971,14 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
                                                priref=series_work_id,
                                                data=series_genres_filter,
                                                output='json')
-                except Exception as e:
-                    print("Unable to write genre", e)
+                except Exception as err:
+                    print("Unable to write genre", err)
                 return series_work_id
-            except Exception as e:
-                print("Unable to create series record", e)
+            except Exception as err:
+                print("Unable to create series record", err)
                 return None
-    except Exception as e:
-        print(f'* Unable to create Work record for <{title}> {e}')
+    except Exception as err:
+        print(f'* Unable to create Work record for <{title}> {err}')
         LOGGER.critical('Unable to create Work record for <%s>', title)
         return None
 
@@ -1091,14 +1081,14 @@ def create_work(part_of_priref, work_dict, record_def, work_def, work_restricted
                                           priref=work_id,
                                           data=work_genres_filter,
                                           output='json')
-                except Exception as e:
-                    print("Unable to write genre", e)
+                except Exception as err:
+                    print("Unable to write genre", err)
                 return work_id
-            except Exception as e:
-                print("Unable to create work record", e)
+            except Exception as err:
+                print("Unable to create work record", err)
                 return None
-    except Exception as e:
-        print(f"* Unable to create Work record for <{work_dict['title']}> {e}")
+    except Exception as err:
+        print(f"* Unable to create Work record for <{work_dict['title']}> {err}")
         LOGGER.critical('** Unable to create Work record for <%s>', work_dict['title'])
         return None
 
@@ -1219,7 +1209,6 @@ def work_append(priref, work_dct=None):
         work_dct = []
         LOGGER.warning("work_append(): work_update_dct passed to function as None")
     try:
-        work_dct_tup = tuple(work_dct)
         result = CUR.update_record(priref=priref,
                                    database='works',
                                    data=work_dct,
@@ -1297,8 +1286,8 @@ def create_manifestation(work_priref, work_dict, record_defaults, manifestation_
                               priref=manifestation_id,
                               data=broadcast_addition,
                               output='json')
-    except Exception as e:
-        LOGGER.info("Unable to write broadcast company data\n%s", e)
+    except Exception as err:
+        LOGGER.info("Unable to write broadcast company data\n%s", err)
     return manifestation_id
 
 
@@ -1359,10 +1348,7 @@ def create_item(man_priref, work_dict, record_defaults, item_default):
         item_values.append({'title.language': 'English'})
         item_values.append({'title.type': '05_MAIN'})
     if 'title_article' in work_dict:
-        item_values.append({'title.article': title_article})
-
-    except (KeyError, IndexError, TypeError):
-        print("Title article is not present")
+        item_values.append({'title.article': work_dict['title_article']})
     print(item_values)
     try:
         i = CUR.create_record(database='items',

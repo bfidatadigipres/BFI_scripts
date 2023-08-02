@@ -94,7 +94,9 @@ LOG_PATHS = {'/mnt/qnap_08': os.environ['L_QNAP08'],
              '/mnt/grack_f47/F47 Video Operations': os.environ['L_IS_VID'],
              '/mnt/grack_f47/FILM': os.environ['L_GRACK01'],
              '/mnt/qnap_07': os.environ['L_QNAP07'],
-             '/mnt/qnap_video/Public/F47': os.environ['L_QNAP01']
+             '/mnt/qnap_video/Public/F47': os.environ['L_QNAP01'],
+             '/mnt/qnap_digital_operations': os.environ['L_QNAP09'],
+             '/mnt/qnap_access_renditions/digital_operations': os.environ['L_QNAP11']
 }
 
 

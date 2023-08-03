@@ -889,9 +889,11 @@ def build_defaults(data):
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
              {'file_type.lref': '401103'}, # IMP
-             {'code_type.lref': '400945'}]) # Mixed
-             # {'source_device': 'STORA'}, # Unknown
-             # {'acquisition.method': 'Off-Air'}])
+             {'code_type.lref': '400945'}, # Mixed
+             {'accession_date': str(datetime.datetime.now())[:10]},
+             {'acquisition.method.lref': '132853'}, # Donation - with written agreement ACQMETH
+             {'acquisition.source.lref': '143463'}, # Netflix
+             {'acquisition.source.type': 'DONOR'}])
 
     return (record, series_work, work, work_restricted, manifestation, item)
 

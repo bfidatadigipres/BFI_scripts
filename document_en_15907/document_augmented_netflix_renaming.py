@@ -138,6 +138,7 @@ def main():
         LOGGER.info("Netflix IMP renaming script. No folders found.")
         sys.exit()
 
+    LOGGER.info("== Document augmented Netflix renaming start =================")
     for folder in folder_list:
         fpath = os.path.join(STORAGE, folder)
         priref, ob_num = cid_check(folder.strip())
@@ -145,7 +146,7 @@ def main():
             LOGGER.warning("Cannot find CID Item record for this folder: %s", fpath)
             continue
 
-        LOGGER.info("Folder matched to CID Item record: %s | %s", folder, priref)
+        LOGGER.info("Folder matched to CID Item record: %s | %s | ob_num", folder, priref, ob_num)
         xml_list = [x for x in os.listdir(fpath) if x.endswith(('.xml', '.XML'))]
         mxf_list = [x for x in os.listdir(fpath) if x.endswith(('.mxf', '.MXF'))]
         all_items = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
@@ -155,15 +156,24 @@ def main():
             continue
 
         packing_list = ''
-        pkl_dct = {}
+        # Identify the PackingList
         for xml in xml_list:
-            with open(os.path.join(fpath, xml), 'r') as file:
-                info = file.readlines()
-                if '<PackingList' in info[1]:
+            with open(os.path.join(fpath, xml), 'r') as xml_text:
+                xml_list = xml_text.readlines()
+                if '<PackingList' in xml_list[1]:
                     packing_list = os.path.join(fpath, xml)
         if not packing_list:
             LOGGER.warning("No PackingList found in folder: %s", fpath)
             continue
+
+        # Read all XML files and write to the label.text/type field in CID item record
+        xmlpath = os.path.join(fpath, xml)
+        with open(xmlpath, 'r') as xml_text:
+            xml_data = xml_text.read()
+            success = xml_item_append(priref, xml_data)
+
+        # Extracting PackingList content to dict and count
+        pkl_dct = {}
         with open(packing_list, 'r') as readfile:
             asset_text = readfile.read()
             asset_dct = xmltodict.parse(f"""{asset_text}""")
@@ -188,6 +198,7 @@ def main():
             print("Filename found {filename}")
             new_filename = f"{new_filenum_prefix}_{object_num.zfill(2)}of{asset_whole.zfill(2)}{ext}"
             assets_item_list[filename] = new_filename
+            object_num += 1
 
         if len(asset_item_list) != asset_whole:
             LOGGER.warning("Failed to retrieve all filenames from PackingList Assets: %s", asset_list)
@@ -227,7 +238,13 @@ def main():
                 LOGGER.warning(" - Please move manually")
             LOGGER.info("%s moved to autoingest path")
 
-        # Check IMP folder is empty and delete
+        # Check IMP folder is empty and delete - Is this stage wanted?
+        contents = [ x for x in os.listdir(fpath) ]
+        if len(contents) == 0:
+            # os.remove(fpath)
+            LOGGER.info("IMP folder empty, deleting %s", fpath)
+        else:
+            LOGGER.warning("IMP not empty, leaving in place for checks: %s", fpath)
 
         '''
         # Make new item records here (get title, etc from CID item record, parent priref)
@@ -238,6 +255,7 @@ def main():
              continue
         print(f"PRIREF FOR NEW ITEM: {priref_item}")
         '''
+    LOGGER.info("== Document augmented Netflix renaming end ===================")
 
 
 def build_defaults():
@@ -303,14 +321,13 @@ def create_digital_original_filenames(priref, asset_list_dct):
         return False
 
 
-def item_append(priref, item_dct=None):
+def xml_item_append(priref, xml_text):
     '''
     Items passed in item_dct for amending to CID item record
     '''
-    print(item_dct)
-    if item_dct is None:
-        item_dct = []
-        LOGGER.warning("item_append(): item_dct passed to function as None")
+    item_dct = ([{'label.type': 'IMP XML'},
+                 {'label.text': xml_text}])
+
     try:
         result = CUR.update_record(priref=priref,
                                    database='items',

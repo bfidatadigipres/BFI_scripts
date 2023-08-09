@@ -31,7 +31,7 @@ Steps:
    "<Original Filename> - Renamed to: N_123456_01of06.mxf"
 7. Open each XML and write content to the label.text
    and label.type field (possibly new field)
-8. XML and MKF contents of IMP folder are renamed
+8. XML and MXF contents of IMP folder are renamed
    as per dictionary and moved to autoingest new
    black_pearl_ingest_netflix path (to be confirmed)
    where new put scripts ensure file is moved to
@@ -158,20 +158,77 @@ def main():
         pkl_dct = {}
         for xml in xml_list:
             with open(os.path.join(fpath, xml), 'r') as file:
-                info = file.read()
-                if '<PackingList' in str(info):
+                info = file.readlines()
+                if '<PackingList' in info[1]:
                     packing_list = os.path.join(fpath, xml)
-                    pkl_dct = xmltodict.parse(f"""{info.strip()}""", process_namespaces=True, namespaces=namespaces)
-
-        if not packing_list or pkl_dct:
-            LOGGER.warning("Packing list not found among XML files. Cannot process files partWholes: %s", fpath)
+        if not packing_list:
+            LOGGER.warning("No PackingList found in folder: %s", fpath)
             continue
-        # Iterate the 'Asset' blocks in 'AssetList' and build list of filenames
-        # Ensure count of all assets matches total_files
-        # Build dict of original filename = and new filename (based on CID ob_num)
+        with open(packing_list, 'r') as readfile:
+            asset_text = readfile.read()
+            asset_dct = xmltodict.parse(f"""{asset_text}""")
+
+        asset_dct_list = asset_dct['PackingList']['AssetList']['Asset']
+        asset_whole = len(asset_dct_list)
+        if asset_whole != total_files:
+            LOGGER.warning("Folder contents does not match length of packing list: %s", fpath)
+            LOGGER.warning("PKL length %s -- Total files in folder %s", asset_whole, total_files)
+            continue
+
+        LOGGER.info("PackingList returned %s items, matching folder length.", asset_whole)
+        assets_item_list = {}
+        object_num = 1
+        new_filenum_prefix = ob_num.replace('-', '_')
+        for asset in asset_list:
+            filename = asset['OriginalFileName']['#text']
+            ext = os.splitext(filename)[1]
+            if not filename:
+                LOGGER.warning("Exiting processing this asset - Could not retrieve original filename: %s", asset)
+                continue
+            print("Filename found {filename}")
+            new_filename = f"{new_filenum_prefix}_{object_num.zfill(2)}of{asset_whole.zfill(2)}{ext}"
+            assets_item_list[filename] = new_filename
+
+        if len(asset_item_list) != asset_whole:
+            LOGGER.warning("Failed to retrieve all filenames from PackingList Assets: %s", asset_list)
+            continue
+
         # Write all dict names to digital.acquired_filename in CID item record
+        success = create_digital_original_filenames(priref, asset_item_list)
+        if not success:
+            LOGGER.warning("Skipping further actions. Asset item list not written to CID item record: %", priref)
+            continue
+        LOGGER.info("CID item record <%s> filenames appended to digital.acquired_filenamed field", priref)
+
         # Rename all files in IMP folder
+        LOGGER.info("Beginning renaming of IMP folder assets:")
+        success_rename = True
+        for key, value in asset_item_list.items():
+            filepath = os.path.join(fpath, key)
+            new_filepath = os.path.join(fpath, value)
+            if os.path.isfile(filepath):
+                LOGGER.info("\t-  Renaming %s to new filename %s", key, value)
+                os.rename(filepath, new_filepath)
+                if not os.path.isfile(new_filepath):
+                    LOGGER.warning("\t-  Error renaming file %s!", key)
+                    success_rename = False
+                    break
+        if not success_rename:
+            LOGGER.warning("SKIPPING: Failure to rename files in IMP %s", fpath)
+            continue
+
         # Move to local autoingest black_pearl_ingest_netflix (subfolder for netflix01 bucket put)
+        LOGGER.info("ALL IMP %S FILES RENAMED SUCCESSFULLY", folder)
+        for file in asset_item_list.values():
+            moving_asset = os.path.join(fpath, file)
+            shutil.move(moving_asset, AUTOINGEST)
+            if os.path.isfile(moving_asset):
+                LOGGER.warning("Movement of file %s to %s failed!", moving_asset, AUTOINGEST)
+                LOGGER.warning(" - Please move manually")
+            LOGGER.info("%s moved to autoingest path")
+
+        # Check IMP folder is empty and delete
+
         '''
         # Make new item records here (get title, etc from CID item record, parent priref)
         record, item = build_defaults()
@@ -212,25 +269,14 @@ def build_defaults():
     return (record, series_work, work, work_restricted, manifestation, item)
 
 
-def create_digital_original_filenames(filename_dct):
+def create_digital_original_filenames(priref, asset_list_dct):
     '''
-    WIP - NEW FUNCTION UNTESTED
     Create entries for digital.acquired_filename
     and append to the CID item record.
     '''
     name_updates = []
-    for key, val in filename_dct.items():
+    for key, val in asset_list_dct.items():
         name_updates.append({'digital.acquired_filename': f'{key} - Renamed to: {val}'})
-
-    return name_update
-
-
-def append_original_names(priref, name_udpates):
-    '''
-    UPDATED - UNTESTED
-    Appending digital acquired filenames to
-    the CID item record
-    '''
 
     # Append cast/credit and edit name blocks to work_append_dct
     item_append_dct = []

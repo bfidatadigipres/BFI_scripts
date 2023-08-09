@@ -580,7 +580,7 @@ def main():
 
     prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct['title'])
-
+    LOGGER.info("=== Document augmented Netflix start ===============================")
     for num in range(0, csv_range):
         # Capture CSV supplied data to vars
         title = prog_dct['title'][num]
@@ -595,6 +595,8 @@ def main():
 
         if platform != 'Netflix':
             continue
+
+        LOGGER.info("** Processing item: %s %s", article, title)
 
         # Make season number a list
         csv_data = [year_release, title, article, nfa, level, season_num, genres, episode_num]
@@ -787,6 +789,8 @@ def main():
             if episode_count != int(episode_num):
                 print("============ Episodes found in NETFLIX folder do not match total episodes supplied =============")
 
+    LOGGER.info("=== Document augmented Netflix end =================================")
+
 
 def firstname_split(person):
     '''
@@ -843,7 +847,7 @@ def build_defaults(data):
                {'record_access.rights': '0'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
                {'grouping.lref': '400947'},
-               {'language.lref': '71429'},
+               {'language.lref': '74129'},
                {'language.type': 'DIALORIG'}])
 
     series_work = ([{'record_type': 'WORK'},
@@ -858,8 +862,6 @@ def build_defaults(data):
              {'work_type': data['work_type']},
              {'description.type.lref': '100298'},
              {'production_country.lref': '73938'},
-             {'title_date_start': data['title_date_start']},
-             {'title_date.type': '03_R'},
              {'nfa_category': data['nfa_category']}])
 
     work_restricted = ([{'application_restriction': 'MEDIATHEQUE'},
@@ -994,6 +996,7 @@ def create_work(part_of_priref, work_dict, record_def, work_def, work_restricted
     Hand in series or episode, part_of_priref
     populated as needed.
     '''
+    work_id = ''
     work_genres = []
     work_values = []
     work_values.extend(record_def)
@@ -1007,6 +1010,9 @@ def create_work(part_of_priref, work_dict, record_def, work_def, work_restricted
         work_values.append({'title.type': '05_MAIN'})
     if 'title_article' in work_dict:
         work_values.append({'title.article': work_dict['title_article']})
+    if len(work_dict['title_date_start']) > 0:
+        work_values.append({'title_date_start': work_dict['title_date_start']})
+        work_values.append({'title_date.type': '03_R'})
     if 'patv_id' in work_dict:
         work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
         work_values.append({'alternative_number': work_dict['patv_id']})
@@ -1088,11 +1094,11 @@ def create_work(part_of_priref, work_dict, record_def, work_def, work_restricted
                 return work_id
             except Exception as err:
                 print("Unable to create work record", err)
-                return None
+                return work_id
     except Exception as err:
         print(f"* Unable to create Work record for <{work_dict['title']}> {err}")
         LOGGER.critical('** Unable to create Work record for <%s>', work_dict['title'])
-        return None
+        return work_id
 
     return work_id
 

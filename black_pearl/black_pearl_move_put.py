@@ -42,8 +42,9 @@ INGEST_CONFIG = os.environ['INGEST_SIZE']
 JSON_END = os.environ['JSON_END_POINT']
 
 # Setup logging
+log_name = sys.argv[1].replace("/", '_')
 logger = logging.getLogger(f'black_pearl_move_put_{sys.argv[1]}')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, f'black_pearl_move_put_{sys.argv[1]}.log'))
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, f'black_pearl_move_put_{log_name}.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 logger.addHandler(HDLR)
@@ -183,7 +184,7 @@ def main():
                 fullpath = key
                 upload_size = int(val)
     print(f"Upload size: {upload_size} bytes")
-
+    print(f"Fullpath: {fullpath}")
     if not fullpath:
         sys.exit('Supplied argument did not match path')
 

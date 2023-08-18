@@ -255,7 +255,8 @@ def main():
                 LOGGER.warning(" - Please move manually")
             LOGGER.info("%s moved to autoingest path")
 
-        # Check IMP folder is empty and delete - Is this stage wanted?
+        '''
+        # Check IMP folder is empty and delete - Is this stage wanted? Waiting to hear from Andy
         contents = list(os.listdir(fpath))
         if len(contents) == 0:
             os.remove(fpath)
@@ -263,7 +264,6 @@ def main():
         else:
             LOGGER.warning("IMP not empty, leaving in place for checks: %s", fpath)
 
-        '''
         # Make new item records here (get title, etc from CID item record, parent priref)
         record, item = build_defaults()
         priref_item = create_item(priref_man, data_dct, record, item)

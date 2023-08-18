@@ -396,18 +396,22 @@ def ext_in_file_type(ext, priref, log_paths):
         logger.warning('%s\tFile type is not recognised in autoingest', log_paths)
         return False
 
+    print(ftype)
     query = {'database': 'collect',
              'search': f'priref={priref}',
              'limit': 1,
              'output': 'json',
              'fields': 'file_type'}
 
+    print(query)
     result = CID.get(query)
+    print(result.records)
     try:
         file_type = result.records[0]['file_type']
     except (IndexError, KeyError):
         file_type = []
 
+    print(file_type)
     if len(file_type) == 1:
         for ft in ftype:
             ft = ft.strip()

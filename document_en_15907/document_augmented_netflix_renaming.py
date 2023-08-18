@@ -56,19 +56,21 @@ Joanna White
 # Public packages
 import os
 import sys
-import json
+import shutil
 import logging
 import datetime
-import requests
 import xmltodict
-import yaml
 
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global variables
-STORAGE = os.environ.get('QNAP_IMAGEN')
+STORAGE_PTH = os.environ.get('TRANSCODING')
+NETFLIX_PTH = os.environ.get('NETFLIX_PATH')
+NET_INGEST = os.environ.get('NETFLIX_AUTOINGEST')
+AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
+STORAGE = os.path.join(STORAGE_PTH, NETFLIX_PTH)
 ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
@@ -98,30 +100,33 @@ def cid_check(imp_fname):
     '''
     Sends CID request for series_id data
     '''
-    hit_count = ""
-    priref = ""
     query = {'database': 'items',
-             'search': f'digital.acquired_filename="{imp_name}"',
+             'search': f'digital.acquired_filename="{imp_fname}"',
              'limit': '1',
              'output': 'json',
-             'fields': 'priref, object_number'}
+             'fields': 'priref, object_number, digital.acquired_filename.type'}
     try:
         query_result = CID.get(query)
     except Exception as err:
-        print(f"cid_check(): Unable to match IMP with Item record: {imp_name} {err}")
+        print(f"cid_check(): Unable to match IMP with Item record: {imp_fname} {err}")
         query_result = None
     try:
         priref = query_result.records[0]['priref'][0]
-        print(f"cid_check(): Series priref: {priref}")
-    except (IndexError, KeyError, TypeError) as err:
+        print(f"cid_check(): Priref: {priref}")
+    except (IndexError, KeyError, TypeError):
         priref = ''
     try:
         ob_num = query_result.records[0]['object_number'][0]
-        print(f"cid_check(): Series priref: {ob_num}")
-    except (IndexError, KeyError, TypeError) as err:
-        ob_num = ''s
+        print(f"cid_check(): Object number: {ob_num}")
+    except (IndexError, KeyError, TypeError):
+        ob_num = ''
+    try:
+        file_type = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename.type'][0]['value'][0]
+        print(f"cid_check(): File type: {file_type}")
+    except (IndexError, KeyError, TypeError):
+        file_type = ''
 
-    return priref, ob_num
+    return priref, ob_num, file_type.title()
 
 
 def main():
@@ -141,80 +146,92 @@ def main():
     LOGGER.info("== Document augmented Netflix renaming start =================")
     for folder in folder_list:
         fpath = os.path.join(STORAGE, folder)
-        priref, ob_num = cid_check(folder.strip())
+        priref, ob_num, file_type = cid_check(folder.strip())
+        print(f"CID item record found: {priref} with matching {file_type.title()}")
+
         if not priref:
             LOGGER.warning("Cannot find CID Item record for this folder: %s", fpath)
             continue
+        if file_type != 'Folder':
+            LOGGER.warning("Incorrect filename type retrieved in CID. Skipping.")
+            continue
 
-        LOGGER.info("Folder matched to CID Item record: %s | %s | ob_num", folder, priref, ob_num)
+        LOGGER.info("Folder matched to CID Item record: %s | %s | %s", folder, priref, ob_num)
         xml_list = [x for x in os.listdir(fpath) if x.endswith(('.xml', '.XML'))]
         mxf_list = [x for x in os.listdir(fpath) if x.endswith(('.mxf', '.MXF'))]
         all_items = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
-        total_files = len(xml_list) + len(mxf_list)
-        if total_files != len(all_items):
+        total_items = len(mxf_list) + len(xml_list)
+        if total_items != len(all_items):
             LOGGER.warning("Folder contains files that are not XML or MXF: %s", fpath)
             continue
-
         packing_list = ''
-        # Identify the PackingList
+        xml_content_all = []
+        # Read/write to CID item record, and identify the PackingList
         for xml in xml_list:
             with open(os.path.join(fpath, xml), 'r') as xml_text:
-                xml_list = xml_text.readlines()
-                if '<PackingList' in xml_list[1]:
-                    packing_list = os.path.join(fpath, xml)
+                xml_content = xml_text.readlines()
+            if '<PackingList' in xml_content[1]:
+                packing_list = os.path.join(fpath, xml)
+            lines = ''.join(xml_content)
+            xml_content_all.append(lines)
+        print(xml_content_all)
+        print(packing_list)
+        success = xml_item_append(priref, xml_content_all)
+
         if not packing_list:
             LOGGER.warning("No PackingList found in folder: %s", fpath)
             continue
 
-        # Read all XML files and write to the label.text/type field in CID item record
-        xmlpath = os.path.join(fpath, xml)
-        with open(xmlpath, 'r') as xml_text:
-            xml_data = xml_text.read()
-            success = xml_item_append(priref, xml_data)
-
         # Extracting PackingList content to dict and count
-        pkl_dct = {}
+        asset_dct = {}
         with open(packing_list, 'r') as readfile:
             asset_text = readfile.read()
             asset_dct = xmltodict.parse(f"""{asset_text}""")
-
         asset_dct_list = asset_dct['PackingList']['AssetList']['Asset']
+
+        # If XML asset not in PKL, add here:
         asset_whole = len(asset_dct_list)
-        if asset_whole != total_files:
+        if asset_whole != (total_items - 2):
             LOGGER.warning("Folder contents does not match length of packing list: %s", fpath)
-            LOGGER.warning("PKL length %s -- Total files in folder %s", asset_whole, total_files)
+            LOGGER.warning("PKL length %s -- Total MXF + CPL file in folder %s", asset_whole, total_files)
             continue
 
-        LOGGER.info("PackingList returned %s items, matching folder length.", asset_whole)
-        assets_item_list = {}
+        # Build asset_list, PKL order first, followed by remaining XML
+        LOGGER.info("PackingList returned %s items, matching MXF content + CPL XML.", asset_whole)
+        asset_items = {}
         object_num = 1
         new_filenum_prefix = ob_num.replace('-', '_')
-        for asset in asset_list:
+        for asset in asset_dct_list:
             filename = asset['OriginalFileName']['#text']
-            ext = os.splitext(filename)[1]
+            ext = os.path.splitext(filename)[1]
             if not filename:
                 LOGGER.warning("Exiting processing this asset - Could not retrieve original filename: %s", asset)
                 continue
-            print("Filename found {filename}")
-            new_filename = f"{new_filenum_prefix}_{object_num.zfill(2)}of{asset_whole.zfill(2)}{ext}"
-            assets_item_list[filename] = new_filename
+            print(f"Filename found {filename}")
+            new_filename = f"{new_filenum_prefix}_{str(object_num).zfill(2)}of{str(total_items).zfill(2)}{ext}"
+            asset_items[filename] = new_filename
             object_num += 1
+        for xml in xml_list:
+            if xml not in asset_items.keys():
+                new_filename = f"{new_filenum_prefix}_{str(object_num).zfill(2)}of{str(total_items).zfill(2)}.xml"
+                asset_items[xml] = new_filename
+                object_num += 1
 
-        if len(asset_item_list) != asset_whole:
-            LOGGER.warning("Failed to retrieve all filenames from PackingList Assets: %s", asset_list)
+        if len(asset_items) != total_items:
+            LOGGER.warning("Failed to retrieve all filenames from PackingList Assets: %s", asset_dct_list)
             continue
 
-        # Write all dict names to digital.acquired_filename in CID item record
-        success = create_digital_original_filenames(priref, asset_item_list)
+        # Write all dict names to digital.acquired_filename in CID item record, re-write folder name
+        success = create_digital_original_filenames(priref, folder.strip(), asset_items)
         if not success:
-            LOGGER.warning("Skipping further actions. Asset item list not written to CID item record: %", priref)
+            LOGGER.warning("Skipping further actions. Asset item list not written to CID item record: %s", priref)
             continue
         LOGGER.info("CID item record <%s> filenames appended to digital.acquired_filenamed field", priref)
 
         # Rename all files in IMP folder
         LOGGER.info("Beginning renaming of IMP folder assets:")
         success_rename = True
-        for key, value in asset_item_list.items():
+        for key, value in asset_items.items():
             filepath = os.path.join(fpath, key)
             new_filepath = os.path.join(fpath, value)
             if os.path.isfile(filepath):
@@ -229,8 +246,8 @@ def main():
             continue
 
         # Move to local autoingest black_pearl_ingest_netflix (subfolder for netflix01 bucket put)
-        LOGGER.info("ALL IMP %S FILES RENAMED SUCCESSFULLY", folder)
-        for file in asset_item_list.values():
+        LOGGER.info("ALL IMP %s FILES RENAMED SUCCESSFULLY", folder)
+        for file in asset_items.values():
             moving_asset = os.path.join(fpath, file)
             shutil.move(moving_asset, AUTOINGEST)
             if os.path.isfile(moving_asset):
@@ -239,9 +256,9 @@ def main():
             LOGGER.info("%s moved to autoingest path")
 
         # Check IMP folder is empty and delete - Is this stage wanted?
-        contents = [ x for x in os.listdir(fpath) ]
+        contents = list(os.listdir(fpath))
         if len(contents) == 0:
-            # os.remove(fpath)
+            os.remove(fpath)
             LOGGER.info("IMP folder empty, deleting %s", fpath)
         else:
             LOGGER.warning("IMP not empty, leaving in place for checks: %s", fpath)
@@ -284,10 +301,10 @@ def build_defaults():
              {'acquisition.source.lref': '143463'}, # Netflix
              {'acquisition.source.type': 'DONOR'}])
 
-    return (record, series_work, work, work_restricted, manifestation, item)
+    return record, item
 
 
-def create_digital_original_filenames(priref, asset_list_dct):
+def create_digital_original_filenames(priref, folder_name, asset_list_dct):
     '''
     Create entries for digital.acquired_filename
     and append to the CID item record.
@@ -295,6 +312,9 @@ def create_digital_original_filenames(priref, asset_list_dct):
     name_updates = []
     for key, val in asset_list_dct.items():
         name_updates.append({'digital.acquired_filename': f'{key} - Renamed to: {val}'})
+        name_updates.append({'digital.acquired_filename.type': 'File'})
+    name_updates.append({'digital.acquired_filename': folder_name})
+    name_updates.append({'digital.acquired_filename.type': 'Folder'})
 
     # Append cast/credit and edit name blocks to work_append_dct
     item_append_dct = []
@@ -321,17 +341,31 @@ def create_digital_original_filenames(priref, asset_list_dct):
         return False
 
 
-def xml_item_append(priref, xml_text):
+def xml_item_append(priref, xml_data):
+    '''
+    Write XML data to CID item record
+    '''
+    num = 1
+    label_dct = []
+    for xml_block in xml_data:
+        label_dct.append({'label.source': f'Netflix XML data {num}'})
+        label_dct.append({'label.text': xml_block})
+        num += 1
+
+    success = item_append(priref, label_dct)
+    if success:
+        return True
+
+
+def item_append(priref, item_append_dct):
     '''
     Items passed in item_dct for amending to CID item record
     '''
-    item_dct = ([{'label.type': 'IMP XML'},
-                 {'label.text': xml_text}])
 
     try:
         result = CUR.update_record(priref=priref,
                                    database='items',
-                                   data=item_dct,
+                                   data=item_append_dct,
                                    output='json',
                                    write=True)
         print("*** CID item record append result:")
@@ -341,114 +375,6 @@ def xml_item_append(priref, xml_text):
         LOGGER.warning("item_append(): Unable to append work data to CID item record %s", err)
         print(err)
         return False
-
-
-def append_url_data(work_priref, man_priref, data=None):
-    '''
-    KEEPING THIS IN CASE XML WRITE REQUIRED
-    FOR append_original_names() MODULE
-    '''
-
-    if 'watch_url' in data:
-        # Write to manifest
-        payload_mid = f"<URL>{data['watch_url']}</URL><URL.description>Netflix viewing URL</URL.description>"
-        payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
-        payload_end = "</URL></record></recordList></adlibXML>"
-        payload = payload_head + payload_mid + payload_end
-
-        write_lock('manifestations', man_priref)
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'manifestations', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data={'data': payload})
-
-        if "<error><info>" in str(post_response.text):
-            LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", man_priref, post_response.text)
-            unlock_record('manifestations', man_priref)
-        else:
-            LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", man_priref)
-
-        # Write to work
-        payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
-        payload = payload_head + payload_mid + payload_end
-
-        write_lock('works', work_priref)
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'works', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data={'data': payload})
-
-        if "<error><info>" in str(post_response.text):
-            LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", work_priref, post_response.text)
-            unlock_record('works', work_priref)
-        else:
-            LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", work_priref)
-
-
-def create_item(man_priref, work_dict, record_defaults, item_default):
-    '''
-    WIP - NEEDS AMENDING
-    Create item record for priref
-    or subtitles and link to manifestation
-    '''
-    item_id = ''
-    item_object_number = ''
-    item_values = []
-    item_values.extend(record_defaults)
-    item_values.extend(item_default)
-    item_values.append({'part_of_reference.lref': man_priref})
-    if 'title' in work_dict:
-        item_values.append({'title': work_dict['title']})
-        item_values.append({'title.language': 'English'})
-        item_values.append({'title.type': '05_MAIN'})
-    if 'title_article' in work_dict:
-        item_values.append({'title.article': work_dict['title_article']})
-    print(item_values)
-    try:
-        i = CUR.create_record(database='items',
-                              data=item_values,
-                              output='json',
-                              write=True)
-
-        if i.records:
-            try:
-                item_id = i.records[0]['priref'][0]
-                item_object_number = i.records[0]['object_number'][0]
-                print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
-                LOGGER.info('Item record created with priref %s', item_id)
-            except Exception as err:
-                LOGGER.warning("Item data could not be retrieved from the record: %s", err)
-
-    except Exception as err:
-        LOGGER.critical('PROBLEM: Unable to create Item record for <%s> manifestation', man_priref)
-        print(f"** PROBLEM: Unable to create Item record attached to manifestation: {man_priref}\nError: {err}")
-
-    return item_object_number, item_id
-
-
-def write_lock(database, priref):
-    '''
-    Apply a writing lock to the person record before updating metadata to Headers
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': database, 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'})
-    except Exception as err:
-        LOGGER.warning("Lock record wasn't applied to record %s\n%s", priref, err)
-
-
-def unlock_record(database, priref):
-    '''
-    Only used if write fails and lock was successful, to guard against file remaining locked
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': database, 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
-    except Exception as err:
-        LOGGER.warning("Post to unlock record failed. Check record %s is unlocked manually\n%s", priref, err)
-
 
 
 if __name__ == '__main__':

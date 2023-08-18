@@ -426,7 +426,7 @@ def main():
                     if 'COMPLETED' in status and size == cached:
                         logger.info("Completed check < %s >.  Sizes match < %s : %s >", status, size, cached)
                     else:
-                        logger.info("Completed check failed: %s. Size %s. Cached size %s", status, size, cached)
+                        logger.info("***** Completed check failed: %s. Size %s. Cached size %s", status, size, cached)
                         continue
 
                     # Iterate through files in folders and extract data / write logs / create CID record

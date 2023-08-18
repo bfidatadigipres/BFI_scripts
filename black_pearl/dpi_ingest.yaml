@@ -19,9 +19,9 @@ Host_size:
  - '/mnt/isilon/ingest/media'                        : 1099511627776
  - '/mnt/isilon/audio_operations/Finished'           : 1099511627776
  - '/mnt/isilon/digital_operations/Finished'         : 1099511627776
- - '/mnt/grack_f47/F47 Video Operations'             : 1099511627776
  - '/mnt/qnap_film/Public'                           : 1099511627776
  - '/mnt/qnap_06'                                    : 1099511627776
  - '/mnt/qnap_digital_operations'                    : 1099511627776
  - '/mnt/qnap_access_renditions/digital_operations'  : 1099511627776
  - '/mnt/qnap_08'                                    : 10485760
+# - '/mnt/grack_f47/F47 Video Operations'             : 1099511627776

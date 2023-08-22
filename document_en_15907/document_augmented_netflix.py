@@ -298,6 +298,11 @@ def get_json_data(data=None):
         j_data['runtime'] = data['runtime']
     except (IndexError, KeyError, TypeError):
         pass
+    if 'related' in data:
+        series_title = data['related'][0]['title']
+        stitle, sarticle = split_title(series_title)
+        j_data['series_title'] = stitle
+        j_data['series_title_article'] = sarticle
     try:
         j_data['episode_number'] = data['number']
     except (IndexError, KeyError, TypeError):
@@ -443,14 +448,25 @@ def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
 
     work_dict = {}
     if 'title' in cat_dct:
-        work_dict['title'] = cat_dct['title']
+        title_check = cat_dct['title']
     elif 'title' in json_dct:
-        work_dict['title'] = json_dct['title']
+        title_check = json_dct['title']
+    if not title_check.startswith('Episode '):
+        work_dict['title'] = title_check
+    else:
+        if 'series_title' in json_dct:
+            episode_title = f"{json_dct['series_title']}: {title_check}"
+            work_dict['title'] = episode_title
+        else:
+            work_dict['title'] = title_check
+        if 'series_title_article' in json_dct:
+            episode_title_art = json_dct['series_title_article']
+            if len(episode_title_art) > 0:
+                work_dict['title_article'] = episode_title_art
+
     if int(csv_data[5]) > 0:
         work_dict['series_num'] = csv_data[5]
         work_dict['episode_total'] = csv_data[7]
-    if csv_data[2] != '-':
-        work_dict['title_article'] = csv_data[2]
 
     # Film, programme or series
     if 'film' in csv_data[4].lower():

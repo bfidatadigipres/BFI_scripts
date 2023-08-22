@@ -86,7 +86,7 @@ def cid_check_filenames(priref):
 
     try:
         file_name_block = query_result.records[0]['Acquired_filename']
-        LOGGER.info(f"cid_check_filenames(): File names retrieved: {file_name_block}")
+        LOGGER.info(f"cid_check_filenames(): Total file names retrieved: {len(file_name_block)}")
     except (IndexError, KeyError, TypeError):
         file_name_block = ''
 

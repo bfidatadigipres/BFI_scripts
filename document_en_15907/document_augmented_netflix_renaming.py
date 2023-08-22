@@ -193,7 +193,7 @@ def main():
         asset_whole = len(asset_dct_list)
         if asset_whole != (total_items - 2):
             LOGGER.warning("Folder contents does not match length of packing list: %s", fpath)
-            LOGGER.warning("PKL length %s -- Total MXF + CPL file in folder %s", asset_whole, total_files)
+            LOGGER.warning("PKL length %s -- Total MXF + CPL file in folder %s", asset_whole, total_items)
             continue
 
         # Build asset_list, PKL order first, followed by remaining XML

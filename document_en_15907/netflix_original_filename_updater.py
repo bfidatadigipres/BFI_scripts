@@ -85,17 +85,12 @@ def cid_check_filenames(priref):
         query_result = None
 
     try:
-        file_name = query_result.records[0]['Acquired_filename']
-        LOGGER.info(f"cid_check_filenames(): File names: {file_name}")
+        file_name_block = query_result.records[0]['Acquired_filename']
+        LOGGER.info(f"cid_check_filenames(): File names retrieved: {file_name_block}")
     except (IndexError, KeyError, TypeError):
-        file_name = ''
-    try:
-        file_name_type = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename.type']
-        LOGGER.info(f"cid_check_filenames(): File name types: {file_name_type}")
-    except (IndexError, KeyError, TypeError):
-        file_name_type = ''
+        file_name_block = ''
 
-    return file_name, file_name_type
+    return file_name_block
 
 
 def cid_check_media(priref, original_filename):
@@ -152,34 +147,38 @@ def main():
 
     # Iterate list of prirefs
     for priref in priref_list:
-        digital_filenames, filename_types = cid_check_filenames(priref)
+        digital_filenames = cid_check_filenames(priref)
         if digital_filenames:
             print(priref)
             print(digital_filenames)
-            print(filename_types)
             print("**********")
-        if not 'Files' in filename_types:
+        if not 'File' in str(digital_filenames):
             LOGGER.info("No digital acquired filenames yet")
             continue
         LOGGER.info("Digital filenames found for IMP ingested items!")
 
-        for fname in digital_filenames:
-            if ' - Renamed to: ' in str(fname):
+        for filenames in digital_filenames:
+            fname = filenames['digital.acquired_filename'][0]
+            ftype = filenames['digital.acquired_filename.type'][0]['value'][0]
+            if ' - Renamed to: ' in fname:
                 original_fname, ingest_name = fname.split(' - Renamed to: ')
                 mpriref, match = cid_check_media(priref, original_fname)
+                LOGGER.info("Ingest asset identified: %s", ingest_name)
                 if mpriref and match:
-                    LOGGER.info("Skipping: Asset ingested %s. Digital acquired filename already added to CID digital media record.", ingest_name)
+                    LOGGER.info("SKIPPING: Digital acquired filename already added to CID digital media record %s - %s", mpriref, original_fname)
                     continue
                 if mpriref and not match:
-                    LOGGER.info("CID media record found for ingest asset %s, updating digital.acquired_filename to record", ingest_name)
+                    LOGGER.info("CID media record found %s - Updating digital.acquired_filename to record %s", mpriref, original_fname)
                     success = update_cid_media_record(mpriref, original_fname)
                     if not success:
-                        LOGGER.warning("Update of original filename to CID media record %s failed: %s", mpriref, original_fname)
+                        LOGGER.warning("FAILED: Update of original filename to CID media record %s: %s", mpriref, original_fname)
                         continue
-                    LOGGER.info("CID media record %s updated with original filename: %s", mpriref, original_fname)
+                    LOGGER.info("SUCCESS: CID media record %s updated with original filename: %s", mpriref, original_fname)
                 if not mpriref:
-                    LOGGER.info(f"No CID media record created for ingesting asset: {ingest_name}")
+                    LOGGER.info(f"SKIPPING: No CID media record created yet for ingesting asset: {ingest_name}")
                     continue
+            else:
+                LOGGER.info("SKIPPING: Acquired filename, not in scope for update: %s - %s", fname, ftype)
 
 
 def update_cid_media_record(priref, orig_fname):

@@ -129,7 +129,11 @@ def cid_check_media(priref, original_filename):
     except (IndexError, KeyError, TypeError):
         file_name_type = ''
 
-    return mpriref, file_name, file_name_type
+    if original_filename in str(file_name):
+        return mpriref, True
+    if len(priref) > 0:
+        return mpriref, False
+    return None, None
 
 
 def main():
@@ -148,8 +152,7 @@ def main():
 
     # Iterate list of prirefs
     for priref in priref_list:
-        dm_priref, digital_filenames, filename_types = cid_check_filenames(priref)
-        print(dm_priref)
+        digital_filenames, filename_types = cid_check_filenames(priref)
         print(digital_filenames)
         print(filename_types)
         print("**********")
@@ -161,18 +164,18 @@ def main():
         for fname in digital_filenames:
             if ' - Renamed to: ' in str(fname):
                 original_fname, ingest_name = fname.split(' - Renamed to: ')
-                priref, match = cid_check_media(priref, original_fname)
-                if priref and match:
-                    LOGGER.info("Skipping: Digital acquired filename already added to CID digital media record.")
+                mpriref, match = cid_check_media(priref, original_fname)
+                if mpriref and match:
+                    LOGGER.info("Skipping: Asset ingested %s. Digital acquired filename already added to CID digital media record.", ingest_name)
                     continue
-                if priref and not match:
-                    LOGGER.info("CID media record found, updating digital.acquired_filename to record")
-                    success = update_cid_media_record(priref, original_fname)
+                if mpriref and not match:
+                    LOGGER.info("CID media record found for ingest asset %s, updating digital.acquired_filename to record", ingest_name)
+                    success = update_cid_media_record(mpriref, original_fname)
                     if not success:
-                        LOGGER.warning("Update of original filename to CID media record %s failed: %s", priref, original_fname)
+                        LOGGER.warning("Update of original filename to CID media record %s failed: %s", mpriref, original_fname)
                         continue
-                    LOGGER.info("CID media record %s updated with original filename: %s", priref, original_fname)
-                if not priref:
+                    LOGGER.info("CID media record %s updated with original filename: %s", mpriref, original_fname)
+                if not mpriref:
                     LOGGER.info(f"No CID media record created for ingesting asset: {ingest_name}")
                     continue
 

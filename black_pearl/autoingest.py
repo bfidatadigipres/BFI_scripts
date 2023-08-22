@@ -375,7 +375,8 @@ def ext_in_file_type(ext, priref, log_paths):
     Check if ext matches file_type
     '''
     ext = ext.lower()
-    dct = {'tar': 'dpx, dcp, dcdm, wav',
+    dct = {'imp': 'mxf, xml',
+           'tar': 'dpx, dcp, dcdm, wav',
            'mxf': 'mxf, 50i',
            'mpg': 'mpeg-1, mpeg-2',
            'mp4': 'mp4',

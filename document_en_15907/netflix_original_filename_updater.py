@@ -141,6 +141,10 @@ def main():
     '''
 
     records = cid_check_items()
+    if not records:
+        sys.exit()
+
+    LOGGER.info("=== Netflix original filename updates START ===================")
     priref_list = []
     for record in records:
         priref_list.append(record['priref'][0])
@@ -153,7 +157,6 @@ def main():
             print(digital_filenames)
             print("**********")
         if not 'File' in str(digital_filenames):
-            LOGGER.info("No digital acquired filenames yet")
             continue
         LOGGER.info("Digital filenames found for IMP ingested items!")
 
@@ -179,6 +182,8 @@ def main():
                     continue
             else:
                 LOGGER.info("SKIPPING: Acquired filename, not in scope for update: %s - %s", fname, ftype)
+
+    LOGGER.info("=== Netflix original filename updates END =====================")
 
 
 def update_cid_media_record(priref, orig_fname):

@@ -85,7 +85,7 @@ def cid_check_filenames(priref):
         query_result = None
 
     try:
-        file_name = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename']
+        file_name = query_result.records[0]['Acquired_filename']
         LOGGER.info(f"cid_check_filenames(): File names: {file_name}")
     except (IndexError, KeyError, TypeError):
         file_name = ''
@@ -153,9 +153,11 @@ def main():
     # Iterate list of prirefs
     for priref in priref_list:
         digital_filenames, filename_types = cid_check_filenames(priref)
-        print(digital_filenames)
-        print(filename_types)
-        print("**********")
+        if digital_filenames:
+            print(priref)
+            print(digital_filenames)
+            print(filename_types)
+            print("**********")
         if not 'Files' in filename_types:
             LOGGER.info("No digital acquired filenames yet")
             continue

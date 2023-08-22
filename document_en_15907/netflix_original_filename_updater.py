@@ -19,7 +19,6 @@ Joanna White
 
 # Public packages
 import os
-from re import Match
 import sys
 import logging
 import datetime

@@ -298,11 +298,6 @@ def get_json_data(data=None):
         j_data['runtime'] = data['runtime']
     except (IndexError, KeyError, TypeError):
         pass
-    if 'related' in data:
-        series_title = data['related'][0]['title']
-        stitle, sarticle = split_title(series_title)
-        j_data['series_title'] = stitle
-        j_data['series_title_article'] = sarticle
     try:
         j_data['episode_number'] = data['number']
     except (IndexError, KeyError, TypeError):
@@ -374,7 +369,7 @@ def cid_check_works(patv_id):
              'search': f'alternative_number="{patv_id}"',
              'limit': '1',
              'output': 'json',
-             'fields': 'priref'}
+             'fields': 'priref, title, title.article'}
     try:
         query_result = CID.get(query)
     except Exception as err:
@@ -391,7 +386,18 @@ def cid_check_works(patv_id):
         print(f"cid_check_works(): Series priref: {priref}")
     except Exception as err:
         priref = ''
-    return (hit_count, priref)
+    try:
+        title = query_result.records[0]['Title']['title']
+        print(f"cid_check_works(): Series title: {title}")
+    except Exception as err:
+        title = ''
+    try:
+        title_art = query_result.records[0]['Title']['title.article']
+        print(f"cid_check_works(): Series title: {title_art}")
+    except Exception as err:
+        title_art = ''
+
+    return hit_count, priref, title, title_art
 
 
 def genre_retrieval(category_code, description, title):
@@ -448,31 +454,22 @@ def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
 
     work_dict = {}
     if 'title' in cat_dct:
-        title_check = cat_dct['title']
+        work_dict['title'] = cat_dct['title']
     elif 'title' in json_dct:
-        title_check = json_dct['title']
-    if not title_check.startswith('Episode '):
-        work_dict['title'] = title_check
-    else:
-        if 'series_title' in json_dct:
-            episode_title = f"{json_dct['series_title']}: {title_check}"
-            work_dict['title'] = episode_title
-        else:
-            work_dict['title'] = title_check
-        if 'series_title_article' in json_dct:
-            episode_title_art = json_dct['series_title_article']
-            if len(episode_title_art) > 0:
-                work_dict['title_article'] = episode_title_art
-
+        work_dict['title'] = json_dct['title']
+    if 'title_article' in cat_dct:
+        work_dict['title_article'] = cat_dct['title_article']
+    elif 'title_article' in json_dct:
+        work_dict['title_article'] = json_dct['title_article']
     if int(csv_data[5]) > 0:
         work_dict['series_num'] = csv_data[5]
         work_dict['episode_total'] = csv_data[7]
 
     # Film, programme or series
-    if 'film' in csv_data[4].lower():
-        work_dict['work_type'] = 'F'
-    else:
+    if 'series' in csv_data[4].lower():
         work_dict['work_type'] = 'T'
+    else:
+        work_dict['work_type'] = 'F'
     if 'non-fiction' in csv_data[3].lower():
         work_dict['nfa_category'] = 'D'
     else:
@@ -634,7 +631,7 @@ def main():
         # Create Work/Manifestation if film/programme
         if 'film' in level.lower() or 'programme' in level.lower():
             # Check CID work exists / Make work if needed
-            hits, priref_work = cid_check_works(patv_id)
+            hits, priref_work, _, _ = cid_check_works(patv_id)
             if int(hits) > 0:
                 print(f"SKIPPING PRIREF FOUND: {priref_work}")
                 LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
@@ -669,7 +666,7 @@ def main():
             print(f"Dictionary for monograph creation: \n{data_dct}")
             print("*************")
             record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
-            priref_work = create_work('', data_dct, record, work, work_restricted)
+            priref_work = create_work('', '', '', data_dct, record, work, work_restricted)
             if len(priref_work) == 0:
                 LOGGER.warning("Monograph work record creation failed, skipping all further record creations")
                 continue
@@ -704,7 +701,7 @@ def main():
             json_fpaths = get_json_files(prog_path)
             series_priref = ''
             # Check CID work exists / Make work if needed
-            hits, series_priref = cid_check_works(patv_id)
+            hits, series_priref, work_title, work_title_art = cid_check_works(patv_id)
             if series_priref.isnumeric():
                 print(f"Series work already exists for {title}.")
             else:
@@ -718,6 +715,8 @@ def main():
                 series_dct = get_json_data(series_data)
                 series_data_dct = make_work_dictionary('', '', csv_data, None, series_dct)
                 record, series_work, work, work_restricted, manifestation, item = build_defaults(series_data_dct)
+                work_title, work_title_art = split_title(series_data_dct['title'])
+    
                 # Make series work here
                 if not series_data_dct:
                     continue
@@ -771,7 +770,7 @@ def main():
                 print(f"Dictionary for Work creation:\n{data_dct}")
                 print('**************')
                 record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
-                priref_episode = create_work(series_priref, data_dct, record, work, work_restricted)
+                priref_episode = create_work(series_priref, work_title, work_title_art, data_dct, record, work, work_restricted)
                 if len(priref_episode) == 0:
                     LOGGER.warning("Episodic Work record creation failed, skipping all further record creations")
                     continue
@@ -787,7 +786,7 @@ def main():
                         LOGGER.warning("Failure to write contributor data to Work record: %s", priref_episode)
 
                 # Make episodic manifestation here
-                priref_ep_man = create_manifestation(priref_episode, data_dct, record, manifestation)
+                priref_ep_man = create_manifestation(priref_episode, work_title, work_title_art, data_dct, record, manifestation)
                 if len(priref_ep_man) == 0:
                     LOGGER.warning("Episodic manifestation record creation failed, skipping all further record creations")
                     continue
@@ -796,7 +795,7 @@ def main():
                 append_url_data(priref_episode, priref_ep_man, data_dct)
 
                 # Make episodic item record here
-                priref_ep_item = create_item(priref_ep_man, data_dct, record, item)
+                priref_ep_item = create_item(priref_ep_man, work_title, work_title_art, data_dct, record, item)
                 if len(priref_ep_item) == 0:
                     LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
                     continue
@@ -932,7 +931,6 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
         series_work_values.append({'title': title})
         series_work_values.append({'title.language': 'English'})
         series_work_values.append({'title.type': '05_MAIN'})
-
     if 'title_article' in series_dct:
         series_work_values.append({'title.article': series_dct['title_article']})
     if len('patv_id') > 0:
@@ -1005,7 +1003,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
     return series_work_id
 
 
-def create_work(part_of_priref, work_dict, record_def, work_def, work_restricted):
+def create_work(part_of_priref, work_title, work_title_art, work_dict, record_def, work_def, work_restricted):
     '''
     Build all data needed to make new work.
     work_def from work/series_work defaults
@@ -1021,11 +1019,18 @@ def create_work(part_of_priref, work_dict, record_def, work_def, work_restricted
 
     # Add specifics for series/episode or monograph works
     if 'title' in work_dict:
-        work_values.append({'title': work_dict['title']})
+        title_check = work_dict['title']
+        if title_check.startswith('Episode ') and len(title_check) < 11:
+            work_values.append({'title': f"{work_title} {work_dict['title']}"})
+            if len(work_title_art) > 1:
+                work_values.append({'title.article': work_title_art})
+        else:
+            work_values.append({'title': work_dict['title']})
+            if 'title_article' in work_dict:
+                work_values.append({'title.article': work_dict['title_article']})
         work_values.append({'title.language': 'English'})
         work_values.append({'title.type': '05_MAIN'})
-    if 'title_article' in work_dict:
-        work_values.append({'title.article': work_dict['title_article']})
+
     if len(work_dict['title_date_start']) > 0:
         work_values.append({'title_date_start': work_dict['title_date_start']})
         work_values.append({'title_date.type': '03_R'})
@@ -1247,7 +1252,7 @@ def work_append(priref, work_dct=None):
         return False
 
 
-def create_manifestation(work_priref, work_dict, record_defaults, manifestation_defaults):
+def create_manifestation(work_priref, work_title, work_title_art, work_dict, record_defaults, manifestation_defaults):
     '''
     Create a manifestation record,
     linked to work_priref
@@ -1260,7 +1265,15 @@ def create_manifestation(work_priref, work_dict, record_defaults, manifestation_
     manifestation_values.extend(manifestation_defaults)
 
     if 'title' in work_dict:
-        manifestation_values.append({'title': work_dict['title']})
+        title_check = work_dict['title']
+        if title_check.startswith('Episode ') and len(title_check) < 11:
+            manifestation_values.append({'title': f"{work_title} {work_dict['title']}"})
+            if len(work_title_art) > 1:
+                manifestation_values.append({'title.article': work_title_art})
+        else:
+            manifestation_values.append({'title': work_dict['title']})
+            if 'title_article' in work_dict:
+                manifestation_values.append({'title.article': work_dict['title_article']})
         manifestation_values.append({'title.language': 'English'})
         manifestation_values.append({'title.type': '05_MAIN'})
     manifestation_values.append({'part_of_reference.lref': work_priref})
@@ -1269,8 +1282,6 @@ def create_manifestation(work_priref, work_dict, record_defaults, manifestation_
     if 'episode_id' in work_dict:
         manifestation_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
         manifestation_values.append({'alternative_number': work_dict['episode_id']})
-    if 'title_article' in work_dict:
-        manifestation_values.append({'title.article': work_dict['title_article']})
     if 'attribute' in work_dict:
         if work_dict['attribute']:
             atts = ', '.join(work_dict['attribute'])
@@ -1356,7 +1367,7 @@ def append_url_data(work_priref, man_priref, data=None):
             LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", work_priref)
 
 
-def create_item(man_priref, work_dict, record_defaults, item_default):
+def create_item(man_priref, work_title, work_title_art, work_dict, record_defaults, item_default):
     '''
     Create item record,
     link to manifestation
@@ -1368,11 +1379,18 @@ def create_item(man_priref, work_dict, record_defaults, item_default):
     item_values.extend(item_default)
     item_values.append({'part_of_reference.lref': man_priref})
     if 'title' in work_dict:
-        item_values.append({'title': work_dict['title']})
+        title_check = work_dict['title']
+        if title_check.startswith('Episode ') and len(title_check) < 11:
+            item_values.append({'title': f"{work_title} {work_dict['title']}"})
+            if len(work_title_art) > 1:
+                item_values.append({'title.article': work_title_art})
+        else:
+            item_values.append({'title': work_dict['title']})
+            if 'title_article' in work_dict:
+                item_values.append({'title.article': work_dict['title_article']})
         item_values.append({'title.language': 'English'})
         item_values.append({'title.type': '05_MAIN'})
-    if 'title_article' in work_dict:
-        item_values.append({'title.article': work_dict['title_article']})
+
     print(item_values)
     try:
         i = CUR.create_record(database='items',

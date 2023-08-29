@@ -404,24 +404,28 @@ def ext_in_file_type(ext, priref, log_paths):
              'output': 'json',
              'fields': 'file_type'}
 
-    print(query)
     result = CID.get(query)
-    print(result.records)
     try:
         file_type = result.records[0]['file_type']
     except (IndexError, KeyError):
         file_type = []
 
-    print(file_type)
     if len(file_type) == 1:
         for ft in ftype:
             ft = ft.strip()
             if ft == file_type[0].lower():
                 print(f'* extension matches <file_type> in record... {file_type}')
                 return True
-            elif ft in file_type[0].lower():
-                print(f'* extension likely matches <file_type> in record... {file_type}')
-                return True
+        logger.warning('%s\tExtension does not match <file_type> in record', log_paths)
+        print(f'* WARNING extension does not match file_type: {ftype} {file_type}')
+        return False
+    elif len(file_type) > 1:
+        for ft in ftype:
+            ft = ft.strip()
+            for f_t in file_type:
+                if ft == f_t.lower():
+                    print(f'* extension matches <file_type> in records... {file_type}')
+                    return True
         logger.warning('%s\tExtension does not match <file_type> in record', log_paths)
         print(f'* WARNING extension does not match file_type: {ftype} {file_type}')
         return False

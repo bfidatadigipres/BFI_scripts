@@ -420,15 +420,8 @@ def ext_in_file_type(ext, priref, log_paths):
         print(f'* WARNING extension does not match file_type: {ftype} {file_type}')
         return False
     elif len(file_type) > 1:
-        for ft in ftype:
-            ft = ft.strip()
-            for f_t in file_type:
-                if ft == f_t.lower():
-                    print(f'* extension matches <file_type> in records... {file_type}')
-                    return True
-        logger.warning('%s\tExtension does not match <file_type> in record', log_paths)
+        logger.warning('%s\tInvalid <file_type> in Collect record. Just one should be present.', log_paths)
         print(f'* WARNING extension does not match file_type: {ftype} {file_type}')
-        return False
     else:
         logger.warning('%s\tInvalid <file_type> in Collect record', log_paths)
         return False

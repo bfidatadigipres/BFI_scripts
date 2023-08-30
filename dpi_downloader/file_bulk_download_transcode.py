@@ -187,9 +187,9 @@ def get_media_record_data(priref):
         results = query_result.json()
     except Exception as err:
         LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s\n%s", priref, err)
+        results = []
         print(err)
 
-    results = query_result.json()
     if 'recordList' not in str(results):
         return []
 
@@ -371,7 +371,7 @@ def main():
         download_fpath = os.path.join(dpath, dfolder)
         print(download_fpath)
         if not os.path.exists(download_fpath):
-            os.makedirs(download_fpath, exist_ok=True)
+            os.makedirs(download_fpath, mode=0o777, exist_ok=True)
             LOGGER.info("Download file path created: %s", download_fpath)
 
         # Single download
@@ -419,7 +419,7 @@ def main():
                 update_table(fname, transcode, 'Download complete')
 
             # Transcode
-            trans, failed_trans = create_transcode(new_fpath, transcode)
+            trans, failed_trans = create_transcode(new_fpath, transcode, fname)
 
             # Delete source download from DPI if not failed transcode/already found in path
             if trans == 'no_transcode':
@@ -445,7 +445,10 @@ def main():
                 continue
             LOGGER.info("Bulk download requested with %s item prirefs to process.", len(priref_list))
             pointer_dct = get_dictionary(priref_list)
-            LOGGER.info("**** Pointer dct: %s", pointer_dct)
+            if not any(pointer_dct.values()):
+                update_table(fname, transcode, 'Pointer file found no digital media records')
+                LOGGER.warning("CID item number supplied in pointer file have no associated CID digital media records: %s", pointer_dct)
+                continue
             # update_table(fname, transcode, 'Processing bulk request')
             for key, value in pointer_dct.items():
                 media_priref = key
@@ -494,7 +497,7 @@ def main():
                                 LOGGER.warning("MD5 checksums DO NOT match. Updating Download status to Download database")
 
                         # Transcode
-                        trans, failed_trans = create_transcode(new_fpath, transcode)
+                        trans, failed_trans = create_transcode(new_fpath, transcode, fname)
 
                         # Delete source download from DPI if not failed transcode/already found in path
                         if trans == 'no_transcode':
@@ -533,7 +536,7 @@ def download_bp_object(fname, outpath):
     return get_job_id
 
 
-def create_transcode(new_fpath, transcode):
+def create_transcode(new_fpath, transcode, fname):
     '''
     Transcode files depending on supplied
     transcode preference. Output result of attempt
@@ -541,7 +544,6 @@ def create_transcode(new_fpath, transcode):
     '''
     trans = None
     failed_trans = False
-    fname = os.path.split(new_fpath)[1]
     if transcode == 'prores':
         LOGGER.info("Transcode to ProRes requested, launching ProRes transcode script...")
         update_table(fname, transcode, f'Transcoding {fname} to ProRes')
@@ -558,7 +560,7 @@ def create_transcode(new_fpath, transcode):
         LOGGER.info("Transcode to MP4 access copy requested, launching MP4 transcode script...")
         update_table(fname, transcode, f'Transcoding {fname} to MP4 proxy')
         success = transcode_mp4(new_fpath)
-        if success is True:
+        if success == 'True':
             trans = 'mp4'
             update_table(fname, transcode, 'Download and transcode complete')
         elif success in ['audio', 'document']:
@@ -582,10 +584,21 @@ def create_transcode(new_fpath, transcode):
             update_table(fname, transcode, f'Transcoding {fname} to MP4 access')
             watermark = False
         success = transcode_mp4_access(new_fpath, watermark)
-        if success is True and watermark:
+        if success == 'not video':
+            print("*** NOT VIDEO")
+            failed_trans = True
+            trans = 'Failed mp4 access'
+            update_table(fname, transcode, 'Download and transcode failed (not video)')
+            LOGGER.warning("Failed to complete transcode. Reason: Mimetype is not video file: %s", success)
+        elif success == 'exists':
+            failed_trans = True
+            trans = 'Failed mp4 access'
+            update_table(fname, transcode, 'Downloaded, MP4 access file exists in path')
+            LOGGER.warning("Failed to complete transcode. Reason: MP4 exists in paths: %s", success)
+        elif success == 'True' and watermark is True:
             trans = 'mp4_watermark'
             update_table(fname, transcode, 'Download and transcode complete')
-        elif success is True:
+        elif success == 'True':
             trans = 'mp4_access'
             update_table(fname, transcode, 'Download and transcode complete')
         else:

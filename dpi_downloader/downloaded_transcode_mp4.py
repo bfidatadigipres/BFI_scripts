@@ -307,7 +307,7 @@ def transcode_mp4(fpath):
 
     log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ====================")
     log_output(log_build)
-    return True
+    return 'True'
 
 
 def log_output(log_build):
@@ -719,7 +719,7 @@ def check_audio(fullpath):
     audio = str(audio)
 
     if len(audio) == 0:
-        return None, None
+        return (None, None, None)
 
     try:
         lang0 = subprocess.check_output(cmd0)

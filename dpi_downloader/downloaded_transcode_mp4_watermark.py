@@ -618,7 +618,7 @@ def transcode_mp4_access(fpath, arg):
     watermark = arg
     if not os.path.isfile(fullpath):
         logger.warning("SCRIPT EXITING: Error with file path:\n %s", fullpath)
-        return False
+        return 'False'
     mime_true = check_mime_type(fullpath)
     if not mime_true:
         logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", fullpath)
@@ -626,7 +626,7 @@ def transcode_mp4_access(fpath, arg):
     running = check_control()
     if not running:
         logger.warning('Script run prevented by downtime_control.json. Script exiting.')
-        return False
+        return 'False'
 
     logger.info("================== START DPI download transcode to MP4 watermark START ==================")
     if watermark:
@@ -712,7 +712,7 @@ def transcode_mp4_access(fpath, arg):
             subprocess.call(ffmpeg_call)
             logger_data.append("Subprocess call for FFmpeg watermark command successful")
         except Exception as err:
-            logger_data.append(f"WARNING: FFmpeg watermark command failed")
+            logger_data.append("WARNING: FFmpeg watermark command failed")
             log_clean = list(dict.fromkeys(logger_data))
             for line in log_clean:
                 if 'WARNING' in str(line):
@@ -736,12 +736,12 @@ def transcode_mp4_access(fpath, arg):
 
     if watermark:
         if os.path.isfile(output_watermark_fullpath):
-            return True
+            return 'True'
         else:
             return 'transcode fail'
     elif not watermark:
         if os.path.isfile(output_fullpath):
-            return True
+            return 'True'
         else:
             return 'transcode fail'
 

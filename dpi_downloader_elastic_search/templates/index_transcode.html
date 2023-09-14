@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type= "text/css" href="{{ url_for('static',filename='styles/form.css') }}">
+    </head>
+    <body>
+        <div class="header">
+          <h1>BFI National Archive file download and transcode</h1>
+          <p>Request download and transcode of files from the Digital Preservation Infrastructure into a network storage path</p>
+	</div>
+	<div class="topnav">
+	  <a href="{{ url_for('dpi_download_request') }}">Submit a request</a>
+	  <a href="{{ url_for('dpi_download') }}">View requests</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/article/3399090177">Instructions</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/group/-1" class="split">Service Desk</a>
+	</div>
+	<br/>
+        <div>Please use the buttons below to submit or view requests. You will receive an email when your download completes</div>
+	<br/>
+	<button class="btn-nav" type="button" onclick="window.location.href='{{ url_for('dpi_download_request') }}';">Submit a file download request</button><br/>
+        <button class="btn-nav" type="button" onclick="window.location.href='{{ url_for('dpi_download') }}';">View all download requests</button><br/>
+    </body>
+</html>

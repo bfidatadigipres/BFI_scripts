@@ -1,7 +1,7 @@
 import os
 import re
-import sqlite3
 import datetime
+from elasticsearch import Elasticsearch
 from flask import Flask, render_template, request
 
 app = Flask(__name__)
@@ -12,9 +12,8 @@ def index():
     return render_template('index_transcode.html')
 
 DBASE = os.environ.get('DATABASE_TRANSCODE')
-CONNECT = sqlite3.connect(DBASE)
-CONNECT.execute('CREATE TABLE IF NOT EXISTS DOWNLOADS (name TEXT, email TEXT, download_type TEXT, fname TEXT, download_path TEXT, fpath TEXT, transcode TEXT, status TEXT, date TEXT)')
-
+ES_SEARCH = os.environ.get('ES_SEARCH_PATH')
+ES = Elasticsearch([ES_SEARCH])
 
 @app.route('/dpi_download_request', methods=['GET', 'POST'])
 def dpi_download_request():
@@ -44,10 +43,17 @@ def dpi_download_request():
         # Check for non-BFI email and reject
         if 'bfi.org.uk' not in email:
             return render_template('email_error_transcode.html')
-        with sqlite3.connect(DBASE) as users:
-            cursor = users.cursor()
-            cursor.execute("INSERT INTO DOWNLOADS (name,email,download_type,fname,download_path,fpath,transcode,status,date) VALUES (?,?,?,?,?,?,?,?,?)", (name, email, download_type, fname, download_path, fpath, transcode, status, date_stamp))
-            users.commit()
+        ES.index(index='dpi_downloads', body={
+            "name": name,
+            "email": email,
+            "download_type": download_type,
+            "fname": fname,
+            "download_path": download_path,
+            "fpath": fpath,
+            "transcode": transcode,
+            "status": status,
+            "date": date_stamp
+        })
         return render_template('index_transcode.html')
     else:
         return render_template('initiate_transcode.html')
@@ -58,10 +64,12 @@ def dpi_download():
     '''
     Return the View all requested page
     '''
-    connect = sqlite3.connect(DBASE)
-    cursor = connect.cursor()
-    cursor.execute(f"SELECT * FROM DOWNLOADS where date >= datetime('now','-14 days')")
-    data = cursor.fetchall()
+    search_results = ES.search(index='dpi_downloads', query={'range':{'date':{'gte': "now-14d", 'lte': "now"}}})
+    data = []
+    for row in search_result['hits']['hits']:
+        record = [(val) for key, value in row['_source'].items()]
+        data.append(tuple(record))
+
     return render_template("downloads_transcode.html", data=data)
 
 

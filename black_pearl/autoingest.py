@@ -416,6 +416,9 @@ def ext_in_file_type(ext, priref, log_paths):
             if ft == file_type[0].lower():
                 print(f'* extension matches <file_type> in record... {file_type}')
                 return True
+            elif ft == 'mxf' and ft in file_type[0].lower():
+                print(f'* extension matches <file_type> in record... {file_type}')
+                return True
         logger.warning('%s\tExtension does not match <file_type> in record', log_paths)
         print(f'* WARNING extension does not match file_type: {ftype} {file_type}')
         return False

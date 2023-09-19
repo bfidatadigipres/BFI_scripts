@@ -26,6 +26,12 @@ Steps:
 6. Create CID records
 7. Append contributors where available
 
+NOTES: Update so Episode * works prepended
+       with Series title
+       Acquisition date carried over from CSV
+       Only series have work_type T, all other
+       have F (inc shorts/monographic docs)
+
 Joanna White
 2023
 '''
@@ -93,7 +99,8 @@ COLUMNS = [
     'series_number',
     'genre',
     'episode_number',
-    'notes'
+    'notes',
+    'acquisition_date'
 ]
 
 
@@ -533,6 +540,8 @@ def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
         work_dict['certification_bbfc'] = json_dct['cert_bbfc']
     elif 'cert_bbfc' in cat_dct:
         work_dict['certification_bbfc'] = cat_dct['cert_bbfc']
+    if csv_data[8]:
+        work_dict['acquisition_date'] = csv_data[8]
 
     if 'genres' in json_dct:
         genres = json_dct['genres']
@@ -605,6 +614,7 @@ def main():
         episode_num = int(prog_dct['episode_number'][num])
         platform = prog_dct['platform'][num]
         year_release = prog_dct['year_of_release'][num]
+        aquisition_date = prog_dct['acquisition_date'][num]
 
         if platform != 'Netflix':
             continue
@@ -612,7 +622,7 @@ def main():
         LOGGER.info("** Processing item: %s %s", article, title)
 
         # Make season number a list
-        csv_data = [year_release, title, article, nfa, level, season_num, genres, episode_num]
+        csv_data = [year_release, title, article, nfa, level, season_num, genres, episode_num, acquisition_date]
 
         # Match NETFLIX folder to article/title
         foldertitle = get_folder_title(article, title)
@@ -716,7 +726,7 @@ def main():
                 series_data_dct = make_work_dictionary('', '', csv_data, None, series_dct)
                 record, series_work, work, work_restricted, manifestation, item = build_defaults(series_data_dct)
                 work_title, work_title_art = split_title(series_data_dct['title'])
-    
+
                 # Make series work here
                 if not series_data_dct:
                     continue
@@ -908,6 +918,7 @@ def build_defaults(data):
              {'file_type.lref': '401103'}, # IMP
              {'code_type.lref': '400945'}, # Mixed
              {'accession_date': str(datetime.datetime.now())[:10]},
+             {'acquisition.date': data['acquisition_date']}, # Contract date from CSV
              {'acquisition.method.lref': '132853'}, # Donation - with written agreement ACQMETH
              {'acquisition.source.lref': '143463'}, # Netflix
              {'acquisition.source.type': 'DONOR'}])

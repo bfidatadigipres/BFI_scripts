@@ -111,7 +111,7 @@ def main():
     to process.
     '''
     for media_target in TARGETS:
-#        check_control()
+        check_control()
         cid_check()
 
         # Path to source media
@@ -223,7 +223,7 @@ def main():
                 if total_objects_expected == 1:
                     print(f'* Moving single item tape file to delete folder: {filepath}')
                     try:
-#                        shutil.move(filepath, dst)
+                        shutil.move(filepath, dst)
                         logger.info('%s\tMoved single item tape file to delete folder', filepath)
                     except Exception as err:
                         logger.warning('%s\tUnable to move file to delete folder', filepath)
@@ -235,7 +235,7 @@ def main():
                 elif total_objects_expected >= 2:
                     print(f'Moving multi-item tape file to delete folder: {filepath}')
                     try:
-#                        shutil.move(filepath, dst)
+                        shutil.move(filepath, dst)
                         logger.info('%s\tMoved multi-item tape file to delete folder', filepath)
                     except Exception as err:
                         print(f'* Unable to move file to delete folder: {filepath}\t{err}')
@@ -244,7 +244,7 @@ def main():
 
             else:
                 print(f'* Ignoring because not all Items are persisted: {filepath}, {len(preserved_objects)} persisted, {total_objects_expected} expected')
-                logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath,len(preserved_objects), total_objects_expected)
+                logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath, len(preserved_objects), total_objects_expected)
 
 
 def get_results(filepath, grouping, object_number, input_name):

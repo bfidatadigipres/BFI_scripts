@@ -41,11 +41,11 @@ CUR = adlib.Cursor(CID)
 CLIENT = ds3.createClientFromEnv()
 
 TARGETS = [
-#   f"{os.environ['QNAP_H22']}/processing/",
-#   f"{os.environ['GRACK_H22']}/processing/",
-#   f"{os.environ['ISILON_VID']}/processing/",
-   f"{os.environ['QNAP_08']}/processing/"
-#   f"{os.environ['QNAP_10']}/processing/"
+   f"{os.environ['QNAP_H22']}/processing/",
+   f"{os.environ['GRACK_H22']}/processing/",
+   f"{os.environ['ISILON_VID']}/processing/",
+   f"{os.environ['QNAP_08']}/processing/",
+   f"{os.environ['QNAP_10']}/processing/"
 ]
 
 # Setup logging, overwrite each time

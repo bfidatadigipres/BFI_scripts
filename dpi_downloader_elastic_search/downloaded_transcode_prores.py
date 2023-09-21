@@ -3,13 +3,13 @@
 '''
 Module script for BFI National Archive downloader app.
 
-This script manages transcoding to MP4 access copy with/without watermark
-of assets downloaded from the BFI National Archive file downloader.
+This script manages transcoding to ProRes of assets downloaded
+from the BFI National Archive file downloader.
 It receives the downloaded source file path and
 processes the file in situ before returning the new
 encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
-and transcode. Deletes source if successful.
+and transcode.
 
 Joanna White
 2023
@@ -20,16 +20,15 @@ import re
 import sys
 import time
 import json
-import getopt
 import logging
 import subprocess
 import magic
 
 # Global paths from server environmental variables
-MP4_POLICY = os.environ['MP4_POLICY']
+PATH_POLICY = os.environ['MEDIACONCH']
+PRORES_POLICY = os.path.join(PATH_POLICY, 'BFI_download_transcode_basic_prores.xml')
 LOG = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG, 'downtime_control.json')
-WATERMARK = os.environ.get('WATERMARK')
 
 # Setup logging
 logger = logging.getLogger('downloaded_transcode_prores')
@@ -57,7 +56,7 @@ def check_mime_type(fpath):
     Checks the mime type is video
     and if stream media checks ffprobe
     '''
-    if fpath.endswith(('.mxf', '.ts', '.mpg')):
+    if fpath.endswith(('.ts', '.mxf', '.mpg')):
         mime = 'video'
     else:
         mime = magic.from_file(fpath, mime=True)
@@ -348,163 +347,55 @@ def check_audio(fullpath):
         return ('Audio', None, None)
 
 
-def create_watermark_command(fullpath, output):
-    '''
-    Subprocess command build, with variations
-    added based on metadata extraction
-    '''
-
-    ffmpeg_program_call = [
-        "ffmpeg"
-    ]
-
-    input_video = [
-        "-i", fullpath
-    ]
-
-    input_watermark = [
-        "-i", WATERMARK,
-    ]
-
-    # Top left
-    filter_graph1 = [
-        "-filter_complex",
-        "[1][0]scale2ref=w='iw*20/100':h='ow/mdar'[wm][vid];[vid][wm]overlay=10:10"
-    ]
-
-    # Centre opaque
-    filter_graph2 = [
-        "-filter_complex",
-        "[1]format=rgba,colorchannelmixer=aa=0.3[logo];[logo][0]scale2ref=oh*mdar:ih[logo][video];[video][logo]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2"
-    ]
-
-    # Top right
-    filter_graph3 = [
-        "-filter_complex",
-        "[1][0]scale2ref=w='iw*20/100':h='ow/mdar'[wm][vid];[vid][wm]overlay=(main_w-overlay_w)-10:10"
-    ]
-
-    return ffmpeg_program_call + input_video + input_watermark + filter_graph3 + [output]
-
-
 def create_ffmpeg_command(fullpath, output, video_data):
     '''
     Subprocess command build, with variations
     added based on metadata extraction
     '''
 
+    # Build subprocess call from data list
     ffmpeg_program_call = [
         "ffmpeg"
     ]
 
     input_video_file = [
-        "-i", fullpath
+        "-i", fullpath,
+        "-nostdin"
     ]
 
-    video_settings = [
-        "-c:v", "libx264",
-        "-crf", "22"
-    ]
-
-    pix = [
-       "-pix_fmt", "yuv420p"
-    ]
-
-    fast_start = [
-        "-movflags", "faststart"
-    ]
-
-    crop_sd_608 = [
-        "-vf",
-        "yadif,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1"
-    ]
-
-    no_stretch_4x3 = [
-        "-vf",
-        "yadif,pad=768:576:-1:-1"
-    ]
-
-    crop_sd_4x3 = [
-        "-vf",
-        "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1"
-    ]
-
-    crop_sd_15x11 = [
-        "-vf",
-        "yadif,crop=704:572,scale=768:576:flags=lanczos,pad=768:576:-1:-1"
-    ]
-
-    crop_ntsc_486 = [
-        "-vf",
-        "yadif,crop=672:480,scale=734:486:flags=lanczos,pad=768:486:-1:-1"
-    ]
-
-    crop_ntsc_486_16x9 = [
-        "-vf",
-        "yadif,crop=672:480,scale=1024:486:flags=lanczos"
-    ]
-
-    crop_ntsc_640x480 = [
-        "-vf",
-        "yadif,pad=768:480:-1:-1"
-    ]
-
-    crop_sd_16x9 = [
-        "-vf",
-        "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos"
-    ]
-
-    hd_16x9 = [
-        "-vf",
-        "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1"
-    ]
-
-    fhd_all = [
-        "-vf",
-        "yadif,scale=-1:1080:flags=lanczos,pad=1920:1080:-1:-1"
-    ]
-
-    fhd_letters = [
-        "-vf",
-        "yadif,scale=1920:-1:flags=lanczos,pad=1920:1080:-1:-1"
-    ]
-
-    output_data = [
-        "-nostdin", "-y",
-        output, "-f",
-        "null", "-"
-    ]
-
-    if video_data[6]:
-        print(f"VS {video_data[6]}")
+    # Map video stream that's longest to 0
+    if video_data[0]:
+        print(f"VS {video_data[0]}")
         map_video = [
-            "-map", f"0:v:{video_data[6]}",
+            "-map", f"0:v:{video_data[0]}",
         ]
     else:
         map_video = [
             "-map", "0:v:0",
         ]
 
-    if video_data[5] and video_data[4] and not video_data[7]:
-        print(f"Default {video_data[5]}, Audio {video_data[4]}")
+
+    video_settings = [
+        "-c:v", "prores_ks",
+        "-profile:v", "3"
+    ]
+
+    prores_build = [
+        "-pix_fmt", "yuv422p10le",
+        "-vendor", "ap10",
+        "-movflags", "+faststart"
+    ]
+
+    if video_data[3] and video_data[2] and not video_data[4]:
         map_audio = [
             "-map", "0:a?",
-            f"-disposition:a:{video_data[5]}",
+            f"-disposition:a:{video_data[3]}",
             "default", "-dn"
         ]
-
-    elif video_data[7] == 'ac1':
-        print(f"Stereo LR {video_data[7]}")
+    elif video_data[4]:
         map_audio = [
             "-map", "0:a?",
             "-ac", "1", "-dn"
-        ]
-
-    elif video_data[7] == 'ac2':
-        print(f"Stereo C {video_data[7]}")
-        map_audio = [
-            "-map", "0:a?",
-            "-ac", "2", "-dn"
         ]
     else:
         map_audio = [
@@ -512,52 +403,32 @@ def create_ffmpeg_command(fullpath, output, video_data):
             "-dn"
         ]
 
-    height = int(video_data[0])
-    width = int(video_data[1])
-    dar = video_data[2]
-    par = video_data[3]
-    # Calculate height/width to decide HD scale path
-    aspect = round(width / height, 3)
-    cmd_mid = []
+    crop_sd_608 = [
+        "-vf",
+        "bwdif=send_frame,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1"
+    ]
 
-    if height <= 486 and dar == '16:9':
-        cmd_mid = crop_ntsc_486_16x9
-    elif height <= 486 and dar == '4:3':
-        cmd_mid = crop_ntsc_486
-    elif height <= 486 and width == 640:
-        cmd_mid = crop_ntsc_640x480
-    elif height <= 576 and width == 768:
-        cmd_mid = no_stretch_4x3
-    elif height <= 576 and par == '1.000':
-        cmd_mid = no_stretch_4x3
-    elif height <= 576 and dar == '4:3':
-        cmd_mid = crop_sd_4x3
-    elif height <= 576 and dar == '15:11':
-        cmd_mid = crop_sd_15x11
-    elif height == 608:
+    no_crop = [
+        "-vf",
+        "bwdif=send_frame"
+    ]
+
+    output_settings = [
+        "-nostdin", "-y",
+        output, "-f",
+        "null", "-"
+    ]
+
+    height = int(video_data[1])
+    if height == 608:
         cmd_mid = crop_sd_608
-    elif height <= 576 and dar == '16:9':
-        cmd_mid = crop_sd_16x9
-    elif height == 576 and dar == '1.85:1':
-        cmd_mid = crop_sd_16x9
-    elif height <= 720 and dar == '16:9':
-        cmd_mid = hd_16x9
-    elif width == 1920 and aspect >= 1.778:
-        cmd_mid = fhd_letters
-    elif height > 720 and width <= 1920:
-        cmd_mid = fhd_all
-    elif width >= 1920 and aspect < 1.778:
-        cmd_mid = fhd_all
-    elif height >= 1080 and aspect >= 1.778:
-        cmd_mid = fhd_letters
-    print(f"Middle command chose: {cmd_mid}")
+    else:
+        cmd_mid = no_crop
 
-    if video_data[4] is None:
-        return ffmpeg_program_call + input_video_file + map_video + video_settings + pix + fast_start + cmd_mid + output_data
-    if len(cmd_mid) > 0 and video_data[4]:
-        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + fast_start + cmd_mid + output_data
-    if len(cmd_mid) > 0 and not video_data[4]:
-        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + fast_start + cmd_mid + output_data
+    if video_data[2] is None:
+        return ffmpeg_program_call + input_video_file + map_video + video_settings + cmd_mid + prores_build + output_settings
+    elif video_data[2]:
+        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + cmd_mid + prores_build + output_settings
 
 
 def check_policy(output_path):
@@ -569,10 +440,8 @@ def check_policy(output_path):
         logger.info("Conformance check: comparing %s with policy", new_file)
         result = conformance_check(output_path)
         if "PASS!" in result:
-            logger.info("%s passed the policy checker", new_file)
             return 'pass!'
         else:
-            logger.warning("FAIL: %s failed the policy checker", new_file)
             return result
 
 
@@ -583,7 +452,7 @@ def conformance_check(filepath):
 
     mediaconch_cmd = [
         'mediaconch', '--force',
-        '-p', MP4_POLICY,
+        '-p', PRORES_POLICY,
         filepath
     ]
 
@@ -595,70 +464,52 @@ def conformance_check(filepath):
         logger.exception("Mediaconch policy retrieval failure for %s", filepath)
 
     if 'N/A!' in success:
-        logger.info("***** FAIL! Problem with the MediaConch policy suspected. Check <%s> manually *****\n%s", filepath, success)
         return "FAIL!"
     elif 'pass!' in success:
-        logger.info("PASS: %s has passed the mediaconch policy", filepath)
         return "PASS!"
     elif 'fail!' in success:
-        logger.warning("FAIL! The policy has failed for %s:\n %s", filepath, success)
         return "FAIL!"
     else:
-        logger.warning("FAIL! The policy has failed for %s", filepath)
         return "FAIL!"
 
 
-def transcode_mp4_access(fpath, arg):
+def transcode_mov(fpath):
     '''
-    Receives fullpath and watermark boole from Python downloader script
-    Passes to FFmpeg subprocess command, transcodes MP4 then checks
-    finished encoding against custom H264 MP4 mediaconch policy
+    Receives sys.argv[1] path to MOV from shell start script via GNU parallel
+    Passes to FFmpeg subprocess command, transcodes ProRes mov then checks
+    finished encoding against custom prores mediaconch policy
+    If pass, cleans up files moving to finished_prores/ folder and deletes V210 mov (temp offline).
     '''
     fullpath = fpath
-    watermark = arg
     if not os.path.isfile(fullpath):
-        logger.warning("SCRIPT EXITING: Error with file path:\n %s", fullpath)
-        return 'False'
+        logger.warning("SCRIPT EXITING: Error with file path:\n %s", sys.argv)
+        return False
     mime_true = check_mime_type(fullpath)
     if not mime_true:
-        logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", fullpath)
+        logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", sys.argv)
         return 'not video'
     running = check_control()
     if not running:
         logger.warning('Script run prevented by downtime_control.json. Script exiting.')
-        return 'False'
+        return False
 
-    logger.info("================== START DPI download transcode to MP4 watermark START ==================")
-    if watermark:
-        watermark is True
-        logger.info("File requested for transcode to MP4 with watermark: %s", fullpath)
-    else:
-        watermark is False
-        logger.info("File requested for transcode to MP4 with NO watermark: %s", fullpath)
-
+    logger.info("================== START DPI download transcode to prores START ==================")
     path_split = os.path.split(fullpath)
     file = path_split[1]
-    if watermark:
-        output_watermark_fullpath = os.path.join(path_split[0], f"{file.split('.')[0]}_watermark.mp4")
-        if os.path.isfile(output_watermark_fullpath):
-            logger.warning("Watermarked file requested but already found in path.")
-            return 'exists'
-    output_fullpath = os.path.join(path_split[0], f"{file.split('.')[0]}_access.mp4")
-    if os.path.isfile(output_fullpath) and not watermark:
-        logger.warning("MP4 access file requested with out watermark but already found in path.")
+    output_fullpath = os.path.join(path_split[0], f"{file.split('.')[0]}_prores.mov")
+    if os.path.isfile(output_fullpath):
         return 'exists'
-
-    # Collect data for transcode
     logger_data = []
     video_data = []
 
+    # Collect data for downloaded file
     audio, stream_default, stereo = check_audio(fullpath)
     dar = get_dar(fullpath)
     par = get_par(fullpath)
     height = get_height(fullpath)
     width = get_width(fullpath)
     duration, vs = get_duration(fullpath)
-    video_data = [height, width, dar, par, audio, stream_default, vs, stereo]
+    video_data = [vs, height, audio, stream_default, stereo]
 
     logger_data.append(f"** File being processed: {fullpath}")
     logger_data.append(f"Metadata retrieved:\nDAR {dar} PAR {par} Audio {audio} Height {height} Width {width} Duration {duration}")
@@ -677,76 +528,27 @@ def transcode_mp4_access(fpath, arg):
         logger_data.append(f"WARNING: FFmpeg command failed: {ffmpeg_call_neat}\n{err}")
         log_clean = list(dict.fromkeys(logger_data))
         for line in log_clean:
-            if 'WARNING' in str(line):
-                logger.warning("%s", line)
-            else:
-                logger.info("%s", line)
+            logger.info("%s", line)
+        logger.info("==================== END DPI download transcode to prores END ====================")
         return 'transcode fail'
     toc = time.perf_counter()
     encoding_time = (toc - tic) // 60
     seconds_time = (toc - tic)
     logger_data.append(f"*** Encoding time for {file}: {encoding_time} minutes or as seconds: {seconds_time}")
-    logger_data.append("Checking if new MP4 access file passes Mediaconch policy")
+    logger_data.append("Checking if new Prores file passes Mediaconch policy")
     pass_policy = check_policy(output_fullpath)
     if pass_policy == 'pass!':
-        logger_data.append("New MP4 access file passed MediaConch policy")
-    else:
-        logger_data.append(f"MP4 access file failed the MediaConch policy:\n{pass_policy}")
+        logger_data.append("New ProRes file passed MediaConch policy")
         log_clean = list(dict.fromkeys(logger_data))
         for line in log_clean:
-            if 'WARNING' in str(line):
-                logger.warning("%s", line)
-            else:
-                logger.info("%s", line)
+            logger.info("%s", line)
+        logger.info("==================== END DPI download transcode to prores END ====================")
+        return 'True'
+    else:
+        logger_data.append(f"ProRes file failed the MediaConch policy:\n{pass_policy}")
+        log_clean = list(dict.fromkeys(logger_data))
+        for line in log_clean:
+            logger.info("%s", line)
+        logger.info("==================== END DPI download transcode to prores END ====================")
         return 'transcode fail'
 
-    # Create watermark if wanted
-    if watermark:
-        ffmpeg_call = create_watermark_command(output_fullpath, output_watermark_fullpath)
-        ffmpeg_call_neat = (" ".join(ffmpeg_call), "\n")
-        logger_data.append(f"FFmpeg watermark call: {ffmpeg_call_neat}")
-
-        # tic/toc record encoding time
-        tic = time.perf_counter()
-        try:
-            subprocess.call(ffmpeg_call)
-            logger_data.append("Subprocess call for FFmpeg watermark command successful")
-        except Exception as err:
-            logger_data.append("WARNING: FFmpeg watermark command failed")
-            log_clean = list(dict.fromkeys(logger_data))
-            for line in log_clean:
-                if 'WARNING' in str(line):
-                    logger.warning("%s", line)
-                else:
-                    logger.info("%s", line)
-            return 'transcode fail'
-        toc = time.perf_counter()
-        encoding_time = (toc - tic) // 60
-        seconds_time = (toc - tic)
-        os.remove(output_fullpath)
-        logger_data.append(f"*** Encoding time for {file}: {encoding_time} minutes or as seconds: {seconds_time}")
-
-    # Output data to log
-    log_clean = list(dict.fromkeys(logger_data))
-    for line in log_clean:
-        if 'WARNING' in str(line):
-            logger.warning("%s", line)
-        else:
-            logger.info("%s", line)
-
-    if watermark:
-        if os.path.isfile(output_watermark_fullpath):
-            return 'True'
-        else:
-            return 'transcode fail'
-    elif not watermark:
-        if os.path.isfile(output_fullpath):
-            return 'True'
-        else:
-            return 'transcode fail'
-
-    logger.info("==================== END DPI download transcode to MP4 watermark END ====================")
-
-
-if __name__ == "__main__":
-    transcode_mp4_access(sys.argv)

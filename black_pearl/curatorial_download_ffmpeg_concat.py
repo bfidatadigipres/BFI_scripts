@@ -63,8 +63,6 @@ CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
-BUCKET1 = os.environ['BUCKET_OLD']
-BUCKET2 = os.environ['BUCKET_NEW']
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 
@@ -111,7 +109,7 @@ def find_media_original_filename(fname):
         'search': f'imagen.media.original_filename={fname}',
         'limit': '0',
         'output': 'json',
-        'fields': 'reference_number'
+        'fields': 'reference_number, preservation_bucket'
     }
 
     try:
@@ -131,8 +129,13 @@ def find_media_original_filename(fname):
     except (IndexError, TypeError, KeyError) as exc:
         print(exc)
         ref_num = ''
+    try:
+        bucket = results['adlibJSON']['recordList']['record'][0]['preservation_bucket'][0]
+    except (IndexError, TypeError, KeyError) as exc:
+        print(exc)
+        bucket = ''
 
-    return priref, ref_num, ''
+    return priref, ref_num, bucket
 
 
 def check_download_exists(download_fpath, orig_fname, fname, transcode):
@@ -260,7 +263,8 @@ def main():
             print(f"Priref: {priref}")
             print(f"Ref number: {ref_num}")
             # Bucket hardcoded until new field exists in media record
-            bucket = 'imagen'
+            if len(bucket) < 3:
+                bucket = 'imagen'
             LOGGER.info("Matched CID media record %s: ref %s", priref, ref_num)
             outpath = os.path.join(DESTINATION, f"{key}/")
             os.makedirs(outpath, mode=0o777, exist_ok=True)

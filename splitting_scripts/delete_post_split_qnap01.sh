@@ -1,10 +1,10 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # Launcher for delete_post_split.py script which moves F47 and H22 whole-tape
 # digitisations where all parts have been persisted to
 # a backup folder on the server for deletion by a second script
 
-CODE_PTH=$("${CODE_PATH}splitting_scripts/")
+CODE_PTH=$("${CODE}splitting_scripts/")
 
 # Log script start
 echo "Start delete_post_split_qnap01.py: $(date)" >> "${LOG_PATH}delete_post_split_qnap01.log"

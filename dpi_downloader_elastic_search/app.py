@@ -11,9 +11,9 @@ app = Flask(__name__)
 def index():
     return render_template('index_transcode.html')
 
-DBASE = os.environ.get('DATABASE_TRANSCODE')
 ES_SEARCH = os.environ.get('ES_SEARCH_PATH')
 ES = Elasticsearch([ES_SEARCH])
+
 
 @app.route('/dpi_download_request', methods=['GET', 'POST'])
 def dpi_download_request():
@@ -64,7 +64,7 @@ def dpi_download():
     '''
     Return the View all requested page
     '''
-    search_results = ES.search(index='dpi_downloads', query={'range':{'date':{'gte': "now-14d", 'lte': "now"}}})
+    search_results = ES.search(index='dpi_downloads', query={'range':{'date':{'gte': "now-3d", 'lte': "now"}}})
     data = []
     for row in search_result['hits']['hits']:
         record = [(val) for key, value in row['_source'].items()]
@@ -74,4 +74,4 @@ def dpi_download():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=False, port=5500)
+    app.run(host='0.0.0.0', debug=False, port=8000)

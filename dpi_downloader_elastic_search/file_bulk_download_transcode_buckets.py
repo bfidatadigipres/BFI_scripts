@@ -179,7 +179,7 @@ def get_media_record_data(priref):
     print("Launching get_media_record_data()")
     query = {'database': 'media',
              'search': f'object.object_number.lref="{priref}"',
-             'fields': 'imagen.media.original_filename, reference_number',
+             'fields': 'imagen.media.original_filename, reference_number, preservation_bucket',
              'limit': '0',
              'output': 'json'}
     try:
@@ -204,6 +204,12 @@ def get_media_record_data(priref):
             print(exc)
             ref_num = ''
         try:
+            bucket = results['adlibJSON']['recordList']['record'][num]['preservation_bucket'][0]
+            print(ref_num)
+        except (IndexError, TypeError, KeyError) as exc:
+            print(exc)
+            bucket = ''
+        try:
             orig_fname = results['adlibJSON']['recordList']['record'][num]['imagen.media.original_filename'][0]
             print(orig_fname)
         except (IndexError, TypeError, KeyError) as exc:
@@ -211,7 +217,7 @@ def get_media_record_data(priref):
             orig_fname = ''
         all_files.append({f"{ref_num}": f"{orig_fname}"})
 
-    return all_files
+    return all_files, bucket
 
 
 def get_bp_md5(fname):

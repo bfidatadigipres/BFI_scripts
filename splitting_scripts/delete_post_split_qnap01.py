@@ -1,4 +1,4 @@
-#!/usr/bin/ python3
+#!/usr/bin/env python3
 
 '''
  Move multi-item whole-tape digitisations if
@@ -28,9 +28,9 @@ import logging
 from ds3 import ds3
 
 # Private packages
-import models
 sys.path.append(os.environ['CODE'])
 import adlib
+import models
 
 # Global variables
 LOG_PATH = os.environ.get('LOG_PATH')
@@ -40,9 +40,8 @@ CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 CLIENT = ds3.createClientFromEnv()
-BUCKET = 'imagen'
 
-TARGETS = [f'{os.environ['QNAP_VID']}/processing/']
+TARGETS = [f"{os.environ['QNAP_VID']}/processing/"]
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('delete_post_split_qnap01')
@@ -83,15 +82,15 @@ def get_object_list(fname):
     Build a DS3 object list for some SDK queries
     '''
     file_list = [fname]
-    return [ ds3.Ds3GetObject(name=x) for x in file_list ]
+    return [ds3.Ds3GetObject(name=x) for x in file_list]
 
 
-def bp_physical_placement(fname):
+def bp_physical_placement(fname, bucket):
     '''
     Retrieve the physical placement with object_list
     '''
     object_list = get_object_list(fname)
-    query = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(BUCKET, object_list)
+    query = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(bucket, object_list)
     result = CLIENT.get_physical_placement_for_objects_spectra_s3(query)
     data = result.result
 
@@ -126,7 +125,7 @@ def main():
                 files.append(os.path.join(directory, filename))
 
         # Track tapes processed total
-        print(files)
+        logger.info(files)
 
         # Process digitised tape files sequentially
         for filepath in files:
@@ -162,7 +161,7 @@ def main():
                 items = t.items
             except Exception:
                 continue
-            print(f"********* ITEMS {items}")
+
             # Track BlackPearl-preserved objects
             preserved_objects = {}
 
@@ -179,57 +178,35 @@ def main():
 
                 # Check expected number of media records have been created for correct grouping
                 if '/qnap_h22/' in filepath or '/qnap_10/' in filepath:
-                    grouping = 'H22: Video Digitisation: Item Outcomes'
+                    grouping = '398385'
                 else:
-                    grouping = 'Videotape digitisation: F47'
+                    grouping = '397987'
 
                 result = get_results(filepath, grouping, object_number, 'datadigipres')
                 if not result:
                     result = get_results(filepath, grouping, object_number, 'collectionssystems')
                     if not result:
+                        logger.warning('%s\tNo CID record found for object_number %s and grouping %s', object_number, grouping)
                         continue
-                    print("**** H22 PATH FOUND ****")
-                    query = f'''(object.object_number->
-                                   ((grouping="H22: Video Digitisation: Item Outcomes")
-                                       and input.name="collectionssystems"
-                                       and (source_item->
-                                         (object_number="{object_number}"))))'''
-                else:
-                    print("**** OFCOM PATH FOUND ****")
-                    query = f'''(object.object_number->
-                                   ((grouping="Videotape digitisation: F47")
-                                       and input.name="collectionssystems"
-                                       and (source_item->
-                                         (object_number="{object_number}"))))'''
-
-                q = {'database': 'media',
-                     'search': query,
-                     'fields': 'reference_number,imagen.media.original_filename',
-                     'output': 'json',
-                     'limit': '0'}
-
-                try:
-                    result = CID.get(q)
-                    print(f'* Querying for ingest status of CID Item record {object_number}')
-                    logger.info('%s\tCID Item record found, with object number %s', filepath, object_number)
-                except Exception as err:
-                    print('* CID query failed to obtain result')
-                    print(err)
-                    logger.warning('%s\tCID query failed to obtain result', filepath)
-                    continue
 
                 # Check that each media record umid has been preserved to tape by BlackPearl
                 for r in result.records:
                     bp_umid = r['reference_number'][0]
+                    try:
+                        bucket = r['preservation_bucket'][0]
+                    except (IndexError, TypeError, KeyError):
+                        bucket = 'imagen'
                     original_filename = r['imagen.media.original_filename'][0]
                     print(f'* CID Media record has reference number {bp_umid} and original filename {original_filename}')
                     logger.info('%s\tCID Media record has reference number %s and original filename %s', filepath, bp_umid, original_filename)
 
                     # Check BlackPearl physical placement
-                    placement = bp_physical_placement(bp_umid)
+                    if len(bucket) < 3:
+                        bucket = 'imagen'
+                    placement = bp_physical_placement(bp_umid, bucket)
                     if placement:
-                        logger.info('%s\tPersisted\t%s\t%s', filepath, object_number, bp_umid)
-                        print(f'Persisted: {f}\t{object_number}\t{bp_umid}')
+                        logger.info('%s\tPersisted\t%s\t%s\tBucket: %s', filepath, object_number, bp_umid, bucket)
+                        print(f'Persisted: {f}\t{object_number}\t{bp_umid}\t{bucket}')
                         preserved_objects[original_filename] = bp_umid
                         print(f'* Preserved objects: {preserved_objects[original_filename]}')
                         print(f'* Len(preserved_objects) = {len(preserved_objects)}')
@@ -244,47 +221,46 @@ def main():
             if deleteable and total_objects_expected > 0:
                 # Delete single-item tapes
                 if total_objects_expected == 1:
-                    print(f'* Moving single item tape file to delete path: {filepath}')
+                    print(f'* Moving single item tape file to delete folder: {filepath}')
                     try:
                         shutil.move(filepath, dst)
-                        logger.info('%s\tMoving single item tape file to delete path', filepath)
+                        logger.info('%s\tMoved single item tape file to delete folder', filepath)
                     except Exception as err:
-                        logger.warning('%s\tUnable to move file', filepath)
-                        print(f'* Unable to move file: {filepath}')
+                        logger.warning('%s\tUnable to move file to delete folder', filepath)
+                        print(f'* Unable to move file to delete folder: {filepath}')
                         print(err)
                         raise
 
                 # Delete multi-item tapes:
                 elif total_objects_expected >= 2:
-                    print(f'* Moving multi-item tape file to delete path: {filepath}')
+                    print(f'Moving multi-item tape file to delete folder: {filepath}')
                     try:
-                        logger.info('%s\tMoving multi-item tape file to delete path', filepath)
                         shutil.move(filepath, dst)
+                        logger.info('%s\tMoved multi-item tape file to delete folder', filepath)
                     except Exception as err:
-                        print(f'* Unable to move file: {filepath}\t{err}')
-                        logger.warning('%s\tUnable to move file', filepath)
+                        print(f'* Unable to move file to delete folder: {filepath}\t{err}')
+                        logger.warning('%s\tUnable to move file to delete folder', filepath)
                         raise
 
             else:
                 print(f'* Ignoring because not all Items are persisted: {filepath}, {len(preserved_objects)} persisted, {total_objects_expected} expected')
-                logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath,len(preserved_objects), total_objects_expected)
+                logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath, len(preserved_objects), total_objects_expected)
 
 
 def get_results(filepath, grouping, object_number, input_name):
     '''
-    Moved out of main to allow for easier multiple
-    checks for cross-over period between 'datadigipres'
-    and 'collectionssystems
+    Checks for cross-over period between 'datadigipres'
+    and 'collectionssystems' in CID media record
     '''
     query = f'''(object.object_number->
-                    ((grouping="{grouping}")
+                    ((grouping.lref="{grouping}")
                         and input.name="{input_name}"
                         and (source_item->
                          (object_number="{object_number}"))))'''
 
     q = {'database': 'media',
          'search': query,
-         'fields': 'reference_number,imagen.media.original_filename',
+         'fields': 'reference_number,imagen.media.original_filename, preservation_bucket',
          'output': 'json',
          'limit': '0'}
 

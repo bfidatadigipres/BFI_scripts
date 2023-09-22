@@ -8,37 +8,32 @@ Fix C- N-prefix files in processing/segmented where CID Item creation has failed
 4. Calls document_item.new_or_existing_no_segments_mopup() supplies H22/OFCOM grouping
 5. Looks for existing CID item record, if not there creates a new CID items record
 6. Returns new object_number
-7. Checks part_of_reference in carrier dB for number of hits returned:
-   - if one, assumes it's a single part and makes file name with object_number_01of01.MKV
-   - if more than one hit, calls up models.Carrier, iterates list looking for object_number
-     match, where found extracts partWholes and outputs to a log (for test period)
-   - if non, exits with note log
+7. Calls up models with container/CAN ID folder name and retrieves
+   correct part whole for the file being processed.
 8. Files are renamed and left in folder for aspect.py to pick up
 
 Stephen McConnachie
 June 2021
 
-Refactored for Py3
-Joanna White
-May 2023
+Refactored 2023
 '''
 
 # Public packages
 import os
 import sys
-import pytz
 import json
 import logging
 from datetime import datetime, timezone
+import pytz
 
 # Private packages
-sys.path.append(os.environ['CODE'])
 import document_item
 import models
+sys.path.append(os.environ['CODE'])
 import adlib
 
 # Logging
-LOGS = os.environ['LOG_PATH']
+LOGS = os.environ['SCRIPT_LOG']
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 
@@ -94,7 +89,7 @@ def check_for_parts(ob_num):
     except Exception as err:
         logger.exception('CID check for carriers failed: %s', err)
         result = None
-
+    print(result.records[0])
     if len(result.records[0]) == 1:
         if result.records[0]['object_number'][0]:
             print(result.records[0]['object_number'][0])
@@ -111,10 +106,32 @@ def check_cid():
     '''
     try:
         logger.info("Initialising CID session. Script will exit if CID offline")
-        cur = adlib.Cursor(CID)
+        cid = adlib.Cursor(CID)
     except KeyError:
         logger.warning("Cannot establish CID session, exiting script.")
         sys.exit()
+
+
+def check_media_record(fname):
+    '''
+    Check if CID media record
+    already created for filename
+    '''
+    search = f"imagen.media.original_filename='{fname}'"
+    query = {
+        'database': 'media',
+        'search': search,
+        'limit': '0',
+        'output': 'json',
+    }
+
+    try:
+        result = CID.get(query)
+        if result.hits == 1:
+            return True
+    except Exception as err:
+        print(f"Unable to retrieve CID Media record {err}")
+    return False
 
 
 def main():
@@ -135,6 +152,7 @@ def main():
 
         # Path to source media
         root = os.path.join(media_target, 'segmented')
+        autoingest = os.path.join(os.path.split(media_target)[0], 'autoingest')
         print(f"** Targeting: {root}")
         logger.info("** Targeting: %s", root)
 
@@ -156,9 +174,11 @@ def main():
             # Process file only if modified last 24 hrs ago
             now = datetime.now().astimezone()
             local_tz = pytz.timezone("Europe/London")
-            file_mod_time = os.stat(filepath).st_ctime
+            file_mod_time = os.stat(filepath).st_mtime
             modified = datetime.fromtimestamp(file_mod_time, tz=timezone.utc)
             mod = modified.replace(tzinfo=pytz.utc).astimezone(local_tz)
+            print(mod)
+            print(now)
             diff = now - mod
             seconds = diff.seconds
             hours = (seconds / 60) // 60
@@ -199,43 +219,46 @@ def main():
             new_object_under = new_object.replace('-', '_')
             new_f = ''
 
-            # New block here, databse=carriers&search=part_of_reference='{object_number}'
-            parts_check = check_for_parts(object_number)
-            if parts_check is True:
-                print("Item has just one part")
-                new_f = f'{new_object_under}_01of01.{extension}'
-            elif parts_check == 'Model carrier check':
-                print("Item has more than one part, check models.Carrier for partWhole")
-
-                # Model identifier
-                try:
-                    i = models.PhysicalIdentifier(foldername)
-                    logger.info(i)
-                    style = i.type
-                    logger.info('* Identifier is %s', style)
-                except Exception as err:
-                    logger.warning('models.py error: %s\t%s\t%s', filepath, foldername, err)
-                    continue
-                try:
-                    carr = models.Carrier(**{style: foldername})
-                    logger.info('* Carrier modelled ok')
-                except Exception as err:
-                    logger.warning('models.py error: %s\t%s\t%s', filepath, foldername, err)
-                    continue
-                part = str(carr.partwhole[0]).zfill(2)
-                whole = str(carr.partwhole[1]).zfill(2)
-                logger.info("**** %s\tPart whole from model.Carriers: %s of %s", filepath, part, whole)
-                new_f = f'{new_object_under}_{part}of{whole}.{extension}'
-                logger.info("**** %s\tFile would be renamed %s -> %s", filepath, f, new_f)
+            # Model identifier to obtain partWhole
+            try:
+                i = models.PhysicalIdentifier(foldername)
+                logger.info(i)
+                style = i.type
+                logger.info('* Identifier is %s', style)
+            except Exception as err:
+                logger.warning('models.py error: %s\t%s\t%s', filepath, foldername, err)
                 continue
-            else:
+            try:
+                carr = models.Carrier(**{style: foldername})
+                logger.info('* Carrier modelled ok')
+            except Exception as err:
+                logger.warning('models.py error: %s\t%s\t%s', filepath, foldername, err)
                 print("Item parts couldn't be determined. Skipping")
                 logger.info("Item parts couldn't be determined from carrier. Skipping.")
                 continue
-            if not new_f:
-                logger.info("No object_number match in Carrier.items")
+
+            if not isinstance(carr.partwhole[0], int):
+                print("Item parts couldn't be determined. Skipping")
+                logger.info("Item parts couldn't be determined from carrier. Skipping.")
                 continue
 
+            part = str(carr.partwhole[0]).zfill(2)
+            whole = str(carr.partwhole[1]).zfill(2)
+            logger.info("**** %s\tPart whole from model.Carriers: %s of %s", filepath, part, whole)
+            new_f = f'{new_object_under}_{part}of{whole}.{extension}'
+
+            # Check if filename already exists in CID/autoingest (don't rename if duplicate)
+            check_result = check_media_record(new_f)
+            if check_result:
+                print(f"SKIPPING: Filename {new_f} persisted to BP, CID media record found")
+                continue
+            for root, _, files in os.walk(autoingest):
+                for file in files:
+                    if file == new_f:
+                        print(f"SKIPPING: CID item record exists and file found in autoingest: {os.path.join(root, file)}")
+                        continue
+
+            logger.info("**** %s\tFile to be renamed %s -> %s", filepath, f, new_f)
             dst = os.path.join(fpath, new_f)
             try:
                 print(f'\t{filepath} --> {dst}')

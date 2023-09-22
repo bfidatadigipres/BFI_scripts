@@ -13,8 +13,8 @@ June 2022
 
 # Public packages
 import os
-import datetime
 import tenacity
+import datetime
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -90,6 +90,7 @@ def new_or_existing_no_segments(source_object_number, extension, note=None):
         if result.hits == 1:
             destination_object = result.records[0]['object_number'][0]
         else:
+            destination_object = None
             raise Exception('Expected one item record to exist, multiple found')
         # Append segmentation information
         # Increment total item duration
@@ -110,6 +111,7 @@ def new_or_existing_no_segments_mopup(source_object_number, extension, grouping,
         if result.hits == 1:
             destination_object = result.records[0]['object_number'][0]
         else:
+            destination_object = None
             raise Exception('Expected one item record to exist, multiple found')
         # Append segmentation information
         # Increment total item duration
@@ -143,7 +145,6 @@ def already_exists(source_object_number):
         return None
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
     '''
     Create a new item record
@@ -212,7 +213,6 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
         raise Exception('Unable to create record') from exc
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new_no_segments(source_object_number, extension, note=None):
     '''
     Create a new item record
@@ -281,7 +281,6 @@ def new_no_segments(source_object_number, extension, note=None):
         raise Exception('Unable to create record') from exc
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new(source_object_number, segments, duration, extension, note=None):
     ''' Create a new item record '''
 

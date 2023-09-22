@@ -26,7 +26,7 @@ CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 
 
-@tenacity.retry(wait=tenacity.wait_random(min=10, max=60))
+@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def fetch_existing_object_number(source_object_number):
     ''' Retrieve the Object Number for an existing MKV record, for use in renaming
         the existing Matroska (single Item) or naming the segment'''
@@ -53,13 +53,13 @@ def new_or_existing(source_object_number, segments, duration, extension, note=No
 
     result = already_exists(source_object_number)
     if result:
-        if result.hits >= 1:
+        if result.hits == 1:
             destination_object = result.records[0]['object_number'][0]
         else:
+            destination_object = None
             raise Exception('Expected one item record to exist, multiple found')
         # Append segmentation information
         # Increment total item duration
-
     else:
         # Create new
         destination_object = new(source_object_number, segments, duration, extension, note)
@@ -67,26 +67,27 @@ def new_or_existing(source_object_number, segments, duration, extension, note=No
     return destination_object
 
 
-@tenacity.retry(wait=tenacity.wait_random(min=10, max=60))
+@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def already_exists(source_object_number):
     ''' Has an MKV record already been created for source? '''
 
     q = {'database': 'items',
          'search': f'(grouping.lref=398385 and source_item->(object_number="{source_object_number}"))',
-         'limit': '1',
+         'limit': '0',
          'output': 'json'}
 
     try:
         result = CID.get(q)
+        print(f"already_exists(): {result.records}")
     except Exception as exc:
         raise Exception from exc
 
     if result.hits >= 1:
         return result
-    return False
+    else:
+        return None
 
 
-@tenacity.retry(wait=tenacity.wait_random(min=10, max=60))
 def new(source_object_number, segments, duration, extension, note=None):
     ''' Create a new item record '''
 

@@ -21,10 +21,22 @@ YEST2 = TODAY - datetime.timedelta(days=2)
 DATE_VAR = YEST.strftime('%Y-%m-%d')
 DATE_VAR2 = YEST2.strftime('%Y-%m-%d')
 LOGS = os.environ['LOG_PATH']
+CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOGS, 'autoingest/global.log')
 CURRENT_ERROR_FOLD = os.environ['CURRENT_ERRORS']
 CURRENT_ERRORS = os.path.join(CURRENT_ERROR_FOLD, 'current_errors.csv')
 CURRENT_ERRORS_NEW = os.path.join(CURRENT_ERROR_FOLD, 'current_errors_new.csv')
+
+
+def check_control():
+    '''
+    Check control_json isn't False
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['autoingest']:
+            print('* Exit requested by downtime_control.json. Script exiting')
+            sys.exit('Exit requested by downtime_control.json. Script exiting')
 
 
 def main():
@@ -32,6 +44,7 @@ def main():
     For standalone use of log_parser
     not, launched from autoingest
     '''
+    check_control()
     create_current_errors_logs()
 
 

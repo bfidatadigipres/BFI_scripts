@@ -86,7 +86,6 @@ PERS_LOG = os.path.join(LOGS, 'persistence_confirmation.log')
 PERS_QUEUE = os.path.join(LOGS, 'autoingest/persistence_queue.csv')
 PERS_QUEUE2 = os.path.join(LOGS, 'autoingest/persistence_queue2.csv')
 CONFIG = os.environ['CONFIG_YAML']
-DPI_BUCKETS = os.environ['DPI_BUCKET']
 
 # Setup logging
 logger = logging.getLogger('autoingest')
@@ -100,6 +99,7 @@ logger.setLevel(logging.INFO)
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor
+BUCKET = "imagen"
 CLIENT = ds3.createClientFromEnv()
 
 PREFIX = [
@@ -189,8 +189,6 @@ def check_mime_type(fpath, log_paths):
     '''
     if fpath.endswith(('.mxf', '.ts', '.mpg')):
         mime = 'video'
-    elif fpath.endswith(('.srt', '.scc', '.xml', '.scc', '.itt', '.stl', '.cap', '.dxfp')):
-        mime = 'application'
     else:
         mime = magic.from_file(fpath, mime=True)
     try:
@@ -351,50 +349,25 @@ def check_media_record(fname):
     return False
 
 
-def get_buckets(bucket_collection):
-    '''
-    Read JSON list return
-    key_value and list of others
-    '''
-    bucket_list = []
-
-    with open(DPI_BUCKETS) as data:
-        bucket_data = json.load(data)
-    if bucket_collection == 'netflix':
-        for key, _ in bucket_data.items():
-            if bucket_collection in key:
-                bucket_list.append(key)
-    elif bucket_collection == 'bfi':
-        for key, _ in bucket_data.items():
-            if 'Preservation' in key:
-                bucket_list.append(key)
-            # Imagen path read only now
-            if 'imagen' in key:
-                bucket_list.append(key)
-
-    return bucket_list
-
-
-def check_bp_status(fname, bucket_list):
+def check_bp_status(fname):
     '''
     Look up filename in BP to avoid
     multiple ingests of files
     '''
+    query = ds3.HeadObjectRequest(BUCKET, fname)
+    result = CLIENT.head_object(query)
 
-    for bucket in bucket_list:
-        query = ds3.HeadObjectRequest(bucket, fname)
-        result = CLIENT.head_object(query)
+    if 'DOESNTEXIST' in str(result.result):
+        return False
 
-        if 'DOESNTEXIST' in str(result.result):
-            continue
-
-        try:
-            md5 = result.response.msg['ETag']
-            length = result.response.msg['Content-Length']
-            if int(length) > 1 and len(md5) > 30:
-                return True
-        except (IndexError, TypeError, KeyError) as err:
-            print(err)
+    try:
+        md5 = result.response.msg['ETag']
+        length = result.response.msg['Content-Length']
+        if int(length) > 1 and len(md5) > 30:
+            return True
+    except (IndexError, KeyError):
+        md5 = None
+        length = None
 
 
 def ext_in_file_type(ext, priref, log_paths):
@@ -414,14 +387,7 @@ def ext_in_file_type(ext, priref, log_paths):
            'tiff': 'tif, tiff',
            'jpg': 'jpg, jpeg',
            'jpeg': 'jpg, jpeg',
-           'ts': 'mpeg-ts',
-           'srt': 'srt',
-           'xml': 'xml',
-           'scc': 'scc',
-           'itt': 'itt',
-           'stl': 'stl',
-           'cap': 'cap',
-           'dxfp': 'dxfp'}
+           'ts': 'mpeg-ts'}
 
     try:
         ftype = dct[ext]
@@ -661,7 +627,7 @@ def main():
             fname = os.path.split(fpath)[-1]
             if '.DS_Store' in fname:
                 continue
-            if fname.endswith(('.txt', '.md5', '.log', '.mhl', '.ini', '.json')):
+            if fname.endswith(('.txt', '.xml', '.md5', '.log', '.mhl', '.ini', '.json')):
                 continue
             ext = fname.split('.')[-1]
 
@@ -737,15 +703,8 @@ def main():
                 continue
             print(f'* File {fname} has no CID Media record.')
 
-            # Get BP buckets
-            bucket_list = []
-            if 'ingest/netflix' in fpath:
-                bucket_list = get_buckets('netflix')
-            else:
-                bucket_list = get_buckets('bfi')
-
             # BP ingest check
-            ingest_check = check_bp_status(fname, bucket_list)
+            ingest_check = check_bp_status(fname)
             if ingest_check is True:
                 print(f'* Filename {fname} has already been ingested to DPI. Manual clean up needed.')
                 logger.warning('%s\tFilename has aleady been ingested to DPI: %s', log_paths, fname)
@@ -802,7 +761,7 @@ def main():
                     print('\t\t* multi-part file, suitable for ingest...')
                     do_ingest = True
 
-            # Check if path / no ingests to take place [PROBABLY CAN BE DEPRECATED]
+           # Check if path / no ingests to take place [PROBABLY CAN BE DEPRECATED]
             with open(CONTROL_JSON) as control_pth:
                 cp = json.load(control_pth)
                 if not cp['do_ingest']:
@@ -819,10 +778,6 @@ def main():
                     logger.warning('%s\tFile is larger than 1TB. Leaving in ingest folder', log_paths)
                     continue
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
-                # Look for Netflix ingest and move to correct Netflix folder
-                if 'ingest/netflix' in fpath:
-                    logger.info('%s\Ingest-ready file is from Netflix ingest path, moving to Black Pearl Netflix ingest folder')
-                    black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_netflix_ingest')
                 try:
                     shutil.move(fpath, os.path.join(black_pearl_folder, fname))
                     print(f'\t** File moved to {os.path.join(black_pearl_folder, fname)}')

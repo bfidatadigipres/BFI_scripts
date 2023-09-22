@@ -11,7 +11,7 @@ for JSON file matching. Open matching JSON.
 
 If JSON indicates that some files haven't successfully
 written to tape, then those matching items need removing
-from folder and placing back into Black Pearl ingest top
+from folder and placing back into black_pearl_ingest top
 level for reattempt to ingest.
 
 Where a JSON matches, and all items have written successfully:
@@ -56,8 +56,7 @@ sys.path.append(CODE_PATH)
 import adlib
 
 # Global variables
-BPINGEST = os.environ['BP_INGEST']
-BPINGEST_NETFLIX = os.environ['BP_INGEST_NETFLIX']
+BPINGEST = 'autoingest/black_pearl_ingest'
 LOG_PATH = os.environ['LOG_PATH']
 JSON_PATH = os.path.join(LOG_PATH, 'black_pearl')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
@@ -69,7 +68,7 @@ MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 CLIENT = ds3.createClientFromEnv()
-DPI_BUCKETS = os.environ['DPI_BUCKET']
+BUCKET = 'imagen'
 
 # Setup logging
 logger = logging.getLogger('black_pearl_validate_make_record_targeted')
@@ -130,35 +129,6 @@ def load_yaml(file):
     '''
     with open(file) as config_file:
         return yaml.safe_load(config_file)
-
-
-def get_buckets(bucket_collection):
-    '''
-    Read JSON list return
-    key_value and list of others
-    '''
-    bucket_list = []
-    key_bucket = ''
-
-    with open(DPI_BUCKETS) as data:
-        bucket_data = json.load(data)
-    if bucket_collection == 'netflix':
-        for key, value in bucket_data.items():
-            if bucket_collection in key:
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-    elif bucket_collection == 'bfi':
-        for key, value in bucket_data.items():
-            if 'Preservation' in key:
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-            # Imagen path read only now
-            if 'imagen' in key:
-                bucket_list.append(key)
-
-    return key_bucket, bucket_list
 
 
 def retrieve_json_data(foldername):
@@ -381,188 +351,175 @@ def main():
     ingest_data = load_yaml(INGEST_CONFIG)
     hosts = ingest_data['Host_size']
 
-    autoingest_list = []
     for host in hosts:
         # Targets just this path
         if not 'qnap_imagen_storage/Public' in str(host):
             continue
-        # Build autoingest list for separate iteration
+
         for pth in host.keys():
-            autoingest_pth = os.path.join(pth, BPINGEST)
-            autoingest_list.append(autoingest_pth)
-            if '/mnt/qnap_digital_operations' in pth:
-                autoingest_pth = os.path.join(pth, BPINGEST_NETFLIX)
-                autoingest_list.append(autoingest_pth)
+            autoingest = os.path.join(pth, BPINGEST)
+            print(autoingest)
+            if not os.path.exists(autoingest):
+                print(f"**** Path does not exist: {autoingest}")
+                continue
+            logger.info("======== START Black Pearl validate/CID Media record START ========")
+            logger.info("Looking for folders in Autoingest path: %s", autoingest)
 
-    print(autoingest_list)
-    for autoingest in autoingest_list:
-        if not os.path.exists(autoingest):
-            print(f"**** Path does not exist: {autoingest}")
-            continue
-
-        if 'black_pearl_netflix_ingest' in autoingest:
-            bucket, bucket_list = get_buckets('netflix')
-        else:
-            bucket, bucket_list = get_buckets('bfi')
-
-        logger.info("======== START Black Pearl validate/CID Media record START ========")
-        logger.info("Looking for folders in Autoingest path: %s", autoingest)
-
-        folders = [x for x in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, x))]
-        if not folders:
-            logger.info("No folders available to check.")
-            continue
-
-        for folder in folders:
-            check_control()
-            if folder.startswith(('ingest_', 'error_')):
+            folders = [x for x in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, x))]
+            if not folders:
+                logger.info("No folders available to check.")
                 continue
 
-            logger.info("Folder found that is not an ingest folder, or has failed or errored files within: %s", folder)
-            json_file = json_file1 = json_file2 = success = ''
-
-            failed_folder = None
-            if folder.startswith('pending_'):
-                fpath = os.path.join(autoingest, folder)
-                logger.info("Failed folder found, will pass on for repeat processing. No JSON needed: %s", folder)
-                failed_folder = folder.split("_")[-1]
-
-            # Process double job_id
-            elif len(folder) > 36 and len(folder) < 74:
-                folder1, folder2 = folder.split('_')
-                logger.info("Folder has two job ID's associated with this one PUT: %s  -  %s", folder1, folder2)
-
-                # Make double paths and check both present/not faults before processing
-                fpath = os.path.join(autoingest, folder)
-                json_file1 = retrieve_json_data(folder1)
-                json_file2 = retrieve_json_data(folder2)
-                if not json_file1 and not json_file2:
-                    logger.info("Both JSON files are still absent")
-                    continue
-                if not json_file1 and json_file2:
-                    logger.info("One of the JSON files are still absent")
-                    continue
-                if json_file1 and not json_file2:
-                    logger.info("One of the JSON files are still absent")
+            for folder in folders:
+                check_control()
+                if folder.startswith(('ingest_', 'error_')):
                     continue
 
-                failed_files1 = json_check(json_file1)
-                if failed_files1:
-                    logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", failed_files1)
-                    for failure in failed_files1:
-                        logger.info("Moving failed BP file")
-                        shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
-                else:
-                    logger.info("No files failed transfer to BP data tape for %s", folder1)
+                logger.info("Folder found that is not an ingest folder, or has failed or errored files within: %s", folder)
+                json_file = json_file1 = json_file2 = success = ''
 
-                failed_files2 = json_check(json_file2)
-                if failed_files2:
-                    logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", failed_files2)
-                    for failure in failed_files2:
-                        logger.info("Moving failed BP file")
-                        shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
-                else:
-                    logger.info("No files failed transfer to BP data tape for %s", folder2)
+                failed_folder = None
+                if folder.startswith('pending_'):
+                    fpath = os.path.join(autoingest, folder)
+                    logger.info("Failed folder found, will pass on for repeat processing. No JSON needed: %s", folder)
+                    failed_folder = folder.split("_")[-1]
 
-                status, size, cached = get_job_status(folder2)
-                if 'COMPLETED' in status and size == cached:
-                    logger.info("Completed check < %s >.  Sizes match < %s : %s >", status, size, cached)
-                else:
-                    logger.info("***** Completed check failed: %s. Size %s. Cached size %s", status, size, cached)
-                    continue
+                # Process double job_id
+                elif len(folder) > 36 and len(folder) < 74:
+                    folder1, folder2 = folder.split('_')
+                    logger.info("Folder has two job ID's associated with this one PUT: %s  -  %s", folder1, folder2)
 
-                # Iterate through files in folders and extract data / write logs / create CID record
-                success = process_files(autoingest, folder, '', bucket, bucket_list)
+                    # Make double paths and check both present/not faults before processing
+                    fpath = os.path.join(autoingest, folder)
+                    json_file1 = retrieve_json_data(folder1)
+                    json_file2 = retrieve_json_data(folder2)
+                    if not json_file1 and not json_file2:
+                        logger.info("Both JSON files are still absent")
+                        continue
+                    if not json_file1 and json_file2:
+                        logger.info("One of the JSON files are still absent")
+                        continue
+                    if json_file1 and not json_file2:
+                        logger.info("One of the JSON files are still absent")
+                        continue
 
-            elif len(folder) > 74:
-                logger.info("Too many concatenated job IDs - skipping! %s", folder)
-                success = None
-                continue
-
-            else:
-                fpath = os.path.join(autoingest, folder)
-                logger.info("Folder found that is not ingest or errored folder. Checking if JSON exists for %s.", folder)
-                json_file = retrieve_json_data(folder)
-
-                if not json_file:
-                    logger.info("No matching JSON found for folder.")
-                    continue
-
-                logger.info("Matching JSON found for BP Job ID: %s", folder)
-                # Check in JSON for failed BP job object
-                failed_files = json_check(json_file)
-                if failed_files:
-                    logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", failed_files)
-                    for failure in failed_files:
-                        logger.info("Moving failed BP file")
-                        shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
-                else:
-                    logger.info("No files failed transfer to BP data tape")
-
-            success = process_files(autoingest, folder, '', bucket, bucket_list)
-            if not success:
-                continue
-
-            if 'Job complete' in success:
-                logger.info("All files in %s have completed processing successfully", folder)
-                # Check job folder is empty, if so delete else leave and prepend 'error_'
-                if len(os.listdir(fpath)) == 0:
-                    logger.info("All files moved to completed. Deleting empty job folder: %s.", folder)
-                    os.rmdir(fpath)
-                else:
-                    logger.warning("Folder %s is not empty as expected. Adding 'error_{}' to folder and leaving.", folder)
-                    if folder.startswith('failed_'):
-                        efolder = f"error_{failed_folder}"
+                    failed_files1 = json_check(json_file1)
+                    if failed_files1:
+                        logger.info("FAILED: Moving back into black_pearl_ingest folder:\n%s", failed_files1)
+                        for failure in failed_files1:
+                            logger.info("Moving failed BP file")
+                            shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
                     else:
-                        efolder = f"error_{folder}"
-                    try:
-                        os.rename(os.path.join(autoingest, folder), os.path.join(autoingest, efolder))
-                    except Exception:
-                        logger.warning("Unable to rename folder %s to %s - please handle this manually.", folder, efolder)
+                        logger.info("No files failed transfer to BP data tape for %s", folder1)
 
-            elif 'Not complete' in success:
-                logger.warning("BP tape confirmation not yet complete. Leaving until next pass: %s", folder)
-                continue
-
-            else:
-                if len(success) > 0:
-                    # Where CID records not made, files in this list left in job folder and folder renamed
-                    logger.warning("List of files returned that didn't get CID media records: %s.", success)
-                    logger.warning("Leaving in job folder. Prepending folder with 'pending_{}.")
-                    if folder.startswith('pending_'):
-                        ffolder = f"pending_{failed_folder}"
+                    failed_files2 = json_check(json_file2)
+                    if failed_files2:
+                        logger.info("FAILED: Moving back into black_pearl_ingest folder:\n%s", failed_files2)
+                        for failure in failed_files2:
+                            logger.info("Moving failed BP file")
+                            shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
                     else:
-                        ffolder = f"pending_{folder}"
-                    try:
-                        os.rename(os.path.join(autoingest, folder), os.path.join(autoingest, ffolder))
-                    except Exception:
-                        logger.warning("Unable to rename folder %s to %s - please handle this manually", folder, ffolder)
+                        logger.info("No files failed transfer to BP data tape for %s", folder2)
 
-            # Moving JSON to completed folder
-            if json_file:
-                logger.info("Moving JSON file to completed folder: %s", json_file)
-                pth, jsn = os.path.split(json_file)
-                move_path = os.path.join(pth, 'completed', jsn)
-                try:
-                    shutil.move(json_file, move_path)
-                except Exception:
-                    logger.warning("JSON file failed to move to completed folder: %s.", json_file)
-            if json_file1:
-                logger.info("Moving JSON files to completed folder: %s - %s.", json_file1, json_file2)
-                pth, jsn1 = os.path.split(json_file1)
-                jsn2 = os.path.split(json_file2)[1]
-                move_path1 = os.path.join(pth, 'completed', jsn1)
-                move_path2 = os.path.join(pth, 'completed', jsn2)
-                try:
-                    shutil.move(json_file1, move_path1)
-                    shutil.move(json_file2, move_path2)
-                except Exception:
-                    logger.warning("JSON files failed to move to completed folder: %s - %s.", json_file1, json_file2)
+                    status, size, cached = get_job_status(folder2)
+                    if 'COMPLETED' in status and size == cached:
+                        logger.info("Completed check < %s >.  Sizes match < %s : %s >", status, size, cached)
+                    else:
+                        logger.info("Completed check failed: %s. Size %s. Cached size %s", status, size, cached)
+                        continue
+
+                    # Iterate through files in folders and extract data / write logs / create CID record
+                    success = process_files(autoingest, folder, '')
+
+                elif len(folder) > 74:
+                    logger.info("Too many concatenated job IDs - skipping! %s", folder)
+                    success = None
+                    continue
+
+                else:
+                    fpath = os.path.join(autoingest, folder)
+                    logger.info("Folder found that is not ingest or errored folder. Checking if JSON exists for %s.", folder)
+                    json_file = retrieve_json_data(folder)
+
+                    if not json_file:
+                        logger.info("No matching JSON found for folder.")
+                        continue
+
+                    logger.info("Matching JSON found for BP Job ID: %s", folder)
+                    # Check in JSON for failed BP job objects
+                    failed_files = json_check(json_file)
+                    if failed_files:
+                        logger.info("FAILED: Moving back into black_pearl_ingest folder:\n%s", failed_files)
+                        for failure in failed_files:
+                            logger.info("Moving failed BP file")
+                            shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
+                    else:
+                        logger.info("No files failed transfer to BP data tape")
+
+                success = process_files(autoingest, folder, '')
+                if not success:
+                    continue
+
+                if 'Job complete' in success:
+                    logger.info("All files in %s have completed processing successfully", folder)
+                    # Check job folder is empty, if so delete else leave and prepend 'error_'
+                    if len(os.listdir(fpath)) == 0:
+                        logger.info("All files moved to completed. Deleting empty job folder: %s.", folder)
+                        os.rmdir(fpath)
+                    else:
+                        logger.warning("Folder %s is not empty as expected. Adding 'error_{}' to folder and leaving.", folder)
+                        if folder.startswith('failed_'):
+                            efolder = f"error_{failed_folder}"
+                        else:
+                            efolder = f"error_{folder}"
+                        try:
+                            os.rename(os.path.join(autoingest, folder), os.path.join(autoingest, efolder))
+                        except Exception:
+                            logger.warning("Unable to rename folder %s to %s - please handle this manually.", folder, efolder)
+
+                elif 'Not complete' in success:
+                    logger.warning("BP tape confirmation not yet complete. Leaving until next pass: %s", folder)
+                    continue
+
+                else:
+                    if len(success) > 0:
+                        # Where CID records not made, files in this list left in job folder and folder renamed
+                        logger.warning("List of files returned that didn't get CID media records: %s.", success)
+                        logger.warning("Leaving in job folder. Prepending folder with 'pending_{}.")
+                        if folder.startswith('pending_'):
+                            ffolder = f"pending_{failed_folder}"
+                        else:
+                            ffolder = f"pending_{folder}"
+                        try:
+                            os.rename(os.path.join(autoingest, folder), os.path.join(autoingest, ffolder))
+                        except Exception:
+                            logger.warning("Unable to rename folder %s to %s - please handle this manually", folder, ffolder)
+
+                # Moving JSON to completed folder
+                if json_file:
+                    logger.info("Moving JSON file to completed folder: %s", json_file)
+                    pth, jsn = os.path.split(json_file)
+                    move_path = os.path.join(pth, 'completed', jsn)
+                    try:
+                        shutil.move(json_file, move_path)
+                    except Exception:
+                        logger.warning("JSON file failed to move to completed folder: %s.", json_file)
+                if json_file1:
+                    logger.info("Moving JSON files to completed folder: %s - %s.", json_file1, json_file2)
+                    pth, jsn1 = os.path.split(json_file1)
+                    jsn2 = os.path.split(json_file2)[1]
+                    move_path1 = os.path.join(pth, 'completed', jsn1)
+                    move_path2 = os.path.join(pth, 'completed', jsn2)
+                    try:
+                        shutil.move(json_file1, move_path1)
+                        shutil.move(json_file2, move_path2)
+                    except Exception:
+                        logger.warning("JSON files failed to move to completed folder: %s - %s.", json_file1, json_file2)
 
     logger.info("======== END Black Pearl validate/CID media record END ========")
 
 
-def process_files(autoingest, job_id, arg, bucket, bucket_list):
+def process_files(autoingest, job_id, arg):
     '''
     Receive ingest fpath and argument 'check' or empty argument.
     If empty arg then JSON has confirmed files ingested to tape
@@ -576,7 +533,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
     folderpath = os.path.join(autoingest, job_id)
     file_list = [x for x in os.listdir(folderpath) if os.path.isfile(os.path.join(folderpath, x))]
     logger.info("%s files found in folderpath %s", len(file_list), folderpath)
-    logger.info("Preservation bucket: %s Buckets in use for validation checks: %s", bucket, ', '.join(bucket_list))
 
     if arg == 'check':
         # Get status
@@ -612,7 +568,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         duration_size_log(file, object_number, duration, byte_size, duration_ms)
 
         # Run series of BP checks here - any failures no CID media record made
-        confirmed, remote_md5, length = get_object_list(file, bucket_list)
+        confirmed, remote_md5, length = get_object_list(file)
         if confirmed is None:
             logger.warning('Problem retrieving Black Pearl ObjectList. Skipping')
             continue
@@ -658,14 +614,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             logger.info("MD5 MATCH: Local %s and BP ETag %s", local_md5, remote_md5)
             md5_match = True
 
-        # Prepare move path to not include XML/MXF for transcoding
-        root_path = os.path.split(autoingest)[0]
-        if 'black_pearl_netflix_ingest' in autoingest and not file.endswith(('.mov', '.MOV')):
-            move_path = os.path.join(root_path, 'completed', file)
-        else:
-            move_path = os.path.join(root_path, 'transcode', file)
-
-
         # New section here to check for Media Record first and clean up file if found
         logger.info("Checking if Media record already exists for file: %s", file)
         media_priref, access_mp4, image = check_for_media_record(file)
@@ -686,7 +634,9 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             elif reingest_confirm and md5_match:
                 logger.info("File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion.")
                 persistence_log_message("Persistence checks passed: delete file", fpath, wpath, file)
-                # Move to next folder for autoingest deletion - may not be duplicate
+                # Move to transcode/ folder for autoingest deletion - may not be duplicate
+                root_path = os.path.split(autoingest)[0]
+                move_path = os.path.join(root_path, 'transcode', file)
                 try:
                     shutil.move(fpath, move_path)
                     check_list.append(file)
@@ -695,7 +645,9 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             elif md5_match and not access_mp4:
                 persistence_log_message("Persistence checks passed: delete file", fpath, wpath, file)
                 logger.info("File has media record but has no Access MP4. Moving to transcode folder and updating global.log for deletion.")
-                # Move to next folder for autoingest deletion - may not be duplicate
+                # Move to transcode/ folder for autoingest deletion - may not be duplicate
+                root_path = os.path.split(autoingest)[0]
+                move_path = os.path.join(root_path, 'transcode', file)
                 try:
                     shutil.move(fpath, move_path)
                     check_list.append(file)
@@ -710,11 +662,15 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             continue
         logger.info("No Media record found for file: %s", file)
         logger.info("Creating media record and linking via object_number: %s", object_number)
-        media_priref = create_media_record(object_number, duration, byte_size, file, bucket)
+        media_priref = create_media_record(object_number, duration, byte_size, file)
         print(media_priref)
 
         if media_priref:
             check_list.append(file)
+            # Make path to transcode folder
+            root_path = os.path.split(autoingest)[0]
+            move_path = os.path.join(root_path, 'transcode', file)
+
             # Move file to transcode folder
             try:
                 shutil.move(fpath, move_path)
@@ -755,12 +711,10 @@ def get_job_status(job_id):
     return (status, size, cached)
 
 
-def get_object_list(fname, bucket_list):
+def get_object_list(fname):
     '''
     Get all details to check file persisted
     '''
-
-    print(f"Bucket list here in case needed: {bucket_list}")
     confirmed, md5, length = '', '', ''
     request = ds3.GetObjectsWithFullDetailsSpectraS3Request(name=f"{fname}", include_physical_placement=True)
     try:
@@ -821,7 +775,7 @@ def duration_size_log(filename, ob_num, duration, size, ms):
             writer.writerow([filename, ob_num, str(duration), str(size), datestamp, str(ms)])
 
 
-def create_media_record(ob_num, duration, byte_size, filename, bucket):
+def create_media_record(ob_num, duration, byte_size, filename):
     '''
     Media record creation for BP ingested file
     '''
@@ -836,8 +790,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.original_filename': filename},
                     {'object.object_number': ob_num},
                     {'imagen.media.part': part},
-                    {'imagen.media.total': whole},
-                    {'preservation_bucket': bucket}])
+                    {'imagen.media.total': whole}])
 
     media_priref = ""
 

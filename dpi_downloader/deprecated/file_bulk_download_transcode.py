@@ -72,6 +72,7 @@ from downloaded_transcode_mp4_watermark import transcode_mp4_access
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor
+BUCKET = "imagen"
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 LOG_PATH = os.environ['LOG_PATH']
@@ -119,7 +120,7 @@ def get_media_original_filename(fname):
         results = query_result.json()
     except Exception as err:
         LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s\n%s", fname, err)
-        return None, None, None
+        return None, None
     try:
         media_priref = results['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
     except (IndexError, TypeError, KeyError) as exc:
@@ -130,15 +131,8 @@ def get_media_original_filename(fname):
     except (IndexError, TypeError, KeyError) as exc:
         print(exc)
         orig_fname = ''
-    try:
-        bucket = results['adlibJSON']['recordList']['record'][0]['preservation_bucket'][0]
-    except (IndexError, TypeError, KeyError) as exc:
-        print(exc)
-        bucket = ''
-    if bucket == '':
-        bucket = 'imagen'
 
-    return media_priref, orig_fname, bucket
+    return media_priref, orig_fname
 
 
 def get_prirefs(pointer):
@@ -185,14 +179,14 @@ def get_media_record_data(priref):
     print("Launching get_media_record_data()")
     query = {'database': 'media',
              'search': f'object.object_number.lref="{priref}"',
-             'fields': 'imagen.media.original_filename, reference_number, preservation_bucket',
+             'fields': 'imagen.media.original_filename, reference_number',
              'limit': '0',
              'output': 'json'}
     try:
         query_result = requests.get(CID_API, params=query)
         results = query_result.json()
     except Exception as err:
-        LOGGER.exception("get_media_record_data: Unable to match filename to CID media record: %s\n%s", priref, err)
+        LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s\n%s", priref, err)
         results = []
         print(err)
 
@@ -215,26 +209,18 @@ def get_media_record_data(priref):
         except (IndexError, TypeError, KeyError) as exc:
             print(exc)
             orig_fname = ''
-        try:
-            bucket = results['adlibJSON']['recordList']['record'][num]['preservation_bucket'][0]
-            print(orig_fname)
-        except (IndexError, TypeError, KeyError) as exc:
-            print(exc)
-            bucket = ''
-        if bucket == '':
-            bucket = 'imagen'
-        all_files.append({ref_num: [orig_fname, bucket]})
+        all_files.append({f"{ref_num}": f"{orig_fname}"})
 
     return all_files
 
 
-def get_bp_md5(fname, bucket):
+def get_bp_md5(fname):
     '''
     Fetch BP checksum to compare
     to new local MD5
     '''
     md5 = ''
-    query = ds3.HeadObjectRequest(bucket, fname)
+    query = ds3.HeadObjectRequest(BUCKET, fname)
     result = CLIENT.head_object(query)
     try:
         md5 = result.response.msg['ETag']
@@ -244,7 +230,7 @@ def get_bp_md5(fname, bucket):
         return md5.replace('"', '')
 
 
-def make_check_md5(fpath, fname, bucket):
+def make_check_md5(fpath, fname):
     '''
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
@@ -261,7 +247,7 @@ def make_check_md5(fpath, fname, bucket):
     except Exception as err:
         print(err)
 
-    bp_checksum = get_bp_md5(fname, bucket)
+    bp_checksum = get_bp_md5(fname)
     print(f"Created from download: {download_checksum} | Retrieved from BP: {bp_checksum}")
     return str(download_checksum).strip(), str(bp_checksum).strip()
 
@@ -391,7 +377,7 @@ def main():
         # Single download
         if dtype == 'single':
             # Try to locate CID media record for file
-            media_priref, orig_fname, bucket = get_media_original_filename(fname)
+            media_priref, orig_fname = get_media_original_filename(fname)
             if not media_priref:
                 LOGGER.warning("Filename is not recognised, no matching CID Media record")
                 update_table(fname, transcode, 'Filename not in CID')
@@ -408,12 +394,12 @@ def main():
                 # Download from BP
                 LOGGER.info("Beginning download of file %s to download path", fname)
                 update_table(fname, transcode, 'Downloading')
-                download_job_id = download_bp_object(fname, download_fpath, bucket)
+                download_job_id = download_bp_object(fname, download_fpath)
                 if download_job_id == '404':
                     LOGGER.warning("Download of file %s failed. File not found in Black Pearl tape library.", fname)
                     update_table(fname, transcode, 'Filename not found in Black Pearl')
                     continue
-                if not download_job_id:
+                elif not download_job_id:
                     LOGGER.warning("Download of file %s failed. Resetting download status and script exiting.", fname)
                     update_table(fname, transcode, 'Requested')
                     continue
@@ -424,7 +410,7 @@ def main():
                     os.rename(umid_fpath, new_fpath)
 
                 # MD5 Verification
-                local_md5, bp_md5 = make_check_md5(new_fpath, fname, bucket)
+                local_md5, bp_md5 = make_check_md5(new_fpath, fname)
                 LOGGER.info("MD5 checksum validation check:\n\t%s - Downloaded file MD5\n\t%s - Black Pearl retrieved MD5", local_md5, bp_md5)
                 if local_md5 == bp_md5:
                     LOGGER.info("MD5 checksums match. Updating Download status to Download database")
@@ -473,9 +459,8 @@ def main():
                 for file in download_dct:
                     for k, v in file.items():
                         filename = k
-                        orig_fname = v[0]
-                        bucket = v[1]
-                        print(f"Media priref {media_priref} Filename {filename} Original name {orig_fname} in bucket {bucket}")
+                        orig_fname = v
+                        print(f"Media priref {media_priref} Filename {filename} Original name {orig_fname}")
                         if not len(filename) > 0:
                             LOGGER.warning("Filename is not recognised, no matching CID Media record")
                             continue
@@ -490,7 +475,7 @@ def main():
                             # Download from BP
                             LOGGER.info("Beginning download of file %s to download path", filename)
                             update_table(fname, transcode, f'Downloading {orig_fname}')
-                            download_job_id = download_bp_object(filename, download_fpath, bucket)
+                            download_job_id = download_bp_object(filename, download_fpath)
                             if download_job_id == '404':
                                 LOGGER.warning("Download of file %s failed. File not found in Black Pearl tape library.", filename)
                                 continue
@@ -504,7 +489,7 @@ def main():
                                 os.rename(umid_fpath, new_fpath)
 
                             # MD5 Verification
-                            local_md5, bp_md5 = make_check_md5(new_fpath, filename, bucket)
+                            local_md5, bp_md5 = make_check_md5(new_fpath, filename)
                             LOGGER.info("MD5 checksum validation check:\n\t%s - Downloaded file MD5\n\t%s - Black Pearl retrieved MD5", local_md5, bp_md5)
                             if local_md5 == bp_md5:
                                 LOGGER.info("MD5 checksums match. Updating Download status to Download database")
@@ -532,7 +517,7 @@ def main():
     LOGGER.info("================ DPI DOWNLOAD REQUESTS COMPLETED. Date: %s =================\n", datetime.now().strftime(FMT)[:19])
 
 
-def download_bp_object(fname, outpath, bucket):
+def download_bp_object(fname, outpath):
     '''
     Download the BP object from SpectraLogic
     tape library and save to outpath
@@ -540,7 +525,7 @@ def download_bp_object(fname, outpath, bucket):
     file_path = os.path.join(outpath, fname)
     get_objects = [ds3Helpers.HelperGetObject(fname, file_path)]
     try:
-        get_job_id = HELPER.get_objects(get_objects, bucket)
+        get_job_id = HELPER.get_objects(get_objects, BUCKET)
         print(f"BP get job ID: {get_job_id}")
     except Exception as err:
         LOGGER.warning("Unable to retrieve file %s from Black Pearl", fname)

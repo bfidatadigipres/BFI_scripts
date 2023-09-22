@@ -4,13 +4,11 @@
 # digitisations where all parts have been persisted to
 # a backup folder on the server for deletion by a second script
 
-CODE_PTH=$("${CODE}splitting_scripts/")
-
 # Log script start
 echo "Start delete_post_split_qnap01.py: $(date)" >> "${LOG_PATH}delete_post_split_qnap01.log"
 
 # use virtualenv python bin
-"${PY3_ENV}" "${CODE_PTH}delete_post_split_qnap01.py"
+"${PY3_ENV}" "${CODE}splitting_scripts/delete_post_split_qnap01.py"
 
 # Log script end
 echo "Finish delete_post_split_qnap01.py: $(date)" >> "${LOG_PATH}delete_post_split_qnap01.log"

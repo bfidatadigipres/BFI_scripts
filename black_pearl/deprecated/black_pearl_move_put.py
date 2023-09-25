@@ -3,19 +3,18 @@
 '''
 RETRIEVE PATH NAME SYS.ARGV[1] FROM CRON LAUNCH
 
-Script to manage retrieval of Ingest jobs from Black Pearl ingest
+Script to manage retrieval of Ingest jobs from black_pearl_ingest
 folders and PUT data to Black Pearl tape library
 
 Script actions:
-1. Identify supply path and collection for bucket selection
-2. Adds items found top level in black_pearl_(netflix_)ingest to dated ingest
+1. Adds items found top level in black_pearl_ingest to dated ingest
    subfolder until the total size of the folder exceeds upload size,
    using while loop to count total subfolder size.
-3. When exceeding upload size, the script takes subfolder contents
+2. When exceeding upload size, the script takes subfolder contents
    and batch PUTs to Black Pearl using ds3 client.
-4. Once complete iterate returned job ids, and request that a
+3. Once complete iterate returned job ids, and request that a
    notification JSON is issued to validate PUT success.
-5. Use receieved job_id to rename the PUT subfolder.
+4. Use receieved job_id to rename the PUT subfolder.
 
 Threads hardcoded to 3 per script run / 5000 objects per job
 
@@ -36,11 +35,11 @@ from ds3 import ds3, ds3Helpers
 # Global vars
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
+BUCKET = 'imagen'
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 INGEST_CONFIG = os.environ['INGEST_SIZE']
 JSON_END = os.environ['JSON_END_POINT']
-DPI_BUCKETS = os.environ['DPI_BUCKET']
 
 # Setup logging
 log_name = sys.argv[1].replace("/", '_')
@@ -69,35 +68,6 @@ def load_yaml(file):
         return yaml.safe_load(config_file)
 
 
-def get_buckets(bucket_collection):
-    '''
-    Read JSON list return
-    key_value and list of others
-    '''
-    bucket_list = []
-    key_bucket = ''
-
-    with open(DPI_BUCKETS) as data:
-        bucket_data = json.load(data)
-    if bucket_collection == 'netflix':
-        for key, value in bucket_data.items():
-            if bucket_collection in key:
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-    elif bucket_collection == 'bfi':
-        for key, value in bucket_data.items():
-            if 'preservation' in key:
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-            # Imagen path read only now
-            if 'imagen' in key:
-                bucket_list.append(key)
-
-    return key_bucket, bucket_list
-
-
 def get_size(fpath):
     '''
     Check the size of given folder path
@@ -112,24 +82,19 @@ def get_size(fpath):
     return byte_size
 
 
-def check_bp_status(fname, bucket_list):
+def check_bp_status(fname):
     '''
-    Look up filename in BP buckets
-    to avoid multiple ingest of files
+    Look up filename in BP to avoide
+    multiple ingest of files
     '''
+    query = ds3.HeadObjectRequest(BUCKET, fname)
+    result = CLIENT.head_object(query)
 
-    for bucket in bucket_list:
-        query = ds3.HeadObjectRequest(bucket, fname)
-        result = CLIENT.head_object(query)
-        # Only return false if DOESNTEXIST is missing, eg file found
-        if 'DOESNTEXIST' not in str(result.result):
-            logger.info("File %s found in Black Pearl bucket %s", fname, bucket)
-            return False
-
-    return True
+    if 'DOESNTEXIST' in str(result.result):
+        return True
 
 
-def move_to_ingest_folder(folderpth, file_list, upload_size, autoingest, bucket_list):
+def move_to_ingest_folder(folderpth, file_list, upload_size, autoingest):
     '''
     Runs while loop and moves upto 2TB folder size
     End when 2TB reached or files run out
@@ -138,7 +103,7 @@ def move_to_ingest_folder(folderpth, file_list, upload_size, autoingest, bucket_
     logger.info("move_to_ingest_folder(): Moving files to %s", folderpth)
 
     for file in file_list:
-        status = check_bp_status(file, bucket_list)
+        status = check_bp_status(file)
         if not status:
             logger.warning("move_to_ingest_folder(): Skipping. File already found in Black Pearl: %s", file)
             continue
@@ -154,7 +119,7 @@ def move_to_ingest_folder(folderpth, file_list, upload_size, autoingest, bucket_
     for f in remove_list:
         if f in file_list:
             file_list.remove(f)
-    logger.info("move_to_ingest_folder(): Revised file list in Black Pearl ingest folder: %s", file_list)
+    logger.info("move_to_ingest_folder(): Revised file list in black_pearl_ingest folder: %s", file_list)
 
     return file_list
 
@@ -201,44 +166,34 @@ def check_folder_age(fname):
 
 def main():
     '''
-    Access Black Pearl ingest folders, move items into subfolder
+    Access black_pearl_ingest folder, move items into subfolder
     If subfolder size exceeds 'upload_size', trigger put_dir to send
-    the contents to BP bucket in one block. If subfolder doesn't exceed
+    the contents to BP in one block. If subfolder doesn't exceed
     'upload_size' (specified by INGEST_CONFIG) leave for next pass.
     '''
     if not sys.argv[1]:
         sys.exit("Missing launch path, script exiting")
 
-    upload_size = fullpath = autoingest = bucket_collection = ''
-    if 'qnap09_netflix' in sys.argv[1]:
-        fullpath = os.environ['NETFLIX_INGEST_PTH']
-        upload_size = 1099511627776
-        autoingest = os.path.join(fullpath, os.environ['BP_INGEST_NETFLIX'])
-        bucket_collection = 'netflix'
-    else:
-        # Retrieve an upload size limit in bytes
-        data_sizes = load_yaml(INGEST_CONFIG)
-        hosts = data_sizes['Host_size']
-        for host in hosts:
-            for key, val in host.items():
-                if str(sys.argv[1]) in key:
-                    fullpath = key
-                    upload_size = int(val)
-        autoingest = os.path.join(fullpath, os.environ['BP_INGEST'])
-        bucket_collection = 'bfi'
-    print(f"*** Bucket collection: {bucket_collection}")
+    # Retrieve an upload size limit in bytes
+    upload_size = fullpath = ''
+    data_sizes = load_yaml(INGEST_CONFIG)
+    hosts = data_sizes['Host_size']
+    for host in hosts:
+        for key, val in host.items():
+            if str(sys.argv[1]) in key:
+                fullpath = key
+                upload_size = int(val)
     print(f"Upload size: {upload_size} bytes")
     print(f"Fullpath: {fullpath}")
-
-    if not os.path.exists(autoingest):
-        logger.warning("Complication with autoingest path: %s", autoingest)
+    if not fullpath:
         sys.exit('Supplied argument did not match path')
+
+    # Build autoingest path from supplied arg
+    autoingest = os.path.join(fullpath, os.environ['BP_INGEST'])
+
     if not upload_size:
         logger.warning("Error retrieving upload size from DPI INGEST yaml")
         sys.exit()
-
-    # Get current bucket name for bucket_collection type
-    bucket, bucket_list = get_buckets(bucket_collection)
 
     # Get initial filenames / foldernames
     files = [f for f in os.listdir(autoingest) if os.path.isfile(os.path.join(autoingest, f))]
@@ -262,8 +217,8 @@ def main():
             days_old = check_folder_age(fname)
             logs.append(f"Folder {folder} is {days_old} days old")
             if days_old >= 1:
-                logs.append(f"Ingest folder over {days_old} days old - moving to Black Pearl ingest bucket {bucket}.")
-                job_list = put_dir(folderpth, bucket)
+                logs.append(f"Ingest folder over {days_old} days old - moving to Black Pearl ingest.")
+                job_list = put_dir(folderpth)
             else:
                 logs.append("Ingest folder not over 24 hours old. Leaving for more files to be added.")
                 logger_write(logs)
@@ -303,9 +258,9 @@ def main():
             logs.append("No suitable ingest folder exists, creating new one...")
             folderpth = create_folderpth(autoingest)
 
-        # Start move to folderpth now identified
+        # Start move to folderpth now identifed
         logs.append(f"Ingest folder selected: {folderpth}")
-        files_remaining = move_to_ingest_folder(folderpth, files, upload_size, autoingest, bucket_list)
+        files_remaining = move_to_ingest_folder(folderpth, files, upload_size, autoingest)
         if files_remaining is None:
             logs.append("Problem with folder size extraction in get_size().")
             logger_write(logs)
@@ -315,16 +270,16 @@ def main():
         fsize = get_size(folderpth)
         if fsize > upload_size:
             # Ensure ingest folder is now pushed to black pearl
-            logs.append(f"Starting move of folder path to Black Pearl ingest bucket {bucket}")
-            job_list = put_dir(folderpth, bucket)
+            logs.append("Starting move of folder path to Black Pearl ingest")
+            job_list = put_dir(folderpth)
         else:
             # Check how old ingest folder is, if over 1 day push anyway
             fname = os.path.split(folderpth)[1]
             days_old = check_folder_age(fname)
             logs.append("Folder under min ingest size, checking how long since creation...")
             if days_old >= 1:
-                logs.append(f"Over one day old, moving to Black Pearl ingest bucket {bucket}")
-                job_list = put_dir(folderpth, bucket)
+                logs.append("Over one day old, moving to Black Pearl ingest")
+                job_list = put_dir(folderpth)
             else:
                 logs.append("Skipping: Folder not over 1 day old.")
                 logger_write(logs)
@@ -340,7 +295,7 @@ def main():
         logs.append(f"Successfully written data to BP. Job list for folder: {job_list}")
 
         if not files_remaining:
-            logs.append("No files remaining in Black Pearl ingest folder, script exiting.")
+            logs.append("No files remaining in black_pearl_ingest folder, script exiting.")
 
         logs.append("More files to process, restarting move sequence.\n")
         files = files_remaining
@@ -360,13 +315,13 @@ def logger_write(logs):
             logger.info(line)
 
 
-def put_dir(directory_pth, bucket_choice):
+def put_dir(directory_pth):
     '''
     Add the directory to black pearl using helper (no MD5)
     Retrieve job number and launch json notification
     '''
     try:
-        put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=bucket_choice, objects_per_bp_job=5000, max_threads=3)
+        put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=BUCKET, objects_per_bp_job=5000, max_threads=3)
     except Exception as err:
         logger.error('Exception: %s', err)
         print('Exception: %s', err)

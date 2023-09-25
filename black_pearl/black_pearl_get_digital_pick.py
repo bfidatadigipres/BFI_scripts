@@ -22,7 +22,7 @@ Script actions:
       ii. Checks if filename is first part in many part wholes, builds list
       iii. Extact each filename from imagen.media.original_filename field of Media record
       iv. Check digital_pick.csv to see if filename already been downloaded
-      v. Launch BP download and receive BP job ID
+      v. Launch BP download using preservation_bucket entry and receive BP job ID
       vi. Check new download path/file exists.
       vii. If yes, write particular file data to digital_pick.csv
    e. Create XML payload with new DPI download date message, prepended to
@@ -54,7 +54,6 @@ import adlib
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
-BUCKET = "imagen"
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 
@@ -220,14 +219,16 @@ def get_child_ob_num(priref):
 
 def get_media_original_filename(search):
     '''
-    Retrieve the child's object number from workflow
+    Retrieve the first returned media record
+    for a match against object.object_number
+    (may return many)
     '''
     query = {
         'database': 'media',
         'search': search,
         'limit': '0',
         'output': 'json',
-        'fields': 'imagen.media.original_filename, reference_number'
+        'fields': 'imagen.media.original_filename, reference_number, preservation_bucket'
     }
 
     try:
@@ -245,8 +246,45 @@ def get_media_original_filename(search):
         ref_num = query_result.records[0]['reference_number'][0]
     except (IndexError, TypeError, KeyError):
         ref_num = ''
+    try:
+        bucket = query_result.records[0]['preservation_bucket'][0]
+    except (IndexError, TypeError, KeyError):
+        bucket = ''
 
-    return orig_fname, ref_num
+    if len(bucket) < 3:
+        bucket = 'imagen'
+
+    return orig_fname, ref_num, bucket
+
+
+def bucket_check(bucket, filename):
+    '''
+    Check CID media record that bucket
+    matches for all parts
+    '''
+    query = {
+        'database': 'media',
+        'search': f'reference_number="{filename}"',
+        'limit': '1',
+        'output': 'json',
+        'fields': 'preservation_bucket'
+    }
+
+    try:
+        query_result = CID.get(query)
+    except Exception as err:
+        LOGGER.exception("get_media_original_filename: Unable to retrieve Media data upto: %s", err)
+        print(err)
+        query_result = None
+    try:
+        download_bucket = query_result.records[0]['preservation_bucket'][0]
+    except (IndexError, TypeError, KeyError):
+        download_bucket = ''
+
+    if len(download_bucket) > 3:
+        return download_bucket
+    else:
+        return bucket
 
 
 def get_missing_part_names(filename):
@@ -268,33 +306,33 @@ def get_missing_part_names(filename):
     if len(part) == 2:
         for count in range(2, int(whole) + 1):
             new_fname = f"{fname}_{str(count).zfill(2)}of{whole}{ext}"
-            orig_name, ref_num = get_media_original_filename(f"imagen.media.original_filename={new_fname}")
+            orig_name, ref_num, bucket = get_media_original_filename(f"imagen.media.original_filename={new_fname}")
             if not ref_num:
                 print("Skipping No Digital Media record found for file {new_fname}")
                 continue
             print(f"CID Digital media record found. Ingest name {orig_name} Reference number {ref_num}")
-            fname_list.append(f"{new_fname}:{ref_num}")
+            fname_list.append(f"{new_fname}:{ref_num}:{bucket}")
     elif len(part) == 3:
         for count in range(2, int(whole) + 1):
             new_fname = f"{fname}_{str(count).zfill(3)}of{whole}{ext}"
-            orig_name, ref_num = get_media_original_filename(f"imagen.media.original_filename={new_fname}")
+            orig_name, ref_num, bucket = get_media_original_filename(f"imagen.media.original_filename={new_fname}")
             if not ref_num:
                 print("Skipping No Digital Media record found for file {new_fname}")
                 continue
-            fname_list.append(f"{new_fname}:{ref_num}")
+            fname_list.append(f"{new_fname}:{ref_num}:{bucket}")
     else:
         print('Unanticpated part whole number length. Script update needed')
 
     return fname_list
 
 
-def get_bp_md5(fname):
+def get_bp_md5(fname, bucket):
     '''
     Fetch BP checksum to compare
     to new local MD5
     '''
     md5 = ''
-    query = ds3.HeadObjectRequest(BUCKET, fname)
+    query = ds3.HeadObjectRequest(bucket, fname)
     result = CLIENT.head_object(query)
     try:
         md5 = result.response.msg['ETag']
@@ -304,7 +342,7 @@ def get_bp_md5(fname):
         return md5.replace('"', '')
 
 
-def make_check_md5(fpath, fname):
+def make_check_md5(fpath, fname, bucket):
     '''
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
@@ -321,7 +359,7 @@ def make_check_md5(fpath, fname):
     except Exception as err:
         print(err)
 
-    local_checksum = get_bp_md5(fname)
+    local_checksum = get_bp_md5(fname, bucket)
     print(f"Created from download: {download_checksum} | Retrieved from BP: {local_checksum}")
     return str(download_checksum), str(local_checksum)
 
@@ -396,7 +434,7 @@ def main():
         for child_priref in children:
             child_ob_num = get_child_ob_num(child_priref)
             LOGGER.info("Child object number returned from description field: <%s>", child_ob_num)
-            filename, ref_num = get_media_original_filename(f"object.object_number='{child_ob_num}'")
+            filename, ref_num, bucket = get_media_original_filename(f"object.object_number='{child_ob_num}'")
             print(child_priref, child_ob_num, filename, ref_num)
             LOGGER.info("Looking at child object number %s - priref %s", child_ob_num, child_priref)
             if not filename:
@@ -440,12 +478,12 @@ def main():
 
             # Call up BP and get the file object
             if filename not in downloaded_fnames:
-                download_job_id = download_bp_object(download_fname, outpath)
+                download_job_id = download_bp_object(download_fname, outpath, bucket)
                 if os.path.exists(os.path.join(outpath, download_fname)):
                     # Write successful download to CSV
                     if umid:
                         os.rename(os.path.join(outpath, download_fname), os.path.join(outpath, filename))
-                    download_checksum, bp_checksum = make_check_md5(os.path.join(outpath, filename), download_fname)
+                    download_checksum, bp_checksum = make_check_md5(os.path.join(outpath, filename), download_fname, bucket)
                     if len(bp_checksum) == 0 or len(download_checksum) == 0:
                         LOGGER.warning("Checksums could not be retrieved %s | %s. Writing warning to checksum_failure.log", download_checksum, bp_checksum)
                         checksum_log(f"Error accessing checksum for {filename} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}")
@@ -467,7 +505,7 @@ def main():
             if parts_downloads:
                 LOGGER.info('Multiple parts need to be downloaded for this job')
                 for download_fname_part in parts_downloads:
-                    part_fname, part_umid = download_fname_part.split(':')
+                    part_fname, part_umid, download_bucket = download_fname_part.split(':')
                     if part_fname in downloaded_fnames:
                         LOGGER.info("Skipping this item as already downloaded: %s", part_fname)
                         continue
@@ -475,13 +513,14 @@ def main():
                         dpart_fname = part_fname
                     else:
                         dpart_fname = part_umid
-                    d_job_id = download_bp_object(dpart_fname, outpath)
+                    # check bucket for all parts, can't assume they match
+                    d_job_id = download_bp_object(dpart_fname, outpath, download_bucket)
                     if os.path.exists(os.path.join(outpath, dpart_fname)):
                         # Write successful download to CSV
                         if part_fname != dpart_fname:
                             os.rename(os.path.join(outpath, dpart_fname), os.path.join(outpath, part_fname))
                         # Make checksum test
-                        download_checksum, bp_checksum = make_check_md5(os.path.join(outpath, part_fname), dpart_fname)
+                        download_checksum, bp_checksum = make_check_md5(os.path.join(outpath, part_fname), dpart_fname, download_bucket)
                         if bp_checksum is None or download_checksum is None:
                             LOGGER.warning("Checksums could not be retrieved %s | %s. Writing warning to checksum_failure.log", download_checksum, bp_checksum)
                             checksum_log(f"Error accessing checksum for {part_fname} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}")
@@ -525,15 +564,18 @@ def main():
     LOGGER.info("=========== Digital Pick script end =============\n")
 
 
-def download_bp_object(fname, outpath):
+def download_bp_object(fname, outpath, bucket):
     '''
     Download the BP object from SpectraLogic
     tape library and save to outpath
     '''
+    if bucket == '':
+        bucket = 'imagen'
+
     file_path = os.path.join(outpath, fname)
     get_objects = [ds3Helpers.HelperGetObject(fname, file_path)]
     try:
-        get_job_id = HELPER.get_objects(get_objects, BUCKET)
+        get_job_id = HELPER.get_objects(get_objects, bucket)
         print(f"BP get job ID: {get_job_id}")
     except Exception as err:
         LOGGER.warning("Unable to retrieve file %s from Black Pearl", fname)

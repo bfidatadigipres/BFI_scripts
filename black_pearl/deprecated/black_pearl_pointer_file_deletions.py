@@ -56,6 +56,7 @@ import adlib
 # Global links / set up ds3 and adlib
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
+BUCKET = 'imagen'
 CONTROL_JSON = os.environ['CONTROL_JSON']
 MP4_ACCESS1 = os.environ['MP4_ACCESS_REDIRECT']
 MP4_ACCESS2 = os.environ['MP4_ACCESS2']
@@ -134,7 +135,7 @@ def get_media_record_data(priref):
     '''
     query = {'database': 'media',
              'search': f'priref="{priref}"',
-             'fields': 'imagen.media.original_filename, access_rendition.mp4, reference_number, input.date, notes, preservation_bucket',
+             'fields': 'imagen.media.original_filename, access_rendition.mp4, reference_number, input.date, notes',
              'limit': '1',
              'output': 'json'}
 
@@ -166,12 +167,7 @@ def get_media_record_data(priref):
         filename = result.records[0]['imagen.media.original_filename'][0]
     except (TypeError, IndexError, KeyError):
         filename = ''
-    try:
-        bucket = result.records[0]['preservation_bucket'][0]
-    except (TypeError, IndexError, KeyError):
-        bucket = ''
-
-    return [ref_num, access_mp4, input_date, approved, filename, bucket]
+    return [ref_num, access_mp4, input_date, approved, filename]
 
 
 def get_version_id(ref_num):
@@ -196,11 +192,11 @@ def get_version_id(ref_num):
     return version_id
 
 
-def get_etag(ref_num, bucket):
+def get_etag(ref_num):
     '''
     Get confirmation of deletion
     '''
-    resp = ds3.HeadObjectRequest(bucket, ref_num)
+    resp = ds3.HeadObjectRequest(BUCKET, ref_num)
     result = CLIENT.head_object(resp)
     etag = result.response.msg['ETag']
     if etag is None:
@@ -239,7 +235,7 @@ def main():
     print(f"There are *{len(priref_list)}* priref(s) to be processed:\n")
     for key, val in deletion_dictionary.items():
         print(f"Priref '{key}'. File reference number '{val[0]}'.")
-        print(f"{val[4]}: Access MP4 '{val[1]}'. Input date '{val[2]}'. Approval status '{val[3][:15]}'. Bucket location in BP: '{val[5]}'.")
+        print(f"{val[4]}: Access MP4 '{val[1]}'. Input date '{val[2]}'. Approval status '{val[3][:15]}'.")
         print("---------------------------------------------------------------------")
 
     time.sleep(5)
@@ -256,7 +252,6 @@ def main():
         input_date = val[2]
         approved = val[3]
         fname = val[4]
-        bucket = val[5]
         print(f"Assessing {fname}: Priref {key}, Reference {ref_num}")
         LOGGER.info("Assessing %s: Priref %s. Filename %s", ref_num, priref, fname)
 
@@ -279,7 +274,7 @@ def main():
                 continue
             print(f"Version id retrieved from Black Pearl: {version_id}")
 
-            success = delete_black_pearl_object(ref_num, version_id, bucket)
+            success = delete_black_pearl_object(ref_num, version_id)
             if not success:
                 LOGGER.warning("Deletion of asset failed: %s. Priref %s. Version id %s", ref_num, priref, version_id)
                 print(f"WARNING: Deletion of asset failed: {ref_num}.\n")
@@ -290,10 +285,10 @@ def main():
                 continue
 
             # Check for head object of deleted asset for confirmation
-            delete_check = get_etag(ref_num, bucket)
+            delete_check = get_etag(ref_num)
             if delete_check == 'Deleted':
-                print(f"** DELETED FROM BLACK PEARL: {ref_num} - from bucket {bucket}")
-                LOGGER.info("** DELETED FROM BLACK PEARL: %s - from bucket %s", ref_num, bucket)
+                print(f"** DELETED FROM BLACK PEARL: {ref_num}")
+                LOGGER.info("** DELETED FROM BLACK PEARL: %s", ref_num)
                 deleted.append(f"{key} {ref_num}")
                 confirmation.append("<notes>Black Pearl asset deleted</notes>")
                 succ = cid_media_append(priref, confirmation)
@@ -353,13 +348,13 @@ def main():
     LOGGER.info("----------- Black Pearl pointer file deletions script END --------------\n")
 
 
-def delete_black_pearl_object(ref_num, version, bucket):
+def delete_black_pearl_object(ref_num, version):
     '''
     Receive reference number and initiate
     deletion of object
     '''
     try:
-        request = ds3.DeleteObjectRequest(bucket, ref_num, version_id=version)
+        request = ds3.DeleteObjectRequest(BUCKET, ref_num, version_id=version)
         job_deletion = CLIENT.delete_object(request)
         return job_deletion
     except Exception as exc:

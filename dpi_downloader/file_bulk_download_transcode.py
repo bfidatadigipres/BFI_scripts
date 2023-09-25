@@ -396,6 +396,10 @@ def main():
                 LOGGER.warning("Filename is not recognised, no matching CID Media record")
                 update_table(fname, transcode, 'Filename not in CID')
                 continue
+            if 'Netflix' in bucket:
+                LOGGER.warning("Filename is a Netflix item and will not be downloaded")
+                update_table(fname, transcode, 'Filename not accessible')
+                continue
             LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)
 
             # Check if download already exists
@@ -478,6 +482,10 @@ def main():
                         print(f"Media priref {media_priref} Filename {filename} Original name {orig_fname} in bucket {bucket}")
                         if not len(filename) > 0:
                             LOGGER.warning("Filename is not recognised, no matching CID Media record")
+                            continue
+                        if 'Netflix' in bucket:
+                            LOGGER.warning("Filename is a Netflix item and will not be downloaded")
+                            update_table(fname, transcode, 'Filename not accessible')
                             continue
                         LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)
 

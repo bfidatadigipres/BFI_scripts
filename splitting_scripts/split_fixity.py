@@ -34,11 +34,11 @@ import datetime
 import subprocess
 
 # Private packages
+sys.path.append(os.environ['CODE'])
+import adlib
 import document_item
 import models
 import clipmd5
-sys.path.append(os.environ['CODE'])
-import adlib
 
 # GLOBAL PATHS FROM SYS.ARGV
 try:
@@ -60,6 +60,7 @@ SOURCE, NUM = os.path.split(TARGET)  # Source folder
 OUTPUT = os.path.join(os.path.split(SOURCE)[0], 'segmented')
 MEDIA_TARGET = os.path.split(OUTPUT)[0]  # Processing folder
 AUTOINGEST = os.path.join(os.path.split(MEDIA_TARGET)[0], 'autoingest')
+LOG_PATH = os.environ['SCRIPT_LOG']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger(f'split_fixity_{NUM}')
@@ -233,17 +234,6 @@ def main():
             logger.info('%s\t* Item priref is %s and object number is %s', filepath, item_priref, object_number)
             print(f"Item to be processed: {item_priref} {object_number}")
 
-            # If destination file already exists, move on
-            of = f'{OUTPUT}/{id_}/{object_number}.{extension}'
-            logger.info('%s\t* Destination for new file: %s', filepath, of)
-            if os.path.isfile(of):
-                if segments:
-                    logger.warning('%s\tDestination file already exists for segmented file. Deleting: %s', filepath, of)
-                    os.remove(of)
-                else:
-                    logger.warning('%s\tDestination file already exists for non-segmented file: %s', filepath, of)
-                    continue
-
             # Check whether object_number derivative has been documented already
             print(f"Launching document_item_h22.py to check if CID item record exists: {object_number}")
             try:
@@ -300,6 +290,13 @@ def main():
                             logger.warning("%s\t* Skipping. Part found already in autoingest: %s.", filepath, check_filename)
                             continue
                 logger.info("%s\t* Item %s not already created. Clear to continue progress.", filepath, check_filename)
+
+            # If destination file already exists, move on
+            of = f'{OUTPUT}/{id_}/{object_number}.{extension}'
+            logger.info('%s\t* Destination for new file: %s', filepath, of)
+            if os.path.isfile(of):
+                logger.warning('%s\tDestination file already exists for file: %s', filepath, of)
+                continue
 
             # Programme in/out (seconds)
             print("Get in / out from segment data")

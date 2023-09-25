@@ -2,12 +2,7 @@
 
 '''
 Called by splitting scripts
-Creates the CID Item records for
-new split tapes if they don't
-already exist. For H22 workflow.
-
 Refactored to Py3
-Joanna White
 June 2022
 '''
 
@@ -24,6 +19,17 @@ import adlib
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
+
+
+def log_print(data):
+    '''
+    Temp func to track failures in
+    CID item record creation
+    '''
+    with open('/home/datadigipres/code/git/BFIscripts/splitting_scripts/h22_item_records.log', 'a') as file:
+        file.write(f"{datetime.datetime.now().isoformat()}\n")
+        file.write(f"{data}\n")
+        file.write("--------------------------------\n")
 
 
 @tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
@@ -53,18 +59,20 @@ def new_or_existing(source_object_number, segments, duration, extension, note=No
 
     result = already_exists(source_object_number)
     if result:
+        log_print(f"already_exists(): {result.records}")
         if result.hits == 1:
             destination_object = result.records[0]['object_number'][0]
-        else:
-            destination_object = None
-            raise Exception('Expected one item record to exist, multiple found')
+            log_print(f"new_or_existing(): Found CID item record - {destination_object}")
+            return destination_object
+        log_print(f"new_or_existing(): Multiple records found {result.records}")
+        return None
         # Append segmentation information
         # Increment total item duration
     else:
         # Create new
+        log_print(f"new_or_existing(): No record found {source_object_number}, creating new one")
         destination_object = new(source_object_number, segments, duration, extension, note)
-
-    return destination_object
+        return destination_object
 
 
 @tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
@@ -78,7 +86,7 @@ def already_exists(source_object_number):
 
     try:
         result = CID.get(q)
-        print(f"already_exists(): {result.records}")
+        log_print(f"already_exists(): {result.records}")
     except Exception as exc:
         raise Exception from exc
 
@@ -151,6 +159,7 @@ def new(source_object_number, segments, duration, extension, note=None):
         if response.records:
             try:
                 new_object = response.records[0]['object_number'][0]
+                log_print(f"new(): New record created: {new_object} for source object {source_object_number}")
                 return new_object
             except Exception as exc:
                 raise Exception('Failed to retrieve new Object Number') from exc

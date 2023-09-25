@@ -24,6 +24,7 @@ Refactored for Python3
 June 2022
 '''
 
+# Public packages
 import os
 import sys
 import json
@@ -33,12 +34,12 @@ import logging
 import datetime
 import subprocess
 
-# BFI imports
+# Private packages
+sys.path.append(os.environ['CODE'])
+import adlib
 import document_item
 import models
 import clipmd5
-sys.path.append(os.environ['CODE'])
-import adlib
 
 # GLOBAL PATHS FROM SYS.ARGV
 try:

@@ -18,7 +18,7 @@ June 2021
 Refactored 2023
 '''
 
-# Public packages
+# Public imports
 import os
 import sys
 import json
@@ -26,11 +26,11 @@ import logging
 from datetime import datetime, timezone
 import pytz
 
-# Private packages
-import document_item
-import models
+# Private imports
 sys.path.append(os.environ['CODE'])
 import adlib
+import document_item
+import models
 
 # Logging
 LOGS = os.environ['SCRIPT_LOG']

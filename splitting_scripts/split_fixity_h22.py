@@ -36,7 +36,6 @@ import subprocess
 import document_item_h22
 import models
 import clipmd5
-sys.path.append(os.environ['CODE'])
 import adlib
 
 # GLOBAL PATHS FROM SYS.ARGV
@@ -232,21 +231,6 @@ def main():
             logger.info('%s\t* Item priref is %s and object number is %s', filepath, item_priref, object_number)
             print(f"Item to be processed: {item_priref} {object_number}")
 
-            # If destination file already exists, move on
-            of = f'{OUTPUT}/{id_}/{object_number}.{extension}'
-            logger.info('%s\t* Destination for new file: %s', filepath, of)
-            print(f"New output file path created: {of}")
-            if os.path.isfile(of):
-                print("Out path and filename already exist as file!")
-                if segments:
-                    logger.warning('%s\tDestination file already exists for segmented file. Deleting: %s', filepath, of)
-                    print("Has segments, deleting previous version to allow re-creation")
-                    os.remove(of)
-                else:
-                    logger.warning('%s\tDestination file already exists for non-segmented file: %s', filepath, of)
-                    print("Has no segments, skipping deletion")
-                    continue
-
             # Check whether object_number derivative has been documented already
             print(f"Launching document_item_h22.py to check if CID item record exists: {object_number}")
             try:
@@ -303,6 +287,21 @@ def main():
                             logger.warning("%s\t* Skipping. Part found already in autoingest: %s.", filepath, check_filename)
                             continue
                 logger.info("%s\t* Item %s not already created. Clear to continue progress.", filepath, check_filename)
+
+            # If destination file already exists, move on
+            of = f'{OUTPUT}/{id_}/{object_number}.{extension}'
+            logger.info('%s\t* Destination for new file: %s', filepath, of)
+            print(f"New output file path created: {of}")
+            if os.path.isfile(of):
+                print("Out path and filename already exist as file!")
+                if segments:
+                    logger.warning('%s\tDestination file already exists for segmented file. Deleting: %s', filepath, of)
+                    print("Has segments, deleting previous version to allow re-creation")
+                    os.remove(of)
+                else:
+                    logger.warning('%s\tDestination file already exists for non-segmented file: %s', filepath, of)
+                    print("Has no segments, skipping deletion")
+                    continue
 
             # Programme in/out (seconds)
             print("Get in / out from segment data")

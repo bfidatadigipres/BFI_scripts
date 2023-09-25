@@ -29,6 +29,7 @@ from PIL import Image
 sys.path.append(os.environ['CODE'])
 import adlib
 
+# Global variables
 LOGS = os.environ['LOG_PATH']
 LOG_PATH = os.path.join(LOGS, 'splitting_models.log')
 DPI_PATH = os.environ['DPI_API']

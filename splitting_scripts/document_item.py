@@ -2,21 +2,16 @@
 
 '''
 Called by splitting scripts
-Creates the CID Item records for
-new split tapes if they don't
-already exist. OFCOM usage.
-
 Refactored to Py3
-Joanna White
 June 2022
 '''
 
-# Public packages
-import os
-import tenacity
-import datetime
-
 # Private packages
+import os
+import datetime
+import tenacity
+
+# Public packages
 sys.path.append(os.environ['CODE'])
 import adlib
 
@@ -24,7 +19,6 @@ import adlib
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
-CODE_PTH = os.environ['CODE']
 
 
 def log_print(data):
@@ -32,7 +26,7 @@ def log_print(data):
     Temp func to track failures in
     CID item record creation
     '''
-    with open(os.path.join(CODE_PTH, 'splitting_scripts/F47_item_records.log'), 'a') as file:
+    with open('/home/datadigipres/code/git/BFIscripts/splitting_scripts/F47_item_records.log', 'a') as file:
         file.write(f"{datetime.datetime.now().isoformat()}\n")
         file.write(f"{data}\n")
         file.write("--------------------------------\n")
@@ -70,7 +64,7 @@ def new_or_existing(source_object_number, segments, duration, extension, note=No
             destination_object = result.records[0]['object_number'][0]
         else:
             destination_object = None
-            raise Exception('Expected one item record to exist, multiple found')
+            print('Expected one item record to exist, multiple found')
         # Append segmentation information
         # Increment total item duration
 
@@ -91,7 +85,8 @@ def new_or_existing_no_segments(source_object_number, extension, note=None):
             destination_object = result.records[0]['object_number'][0]
         else:
             destination_object = None
-            raise Exception('Expected one item record to exist, multiple found')
+            print('Expected one item record to exist, multiple found')
+
         # Append segmentation information
         # Increment total item duration
 
@@ -112,7 +107,8 @@ def new_or_existing_no_segments_mopup(source_object_number, extension, grouping,
             destination_object = result.records[0]['object_number'][0]
         else:
             destination_object = None
-            raise Exception('Expected one item record to exist, multiple found')
+            print('Expected one item record to exist, multiple found')
+
         # Append segmentation information
         # Increment total item duration
 
@@ -129,7 +125,7 @@ def already_exists(source_object_number):
 
     q = {'database': 'items',
          'search': f'(source_item->(object_number="{source_object_number}")) and grouping.lref=397987',
-         'limit': '1',
+         'limit': '0',
          'output': 'json'}
 
     try:

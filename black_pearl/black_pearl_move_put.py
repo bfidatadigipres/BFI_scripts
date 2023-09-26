@@ -382,7 +382,7 @@ def put_dir(directory_pth, bucket_choice):
     return job_list
 
 
-sdef pth_rename(folderpth, job_list):
+def pth_rename(folderpth, job_list):
     '''
     Take folder path and change name for job_list
     '''

@@ -658,9 +658,9 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             logger.info("MD5 MATCH: Local %s and BP ETag %s", local_md5, remote_md5)
             md5_match = True
 
-        # Prepare move path to not include XML/MXF for transcoding
+        # Prepare move path to not include any files for transcoding
         root_path = os.path.split(autoingest)[0]
-        if 'black_pearl_netflix_ingest' in autoingest and not file.endswith(('.mov', '.MOV')):
+        if 'black_pearl_netflix_ingest' in autoingest:
             move_path = os.path.join(root_path, 'completed', file)
         else:
             move_path = os.path.join(root_path, 'transcode', file)

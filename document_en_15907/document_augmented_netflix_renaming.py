@@ -37,18 +37,6 @@ Steps:
    where new put scripts ensure file is moved to
    the netflix01 bucket.
 
-NOTE: The CID item record digital.acquired_filename
-      entry is essential to let the CID media record
-      have the digital.acquired_filename populated
-      for the XML/MXF original name. So step 6 should
-      be robust with good reporting if failures occur.
-      Notes of original filename/new name must be logged
-      as a back up to this.
-
-FUTURE: This script will need to make new CID item
-      item records in the future for ProRes and subtitle
-      data, and link to the parent manifestation.
-
 Joanna White
 2023
 '''
@@ -255,7 +243,6 @@ def main():
                 LOGGER.warning(" - Please move manually")
             LOGGER.info("%s moved to autoingest path")
 
-        '''
         # Check IMP folder is empty and delete - Is this stage wanted? Waiting to hear from Andy
         contents = list(os.listdir(fpath))
         if len(contents) == 0:
@@ -264,6 +251,8 @@ def main():
         else:
             LOGGER.warning("IMP not empty, leaving in place for checks: %s", fpath)
 
+        '''
+        # Reserving for time being in case of need for ProRes/subtitles
         # Make new item records here (get title, etc from CID item record, parent priref)
         record, item = build_defaults()
         priref_item = create_item(priref_man, data_dct, record, item)
@@ -278,6 +267,7 @@ def main():
 def build_defaults():
     '''
     Build record and item defaults
+    Not active, may not be needed
     '''
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
@@ -326,9 +316,7 @@ def create_digital_original_filenames(priref, folder_name, asset_list_dct):
 
     item_append_dct.extend(item_edit_data)
     LOGGER.info("** Appending data to work record now...")
-    print("*********************")
-    print(item_append_dct)
-    print("*********************")
+    LOGGER.info(name_updates)
 
     result = item_append(priref, item_append_dct)
     if result:

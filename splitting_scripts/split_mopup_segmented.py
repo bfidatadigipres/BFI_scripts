@@ -200,7 +200,7 @@ def main():
             try:
                 new_object = document_item.new_or_existing_no_segments_mopup(object_number, extension, grouping, note=note)
                 logger.info('%s\tGetting MKV CID Item ref for file: %s', filepath, object_number)
-                print(f'{filepath}\tGetting MKV CID Item ref for file: {object_number}')
+                print(f'***** {filepath}\tGetting MKV CID Item ref for file: {object_number}')
             except Exception as err:
                 document_message = f'{filepath}\tFailed to get Matroska Item ref: {object_number}\t{err}'
                 logger.warning(document_message)

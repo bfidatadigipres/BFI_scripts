@@ -8,6 +8,7 @@ June 2022
 
 # Public packages
 import os
+import sys
 import datetime
 import tenacity
 
@@ -96,6 +97,7 @@ def already_exists(source_object_number):
         return None
 
 
+@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new(source_object_number, segments, duration, extension, note=None):
     ''' Create a new item record '''
 

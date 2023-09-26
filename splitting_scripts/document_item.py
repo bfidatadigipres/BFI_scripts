@@ -8,6 +8,7 @@ June 2022
 
 # Private packages
 import os
+import sys
 import datetime
 import tenacity
 
@@ -101,7 +102,7 @@ def new_or_existing_no_segments_mopup(source_object_number, extension, grouping,
     ''' Create a new item record for multi-reeler if one doesn't already exist,
         otherwise return the ID of the existing record '''
 
-    result = already_exists(source_object_number)
+    result = already_exists_grouping(source_object_number, grouping)
     if result:
         if result.hits == 1:
             destination_object = result.records[0]['object_number'][0]
@@ -141,6 +142,29 @@ def already_exists(source_object_number):
         return None
 
 
+@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
+def already_exists_grouping(source_object_number, grouping_lref):
+    ''' Has an F47 record already been created for source? '''
+
+    q = {'database': 'items',
+         'search': f'(source_item->(object_number="{source_object_number}")) and grouping.lref={grouping_lref}',
+         'limit': '0',
+         'output': 'json'}
+
+    try:
+        result = CID.get(q)
+        log_print(f"already_exists(): {result.records}")
+    except Exception as exc:
+        log_print(f"already_exists(): {exc}")
+        raise Exception from exc
+
+    if result.hits >= 1:
+        return result
+    else:
+        return None
+
+
+@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
     '''
     Create a new item record
@@ -209,6 +233,7 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
         raise Exception('Unable to create record') from exc
 
 
+@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new_no_segments(source_object_number, extension, note=None):
     '''
     Create a new item record
@@ -277,6 +302,7 @@ def new_no_segments(source_object_number, extension, note=None):
         raise Exception('Unable to create record') from exc
 
 
+@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new(source_object_number, segments, duration, extension, note=None):
     ''' Create a new item record '''
 

@@ -30,7 +30,7 @@ sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global variables
-LOGS = os.environ['LOG_PATH']
+LOGS = os.environ['SCRIPT_LOG']
 LOG_PATH = os.path.join(LOGS, 'splitting_models.log')
 DPI_PATH = os.environ['DPI_API']
 CID_API = os.environ['CID_API3']

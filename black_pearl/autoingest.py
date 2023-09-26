@@ -366,7 +366,7 @@ def get_buckets(bucket_collection):
                 bucket_list.append(key)
     elif bucket_collection == 'bfi':
         for key, _ in bucket_data.items():
-            if 'Preservation' in key:
+            if 'preservation' in key.lower():
                 bucket_list.append(key)
             # Imagen path read only now
             if 'imagen' in key:
@@ -458,7 +458,7 @@ def ext_in_file_type(ext, priref, log_paths):
         return False
     elif len(file_type) > 1:
         logger.warning('%s\tInvalid <file_type> in Collect record. Just one should be present.', log_paths)
-        print(f'* WARNING extension does not match file_type: {ftype} {file_type}')
+        print(f'* WARNING more than one file_type in CID: {file_type}')
     else:
         logger.warning('%s\tInvalid <file_type> in Collect record', log_paths)
         return False

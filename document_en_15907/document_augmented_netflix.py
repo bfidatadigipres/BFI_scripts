@@ -628,7 +628,7 @@ def main():
         # Create Work/Manifestation if film/programme
         if 'film' in level.lower() or 'programme' in level.lower():
             # Check CID work exists / Make work if needed
-            hits, priref_work, _, _ = cid_check_works(patv_id)
+            hits, priref_work, work_title, work_title_art = cid_check_works(patv_id)
             if int(hits) > 0:
                 print(f"SKIPPING PRIREF FOUND: {priref_work}")
                 LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
@@ -679,7 +679,7 @@ def main():
                     LOGGER.warning("Failure to write contributor data to Work record: %s", priref_work)
 
             # Make monographic manifestation here
-            priref_man = create_manifestation(priref_work, data_dct, record, manifestation)
+            priref_man = create_manifestation(priref_work, work_title, work_title_art, data_dct, record, manifestation)
             if len(priref_man) == 0:
                 LOGGER.warning("Monograph manifestation record creation failed, skipping all further record creations")
                 continue
@@ -687,7 +687,7 @@ def main():
             # Append URLS if present
             append_url_data(priref_work, priref_man, data_dct)
             # Make monographic item record here
-            priref_item = create_item(priref_man, data_dct, record, item)
+            priref_item = create_item(priref_man, work_title, work_title_art, data_dct, record, item)
             if len(priref_item) == 0:
                 LOGGER.warning("Monograph item record creation failed, skipping all further stages")
                 continue
@@ -736,7 +736,7 @@ def main():
                 print(f"** Episode ID: {episode_id} {title}")
 
                 # Check CID work exists / Make work if needed
-                hits, priref_episode = cid_check_works(episode_id)
+                hits, priref_episode, _, _ = cid_check_works(episode_id)
                 if int(hits) > 0:
                     print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
                     LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
@@ -935,7 +935,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
         series_work_values.append({'title.language': 'English'})
         series_work_values.append({'title.type': '05_MAIN'})
     if 'title_article' in series_dct:
-        if series_dct['title_article'] != '-' or series_dct['title_article'] != '':
+        if series_dct['title_article'] != '-' and series_dct['title_article'] != '':
             series_work_values.append({'title.article': series_dct['title_article']})
     if len('patv_id') > 0:
         series_work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
@@ -1026,12 +1026,12 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
         title_check = work_dict['title']
         if title_check.startswith('Episode ') and len(title_check) < 11:
             work_values.append({'title': f"{work_title} {work_dict['title']}"})
-            if len(work_title_art) > 1:
+            if work_title_art != '-' and work_title_art != '':
                 work_values.append({'title.article': work_title_art})
         else:
             work_values.append({'title': work_dict['title']})
             if 'title_article' in work_dict:
-                if work_dict['title_article'] != '-' or work_dict['title_article'] != '':
+                if work_dict['title_article'] != '-' and work_dict['title_article'] != '':
                     work_values.append({'title.article': work_dict['title_article']})
         work_values.append({'title.language': 'English'})
         work_values.append({'title.type': '05_MAIN'})
@@ -1278,7 +1278,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
         else:
             manifestation_values.append({'title': work_dict['title']})
             if 'title_article' in work_dict:
-                if work_dict['title_article'] != '-' or work_dict['title_article'] != '':
+                if work_dict['title_article'] != '-' and work_dict['title_article'] != '':
                     manifestation_values.append({'title.article': work_dict['title_article']})
         manifestation_values.append({'title.language': 'English'})
         manifestation_values.append({'title.type': '05_MAIN'})
@@ -1393,7 +1393,7 @@ def create_item(man_priref, work_title, work_title_art, work_dict, record_defaul
         else:
             item_values.append({'title': work_dict['title']})
             if 'title_article' in work_dict:
-                if work_dict['title_article'] != '-' or work_dict['title_article'] != '':
+                if work_dict['title_article'] != '-' and work_dict['title_article'] != '':
                     item_values.append({'title.article': work_dict['title_article']})
         item_values.append({'title.language': 'English'})
         item_values.append({'title.type': '05_MAIN'})

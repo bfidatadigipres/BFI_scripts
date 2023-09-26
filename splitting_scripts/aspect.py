@@ -28,21 +28,21 @@ import subprocess
 
 # Setup logging
 LOGGER = logging.getLogger('aspect_ratio_triage')
-LOGS = os.environ['LOG_PATH']
-HDLR = logging.FileHandler(os.path.join(LOGS, 'aspect_ratio_triage.log')
+LOGS = os.environ['SCRIPT_LOG']
+HDLR = logging.FileHandler(os.path.join(LOGS, 'aspect_ratio_triage.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 FOLDERS = {
-    f'{os.environ['QNAP_H22']}/processing/segmented/': f'{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/',
-    f'{os.environ['ISILON_VID']}/processing/segmented/': f'{os.environ['AUTOINGEST_IS_VID']}ingest/proxy/video/adjust/',
-    f'{os.environ['QNAP_H22']}/processing/rna_mkv/': f'{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/',
-    f'{os.environ['GRACK_H22']}/processing/rna_mkv/': f'{os.environ['AUTOINGEST_H22']}ingest/proxy/video/adjust/',
-    f'{os.environ['QNAP_08']}/processing/segmented/': f'{os.environ['AUTOINGEST_QNAP08']}ingest/proxy/video/adjust/',
-    f'{os.environ['QNAP_10']}/processing/segmented/': f'{os.environ['AUTOINGEST_QNAP10']}ingest/proxy/video/adjust/',
-    f'{os.environ['QNAP_VID']}/processing/segmented/': f'{os.environ['AUTOINGEST_QNAP01']}ingest/proxy/video/adjust/'
+    f"{os.environ['QNAP_H22']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
+    f"{os.environ['ISILON_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_IS_VID']}ingest/proxy/video/adjust/",
+    f"{os.environ['QNAP_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
+    f"{os.environ['GRACK_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_H22']}ingest/proxy/video/adjust/",
+    f"{os.environ['QNAP_08']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP08']}ingest/proxy/video/adjust/",
+    f"{os.environ['QNAP_10']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP10']}ingest/proxy/video/adjust/",
+    f"{os.environ['QNAP_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP01']}ingest/proxy/video/adjust/"
 }
 
 

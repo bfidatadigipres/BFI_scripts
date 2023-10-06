@@ -212,7 +212,7 @@ def main():
     upload_size = fullpath = autoingest = bucket_collection = ''
     if 'qnap09_netflix' in sys.argv[1]:
         fullpath = os.environ['NETFLIX_INGEST_PTH']
-        upload_size = 1099511627776
+        upload_size = 559511627776
         autoingest = os.path.join(fullpath, os.environ['BP_INGEST_NETFLIX'])
         bucket_collection = 'netflix'
     else:
@@ -228,7 +228,7 @@ def main():
         bucket_collection = 'bfi'
     print(f"*** Bucket collection: {bucket_collection}")
     print(f"Upload size: {upload_size} bytes")
-    print(f"Fullpath: {fullpath}")
+    print(f"Fullpath: {fullpath} {autoingest}")
 
     if not os.path.exists(autoingest):
         logger.warning("Complication with autoingest path: %s", autoingest)

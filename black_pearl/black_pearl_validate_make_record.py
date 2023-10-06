@@ -838,7 +838,8 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
-
+    print(record_data)
+    print(f"Using CUR create_record: database='media', data, output='json', write=True")
     media_priref = ""
 
     try:

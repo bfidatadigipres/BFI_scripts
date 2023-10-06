@@ -11,11 +11,13 @@ Receives IMP folder complete with
 MXF video and audio files, and XML
 metadata files.
 
-Steps:
-1. Finds match for IMP folder name
-   within watch folder, from CID item
-   record, ie 'N-123456'
-2. Creates N_123456_ filename prefix
+1. Searches STORAGE for 'rename_netflix'
+   folders and checks for items with
+   content returning as a folder_list.
+2. Iterates, finds match for IMP folder name
+   within folder, from CID item
+   record, ie 'N-123456'. Creates N_123456_
+   filename prefix
 3. Opens each XML in folder looking
    for string match to '<PackingList'
 4. Iterates <PackingList><AssetList><Asset>
@@ -54,9 +56,9 @@ sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global variables
-STORAGE_PTH = os.environ.get('TRANSCODING')
+STORAGE_PTH = os.environ.get('NETFLIX_INGEST_PTH')
 NETFLIX_PTH = os.environ.get('NETFLIX_PATH')
-NET_INGEST = os.environ.get('NETFLIX_AUTOINGEST')
+NET_INGEST = os.environ.get('NETFLIX_INGEST')
 AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
 STORAGE = os.path.join(STORAGE_PTH, NETFLIX_PTH)
 ADMIN = os.environ.get('ADMIN')
@@ -82,7 +84,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
 
 def cid_check(imp_fname):
     '''
@@ -117,6 +118,36 @@ def cid_check(imp_fname):
     return priref, ob_num, file_type.title()
 
 
+def walk_netflix_folders():
+    '''
+    Collect list of folderpaths
+    for files named rename_netflix
+    '''
+    print(STORAGE)
+    rename_folders = []
+    for root, dirs, _ in os.walk(STORAGE):
+        for dir in dirs:
+            if 'rename_netflix' == dir:
+                rename_folders.append(os.path.join(root, dir))
+    print(f"{len(rename_folders)} rename folder(s) found")
+    folder_list = []
+    for rename_folder in rename_folders:
+        print(rename_folder)
+        folders = os.listdir(rename_folder)
+        if not folders:
+            LOGGER.info("Netflix IMP renaming script. Skipping as rename folder empty: %s", rename_folder)
+            continue
+        for folder in folders:
+            print(folder)
+            fpath = os.path.join(rename_folder, folder)
+            if os.path.isdir(fpath):
+                folder_list.append(os.path.join(rename_folder, folder))
+            else:
+                LOGGER.warning("Netflix IMP renaming script. Non-folder item found in rename_netflix path: %s", fpath)
+
+    return folder_list
+
+
 def main():
     '''
     Check watch folder for IMP folder
@@ -126,14 +157,15 @@ def main():
     read PKL XML for part whole order
     and check contents match Asset list.
     '''
-    folder_list = [x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x))]
+    folder_list = walk_netflix_folders()
     if len(folder_list) == 0:
         LOGGER.info("Netflix IMP renaming script. No folders found.")
         sys.exit()
 
     LOGGER.info("== Document augmented Netflix renaming start =================")
-    for folder in folder_list:
-        fpath = os.path.join(STORAGE, folder)
+    for fpath in folder_list:
+        folder = os.path.split(fpath)[1]
+        LOGGER.info("Folder path found: %s", fpath)
         priref, ob_num, file_type = cid_check(folder.strip())
         print(f"CID item record found: {priref} with matching {file_type.title()}")
 
@@ -165,10 +197,15 @@ def main():
         print(xml_content_all)
         print(packing_list)
         success = xml_item_append(priref, xml_content_all)
-
+        if not success:
+            LOGGER.warning("Problem writing to CID record %s", priref)
+            LOGGER.warning("Skipping further actions: Failed write of XML data")
+            LOGGER.info(xml_content_all)
+            continue
         if not packing_list:
             LOGGER.warning("No PackingList found in folder: %s", fpath)
             continue
+        LOGGER.info("PackingList located and XML data written to CID item record")
 
         # Extracting PackingList content to dict and count
         asset_dct = {}
@@ -223,7 +260,7 @@ def main():
             filepath = os.path.join(fpath, key)
             new_filepath = os.path.join(fpath, value)
             if os.path.isfile(filepath):
-                LOGGER.info("\t-  Renaming %s to new filename %s", key, value)
+                LOGGER.info("\t- Renaming %s to new filename %s", key, value)
                 os.rename(filepath, new_filepath)
                 if not os.path.isfile(new_filepath):
                     LOGGER.warning("\t-  Error renaming file %s!", key)
@@ -233,41 +270,33 @@ def main():
             LOGGER.warning("SKIPPING: Failure to rename files in IMP %s", fpath)
             continue
 
-        # Move to local autoingest black_pearl_ingest_netflix (subfolder for netflix01 bucket put)
+        # Move to local autoingest black_pearl_netflix_ingest (subfolder for netflix01 bucket put)
         LOGGER.info("ALL IMP %s FILES RENAMED SUCCESSFULLY", folder)
+        LOGGER.info("Moving to autoingest:")
         for file in asset_items.values():
             moving_asset = os.path.join(fpath, file)
+            LOGGER.info("\t- %s", moving_asset)
             shutil.move(moving_asset, AUTOINGEST)
             if os.path.isfile(moving_asset):
-                LOGGER.warning("Movement of file %s to %s failed!", moving_asset, AUTOINGEST)
+                LOGGER.warning("Movement of file %s to autoingest failed!", moving_asset)
                 LOGGER.warning(" - Please move manually")
-            LOGGER.info("%s moved to autoingest path")
 
         # Check IMP folder is empty and delete - Is this stage wanted? Waiting to hear from Andy
         contents = list(os.listdir(fpath))
         if len(contents) == 0:
-            os.remove(fpath)
+            os.rmdir(fpath)
             LOGGER.info("IMP folder empty, deleting %s", fpath)
         else:
             LOGGER.warning("IMP not empty, leaving in place for checks: %s", fpath)
 
-        '''
-        # Reserving for time being in case of need for ProRes/subtitles
-        # Make new item records here (get title, etc from CID item record, parent priref)
-        record, item = build_defaults()
-        priref_item = create_item(priref_man, data_dct, record, item)
-        if len(priref_item) == 0:
-             LOGGER.warning("Monograph item record creation failed, skipping all further stages")
-             continue
-        print(f"PRIREF FOR NEW ITEM: {priref_item}")
-        '''
-    LOGGER.info("== Document augmented Netflix renaming end ===================")
+    LOGGER.info("== Document augmented Netflix renaming end ===================\n")
 
 
 def build_defaults():
     '''
     Build record and item defaults
     Not active, may not be needed
+    Record contents may need review!
     '''
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},

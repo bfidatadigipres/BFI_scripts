@@ -256,6 +256,7 @@ def main():
                 for file in files:
                     if file == new_f:
                         print(f"SKIPPING: CID item record exists and file found in autoingest: {os.path.join(root, file)}")
+                        logger.info("%s\tSkipping - CID item record exists and file found in autoingest: %s", filepath, os.path.join(root, file))
                         continue
 
             logger.info("**** %s\tFile to be renamed %s -> %s", filepath, f, new_f)

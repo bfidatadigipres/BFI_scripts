@@ -14,6 +14,11 @@ def index():
 ES_SEARCH = os.environ.get('ES_SEARCH_PATH')
 ES = Elasticsearch([ES_SEARCH])
 
+if ES.ping():
+    print("Connected to Elasticsearch")
+else:
+    print("Something's wrong")
+
 
 @app.route('/dpi_download_request', methods=['GET', 'POST'])
 def dpi_download_request():
@@ -43,7 +48,7 @@ def dpi_download_request():
         # Check for non-BFI email and reject
         if 'bfi.org.uk' not in email:
             return render_template('email_error_transcode.html')
-        ES.index(index='dpi_downloads', body={
+        ES.index(index='dpi_downloads', document={
             "name": name,
             "email": email,
             "download_type": download_type,
@@ -64,10 +69,10 @@ def dpi_download():
     '''
     Return the View all requested page
     '''
-    search_results = ES.search(index='dpi_downloads', query={'range':{'date':{'gte': "now-3d", 'lte': "now"}}})
+    search_results = ES.search(index='dpi_downloads', query={'range': {'date': {'gte': 'now-14d/d', 'lte': 'now/d'}}}, size=200)
     data = []
-    for row in search_result['hits']['hits']:
-        record = [(val) for key, value in row['_source'].items()]
+    for row in search_results['hits']['hits']:
+        record = [(value) for key, value in row['_source'].items()]
         data.append(tuple(record))
 
     return render_template("downloads_transcode.html", data=data)

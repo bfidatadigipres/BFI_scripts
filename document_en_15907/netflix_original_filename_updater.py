@@ -5,7 +5,9 @@ Script to search in CID item
 records for Netflix groupings
 where digital.acquired_filename
 field is populated with 'File'
-entries.
+entries and with edit date for
+digital.acquired_filename update
+in last 30 days only
 
 Check in CID media records
 for matching assets, and if present
@@ -21,6 +23,7 @@ Joanna White
 import os
 import sys
 import logging
+import itertools
 import datetime
 
 # Local packages
@@ -34,6 +37,11 @@ CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API')
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
+
+# Specific date work
+FORMAT = '%Y-%m-%d'
+TODAY_DATE = datetime.date.today()
+TODAY = TODAY_DATE.strftime(FORMAT)
 
 # Setup logging
 LOGGER = logging.getLogger('netflix_original_filename_updater')
@@ -77,7 +85,7 @@ def cid_check_filenames(priref):
              'search': f'priref="{priref}"',
              'limit': '0',
              'output': 'json',
-             'fields': 'priref, digital.acquired_filename, digital.acquired_filename.type'}
+             'fields': 'priref, digital.acquired_filename, digital.acquired_filename.type, edit.notes, edit.date'}
     try:
         query_result = CID.get(query)
     except Exception as err:
@@ -90,7 +98,19 @@ def cid_check_filenames(priref):
     except (IndexError, KeyError, TypeError):
         file_name_block = ''
 
-    return file_name_block
+    try:
+        edit = query_result.records[0]['Edit']
+    except (IndexError, KeyError, TypeError):
+        edit = ''
+
+    if 'edit.notes' in str(edit):
+        for edits in edit:
+            edit_date = edits['edit.date'][0]
+            edit_note = edits['edit.notes'][0]
+            if 'Netflix automated digital acquired filename' in edit_note:
+                return file_name_block, edit_date
+
+    return file_name_block, ''
 
 
 def cid_check_media(priref, original_filename):
@@ -131,6 +151,16 @@ def cid_check_media(priref, original_filename):
     return None, None
 
 
+def date_gen(date_str):
+    '''
+    Yield date range back to main. Py3.7+
+    '''
+    from_date = datetime.date.fromisoformat(date_str)
+    while True:
+        yield from_date
+        from_date = from_date - datetime.timedelta(days=1)
+
+
 def main():
     '''
     Look for all Netflix items
@@ -145,13 +175,25 @@ def main():
         sys.exit()
 
     LOGGER.info("=== Netflix original filename updates START ===================")
+
+    # Generate ISO date range for last 30 days for edit.date check
+    date_range = []
+    period = itertools.islice(date_gen(TODAY), 30)
+    for dt in period:
+        date_range.append(dt.strftime(FORMAT))
+    print(f"Target date range for Netflix check: {', '.join(date_range)}")
+
     priref_list = []
     for record in records:
         priref_list.append(record['priref'][0])
 
     # Iterate list of prirefs
     for priref in priref_list:
-        digital_filenames = cid_check_filenames(priref)
+        digital_filenames, edit_date = cid_check_filenames(priref)
+        if edit_date not in date_range:
+            continue
+        LOGGER.info("Record found with edit date in range for processing:", priref, edit_date)
+
         if digital_filenames:
             print(priref)
             print(digital_filenames)
@@ -215,7 +257,7 @@ def update_cid_media_record(priref, orig_fname):
                                    data=media_append_dct,
                                    output='json',
                                    write=True)
-        LOGGER.info("Successfully appended IMP digital.acquired_filenames to Item record %s", priref)
+        LOGGER.info("Successfully appended IMP digital.acquired_filenames to CID media record %s", priref)
         return True
     except Exception as err:
         LOGGER.warning("Failed to append IMP digital.acquired_filenames to CID media record %s", priref)

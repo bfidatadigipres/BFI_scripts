@@ -35,7 +35,7 @@ import adlib
 # Global paths from environment vars
 MP4_POLICY = os.environ['MP4_POLICY']
 LOG_PATH = os.environ['LOG_PATH']
-LOG_FILE = os.path.join(LOG_PATH, 'scheduled_database_downloader_transcode.log')
+LOG_FILE = os.path.join(LOG_PATH, 'scheduled_elasticsearch_downloader_transcode.log')
 CID_API = os.environ['CID_API']
 TRANSCODE = os.environ['TRANSCODING']
 

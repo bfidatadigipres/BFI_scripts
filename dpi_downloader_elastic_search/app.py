@@ -1,3 +1,12 @@
+'''
+Flask app for web front to elasticsearch for DPI downloading
+Broadcasting to
+https://bfinationalarchiverequest.bfi.org.uk/dpi_download
+
+Joanna White
+2023
+'''
+
 import os
 import re
 import datetime
@@ -69,7 +78,7 @@ def dpi_download():
     '''
     Return the View all requested page
     '''
-    search_results = ES.search(index='dpi_downloads', query={'range': {'date': {'gte': 'now-14d/d', 'lte': 'now/d'}}}, size=200)
+    search_results = ES.search(index='dpi_downloads', query={'range': {'date': {'gte': 'now-14d/d', 'lte': 'now/d'}}}, size=500)
     data = []
     for row in search_results['hits']['hits']:
         record = [(value) for key, value in row['_source'].items()]
@@ -79,4 +88,4 @@ def dpi_download():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=False, port=8000)
+    app.run(host='0.0.0.0', debug=False, port=5500)

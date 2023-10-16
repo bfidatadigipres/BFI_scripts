@@ -443,7 +443,7 @@ def main():
                 update_table(user_id, fname, transcode, 'Download complete')
 
             # Transcode
-            trans, failed_trans = create_transcode(new_fpath, transcode, fname)
+            trans, failed_trans = create_transcode(new_fpath, transcode, fname, user_id)
 
             # Delete source download from DPI if not failed transcode/already found in path
             if trans == 'no_transcode':
@@ -530,7 +530,7 @@ def main():
                                 LOGGER.warning("MD5 checksums DO NOT match. Updating Download status to Download database")
 
                         # Transcode
-                        trans, failed_trans = create_transcode(new_fpath, transcode, fname)
+                        trans, failed_trans = create_transcode(new_fpath, transcode, fname, user_id)
 
                         # Delete source download from DPI if not failed transcode/already found in path
                         if trans == 'no_transcode':
@@ -569,7 +569,7 @@ def download_bp_object(fname, outpath, bucket):
     return get_job_id
 
 
-def create_transcode(new_fpath, transcode, fname):
+def create_transcode(new_fpath, transcode, fname, user_id):
     '''
     Transcode files depending on supplied
     transcode preference. Output result of attempt

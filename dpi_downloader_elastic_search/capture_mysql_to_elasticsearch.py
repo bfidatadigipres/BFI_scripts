@@ -11,13 +11,16 @@ ES_SEARCH = os.environ.get('ES_SEARCH_PATH')
 ES = Elasticsearch([ES_SEARCH])
 conn = sqlite3.connect(DATABASE)
 
+if ES.ping():
+    print("Connected")
+
 # Fetch all records
 cursor = conn.execute('SELECT name, email, download_type, fname, download_path, fpath, transcode, status, date FROM DOWNLOADS')
 records = cursor.fetchall()
 
 # Index each record to the dpi_downloads elasticsearch index
 for record in records:
-    es.index(index='dpi_downloads', body={
+    ES.index(index='dpi_downloads', body={
         "name": record[0],
         "email": record[1],
         "download_type": record[2],

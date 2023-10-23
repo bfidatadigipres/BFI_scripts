@@ -1,7 +1,7 @@
 {
     "help": "Set from 'true' to 'false' to select active preservation buckets",
-    "imagen": true,
-    "Preservation01": false,
-    "Netflix01": true
+    "imagen": false,
+    "preservation01": true,
+    "netflix01": true
 }
 

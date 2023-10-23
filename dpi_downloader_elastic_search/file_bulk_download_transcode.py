@@ -53,11 +53,12 @@ Joanna White
 import os
 import sys
 import json
-import sqlite3
 import hashlib
 import logging
 import itertools
 from datetime import datetime
+from elasticsearch import Elasticsearch
+from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError
 import requests
 from ds3 import ds3, ds3Helpers
 
@@ -72,24 +73,37 @@ from downloaded_transcode_mp4_watermark import transcode_mp4_access
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor
-BUCKET = "imagen"
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 CODEPTH = os.environ['CODE']
-DATABASE = os.path.join(CODEPTH, 'dpi_downloader/database_transcode.db')
+ES_SEARCH = os.environ['ES_SEARCH_PATH']
 EMAIL_SENDER=os.environ['EMAIL_SEND']
 EMAIL_PSWD=os.environ['EMAIL_PASS']
 FMT = '%Y-%m-%d %H:%M:%s'
 
+# CONNECT TO ES
+ES = Elasticsearch([ES_SEARCH])
+
 # Set up logging
 LOGGER = logging.getLogger('schedule_database_downloader_transcode')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'scheduled_database_downloader_transcode.log'))
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'scheduled_elasticsearch_downloader_transcode.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
+
+
+def check_elasticsearch():
+    '''
+    Check ES index connected
+    '''
+    if ES.ping():
+        return True
+    else:
+        LOGGER.info('Connection to Elasticsearch not found. Script exiting.')
+        sys.exit('Connection to Elasticsearch not found. Script exiting.')
 
 
 def check_control():
@@ -120,7 +134,7 @@ def get_media_original_filename(fname):
         results = query_result.json()
     except Exception as err:
         LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s\n%s", fname, err)
-        return None, None
+        return None, None, None
     try:
         media_priref = results['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
     except (IndexError, TypeError, KeyError) as exc:
@@ -131,8 +145,15 @@ def get_media_original_filename(fname):
     except (IndexError, TypeError, KeyError) as exc:
         print(exc)
         orig_fname = ''
+    try:
+        bucket = results['adlibJSON']['recordList']['record'][0]['preservation_bucket'][0]
+    except (IndexError, TypeError, KeyError) as exc:
+        print(exc)
+        bucket = ''
+    if bucket == '':
+        bucket = 'imagen'
 
-    return media_priref, orig_fname
+    return media_priref, orig_fname, bucket
 
 
 def get_prirefs(pointer):
@@ -154,7 +175,8 @@ def get_prirefs(pointer):
         return prirefs
     except Exception as exc:
         LOGGER.exception('get_prirefs(): Unable to get pointer file %s', pointer)
-        raise Exception from exc
+        print(exc)
+        return None
 
 
 def get_dictionary(priref_list):
@@ -179,14 +201,14 @@ def get_media_record_data(priref):
     print("Launching get_media_record_data()")
     query = {'database': 'media',
              'search': f'object.object_number.lref="{priref}"',
-             'fields': 'imagen.media.original_filename, reference_number',
+             'fields': 'imagen.media.original_filename, reference_number, preservation_bucket',
              'limit': '0',
              'output': 'json'}
     try:
         query_result = requests.get(CID_API, params=query)
         results = query_result.json()
     except Exception as err:
-        LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s\n%s", priref, err)
+        LOGGER.exception("get_media_record_data: Unable to match filename to CID media record: %s\n%s", priref, err)
         results = []
         print(err)
 
@@ -209,18 +231,26 @@ def get_media_record_data(priref):
         except (IndexError, TypeError, KeyError) as exc:
             print(exc)
             orig_fname = ''
-        all_files.append({f"{ref_num}": f"{orig_fname}"})
+        try:
+            bucket = results['adlibJSON']['recordList']['record'][num]['preservation_bucket'][0]
+            print(orig_fname)
+        except (IndexError, TypeError, KeyError) as exc:
+            print(exc)
+            bucket = ''
+        if bucket == '':
+            bucket = 'imagen'
+        all_files.append({ref_num: [orig_fname, bucket]})
 
     return all_files
 
 
-def get_bp_md5(fname):
+def get_bp_md5(fname, bucket):
     '''
     Fetch BP checksum to compare
     to new local MD5
     '''
     md5 = ''
-    query = ds3.HeadObjectRequest(BUCKET, fname)
+    query = ds3.HeadObjectRequest(bucket, fname)
     result = CLIENT.head_object(query)
     try:
         md5 = result.response.msg['ETag']
@@ -230,7 +260,7 @@ def get_bp_md5(fname):
         return md5.replace('"', '')
 
 
-def make_check_md5(fpath, fname):
+def make_check_md5(fpath, fname, bucket):
     '''
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
@@ -247,39 +277,26 @@ def make_check_md5(fpath, fname):
     except Exception as err:
         print(err)
 
-    bp_checksum = get_bp_md5(fname)
+    bp_checksum = get_bp_md5(fname, bucket)
     print(f"Created from download: {download_checksum} | Retrieved from BP: {bp_checksum}")
     return str(download_checksum).strip(), str(bp_checksum).strip()
 
 
 def retrieve_requested():
     '''
-    Access database.db and retrieve
-    recently requested downloads
+    Pull data from ES index, Requested status only
     '''
     requested_data = []
-    try:
-        sqlite_connection = sqlite3.connect(DATABASE)
-        cursor = sqlite_connection.cursor()
-        print("Database connected successfully")
-
-        cursor.execute('''SELECT * FROM DOWNLOADS WHERE status = "Requested"''')
-        data = cursor.fetchall()
-        print(data)
-        for row in data:
-            print(type(row), row)
-            if row[-2] == 'Requested':
-                requested_data.append(row)
-        cursor.close()
-    except sqlite3.Error as err:
-        LOGGER.warning("%s", err)
-    finally:
-        if sqlite_connection:
-            sqlite_connection.close()
-            print("Database connection closed")
-
-    # Sort for unique tuples only in list
+    search_results = ES.search(index='dpi_downloads', query={'term': {'status': {'value': 'Requested'}}}, size=200)
+    data = []
+    for row in search_results['hits']['hits']:
+        get_id = [row['_id']]
+        record = [(value) for key, value in row['_source'].items()]
+        all_items = tuple(record) + tuple(get_id)
+        requested_data.append(all_items)
     sorted_data = remove_duplicates(requested_data)
+    print(sorted_data)
+
     return sorted_data
 
 
@@ -294,26 +311,27 @@ def remove_duplicates(list_data):
     return unique
 
 
-def update_table(fname, trans, new_status):
+def update_table(user_id, fname, trans, new_status):
     '''
-    Update specific row with new
+    Update specific ES index with new
     data, for fname match
     '''
+    update_request = {
+        "doc": {
+            "status": f"{new_status}"
+        }
+    }
+
+    print(update_request)
+    print(user_id)
     try:
-        sqlite_connection = sqlite3.connect(DATABASE)
-        cursor = sqlite_connection.cursor()
-        # Update row with new status
-        sql_query = '''UPDATE DOWNLOADS SET status = ? WHERE fname = ? AND transcode = ?'''
-        data = (new_status, fname, trans)
-        cursor.execute(sql_query, data)
-        sqlite_connection.commit()
-        print(f"Record updated with new status {new_status}")
-        cursor.close()
-    except sqlite3.Error as err:
-        LOGGER.warning("Failed to update database: %s", err)
-    finally:
-        if sqlite_connection:
-            sqlite_connection.close()
+        index = ES.update(index='dpi_downloads', id=f"{user_id}", body=update_request)
+        if index['result'] == 'updated':
+            print(f"Record updated with new status {new_status}")
+            return True
+    except (TransportError, RequestError, NotFoundError, ConflictError) as err:
+        print(f"Error code raised: {err}")
+        return False
 
 
 def check_download_exists(download_fpath, orig_fname, fname, transcode):
@@ -353,6 +371,7 @@ def main():
     LOGGER.info("================ DPI DOWNLOAD REQUESTS RETRIEVED: %s. Date: %s =================", len(data), datetime.now().strftime(FMT)[:19])
     for row in data:
         check_control()
+        check_elasticsearch()
         username = row[0].strip()
         email = row[1].strip()
         fname = row[3].strip()
@@ -360,12 +379,13 @@ def main():
         dpath = row[4].strip()
         dfolder = row[5].strip()
         transcode = row[6].strip()
-        LOGGER.info("** New data for download:\n\t- User %s, email %s, file %s,\n\t- Downloading to %s in %s folder. Transcode? %s", username, email, fname, dpath, dfolder, transcode)
+        user_id = row[9]
+        LOGGER.info("** New data for download:\n\t- ID %s, User %s, email %s, file %s,\n\t- Downloading to %s in %s folder. Transcode? %s", user_id, username, email, fname, dpath, dfolder, transcode)
 
         # Check if path supplied valid
         if not os.path.exists(dpath):
             LOGGER.warning("Skipping download. Supplied download filepath error: %s", dpath)
-            update_table(fname, transcode, 'Download path invalid')
+            update_table(user_id, fname, transcode, 'Download path invalid')
             continue
 
         download_fpath = os.path.join(dpath, dfolder)
@@ -377,31 +397,35 @@ def main():
         # Single download
         if dtype == 'single':
             # Try to locate CID media record for file
-            media_priref, orig_fname = get_media_original_filename(fname)
+            media_priref, orig_fname, bucket = get_media_original_filename(fname)
             if not media_priref:
                 LOGGER.warning("Filename is not recognised, no matching CID Media record")
-                update_table(fname, transcode, 'Filename not in CID')
+                update_table(user_id, fname, transcode, 'Filename not in CID')
+                continue
+            if 'netflix' in bucket:
+                LOGGER.warning("Filename is a Netflix item and will not be downloaded")
+                update_table(user_id, fname, transcode, 'Filename not accessible')
                 continue
             LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)
 
             # Check if download already exists
             new_fpath, skip_download = check_download_exists(download_fpath, orig_fname, fname, transcode)
             if not new_fpath:
-                update_table(fname, transcode, 'Download complete, no transcode required')
+                update_table(user_id, fname, transcode, 'Download complete, no transcode required')
                 LOGGER.warning("Downloaded file (no transcode) in location already. Skipping further processing.")
                 continue
             if not skip_download:
                 # Download from BP
                 LOGGER.info("Beginning download of file %s to download path", fname)
-                update_table(fname, transcode, 'Downloading')
-                download_job_id = download_bp_object(fname, download_fpath)
+                update_table(user_id, fname, transcode, 'Downloading')
+                download_job_id = download_bp_object(fname, download_fpath, bucket)
                 if download_job_id == '404':
                     LOGGER.warning("Download of file %s failed. File not found in Black Pearl tape library.", fname)
-                    update_table(fname, transcode, 'Filename not found in Black Pearl')
+                    update_table(user_id, fname, transcode, 'Filename not found in Black Pearl')
                     continue
-                elif not download_job_id:
+                if not download_job_id:
                     LOGGER.warning("Download of file %s failed. Resetting download status and script exiting.", fname)
-                    update_table(fname, transcode, 'Requested')
+                    update_table(user_id, fname, transcode, 'Requested')
                     continue
                 LOGGER.info("Downloaded file retrieved successfully. Job ID: %s", download_job_id)
                 if str(orig_fname).strip() != str(fname).strip():
@@ -410,16 +434,16 @@ def main():
                     os.rename(umid_fpath, new_fpath)
 
                 # MD5 Verification
-                local_md5, bp_md5 = make_check_md5(new_fpath, fname)
+                local_md5, bp_md5 = make_check_md5(new_fpath, fname, bucket)
                 LOGGER.info("MD5 checksum validation check:\n\t%s - Downloaded file MD5\n\t%s - Black Pearl retrieved MD5", local_md5, bp_md5)
                 if local_md5 == bp_md5:
                     LOGGER.info("MD5 checksums match. Updating Download status to Download database")
                 else:
                     LOGGER.warning("MD5 checksums DO NOT match. Updating Download status to Download database")
-                update_table(fname, transcode, 'Download complete')
+                update_table(user_id, fname, transcode, 'Download complete')
 
             # Transcode
-            trans, failed_trans = create_transcode(new_fpath, transcode, fname)
+            trans, failed_trans = create_transcode(new_fpath, transcode, fname, user_id)
 
             # Delete source download from DPI if not failed transcode/already found in path
             if trans == 'no_transcode':
@@ -435,21 +459,25 @@ def main():
             files_processed = {}
             print(f"Finding prirefs from Pointer file with number: {fname}")
             if not fname.isnumeric():
-                update_table(fname, transcode, 'Error with pointer file number')
+                update_table(user_id, fname, transcode, 'Error with pointer file number')
                 LOGGER.warning("Bulk download request. Error with pointer file number: %s.", fname)
                 continue
             priref_list = get_prirefs(fname)
+            if not priref_list:
+                update_table(user_id, fname, transcode, 'Pointer file number not recognised')
+                LOGGER.warning("Pointer file not recognised.")
+                continue
             if len(priref_list) > 50:
-                update_table(fname, transcode, 'Pointer file over 50 CID items')
+                update_table(user_id, fname, transcode, 'Pointer file over 50 CID items')
                 LOGGER.warning("Bulk download request. Too many pointer file entries for download maximum of 50: %s.", len(priref_list))
                 continue
             LOGGER.info("Bulk download requested with %s item prirefs to process.", len(priref_list))
             pointer_dct = get_dictionary(priref_list)
             if not any(pointer_dct.values()):
-                update_table(fname, transcode, 'Pointer file found no digital media records')
+                update_table(user_id, fname, transcode, 'Pointer file found no digital media records')
                 LOGGER.warning("CID item number supplied in pointer file have no associated CID digital media records: %s", pointer_dct)
                 continue
-            # update_table(fname, transcode, 'Processing bulk request')
+            # update_table(user_id, fname, transcode, 'Processing bulk request')
             for key, value in pointer_dct.items():
                 media_priref = key
                 print(key)
@@ -459,10 +487,15 @@ def main():
                 for file in download_dct:
                     for k, v in file.items():
                         filename = k
-                        orig_fname = v
-                        print(f"Media priref {media_priref} Filename {filename} Original name {orig_fname}")
+                        orig_fname = v[0]
+                        bucket = v[1]
+                        print(f"Media priref {media_priref} Filename {filename} Original name {orig_fname} in bucket {bucket}")
                         if not len(filename) > 0:
                             LOGGER.warning("Filename is not recognised, no matching CID Media record")
+                            continue
+                        if 'Netflix' in bucket:
+                            LOGGER.warning("Filename is a Netflix item and will not be downloaded")
+                            update_table(user_id, fname, transcode, 'Filename not accessible')
                             continue
                         LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)
 
@@ -474,8 +507,8 @@ def main():
                         if not skip_download:
                             # Download from BP
                             LOGGER.info("Beginning download of file %s to download path", filename)
-                            update_table(fname, transcode, f'Downloading {orig_fname}')
-                            download_job_id = download_bp_object(filename, download_fpath)
+                            update_table(user_id, fname, transcode, f'Downloading {orig_fname}')
+                            download_job_id = download_bp_object(filename, download_fpath, bucket)
                             if download_job_id == '404':
                                 LOGGER.warning("Download of file %s failed. File not found in Black Pearl tape library.", filename)
                                 continue
@@ -489,7 +522,7 @@ def main():
                                 os.rename(umid_fpath, new_fpath)
 
                             # MD5 Verification
-                            local_md5, bp_md5 = make_check_md5(new_fpath, filename)
+                            local_md5, bp_md5 = make_check_md5(new_fpath, filename, bucket)
                             LOGGER.info("MD5 checksum validation check:\n\t%s - Downloaded file MD5\n\t%s - Black Pearl retrieved MD5", local_md5, bp_md5)
                             if local_md5 == bp_md5:
                                 LOGGER.info("MD5 checksums match. Updating Download status to Download database")
@@ -497,7 +530,7 @@ def main():
                                 LOGGER.warning("MD5 checksums DO NOT match. Updating Download status to Download database")
 
                         # Transcode
-                        trans, failed_trans = create_transcode(new_fpath, transcode, fname)
+                        trans, failed_trans = create_transcode(new_fpath, transcode, fname, user_id)
 
                         # Delete source download from DPI if not failed transcode/already found in path
                         if trans == 'no_transcode':
@@ -512,12 +545,12 @@ def main():
                 continue
             LOGGER.info("Files processed: %s", files_processed)
             send_email_update_bulk(email, download_fpath, files_processed)
-            update_table(fname, transcode, "Bulk download complete. See email for details")
+            update_table(user_id, fname, transcode, "Bulk download complete. See email for details")
 
     LOGGER.info("================ DPI DOWNLOAD REQUESTS COMPLETED. Date: %s =================\n", datetime.now().strftime(FMT)[:19])
 
 
-def download_bp_object(fname, outpath):
+def download_bp_object(fname, outpath, bucket):
     '''
     Download the BP object from SpectraLogic
     tape library and save to outpath
@@ -525,7 +558,7 @@ def download_bp_object(fname, outpath):
     file_path = os.path.join(outpath, fname)
     get_objects = [ds3Helpers.HelperGetObject(fname, file_path)]
     try:
-        get_job_id = HELPER.get_objects(get_objects, BUCKET)
+        get_job_id = HELPER.get_objects(get_objects, bucket)
         print(f"BP get job ID: {get_job_id}")
     except Exception as err:
         LOGGER.warning("Unable to retrieve file %s from Black Pearl", fname)
@@ -536,7 +569,7 @@ def download_bp_object(fname, outpath):
     return get_job_id
 
 
-def create_transcode(new_fpath, transcode, fname):
+def create_transcode(new_fpath, transcode, fname, user_id):
     '''
     Transcode files depending on supplied
     transcode preference. Output result of attempt
@@ -546,65 +579,65 @@ def create_transcode(new_fpath, transcode, fname):
     failed_trans = False
     if transcode == 'prores':
         LOGGER.info("Transcode to ProRes requested, launching ProRes transcode script...")
-        update_table(fname, transcode, f'Transcoding {fname} to ProRes')
+        update_table(user_id, fname, transcode, f'Transcoding {fname} to ProRes')
         success = transcode_mov(new_fpath)
         if success == 'True':
             trans = 'prores'
-            update_table(fname, transcode, 'Download and transcode complete')
+            update_table(user_id, fname, transcode, 'Download and transcode complete')
         else:
             failed_trans = True
             trans = 'Failed prores'
-            update_table(fname, transcode, 'Download and transcode failed')
+            update_table(user_id, fname, transcode, 'Download and transcode failed')
             LOGGER.warning("Failed to complete transcode. Reason: %s", success)
     elif transcode == 'mp4_proxy':
         LOGGER.info("Transcode to MP4 access copy requested, launching MP4 transcode script...")
-        update_table(fname, transcode, f'Transcoding {fname} to MP4 proxy')
+        update_table(user_id, fname, transcode, f'Transcoding {fname} to MP4 proxy')
         success = transcode_mp4(new_fpath)
         if success == 'True':
             trans = 'mp4'
-            update_table(fname, transcode, 'Download and transcode complete')
+            update_table(user_id, fname, transcode, 'Download and transcode complete')
         elif success in ['audio', 'document']:
             trans = 'wrong file'
-            update_table(fname, transcode, 'Download and transcode failed')
+            update_table(user_id, fname, transcode, 'Download and transcode failed')
         elif success == 'exists':
             trans = 'exists'
-            update_table(fname, transcode, 'Download and transcode already exist')
+            update_table(user_id, fname, transcode, 'Download and transcode already exist')
         else:
             failed_trans = True
             trans = 'Failed mp4'
-            update_table(fname, transcode, 'Download and transcode failed')
+            update_table(user_id, fname, transcode, 'Download and transcode failed')
             LOGGER.warning("Failed to complete transcode. Reason: %s", success)
     elif 'mp4_access' in transcode:
         if '_watermark' in transcode:
             LOGGER.info("Transcode to MP4 with watermark request. Launching transcode...")
-            update_table(fname, transcode, f'Transcoding {fname} to watermark MP4 access')
+            update_table(user_id, fname, transcode, f'Transcoding {fname} to watermark MP4 access')
             watermark = True
         else:
             LOGGER.info("Transcode to MP4 access copy (no watermark). Launching transcode...")
-            update_table(fname, transcode, f'Transcoding {fname} to MP4 access')
+            update_table(user_id, fname, transcode, f'Transcoding {fname} to MP4 access')
             watermark = False
         success = transcode_mp4_access(new_fpath, watermark)
         if success == 'not video':
             print("*** NOT VIDEO")
             failed_trans = True
             trans = 'Failed mp4 access'
-            update_table(fname, transcode, 'Download and transcode failed (not video)')
+            update_table(user_id, fname, transcode, 'Download and transcode failed (not video)')
             LOGGER.warning("Failed to complete transcode. Reason: Mimetype is not video file: %s", success)
         elif success == 'exists':
             failed_trans = True
             trans = 'Failed mp4 access'
-            update_table(fname, transcode, 'Downloaded, MP4 access file exists in path')
+            update_table(user_id, fname, transcode, 'Downloaded, MP4 access file exists in path')
             LOGGER.warning("Failed to complete transcode. Reason: MP4 exists in paths: %s", success)
         elif success == 'True' and watermark is True:
             trans = 'mp4_watermark'
-            update_table(fname, transcode, 'Download and transcode complete')
+            update_table(user_id, fname, transcode, 'Download and transcode complete')
         elif success == 'True':
             trans = 'mp4_access'
-            update_table(fname, transcode, 'Download and transcode complete')
+            update_table(user_id, fname, transcode, 'Download and transcode complete')
         else:
             failed_trans = True
             trans = 'Failed mp4 access'
-            update_table(fname, transcode, 'Download and transcode failed')
+            update_table(user_id, fname, transcode, 'Download and transcode failed')
             LOGGER.warning("Failed to complete transcode. Reason: %s", success)
     else:
         trans = 'no_transcode'

@@ -5,7 +5,7 @@
 ### USE SPACES not TABS to avoid breakage
 
 Host_size:
- - '/mnt/grack_f47/FILM'                             : 1099511627776
+ - '/mnt/grack_f47/FILM'                             : 536870912000
  - '/mnt/qnap_07'                                    : 1099511627776
  - '/mnt/qnap_10'                                    : 1099511627776
  - '/mnt/qnap_video/Public/F47'                      : 2199023255552

@@ -704,6 +704,10 @@ def make_person_dct(dct=None):
         for k, v in production.items():
             if key == k:
                 credit_dct.append({'activity_type': v[1]})
+
+        credit_dct.append({'record_access.user': 'BFIiispublic'})
+        credit_dct.append({'record_access.rights': '0'})
+        credit_dct.append({'record_access.reason': 'SENSITIVE_LEGAL'})
         credit_dct.append({'input.name': 'datadigipres'})
         credit_dct.append({'input.notes': 'Automated creation from PATV augmented EPG metadata'})
         credit_dct.append({'input.time': str(datetime.datetime.now())[11:19]})

@@ -150,7 +150,7 @@ def get_buckets(bucket_collection):
                 bucket_list.append(key)
     elif bucket_collection == 'bfi':
         for key, value in bucket_data.items():
-            if 'Preservation' in key:
+            if 'preservation' in key.lower():
                 if value is True:
                     key_bucket = key
                 bucket_list.append(key)
@@ -838,7 +838,8 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
-
+    print(record_data)
+    print(f"Using CUR create_record: database='media', data, output='json', write=True")
     media_priref = ""
 
     try:

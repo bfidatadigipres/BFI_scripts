@@ -366,7 +366,7 @@ def get_buckets(bucket_collection):
                 bucket_list.append(key)
     elif bucket_collection == 'bfi':
         for key, _ in bucket_data.items():
-            if 'Preservation' in key:
+            if 'preservation' in key.lower():
                 bucket_list.append(key)
             # Imagen path read only now
             if 'imagen' in key:
@@ -404,7 +404,7 @@ def ext_in_file_type(ext, priref, log_paths):
     ext = ext.lower()
     dct = {'imp': 'mxf, xml',
            'tar': 'dpx, dcp, dcdm, wav',
-           'mxf': 'mxf, 50i',
+           'mxf': 'mxf, 50i, imp',
            'mpg': 'mpeg-1, mpeg-2',
            'mp4': 'mp4',
            'mov': 'mov, prores',
@@ -416,7 +416,7 @@ def ext_in_file_type(ext, priref, log_paths):
            'jpeg': 'jpg, jpeg',
            'ts': 'mpeg-ts',
            'srt': 'srt',
-           'xml': 'xml',
+           'xml': 'xml, imp',
            'scc': 'scc',
            'itt': 'itt',
            'stl': 'stl',
@@ -458,7 +458,7 @@ def ext_in_file_type(ext, priref, log_paths):
         return False
     elif len(file_type) > 1:
         logger.warning('%s\tInvalid <file_type> in Collect record. Just one should be present.', log_paths)
-        print(f'* WARNING extension does not match file_type: {ftype} {file_type}')
+        print(f'* WARNING more than one file_type in CID: {file_type}')
     else:
         logger.warning('%s\tInvalid <file_type> in Collect record', log_paths)
         return False
@@ -479,12 +479,15 @@ def get_media_ingests(object_number):
     try:
         result = CID.get(dct)
         print(f'\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number')
+        print(result.records)
         for r in result.records:
-            original_filenames.append(r['imagen.media.original_filename'][0])
-        return original_filenames
+            filename = r['imagen.media.original_filename']
+            print(f"File found with CID record: {filename}")
+            original_filenames.append(filename[0])
+    except Exception as err:
+        print(err)
 
-    except Exception:
-        return None
+    return original_filenames
 
 
 def get_ingests_from_log(fname):
@@ -517,9 +520,8 @@ def asset_is_next_ingest(fname, previous_fname, black_pearl_folder):
     file = '_'.join(fsplit[:-1])
 
     ingest_fnames = [f for _,_,files in os.walk(black_pearl_folder) for f in files if f.startswith(file)]
-    print(ingest_fnames)
 
-    if previous_fname in ingest_fnames:
+    if previous_fname in str(ingest_fnames):
         return True
     else:
         return False
@@ -538,11 +540,21 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
     file = '_'.join(fsplit[:-1])
     range_whole = whole + 1
     filename_range = []
-    for num in range(1, range_whole):
-        filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}.{ext}")
+
+    # Netflix extensions vary within IMP so shouldn't be included in range check
+    if 'netflix_ingest' in black_pearl_folder:
+        fname_check = fname.split('.')[0]
+        for num in range(1, range_whole):
+            filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}")
+    else:
+        fname_check = fname
+        for num in range(1, range_whole):
+            filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}.{ext}")
+
     # Get previous parts index (hence -2)
     previous = part - 2
     ingest_fnames = get_media_ingests(object_number)
+
     if not ingest_fnames:
         in_bp_ingest_folder = asset_is_next_ingest(fname, filename_range[previous], black_pearl_folder)
         if in_bp_ingest_folder:
@@ -550,9 +562,9 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
             return 'True'
         return 'False'
 
-    if fname in ingest_fnames:
+    if fname_check in str(ingest_fnames):
         return 'Ingested already'
-    elif filename_range[previous] in ingest_fnames:
+    elif filename_range[previous] in str(ingest_fnames):
         print(f"Filename previous in ingest_fnames:{filename_range[previous]} {ingest_fnames}")
         return 'True'
     else:
@@ -649,7 +661,6 @@ def main():
     for host in config_dict['Hosts']:
         print(host)
         linux_host = list(host.keys())[0]
-        black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_ingest')
         tree = list(host.keys())[0]
 
         # Collect files
@@ -659,6 +670,14 @@ def main():
             check_control()
             fpath = os.path.abspath(pth)
             fname = os.path.split(fpath)[-1]
+
+            # Allow path changes for black_pearl_ingest Netflix
+            if 'ingest/netflix' in fpath:
+                logger.info('%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder')
+                black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_netflix_ingest')
+            else:
+                black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_ingest')
+
             if '.DS_Store' in fname:
                 continue
             if fname.endswith(('.txt', '.md5', '.log', '.mhl', '.ini', '.json')):
@@ -819,10 +838,6 @@ def main():
                     logger.warning('%s\tFile is larger than 1TB. Leaving in ingest folder', log_paths)
                     continue
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
-                # Look for Netflix ingest and move to correct Netflix folder
-                if 'ingest/netflix' in fpath:
-                    logger.info('%s\Ingest-ready file is from Netflix ingest path, moving to Black Pearl Netflix ingest folder')
-                    black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_netflix_ingest')
                 try:
                     shutil.move(fpath, os.path.join(black_pearl_folder, fname))
                     print(f'\t** File moved to {os.path.join(black_pearl_folder, fname)}')

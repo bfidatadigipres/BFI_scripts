@@ -396,7 +396,7 @@ def main():
                 LOGGER.warning("Filename is not recognised, no matching CID Media record")
                 update_table(fname, transcode, 'Filename not in CID')
                 continue
-            if 'Netflix' in bucket:
+            if 'netflix' in bucket:
                 LOGGER.warning("Filename is a Netflix item and will not be downloaded")
                 update_table(fname, transcode, 'Filename not accessible')
                 continue

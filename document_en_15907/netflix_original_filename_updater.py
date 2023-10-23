@@ -5,7 +5,9 @@ Script to search in CID item
 records for Netflix groupings
 where digital.acquired_filename
 field is populated with 'File'
-entries.
+entries and with edit date for
+digital.acquired_filename update
+in last 30 days only
 
 Check in CID media records
 for matching assets, and if present
@@ -21,6 +23,7 @@ Joanna White
 import os
 import sys
 import logging
+import itertools
 import datetime
 
 # Local packages
@@ -34,6 +37,11 @@ CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API')
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
+
+# Specific date work
+FORMAT = '%Y-%m-%d'
+TODAY_DATE = datetime.date.today()
+TODAY = TODAY_DATE.strftime(FORMAT)
 
 # Setup logging
 LOGGER = logging.getLogger('netflix_original_filename_updater')
@@ -50,18 +58,18 @@ def cid_check_items():
     block for iteration
     '''
     query = {'database': 'items',
-             'search': f'(grouping.lref="400947" and file_type="IMP")',
+             'search': '(grouping.lref="400947" and file_type="IMP")',
              'limit': '0',
              'output': 'json',
              'fields': 'object_number, digital.acquired_filename'}
     try:
         query_result = CID.get(query)
     except Exception as err:
-        LOGGER.warning(f"cid_check_items(): Unable to retrieve any Netflix groupings from CID item records: {err}")
+        LOGGER.warning("cid_check_items(): Unable to retrieve any Netflix groupings from CID item records: %s", err)
         query_result = None
     try:
         return_count = query_result.hits
-        LOGGER.info(f"{return_count} CID item records found")
+        LOGGER.info("%s CID item records found", return_count)
     except (IndexError, TypeError, KeyError):
         pass
 
@@ -77,67 +85,92 @@ def cid_check_filenames(priref):
              'search': f'priref="{priref}"',
              'limit': '0',
              'output': 'json',
-             'fields': 'priref, digital.acquired_filename, digital.acquired_filename.type'}
+             'fields': 'priref, digital.acquired_filename, digital.acquired_filename.type, edit.notes, edit.date'}
     try:
         query_result = CID.get(query)
     except Exception as err:
-        LOGGER.warning(f"cid_check_filenames(): Unable to find CID digital media record match: {priref} {err}")
+        LOGGER.warning("cid_check_filenames(): Unable to find CID digital media record match: %s %s", priref, err)
         query_result = None
 
     try:
         file_name_block = query_result.records[0]['Acquired_filename']
-        LOGGER.info(f"cid_check_filenames(): Total file names retrieved: {len(file_name_block)}")
+        LOGGER.info("cid_check_filenames(): Total file names retrieved: %s", len(file_name_block))
     except (IndexError, KeyError, TypeError):
         file_name_block = ''
 
-    return file_name_block
+    try:
+        edit = query_result.records[0]['Edit']
+    except (IndexError, KeyError, TypeError):
+        edit = ''
+
+    if 'edit.notes' in str(edit):
+        for edits in edit:
+            edit_date = edits['edit.date'][0]
+            edit_note = edits['edit.notes'][0]
+            if 'Netflix automated digital acquired filename' in edit_note:
+                return file_name_block, edit_date
+
+    return file_name_block, ''
 
 
-def cid_check_media(priref, original_filename):
+def cid_check_media(priref, original_filename, ingest_fname):
     '''
     Check for CID media record linked to Item priref
     and see if digital.acquired_filename field populated
     '''
     query = {'database': 'media',
-             'search': f'object.object_number.lref="{priref}"',
+             'search': f'imagen.media.original_filename="{ingest_fname}"',
              'limit': '0',
              'output': 'json',
              'fields': 'priref, digital.acquired_filename, digital.acquired_filename.type'}
     try:
         query_result = CID.get(query)
     except Exception as err:
-        LOGGER.warning(f"cid_check_media(): Unable to find CID digital media record match: {priref} {err}")
+        LOGGER.warning("cid_check_media(): Unable to find CID digital media record match: %s %s", priref, err)
         query_result = None
+
     try:
         mpriref = query_result.records[0]['priref'][0]
-        LOGGER.info(f"cid_check_media(): CID media record priref: {mpriref}")
+        LOGGER.info("cid_check_media(): CID media record priref: %s", mpriref)
     except (IndexError, KeyError, TypeError):
-        mpriref = ''
+        mpriref = None
     try:
-        file_name = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename'][0]['Value'][0]
-        LOGGER.info(f"cid_check_media(): File names: {file_name}")
+        file_name = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename'][0]
+        LOGGER.info("cid_check_media(): File names: %s", file_name)
     except (IndexError, KeyError, TypeError):
         file_name = ''
     try:
-        file_name_type = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename.type'][0]['Value'][0]
-        LOGGER.info(f"cid_check_media(): File name types: {file_name_type}")
+        file_name_type = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename.type'][0]['value'][0]
+        LOGGER.info("cid_check_media(): File name types: %s", file_name_type)
     except (IndexError, KeyError, TypeError):
         file_name_type = ''
 
     if original_filename in str(file_name):
         return mpriref, True
-    if len(priref) > 0:
+    if mpriref:
         return mpriref, False
     return None, None
 
 
+def date_gen(date_str):
+    '''
+    Yield date range back to main. Py3.7+
+    '''
+    from_date = datetime.date.fromisoformat(date_str)
+    while True:
+        yield from_date
+        from_date = from_date - datetime.timedelta(days=1)
+
+
 def main():
     '''
-    Look for all Netflix items
-    recently created (date period
-    needs defining) and check CID
-    media record has original filename
-    populated for all IMP items.
+    Look for all Netflix items with edit.date for automated
+    acquired filename work created within 30 days
+    and retrieve digital_acquired.filenames for
+    files only and match to imagen.media.original_filename
+    of CID media record ingested for CID item. Check if
+    digital_acquired.filename already populated in CID media
+    - if not update the CID digital media record with IMP name.
     '''
 
     records = cid_check_items()
@@ -145,43 +178,56 @@ def main():
         sys.exit()
 
     LOGGER.info("=== Netflix original filename updates START ===================")
+
+    # Generate ISO date range for last 30 days for edit.date check
+    date_range = []
+    period = itertools.islice(date_gen(TODAY), 30)
+    for dt in period:
+        date_range.append(dt.strftime(FORMAT))
+    print(f"Target date range for Netflix check: {', '.join(date_range)}")
+
     priref_list = []
     for record in records:
         priref_list.append(record['priref'][0])
 
     # Iterate list of prirefs
     for priref in priref_list:
-        digital_filenames = cid_check_filenames(priref)
-        if digital_filenames:
-            print(priref)
-            print(digital_filenames)
-            print("**********")
-        if not 'File' in str(digital_filenames):
+
+        digital_filenames, edit_date = cid_check_filenames(priref)
+        if edit_date not in date_range:
+            LOGGER.info("Skipping priref %s, out of date range: %s", priref, edit_date)
             continue
-        LOGGER.info("Digital filenames found for IMP ingested items!")
+        LOGGER.info("\n* Record found with edit date in range for processing: %s %s", priref, edit_date)
+
+        if 'File' not in str(digital_filenames):
+            continue
+        LOGGER.info("Digital filenames found for IMP ingested items:")
 
         for filenames in digital_filenames:
             fname = filenames['digital.acquired_filename'][0]
             ftype = filenames['digital.acquired_filename.type'][0]['value'][0]
             if ' - Renamed to: ' in fname:
                 original_fname, ingest_name = fname.split(' - Renamed to: ')
-                mpriref, match = cid_check_media(priref, original_fname)
-                LOGGER.info("Ingest asset identified: %s", ingest_name)
+                mpriref, match = cid_check_media(priref, original_fname, ingest_name)
+                if not mpriref:
+                    LOGGER.info("\tIngest asset not found in CID media records: %s", ingest_name)
+                    continue
+                LOGGER.info("\tIngest asset identified: %s", ingest_name)
                 if mpriref and match:
-                    LOGGER.info("SKIPPING: Digital acquired filename already added to CID digital media record %s - %s", mpriref, original_fname)
+                    LOGGER.info("\tSKIPPING: Digital acquired filename already added to CID digital media record %s - %s", mpriref, original_fname)
                     continue
                 if mpriref and not match:
-                    LOGGER.info("CID media record found %s - Updating digital.acquired_filename to record %s", mpriref, original_fname)
+                    LOGGER.info("\tCID media record found %s - Updating digital.acquired_filename to record %s", mpriref, original_fname)
                     success = update_cid_media_record(mpriref, original_fname)
                     if not success:
-                        LOGGER.warning("FAILED: Update of original filename to CID media record %s: %s", mpriref, original_fname)
+                        LOGGER.warning("\tFAILED: Update of original filename to CID media record %s: %s", mpriref, original_fname)
                         continue
-                    LOGGER.info("SUCCESS: CID media record %s updated with original filename: %s", mpriref, original_fname)
+                    LOGGER.info("\tSUCCESS: CID media record %s updated with original filename: %s", mpriref, original_fname)
                 if not mpriref:
-                    LOGGER.info(f"SKIPPING: No CID media record created yet for ingesting asset: {ingest_name}")
+                    LOGGER.info("\tSKIPPING: No CID media record created yet for ingesting asset: %s", ingest_name)
                     continue
             else:
-                LOGGER.info("SKIPPING: Acquired filename, not in scope for update: %s - %s", fname, ftype)
+                LOGGER.info("\tSKIPPING: Acquired filename, not in scope for update: %s - %s", fname, ftype)
 
     LOGGER.info("=== Netflix original filename updates END =====================")
 
@@ -215,10 +261,10 @@ def update_cid_media_record(priref, orig_fname):
                                    data=media_append_dct,
                                    output='json',
                                    write=True)
-        LOGGER.info("Successfully appended IMP digital.acquired_filenames to Item record %s", priref)
+        LOGGER.info("Successfully appended IMP digital.acquired_filenames to CID media record %s", priref)
         return True
     except Exception as err:
-        LOGGER.warning("Failed to append IMP digital.acquired_filenames to CID media record %s", priref)
+        LOGGER.warning("Failed to append IMP digital.acquired_filenames to CID media record %s %s", priref, err)
         return False
 
 

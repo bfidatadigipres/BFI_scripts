@@ -217,6 +217,7 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
 
     log_print(f"NO SEGMENTS\n{rec}")
 
+    print(rec)
     try:
         response = CUR.create_record(database='items',
                                     data=rec,

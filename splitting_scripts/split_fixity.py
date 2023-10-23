@@ -28,6 +28,7 @@ import os
 import sys
 import json
 import time
+import glob
 import shutil
 import logging
 import datetime
@@ -269,10 +270,11 @@ def main():
                     if check_result:
                         print(f"First part {firstpart_check} exists in CID, proceeding to check for {check_filename}")
                         firstpart = True
-                    for root, _, files in os.walk(AUTOINGEST):
-                        for file in files:
-                            if file == firstpart_check:
-                                firstpart = True
+                    print(f"**** AUTOINEGST: {AUTOINGEST}")
+                    match_path = glob.glob(f"{AUTOINGEST}/**/*/{firstpart_check}", recursive=True)
+                    print(f"****** MATCH PATH {match_path}")
+                    if firstpart_check in str(match_path):
+                        firstpart = True
                     if not firstpart:
                         logger.info("%s\tSkipping: First part has not yet been created, no CID match %s", filepath, firstpart_check)
                         continue
@@ -283,12 +285,11 @@ def main():
                     print(f"SKIPPING: Filename {check_filename} matched with persisted CID media record")
                     logger.warning("%s\tPart found ingested to DPI: %s.", filepath, check_filename)
                     continue
-                for root, _, files in os.walk(AUTOINGEST):
-                    for file in files:
-                        if file == check_filename:
-                            print(f"SKIPPING: CID item record exists and file found in autoingest: {os.path.join(root, file)}")
-                            logger.warning("%s\t* Skipping. Part found already in autoingest: %s.", filepath, check_filename)
-                            continue
+                matched = glob.glob(f"{AUTOINGEST}/**/*/{check_filename}", recursive=True)
+                if check_filename in str(matched):
+                    print(f"SKIPPING: CID item record exists and file found in autoingest: {check_filename}")
+                    logger.warning("%s\t* Skipping. Part found already in autoingest: %s.", filepath, check_filename)
+                    continue
                 logger.info("%s\t* Item %s not already created. Clear to continue progress.", filepath, check_filename)
 
             # If destination file already exists, move on

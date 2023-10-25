@@ -27,6 +27,7 @@ June 2022
 # Public packages
 import os
 import sys
+import glob
 import json
 import time
 import shutil
@@ -55,10 +56,9 @@ if not os.path.exists(TARGET):
 SOURCE, NUM = os.path.split(TARGET)
 OUTPUT_08 = os.path.join(os.path.split(SOURCE)[0], 'segmented')
 OUTPUT_01 = os.environ['QNAP01_SEGMENTED']
-OUTPUT_01_PROC = os.path.split(OUTPUT_01)[0] # Processing folder
 MEDIA_TARGET = os.path.split(OUTPUT_08)[0]  # Processing folder
-AUTOINGEST_01 = os.path.join(os.path.split(OUTPUT_01_PROC)[0], 'autoingest')
-AUTOINGEST_08 = os.path.join(os.path.split(MEDIA_TARGET)[0], 'autoingest')
+AUTOINGEST_01 = os.environ['AUTOINGEST_QNAP01']
+AUTOINGEST_08 = os.environ['AUTOINGEST_QNAP08']
 
 # Setup CID
 CID_API = os.environ['CID_API3']
@@ -148,6 +148,18 @@ def check_media_record(fname):
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
     return False
+
+
+def match_in_autoingest(fname, autoingest):
+    '''
+    Run a glob check of path
+    '''
+    match = glob.glob(f"{autoingest}/**/*/{fname}", recursive=True)
+    if not match:
+        print(f"No match found in {autoingest} : {fname}")
+        return None
+    print(f"Match: {fname} - {match}")
+    return match
 
 
 def main():
@@ -247,11 +259,14 @@ def main():
                     logger.info("Unable to get object_number for file checks. Skipping")
                     continue
                 logger.info('%s\t* Item record for derived MKV already exists for\t%s', filepath, existing_ob_num)
+                logger.info('%s\tChecking if file has already persisted to DPI, or is in autoingest paths', filepath)
                 firstpart_check = f"{existing_ob_num.replace('-','_')}_01of{str(c.partwhole[1]).zfill(2)}.{extension}"
                 check_filename = f"{existing_ob_num.replace('-','_')}_{str(c.partwhole[0]).zfill(2)}of{str(c.partwhole[1]).zfill(2)}.{extension}"
-                print(firstpart_check, check_filename)
+                print(f"Checking if {firstpart_check} or {check_filename} persisted to DPI or are in autoingest")
 
                 # Check for first part before allowing next parts to advance
+                print(AUTOINGEST_01)
+                print(AUTOINGEST_08)
                 if c.partwhole[0] != 1:
                     print(f"Checking if first part has already been created or has persisted to DPI: {firstpart_check}")
                     check_result = check_media_record(firstpart_check)
@@ -259,14 +274,10 @@ def main():
                     if check_result:
                         print(f"First part {firstpart_check} exists in CID, proceeding to check for {check_filename}")
                         firstpart = True
-                    for root, _, files in os.walk(AUTOINGEST_01):
-                        for file in files:
-                            if file == firstpart_check:
-                                firstpart = True
-                    for root, _, files in os.walk(AUTOINGEST_08):
-                        for file in files:
-                            if file == firstpart_check:
-                                firstpart = True
+                    match1 = match_in_autoingest(firstpart_check, AUTOINGEST_01)
+                    match2 = match_in_autoingest(firstpart_check, AUTOINGEST_08)
+                    if match1 or match2:
+                        firstpart = True
                     if not firstpart:
                         logger.info("%s\tSkipping: First part has not yet been created, no CID match %s", filepath, firstpart_check)
                         continue
@@ -277,20 +288,15 @@ def main():
                     print(f"SKIPPING: Filename {check_filename} matched with persisted CID media record")
                     logger.warning("%s\tPart found ingested to DPI: %s.", filepath, check_filename)
                     continue
-                for root, _, files in os.walk(AUTOINGEST_01):
-                    for file in files:
-                        if file == check_filename:
-                            print(f"SKIPPING: CID item record exists and file found in autoingest: {os.path.join(root, file)}")
-                            logger.warning("%s\t* Skipping. Part found already in autoingest: %s.", filepath, check_filename)
-                            continue
-                for root, _, files in os.walk(AUTOINGEST_08):
-                    for file in files:
-                        if file == check_filename:
-                            print(f"SKIPPING: CID item record exists and file found in autoingest: {os.path.join(root, file)}")
-                            logger.warning("%s\t* Skipping. Part found already in autoingest: %s.", filepath, check_filename)
-                            continue
+                match01 = match_in_autoingest(check_filename, AUTOINGEST_01)
+                match02 = match_in_autoingest(check_filename, AUTOINGEST_08)
+                if match01 or match02:
+                    print(f"SKIPPING: CID item record exists and file found in autoingest: {check_filename}")
+                    logger.warning("%s\t* Skipping. Part found already in autoingest: %s.", filepath, check_filename)
+                    continue
                 logger.info("%s\t* Item %s not already created. Clear to continue progress.", filepath, check_filename)
 
+            logger.info("%s\tNo derived CID item record already exists for object number %s.", filepath, object_number)
             # If destination file already exists, move on
             of_01 = os.path.join(qnap_01_carrier_directory, f"{object_number}.{extension}")
             of_08 = os.path.join(qnap_08_carrier_directory, f"{object_number}.{extension}")

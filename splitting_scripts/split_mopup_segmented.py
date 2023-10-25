@@ -21,6 +21,7 @@ Refactored 2023
 # Public imports
 import os
 import sys
+import glob
 import json
 import logging
 from datetime import datetime, timezone
@@ -152,9 +153,11 @@ def main():
 
         # Path to source media
         root = os.path.join(media_target, 'segmented')
-        autoingest = os.path.join(os.path.split(media_target)[0], 'autoingest')
+        processing = os.path.split(media_target)[0]
+        autoingest = os.path.join(os.path.split(processing)[0], 'autoingest')
         print(f"** Targeting: {root}")
         logger.info("** Targeting: %s", root)
+        logger.info("** Autoingest: %s", autoingest)
 
         # List files in recursive sub-directories
         files = []

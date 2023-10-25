@@ -100,18 +100,6 @@ def check_control():
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
 
-def check_time():
-    '''
-    Check time of next script run is not between
-    3pm and 8am, Monday to Friday. Exit if so.
-    '''
-    time_now = datetime.datetime.now()
-    if time_now.hour in range(0,8) or time_now.hour in range(17,24):
-        if time_now.weekday() in range(0,5):
-            logger.info('Script run prevented by check_time() function. Script exiting.')
-            sys.exit('Script run prevented by check_time() function.')
-
-
 def check_cid():
     ''' Test CID online '''
     try:
@@ -144,10 +132,6 @@ def main():
     if not os.path.isfile(fullpath):
         logger.warning("%s\tWARNING\tSCRIPT EXITING: Error with file path supplied, not a file: %s", local_time(), fullpath)
         sys.exit("EXIT: Supplied path is not a file")
-
-    # Temporary restriction for script access to QNAP-01
-    # if '/mnt/qnap_video/Public/F47/' in fullpath:
-        # check_time()
 
     # Multiple instances of script so collection logs for one burst output
     log_build = []

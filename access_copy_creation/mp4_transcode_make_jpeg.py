@@ -49,6 +49,7 @@ import pytz
 import tenacity
 
 # Local packages
+sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global paths from environment vars

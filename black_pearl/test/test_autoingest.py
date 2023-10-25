@@ -109,26 +109,55 @@ def test_get_item_priref():
 
 
 def test_check_media_record():
-    pass
+    '''
+    Supply genuine/fake fname
+    to test API return sufficient
+    '''
+    data1 = autoingest.check_media_record('N_123456_01to02.mkv')
+    data2 = autoingest.check_media_record(N_6923640_01of01.mov)
+    data3 = autoingest.check_media_record('N_9732719_01of02.mov')
+    assert data1 is False
+    assert data2 is False
+    assert data3 is True
 
 
 def test_check_bp_status():
-    pass
+    '''
+    Check for correct bool response
+    '''
+    data1 = autoingest.check_bp_status('N_6923640_01of01.mov', ['imagen', 'preservation01'])
+    data2 = autoingest.check_bp_status('N_6923640_01of01.mkv', ['imagen', 'preservation01'])
+    data3 = autoingest.check_bp_status('', ['imagen', 'preservation01'])
+    data4 = autoingest.check_bp_status('N_6923640_01of01.mov', [imagen, preservation01])
+    assert data1 is True
+    assert data2 is False
+    assert data3 is False
+    assert data4 is False
 
 
 def test_ext_in_file_type():
-    pass
+    '''
+    Check for correct bool response
+    '''
+    ext1 = autoingest.ext_in_file_type('mkv', '157386003', 'pytest_false_log')
+    ext2 = autoingest.ext_in_file_type('mov', '157386003', 'pytest_false_log')
+    ext3 = autoingest.ext_in_file_type('', '', 'pytest_false_log')
+    ext4 = autoingest.ext_in_file_type('')
+    assert ext1 is False
+    assert ext2 is True
+    assert ext3 is False
+    assert ext4 is False
 
 
 def test_get_media_ingest():
-    pass
-
-
-def test_asset_is_next():
-    pass
-
-
-def test_sequence_is_next():
-    pass
-
+    '''
+    Check for correct return of filenames
+    of False where none found
+    '''
+    fname1 = autoingest.get_media_ingests('N-6923640')
+    fname2 = autoingest.get_media_ingests('N-6839629')
+    fname3 = autoingest.get_media_ingests('N_1234_01of01.mkv')
+    assert fname1 == ['N_6923640_01of01.mov']
+    assert fname2 == ['N_6839629_01of03.mkv', 'N_6839629_02of03.mkv', 'N_6839629_03of03.mkv']
+    assert fname3 is False
 

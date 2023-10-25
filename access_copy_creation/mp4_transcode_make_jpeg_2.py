@@ -188,7 +188,7 @@ def main():
         log_build.append(f"{local_time()}\tINFO\tFile is already being processed by another transcode script: {fname}.mp4")
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
         log_output(log_build)
-        #sys.exit(f'EXITING: Script already processing this file: {file}')
+        sys.exit(f'EXITING: Script already processing this file: {file}')
     if os.path.exists(os.path.join(transcode_pth, fname)):
         logger.info("Script exiting: This file has been transcoded.")
         log_build.append(f"{local_time()}\tINFO\tFile has already being processed by another transcode script: {os.path.join(transcode_pth, fname)}")
@@ -302,7 +302,7 @@ def main():
 
         # Calculate seconds mark to grab screen
         seconds = adjust_seconds(duration)
-        print(f"Seconds for JPEG cut: {seconds}")
+        log_build.append(f"{local_time()}\tINFO\tSeconds for JPEG cut: {seconds}")
         success = get_jpeg(seconds, outpath, jpeg_location)
         if not success:
             log_build.append(f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file")
@@ -398,6 +398,7 @@ def main():
 
     log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ====================")
     log_output(log_build)
+    print(log_build)
 
 
 def log_output(log_build):
@@ -430,6 +431,9 @@ def get_jpeg(seconds, fullpath, outpath):
     ]
 
     command = " ".join(cmd)
+    print("***********************")
+    print(command)
+    print("***********************")
     try:
         subprocess.call(cmd)
         return True

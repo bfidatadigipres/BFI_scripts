@@ -465,6 +465,9 @@ def get_jpeg(seconds, fullpath, outpath):
     ]
 
     command = " ".join(cmd)
+    print("***********************")
+    print(command)
+    print("***********************")
     try:
         subprocess.call(cmd)
         return True

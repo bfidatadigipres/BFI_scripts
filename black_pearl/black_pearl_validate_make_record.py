@@ -79,7 +79,8 @@ HDLR.setFormatter(FORMATTER)
 logger.addHandler(HDLR)
 logger.setLevel(logging.INFO)
 
-LOG_PATHS = {'/mnt/qnap_08': os.environ['L_QNAP08'],
+LOG_PATHS = {'/mnt/qnap_video/Public/F47': os.environ['L_QNAP01'],
+             '/mnt/qnap_08': os.environ['L_QNAP08'],
              '/mnt/qnap_10': os.environ['L_QNAP10'],
              '/mnt/qnap_h22/Public': os.environ['L_QNAP02'],
              '/mnt/grack_h22': os.environ['L_GRACK02'],
@@ -95,7 +96,6 @@ LOG_PATHS = {'/mnt/qnap_08': os.environ['L_QNAP08'],
              '/mnt/grack_f47/F47 Video Operations': os.environ['L_IS_VID'],
              '/mnt/grack_f47/FILM': os.environ['L_GRACK01'],
              '/mnt/qnap_07': os.environ['L_QNAP07'],
-             '/mnt/qnap_video/Public/F47': os.environ['L_QNAP01'],
              '/mnt/qnap_digital_operations': os.environ['L_QNAP09'],
              '/mnt/qnap_access_renditions/digital_operations': os.environ['L_QNAP11']
 }
@@ -341,7 +341,7 @@ def check_for_media_record(fname):
     except (KeyError, IndexError):
         image = ''
 
-    return (priref, access_mp4, image)
+    return priref, access_mp4, image
 
 
 def check_global_log(fname):
@@ -637,6 +637,10 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             persistence_log_message("BlackPearl has not persisted file to data tape but ObjectList exists", fpath, wpath, file)
             continue
 
+        local_md5 = get_md5(file)
+        if not local_md5:
+            logger.warning("No Local MD5 found: %s", fpath)
+            continue
         # Make global log message [ THIS MESSAGE TO BE DEPRECATED, KEEPING FOR TIME BEING FOR CONSISTENCY ]
         logger.info("Writing persistence checking message to persistence_queue.csv.")
         persistence_log_message("Ready for persistence checking", fpath, wpath, file)
@@ -644,11 +648,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         if int(byte_size) != int(length):
             logger.warning("FILES BYTE SIZE DO NOT MATCH: Local %s and Remote %s", byte_size, length)
             persistence_log_message("Filesize does not match BlackPearl object length", fpath, wpath, file)
-            continue
-        local_md5 = get_md5(file)
-        if not local_md5:
-            logger.warning("No Local MD5 found: %s", fpath)
-            persistence_log_message("MD5 checksum does not yet exist for this file. Skipping", fpath, wpath, file)
             continue
         if remote_md5 != local_md5:
             logger.warning("MD5 FILES DO NOT MATCH: Local MD5 %s and Remote MD5 %s", local_md5, remote_md5)

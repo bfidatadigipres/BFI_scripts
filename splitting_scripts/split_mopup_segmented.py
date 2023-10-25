@@ -250,14 +250,14 @@ def main():
             # Check if filename already exists in CID/autoingest (don't rename if duplicate)
             check_result = check_media_record(new_f)
             if check_result:
+                logger.info("Skipping: Filename found to have persisted to DPI: %s", new_f)
                 print(f"SKIPPING: Filename {new_f} persisted to BP, CID media record found")
                 continue
-            for root, _, files in os.walk(autoingest):
-                for file in files:
-                    if file == new_f:
-                        print(f"SKIPPING: CID item record exists and file found in autoingest: {os.path.join(root, file)}")
-                        logger.info("%s\tSkipping - CID item record exists and file found in autoingest: %s", filepath, os.path.join(root, file))
-                        continue
+            match = glob.glob(f"{autoingest}/**/*/{new_f}", recursive=True)
+            if new_f in str(match):
+                logger.info("Skipping - CID item record exists and file found in autoingest: %s", match[0])
+                print(f"SKIPPING: CID item record exists and file found in autoingest: {match[0]}")
+                continue
 
             logger.info("**** %s\tFile to be renamed %s -> %s", filepath, f, new_f)
             dst = os.path.join(fpath, new_f)

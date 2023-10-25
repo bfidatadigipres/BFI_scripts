@@ -328,7 +328,7 @@ def main():
             else:
                 logs.append("Skipping: Folder not over 1 day old.")
                 logger_write(logs)
-                continue
+                files = None
 
         # Rename folder path with job_list so it is bypassed
         if job_list:

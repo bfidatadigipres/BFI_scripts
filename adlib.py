@@ -617,7 +617,7 @@ class Cursor:
 
         # Convert XML object to string
         payload = etree.tostring(record)
-
+        print(payload)
         # POST record
         if write:
             try:

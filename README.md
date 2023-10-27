@@ -46,11 +46,17 @@ Once you've activated your ENV you can safely start to install the Python depend
 `python3 -m pip install pytz`
 `python3 -m pip install `
 
-There are some open source software installations required for using this repository which can be downloaded direct from their websites:
-[FFmpeg open-source video encoder/decoder, muxer and streaming tool.](https://ffmpeg.org)
-[MediaInfo from Media Area. Open-source metadata extractor.](https://mediaarea.net/mediainfo)
-[MediaConch from Media Area. Metadata compliance checker.](https://mediaarea.net/mediaconch)
-[Graphic Magick image manipulation tool with CLI.](http://www.graphicsmagick.org/download.html)
+There are some open source software installations required for using this repository which can be downloaded direct from their websites:  
+[FFmpeg open-source video encoder/decoder, muxer and streaming tool.](https://ffmpeg.org)  
+[MediaInfo from Media Area. Open-source metadata extractor.](https://mediaarea.net/mediainfo)  
+[MediaConch from Media Area. Metadata compliance checker.](https://mediaarea.net/mediaconch)  
+[Graphic Magick image manipulation tool with CLI.](http://www.graphicsmagick.org/download.html)   
+
+Linux tools that are used include:  
+
+
+Additional requirements:  
+[Python D3 SDK for SpectraLogic tape library integrations.](https://github.com/SpectraLogic/ds3_python_sdk)  
 
 # Usage
 

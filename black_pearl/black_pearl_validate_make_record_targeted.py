@@ -79,25 +79,25 @@ HDLR.setFormatter(FORMATTER)
 logger.addHandler(HDLR)
 logger.setLevel(logging.INFO)
 
-LOG_PATHS = {'/mnt/qnap_08': os.environ['L_QNAP08'],
-             '/mnt/qnap_10': os.environ['L_QNAP10'],
-             '/mnt/qnap_h22/Public': os.environ['L_QNAP02'],
-             '/mnt/grack_h22': os.environ['L_GRACK02'],
-             '/mnt/qnap_06': os.environ['L_QNAP06'],
-             '/mnt/qnap_imagen_storage/Public': os.environ['L_QNAP04'],
-             '/mnt/qnap_film/Public': os.environ['L_QNAP03'],
-             '/mnt/isilon/special_collections/Finished': os.environ['L_IS_SPEC'],
-             '/mnt/isilon/film_operations/Finished': os.environ['L_IS_FILM'],
-             '/mnt/isilon/video_operations/Finished': os.environ['L_IS_VID'],
-             '/mnt/isilon/ingest/media': os.environ['L_IS_MED'],
-             '/mnt/isilon/audio_operations/Finished': os.environ['L_IS_AUD'],
-             '/mnt/isilon/digital_operations/Finished': os.environ['L_IS_DIGI'],
-             '/mnt/grack_f47/F47 Video Operations': os.environ['L_IS_VID'],
-             '/mnt/grack_f47/FILM': os.environ['L_GRACK01'],
-             '/mnt/qnap_07': os.environ['L_QNAP07'],
-             '/mnt/qnap_video/Public/F47': os.environ['L_QNAP01'],
-             '/mnt/qnap_digital_operations': os.environ['L_QNAP09'],
-             '/mnt/qnap_access_renditions/digital_operations': os.environ['L_QNAP11']
+LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
+             os.environ['QNAP_08']: os.environ['L_QNAP08'],
+             os.environ['QNAP_10']: os.environ['L_QNAP10'],
+             os.environ['QNAP_H22']: os.environ['L_QNAP02'],
+             os.environ['GRACK_H22']: os.environ['L_GRACK02'],
+             os.environ['QNAP_06']: os.environ['L_QNAP06'],
+             os.environ['QNAP_IMAGEN']: os.environ['L_QNAP04'],
+             os.environ['QNAP_FILM']: os.environ['L_QNAP03'],
+             os.environ['IS_SC']: os.environ['L_IS_SPEC'],
+             os.environ['IS_FILM']: os.environ['L_IS_FILM'],
+             os.environ['IS_VID']: os.environ['L_IS_VID'],
+             os.environ['IS_ING']: os.environ['L_IS_MED'],
+             os.environ['IS_AUD']: os.environ['L_IS_AUD'],
+             os.environ['IS_DIG']: os.environ['L_IS_DIGI'],
+             os.environ['GRACK_F47']: os.environ['L_IS_VID'],
+             os.environ['GRACK_FILM']: os.environ['L_GRACK01'],
+             os.environ['GRACK_07']: os.environ['L_QNAP07'],
+             os.environ['QNAP_09']: os.environ['L_QNAP09'],
+             os.environ['QNAP_11']: os.environ['L_QNAP11']
 }
 
 

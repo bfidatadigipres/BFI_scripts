@@ -5,20 +5,61 @@ Welcome to the BFI Scripts Repository! This repository contains a collection of 
 # Contents
 
 1. [Introduction](#-Introduction)
-2. [Scripts overview](#-Scripts-Overview)
-3. [Getting started](#-Getting-Started)
-4. [Usage](#-Usage)
-5. [Contributing](#-Contributing)
-6. [License](#-License)
-7. [Contact](#-Contact)
+2. [Getting started](#-Getting-Started)
+3. [Usage](#-Usage)
+4. [License](#-License)
+5. [Script overview](#-Script-Overview)
+
 
 # Introduction
 
-Thanks for visiting. This repository contains the BFI python scripting used to automate many workflows in the National Archive. Some is legacy code converted to Python3, other is recently built code for different uses. All are currently in use and this repository represents our live workflows. The aim of sharing the code is to offer an opportunity for others to see how we work with open source tools and standards, and with the hope of collaboration that might see our and others practises develop.
+Thanks for visiting. This repository contains the BFI python scripting used to automate many workflows in the National Archive. Some is legacy code converted to Python3, other is recently built code for new project development. All are currently in use and this repository represents our live workflows. The aim of sharing the code is to offer an opportunity for others to see how we work with open source tools and standards, and with the hope of collaboration that might see our and other's practises develop.
 
-A guide to the sub-directories and the workflows they represent follows. If you're keen to try some of this code for your own workflows then please remember that the code is not agnostic. There are many dependencies on environmental variables (shown in the code as os.environ['KEY']) which link to paths and other data. Please see the dependencies below for an understanding of external software requirements. And if you would like to test this code please download and test in a safe environment away from any preservation critical workflows.
+If you're keen to try some of this code for your own workflows then please remember that the code is not agnostic. There are many dependencies on environmental variables (shown in the code as `os.environ['KEY']`) which link to paths and other data. Please see the dependencies below for an understanding of python package requirements, specific software and hardware dependencies for certain scripts are listed in the Script overview. If you would like to test this code please download and test in a safe environment away from any preservation critical workflows.
 
-# Script Repository Overview
+# Getting started
+
+If you would like to download and try some of the scripts in this repository then please follow the steps below. You may need to sign up for a GitHub account and configure git in your workspace first.
+
+### Clone the repository
+`git clone https://github.com/bfidatadigipres/BFI_scripts.git`
+
+### Change directory to the repository directory
+`cd BFI_scripts`
+
+### Create a Python VENV for safe installation of packages
+For more information visit the [Python VENV installation page.](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/)
+You may need to upgrade your version of pip before proceeding.
+
+`python3 -m pip install --user virtualenv`  
+`python3 -m venv ENV`  
+`source ENV/bin/activate`  
+
+Once you've activated your ENV you can safely start to install the Python dependencies for the scripts in this repository.
+
+### Install dependencies
+`python3 -m pip install requests`  
+`python3 -m pip install tenacity`  
+`python3 -m pip install dicttoxml`  
+`python3 -m pip install lxml`  
+`python3 -m pip install pytz`  
+`python3 -m pip install python-magic`  
+
+[Python D3 SDK for SpectraLogic tape library integrations.](https://github.com/SpectraLogic/ds3_python_sdk)  
+
+# Usage
+
+## Crontab launch and Flock locks
+
+As we run our code from Linux Ubuntu operating systems we use Linux's Flock with our repeated crontab launches to ensure that only once instance of a script, or launch script is operational at any one time. This prevents accidents with multiple versions of code working on the same file simultaneously and cause proxy or preservation copy damage, if for example transcoding scripts were impacted.
+
+
+# License
+These scripts are available under the MIT licence. They are live code and therefore under continual redevelopment and as a result will contain untested features within the code. If you wish to use these yourself please create a safe environment to use this code separate from preservation critical files. All comments and feedback welcome in our [discussion page!](https://github.com/bfidatadigipres/BFI_scripts/discussions)
+
+
+
+# Script Overview
 
 The scripts are broken into different sub-directories which links the contents, sometime directly and sometimes generally. A short overview of the directory is provided followed by a brief description of each script and their relationship, if any. Please visit the scripts themselves for more information found in the notes within the code.  
 
@@ -40,50 +81,3 @@ Dependencies:
 These scripts are launched frequently from crontab but the script only launches when the previous run has completed. The shell launch script targets a specific transcode path which is passed as an argument from the crontab launch, along with the amount of parallel jobs wanted for that transcode path. The script then searching in the supplied path for any files, adds them to a list and then using GNU Parallel launches the following Python script against each file path and in batches of parallel jobs using the job number received. This script stays operational until all items in the list have been processed before exiting. The received path name is used to inform th ename of the file list that stores the found file paths.
 
 ### mp4_transcode_make_jpeg.py / mp4_transcode_make_jpeg_2.py
-
-
-
-# Getting started
-
-If you would like to download and try some of the scripts in this repository then please follow the steps below. You may need to sign up for a GitHub account and configure git in your workspace.
-
-### Clone the repository
-`git clone https://github.com/bfidatadigipres/BFI_scripts.git`
-
-### Change directory to the repository directory
-`cd BFI_scripts`
-
-### Create a Python VENV for safe installation of packages
-For more information visit the [Python VENV installation page.](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/)
-You may need to upgrade your version of pip before proceeding.
-
-`python3 -m pip install --user virtualenv`  
-`python3 -m venv ENV`  
-`source ENV/bin/activate`  
-
-Once you've activated your ENV you can safely start to install the Python dependencies for this repository.
-
-### Install dependencies
-`python3 -m pip install requests`  
-`python3 -m pip install tenacity`  
-`python3 -m pip install dicttoxml`  
-`python3 -m pip install lxml`  
-`python3 -m pip install pytz`
-`python3 -m pip install `
-
-[Python D3 SDK for SpectraLogic tape library integrations.](https://github.com/SpectraLogic/ds3_python_sdk)  
-
-# Usage
-
-## Crontab launch and Flock locks
-
-As we run our code from Linux Ubuntu operating systems we use Linux's Flock with our repeated crontab launches to ensure that only once instance of a script, or launch script is operational at any one time. This prevents accidents with multiple versions of code working on the same file simultaneously and cause proxy or preservation copy damage, if for example transcoding scripts were impacted.
-
-# Contributing
-
-
-# License
-These scripts are available under the MIT licence. They are live code and therefore under continual redevelopment and as a result will contain untested features within the code. If you wish to use these yourself please create a safe environment to use this code separate from preservation critical files. All comments and feedback welcome in our [discussion page!](https://github.com/bfidatadigipres/BFI_scripts/discussions)
-
-
-# Contact

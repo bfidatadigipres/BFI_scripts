@@ -64,7 +64,7 @@ CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
-INGEST_CONFIG = os.path.join(CODE_PATH, 'black_pearl/dpi_ingest.yaml')
+INGEST_CONFIG = os.path.join(CODE_PATH, 'black_pearl/dpi_ingests.yaml')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')

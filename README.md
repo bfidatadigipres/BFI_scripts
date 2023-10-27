@@ -42,7 +42,7 @@ Once you've activated your ENV you can safely start to install the Python depend
 `python3 -m pip install tenacity`  
 `python3 -m pip install dicttoxml`  
 `python3 -m pip install lxml`  
-`python3 -m pip install pytz`
+`python3 -m pip install pytz`  
 `python3 -m pip install python-magic`  
 
 [Python D3 SDK for SpectraLogic tape library integrations.](https://github.com/SpectraLogic/ds3_python_sdk)  

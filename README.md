@@ -20,6 +20,8 @@ Welcome to the BFI Scripts Repository! This repository contains a collection of 
 
 # Getting started
 
+If you would like to download and try some of the scripts in this repository then please follow the steps below. You may need to sign up for a GitHub account and configure git in your workspace.
+
 ### Clone the repository
 `git clone https://github.com/bfidatadigipres/BFI_scripts.git`
 
@@ -37,9 +39,18 @@ You may need to upgrade your version of pip before proceeding.
 Once you've activated your ENV you can safely start to install the Python dependencies for this repository.
 
 ### Install dependencies
-`python3 -m pip install requests`
-`python3 -m pip install tenacity`
+`python3 -m pip install requests`  
+`python3 -m pip install tenacity`  
+`python3 -m pip install dicttoxml`  
+`python3 -m pip install lxml`  
+`python3 -m pip install pytz`
+`python3 -m pip install `
 
+There are some open source software installations required for using this repository which can be downloaded direct from their websites:
+[FFmpeg open-source video encoder/decoder, muxer and streaming tool.](https://ffmpeg.org)
+[MediaInfo from Media Area. Open-source metadata extractor.](https://mediaarea.net/mediainfo)
+[MediaConch from Media Area. Metadata compliance checker.](https://mediaarea.net/mediaconch)
+[Graphic Magick image manipulation tool with CLI.](http://www.graphicsmagick.org/download.html)
 
 # Usage
 

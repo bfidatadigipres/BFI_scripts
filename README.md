@@ -26,7 +26,7 @@ Welcome to the BFI Scripts Repository! This repository contains a collection of 
 ### Change directory to the repository folder
 `cd BFI_scripts`
 
-### Create a Python VENV for installations
+### Create a Python VENV for safe installation of packages
 For more information visit the [Python VENV installation page.](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/)
 You may need to upgrade your version of pip before proceeding.
 
@@ -34,8 +34,11 @@ You may need to upgrade your version of pip before proceeding.
 `python3 -m venv ENV`  
 `source ENV/bin/activate`  
 
+Once you've activated your ENV you can safely start to install the Python dependencies for this repository.
+
 ### Install dependencies
-`pip install package_name`
+`python3 -m pip install requests`
+`python3 -m pip install tenacity`
 
 
 # Usage

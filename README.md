@@ -13,13 +13,13 @@ Welcome to the BFI Scripts Repository! This repository contains a collection of 
 
 # Introduction
 
-Thanks for visiting. This repository contains the BFI python scripting used to automate many workflows in the National Archive. Some is legacy code converted to Python3, other is recently built code for different uses. All are currently in use and this repository represents our live workflows. The aim of sharing the code is to offer an opportunity for others to see how we work with open source tools and standards, and with the hope of collaboration that might see our and others practises develop.
+Thanks for visiting. This repository contains the BFI python scripting used to automate many workflows in the National Archive. Some is legacy code converted to Python3, other is recently built code for new project development. All are currently in use and this repository represents our live workflows. The aim of sharing the code is to offer an opportunity for others to see how we work with open source tools and standards, and with the hope of collaboration that might see our and other's practises develop.
 
-A guide to the sub-directories and the workflows they represent follows. If you're keen to try some of this code for your own workflows then please remember that the code is not agnostic. There are many dependencies on environmental variables (shown in the code as os.environ['KEY']) which link to paths and other data. Please see the dependencies below for an understanding of external software requirements. And if you would like to test this code please download and test in a safe environment away from any preservation critical workflows.
+If you're keen to try some of this code for your own workflows then please remember that the code is not agnostic. There are many dependencies on environmental variables (shown in the code as `os.environ['KEY']`) which link to paths and other data. Please see the dependencies below for an understanding of python package requirements, specific software and hardware dependencies for certain scripts are listed in the Script overview. If you would like to test this code please download and test in a safe environment away from any preservation critical workflows.
 
 # Getting started
 
-If you would like to download and try some of the scripts in this repository then please follow the steps below. You may need to sign up for a GitHub account and configure git in your workspace.
+If you would like to download and try some of the scripts in this repository then please follow the steps below. You may need to sign up for a GitHub account and configure git in your workspace first.
 
 ### Clone the repository
 `git clone https://github.com/bfidatadigipres/BFI_scripts.git`
@@ -35,7 +35,7 @@ You may need to upgrade your version of pip before proceeding.
 `python3 -m venv ENV`  
 `source ENV/bin/activate`  
 
-Once you've activated your ENV you can safely start to install the Python dependencies for this repository.
+Once you've activated your ENV you can safely start to install the Python dependencies for the scripts in this repository.
 
 ### Install dependencies
 `python3 -m pip install requests`  
@@ -43,7 +43,7 @@ Once you've activated your ENV you can safely start to install the Python depend
 `python3 -m pip install dicttoxml`  
 `python3 -m pip install lxml`  
 `python3 -m pip install pytz`
-`python3 -m pip install `
+`python3 -m pip install python-magic`  
 
 [Python D3 SDK for SpectraLogic tape library integrations.](https://github.com/SpectraLogic/ds3_python_sdk)  
 

@@ -28,7 +28,7 @@ Any additional software/hardware needed for the operation of the scripts within 
 
 This directory contains the code that creates proxy access copies of all video and image items ingested into the BFI National Archive Digital Preservation Infrastructure (DPI). There are two Python scripts and two Bash launch scripts. They are genarally identical but one set of scripts run against our off-air TV collection which generates approximately 500 video files a day and so has a couple of different features to accommodate this.
 
-Dependencies:
+Dependencies:  
 [FFmpeg open-source video encoder/decoder, muxer and streaming tool.](https://ffmpeg.org)  
 [GNU Parallel, parallelisation tool to maximise encoding throughput.](https://www.gnu.org/software/parallel/)
 [MediaInfo from Media Area. Open-source metadata extractor.](https://mediaarea.net/mediainfo)  

@@ -7,9 +7,8 @@ Welcome to the BFI Scripts Repository! This repository contains a collection of 
 1. [Introduction](#-Introduction)
 2. [Getting started](#-Getting-Started)
 3. [Usage](#-Usage)
-4. [Contributing](#-Contributing)
-5. [License](#-License)
-6. [Scripts overview](#-Scripts-Overview)
+4. [License](#-License)
+5. [Script overview](#-Script-Overview)
 
 
 # Introduction
@@ -60,7 +59,7 @@ These scripts are available under the MIT licence. They are live code and theref
 
 
 
-# Script Repository Overview
+# Script Overview
 
 The scripts are broken into different sub-directories which links the contents, sometime directly and sometimes generally. A short overview of the directory is provided followed by a brief description of each script and their relationship, if any. Please visit the scripts themselves for more information found in the notes within the code.  
 

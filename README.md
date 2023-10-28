@@ -95,7 +95,7 @@ Dependencies:
 
 ## document_en_15907
 
-To follow.
+These scripts automate the creation of records in the BFI National Archive's Collections Information Database (CID) via calls to its RESTful API, in compliance with the [EN 15907](https://filmstandards.org/fsc/index.php/EN_15907) standard (a metadata set for the comprehensive description of moving image works and their manifestations across their lifecycle). JSON metadata is fetched from PA Media's REST API for the Netflix programming being acquired into the collection, and that is used to generate a Work-Manifestation-Item hierarchy with available descriptive metadata, including Series Work parent, and cast and crew where available.
 
 
 ## dpi_downloader and dpi_downloader_elastic_search

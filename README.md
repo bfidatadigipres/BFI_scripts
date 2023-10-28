@@ -105,4 +105,4 @@ To follow.
 
 ## splitting_scripts
 
-To follow.
+These scripts automate the processing of FFV1 Matroska files created in high volume videotape digitisation workflows in the BFI National Archive - splitting full-tape capture files into programme sections based on timings metadata that was entered into the Archive's Collections Information Database (CID) by the videotape capture technicians. The scripts model a videotape carrier by finding all Item records associated with the carrier record. They validate the timings metadata aginst a set of rules (for example, a programme end time cannot be before its start time), then use FFMPEG stream copy to create a file for each programme section, with handles at start and end points to ensure that the full videotape content is preserved in the splitting. FrameMD5 is used to ensure lossless stream copy. Finally an FFV1 Matroska Item record is created in the Collections Information Database (CID), and associated with the record for the videotape source Item, in a source <-> derived relationship.

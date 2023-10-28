@@ -82,7 +82,7 @@ These scripts are launched frequently from crontab but the script only launches 
 
 ### mp4_transcode_make_jpeg.py / mp4_transcode_make_jpeg_2.py
 
-To follow.
+For video source files, these scripts create H.264 MP4 video rendition for viewing in web applications (with close attention to display aspect ratio), and two JPG image renditions - one for thumbnail display in search results, and one larger image for poster display in video playback window. For image sources, they create the thumbnail and poster JPGs only.
 
 
 ## black_pearl

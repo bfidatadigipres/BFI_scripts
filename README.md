@@ -1,5 +1,5 @@
 # BFI_scripts [WIP]
-Welcome to the BFI Scripts Repository! This repository contains a collection of scripts developed by the BFI National Archive's Data and Digital Preservation department, for various digital preservation and metadata management tasks.
+Welcome to the BFI Scripts repository! This repository contains a collection of scripts developed by the BFI National Archive's Data and Digital Preservation department, for various digital preservation and metadata management tasks.
 
 
 # Contents

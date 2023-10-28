@@ -13,9 +13,9 @@ Welcome to the BFI Scripts Repository! This repository contains a collection of 
 
 # Introduction
 
-Thanks for visiting. This repository contains the BFI python scripting used to automate many workflows in the National Archive. Some is legacy code converted to Python3, other is recently built code for new project development. All are currently in use and this repository represents our live workflows. The aim of sharing the code is to offer an opportunity for others to see how we work with open source tools and standards, and with the hope of collaboration that might see our and other's practises develop.
+Thanks for visiting. This repository contains the BFI python scripting used to automate many workflows in the BFI National Archive. Some is legacy code converted to Python3, other is recently built code for new project development. All are currently in use and this repository represents our live workflows. The aim of sharing the code is to offer an opportunity for others to see how we work with open source tools and standards, and with the hope of collaboration that might see our and other's practices develop.
 
-If you're keen to try some of this code for your own workflows then please remember that the code is not agnostic. There are many dependencies on environmental variables (shown in the code as `os.environ['KEY']`) which link to paths and other data. Please see the dependencies below for an understanding of python package requirements, specific software and hardware dependencies for certain scripts are listed in the Script overview. If you would like to test this code please download and test in a safe environment away from any preservation critical workflows.
+If you're keen to try some of this code for your own workflows then please remember that the code is not agnostic. There are many dependencies on environmental variables (shown in the code as `os.environ['KEY']`) which link to paths and other data. Please see the dependencies below for an understanding of python package requirements, specific software and hardware dependencies for certain scripts are listed in the Script overview. If you would like to test this code please download and test in a safe environment away from any preservation-critical workflows.
 
 
 # Getting started
@@ -53,7 +53,7 @@ To follow.
 
 ### Crontab launch and Flock locks
 
-As we run our code from Linux Ubuntu operating systems we use Linux's Flock with our repeated crontab launches to ensure that only once instance of a script, or launch script is operational at any one time. This prevents accidents with multiple versions of code working on the same file simultaneously and cause proxy or preservation copy damage, if for example transcoding scripts were impacted.
+As we run our code from Linux Ubuntu operating systems we use Linux's Flock with our repeated crontab launches to ensure that only once instance of a script, or launch script is operational at any one time. This prevents accidents with multiple versions of code working on the same file simultaneously and causing proxy or preservation copy damage, if for example transcoding scripts were impacted.
 
 ### License
 These scripts are available under the MIT licence. They are live code and therefore under continual redevelopment and as a result will contain untested features within the code. If you wish to use these yourself please create a safe environment to use this code separate from preservation critical files. All comments and feedback welcome in our [discussion page!](https://github.com/bfidatadigipres/BFI_scripts/discussions)
@@ -61,13 +61,13 @@ These scripts are available under the MIT licence. They are live code and theref
 
 # Script Overview
 
-The scripts are broken into different sub-directories which links the contents, sometime directly and sometimes generally. A short overview of the directory is provided followed by a brief description of each script and their relationship, if any. Please visit the scripts themselves for more information found in the notes within the code.  
+The scripts are broken into different sub-directories which links the contents, sometimes directly and sometimes generally. A short overview of the directory is provided followed by a brief description of each script and their relationship, if any. Please visit the scripts themselves for more information found in the comments within the code.  
 
 Any additional software/hardware needed for the operation of the scripts within their directory will be quickly noted at the top of each directory, if different to those listed in the [Install dependencies](###-Install-dependencies) section.  
 
 ## access_copy_creation
 
-This directory contains the code that creates proxy access copies of all video and image items ingested into the BFI National Archive Digital Preservation Infrastructure (DPI). There are two Python scripts and two Bash launch scripts. They are genarally identical but one set of scripts run against our off-air TV collection which generates approximately 500 video files a day and so has a couple of different features to accommodate this.
+This directory contains the code that creates proxy access copies of all video and image items ingested into the BFI National Archive Digital Preservation Infrastructure (DPI). There are two Python scripts and two Bash launch scripts. They are generally identical but one set of scripts runs against our off-air TV dataset which generates approximately 500 video files a day and so has a couple of different features to accommodate this.
 
 Dependencies:  
 [FFmpeg open-source video encoder/decoder, muxer and streaming tool.](https://ffmpeg.org)  

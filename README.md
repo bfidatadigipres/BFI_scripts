@@ -87,7 +87,7 @@ To follow.
 
 ## black_pearl
 
-This directory contains script that directly interact with the Black Pearl magnetic tape libraries used for long-term preservation storage at the BFI National Archive. To communicate they use the Spectra Logic DS3 SDK Application Programming Interface (API), link below. These scripts handle the writing to tape, retrieval of information from tape, download and careful deletion of assets from tape. Our bulk downloading request scripts can be found in the [dpi_downloader and dpi_downloader_elastic_searcg](##-dpi_downloader-and-dpi_downloader_elastic_search) directories.
+This directory contains script that directly interact with the Black Pearl magnetic tape libraries used for long-term preservation storage at the BFI National Archive. To communicate they use the Spectra Logic DS3 SDK Application Programming Interface (API), link below. These scripts handle the writing to tape, retrieval of information from tape, download and careful deletion of assets from tape. Our bulk downloading request scripts can be found in the [dpi_downloader and dpi_downloader_elastic_search](##-dpi_downloader-and-dpi_downloader_elastic_search) directories.
 
 Dependencies:  
 [Python DS3 SDK for SpectraLogic tape library integrations.](https://github.com/SpectraLogic/ds3_python_sdk)  

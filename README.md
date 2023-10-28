@@ -100,7 +100,7 @@ These scripts automate the creation of records in the BFI National Archive's Col
 
 ## dpi_downloader and dpi_downloader_elastic_search
 
-To follow.
+These scripts utilise a front-end and back-end structure. The front-end is a Python Flask web application to allow users to submit requests for file downloads from the BFI National Archive's Digital Preservation Infrastructure (DPI). There are two versions of this app - one writes the request details to a SQLite database, and the other writes the request details to an elasticsearch index. The back-end is a set of Python scripts that restore the requested files from DPI using the RESTful API of the Spectra Logic Black Pearl gateway, via the Python SDK; and optionally transcode to either H.264 MP4 or ProRes MOV, as requested.
 
 
 ## splitting_scripts

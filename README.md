@@ -1,5 +1,5 @@
 # BFI_scripts [WIP]
-Welcome to the BFI Scripts Repository! This repository contains a collection of scripts developed by the BFI National Archive's Data and Digital Preservation department for various digital preservation and data management tasks.
+Welcome to the BFI Scripts Repository! This repository contains a collection of scripts developed by the BFI National Archive's Data and Digital Preservation department, for various digital preservation and metadata management tasks.
 
 
 # Contents
@@ -13,7 +13,7 @@ Welcome to the BFI Scripts Repository! This repository contains a collection of 
 
 # Introduction
 
-Thanks for visiting. This repository contains the BFI python scripting used to automate many workflows in the BFI National Archive. Some is legacy code converted to Python3, other is recently built code for new project development. All are currently in use and this repository represents our live workflows. The aim of sharing the code is to offer an opportunity for others to see how we work with open source tools and standards, and with the hope of collaboration that might see our and other's practices develop.
+Thanks for visiting. This repository contains the Python scripting used to automate many workflows in the BFI National Archive. Some is legacy code converted to Python3, other is recently created code for new projects and workflows. All are currently in use and this repository represents our live workflows. The aim of sharing the code is to offer an opportunity for others to see how we work with open source tools and standards, and with the hope of collaboration that might see our and other's practices develop.
 
 If you're keen to try some of this code for your own workflows then please remember that the code is not agnostic. There are many dependencies on environmental variables (shown in the code as `os.environ['KEY']`) which link to paths and other data. Please see the dependencies below for an understanding of python package requirements, specific software and hardware dependencies for certain scripts are listed in the Script overview. If you would like to test this code please download and test in a safe environment away from any preservation-critical workflows.
 

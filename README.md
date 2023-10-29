@@ -67,7 +67,7 @@ Any additional software/hardware needed for the operation of the scripts within 
 
 ## access_copy_creation
 
-This directory contains the code that creates proxy access copies of all video and image items ingested into the BFI National Archive Digital Preservation Infrastructure (DPI). There are two Python scripts and two Bash launch scripts. They are generally identical but one set of scripts runs in our off-air TV recording context - which generates approximately 500 video files a day and so has different features to accommodate this.
+This directory contains the code that creates low-bitrate access copies of all video and image preservation master files ingested into the BFI National Archive's Digital Preservation Infrastructure (DPI). There are two Python scripts and two Bash launch scripts. They are generally identical but one set of scripts runs in our off-air TV recording context - which generates approximately 500 video files a day, and has different features to accommodate this.
 
 Dependencies:  
 [FFmpeg open-source video encoder/decoder, muxer and streaming tool.](https://ffmpeg.org)  

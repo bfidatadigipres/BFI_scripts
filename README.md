@@ -90,7 +90,7 @@ For video source files, these scripts create one H.264 MP4 video rendition for v
 This directory contains scripts that directly interact with Black Pearl, a RESTful API gateway to the Spectra Logic data tape libraries used for long-term preservation storage in the BFI National Archive's Digital Preservation Infrastructure. To communicate they use the Spectra Logic Python SDK, a wrapper for the Spectra Logic DS3 Application Programming Interface (API) - link below. These scripts handle the writing of files to tape, the retrieval of information from the Black Pearl's database, and download of files from data tape. They manage deletion of files in the local network after bit-perfect storage to data tape - confirmed with MD5 checksum comparison. The associated download request scripts can be found in the [dpi_downloader and dpi_downloader_elastic_search](##-dpi_downloader-and-dpi_downloader_elastic_search) directories.
 
 Dependencies:  
-[Python DS3 SDK for SpectraLogic tape library integrations.](https://github.com/SpectraLogic/ds3_python_sdk)  
+[Python DS3 SDK for SpectraLogic Black Pearl data tape library interactions.](https://github.com/SpectraLogic/ds3_python_sdk)  
 
 
 ## document_en_15907

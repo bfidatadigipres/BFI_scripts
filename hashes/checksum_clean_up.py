@@ -27,6 +27,7 @@ import logging
 import csv
 
 # Local packages
+CODE = os.environ['CODE']
 sys.path.append['CODE']
 import adlib
 

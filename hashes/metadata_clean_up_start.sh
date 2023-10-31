@@ -33,6 +33,6 @@ echo " == Shell script creating metadata_clean_up_list.txt output for parallel l
 find "${CID_MEDIAINFO}" -name "*_TEXT.txt" > "${CODE}metadata_clean_up_list.txt"
 
 echo " == Launching GNU parallel to run muliple Python3 scripts for metadata_clean_up == " >> "${LOG}"
-grep '/mnt/' "${CODE}metadata_clean_up_list.txt" | parallel --jobs 10 "$PY3_ENV ${CODE}metadata_clean_up.py {}"
+grep '/mnt/' "${CODE}metadata_clean_up_list.txt" | parallel --jobs 10 "sudo $PY3_ENV ${CODE}metadata_clean_up.py {}"
 
 echo " ========================= SHELL SCRIPT END ========================== $DATE_FULL" >> "${LOG}"

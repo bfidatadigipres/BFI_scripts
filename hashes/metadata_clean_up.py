@@ -28,7 +28,8 @@ import datetime
 import requests
 
 # Local packages
-sys.path.append(os.environ['CODE'])
+code = os.environ['CODE']
+sys.path.append(code)
 import adlib
 
 # Global variables
@@ -76,6 +77,7 @@ def cid_retrieve(fname):
     try:
         query_result = CID.get(query)
     except Exception as err:
+        print(err)
         query_result = None
     try:
         priref = query_result.records[0]['priref'][0]
@@ -117,6 +119,7 @@ def main():
         sys.exit('Incorrect media file detected.')
 
     # Checking for existence of Digital Media record
+    print(text_path, filename)
     priref = cid_retrieve(filename)
     if len(priref) == 0:
         sys.exit('Script exiting. Priref could not be retrieved.')
@@ -198,11 +201,11 @@ def write_payload(priref, payload_data):
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_head + payload_data + payload_end
     try:
-        success = requests_write(priref, payload)
+        success = requests_write(payload)
         if success:
             return True
     except Exception as err:
-        print (err)
+        print(err)
 
 
 def write_lock(priref):
@@ -213,13 +216,12 @@ def write_lock(priref):
         post_resp = requests.post(
             CID_API,
             params={'database': 'media', 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'})
-        print(post_resp.text)
         return True
     except Exception as err:
         LOGGER.warning("write_lock(): Lock record wasn't applied to record %s. %s", priref, err)
 
 
-def requests_write(priref, payload):
+def requests_write(payload):
     '''
     Requests alternative to
     CID writing data
@@ -229,8 +231,8 @@ def requests_write(priref, payload):
         params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
         data={'data': payload}
     )
-    print(post_response.text)
     if '<error><info>' in str(post_response.text):
+        print(str(post_response.text))
         return False
     else:
         return True
@@ -244,12 +246,10 @@ def unlock_record(priref):
         post_response = requests.post(
             CID_API,
             params={'database': 'media', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
-        print(post_response.text)
         return True
     except Exception as err:
-        LOGGER.warning("unlock_record(): CID Media record %s was not unlocked following failed write", priref)
+        LOGGER.warning("unlock_record(): CID Media record %s was not unlocked following failed write: %s", priref, err)
 
 
 if __name__ == '__main__':
     main()
-

@@ -1,4 +1,4 @@
-#!/usr/bin/env /usr/local/bin/python3
+#!/usr/bin/env python3
 
 '''
 VERSION WRITTEN FOR QNAP-05 STORA MP4 TRANSCODING

@@ -1,4 +1,4 @@
-7#!/usr/bin/env /usr/local/bin/python3
+#!/usr/bin/env python3
 
 '''
 Script to be launched from parallel, requires sys.argv arguments

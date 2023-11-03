@@ -1,4 +1,4 @@
-#!/usr/bin/env /usr/local/bin/python3
+#!/usr/bin/env python3
 
 '''
 VERSION WRITTEN FOR QNAP-05 STORA MP4 TRANSCODING
@@ -240,7 +240,7 @@ def main():
         height = get_height(fullpath)
         width = get_width(fullpath)
         duration, vs = get_duration(fullpath)
-        log_build.append(f"Data retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs")
+        log_build.append(f"{local_time()}\tINFO\tData retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs")
 
         # CID transcode paths
         outpath = os.path.join(transcode_pth, f"{fname}.mp4")
@@ -387,7 +387,7 @@ def main():
         os.chmod(outpath2, 0o777)
     log_build.append(f"{local_time()}\tINFO\tWriting UMID data to CID Media record: {media_priref}")
     logger.info(media_data)
-    success = cid_media_append(media_priref, media_data)
+    success = cid_media_append(file, media_priref, media_data)
     if success:
         log_build.append(f"{local_time()}\tINFO\tJPEG/HLS filename data updated to CID media record")
         log_build.append(f"{local_time()}\tINFO\tMoving preservation file to completed path: {completed_pth}")
@@ -1003,7 +1003,7 @@ def conformance_check(file):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))
-def cid_media_append(priref, data):
+def cid_media_append(fname, priref, data):
     '''
     Receive data and priref and append to CID media record
     '''
@@ -1011,16 +1011,24 @@ def cid_media_append(priref, data):
     payload_mid = ''.join(data)
     payload_end = f"</record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
+    date_supplied = datetime.datetime.now().strftime('%Y-%m-%d')
 
     post_response = requests.post(
         CID_API,
         params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
         data={'data': payload})
-    if "<error><info>" in str(post_response.text):
-        logger.warning("cid_media_append(): Post of data failed: %s - %s", priref, post_response.text)
+    print("**************************************************************")
+    print(post_response.text)
+    print("**************************************************************")
+
+    if "<error><info>" in str(post_response.text) or "<error>" in str(post_response.text):
+        logger.warning("cid_media_append(): Post of data failed for file %s: %s - %s", fname, priref, post_response.text)
         return False
+    elif f'"modification":"{date_supplied}' in str(post_response.text):
+        logger.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
+        return True
     else:
-        logger.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", priref)
+        logger.info("cid_media_append(): Write of access_rendition data appear successful for %s - Priref %s", fname, priref)
         return True
 
 

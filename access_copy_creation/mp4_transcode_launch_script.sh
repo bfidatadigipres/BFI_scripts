@@ -18,7 +18,7 @@ python_script="${CODE}access_copy_creation/mp4_transcode_make_jpeg.py"
 # replace list to ensure clean data
 echo "" > "${dump_to}"
 
-echo " ========================= SHELL LAUNCH - QNAP10 ========================== $date_FULL" >> "${log_path}"
+echo " ========================= SHELL LAUNCH - $path_insert ========================== $date_FULL" >> "${log_path}"
 echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_path}"
 echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
 

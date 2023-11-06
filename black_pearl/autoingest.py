@@ -577,10 +577,10 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
 
 def sequence_is_next(fpath, fname, object_number, ext, log_paths):
     '''
-    For ingest image sequences that do not have complete reels
-    as MKV or TAR
+    Ingest image sequences that do not have
+    complete reels as MKV or TAR
     '''
-    if not fname.endswith('.mkv') or fname.endswith('.tar'):
+    if not fname.endswith(('.mkv', '.tar')):
         print(f"* Incorrect sequence file type received: {fname} with extension {ext}")
         logger.warning('%s\tIncorrect film sequence file type in folder incomplete_sequences', log_paths)
         return False

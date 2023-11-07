@@ -180,15 +180,7 @@ def main():
 
     LOGGER.info("============ Python3 %s START =============", filepath)
 
-    # Check filename starts correctly in all but special_collections path
-    if '/special_collections/' in str(filepath) and '/archive/' in str(filepath):
-        LOGGER.info('Special Collections archive item, skipping name validation checks')
-        pass
-    elif not filename.startswith(('N_', 'C_', 'PD_', 'SPD_', 'PBS_', 'PBM_', 'PBL_', 'SCR_', 'CA_')):
-        LOGGER.info("EXITING: Filename <%s> formatted incorrectly", filename)
-        sys.exit('Filename formatted incorrectly.')
-
-    # Check if MD5 already generated for file using list comprehension [ TWO PATHS UNTIL CHANGEOVER COMPLETE ]
+    # Check if MD5 already generated for file using list comprehension
     check = [f for f in os.listdir(CHECKSUM_PATH) if f.startswith(filename) and not f.endswith(('.ini', '.DS_Store', '.mhl', '.json', '.tmp', '.dpx', '.DPX'))]
     if len(check) > 1:
         sys.exit(f'More than one checksum found with {filename}')

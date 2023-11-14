@@ -1,4 +1,4 @@
-# BFI_scripts [WIP]
+# BFI_scripts
 Welcome to the BFI Scripts repository! This repository contains a collection of scripts developed by the BFI National Archive's Data and Digital Preservation department, for various digital preservation and metadata management tasks.
 
 
@@ -49,7 +49,9 @@ Once you've activated your ENV you can safely start to install the Python depend
 
 # Usage
 
-To follow.
+To use this code base for your own tests you will need to install dependencies required for each script. We recommend all Python dependencies are installed into a virtual environment (please see guide above). If installing open-source software that relies on FFmpeg then you should installed FFmpeg first before installing following packages. We recommend using Package Managers for easy install of open-source software, when supported. For Windows you can use https://chocolatey.org/install, and for Unix you can use https://brew.sh/.  
+
+This is live code so changes will be made to it frequently and as a result some bugs might appear from time to time! Please use this code in a save environment away from preservation critical workflows and files. Always grateful for feedback or suggestions so do get in touch! Thank you!
 
 ### Crontab launch and Flock locks
 

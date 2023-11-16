@@ -313,6 +313,7 @@ def main():
 
         job_list = []
         fsize = get_size(folderpth)
+        print(f"Folder identified is {fsize} bytes, and upload size limit is {upload_size} bytes")
         if fsize > upload_size:
             # Ensure ingest folder is now pushed to black pearl
             logs.append(f"Starting move of folder path to Black Pearl ingest bucket {bucket}")
@@ -321,6 +322,7 @@ def main():
             # Check how old ingest folder is, if over 1 day push anyway
             fname = os.path.split(folderpth)[1]
             days_old = check_folder_age(fname)
+            logs.append(f"Folder {fname} is {days_old} days old.")
             logs.append("Folder under min ingest size, checking how long since creation...")
             if days_old >= 1:
                 logs.append(f"Over one day old, moving to Black Pearl ingest bucket {bucket}")
@@ -329,6 +331,7 @@ def main():
                 logs.append("Skipping: Folder not over 1 day old.")
                 logger_write(logs)
                 files = None
+                continue
 
         # Rename folder path with job_list so it is bypassed
         if job_list:

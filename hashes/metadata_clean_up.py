@@ -28,8 +28,7 @@ import datetime
 import requests
 
 # Local packages
-code = os.environ['CODE']
-sys.path.append(code)
+sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global variables

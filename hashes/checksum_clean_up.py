@@ -1,4 +1,4 @@
-#!/usr/bin/env LANG=en_UK.UTF-8 /usr/local/bin/python3
+#!/usr/bin/env python3
 
 '''
 *** THIS SCRIPT MUST RUN FROM SHELL LAUNCH PASSING PATH TO MD5 ***
@@ -199,7 +199,7 @@ def main():
     if 'Successfully deleted file' in str(message):
         LOGGER.info("%s -- Associated file deleted in autoingest. Retrieving priref for CID media record", fname)
         priref, checksum_val = cid_retrieve(fname)
-        LOGGER.info("Priref %s - Checksum value: %s", priref, checksum_val)
+        LOGGER.info("Priref <%s> - Checksum value: <%s>", priref, checksum_val)
         if len(checksum_val) > 20:
             LOGGER.info("SKIPPING: %s Checksum already present in media record", checksum_val)
             os.remove(filepath)
@@ -240,7 +240,6 @@ def main():
             '''
             try:
                 LOGGER.info("%s -- Attempting to write checksum data to Checksum fields", fname)
-                LOGGER.info("LOG CHECK: record_append(%s, %s, %s)", priref, checksum, fname)
                 status = record_append(priref, checksum, fname)
                 if status:
                     LOGGER.info("%s -- Successfully written checksum data to Checksum fields! Deleting checksum file", fname)

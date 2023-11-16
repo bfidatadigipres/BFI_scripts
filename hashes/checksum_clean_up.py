@@ -35,7 +35,7 @@ LOG_PATH = os.environ['LOG_PATH']
 CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
 CSV_PATH = os.path.join(LOG_PATH, 'autoingest/global.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API']
+CID_API = os.environ['CID_API3']
 
 # Setup logging
 LOGGER = logging.getLogger('checksum_clean_up')
@@ -94,9 +94,7 @@ def checksum_split(data):
     '''
     Splits string and returns
     '''
-    md5 = ''
-    path = ''
-    date = ''
+    md5 = path = date = ''
     try:
         data_split = data.split(" - ")
         md5 = data_split[0]
@@ -223,17 +221,30 @@ def main():
                 sys.exit()
 
             # Format as XML
-            checksum = f"<Checksum><checksum.value>{md5}</checksum.value><checksum.type>MD5</checksum.type> \
-                        <checksum.date>{md5_date}</checksum.date><checksum.path>{md5_path}</checksum.path></Checksum> \
-                        <Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date> \
-                        <edit.time>{str(datetime.datetime.now())[11:19]}</edit.time> \
-                        <edit.notes>Automated bulk checksum documentation.</edit.notes></Edit>"
+            checksum1 = f"<Checksum><checksum.value>{md5}</checksum.value><checksum.type>MD5</checksum.type>"
+            checksum2 = f"<checksum.date>{md5_date}</checksum.date><checksum.path>'{md5_path}'</checksum.path></Checksum>"
+            checksum3 = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date>"
+            checksum4 = f"<edit.time>{str(datetime.datetime.now())[11:19]}</edit.time>"
+            checksum5 = "<edit.notes>Automated bulk checksum documentation.</edit.notes></Edit>"
+            checksum = checksum1 + checksum2 + checksum3 + checksum4 + checksum5
+            '''
+            # Format as dict
+            checksum = [({'checksum.value': md5},
+                         {'checksum.type': 'MD5'},
+                         {'checksum.date': md5_date},
+                         {'checksum.path': md5_path},
+                         {'edit.name': 'datadigipres'},
+                         {'edit.date': str(datetime.datetime.now())[:10]},
+                         {'edit.time': str(datetime.datetime.now())[11:19]},
+                         {'edit.notes': 'Automated bulk checksum documentation.'})]
+            '''
             try:
                 LOGGER.info("%s -- Attempting to write checksum data to Checksum fields", fname)
+                LOGGER.info("LOG CHECK: record_append(%s, %s, %s)", priref, checksum, fname)
                 status = record_append(priref, checksum, fname)
                 if status:
                     LOGGER.info("%s -- Successfully written checksum data to Checksum fields! Deleting checksum file", fname)
-                    os.remove(filepath) # MD5 file deletion
+                    os.remove(filepath)
                 else:
                     LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, status)
             except Exception as e:
@@ -251,17 +262,18 @@ def record_append(priref, checksum_data, fname):
     Receive checksum data and priref and write to CID media record
     '''
     try:
-        result = CUR.create_occurrences(database='media',
-                                        priref=priref,
-                                        data=checksum_data,
-                                        output='json')
+        result = CUR.update_record(priref=priref,
+                                   database='media',
+                                   data=checksum_data,
+                                   output='json',
+                                   write=True)
         if result.hits == 1:
             LOGGER.info("%s -- record_append(): ** Checksum data written to media record %s notes field", fname, priref)
             return True
         elif result.hits == 0:
             return False
     except Exception as e:
-        print(e)
+        print(f"Error {e}")
         return False
 
 

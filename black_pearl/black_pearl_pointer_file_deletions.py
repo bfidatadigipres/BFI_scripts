@@ -272,7 +272,7 @@ def main():
             if not version_id:
                 LOGGER.warning("Deletion of file %s not possible, unable to retreive version_id", ref_num)
                 print(f"WARNING: Deletion impossible, version_id not found for file {ref_num}")
-                confirmation.append("<notes>Black Pearl was not deleted - version_id not found</notes>")
+                confirmation.append("<notes>Black Pearl file was not deleted - version_id not found</notes>")
                 succ = cid_media_append(priref, confirmation)
                 if succ:
                     print("CID media record notes field updated")
@@ -283,7 +283,7 @@ def main():
             if not success:
                 LOGGER.warning("Deletion of asset failed: %s. Priref %s. Version id %s", ref_num, priref, version_id)
                 print(f"WARNING: Deletion of asset failed: {ref_num}.\n")
-                confirmation.append("<notes>Black Pearl was not deleted</notes>")
+                confirmation.append("<notes>Black Pearl file was not deleted</notes>")
                 succ = cid_media_append(priref, confirmation)
                 if succ:
                     print("CID media record notes field updated")

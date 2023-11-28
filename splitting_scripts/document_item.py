@@ -17,7 +17,7 @@ sys.path.append(os.environ['CODE'])
 import adlib
 
 # Configure adlib
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 

@@ -132,7 +132,6 @@ def main():
 
     fullpath = sys.argv[1]
     if not os.path.isfile(fullpath):
-        logger.warning("%s\tWARNING\tSCRIPT EXITING: Error with file path supplied, not a file: %s", local_time(), fullpath)
         sys.exit("EXIT: Supplied path is not a file")
 
     # Multiple instances of script so collecting logs for one burst output

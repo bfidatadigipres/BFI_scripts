@@ -60,7 +60,7 @@ CONTROL_JSON = os.environ['CONTROL_JSON']
 MP4_ACCESS1 = os.environ['MP4_ACCESS_REDIRECT']
 MP4_ACCESS2 = os.environ['MP4_ACCESS2']
 LOGS = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor
 

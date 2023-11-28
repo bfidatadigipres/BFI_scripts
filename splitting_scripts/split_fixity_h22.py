@@ -54,6 +54,7 @@ SOURCE, NUM = os.path.split(TARGET)  # Source folder
 OUTPUT = os.path.join(os.path.split(SOURCE)[0], 'segmented')
 MEDIA_TARGET = os.path.split(OUTPUT)[0]  # Processing folder
 AUTOINGEST = os.path.join(os.path.split(MEDIA_TARGET)[0], 'autoingest')
+LOG_PATH = os.environ['LOG_PATH']
 
 # Setup CID
 CID_API = os.environ['CID_API3']
@@ -74,7 +75,7 @@ def control_check():
     '''
     Check that `downtime_control.json` has not indicated termination
     '''
-    with open('/mnt/isilon/ingest/admin/Logs/downtime_control.json') as control:
+    with open(os.path.join(LOG_PATH, 'downtime_control.json')) as control:
         j = json.load(control)
         if not j['split_control_h22']:
             logger.info("Exit requested by downtime_control.json")

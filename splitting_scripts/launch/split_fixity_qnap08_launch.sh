@@ -1,11 +1,12 @@
-#!/bin/bash
+#!/bin/bash -x
 
-# Launcher for split.py script which models carriers
+# Launcher for split_fixity_qnap08.py script which models carriers
 # for in-scope whole-tape digitisation files and then
 # creates item-level files and documents them in CID
 
-TARGET="${QNAP_08}/processing/source/2"
-LOG="${QNAP_08}/processing/log/split_2.log"
+SOURCE_NUM="$1"
+TARGET="${QNAP_08}/processing/source/${SOURCE_NUM}"
+LOG="${QNAP_08}/processing/log/split_${SOURCE_NUM}.log"
 SCRIPT="${CODE}splitting_scripts/split_fixity_qnap08.py"
 
 # Log script start

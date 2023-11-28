@@ -3,6 +3,7 @@
 '''
 MUST BE LAUNCHED FROM SHELL SCRIPT
 FOR SYS.ARGV[1] Path and SYS.ARGV[2] '' / multi
+Unique paths for QNAP-08 to QNAP-01 FFmpeg stream copy
 
 Process F47 digitisation output:
    - expect can_ID or package_number file inputs
@@ -26,9 +27,9 @@ June 2022
 # Public packages
 import os
 import sys
+import glob
 import json
 import time
-import glob
 import shutil
 import logging
 import datetime
@@ -51,21 +52,23 @@ except IndexError:
 if not os.path.exists(TARGET):
     sys.exit(f"EXIT: Target path received not valid: {TARGET}")
 
+# Path to split files destination
+SOURCE, NUM = os.path.split(TARGET)
+OUTPUT_08 = os.path.join(os.path.split(SOURCE)[0], 'segmented')
+OUTPUT_01 = os.environ['QNAP01_SEGMENTED']
+MEDIA_TARGET = os.path.split(OUTPUT_08)[0]  # Processing folder
+AUTOINGEST_01 = os.environ['AUTOINGEST_QNAP01']
+AUTOINGEST_08 = os.environ['AUTOINGEST_QNAP08']
+LOG_PATH = os.environ['LOG_PATH']
+
 # Setup CID
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor
 
-# Path to split files destination
-SOURCE, NUM = os.path.split(TARGET)  # Source folder
-OUTPUT = os.path.join(os.path.split(SOURCE)[0], 'segmented')
-MEDIA_TARGET = os.path.split(OUTPUT)[0]  # Processing folder
-AUTOINGEST = os.path.join(os.path.split(MEDIA_TARGET)[0], 'autoingest')
-LOG_PATH = os.environ['SCRIPT_LOG']
-
 # Setup logging, overwrite each time
 logger = logging.getLogger(f'split_fixity_{NUM}')
-# hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'))
+#hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'))
 hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'), mode='w')
 formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
@@ -148,6 +151,18 @@ def check_media_record(fname):
     return False
 
 
+def match_in_autoingest(fname, autoingest):
+    '''
+    Run a glob check of path
+    '''
+    match = glob.glob(f"{autoingest}/**/*/{fname}", recursive=True)
+    if not match:
+        print(f"No match found in {autoingest} : {fname}")
+        return None
+    print(f"Match: {fname} - {match}")
+    return match
+
+
 def main():
     '''
     Process file and complete segmentation
@@ -157,7 +172,7 @@ def main():
     # List files in recursive sub-directories
     files = []
     for root, _, filenames in os.walk(TARGET):
-        for filename in [f for f in filenames if f.endswith(('.mov', '.mxf', '.mkv', '.MOV', '.MXF', '.MKV'))]:
+        for filename in [f for f in filenames if f.endswith(('.mov', '.mxf', '.mkv', '.MOV', '.MKV', '.MXF'))]:
             files.append(os.path.join(root, filename))
 
     # Process digitised tape files sequentially
@@ -180,7 +195,6 @@ def main():
         id_ = f.split('.')[0]
 
         # Model identifier
-        print(f"Modelling identifier from {id_}")
         try:
             i = models.PhysicalIdentifier(id_)
             logger.info(i)
@@ -188,55 +202,43 @@ def main():
             logger.info('* Identifier is %s', style)
         except Exception as err:
             logger.warning('models.py error: %s\t%s\t%s', filepath, id_, err)
-            print(err)
             continue
 
         # Model carrier
-        print(f"Modelling carrier from '**{style}: {id_}'")
         try:
             c = models.Carrier(**{style: id_})
             logger.info('* Carrier modelled ok')
         except Exception as err:
-            print(err)
-            logger.warning('%s\t%s\n%s', filepath, id_, err)
+            logger.warning('%s\t%s\t%s', filepath, id_, err)
             continue
 
         # Model segments
-        print("Modelling segments from Carrier")
         try:
             segments = dict(c.segments)
-            print(segments)
             logger.info('* Segments modelled ok')
         except Exception as err:
-            logger.warning('%s\t%s\n%s', filepath, id_, err)
-            print(err)
+            logger.warning('%s\t%s\t%s', filepath, id_, err)
             continue
 
         # Only process multi-item tapes if script was invoked with argument 'multi'
-        print("Checking number of Items from carrier modelling")
         logger.info('*** Checking number of Items from carrier modelling: %s', len(c.items))
         if len(c.items) > 1:
-            print("Multi-item tape found")
             if not MULTI_ITEMS:
-                print("Skipping as not running 'multi' pass")
                 logger.info("*** Not multi item so skipping.")
                 continue
 
         # Create carrier-level output directory
-        carrier_directory = f'{OUTPUT}/{id_}'
-        print(f"Creating carrier directory: {carrier_directory}")
-        logger.info('* Carrier directory is %s/%s', OUTPUT, id_)
+        qnap_01_carrier_directory = os.path.join(OUTPUT_01, id_)
+        qnap_08_carrier_directory = os.path.join(OUTPUT_08, id_)
+        logger.info('* Carrier directories created\nQNAP-01 %s / QNAP-08 %s', qnap_01_carrier_directory, qnap_08_carrier_directory)
 
         # Process each item on tape
-        print("Begin iterating items in Carrier")
         for item in c.items:
             item_priref = int(item['priref'][0])
             object_number = item['object_number'][0]
             logger.info('%s\t* Item priref is %s and object number is %s', filepath, item_priref, object_number)
-            print(f"Item to be processed: {item_priref} {object_number}")
 
             # Check whether object_number derivative has been documented already
-            print(f"Launching document_item_h22.py to check if CID item record exists: {object_number}")
             try:
                 exists = document_item.already_exists(object_number)
             except Exception as err:
@@ -258,11 +260,14 @@ def main():
                     logger.info("Unable to get object_number for file checks. Skipping")
                     continue
                 logger.info('%s\t* Item record for derived MKV already exists for\t%s', filepath, existing_ob_num)
+                logger.info('%s\tChecking if file has already persisted to DPI, or is in autoingest paths', filepath)
                 firstpart_check = f"{existing_ob_num.replace('-','_')}_01of{str(c.partwhole[1]).zfill(2)}.{extension}"
                 check_filename = f"{existing_ob_num.replace('-','_')}_{str(c.partwhole[0]).zfill(2)}of{str(c.partwhole[1]).zfill(2)}.{extension}"
-                print(firstpart_check, check_filename)
+                print(f"Checking if {firstpart_check} or {check_filename} persisted to DPI or are in autoingest")
 
                 # Check for first part before allowing next parts to advance
+                print(AUTOINGEST_01)
+                print(AUTOINGEST_08)
                 if c.partwhole[0] != 1:
                     print(f"Checking if first part has already been created or has persisted to DPI: {firstpart_check}")
                     check_result = check_media_record(firstpart_check)
@@ -270,10 +275,9 @@ def main():
                     if check_result:
                         print(f"First part {firstpart_check} exists in CID, proceeding to check for {check_filename}")
                         firstpart = True
-                    print(f"**** AUTOINEGST: {AUTOINGEST}")
-                    match_path = glob.glob(f"{AUTOINGEST}/**/*/{firstpart_check}", recursive=True)
-                    print(f"****** MATCH PATH {match_path}")
-                    if firstpart_check in str(match_path):
+                    match1 = match_in_autoingest(firstpart_check, AUTOINGEST_01)
+                    match2 = match_in_autoingest(firstpart_check, AUTOINGEST_08)
+                    if match1 or match2:
                         firstpart = True
                     if not firstpart:
                         logger.info("%s\tSkipping: First part has not yet been created, no CID match %s", filepath, firstpart_check)
@@ -285,22 +289,31 @@ def main():
                     print(f"SKIPPING: Filename {check_filename} matched with persisted CID media record")
                     logger.warning("%s\tPart found ingested to DPI: %s.", filepath, check_filename)
                     continue
-                matched = glob.glob(f"{AUTOINGEST}/**/*/{check_filename}", recursive=True)
-                if check_filename in str(matched):
+                match01 = match_in_autoingest(check_filename, AUTOINGEST_01)
+                match02 = match_in_autoingest(check_filename, AUTOINGEST_08)
+                if match01 or match02:
                     print(f"SKIPPING: CID item record exists and file found in autoingest: {check_filename}")
                     logger.warning("%s\t* Skipping. Part found already in autoingest: %s.", filepath, check_filename)
                     continue
                 logger.info("%s\t* Item %s not already created. Clear to continue progress.", filepath, check_filename)
 
+            logger.info("%s\tNo derived CID item record already exists for object number %s.", filepath, object_number)
             # If destination file already exists, move on
-            of = f'{OUTPUT}/{id_}/{object_number}.{extension}'
-            logger.info('%s\t* Destination for new file: %s', filepath, of)
-            if os.path.isfile(of):
-                logger.warning('%s\tDestination file already exists for file: %s', filepath, of)
+            of_01 = os.path.join(qnap_01_carrier_directory, f"{object_number}.{extension}")
+            of_08 = os.path.join(qnap_08_carrier_directory, f"{object_number}.{extension}")
+            logger.info('%s\t* Destinations created for QNAP-01 and QNAP-08: \n%s\t%s', filepath, of_01, of_08)
+            if os.path.isfile(of_01):
+                if segments:
+                    logger.warning('%s\tDestination file already exists for segmented file. Deleting: %s', filepath, of_01)
+                    os.remove(of_01)
+                else:
+                    logger.warning('%s\tDestination file already exists for non-segmented file: %s', filepath, of_01)
+                    continue
+            elif os.path.isfile(of_08):
+                logger.warning('%s\tDestination file already exists for file: %s', filepath, of_08)
                 continue
 
             # Programme in/out (seconds)
-            print("Get in / out from segment data")
             if segments:
                 try:
                     a = segments[item_priref][0][0][0]
@@ -314,25 +327,19 @@ def main():
                     raise
 
             # Get duration of file
-            print("Get file duration")
             item_duration = get_duration(filepath)
             if not item_duration:
-                print("No duration retrieved")
                 logger.warning("%s\t* Item has no duration, skipping this file.", filepath)
                 continue
-
             # Get positon of item on tape
-            print("Get position of item on tape")
             if segments:
                 pos = list(segments).index(item_priref)
                 logger.info("%s\tSegment position: %s", filepath, pos)
-                print(f"Segment position: {pos}")
 
                 # Item is first on tape
                 if pos == 0:
                     # Begin at tape head
                     in_ = 0
-                    print("Item is first on tape, starting at tape head...")
                     logger.info('%s\t* Item is first on tape, starting at tape head...', filepath)
                 else:
                     # Begin at end of previous item
@@ -342,59 +349,46 @@ def main():
                     in_ = segments[k][-1][-1][-1]
 
                     # Check that tc-in is after tc-out of preceding item
-                    print("Check that tc-in is after tc-out of preceding item")
                     if a < in_:
-                        logger.warning('%s\t%s\tInvalid video_part data: item begins before end of preceding item\t%s', filepath, id_, in_)
-                        print("Invalid video part data: item begins before end of preceding item")
+                        logger.warning('%s\t%s\tInvalid video_part data: item begins before end of preceding item\t{}', filepath, id_, in_)
                         # Skip entire carrier
                         break
 
                 # Item is last on tape
-                print("If item is last on tape")
                 if pos == len(segments)-1:
                     # End at tape tail
                     out = item_duration
-                    print(f"Out set to full duration: {out}")
                 else:
                     # End at beginning of next item
                     k = list(segments.items())[pos+1][0]
                     out = segments[k][0][0][0]
-                    print(k, out)
 
-            print("If no segments, and length of all Carrier items is 1:")
             if not segments and len(c.items) == 1:
-                print("Item is the only one on the tape, no segmenting and move only")
                 logger.info("%s\t* Item is only one Item on the tape, no need to segment the file...", filepath)
                 in_ = 0
                 out = item_duration
-                print(in_, out)
 
-            print("If in is greater than out:")
             if in_ > out:
-                print("Duration of tape is less than timecode start. Skipping")
                 logger.warning("%s\t* Duration of tape %s is less than timecode start %s. Skipping this split.", filepath, out, in_)
                 continue
 
             # Format segment to HH:MM:SS timecodes
-            print("Converting segments to HH:MM:SS timecode")
             tcin = time.strftime('%H:%M:%S', time.gmtime(float(in_)))
             tcout = time.strftime('%H:%M:%S', time.gmtime(float(out)))
             print(f"TC in {tcin} TC out {tcout}")
 
             # Translate new relative segment positions
-            print("Translate new relative segment positions")
             relative_segments = []
             file_duration = None
             content_duration = 0
             if segments:
                 relative_in = float(a) - in_
                 offset = a - relative_in
-                print(f"Segments: {relative_in} {offset}")
+
                 for s in segments[item_priref][0]:
                     i = time.strftime('%H:%M:%S', time.gmtime(float(s[0]) - offset))
                     o = time.strftime('%H:%M:%S', time.gmtime(float(s[1]) - offset))
                     t = (i, o)
-                    print(t)
                     relative_segments.append(t)
 
                     # Calculate content duration (excludes inter-segment chunks)
@@ -402,7 +396,6 @@ def main():
 
                 file_duration = time.strftime('%H:%M:%S', time.gmtime(content_duration))
                 logger.info("%s\tFile duration: %s", filepath, file_duration)
-                print(f"File duration calculated: {file_duration}")
 
             rel = '; '.join([('-'.join([i[0], i[1]])) for i in relative_segments])
             print('')
@@ -417,109 +410,99 @@ def main():
                 make_segment = False
             elif len(c.items) >= 2:
                 make_segment = True
-            print(f"Making segment: {make_segment}")
 
-            # Create carrier-level output directory
-            print("Creating the Carrier directory: {carrier_directory}")
-            if not os.path.exists(carrier_directory):
-                os.mkdir(carrier_directory)
-                # os.umask(0)
-                # os.mkdir(carrier_directory)
-
-            print("If not make_segment")
             if not make_segment:
+                # Create carrier-level output directory
+                qnap_08 = True
+                if not os.path.exists(qnap_08_carrier_directory):
+                    os.mkdir(qnap_08_carrier_directory)
+
                 # No need to stream-copy single item, simply move file to destination
                 try:
-                    print(f'* Move single-item file: {f} -> {of}')
-                    logger.info('%s\tMoved single-item file\t%s -> %s', filepath, f, of)
-                    shutil.move(filepath, of)
-                except Exception as err:
-                    print(err)
-                    logger.warning('%s\tUnable to move and rename file\t%s -> %s\n%s', filepath, f, of, err)
+                    print(f'* Move single-item file: {f} -> {of_08}')
+                    logger.info('%s\tMoved single-item file\t%s -> %s', filepath, f, of_08)
+                    shutil.move(filepath, of_08)
+                except Exception:
+                    logger.warning('%s\tUnable to move and rename file\t%s -> %s', filepath, f, of_08)
                     continue
             else:
+                # Create carrier-level output directory
+                qnap_08 = False
+                if not os.path.exists(qnap_01_carrier_directory):
+                    os.mkdir(qnap_01_carrier_directory)
+
                 print(f'Start fixity segmentation of multi-Item file at {datetime.datetime.now().ctime()}')
                 logger.info('%s\tStarting fixity segmentation of multi-Item file at\t%s', filepath, datetime.datetime.now().ctime())
 
                 # Extract segment by stream copying with FFmpeg
-                print("Extracting segment by stream copy with FFmpeg...")
                 additional_args = ['-dn', '-map', '0', '-c', 'copy', '-copyts', '-avoid_negative_ts', 'make_zero']
-                print(f"Call clipmd5.clipmd5({filepath}, {tcin}, {of}, {tcout}, {additional_args})")
-                fixity = clipmd5.clipmd5(filepath, tcin, of, tcout, additional_args)
-                print(f"Fixity confirmed: {fixity}")
+                fixity = clipmd5.clipmd5(filepath, tcin, of_01, tcout, additional_args)
                 logger.info('%s\tFixity confirmed: %s', filepath, fixity)
 
                 if not fixity:
-                    # Log FFmepg error
-                    ffmpeg_message = f'{filepath}\tFFmpeg failed to create Matroska file\t{of}'
+                    # Log FFmpeg error
+                    ffmpeg_message = f'{filepath}\tFFmpeg failed to create Matroska file\t{of_01}'
                     logger.warning(ffmpeg_message)
-                    print(f"Fixity failed: {ffmpeg_message}")
+                    print(ffmpeg_message)
 
                     # Clean up failed media object
                     try:
-                        os.remove(of)
-                        print(f"Attempting deletion of asset: {of}")
-                        logger.info('%s\tDeleted invalid Matroska file\t%s', filepath, of)
+                        os.remove(of_01)
+                        logger.info('%s\tDeleted invalid Matroska file\t%s', filepath, of_01)
                     except Exception as err:
-                        print(err)
-                        logger.warning('%s\tFailed to delete invalid Matroska file\t%s\n%s', f, of, err)
+                        logger.warning('%s\tFailed to delete invalid Matroska file\t%s\n%s', f, of_01, err)
 
                     # Next item
-                    print("Skipping to next item")
                     continue
 
             # Sense check that split file does exist before creation of Item record
-            print(f"Check if new split file exists: {of}")
-            if not os.path.isfile(of):
-                print(f'* Split file does not exist, do not proceed with CID item record creation: {of}')
-                logger.info('%s\tSplit file does not exist. Moving to next item. %s', filepath, of)
-                continue
+            if os.path.isfile(of_01):
+                print(f'End fixity segmentation at {datetime.datetime.now().ctime()}')
+                logger.info('%s\tEnd fixity segmentation at %s', filepath, datetime.datetime.now().ctime())
+            else:
+                if os.path.isfile(of_08):
+                    print(f'End fixity segmentation at {datetime.datetime.now().ctime()}')
+                    logger.info('%s\tEnd fixity segmentation at %s', filepath, datetime.datetime.now().ctime())
+                else:
+                    print(f'* Split file does not exist, do not proceed with CID item record creation: {of_01} or {of_08}')
+                    logger.info('%s\tSplit file does not exist. Moving to next item.\n%s\t%s', filepath, of_01, of_08)
+                    continue
 
             print(f'End fixity segmentation at {datetime.datetime.now().ctime()}')
             logger.info('%s\tEnd fixity segmentation at %s', filepath, datetime.datetime.now().ctime())
 
             # Document new media object in CID
-            print("Begin process of creating new CID item record")
             note = 'autocreated'
             if make_segment:
                 note = 'autocreated (segmented)'
 
-            logger.info("LOG CHECK: document_item.new_or_existing(%s, %s, %s, %s, note=%s)", object_number, relative_segments, file_duration, extension, note)
-            print(f"Launching document_item_h22.new({object_number}, {relative_segments}, {file_duration}, {extension}, note={note})")
-
             # Single-item tape
             if c.partwhole[1] == 1:
-                print("** Single item tape")
                 try:
                     new_object = document_item.new_or_existing(object_number, relative_segments, file_duration, extension, note=note)
                     if not new_object:
-                        print("Creation of new CID item record failed!")
-                        document_message = f'{filepath}\tFailed to document Matroska file in CID: {of}'
+                        document_message = f'{filepath}\tFailed to document Matroska file in CID: {id_}/{object_number}.{extension}'
                         logger.warning(document_message)
                         continue
                 except Exception as err:
-                    document_message = f'{filepath}\tFailed to document Matroska file in CID: {of}\t{err}'
+                    document_message = f'{filepath}\tFailed to document Matroska file in CID: {err}\t{id_}/{object_number}.{extension}'
                     logger.warning(document_message)
                     print(document_message)
                     continue
                 # New object successfully retrieved / created
-                logger.info('%s\tCreated/found CID Item for Matroska file: %s', filepath, object_number)
-                print(f"Created/found CID item record: {object_number}")
+                logger.info('%s\tCreated new CID Item for Matroska file: %s', filepath, object_number)
 
             # Multi-part
             elif c.partwhole[1] > 1:
-                print("** Multi-part tape")
                 try:
                     new_object = document_item.new_or_existing(object_number, relative_segments, file_duration, extension, note=note)
                     if not new_object:
-                        print("Creation of new CID item record failed!")
-                        document_message = f'{filepath}\tFailed to document MKV in CID or read object_number of new CID Item record: {of}'
+                        document_message = f'{filepath}\tFailed to document Matroska file in CID: {id_}/{object_number}.{extension}'
                         logger.warning(document_message)
                         continue
                 except Exception as err:
-                    document_message = f'{filepath}\tFailed to document MKV in CID or read object_number of new CID Item record: {of}\n{err}'
+                    document_message = f'{filepath}\tFailed to document Matroska file in CID: {err}\t{id_}/{object_number}.{extension}'
                     logger.warning(document_message)
-                    print(document_message)
                     # consider deleting object even though only documentation stage failed,
                     # re-segmenting is probably more trivial than a new process for fixing
                     # the missing documentation
@@ -532,34 +515,42 @@ def main():
                     continue
 
                 # New object successfully retrieved / created
-                logger.info('%s\tCID Item for Matroska file identified: %s / %s', filepath, object_number, new_object)
-                print(f"CID item record created/retrieved and linked to source: {object_number} / {new_object}")
+                logger.info('%s\tCreated / Retrieved CID Item for Matroska file: %s', filepath, object_number)
 
-            # Rename media object with N-* object_number and partWhole
-            print("Renaming the media object with 'N_' and partWhole")
+            #Rename media object with N-* object_number and partWhole
             new_object = new_object.replace('-', '_')
-            logger.info("%s\tPart whole retrieved from models: %s", filepath, c.partwhole)
+            logger.info("%s\tMultipart partwhole retrieved from models: %s", filepath, c.partwhole)
             part = str(c.partwhole[0]).zfill(2)
             whole = str(c.partwhole[1]).zfill(2)
-            print(new_object, part, whole)
             logger.info("%s\tPart whole script adjustments: %s of %s", filepath, part, whole)
-            ext = of.split('.')[-1]
-            nf = f'{new_object}_{part}of{whole}.{ext}'
-            dst = f'{OUTPUT}/{id_}/{nf}'
-            print(dst)
-
-            if os.path.isfile(dst):
-                logger.warning('%s\tFilename already exists in path, skipping renaming: %s', filepath, dst)
-                continue
-
-            try:
-                logger.info('%s\tRenaming Matroska file with new Item object_number and partWhole: %s --> %s', filepath, os.path.basename(of), nf)
-                print(f'\t{os.path.basename(of)} --> {nf}')
-                os.rename(of, dst)
-            except Exception as err:
-                logger.warning('%s\tFailed to rename Matroska file with new Item object_number and partWhole\t%s\n%s', filepath, of, err)
-                print(err)
-                continue
+            if qnap_08:
+                ext = of_08.split('.')[-1]
+                nf = f'{new_object}_{part}of{whole}.{ext}'
+                dst = os.path.join(qnap_08_carrier_directory, nf)
+                if os.path.isfile(dst):
+                    logger.warning('%s\tFilename already exists in path, skipping renaming: %s', filepath, dst)
+                    continue
+                try:
+                    logger.info('%s\tRenaming Matroska file with new Item object_number and partWhole: %s --> %s', filepath, f'{object_number}.{extension}', nf)
+                    print(f'\t{of_08} --> {dst}')
+                    os.rename(of_08, dst)
+                except Exception as err:
+                    logger.warning('%s\tFailed to rename Matroska file with new Item object_number and partWhole\t%s\n%s', filepath, of_08, err)
+                    continue
+            else:
+                ext = of_01.split('.')[-1]
+                nf = f'{new_object}_{part}of{whole}.{ext}'
+                dst = os.path.join(qnap_01_carrier_directory, nf)
+                if os.path.isfile(dst):
+                    logger.warning('%s\tFilename already exists in path, skipping renaming: %s', filepath, dst)
+                    continue
+                try:
+                    logger.info('%s\tRenaming Matroska file with new Item object_number and partWhole: %s --> %s', filepath, f'{object_number}.{extension}', nf)
+                    print(f'\t{of_08} --> {dst}')
+                    os.rename(of_01, dst)
+                except Exception as err:
+                    logger.warning('%s\tFailed to rename Matroska file with new Item object_number and partWhole\t%s\n%s', filepath, of_01, err)
+                    continue
 
 
 if __name__ == "__main__":

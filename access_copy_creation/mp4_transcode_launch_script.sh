@@ -28,4 +28,4 @@ find "${transcode_path1}" -maxdepth 1 -mindepth 1 -type f -mmin +30 >> "${dump_t
 echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
 grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" "$PYENV $python_script {}"
 
-echo " ========================= SHELL END - QNAP10 ========================== $date_FULL" >> "${log_path}"
+echo " ========================= SHELL END - $path_insert ========================== $date_FULL" >> "${log_path}"

@@ -127,7 +127,6 @@ def main():
     audio and documents
     '''
     if len(sys.argv) < 2:
-        logger.warning("%s\tWARNING\tSCRIPT EXITING: Error with shell script input:\n %s", local_time(), sys.argv)
         sys.exit("EXIT: Not enough arguments")
 
     fullpath = sys.argv[1]
@@ -587,7 +586,7 @@ def get_height(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     sampled_height = subprocess.check_output(cmd)
-    sampled_height = sampled_height.decode('utf-8')
+    sampled_height = sampled_height.decode('utf-8').rstrip('\n')
 
     cmd2 = [
         'mediainfo',
@@ -598,13 +597,15 @@ def get_height(fullpath):
 
     cmd2[3] = cmd2[3].replace('"', '')
     reg_height = subprocess.check_output(cmd2)
-    reg_height = reg_height.decode('utf-8')
+    reg_height = reg_height.decode('utf-8').rstrip('\n')
     try:
         int(sampled_height)
     except ValueError:
         sampled_height = 0
 
-    if int(sampled_height) > int(reg_height):
+    if sampled_height == 0:
+        height = str(reg_height)
+    elif int(sampled_height) > int(reg_height):
         height = str(sampled_height)
     else:
         height = str(reg_height)

@@ -33,8 +33,8 @@ import adlib
 LOGS = os.environ['LOG_PATH']
 LOG_PATH = os.path.join(LOGS, 'splitting_models.log')
 DPI_PATH = os.environ['DPI_API']
-CID_API = os.environ['CID_API3']
-cid = adlib.Database(url=CID_API)
+CID_API = os.environ['CID_API']
+CID = adlib.Database(url=CID_API)
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('split_qnap_test')
@@ -448,7 +448,8 @@ def cid_get(database, search, fields):
          'limit': '0'}
 
     try:
-        result = cid.get(d)
+        result = CID.get(d)
+        print(result)
     except Exception as exc:
         raise Exception from exc
 

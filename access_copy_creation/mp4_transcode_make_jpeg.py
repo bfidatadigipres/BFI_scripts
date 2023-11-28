@@ -126,7 +126,6 @@ def main():
     audio and documents
     '''
     if len(sys.argv) < 2:
-        logger.warning("%s\tWARNING\tSCRIPT EXITING: Error with shell script input:\n %s", local_time(), sys.argv)
         sys.exit("EXIT: Not enough arguments")
 
     fullpath = sys.argv[1]

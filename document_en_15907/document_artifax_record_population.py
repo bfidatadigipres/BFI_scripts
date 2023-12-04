@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 '''
@@ -77,6 +78,29 @@ HEADERS = {
 CID = adlib.Database(url=f"{os.environ['CID_API']}")
 CUR = adlib.Cursor(CID)
 
+FESTIVALS = {
+    # 'FL2021': ["119", "Flare 2021", "399108"],
+    # 'FFF2021': ["134", "Future Film Festival 2021", "399083"],
+    # 'LFF2021': ["129", "LFF 2021", "399145"],
+    # 'FL2022': ["145", "Flare 2022", "399151"],
+    # 'FFF2022': ["155", "Future Film Festival 2022", "399156"],
+    # 'LFF2022': ["150", "LFF 2022", "399146"],
+    # 'FL2023': ["146", "Flare 2023", "399152"],
+    # 'FFF2023': ["156", "Future Film Festival 2023", "399157"],
+    'LFF2023': ["151", "LFF 2023", "399147"],
+    # 'FOFF23': ["281", "Film on Film Festival - June 2023", "400889"],
+    # 'FL2024': ["147", "Flare 2024", "399153"],
+    # 'FFF2024': ["157", "Future Film Festival 2024", "399158"],
+    # 'LFF2024': ["152", "LFF 2024", "399148"],
+    # 'FL2025': ["148", "Flare 2025", "399154"],
+    # 'FFF2025': ["158", "Future Film Festival 2025", "399159"],
+    # 'LFF2025': ["153", "LFF 2025", "399149"],
+    # 'FL2026': ["149", "Flare 2026", "399155"],
+    # 'FFF2026': ["159", "Future Film Festival 2026", "399160"],
+    # 'LFF2026': ["154", "LFF 2026", "399150"]
+}
+
+'''
 FESTIVALS = {'FL2021': ["119", "Flare 2021", "399108"],
              'FFF2021': ["134", "Future Film Festival 2021", "399083"],
              'LFF2021': ["129", "LFF 2021", "399145"],
@@ -97,6 +121,7 @@ FESTIVALS = {'FL2021': ["119", "Flare 2021", "399108"],
              'FFF2026': ["159", "Future Film Festival 2026", "399160"],
              'LFF2026': ["154", "LFF 2026", "399150"]
              }
+'''
 
 FORMATS = {'DVD': ['DVD (Digital Versatile Disc)', '73390'],
            '8mm film': ['8mm Film', '74333'],
@@ -271,6 +296,7 @@ def cid_retrieve(search):
         LOGGER.info("cid_query(): Unavailable - grouping3")
     try:
         title = query_result.records[0]['Title'][0]['title'][0]
+        title = title.rstrip('\n')
     except (KeyError, IndexError):
         title = ""
         LOGGER.warning("cid_query(): Unable to access title")
@@ -296,17 +322,19 @@ def work_quick_check(dct=None):
     else:
         work_id = ''
         LOGGER.warning("Unable to retrieve work_id")
+    print(work_id)
     if dct['art_form']:
         art_form = dct['art_form']
     else:
         art_form = ''
         LOGGER.warning("Unable to retrieve art_form")
 
+    priref = cid_import = ''
     for custom_dct in dct['custom_forms'][0]['custom_form_sections'][0]['custom_form_elements']:
-        priref = ''
         if custom_dct['custom_form_element_id'] == 1004:
+            print(custom_dct)
             priref = custom_dct['custom_form_data_value']
-        cid_import = ''
+            print(custom_dct['custom_form_data_value'])
         if custom_dct['custom_form_element_id'] == 1307:
             cid_import = custom_dct['custom_form_data_value']
 
@@ -357,11 +385,12 @@ def work_season_retrieve(fname, supplied_season_id):
 
             for custom_dct in dct['custom_forms'][1]['custom_form_sections'][0]['custom_form_elements']:
                 cid_import_date = ""
-                if custom_dct['custom_form_element_id'] == 1312:
+                if custom_dct['custom_form_element_id'] == 1176: # Changed from 1312
                     cid_import_date = custom_dct['custom_form_data_value']
 
         inf.close()
         move_file(fname)
+        print(advanced_confirm, qanda_confirm, qanda_date, cid_import_date, nfa_category, start_date, work_season_id)
         return (advanced_confirm, qanda_confirm, qanda_date, cid_import_date, nfa_category, start_date, work_season_id)
 
 
@@ -381,8 +410,8 @@ def work_copy_extraction(fname, current_festival):
             if dct['description']:
                 description = dct['description']
 
+            cid_format_type = ''
             for custom_dct in dct['custom_forms'][0]['custom_form_sections'][0]['custom_form_elements']:
-                cid_format_type = ''
                 if custom_dct['custom_form_element_id'] == 1177:
                     cid_format_type = custom_dct['custom_form_data_value']
 
@@ -481,6 +510,7 @@ def work_copy_extraction(fname, current_festival):
 
         inf.close()
         move_file(fname)
+        print(manifestation_internet_dct, manifestation_festival_dct)
         return (manifestation_internet_dct, manifestation_festival_dct)
 
 
@@ -527,6 +557,9 @@ def work_extraction(season_id, dct=None):
         title2 = ''
         language2 = ''
         LOGGER.warning("Unable to extract title2 and language code2")
+
+    title1 = title1.rstrip('\n')
+    title2 = title2.rstrip('\n')
 
     # Convert ISO country code to full country title
     country1 = get_country(language1)
@@ -635,6 +668,7 @@ def work_extraction(season_id, dct=None):
     country_dct = []
     country_dct = country_check(dct['countries'])
     work_append_dct.extend(country_dct)
+    print(qna_title_dct, manifestation_dct, work_append_dct)
 
     return (qna_title_dct, manifestation_dct, work_append_dct)
 
@@ -733,6 +767,7 @@ def main():
                 priref = check_data[1]
                 cid_import = check_data[2]
                 art_form = check_data[3]
+                print(f"Work ID: {work_id}, Priref: {priref}, CID Import: {cid_import}, Art form: {art_form}")
                 if 'visual' in art_form.lower():
                     LOGGER.info("Visual performance found. Skipping!")
                     continue
@@ -806,8 +841,8 @@ def main():
                 update_work = make_man = make_qna = append_new_grouping = push_lock = False
 
                 # If 'CID import' field is 'checked' work is historical CID work (ie Film Fund/Treasure)
-                # Be careful with cid_import check as it returns 'unchecked' or 'checked', 'checked' string IS in 'un"checked"'.
-                if str(cid_import) == 'checked':
+                # Be careful with cid_import check as it returns unchecked as '0' or checked as '1'.
+                if str(cid_import) == '1':
                     if cid_import_date != '':
                         LOGGER.info("SKIPPING FURTHER STAGES: Manifestations created already for Festival: %s", festival_grouping)
                         continue
@@ -830,8 +865,8 @@ def main():
                         LOGGER.info("SKIPPING FURTHER STAGES: Festival groupings do not match for this record %s and %s", festival_grouping, grouping)
                         continue
                     # New block to prevent CID existing works slipping through
-                    if str(cid_import) == 'checked':
-                        LOGGER.warning("SKIPPING FURTHER STAGES: CID import flag is checked and has been missed by previous stages.", cid_import)
+                    if str(cid_import) == '1':
+                        LOGGER.warning("SKIPPING FURTHER STAGES: CID import flag is checked and has been missed by previous stages.")
                         continue
                     set_three = True
                 else:
@@ -900,6 +935,7 @@ def main():
                             credit_dct.append({'credit.sequence': person[3]})
                             credit_dct.append({'credit.sequence.sort': person[2]})
                             credit_dct.append({'credit.section': '[normal credit]'})
+
                     # Append cast/credit blocks to work_append_dct
                     work_append_dct.extend(cast_dct)
                     work_append_dct.extend(credit_dct)
@@ -913,6 +949,7 @@ def main():
                         LOGGER.warning("Work update failed for CID Work %s and Artifax work %s. Exiting this record for retry later", priref, work_id)
                         LOGGER.info("PRIREF: %s\n%s", priref, work_append_dct)
                         continue
+
 
                 # ============ Create Manifestations ============ #
                 if make_man:
@@ -957,15 +994,16 @@ def main():
                 # ============ Push date lock to Artifax ============ #
                 if push_lock:
                     LOGGER.info("-------------- STAGE FIVE: PUSH DATE LOCK TO ARTIFAX %s --------------", cid_title)
-                    LOGGER.info("Pushing date lock to Artifax work id %s", work_id)
+                    LOGGER.info("Pushing date lock to Artifax work id %s", work_season_id)
                     push_check = push_date_artifax(work_season_id)
                     if push_check:
                         LOGGER.info("Pushed date lock to Artifax CID Import Date field")
                     else:
                         LOGGER.critical("FAILED TO WRITE ARTIFAX LOCK TO WORK ID: %s - Script exiting and manual attention will be required", work_id)
+                        sys.exit()
                         continue
-
                 LOGGER.info("-------------- ALL STAGES COMPLETED SUCCESSFULLY FOR %s --------------", cid_title)
+                sys.exit()
 
         # When all extraction completed, move json to completed folder for next script interaction
         inf.close()
@@ -1326,19 +1364,22 @@ def create_qna_work(qna_date, film_priref, grouping, qna_title_dct=None):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def push_date_artifax(work_season_id):
+def push_date_artifax(object_id):
     '''
     Script to push back date lock after all records amended/created
     '''
     dct = []
-    data = {'object_id': work_season_id,
+    data = {'object_id': f"{object_id}",
             'object_type_id': '66',
             'custom_form_element_id': '1176',
             'custom_form_assignment_id': '29600',
-            'custom_form_data_value': TODAY}
+            'custom_form_data_value': f"{TODAY}"}
 
+    print(CUSTOM_URL, HEADERS, data)
     dct = requests.request('PUT', CUSTOM_URL, headers=HEADERS, data=data)
+    print(dct.text)
     dct.raise_for_status()
+
     if 'custom_forms_data_id' in str(dct.text):
         return True
 

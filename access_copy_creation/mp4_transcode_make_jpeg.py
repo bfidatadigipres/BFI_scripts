@@ -126,12 +126,10 @@ def main():
     audio and documents
     '''
     if len(sys.argv) < 2:
-        logger.warning("%s\tWARNING\tSCRIPT EXITING: Error with shell script input:\n %s", local_time(), sys.argv)
         sys.exit("EXIT: Not enough arguments")
 
     fullpath = sys.argv[1]
     if not os.path.isfile(fullpath):
-        logger.warning("%s\tWARNING\tSCRIPT EXITING: Error with file path supplied, not a file: %s", local_time(), fullpath)
         sys.exit("EXIT: Supplied path is not a file")
 
     # Multiple instances of script so collection logs for one burst output
@@ -554,7 +552,7 @@ def sort_ext(ext):
     mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
-                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar']}
+                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml']}
 
     ext = ext.lower()
     for key, val in mime_type.items():
@@ -646,7 +644,9 @@ def get_height(fullpath):
     except ValueError:
         sampled_height = 0
 
-    if int(sampled_height) > int(reg_height):
+    if sampled_height == 0:
+        height = str(reg_height)
+    elif int(sampled_height) > int(reg_height):
         height = str(sampled_height)
     else:
         height = str(reg_height)

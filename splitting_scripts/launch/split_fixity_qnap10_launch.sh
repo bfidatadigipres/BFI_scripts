@@ -1,16 +1,17 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # Launcher for split.py script which models carriers
 # for in-scope whole-tape digitisation files and then
 # creates item-level files and documents them in CID
 
-TARGET="${QNAP_VID}/processing/source/3"
-LOG="${QNAP_VID}/processing/log/split_3.log"
-SCRIPT="${CODE}splitting_scripts/split_fixity.py"
+SOURCE_NUM="$1"
+TARGET="${QNAP_10}/processing/source/${SOURCE_NUM}"
+LOG="${QNAP_10}/processing/log/split_${SOURCE_NUM}.log"
+SCRIPT="${CODE}splitting_scripts/split_fixity_h22.py"
 
 # Log script start
 echo "" >> "$LOG"
-echo "Start Python3 split_fixity.py: $(date)" >> "$LOG"
+echo "Start Python 3 split_fixity_h22.py: $(date)" >> "$LOG"
 
 # Perform splitting twice: once-through for single-item
 # carriers and then once-through for multi-item tapes
@@ -18,4 +19,4 @@ echo "Start Python3 split_fixity.py: $(date)" >> "$LOG"
 "$PY3_ENV" "$SCRIPT" "${TARGET}" multi
 
 # Log script end
-echo "Finish split_fixity.py: $(date)" >> "$LOG"
+echo "Finish split_fixity_h22.py: $(date)" >> "$LOG"

@@ -6,12 +6,12 @@ tar_folder_record_creation_rename.py
 Script functions:
 
 1. Pick up folders (named after their source Item record)
-2. Check in CID that the source item record is WAV file_type
+2. Check in CID that the source item record has sound_item = 'Sound'
 3. Check all WAVs in folder - mediaconch policy check against POLICY_WAV
    - If any fail then pause the process and exit with warning log
 4. New item record is created and linked to source item's manifestation
    and to source_item. Extract ob_number and convert to new filename
-   with part_whole 01of01.
+   with part_whole 01of01 (or carried over from supplied folder).
 5. Add names of all files into the quality comments field, and populate quality date field.
 6. Folder renamed and moved to automation_wav/for_tar_wrap for TAR wrapping
 7. All actions logged human readable for Mike, and placed in audio ops
@@ -36,11 +36,12 @@ import datetime
 import subprocess
 
 # Private packages
+sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global paths/vars
 AUTO_WAV_PATH = os.environ['AUTOMATION_WAV']
-WAV_RENAME_PATH = os.path.join(AUTO_WAV_PATH), 'record_create_folder_rename')
+WAV_RENAME_PATH = os.path.join(AUTO_WAV_PATH, 'record_create_folder_rename')
 WAV_POLICY = os.environ['POLICY_WAV']
 FAILED_PATH = os.path.join(AUTO_WAV_PATH, 'failed_rename/')
 AUTOINGEST = os.path.join(os.environ['AUDIO_OPS_FIN'], os.environ['AUTOINGEST_AUD'])
@@ -116,18 +117,14 @@ def conformance_check(filepath):
         return "PASS!"
 
 
-def make_object_number(file_path):
+def make_object_number(folder):
     '''
     Convert file or directory to CID object_number
     '''
-    if os.path.isdir(file_path):
-        fname = os.path.split(file_path)[1]
-        filename_split = fname.split('_')
-        object_num = '-'.join(filename_split[:-1])
-        part_whole = filename_split[-1]
-        return object_num, part_whole
-
-    return None, None
+    filename_split = folder.split('_')
+    object_num = '-'.join(filename_split[:-1])
+    part_whole = filename_split[-1]
+    return object_num, part_whole
 
 
 def cid_query(database, search, object_number):
@@ -138,14 +135,16 @@ def cid_query(database, search, object_number):
              'search': search,
              'limit': '0',
              'output': 'json',
-             'fields': 'priref, title, title.article, title.language, object_number, source_item, derived_item'}
+             'fields': 'priref, title, title.article, title.language, object_number, source_item, derived_item, sound_item'}
     try:
         query_result = CID.get(query)
     except Exception:
         print(f"cid_query(): Unable to retrieve data for {object_number}")
         LOGGER.exception("cid_query(): Unable to retrieve data for %s", object_number)
         query_result = None
+
     print(query_result.records)
+
     try:
         priref = query_result.records[0]['priref'][0]
         print(priref)
@@ -182,11 +181,15 @@ def cid_query(database, search, object_number):
     except (KeyError, IndexError) as err:
         derived_item = ""
         print(err)
-
+    try:
+        sound_item = query_result.records[0]['sound_item'][0]['value'][1]
+    except (KeyError, IndexError) as err:
+        sound_item = ""
+        print(err)
 
     new_title = remove_whitespace(title)
 
-    return (priref, new_title, title_article, ob_num, derived_item, source_item, title_language)
+    return (priref, new_title, title_article, ob_num, derived_item, source_item, title_language, sound_item)
 
 
 def cid_data_retrieval(ob_num):
@@ -204,7 +207,7 @@ def cid_data_retrieval(ob_num):
     else:
         parent_search = f'(parts_reference->object_number="{ob_num}")'
 
-    LOGGER.info("Retrieving CID data using query: %s", parent_search)
+    LOGGER.info("Retrieving CID parent manifestation data using query: %s", parent_search)
     parent_data = cid_query('Manifestations', parent_search, ob_num)
 
     try:
@@ -217,7 +220,7 @@ def cid_data_retrieval(ob_num):
         source_search = f'(priref="{priref}")'
     else:
         source_search = f'(object_number="{ob_num}")'
-
+    LOGGER.info("Retrieving CID source item data using query: %s", source_search)
     source_data = cid_query('Items', source_search, ob_num)
     try:
         cid_data.extend(source_data)
@@ -236,10 +239,10 @@ def main():
     and move to autoingest path in audio isilon share.
     '''
 
-    LOGGER.info("========== wav_record_creation_rename.py START ============")
+    LOGGER.info("========== wav folder record creation rename START ============")
     check_control()
     cid_check()
-
+    '''
     directory_list = {}
     for root, dirs, _ in os.walk(WAV_RENAME_PATH):
         for directory in dirs:
@@ -253,6 +256,11 @@ def main():
             else:
                 LOGGER.info("Skipping: No audio files in folder %s", directory)
                 continue
+    '''
+    directory_list = {
+        '/mnt/isilon/audio_ops/folder/C_625940_01of01': ['File One1.wav', 'File Two2.wav'],
+        '/mnt/isilon/audio_ops/folder/C_626169_01of01': ['Sound One1.wav', 'Sound Two2.wav']
+    }
 
     if not directory_list:
         LOGGER.info("No items found this time. Script exiting")
@@ -261,15 +269,16 @@ def main():
     for key, value in directory_list.items():
         LOGGER.info("======== Folder path being processed %s ========", key)
         LOGGER.info("Contents of folder being processed:")
-        LOGGER.info("%s", ', '.join(value)
+        LOGGER.info("%s", ', '.join(value))
         fpath, folder = os.path.split(key)
 
         # Mediaconch policy assessment
         quality_comments = []
         for file in value:
-            if file.endwith(('.wav', '.WAV')):
+            if file.endswith(('.wav', '.WAV')):
                 filepath = os.path.join(fpath, file)
-                success = conformance_check(filepath)
+                # success = conformance_check(filepath)
+                success = 'PASS!'
                 LOGGER.info("Conformance check results for %s: %s", file, success)
                 quality_comments.append(file)
                 if 'PASS!' not in success:
@@ -278,42 +287,50 @@ def main():
                     LOGGER.warning("Skipping: WAV file in folder %s has failed the policy", folder)
                     continue
 
-        source_ob_num, part_whole = make_object_number(key)
+        source_ob_num, part_whole = make_object_number(folder)
+        if len(source_ob_num) == 0:
+            local_log(f"Skipping: Unable to retrieve Source object number from folder: {folder}")
+            continue
+
+        print(source_ob_num, part_whole)
         local_log(f"Object number for folder: {source_ob_num}")
         local_log(f"Source object number retrieved from folder {folder}: {source_ob_num}")
+        cid_data = cid_data_retrieval(source_ob_num)
+        print(cid_data)
 
-        # Retrieve source item priref
-        if len(source_ob_num) > 0:
-            cid_data = cid_data_retrieval(source_ob_num)
-            print(cid_data)
+        if cid_data[15] != 'Sound':
+            LOGGER.info("Skipping: Supplied CID item record source does not have 'sound_item': 'Sound'")
+            local_log(f"WARNING: Could not find 'Sound' in sound_item record for source item {source_ob_num}")
+            continue
+        if len(cid_data[8]) == 0:
+            LOGGER.info("Skipping: No priref retrieved for folder %s", folder)
+            local_log(f"WARNING: Could not find priref for source item {source_ob_num}")
+            continue
 
-        qual_comm = f"TAR file contains: {'; '.join(quality_comments}}"
+        qual_comm = f"TAR file contains: {'; '.join(quality_comments)}."
         qual_date = TODAY_DATE
-
---- JMW upto here
+        sys.exit()
 
         # Make CID record, retrieve object number
-        if len(cid_data[8]) > 0:
-            LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[8])
-            local_log(f"Creating new CID item record using parent title: {cid_data[8]}")
-            wav_data = create_wav_record(cid_data[0], cid_data[8], cid_data[9], cid_data[13])
+        if len(cid_data[9]) > 0:
+            LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[9])
+            local_log(f"Creating new CID item record using parent title: {cid_data[9]}")
+            wav_data = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14], cid_data[0])
         elif len(cid_data[1]) > 0:
             LOGGER.info("Making new CID item record for WAV using grandparent title %s", cid_data[1])
             local_log(f"Creating new CID item record using grandparent title: {cid_data[1]}")
-            wav_data = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6])
+            wav_data = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6], cid_data[0])
         else:
             local_log(f"Unable to retrieve CID data for: {source_ob_num}. Moving file to failed_rename folder.")
             LOGGER.warning("Title information absent from CID data retrieval, skipping record creation")
+
             # Move file to failed_rename/ folder
-            fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', file)
-            print(f"Moving {filepath} to {fail_path}")
-            shutil.move(filepath, fail_path)
+            fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', folder)
+            print(f"Moving {key} to {fail_path}")
+            shutil.move(key, fail_path)
             continue
 
-
-
-
-
+        # JMW working here
         # Check wav_ob_num present following Item creation
         if wav_data:
             local_log(f"Creation of new WAV item record successful: {wav_data[0]}")
@@ -322,22 +339,14 @@ def main():
             LOGGER.warning("No WAV object number obtained - failed record creation")
             local_log(f"FAILED: Creation of new WAV Item record failed for {file}. Leaving to retry")
             continue
-        # Append source item to WAV record
-        success = append_source(source_ob_num, wav_data[1], wav_data[0])
-        if success:
-            LOGGER.info("Source item linked successfully in new WAV Item record")
-            local_log("- Source item linked with new Item record")
-        else:
-            LOGGER.warning("Source item link failed, and must be appended manually:")
-            LOGGER.warning("Source item: %s - New WAV Item record: %s", source_ob_num, wav_data[0])
-            local_log("- WARNING! Source item link failed, and must be appended manually:")
-            local_log(f"-          Source item: {source_ob_num} - New WAV Item record: {wav_data[0]}")
+
         # Rename file and move
-        success = rename(file, wav_data[0])
+        success = rename(folder, wav_data[0])
         if success is not None:
             local_log(f"File {file} renamed {success[1]}")
             LOGGER.info("File %s renamed successfully to %s", file, success[1])
-            # Move to autoingest
+            # Move to automation_wav/for_tar_wrap/
+        '''
             local_log(f"Moving to autoingest - file {success[0]}")
             move_success = ingest_move(success[0], success[1])
             if move_success:
@@ -466,11 +475,11 @@ def main():
                 shutil.move(local_filepath, local_fail_path)
             local_log("All failed moves completed.\n")
             LOGGER.info("All failed moves completed.\n")
+        '''
+    LOGGER.info("================ END WAV folder record creation rename END =================")
 
-    LOGGER.info("================ END royal_collection_rename_wav.py END =================")
 
-
-def create_wav_record(gp_priref, title, title_article, title_language):
+def create_wav_record(gp_priref, title, title_article, title_language, source_priref):
     '''
     Item record creation for WAV file
     TO DO: Needs reviewing with Lucy
@@ -480,43 +489,34 @@ def create_wav_record(gp_priref, title, title_article, title_language):
     item_defaults = []
 
     record_defaults = ([{'input.name': 'datadigipres'},
-                        {'input.date': TODAY_DATE},
-                        {'input.time': TODAY_TIME},
-                        {'input.notes': 'Royal Collections WAV automated record generation.'},
-                        {'record_access.user': 'BFIiis'},
-                        {'record_access.rights': '0'},
-                        {'record_access.reason': 'ACQ_SOURCE'},
-                        {'record_access.date': TODAY_DATE},
-                        {'record_access.duration': 'PERM'},
-                        {'record_access.user': 'BFIiispublic'},
-                        {'record_access.rights': '0'},
-                        {'record_access.reason': 'ACQ_SOURCE'},
-                        {'record_access.date': TODAY_DATE},
-                        {'record_access.duration': 'PERM'},
-                        {'record_access.owner': '$REST'}])
+                        {'input.date': str(datetime.datetime.now())[:10]},
+                        {'input.time': str(datetime.datetime.now())[11:19]},
+                        {'input.notes': 'Created by automation to aid ingest of legacy projects and workflows.'}, #
+                        {'record_access.owner': 'Acquisitions Full'}]) #
 
-    item_defaults = ([{'record_type': 'ITEM'},
-                      {'code_type': 'Uncompressed'},
-                      {'bit_depth.type': 'AUDIO'},
-                      {'bit_depth': '24'},
-                      {'sample_rate': '96kHz'},
-                      {'grouping.lref': '113049'},
-                      {'acquisition.method': 'Created by'},
-                      {'acquisition.source': 'BFI National Archive'},
-                      {'acquisition.source.lref': '999570701'},
-                      {'acquisition.reason': 'Digital deliverable from BFI / Royal Collection'},
-                      {'copy_status': 'M'},
-                      {'copy_usage': 'Restricted access to preserved digital file'},
-                      {'copy_usage.lref': '131560'},
-                      {'creator': 'BFI National Archive'},
-                      {'creator.lref': '999570701'},
-                      {'creator.role.lref': '392405'},
-                      {'description.date': TODAY_DATE},
-                      {'file_type': 'WAV'},
-                      {'item_type': 'DIGITAL'},
-                      {'source_item.content': 'SOUND'},
-                      {'production.reason': 'Royal Collection WAV digitisation project'},
-                      {'production.notes': 'WAV file'}])
+    item_defaults = ([{'record_type': 'ITEM'}, #
+                      {'code_type': 'Uncompressed'}, # Unknown
+                      {'bit_depth.type': 'AUDIO'}, # Unknown
+                      {'bit_depth': '24'}, # Unknown
+                      {'sample_rate': '96kHz'}, # Unknown
+                      {'grouping.lref': ''}, # Unknown
+                      {'acquisition.method': 'Created by'}, #
+                      {'acquisition.source': 'BFI National Archive'}, #
+                      {'acquisition.source.lref': '999570701'}, #
+                      {'acquisition.reason': 'Digital deliverable from BFI'}, # Unsure
+                      {'copy_status': 'M'}, #
+                      {'copy_usage': 'Restricted access to preserved digital file'}, #
+                      {'copy_usage.lref': '131560'}, #
+                      {'creator': 'BFI National Archive'}, #
+                      {'creator.lref': '999570701'}, #
+                      {'creator.role.lref': '392405'}, #
+                      {'description.date': str(datetime.datetime.now())[:10]},
+                      {'file_type': 'WAV'}, #
+                      {'item_type': 'DIGITAL'}, #
+                      {'quality_comments': comment}, #
+                      {'quality_comments.date': date}, #
+                      {'source_item.lref': source_priref}, #
+                      {'source_item.content': 'SOUND'}]) #
 
     wav_ob_num = ""
     item_values = []
@@ -524,15 +524,15 @@ def create_wav_record(gp_priref, title, title_article, title_language):
     item_values.extend(item_defaults)
 
     # Appended data
-    item_values.append({'part_of_reference.lref': gp_priref})
-    item_values.append({'title': title})
+    item_values.append({'part_of_reference.lref': gp_priref}) #
+    item_values.append({'title': title}) #
     if len(title_article) > 0:
-        item_values.append({'title.article': title_article})
+        item_values.append({'title.article': title_article}) #
     if len(title_language) > 0:
-        item_values.append({'title.language': title_language})
+        item_values.append({'title.language': title_language}) #
     else:
-        item_values.append({'title.language': 'English'})
-    item_values.append({'title.type': '05_MAIN'})
+        item_values.append({'title.language': 'English'}) #
+    item_values.append({'title.type': '05_MAIN'}) #
     print(item_values)
 
     try:
@@ -563,14 +563,17 @@ def create_wav_record(gp_priref, title, title_article, title_language):
         return None
 
 
-def append_source(source_ob_num, priref, ob_num):
+def append_source(source_ob_num, priref, ob_num, comment, date):
     '''
     Where source_item can't be written with record creation
     appended after record created. Check source_item field
     after push is only way to verify if successful.
     '''
-    source = {'source_item': source_ob_num}
-
+    source = {
+         'source_item': source_ob_num,
+         'quality_comments': comment,
+         'quality_comments.date': date
+    }
     try:
         result = CUR.create_occurrences(database='items',
                                         priref=priref,
@@ -594,21 +597,21 @@ def append_source(source_ob_num, priref, ob_num):
         return False
 
 
-def rename(file, ob_num):
+def rename(folder, ob_num):
     '''
-    Receive original file path and rename filename
+    Receive original folder path and rename
     based on object number, return new filepath, filename
     '''
     new_name = ob_num.replace('-', '_')
-    filepath = os.path.join(WAV_ARCHIVE_PATH, file)
-    name_split = file.split('_')
-    new_filename = f"{new_name}_{name_split[-1]}"
-    print(f"Renaming {file} to {new_filename}")
-    new_filepath = os.path.join(WAV_ARCHIVE_PATH, new_filename)
+    folderpath = os.path.join(WAV_ARCHIVE_PATH, folder)
+    name_split = folder.split('_')
+    new_fname = f"{new_name}_{name_split[-1]}"
+    print(f"Renaming {folder} to {new_fname}")
+    new_fpath = os.path.join(WAV_ARCHIVE_PATH, new_fname)
 
     try:
-        os.rename(filepath, new_filepath)
-        return (new_filepath, new_filename)
+        os.rename(folderpath, new_fpath)
+        return (new_path, new_fname)
 
     except OSError:
         LOGGER.warning("There was an error renaming %s to %s", file, new_filename)

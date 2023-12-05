@@ -994,7 +994,7 @@ def main():
                 # ============ Push date lock to Artifax ============ #
                 if push_lock:
                     LOGGER.info("-------------- STAGE FIVE: PUSH DATE LOCK TO ARTIFAX %s --------------", cid_title)
-                    LOGGER.info("Pushing date lock to Artifax work id %s", work_season_id)
+                    LOGGER.info("Pushing date lock to Artifax work season form with ID: %s", work_season_id)
                     push_check = push_date_artifax(work_season_id)
                     if push_check:
                         LOGGER.info("Pushed date lock to Artifax CID Import Date field")
@@ -1367,15 +1367,15 @@ def create_qna_work(qna_date, film_priref, grouping, qna_title_dct=None):
 def push_date_artifax(object_id):
     '''
     Script to push back date lock after all records amended/created
+    Receives object_id which is work_season_id
     '''
     dct = []
     data = {'object_id': f"{object_id}",
-            'object_type_id': '66',
+            'object_type_id': '81',
             'custom_form_element_id': '1176',
             'custom_form_assignment_id': '29600',
             'custom_form_data_value': f"{TODAY}"}
 
-    print(CUSTOM_URL, HEADERS, data)
     dct = requests.request('PUT', CUSTOM_URL, headers=HEADERS, data=data)
     print(dct.text)
     dct.raise_for_status()

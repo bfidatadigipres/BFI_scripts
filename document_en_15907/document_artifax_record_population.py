@@ -271,7 +271,6 @@ def cid_retrieve(search):
     try:
         query_result = CID.get(query)
         LOGGER.info("cid_retrieve(): Making CID query request with:\n %s", query)
-        LOGGER.info(query_result.records[0])
     except Exception as err:
         LOGGER.exception("cid_retrieve(): Unable to retrieve data %s", err)
         query_result = None
@@ -401,8 +400,10 @@ def work_copy_extraction(fname, current_festival):
     manifestation_festival_dct = []
     with open(fname, 'r') as inf:
         dcts = json.load(inf)
-        for dct in dcts:
+        if str(dcts).startswith('No results'):
+            return 'No results'
 
+        for dct in dcts:
             description = ''
             if dct['description']:
                 description = dct['description']
@@ -665,7 +666,6 @@ def work_extraction(season_id, dct=None):
     country_dct = []
     country_dct = country_check(dct['countries'])
     work_append_dct.extend(country_dct)
-    print(manifestation_dct, work_append_dct)
 
     return (qna_title_dct, manifestation_dct, work_append_dct)
 
@@ -945,8 +945,13 @@ def main():
                 if make_man:
                     LOGGER.info("-------------- STAGE THREE: CREATE MANIFESTATION %s --------------", cid_title)
                     work_copy_fname = fetch_work_copy(work_id)
+                    print(f"******* {work_copy_fname} ********")
                     if len(work_copy_fname) > 0:
                         success_man = make_manifestations(work_copy_fname, current_festival, start_date, priref, manifestation_dct)
+                        if success_man == 'No results':
+                            LOGGER.critical("Error creating manifestation for %s using work copy: %s", priref, work_copy_fname)
+                            LOGGER.warning("The work copy downloaded is returning 'No Results'")
+                            continue
                         if success_man:
                             LOGGER.info("** Manifestations created for CID work %s", priref)
                         else:
@@ -990,10 +995,8 @@ def main():
                         LOGGER.info("Pushed date lock to Artifax CID Import Date field")
                     else:
                         LOGGER.critical("FAILED TO WRITE ARTIFAX LOCK TO WORK ID: %s - Script exiting and manual attention will be required", work_id)
-                        sys.exit()
                         continue
                 LOGGER.info("-------------- ALL STAGES COMPLETED SUCCESSFULLY FOR %s --------------", cid_title)
-                sys.exit()
 
         # When all extraction completed, move json to completed folder for next script interaction
         inf.close()
@@ -1012,6 +1015,8 @@ def make_manifestations(work_copy_fname, current_festival, start_date, priref, m
     if manifestation_dct is None:
         manifestation_dct = {}
     work_copy_data = work_copy_extraction(work_copy_fname, current_festival)
+    if work_copy_data == 'No results':
+        return 'No results'
     try:
         manifestation_internet_dct = work_copy_data[0]
         manifestation_festival_dct = work_copy_data[1]

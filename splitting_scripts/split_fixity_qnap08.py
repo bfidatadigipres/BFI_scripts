@@ -65,8 +65,8 @@ LOG_PATH = os.environ['SCRIPT_LOG']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger(f'split_fixity_{NUM}')
-# hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'))
-hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'), mode='w')
+hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'))
+# hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'), mode='w')
 formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)

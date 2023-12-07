@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type= "text/css" href="{{ url_for('static',filename='styles/form2.css') }}">
+    </head>
+    <body>
+        <div class="header">
+          <h1>BFI National Archive news preservation requests</h1>
+          <p>Request move of specific TV news channel on given day into the Digital Preservation Infrastructure</p>
+	</div>
+	<div class="topnav">
+	  <a href="{{ url_for('dpi_move_request') }}">Submit a request</a>
+	  <a href="{{ url_for('dpi_move') }}">View requests</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/article/3528589314">Instructions</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/group/-1" class="split">Service Desk</a>
+	</div>
+	<br/>
+        <div>ERROR: Your request has been rejected. Please check the date formatting is correct and no older than 14 days. Thank you!</div>
+	<br/>
+	<button class="btn-nav" type="button" onclick="window.location.href='{{ url_for('dpi_move_request') }}';">Retry submitting a date/channel for preservation</button><br/>
+        <button class="btn-nav" type="button" onclick="window.location.href='{{ url_for('dpi_move') }}';">View all download requests</button><br/>
+    </body>
+</html>

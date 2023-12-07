@@ -19,12 +19,12 @@ Joanna White
 '''
 
 # Public packages
-import datetime
-import logging
-import shutil
-import json
-import sys
 import os
+import sys
+import json
+import shutil
+import logging
+import datetime
 
 # Private packages
 sys.path.append(os.environ['CODE'])

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type= "text/css" href="{{ url_for('static',filename='styles/table2.css') }}">
+<script>
+function myFunctionUsername() {
+  // Declare variables
+  var input, filter, table, tr, td, i, txtValue;
+  input = document.getElementById("username");
+  filter = input.value.toUpperCase();
+  table = document.getElementById("myTable");
+  tr = table.getElementsByTagName("tr");
+
+  // Loop through all table rows, and hide those who don't match the search query
+  for (i = 0; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[0];
+    if (td) {
+      txtValue = td.textContent || td.innerText;
+      if (txtValue.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
+    }
+  }
+}
+</script>
+<script>
+function myFunctionChannel() {
+  // Declare variables
+  var input, filter, table, tr, td, i, txtValue;
+  input = document.getElementById("channel");
+  filter = input.value.toUpperCase();
+  table = document.getElementById("myTable");
+  tr = table.getElementsByTagName("tr");
+
+  // Loop through all table rows, and hide those who don't match the search query
+  for (i = 0; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[3];
+    if (td) {
+      txtValue = td.textContent || td.innerText;
+      if (txtValue.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
+    }
+  }
+}
+</script>
+<script>
+function myFunctionStatus() {
+  // Declare variables
+  var input, filter, table, tr, td, i, txtValue;
+  input = document.getElementById("status");
+  filter = input.value.toUpperCase();
+  table = document.getElementById("myTable");
+  tr = table.getElementsByTagName("tr");
+
+  // Loop through all table rows, and hide those who don't match the search query
+  for (i = 0; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[4];
+    if (td) {
+      txtValue = td.textContent || td.innerText;
+      if (txtValue.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
+    }
+  }
+}
+</script>
+<script>
+function sortTable(n) {
+  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  table = document.getElementById("myTable");
+  switching = true;
+  // Set the sorting direction to ascending:
+  dir = "asc";
+  /* Make a loop that will continue until
+  no switching has been done: */
+  while (switching) {
+    // Start by saying: no switching is done:
+    switching = false;
+    rows = table.rows;
+    /* Loop through all table rows (except the
+    first, which contains table headers): */
+    for (i = 1; i < (rows.length - 1); i++) {
+      // Start by saying there should be no switching:
+      shouldSwitch = false;
+      /* Get the two elements you want to compare,
+      one from current row and one from the next: */
+      x = rows[i].getElementsByTagName("td")[n];
+      y = rows[i + 1].getElementsByTagName("td")[n];
+      /* Check if the two rows should switch place,
+      based on the direction, asc or desc: */
+      if (dir == "asc") {
+        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+          // If so, mark as a switch and break the loop:
+          shouldSwitch = true;
+          break;
+        }
+      } else if (dir == "desc") {
+        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+          // If so, mark as a switch and break the loop:
+          shouldSwitch = true;
+          break;
+        }
+      }
+    }
+    if (shouldSwitch) {
+      /* If a switch has been marked, make the switch
+      and mark that a switch has been done: */
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+      // Each time a switch is done, increase this count by 1:
+      switchcount ++;
+    } else {
+      /* If no switching has been done AND the direction is "asc",
+      set the direction to "desc" and run the while loop again. */
+      if (switchcount == 0 && dir == "asc") {
+        dir = "desc";
+        switching = true;
+      }
+    }
+  }
+}
+</script>
+    </head>
+    <body>
+      <div class="header">
+        <h1>BFI National Archive news preservation requests</h1>
+        <p>Request move of specific TV news channel on given day into the Digital Preservation Infrastructure</p>
+      </div>
+      <div class="topnav">
+        <a href="{{ url_for('dpi_move_request') }}">Submit a request</a>
+        <a href="{{ url_for('dpi_move') }}">View requests</a>
+        <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/article/3528589314">Instructions</a>
+        <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/group/-1" class="split">Service Desk</a>
+      </div>
+      <input type="text" id="username" onkeyup="myFunctionUsername()" placeholder="Filter by username...">
+      <input type="text" id="channel" onkeyup="myFunctionChannel()" placeholder="Filter by channel...">
+      <input type="text" id="status" onkeyup="myFunctionStatus()" placeholder="Filter by status...">
+      <div style="overflow-x:auto;">
+        <table id="myTable" class="searchable sortable" style="width:100%">
+            <tr class="header">
+              <th onclick="sortTable(0)">User name</th>
+              <th onclick="sortTable(1)">User email</th>
+              <th onclick="sortTable(2)">Preservation date</th>
+              <th onclick="sortTable(3)">Preservation channel</th>
+              <th onclick="sortTable(4)">Current Status</th>
+              <th onclick="sortTable(5)">Date of request</th>
+            </tr>
+            {%for downloads in data%}
+              <tr>
+                <td>{{downloads[0]}}</td>
+                <td>{{downloads[1]}}</td>
+                <td>{{downloads[2]}}</td>
+                <td>{{downloads[3]}}</td>
+                <td>{{downloads[4]}}</td>
+                <td>{{downloads[5]}}</td>
+              </tr>
+            {%endfor%}
+        </table>
+      </div>
+    </body>
+</html>

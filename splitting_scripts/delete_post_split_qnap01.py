@@ -116,7 +116,7 @@ def main():
 
         # Path to source media
         root = os.path.join(media_target, 'source')
-        logger.info('%s\t**** Processing files in \t%s', root, root)
+        logger.info('%s\t** Processing files in \t%s', root, root)
 
         # List video files in recursive sub-directories
         files = []
@@ -182,12 +182,10 @@ def main():
                 else:
                     grouping = '397987'
 
-                result = get_results(filepath, grouping, object_number, 'datadigipres')
+                result = get_results(filepath, grouping, object_number)
                 if not result:
-                    result = get_results(filepath, grouping, object_number, 'collectionssystems')
-                    if not result:
-                        logger.warning('%s\tNo CID record found for object_number %s and grouping %s', object_number, grouping)
-                        continue
+                    logger.warning('%s\tNo CID record found for object_number %s and grouping %s', filepath, object_number, grouping)
+                    continue
 
                 # Check that each media record umid has been preserved to tape by BlackPearl
                 for r in result.records:
@@ -247,26 +245,23 @@ def main():
                 logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath, len(preserved_objects), total_objects_expected)
 
 
-def get_results(filepath, grouping, object_number, input_name):
+def get_results(filepath, grouping, object_number):
     '''
     Checks for cross-over period between 'datadigipres'
     and 'collectionssystems' in CID media record
     '''
-    query = f'''(object.object_number->
-                    ((grouping.lref="{grouping}")
-                        and input.name="{input_name}"
-                        and (source_item->
-                         (object_number="{object_number}"))))'''
+
+    query = f"""(object.object_number->((grouping.lref='{grouping}') and (input.name='datadigipres' or input.name='collectionssystems') and (source_item->(object_number='{object_number}'))))"""
 
     q = {'database': 'media',
          'search': query,
-         'fields': 'reference_number,imagen.media.original_filename, preservation_bucket',
+         'fields': 'reference_number, imagen.media.original_filename, preservation_bucket',
          'output': 'json',
          'limit': '0'}
 
+    print(f'* Querying for ingest status of CID Item record {object_number}')
     try:
         result = CID.get(q)
-        print(f'* Querying for ingest status of CID Item record {object_number}')
         logger.info('%s\tCID Item record found, with object number %s', filepath, object_number)
         return result
     except Exception as err:

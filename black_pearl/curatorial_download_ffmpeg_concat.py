@@ -43,7 +43,6 @@ import sys
 import json
 import hashlib
 import logging
-from datetime import datetime, timedelta
 import subprocess
 import requests
 from ds3 import ds3, ds3Helpers
@@ -97,6 +96,129 @@ def cid_check():
         print("* Cannot establish CID session, script exiting")
         LOGGER.warning("* Cannot establish CID session, script exiting")
         sys.exit()
+
+
+def get_duration(filepath):
+    '''
+    Retrieve duration field if possible
+    '''
+    cmd = [
+        'mediainfo',
+        '-f', '--Language=raw',
+        '--Output=General;%Duration%',
+        filepath
+    ]
+    try:
+        duration = subprocess.check_output(cmd)
+    except Exception as err:
+        LOGGER.warning(err)
+        duration = ''
+
+    return duration
+
+
+def get_audio_stream_count(file_path):
+    '''
+    Count streams and return number
+    '''
+    cmd = [
+        'mediainfo',
+        '--Output=Audio;%Channels%',
+        file_path
+    ]
+    try:
+        data = subprocess.check_output(cmd)
+    except Exception as err:
+        LOGGER.warning(err)
+        data = ''
+
+    data = data.decode('utf-8')
+    stream_count = len(data)
+    chnl_type = data[0]
+
+    return stream_count, chnl_type
+
+
+def append_new_tracks(fpath, audio_num, most_tracks, chnl_type):
+    '''
+    Generate black audio track for same duration
+    as file, then MKV merge into space audio track
+    spaces
+    '''
+    duration = get_duration(fpath).rstrip()
+    duration = int(duration)
+    clip_duration = duration // 1000
+    tracks_needed = most_tracks - int(audio_num)
+    audio_tracks = []
+
+    for num in range(tracks_needed):
+        audio_fpath = make_audio_track(fpath, num, clip_duration, chnl_type)
+        if not audio_fpath:
+            return None
+        audio_tracks.append(audio_fpath)
+
+    if len(audio_tracks) != tracks_needed:
+        return None
+
+    new_fpath = mkv_merge_source_file_and_audio(fpath, audio_tracks)
+    if not new_fpath:
+        return None
+
+    return new_fpath
+
+
+def mkv_merge_source_file_and_audio(fpath, audio_tracks):
+    '''
+    MKVToolNix mkv merge to join all files together
+    '''
+    print("******** Made it into audio merge section *************")
+    pth, fname = os.path.split(fpath)
+    fname2 = f"{fname}_merged.mkv"
+    new_fpath = os.path.join(pth, fname2)
+
+    cmd = [
+        'mkvmerge',
+        '--append-mode', 'file',
+        '-o', new_fpath,
+        fpath
+    ]
+
+    cmd_use = cmd + audio_tracks
+    command_string = ", ".join(cmd_use)
+    LOGGER.info(command_string)
+
+    try:
+        subprocess.call(cmd_use)
+        print(f"MERGED!!! {new_fpath}")
+    except Exception as err:
+        LOGGER.warning("Failed to merge audio tracks to file %s: %s", fname, err)
+
+    if os.path.isfile(new_fpath):
+        return new_fpath
+
+
+def make_audio_track(fpath, num, clip_duration, chnl_type):
+    '''
+    Generate null audio track
+    '''
+    pth = os.path.split(fpath)[0]
+    number = str(num).zfill(2)
+    audio_fpath = os.path.join(pth, f'audio_{number}.wav')
+    cmd = [
+        'ffmpeg',
+        '-f', 'lavfi',
+        '-i', f'anullsrc=r=48000:cl={chnl_type}',
+        '-t', clip_duration,
+        '-c:a', 'pcm_s16le',
+        audio_fpath
+    ]
+    try:
+        subprocess.call(cmd)
+        print("****** Audio file made ********")
+    except Exception as err:
+        LOGGER.warning("Audio file generation failed: %s", err)
+    if os.path.isfile(audio_fpath):
+        return audio_fpath
 
 
 def find_media_original_filename(fname):
@@ -256,13 +378,16 @@ def main():
     LOGGER.info("Dictionary of parts extracted from CSV:\n%s", parts)
 
     # Start download of all CSV parts to folder / MD5 check
+    seconds_dict = {}
+    stream_data = []
     for part in parts:
+        total_seconds = 0
         for key, val in part.items():
+            key_name = key
             fname = val[0]
             priref, ref_num, bucket = find_media_original_filename(fname)
             print(f"Priref: {priref}")
             print(f"Ref number: {ref_num}")
-            # Bucket hardcoded until new field exists in media record
             if len(bucket) < 3:
                 bucket = 'imagen'
             LOGGER.info("Matched CID media record %s: ref %s", priref, ref_num)
@@ -289,6 +414,15 @@ def main():
                 LOGGER.warning("\t%s", local_md5)
                 LOGGER.warning("\t%s", bp_etag)
 
+        file_path = os.path.join(outpath, ref_num)
+        # Get audio tracks of each file here
+        audio_num, chnl_type = get_audio_stream_count(file_path)
+        if chnl_type == '2':
+            audio_data = f"{audio_num} - stereo"
+        else:
+            audio_data = f"{audio_num} - mono"
+        stream_data.append(audio_data)
+
         # Skip a batch where one of the downloads failed
         concat = True
         # Check for download failures
@@ -302,6 +436,7 @@ def main():
         concat_path = os.path.join(outpath, 'edited_parts/')
         os.makedirs(concat_path, mode=0o777, exist_ok=True)
         outfile, cname, duration_secs = create_edited_file(part, outpath, concat_path)
+        total_seconds += duration_secs
         if not outfile:
             LOGGER.warning("Part missing from concat edit, cannot complete concatenation for this group: %s", part)
             continue
@@ -309,25 +444,30 @@ def main():
 
         # Get duration of new clip in seconds and compare
         duration = get_duration(outfile)
-        clip_duration = duration // 1000
-        if abs(duration_secs - clip_duration) <= 10:
-            LOGGER.info("Durations match between TC supplied and video clip: {duration_secs} and {clip_durations} seconds")
+        if duration:
+            duration = int(duration)
+            clip_duration = duration // 1000
+            if abs(duration_secs - clip_duration) <= 10:
+                LOGGER.info("Durations match between TC supplied and video clip: %s and %s seconds", duration_secs, clip_duration)
+            else:
+                LOGGER.warning("Difference greater than 10 seconds in supplied tc in/out (%s seconds) and video clip (%s seconds)", duration_secs, clip_duration)
         else:
-            LOGGER.warning("Difference greater than 10 seconds in supplied tc in/out ({duration_secs} seconds) and video clip ({clip_duration} seconds)")
+            LOGGER.warning("Duration could not be extracted from file, unable to calculate if in/out varies")
         make_concat_list(cname, concat_path, f"file {outfile}\n")
+        seconds_dict[key_name] = total_seconds
 
     # Concat items count up
     folders_to_process = []
     for fname in files:
         prefix = fname.replace("-", "_")
         text_file = ''
-        for root, dirs, files_ in os.walk(DESTINATION):
+        for root, _, files_ in os.walk(DESTINATION):
             for f in files_:
                 if f == f"{prefix}_concat.txt":
                     text_file = os.path.join(root, f)
         if os.path.isfile(text_file):
             entries = subprocess.check_output(f'wc -l {text_file}', shell=True)
-            entries = entries.decode('utf-8').split(' /')[0]
+            entries = entries.decode('utf-8').split(' /', maxsplit=1)[0]
         if int(entries) == files.count(fname):
             LOGGER.info("%s - Correct number of clipped files found for concatenation %s", fname, entries)
             if prefix not in folders_to_process:
@@ -335,24 +475,66 @@ def main():
         else:
             LOGGER.warning("%s - insufficient parts for concatenation of asset %s", text_file, fname)
 
+    # Add silent audio where needed
+    stream_data.sort()
+    least_tracks = int(stream_data[0].split(' - ')[0])
+    most_tracks = int(stream_data[-1].split(' - ')[0])
+    LOGGER.info("Least audio tracks: %s - Most audio tracks %s", least_tracks, most_tracks)
+    if least_tracks != most_tracks:
+        LOGGER.warning("Audio streams vary between files. File audio stream appending is necessary...")
+        audio_edit = True
+    else:
+        audio_edit = False
+
     # Iterate all new {file}_concat.txt files creating new items, clean up where durations match
-    duration_match = False
     for folder in folders_to_process:
+        total_seconds_concat = concat_fname = ''
         ob_num = folder.replace('_', '-')
         target_concat = os.path.join(DESTINATION, ob_num, f'edited_parts/{folder}_concat.txt')
         print(f"TARGET FOR CONCATENATION: {target_concat}")
+        if audio_edit:
+            edits_path = os.path.join(DESTINATION, ob_num, 'edited_parts/')
+            for root, _, files in os.walk(edits_path):
+                for file in files:
+                    fpath = os.path.join(root, file)
+                    audio_num, chnl_type = get_audio_stream_count(fpath)
+                    if int(audio_num) != most_tracks:
+                        LOGGER.info("%s - has %s audio tracks, but needs %s tracks. Appending silent tracks.", file, audio_num, most_tracks)
+                        new_fpath = append_new_tracks(fpath, audio_num, most_tracks, chnl_type)
+                        if not new_fpath:
+                            LOGGER.warning("Updating additional audio tracks failed. Skipping as transcode will fail.")
+                            continue
+                        LOGGER.info("Successfully appended additional audio tracks. Renaming new file as old.")
+                        new_fpath_name = new_fpath.split('_merge', maxsplit=1)[0]
+                        os.rename(fpath, f"{fpath}_old")
+                        os.rename(new_fpath, new_fpath_name)
+
         for part in parts:
             for key, value in part.items():
                 if ob_num == key:
                     concat_fname = value[3]
         if concat_fname:
             concat_fpath = os.path.join(DESTINATION, concat_fname)
-            success = subprocess.call(f'ffmpeg -f concat -safe 0 -i {target_concat} -c copy -map 0 {concat_fpath}', shell=True)
+            success = subprocess.call(f'ffmpeg -f concat -safe 0 -i {target_concat} -c:v ffv1 -level 3 -g 1 -slicecrc 1 -slices 24 -c:a copy -map 0 -vf "setpts=PTS-STARTPTS" {concat_fpath}', shell=True)
             if success != 0:
                 LOGGER.warning("Subprocess call for concatenation failed for %s", target_concat)
                 LOGGER.warning("Concatination failed for %s. Manual concat required: \n%s", ob_num, os.path.join(DESTINATION, ob_num))
             else:
                 LOGGER.info("Concatination complete for %s. Manual clean up working folder permitted: \n%s", ob_num, os.path.join(DESTINATION, ob_num))
+        for k, v in seconds_dict.items():
+            print(k)
+            if str(k) in str(concat_fname):
+                total_seconds_concat = v
+        if total_seconds_concat:
+            concat_duration = get_duration(concat_fpath)
+            if concat_duration:
+                LOGGER.info("Totals for edits: %s. Total for concatenation: %s", total_seconds_concat, concat_duration)
+                if abs(total_seconds_concat - concat_duration) <= 10:
+                    LOGGER.info("Totals for edits under 10 seconds different: Supplied edits: %s. Total for concatenation: %s", total_seconds_concat, concat_duration)
+                else:
+                    LOGGER.warning("Difference greater than 10 seconds in supplied tc in/out ({duration_secs} seconds) and video clip ({clip_duration} seconds)")
+        else:
+            LOGGER.warning("Unable to retrieve durations to check concatenation is accurate to edited files")
 
     LOGGER.info("Curatorial download FFmpeg concat END ===================")
 
@@ -392,6 +574,7 @@ def create_edited_file(part, outpath, cpath):
         '-i', infile,
         '-c', 'copy',
         '-map', '0',
+        '-r', '25',
         outfile
     ]
 

@@ -11,14 +11,13 @@ Script functions:
    - If any fail then pause the process and exit with warning log
 4. New item record is created and linked to source item's manifestation
    and to source_item. Extract ob_number and convert to new filename
-   with part_whole 01of01 (or carried over from supplied folder).
+   with part_whole carried over from supplied folder.
 5. Add names of all files into the quality comments field, and populate quality date field.
 6. Folder renamed and moved to automation_wav/for_tar_wrap for TAR wrapping
 7. All actions logged human readable for Mike, and placed in audio ops
    folder, at top level.
 
-NOTES: No changes implemented yet.
-       Waiting on questions from Steph.
+NOTES: Waiting on CID record configs.
 
 Joanna White
 2023
@@ -273,6 +272,8 @@ def main():
         LOGGER.info("Contents of folder being processed:")
         LOGGER.info("%s", ', '.join(value))
         fpath, folder = os.path.split(key)
+        local_log(f"----------------- Processing {folder} ----------------\nFolder contents:")
+        local_log(', '.join(value))
 
         # Mediaconch policy assessment
         quality_comments = []
@@ -289,10 +290,12 @@ def main():
 
         if 'FAIL' in mediaconch_assess:
             LOGGER.warning("Skipping: One or more WAV file in folder %s has failed the policy", folder)
+            local_log("Skipping: Problem detected with encosed WAV file\n")
             continue
         source_ob_num, part_whole = make_object_number(folder)
         if len(source_ob_num) == 0:
             local_log(f"Skipping: Unable to retrieve Source object number from folder: {folder}")
+            LOGGER.warning("Skipping: Unable to retrieve source object number from folder: %s", folder)
             continue
 
         print(source_ob_num, part_whole)
@@ -303,25 +306,25 @@ def main():
         # Check source Item source_item field
         if cid_data[15] != 'Sound':
             LOGGER.info("Skipping: Supplied CID item record source does not have 'sound_item': 'Sound'")
-            local_log(f"WARNING: Could not find 'Sound' in sound_item record for source item {source_ob_num}")
+            local_log(f"Skipping: Could not find 'Sound' in sound_item record for source item {source_ob_num}")
             continue
         # Check source Item priref
         if len(cid_data[8]) == 0:
             LOGGER.info("Skipping: No priref retrieved for folder %s", folder)
-            local_log(f"WARNING: Could not find priref for source item {source_ob_num}")
+            local_log(f"SKIPPING: Could not find priref for source item {source_ob_num}")
             continue
         # Compile list of enclosed files
         qual_comm = f"TAR file contains: {'; '.join(quality_comments)}."
 
         # Make CID record with Title of source item
         if len(cid_data[9]) > 0:
-            LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[9])
-            local_log(f"Creating new CID item record using parent title: {cid_data[9]}")
+            LOGGER.info("Making new CID item record for WAV using source item title %s", cid_data[9])
+            local_log(f"Creating new CID item record using source item title: {cid_data[9]}")
             wav_ob_num, wav_priref = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14], cid_data[8], qual_comm)
         # Else use Title of manifestation parent
         elif len(cid_data[1]) > 0:
-            LOGGER.info("Making new CID item record for WAV using grandparent title %s", cid_data[1])
-            local_log(f"Creating new CID item record using grandparent title: {cid_data[1]}")
+            LOGGER.info("Making new CID item record for WAV using manifestation parent title %s", cid_data[1])
+            local_log(f"Creating new CID item record using manifestation parent title: {cid_data[1]}")
             wav_ob_num, wav_priref = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6], cid_data[8], qual_comm)
         else:
             local_log(f"Unable to retrieve CID data for: {source_ob_num}. Moving file to failed_rename folder.")
@@ -329,7 +332,7 @@ def main():
 
             # Move file to failed_rename/ folder
             fail_path = os.path.join(FAILED_PATH, folder)
-            print(f"Moving {key} to {fail_path}")
+            local_log(f"Moving {key} to {fail_path}")
             shutil.move(key, fail_path)
             continue
 
@@ -345,7 +348,7 @@ def main():
         # Rename file and move
         success = rename(folder, wav_ob_num)
         if success is not None:
-            local_log(f"File {folder} renamed {success[1]}")
+            local_log(f"File {folder} renamed to {success[1]}")
             LOGGER.info("Folder %s renamed successfully to %s", folder, success[1])
 
             # Move to automation_wav/for_tar_wrap/
@@ -520,17 +523,6 @@ def ingest_move(filepath, new_filename):
     except Exception as err:
         LOGGER.warning("ingest_move(): Failed to move %s to Autoingest %s", new_filename, err)
         return None
-
-
-def log_pprint(dct):
-    '''
-    Make neat string variable from dct
-    '''
-    data_store = ''
-    for file, data in dct.items():
-        data = (f"{file}: {data}\n")
-        data_store = f"{data_store}" + f"{data}"
-    return data_store
 
 
 def local_log(data):

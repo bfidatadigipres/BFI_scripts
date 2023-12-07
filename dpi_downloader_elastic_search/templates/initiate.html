@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type= "text/css" href="{{ url_for('static',filename='styles/form2.css') }}">
+    </head>
+    <body>
+        <div class="header">
+          <h1>BFI National Archive news preservation requests</h1>
+          <p>Request move of specific TV news channel on given day into the Digital Preservation Infrastructure</p>
+        </div>
+        <div class="topnav">
+          <a href="{{ url_for('dpi_move_request') }}">Submit a request</a>
+          <a href="{{ url_for('dpi_move') }}">View requests</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/article/3528589314">Instructions</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/group/-1" class="split">Service Desk</a>
+        </div>
+        <form method="POST">
+            <!-- <label id="label">Enter name (surname and initial):</label> -->
+            <input type="text" name="name" placeholder="Enter name as surname and initial - eg smithj" required><br/>
+            <!-- <label id="label">Enter email:</label> -->
+            <input type="text" name="email" placeholder="Enter email address in full - only BFI emails are permitted - eg joe.smith@bfi.org.uk" required><br/>
+            <!-- <label id="label">Enter date for preservation as ISO extended formatting yyyy-mm-dd (previous 14 days only):</label> -->
+            <input type="text" name="preservation_date" placeholder="Enter date for preservation as ISO extended formatting yyyy-mm-dd (previous 14 days only)" required><br/>
+            <!-- <label id="label" for="channel">Choose channel to move to DPI network:</label> -->
+            <select name="channel" id="channel" required>
+                <option value="" disabled selected>Select channel to move to DPI network</option>
+                <option value="al_jazeera">Al Jazeera</option>
+                <option value="gb_news">GB News</option>
+                <option value="sky_news">Sky News</option>
+                <option value="talk_tv">Talk TV</option>
+            </select><br/>
+            <input type="submit" value="submit"/><br/>
+        </form>
+    </body>
+</html>

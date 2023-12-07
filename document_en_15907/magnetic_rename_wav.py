@@ -104,6 +104,8 @@ def fname_split(filename):
         part_whole = str(file_split[2])
         part, whole = part_whole.split('of')
         return (f"{file_split[0]}_{file_split[1]}_", part, whole, ext)
+    else:
+        return None, None, None, None
 
 
 def remove_whitespace(title):
@@ -121,6 +123,8 @@ def return_range(filename):
     create all fnames for range and return as list
     '''
     fname, part, whole, ext = fname_split(filename)
+    if not fname:
+        return []
     part = int(part)
     whole = int(whole)
     range_list = []
@@ -232,9 +236,9 @@ def cid_query(database, search, object_number):
         source_item = ""
         print(err)
     try:
-        source_system_item = query_result.records[0]['sound_system_item'][0]
+        sound_system_item = query_result.records[0]['sound_system_item'][0]
     except (KeyError, IndexError) as err:
-        source_system_item = ""
+        sound_system_item = ""
         print(err)
 
     new_title = remove_whitespace(title)
@@ -310,11 +314,14 @@ def main():
 
         else:
             multipart = True
+            local_log(f"============= NEW WAV FILE GROUP FOUND ============= {str(datetime.datetime.now())}")
             if re.match(".+01of*", file):
                 print(f"{file} is multipart")
                 range_list = return_range(file)
-                print(range_list)
-                local_log(f"============= NEW WAV FILE GROUP FOUND ============= {str(datetime.datetime.now())}")
+                if not range_list:
+                    local_log(f"Skipping: Range extraction failed for multipart filename {file}")
+                    LOGGER.warning("Range could not be extracted from multipart filename: %s", file)
+                    continue
                 local_log(f"First item in multi-reel group found for processing: {file}")
                 files_present = check_range(range_list)
                 if files_present is None:
@@ -544,7 +551,7 @@ def create_wav_record(gp_priref, title, title_article, title_language):
 
     record_defaults = ([{'input.name': 'datadigipres'},
                         {'input.date': str(datetime.datetime.now())[:10]},
-                        {'input.time': str(datetime.datetime.now())[11:19],
+                        {'input.time': str(datetime.datetime.now())[11:19]},
                         {'input.notes': 'Magnetic preservation WAV automated record generation.'},
                         {'record_access.user': 'BFIiis'},
                         {'record_access.rights': '0'},
@@ -567,7 +574,7 @@ def create_wav_record(gp_priref, title, title_article, title_language):
                       {'acquisition.method': 'Created by'},
                       {'acquisition.source': 'BFI National Archive'},
                       {'acquisition.source.lref': '999570701'},
-                      {'acquisition.reason': f'Digital deliverable from BFI / Magnetic preservation'},
+                      {'acquisition.reason': 'Digital deliverable from BFI / Magnetic preservation'},
                       {'copy_status': 'M'},
                       {'copy_usage': 'Restricted access to preserved digital file'},
                       {'copy_usage.lref': '131560'},
@@ -578,7 +585,7 @@ def create_wav_record(gp_priref, title, title_article, title_language):
                       {'file_type': 'WAV'},
                       {'item_type': 'DIGITAL'},
                       {'source_item.content': 'SOUND'},
-                      {'production.reason': f'Magnetic preservation WAV digitisation project'},
+                      {'production.reason': 'Magnetic preservation WAV digitisation project'},
                       {'production.notes': 'WAV file'}])
 
     wav_ob_num = ""

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 '''
-rc_rename_wav.py
+magnetic_rename_wav.py
 
 Script functions:
 
@@ -25,7 +25,7 @@ NOTE: The script is configured to just let one WAV file pass at a time
       Remove for use against all file sin folder
 
 Joanna White
-2022
+2023
 '''
 
 # Public packages
@@ -40,27 +40,24 @@ import datetime
 import subprocess
 
 # Private packages
+sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global paths/vars
-WAV_ARCHIVE_PATH = os.environ['WAV_ARCHIVE_RC']
+WAV_ARCHIVE_PATH = os.environ['WAV_ARCHIVE_MAG']
 WAV_POLICY = os.environ['POLICY_WAV']
 FAILED_PATH = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename/')
 AUTOINGEST = os.path.join(os.environ['AUDIO_OPS_FIN'], os.environ['AUTOINGEST_AUD'])
-LOCAL_LOG = os.path.join(WAV_ARCHIVE_PATH, 'rc_audio_renaming.log')
+LOCAL_LOG = os.path.join(WAV_ARCHIVE_PATH, 'magnetic_preservation_renaming.log')
 LOG_PATH = os.environ['LOG_PATH']
-RC = os.environ['RC']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
-TODAY = str(datetime.datetime.now())
-TODAY_DATE = TODAY[:10]
-TODAY_TIME = TODAY[11:19]
 
 # Setup logging
-LOGGER = logging.getLogger('rc_rename_wav')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'rc_rename_wav.log'))
+LOGGER = logging.getLogger('magnetic_rename_wav')
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'magnetic_rename_wav.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -190,7 +187,7 @@ def cid_query(database, search, object_number):
              'search': search,
              'limit': '0',
              'output': 'json',
-             'fields': 'priref, title, title.article, object_number, derived_item, source_item, title.language'}
+             'fields': 'priref, title, title.article, object_number, derived_item, source_item, title.language, sound_system_item'}
     try:
         query_result = CID.get(query)
     except Exception:
@@ -234,10 +231,15 @@ def cid_query(database, search, object_number):
     except (KeyError, IndexError) as err:
         source_item = ""
         print(err)
+    try:
+        source_system_item = query_result.records[0]['sound_system_item'][0]
+    except (KeyError, IndexError) as err:
+        source_system_item = ""
+        print(err)
 
     new_title = remove_whitespace(title)
 
-    return (priref, new_title, title_article, ob_num, derived_item, source_item, title_language)
+    return (priref, new_title, title_article, ob_num, derived_item, source_item, title_language, sound_system_item)
 
 
 def cid_data_retrieval(ob_num):
@@ -261,7 +263,7 @@ def cid_data_retrieval(ob_num):
     try:
         cid_data.extend(parent_data)
     except Exception:
-        cid_data.extend('', '', '', '', '', '', '')
+        cid_data.extend('', '', '', '', '', '', '', '')
         LOGGER.exception("The parent data retrieval was not successful:")
 
     if priref:
@@ -273,7 +275,7 @@ def cid_data_retrieval(ob_num):
     try:
         cid_data.extend(source_data)
     except Exception:
-        cid_data.extend('', '', '', '', '', '', '')
+        cid_data.extend('', '', '', '', '', '', '', '')
 
     return cid_data
 
@@ -286,7 +288,7 @@ def main():
     extract object number and make new filename. Apply filename to all parts (mediaconch check)
     and move to autoingest path in audio isilon share.
     '''
-    LOGGER.info("========== rc_rename_wav.py START ============")
+    LOGGER.info("========== magnetic_rename_wav.py START ============")
     check_control()
     cid_check()
 
@@ -348,14 +350,18 @@ def main():
             if len(source_ob_num) > 0:
                 cid_data = cid_data_retrieval(source_ob_num)
                 print(cid_data)
-
-            # Make CID record, retrieve object number
-            if len(cid_data[8]) > 0:
-                LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[8])
+            # Check that source item record is Magnetic
+            if not 'Magnetic (sound)' in cid_data[15]:
+                LOGGER.info("Source item record is not Magnetic (sound) in sound_system_item")
+                local_log("Skipping: 'Magnetic (sound)' not found in sound_system_item")
+                continue
+            # Make CID record using source_item title / manifestation parent title
+            if len(cid_data[9]) > 0:
+                LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[9])
                 local_log(f"Creating new CID item record using parent title: {cid_data[8]}")
-                wav_data = create_wav_record(cid_data[0], cid_data[8], cid_data[9], cid_data[13])
+                wav_data = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14])
             elif len(cid_data[1]) > 0:
-                LOGGER.info("Making new CID item record for WAV using grandparent title %s", cid_data[1])
+                LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[1])
                 local_log(f"Creating new CID item record using grandparent title: {cid_data[1]}")
                 wav_data = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6])
             else:
@@ -428,12 +434,16 @@ def main():
             if len(source_ob_num) > 0:
                 cid_data = cid_data_retrieval(source_ob_num)
                 print(cid_data)
-
+            # Check that source item record is Magnetic
+            if not 'Magnetic (sound)' in cid_data[15]:
+                LOGGER.info("Source item record is not Magnetic (sound) in sound_system_item")
+                local_log("Skipping: 'Magnetic (sound)' not found in sound_system_item")
+                continue
             # Make record, retrieve object number
-            if len(cid_data[7]) > 0:
-                LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[8])
+            if len(cid_data[9]) > 0:
+                LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[9])
                 local_log(f"Creating new CID item record using parent title: {cid_data[8]}")
-                wav_data = create_wav_record(cid_data[0], cid_data[8], cid_data[9], cid_data[13])
+                wav_data = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14])
             elif len(cid_data[1]) > 0:
                 LOGGER.info("Making new CID item record for WAV using grandparent title %s", cid_data[1])
                 local_log(f"Creating new CID item record using grandparent title: {cid_data[1]}")
@@ -520,7 +530,7 @@ def main():
             local_log("All failed moves completed.\n")
             LOGGER.info("All failed moves completed.\n")
 
-    LOGGER.info("================ END rc_rename_wav.py END =================")
+    LOGGER.info("================ END magnetic_rename_wav.py END =================")
 
 
 def create_wav_record(gp_priref, title, title_article, title_language):
@@ -533,18 +543,18 @@ def create_wav_record(gp_priref, title, title_article, title_language):
     item_defaults = []
 
     record_defaults = ([{'input.name': 'datadigipres'},
-                        {'input.date': TODAY_DATE},
-                        {'input.time': TODAY_TIME},
-                        {'input.notes': f'{RC} WAV automated record generation.'},
+                        {'input.date': str(datetime.datetime.now())[:10]},
+                        {'input.time': str(datetime.datetime.now())[11:19],
+                        {'input.notes': 'Magnetic preservation WAV automated record generation.'},
                         {'record_access.user': 'BFIiis'},
                         {'record_access.rights': '0'},
                         {'record_access.reason': 'ACQ_SOURCE'},
-                        {'record_access.date': TODAY_DATE},
+                        {'record_access.date': str(datetime.datetime.now())[:10]},
                         {'record_access.duration': 'PERM'},
                         {'record_access.user': 'BFIiispublic'},
                         {'record_access.rights': '0'},
                         {'record_access.reason': 'ACQ_SOURCE'},
-                        {'record_access.date': TODAY_DATE},
+                        {'record_access.date': str(datetime.datetime.now())[:10]},
                         {'record_access.duration': 'PERM'},
                         {'record_access.owner': '$REST'}])
 
@@ -557,18 +567,18 @@ def create_wav_record(gp_priref, title, title_article, title_language):
                       {'acquisition.method': 'Created by'},
                       {'acquisition.source': 'BFI National Archive'},
                       {'acquisition.source.lref': '999570701'},
-                      {'acquisition.reason': f'Digital deliverable from BFI / {RC}'},
+                      {'acquisition.reason': f'Digital deliverable from BFI / Magnetic preservation'},
                       {'copy_status': 'M'},
                       {'copy_usage': 'Restricted access to preserved digital file'},
                       {'copy_usage.lref': '131560'},
                       {'creator': 'BFI National Archive'},
                       {'creator.lref': '999570701'},
                       {'creator.role.lref': '392405'},
-                      {'description.date': TODAY_DATE},
+                      {'description.date': str(datetime.datetime.now())[:10]},
                       {'file_type': 'WAV'},
                       {'item_type': 'DIGITAL'},
                       {'source_item.content': 'SOUND'},
-                      {'production.reason': f'{RC} WAV digitisation project'},
+                      {'production.reason': f'Magnetic preservation WAV digitisation project'},
                       {'production.notes': 'WAV file'}])
 
     wav_ob_num = ""

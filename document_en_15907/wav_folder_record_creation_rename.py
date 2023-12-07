@@ -43,8 +43,8 @@ AUTO_WAV_PATH = os.environ['AUTOMATION_WAV']
 WAV_RENAME_PATH = os.path.join(AUTO_WAV_PATH, 'record_create_folder_rename/')
 FOR_TAR_WRAP = os.path.join(AUTO_WAV_PATH, 'for_tar_wrap/')
 WAV_POLICY = os.environ['POLICY_WAV']
-FAILED_PATH = os.path.join(AUTO_RENAME_PATH, 'failed_rename/')
-LOCAL_LOG = os.path.join(AUTO_WAV_PATH, 'record_create_folder_rename.log')
+FAILED_PATH = os.path.join(WAV_RENAME_PATH, 'failed_rename/')
+LOCAL_LOG = os.path.join(WAV_RENAME_PATH, 'record_create_folder_rename.log')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API3']
@@ -188,7 +188,7 @@ def cid_query(database, search, object_number):
 
     new_title = remove_whitespace(title)
 
-    return (priref, title, title_article, ob_num, derived_item, source_item, title_language, sound_item)
+    return (priref, new_title, title_article, ob_num, derived_item, source_item, title_language, sound_item)
 
 
 def cid_data_retrieval(ob_num):
@@ -257,12 +257,7 @@ def main():
             else:
                 LOGGER.info("Skipping: No audio files in folder %s", directory)
                 continue
-    '''
-    directory_list = {
-        '/mnt/isilon/audio_ops/folder/C_625940_01of01': ['File One1.wav', 'File Two2.wav'],
-        '/mnt/isilon/audio_ops/folder/C_626169_01of01': ['Sound One1.wav', 'Sound Two2.wav']
-    }
-    '''
+
     if not directory_list:
         LOGGER.info("No items found this time. Script exiting")
         sys.exit()
@@ -271,9 +266,9 @@ def main():
         LOGGER.info("======== Folder path being processed %s ========", key)
         LOGGER.info("Contents of folder being processed:")
         LOGGER.info("%s", ', '.join(value))
-        fpath, folder = os.path.split(key)
-        local_log(f"----------------- Processing {folder} ----------------\nFolder contents:")
-        local_log(', '.join(value))
+        folder = os.path.split(key)[1]
+        local_log(f"============= NEW WAV FOLDER FOUND {folder} ============= {str(datetime.datetime.now())}")
+        local_log(f"Folder contents: {', '.join(value)}")
 
         # Mediaconch policy assessment
         quality_comments = []
@@ -321,6 +316,8 @@ def main():
             LOGGER.info("Making new CID item record for WAV using source item title %s", cid_data[9])
             local_log(f"Creating new CID item record using source item title: {cid_data[9]}")
             wav_ob_num, wav_priref = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14], cid_data[8], qual_comm)
+            local_log(f"New CID item record created: {wav_ob_num} {wav_priref}")
+
         # Else use Title of manifestation parent
         elif len(cid_data[1]) > 0:
             LOGGER.info("Making new CID item record for WAV using manifestation parent title %s", cid_data[1])
@@ -342,7 +339,7 @@ def main():
             LOGGER.info("Creation of new WAV item record successful: %s", wav_ob_num)
         else:
             LOGGER.warning("No WAV object number obtained - failed record creation")
-            local_log(f"FAILED: Creation of new WAV Item record failed for {file}. Leaving to retry")
+            local_log(f"FAILED: Creation of new WAV Item record failed for {folder}. Leaving to retry")
             continue
 
         # Rename file and move
@@ -366,8 +363,8 @@ def main():
             LOGGER.warning("FAILED ATTEMPT AT RENAMING: Updated log for manual renaming. Moving to failed_rename folder.\n")
             # Move folder to failed_rename/ folder
             fail_path = os.path.join(FAILED_PATH, folder)
-            print(f"Moving {filepath} to {fail_path}")
-            shutil.move(fpath, fail_path)
+            print(f"Moving {key} to {fail_path}")
+            shutil.move(key, fail_path)
             continue
 
     LOGGER.info("================ END WAV folder record creation rename END =================")

@@ -1,7 +1,7 @@
-#!/usr/bin/env LANG=en_UK.UTF-8 /usr/local/bin/python3
+#!/usr/bin/env python3
 
 '''
-tar_folder_record_creation_rename.py
+wav_folder_record_creation_rename.py
 
 Script functions:
 
@@ -11,14 +11,13 @@ Script functions:
    - If any fail then pause the process and exit with warning log
 4. New item record is created and linked to source item's manifestation
    and to source_item. Extract ob_number and convert to new filename
-   with part_whole 01of01 (or carried over from supplied folder).
+   with part_whole carried over from supplied folder.
 5. Add names of all files into the quality comments field, and populate quality date field.
 6. Folder renamed and moved to automation_wav/for_tar_wrap for TAR wrapping
 7. All actions logged human readable for Mike, and placed in audio ops
    folder, at top level.
 
-NOTES: No changes implemented yet.
-       Waiting on questions from Steph.
+NOTES: Waiting on CID record configs.
 
 Joanna White
 2023
@@ -41,11 +40,11 @@ import adlib
 
 # Global paths/vars
 AUTO_WAV_PATH = os.environ['AUTOMATION_WAV']
-WAV_RENAME_PATH = os.path.join(AUTO_WAV_PATH, 'record_create_folder_rename')
+WAV_RENAME_PATH = os.path.join(AUTO_WAV_PATH, 'record_create_folder_rename/')
+FOR_TAR_WRAP = os.path.join(AUTO_WAV_PATH, 'for_tar_wrap/')
 WAV_POLICY = os.environ['POLICY_WAV']
-FAILED_PATH = os.path.join(AUTO_WAV_PATH, 'failed_rename/')
-AUTOINGEST = os.path.join(os.environ['AUDIO_OPS_FIN'], os.environ['AUTOINGEST_AUD'])
-LOCAL_LOG = os.path.join(AUTO_WAV_PATH, 'record_create_folder_rename.log')
+FAILED_PATH = os.path.join(WAV_RENAME_PATH, 'failed_rename/')
+LOCAL_LOG = os.path.join(WAV_RENAME_PATH, 'record_create_folder_rename.log')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API3']
@@ -123,8 +122,8 @@ def make_object_number(folder):
     '''
     filename_split = folder.split('_')
     object_num = '-'.join(filename_split[:-1])
-    part_whole = filename_split[-1]
-    return object_num, part_whole
+
+    return object_num, filename_split[-1]
 
 
 def cid_query(database, search, object_number):
@@ -213,7 +212,7 @@ def cid_data_retrieval(ob_num):
     try:
         cid_data.extend(parent_data)
     except Exception:
-        cid_data.extend('', '', '', '', '', '', '')
+        cid_data.extend('', '', '', '', '', '', '', '')
         LOGGER.exception("The parent data retrieval was not successful:")
 
     if priref:
@@ -225,7 +224,7 @@ def cid_data_retrieval(ob_num):
     try:
         cid_data.extend(source_data)
     except Exception:
-        cid_data.extend('', '', '', '', '', '', '')
+        cid_data.extend('', '', '', '', '', '', '', '')
 
     return cid_data
 
@@ -242,25 +241,22 @@ def main():
     LOGGER.info("========== wav folder record creation rename START ============")
     check_control()
     cid_check()
-    '''
+
     directory_list = {}
     for root, dirs, _ in os.walk(WAV_RENAME_PATH):
         for directory in dirs:
+            if directory == 'failed_rename':
+                continue
             dirpath = os.path.join(root, directory)
             dirlist = os.listdir(dirpath)
-            wav_files = [ x for x in dirlist of x.endswith(('.wav', '.WAV', '.mp3', '.MP3'))
+            wav_files = [ x for x in dirlist if x.endswith(('.wav', '.WAV', '.mp3', '.MP3')) ]
             if len(wav_files) != len(dirlist):
                 LOGGER.info("Non audio files found in directory %s", directory)
             if len(wav_files) > 0:
-                directory_list[dirpath] = sort(wav_files)
+                directory_list[dirpath] = wav_files.sort()
             else:
                 LOGGER.info("Skipping: No audio files in folder %s", directory)
                 continue
-    '''
-    directory_list = {
-        '/mnt/isilon/audio_ops/folder/C_625940_01of01': ['File One1.wav', 'File Two2.wav'],
-        '/mnt/isilon/audio_ops/folder/C_626169_01of01': ['Sound One1.wav', 'Sound Two2.wav']
-    }
 
     if not directory_list:
         LOGGER.info("No items found this time. Script exiting")
@@ -270,216 +266,111 @@ def main():
         LOGGER.info("======== Folder path being processed %s ========", key)
         LOGGER.info("Contents of folder being processed:")
         LOGGER.info("%s", ', '.join(value))
-        fpath, folder = os.path.split(key)
+        folder = os.path.split(key)[1]
+        local_log(f"============= NEW WAV FOLDER FOUND {folder} ============= {str(datetime.datetime.now())}")
+        local_log(f"Folder contents: {', '.join(value)}")
 
         # Mediaconch policy assessment
         quality_comments = []
+        mediaconch_assess = []
         for file in value:
             if file.endswith(('.wav', '.WAV')):
-                filepath = os.path.join(fpath, file)
-                # success = conformance_check(filepath)
-                success = 'PASS!'
+                filepath = os.path.join(key, file)
+                success = conformance_check(filepath)
                 LOGGER.info("Conformance check results for %s: %s", file, success)
                 quality_comments.append(file)
                 if 'PASS!' not in success:
-                    mediaconch_fail.append(success)
+                    mediaconch_assess.append('FAIL')
                     local_log(f"File failed Mediaconch policy: {file}\n{success}")
-                    LOGGER.warning("Skipping: WAV file in folder %s has failed the policy", folder)
-                    continue
 
+        if 'FAIL' in mediaconch_assess:
+            LOGGER.warning("Skipping: One or more WAV file in folder %s has failed the policy", folder)
+            local_log("Skipping: Problem detected with encosed WAV file\n")
+            continue
         source_ob_num, part_whole = make_object_number(folder)
         if len(source_ob_num) == 0:
             local_log(f"Skipping: Unable to retrieve Source object number from folder: {folder}")
+            LOGGER.warning("Skipping: Unable to retrieve source object number from folder: %s", folder)
             continue
 
         print(source_ob_num, part_whole)
-        local_log(f"Object number for folder: {source_ob_num}")
         local_log(f"Source object number retrieved from folder {folder}: {source_ob_num}")
         cid_data = cid_data_retrieval(source_ob_num)
         print(cid_data)
 
+        # Check source Item source_item field
         if cid_data[15] != 'Sound':
             LOGGER.info("Skipping: Supplied CID item record source does not have 'sound_item': 'Sound'")
-            local_log(f"WARNING: Could not find 'Sound' in sound_item record for source item {source_ob_num}")
+            local_log(f"Skipping: Could not find 'Sound' in sound_item record for source item {source_ob_num}")
             continue
+        # Check source Item priref
         if len(cid_data[8]) == 0:
             LOGGER.info("Skipping: No priref retrieved for folder %s", folder)
-            local_log(f"WARNING: Could not find priref for source item {source_ob_num}")
+            local_log(f"SKIPPING: Could not find priref for source item {source_ob_num}")
             continue
-
+        # Compile list of enclosed files
         qual_comm = f"TAR file contains: {'; '.join(quality_comments)}."
-        qual_date = TODAY_DATE
-        sys.exit()
 
-        # Make CID record, retrieve object number
+        # Make CID record with Title of source item
         if len(cid_data[9]) > 0:
-            LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[9])
-            local_log(f"Creating new CID item record using parent title: {cid_data[9]}")
-            wav_data = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14], cid_data[0])
+            LOGGER.info("Making new CID item record for WAV using source item title %s", cid_data[9])
+            local_log(f"Creating new CID item record using source item title: {cid_data[9]}")
+            wav_ob_num, wav_priref = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14], cid_data[8], qual_comm)
+            local_log(f"New CID item record created: {wav_ob_num} {wav_priref}")
+
+        # Else use Title of manifestation parent
         elif len(cid_data[1]) > 0:
-            LOGGER.info("Making new CID item record for WAV using grandparent title %s", cid_data[1])
-            local_log(f"Creating new CID item record using grandparent title: {cid_data[1]}")
-            wav_data = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6], cid_data[0])
+            LOGGER.info("Making new CID item record for WAV using manifestation parent title %s", cid_data[1])
+            local_log(f"Creating new CID item record using manifestation parent title: {cid_data[1]}")
+            wav_ob_num, wav_priref = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6], cid_data[8], qual_comm)
         else:
             local_log(f"Unable to retrieve CID data for: {source_ob_num}. Moving file to failed_rename folder.")
             LOGGER.warning("Title information absent from CID data retrieval, skipping record creation")
 
             # Move file to failed_rename/ folder
-            fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', folder)
+            fail_path = os.path.join(FAILED_PATH, folder)
+            local_log(f"Moving {key} to {fail_path}")
+            shutil.move(key, fail_path)
+            continue
+
+        # Check wav_ob_num present following Item creation
+        if wav_ob_num:
+            local_log(f"Creation of new WAV item record successful: {wav_ob_num}")
+            LOGGER.info("Creation of new WAV item record successful: %s", wav_ob_num)
+        else:
+            LOGGER.warning("No WAV object number obtained - failed record creation")
+            local_log(f"FAILED: Creation of new WAV Item record failed for {folder}. Leaving to retry")
+            continue
+
+        # Rename file and move
+        success = rename(folder, wav_ob_num)
+        if success is not None:
+            local_log(f"File {folder} renamed to {success[1]}")
+            LOGGER.info("Folder %s renamed successfully to %s", folder, success[1])
+
+            # Move to automation_wav/for_tar_wrap/
+            local_log(f"Moving to for_tar_wrap/ - folder {success[0]}")
+            move_success = ingest_move(success[0], success[1])
+            if move_success:
+                local_log(f"{success[1]} moved to {move_success}\n")
+                LOGGER.info("Moved to automation_dpx/for_tar_wrap/ path: %s.\n", move_success)
+            else:
+                LOGGER.warning("FAILED MOVE: %s did not move to autoingest.\n", success[1])
+                local_log(f"Failed to move {success[1]} to automation_dpx/for_tar_wrap/ - please complete this manually\n")
+        else:
+            local_log(f"FAIL: Folder {folder} renaming failed, moving to failed_rename folder")
+            local_log(f"FAIL: Please rename '{folder}' manually to '{success[1]}' and move to for_tar_wrap.\n")
+            LOGGER.warning("FAILED ATTEMPT AT RENAMING: Updated log for manual renaming. Moving to failed_rename folder.\n")
+            # Move folder to failed_rename/ folder
+            fail_path = os.path.join(FAILED_PATH, folder)
             print(f"Moving {key} to {fail_path}")
             shutil.move(key, fail_path)
             continue
 
-        # JMW working here
-        # Check wav_ob_num present following Item creation
-        if wav_data:
-            local_log(f"Creation of new WAV item record successful: {wav_data[0]}")
-            LOGGER.info("Creation of new WAV item record successful: %s", wav_data[0])
-        else:
-            LOGGER.warning("No WAV object number obtained - failed record creation")
-            local_log(f"FAILED: Creation of new WAV Item record failed for {file}. Leaving to retry")
-            continue
-
-        # Rename file and move
-        success = rename(folder, wav_data[0])
-        if success is not None:
-            local_log(f"File {file} renamed {success[1]}")
-            LOGGER.info("File %s renamed successfully to %s", file, success[1])
-            # Move to automation_wav/for_tar_wrap/
-        '''
-            local_log(f"Moving to autoingest - file {success[0]}")
-            move_success = ingest_move(success[0], success[1])
-            if move_success:
-                local_log(f"{success[1]} moved to {move_success}\n")
-                LOGGER.info("Moved to autoingest path: %s.\n", move_success)
-            else:
-                LOGGER.warning("FAILED MOVE: %s did not move to autoingest.\n", success[1])
-                local_log(f"Failed to move {success[1]} to autoingest - please complete this manually\n")
-        else:
-            local_log(f"FAIL: File {file} renaming failed, moving to failed_rename folder")
-            local_log(f"FAIL: Please rename '{file}' manually to '{success[1]}' and move to autoingest.\n")
-            LOGGER.warning("FAILED ATTEMPT AT RENAMING: Updated log for manual renaming. Moving to failed_rename folder.\n")
-            # Move file to failed_rename/ folder
-            fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', file)
-            print(f"Moving {filepath} to {fail_path}")
-            shutil.move(filepath, fail_path)
-            continue
-
-
-
-
-
-            # Move to failed_rename
-            fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', file)
-            print(f"Moving {filepath} to {fail_path}")
-            shutil.move(filepath, fail_path)
-            continue
-
-        # MULTIPART PROCESS START ====================
-        if multipart and 'PASS!' in success_check_string:
-            source_ob_num = make_object_number(filepath)
-            print(source_ob_num)
-            local_log(f"Source object number created from file: {source_ob_num}")
-            # Retrieve source item priref
-            if len(source_ob_num) > 0:
-                cid_data = cid_data_retrieval(source_ob_num)
-                print(cid_data)
-
-            # Make record, retrieve object number
-            if len(cid_data[7]) > 0:
-                LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[8])
-                local_log(f"Creating new CID item record using parent title: {cid_data[8]}")
-                wav_data = create_wav_record(cid_data[0], cid_data[8], cid_data[9], cid_data[13])
-            elif len(cid_data[1]) > 0:
-                LOGGER.info("Making new CID item record for WAV using grandparent title %s", cid_data[1])
-                local_log(f"Creating new CID item record using grandparent title: {cid_data[1]}")
-                wav_data = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6])
-            else:
-                local_log(f"Unable to retrieve CID data for: {source_ob_num}. Moving files to failed_rename folder.")
-                LOGGER.warning("Title information absent from CID data retrieval, skipping record creation")
-                # Iterate range_list and move file to failed_rename/ folder
-                for local_file in range_list:
-                    local_filepath = os.path.join(WAV_ARCHIVE_PATH, local_file)
-                    local_fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', local_file)
-                    print(f"Moving {local_filepath} to {local_fail_path}")
-                    local_log(f"Moving {local_file} to {local_fail_path}")
-                    LOGGER.info("Moving %s to fail path: %s", local_file, local_fail_path)
-                    shutil.move(local_filepath, local_fail_path)
-                continue
-
-            # Remove any items that fail policy before rename/move
-            for key, val, in success_check.items():
-                if 'FAIL!' in str(val):
-                    filename = os.path.basename(key)
-                    local_fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', filename)
-                    print(f"Moving {key} to {local_fail_path}")
-                    local_log(f"FAILED MEDIACONCH POLICY: Moving {filename} to {local_fail_path}")
-                    local_log(f"Please resupply and conformance check this file manually. Object number: {wav_data[0]}")
-                    LOGGER.info("Moving %s to fail path: %s", filename, local_fail_path)
-                    shutil.move(key, local_fail_path)
-
-            # Check wav_ob_num present following Item creation
-            if wav_data:
-                local_log(f"Creation of new WAV item record successful: {wav_data[0]}")
-                LOGGER.info("Creation of new WAV item record successful: %s", wav_data[0])
-            else:
-                LOGGER.warning("No WAV object number obtained - failed record creation")
-                local_log(f"FAILED: Creation of new WAV Item record failed for {file}. Leaving to retry")
-                continue
-            # Append source item to WAV record
-            success = append_source(source_ob_num, wav_data[1], wav_data[0])
-            if success:
-                LOGGER.info("Source item linked successfully in new WAV Item record")
-                local_log("- Source item linked successfully in new WAV Item record")
-            else:
-                LOGGER.warning("Source item link failed, and must be appended manually:")
-                LOGGER.warning("Source item: %s - New WAV Item record: %s", source_ob_num, wav_data[0])
-                local_log("- WARNING! Source item link failed, and must be appended manually:")
-                local_log(f"-          Source item: {source_ob_num} - New WAV Item record: {wav_data[0]}")
-            # Rename all files and move to autoingest
-            for local_file in range_list:
-                success = rename(local_file, wav_data[0])
-                if success is not None:
-                    local_log(f"File {local_file} renamed {success[1]}")
-                    LOGGER.info("File %s renamed successfully to %s", local_file, success[1])
-                    # Move to autoingest
-                    local_log(f"Moving to autoingest - file {success[0]}")
-                    move_success = ingest_move(success[0], success[1])
-                    if move_success:
-                        local_log(f"{success[1]} moved to {move_success}\n")
-                        LOGGER.info("Moved to autoingest path: %s", move_success)
-                    else:
-                        LOGGER.warning("FAILED MOVE: %s did not move to autoingest.\n", success[1])
-                        local_log(f"Failed to move {success[1]} to autoingest - please complete this manually\n")
-                else:
-                    local_log(f"FAIL: File {local_file} renaming failed, moving to failed_rename folder")
-                    local_log(f"FAIL: Please rename '{local_file}' manually after wav object number {wav_data[0]}) and move to autoingest.\n")
-                    LOGGER.warning("FAILED ATTEMPT AT RENAMING: Updated log for manual renaming. Moving to failed_rename folder.\n")
-                    # Move file to failed_rename/ folder
-                    local_filepath = os.path.join(WAV_ARCHIVE_PATH, local_file)
-                    local_fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', local_file)
-                    print(f"Moving {local_filepath} to {local_fail_path}")
-                    shutil.move(local_filepath, local_fail_path)
-
-        elif multipart and 'FAIL!' in success_check_string:
-            # Output failure message
-            local_log(f"FAILED POLICY: {file} and all parts - moving file to failed_rename folder for inspection.")
-            LOGGER.warning("%s and all parts failed Mediaconch policy check, skipping record creation and moving to failed_rename folder", file)
-            # Iterate range_list and move file to failed_rename/ folder
-            for local_file in range_list:
-                local_filepath = os.path.join(WAV_ARCHIVE_PATH, local_file)
-                local_fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', local_file)
-                print(f"Moving {local_filepath} to {local_fail_path}")
-                local_log(f"Moving {local_file} to {local_fail_path}")
-                LOGGER.info("Moving %s to fail path: %s.", local_file, local_fail_path)
-                shutil.move(local_filepath, local_fail_path)
-            local_log("All failed moves completed.\n")
-            LOGGER.info("All failed moves completed.\n")
-        '''
     LOGGER.info("================ END WAV folder record creation rename END =================")
 
 
-def create_wav_record(gp_priref, title, title_article, title_language, source_priref):
+def create_wav_record(gp_priref, title, title_article, title_language, source_priref, qual_comm):
     '''
     Item record creation for WAV file
     TO DO: Needs reviewing with Lucy
@@ -513,8 +404,8 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
                       {'description.date': str(datetime.datetime.now())[:10]},
                       {'file_type': 'WAV'}, #
                       {'item_type': 'DIGITAL'}, #
-                      {'quality_comments': comment}, #
-                      {'quality_comments.date': date}, #
+                      {'quality_comments': qual_comm}, #
+                      {'quality_comments.date': str(datetime.datetime.now())[:10]}, #
                       {'source_item.lref': source_priref}, #
                       {'source_item.content': 'SOUND'}]) #
 
@@ -603,18 +494,18 @@ def rename(folder, ob_num):
     based on object number, return new filepath, filename
     '''
     new_name = ob_num.replace('-', '_')
-    folderpath = os.path.join(WAV_ARCHIVE_PATH, folder)
+    folderpath = os.path.join(WAV_RENAME_PATH, folder)
     name_split = folder.split('_')
     new_fname = f"{new_name}_{name_split[-1]}"
     print(f"Renaming {folder} to {new_fname}")
-    new_fpath = os.path.join(WAV_ARCHIVE_PATH, new_fname)
+    new_fpath = os.path.join(WAV_RENAME_PATH, new_fname)
 
     try:
         os.rename(folderpath, new_fpath)
-        return (new_path, new_fname)
+        return (new_fpath, new_fname)
 
     except OSError:
-        LOGGER.warning("There was an error renaming %s to %s", file, new_filename)
+        LOGGER.warning("There was an error renaming %s to %s", folder, new_fname)
         return None
 
 
@@ -622,24 +513,13 @@ def ingest_move(filepath, new_filename):
     '''
     Take file path and check move to autoingest
     '''
-    autoingest_path = os.path.join(AUTOINGEST, new_filename)
+    tar_wrap_path = os.path.join(FOR_TAR_WRAP, new_filename)
     try:
-        shutil.move(filepath, autoingest_path)
-        return autoingest_path
+        shutil.move(filepath, tar_wrap_path)
+        return tar_wrap_path
     except Exception as err:
         LOGGER.warning("ingest_move(): Failed to move %s to Autoingest %s", new_filename, err)
         return None
-
-
-def log_pprint(dct):
-    '''
-    Make neat string variable from dct
-    '''
-    data_store = ''
-    for file, data in dct.items():
-        data = (f"{file}: {data}\n")
-        data_store = f"{data_store}" + f"{data}"
-    return data_store
 
 
 def local_log(data):

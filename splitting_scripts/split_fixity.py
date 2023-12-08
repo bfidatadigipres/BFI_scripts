@@ -143,12 +143,16 @@ def check_media_record(fname):
 
     try:
         result = CID.get(query)
-        logger.info(result.hits)
-        if result.hits:
+        print(f"Check media record response: {result.hits} hits")
+        if result.hits == 1:
             return True
+        elif result.hits == 0:
+            return False
+        else:
+            return None
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
-    return False
+    return None
 
 
 def main():
@@ -270,9 +274,12 @@ def main():
                     print(f"Checking if first part has already been created or has persisted to DPI: {firstpart_check}")
                     check_result = check_media_record(firstpart_check)
                     firstpart = False
-                    if check_result:
+                    if check_result is True:
                         print(f"First part {firstpart_check} exists in CID, proceeding to check for {check_filename}")
                         firstpart = True
+                    if check_result is None:
+                        logger.warning("Skipping: Unable to retrieve CID Media hit information, try again next pass")
+                        continue
                     print(f"**** AUTOINGEST: {AUTOINGEST}")
                     match_path = glob.glob(f"{AUTOINGEST}/**/*/{firstpart_check}", recursive=True)
                     print(f"****** MATCH PATH {match_path}")
@@ -284,9 +291,13 @@ def main():
                     logger.info("%s\tPart 01of* in group found %s. Checking if part also ingested...", filepath, firstpart_check, check_filename)
 
                 check_result = check_media_record(check_filename)
-                if check_result:
+                if check_result is True:
                     print(f"SKIPPING: Filename {check_filename} matched with persisted CID media record")
                     logger.warning("%s\tPart found ingested to DPI: %s.", filepath, check_filename)
+                    continue
+                if check_result is None:
+                    print(f"SKIPPING: API hit attempt failed. Leaving for another pass.")
+                    logger.warning("%s\tAPI attempt returned None. Leaving for another pass: %s.", filepath, check_filename)
                     continue
                 matched = glob.glob(f"{AUTOINGEST}/**/*/{check_filename}", recursive=True)
                 if check_filename in str(matched):

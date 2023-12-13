@@ -608,12 +608,12 @@ class Cursor:
         # Create root
         record = etree.XML('<record></record>')
 
-        # Insert priref element
-        record.append(etree.fromstring(f'<priref>{priref}</priref>'))
-
         # Append fragment elements to root
         for i in fragment:
             record.append(etree.fromstring(i))
+
+        # Insert priref element
+        record.append(etree.fromstring(f'<priref>{priref}</priref>'))
 
         # Convert XML object to string
         payload = etree.tostring(record)

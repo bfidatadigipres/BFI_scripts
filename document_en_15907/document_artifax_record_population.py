@@ -74,7 +74,7 @@ HEADERS = {
 }
 
 # CID URL details
-CID = adlib.Database(url=f"{os.environ['CID_API']}")
+CID = adlib.Database(url=f"{os.environ['CID_API3']}")
 CUR = adlib.Cursor(CID)
 
 FESTIVALS = {'FL2021': ["119", "Flare 2021", "399108"],
@@ -246,39 +246,39 @@ def cid_retrieve(search):
              'fields': 'grouping.lref, title, edit.name'}
     try:
         query_result = CID.get(query)
-        LOGGER.info("cid_query(): Making CID query request with:\n %s", query)
-        LOGGER.info(query_result.records[0])
+        LOGGER.info("cid_retrieve(): Making CID query request with:\n %s", query)
     except Exception as err:
-        LOGGER.exception("cid_query(): Unable to retrieve data %s", err)
+        LOGGER.exception("cid_retrieve(): Unable to retrieve data %s", err)
         query_result = None
     try:
         grouping = query_result.records[0]['grouping.lref'][0]
         LOGGER.info("********* Grouping 1: %s", grouping)
     except (KeyError, IndexError):
         grouping = ""
-        LOGGER.warning("cid_query(): Unable to access grouping")
+        LOGGER.warning("cid_retrieve(): Unable to access grouping")
     try:
         grouping2 = query_result.records[0]['grouping.lref'][1]
         LOGGER.info("********* Grouping 2: %s", grouping2)
     except (KeyError, IndexError):
         grouping2 = ""
-        LOGGER.info("cid_query(): Unavailable - grouping2")
+        LOGGER.info("cid_retrieve(): Unavailable - grouping2")
     try:
         grouping3 = query_result.records[0]['grouping.lref'][2]
         LOGGER.info("********* Grouping 3: %s", grouping3)
     except (KeyError, IndexError):
         grouping3 = ""
-        LOGGER.info("cid_query(): Unavailable - grouping3")
+        LOGGER.info("cid_retrieve(): Unavailable - grouping3")
     try:
         title = query_result.records[0]['Title'][0]['title'][0]
+        title = title.rstrip('\n')
     except (KeyError, IndexError):
         title = ""
-        LOGGER.warning("cid_query(): Unable to access title")
+        LOGGER.warning("cid_retrieve(): Unable to access title")
     try:
         edit_name = query_result.records[0]['Edit'][0]['edit.name'][0]
     except (KeyError, IndexError):
         edit_name = ""
-        LOGGER.warning("cid_query(): Unable to access edit name")
+        LOGGER.warning("cid_retrieve(): Unable to access edit name")
 
     return (grouping, title, edit_name, grouping2, grouping3)
 
@@ -296,17 +296,18 @@ def work_quick_check(dct=None):
     else:
         work_id = ''
         LOGGER.warning("Unable to retrieve work_id")
+    print(f"Work ID: {work_id}")
     if dct['art_form']:
         art_form = dct['art_form']
     else:
         art_form = ''
         LOGGER.warning("Unable to retrieve art_form")
 
+    priref = cid_import = ''
     for custom_dct in dct['custom_forms'][0]['custom_form_sections'][0]['custom_form_elements']:
-        priref = ''
         if custom_dct['custom_form_element_id'] == 1004:
+            print(f"Custom dictionary: {custom_dct}")
             priref = custom_dct['custom_form_data_value']
-        cid_import = ''
         if custom_dct['custom_form_element_id'] == 1307:
             cid_import = custom_dct['custom_form_data_value']
 
@@ -320,7 +321,6 @@ def work_season_retrieve(fname, supplied_season_id):
 
     with open(fname, 'r') as inf:
         dcts = json.load(inf)
-        print(type(dcts))
         for dct in dcts:
             if type(dct) is not dict:
                 return None
@@ -329,7 +329,7 @@ def work_season_retrieve(fname, supplied_season_id):
             season_id = ''
             if dct['season_id']:
                 season_id = dct['season_id']
-            print(season_id)
+            print(f"Season ID: {season_id}")
             if str(season_id) not in str(supplied_season_id):
                 continue
 
@@ -357,11 +357,12 @@ def work_season_retrieve(fname, supplied_season_id):
 
             for custom_dct in dct['custom_forms'][1]['custom_form_sections'][0]['custom_form_elements']:
                 cid_import_date = ""
-                if custom_dct['custom_form_element_id'] == 1312:
+                if custom_dct['custom_form_element_id'] == 1176: # Changed from 1312
                     cid_import_date = custom_dct['custom_form_data_value']
 
         inf.close()
         move_file(fname)
+
         return (advanced_confirm, qanda_confirm, qanda_date, cid_import_date, nfa_category, start_date, work_season_id)
 
 
@@ -375,14 +376,16 @@ def work_copy_extraction(fname, current_festival):
     manifestation_festival_dct = []
     with open(fname, 'r') as inf:
         dcts = json.load(inf)
-        for dct in dcts:
+        if str(dcts).startswith('No results'):
+            return 'No results'
 
+        for dct in dcts:
             description = ''
             if dct['description']:
                 description = dct['description']
 
+            cid_format_type = ''
             for custom_dct in dct['custom_forms'][0]['custom_form_sections'][0]['custom_form_elements']:
-                cid_format_type = ''
                 if custom_dct['custom_form_element_id'] == 1177:
                     cid_format_type = custom_dct['custom_form_data_value']
 
@@ -481,6 +484,7 @@ def work_copy_extraction(fname, current_festival):
 
         inf.close()
         move_file(fname)
+
         return (manifestation_internet_dct, manifestation_festival_dct)
 
 
@@ -527,6 +531,9 @@ def work_extraction(season_id, dct=None):
         title2 = ''
         language2 = ''
         LOGGER.warning("Unable to extract title2 and language code2")
+
+    title1 = title1.rstrip('\n')
+    title2 = title2.rstrip('\n')
 
     # Convert ISO country code to full country title
     country1 = get_country(language1)
@@ -733,6 +740,7 @@ def main():
                 priref = check_data[1]
                 cid_import = check_data[2]
                 art_form = check_data[3]
+                print(f"Work ID: {work_id}, Priref: {priref}, CID Import: {cid_import}, Art form: {art_form}")
                 if 'visual' in art_form.lower():
                     LOGGER.info("Visual performance found. Skipping!")
                     continue
@@ -746,7 +754,7 @@ def main():
                     LOGGER.warning("Skipping as work_season.json not present for work_id %s", work_id)
                     continue
                 # Retrieve needed data
-                print(work_season_fname)
+                print(f"Work season: {work_season_fname}")
                 check_work_season = work_season_retrieve(work_season_fname, season_id)
                 if check_work_season is None:
                     LOGGER.warning("SKIPPING WORK ID: %s Work Season returned None. Check work season data exists: %s", work_id, work_season_fname)
@@ -806,11 +814,11 @@ def main():
                 update_work = make_man = make_qna = append_new_grouping = push_lock = False
 
                 # If 'CID import' field is 'checked' work is historical CID work (ie Film Fund/Treasure)
-                # Be careful with cid_import check as it returns 'unchecked' or 'checked', 'checked' string IS in 'un"checked"'.
-                if str(cid_import) == 'checked':
-                    if cid_import_date != '':
-                        LOGGER.info("SKIPPING FURTHER STAGES: Manifestations created already for Festival: %s", festival_grouping)
-                        continue
+                # Be careful with cid_import check as it returns unchecked as '0' or checked as '1'.
+                if cid_import_date != '':
+                    LOGGER.info("SKIPPING FURTHER STAGES: CID Import date populated and manifestations created already for Festival: %s", festival_grouping)
+                    continue
+                elif str(cid_import) == '1':
                     set_zero = True
                 # If edit_name has 'datadigipres' and grouping in CID does not match festival:
                 elif ('datadigipres' in str(edit_name) and festival_grouping not in grouping):
@@ -820,18 +828,11 @@ def main():
                     set_one = True
                 # Work record data appended. Make manifestations if import date == 0, otherwise skip.
                 elif ('datadigipres' in str(edit_name) and festival_grouping in grouping):
-                    if cid_import_date != '':
-                        LOGGER.info("SKIPPING FURTHER STAGES: As Artifax Work ID has CID Import date %s", cid_import_date)
-                        continue
                     set_two = True
                 # Work found unedited, begin appending/creation of new whole record
-                elif ('datadigipres' not in str(edit_name) and cid_import_date == ''):
+                elif 'datadigipres' not in str(edit_name):
                     if festival_grouping not in grouping:
                         LOGGER.info("SKIPPING FURTHER STAGES: Festival groupings do not match for this record %s and %s", festival_grouping, grouping)
-                        continue
-                    # New block to prevent CID existing works slipping through
-                    if str(cid_import) == 'checked':
-                        LOGGER.warning("SKIPPING FURTHER STAGES: CID import flag is checked and has been missed by previous stages.", cid_import)
                         continue
                     set_three = True
                 else:
@@ -900,6 +901,7 @@ def main():
                             credit_dct.append({'credit.sequence': person[3]})
                             credit_dct.append({'credit.sequence.sort': person[2]})
                             credit_dct.append({'credit.section': '[normal credit]'})
+
                     # Append cast/credit blocks to work_append_dct
                     work_append_dct.extend(cast_dct)
                     work_append_dct.extend(credit_dct)
@@ -914,12 +916,18 @@ def main():
                         LOGGER.info("PRIREF: %s\n%s", priref, work_append_dct)
                         continue
 
+
                 # ============ Create Manifestations ============ #
                 if make_man:
                     LOGGER.info("-------------- STAGE THREE: CREATE MANIFESTATION %s --------------", cid_title)
                     work_copy_fname = fetch_work_copy(work_id)
+                    print(f"******* {work_copy_fname} ********")
                     if len(work_copy_fname) > 0:
                         success_man = make_manifestations(work_copy_fname, current_festival, start_date, priref, manifestation_dct)
+                        if success_man == 'No results':
+                            LOGGER.critical("Error creating manifestation for %s using work copy: %s", priref, work_copy_fname)
+                            LOGGER.warning("The work copy downloaded is returning 'No Results'")
+                            continue
                         if success_man:
                             LOGGER.info("** Manifestations created for CID work %s", priref)
                         else:
@@ -947,7 +955,7 @@ def main():
                     LOGGER.info("-------------- STAGE FIVE: APPENDING GROUP TO WORK RECORD %s --------------", cid_title)
                     LOGGER.info("Pushing new grouping %s to Work record %s", festival_grouping, priref)
                     grouping_dct = ({'grouping.lref': festival_grouping})
-                    success_group = work_append(priref, grouping_dct)
+                    success_group = work_update(priref, grouping_dct)
                     if success_group:
                         LOGGER.info("New Festival grouping appended to CID work %s", priref)
                     else:
@@ -957,14 +965,13 @@ def main():
                 # ============ Push date lock to Artifax ============ #
                 if push_lock:
                     LOGGER.info("-------------- STAGE FIVE: PUSH DATE LOCK TO ARTIFAX %s --------------", cid_title)
-                    LOGGER.info("Pushing date lock to Artifax work id %s", work_id)
+                    LOGGER.info("Pushing date lock to Artifax work season form with ID: %s", work_season_id)
                     push_check = push_date_artifax(work_season_id)
                     if push_check:
                         LOGGER.info("Pushed date lock to Artifax CID Import Date field")
                     else:
                         LOGGER.critical("FAILED TO WRITE ARTIFAX LOCK TO WORK ID: %s - Script exiting and manual attention will be required", work_id)
                         continue
-
                 LOGGER.info("-------------- ALL STAGES COMPLETED SUCCESSFULLY FOR %s --------------", cid_title)
 
         # When all extraction completed, move json to completed folder for next script interaction
@@ -984,6 +991,8 @@ def make_manifestations(work_copy_fname, current_festival, start_date, priref, m
     if manifestation_dct is None:
         manifestation_dct = {}
     work_copy_data = work_copy_extraction(work_copy_fname, current_festival)
+    if work_copy_data == 'No results':
+        return 'No results'
     try:
         manifestation_internet_dct = work_copy_data[0]
         manifestation_festival_dct = work_copy_data[1]
@@ -1105,24 +1114,6 @@ def credit_check(nfa_cat, dct=None):
     return credit_priref_dct
 
 
-def work_append(priref, work_dct=None):
-    '''
-    Items passed in work_dct for amending to Work record
-    '''
-    work_dct = [] if work_dct is None else work_dct.copy()
-    try:
-        result = CUR.create_occurrences(database='works',
-                                        priref=priref,
-                                        data=work_dct,
-                                        output='json')
-        LOGGER.info("Result of Adlib Work update: %s", result)
-        return True
-
-    except Exception as err:
-        print("Unable to append work data to CID work record", err)
-        return False
-
-
 def work_update(priref, work_dct=None):
     '''
     Items passed in work_dct for amending to Work record
@@ -1130,6 +1121,9 @@ def work_update(priref, work_dct=None):
     if work_dct is None:
         work_dct = []
         LOGGER.warning("work_update(): work_dct passed to function as None")
+
+    print(f"WORK UPDATE: {priref} {work_dct}")
+
     try:
         result = CUR.update_record(priref=priref,
                                    database='works',
@@ -1326,19 +1320,22 @@ def create_qna_work(qna_date, film_priref, grouping, qna_title_dct=None):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def push_date_artifax(work_season_id):
+def push_date_artifax(object_id):
     '''
     Script to push back date lock after all records amended/created
+    Receives object_id which is work_season_id
     '''
     dct = []
-    data = {'object_id': work_season_id,
-            'object_type_id': '66',
+    data = {'object_id': f"{object_id}",
+            'object_type_id': '81',
             'custom_form_element_id': '1176',
             'custom_form_assignment_id': '29600',
-            'custom_form_data_value': TODAY}
+            'custom_form_data_value': f"{TODAY}"}
 
     dct = requests.request('PUT', CUSTOM_URL, headers=HEADERS, data=data)
+    print(dct.text)
     dct.raise_for_status()
+
     if 'custom_forms_data_id' in str(dct.text):
         return True
 

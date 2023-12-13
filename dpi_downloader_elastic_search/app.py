@@ -1,20 +1,26 @@
+#!/usr/bin/env python3
+
 '''
-Flask app for web front to elasticsearch for DPI downloading
-Broadcasting to
-https://bfinationalarchiverequest.bfi.org.uk/dpi_download
+Flask app for collection of data
+from HTML dpi_requests.html forwarding
+to SQLite3 database for retrieval by
+python code which organises move of data.
 
 Joanna White
 2023
 '''
 
+# Imports
 import os
 import re
+import sqlite3
 import datetime
-from elasticsearch import Elasticsearch
+import itertools
 from flask import Flask, render_template, request
+from elasticsearch import Elasticsearch
 
+# Initiate Flask app / Elastic search
 app = Flask(__name__)
-
 @app.route('/')
 @app.route('/home')
 def index():
@@ -27,6 +33,88 @@ if ES.ping():
     print("Connected to Elasticsearch")
 else:
     print("Something's wrong")
+
+# Global variables / connect or create database.db
+DBASE = os.environ['DATABASE_NEWS_PRESERVATION']
+CONNECT = sqlite3.connect(DBASE)
+CONNECT.execute('CREATE TABLE IF NOT EXISTS DOWNLOADS (name TEXT, email TEXT, preservation_date TEXT, channel TEXT, status TEXT, date TEXT)')
+TODAY = str(datetime.date.today())
+YESTERDAY = datetime.date.today() - datetime.timedelta(days=1)
+YEST = str(YESTERDAY)
+
+
+def date_gen(date_str):
+    '''
+    Generate date for checks if date
+    in correct 14 day window
+    '''
+    from_date = datetime.date.fromisoformat(date_str)
+    while True:
+        yield from_date
+        from_date = from_date - datetime.timedelta(days=1)
+
+
+def check_date_range(preservation_date):
+    '''
+    Check date range is correct
+    and that the file is not today
+    '''
+    date_range = []
+    period = itertools.islice(date_gen(TODAY), 14)
+    for dt in period:
+        date_range.append(dt.strftime('%Y-%m-%d'))
+
+    daterange = ', '.join(date_range)
+    print(f"Target range for DPI moves: {daterange}")
+    if preservation_date in date_range:
+        return True
+
+    return False
+
+
+@app.route('/dpi_move_request', methods=['GET', 'POST'])
+def dpi_move_request():
+    '''
+    Handle incoming path containing video
+    reference_number as last element
+    '''
+
+    if request.method == 'POST':
+        name = request.form['name'].strip()
+        email = request.form['email'].strip()
+        preservation_date = request.form['preservation_date'].strip()
+        channel = request.form['channel'].strip()
+        # Check manually entered date is valid for format/period
+        pattern = "^20[0-9]{2}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}$"
+        if not re.match(pattern, preservation_date):
+            return render_template('date_error.html')
+        success = check_date_range(preservation_date)
+        if not success:
+            return render_template('date_error.html')
+        status = 'Requested'
+        date_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # Check for non-BFI email and reject
+        if 'bfi.org.uk' not in email:
+            return render_template('email_error.html')
+        with sqlite3.connect(DBASE) as users:
+            cursor = users.cursor()
+            cursor.execute("INSERT INTO DOWNLOADS (name,email,preservation_date,channel,status,date) VALUES (?,?,?,?,?,?)", (name, email, preservation_date, channel, status, date_stamp))
+            users.commit()
+        return render_template('index.html')
+    else:
+        return render_template('initiate.html')
+
+
+@app.route('/dpi_move')
+def dpi_move():
+    '''
+    Return the View all requested page
+    '''
+    connect = sqlite3.connect(DBASE)
+    cursor = connect.cursor()
+    cursor.execute(f"SELECT * FROM DOWNLOADS where date >= datetime('now','-14 days')")
+    data = cursor.fetchall()
+    return render_template("dpi_requests.html", data=data)
 
 
 @app.route('/dpi_download_request', methods=['GET', 'POST'])

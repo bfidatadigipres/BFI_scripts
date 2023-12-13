@@ -3,7 +3,7 @@
   color: #505050;
 }
 
-#username, #filename, #status {
+#username, #channel, #status {
   width: 28%;
   font-size: 16px; /* Increase font-size */
   padding: 12px 20px 12px 40px; /* Add some padding */
@@ -37,7 +37,7 @@
 
 #myTable tr.header, #myTable tr:hover {
   /* Add a grey background color to the table header and on hover */
-  background-color: #f1f1f1;
+  background-color: #d6a3db;
 }
 
 .header {
@@ -50,7 +50,7 @@
 }
 
 .topnav {
-  background-color: #808080;
+  background-color: #8b4791;
   overflow: hidden;
 }
 
@@ -59,7 +59,7 @@
   float: left;
   color: white;
   text-align: center;
-  border-right: 1px solid #f1f1f1;
+  border-right: 1px solid #d6a3db;
   padding: 14px 16px;
   text-decoration: none;
   font-size: 17px;
@@ -67,17 +67,17 @@
 
 /* Change the color of links on hover */
 .topnav a:hover {
-  background-color: #f1f1f1f1;
+  background-color: #d6a3db;
   color: black;
 }
 
 .topnav a.split {
   float: right;
   color: white;
-  border-left: 1px solid #f1f1f1;
+  border-left: 1px solid #d6a3db;
 }
 
 .topnav a.split:hover {
-  background-color: #f1f1f1f1;
+  background-color: #d6a3db;
   color: black;
 }

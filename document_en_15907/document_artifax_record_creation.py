@@ -80,25 +80,27 @@ cid = adlib.Database(os.environ['CID_API'])
 cur = adlib.Cursor(cid)
 
 # Data for CID Festival/Artifax season thesaurus look up
-FESTIVALS = {'FL2021': ["119", "Flare 2021", "399108"],
-             'FFF2021': ["134", "Future Film Festival 2021", "399083"],
-             'LFF2021': ["129", "LFF 2021", "399145"],
-             'FL2022': ["145", "Flare 2022", "399151"],
-             'FFF2022': ["155", "Future Film Festival 2022", "399156"],
-             'LFF2022': ["150", "LFF 2022", "399146"],
-             'FL2023': ["146", "Flare 2023", "399152"],
-             'FFF2023': ["156", "Future Film Festival 2023", "399157"],
-             'LFF2023': ["151", "LFF 2023", "399147"],
-             'FOFF23': ["281", "Film on Film Festival - June 2023", "400889"],
-             'FL2024': ["147", "Flare 2024", "399153"],
-             'FFF2024': ["157", "Future Film Festival 2024", "399158"],
-             'LFF2024': ["152", "LFF 2024", "399148"],
-             'FL2025': ["148", "Flare 2025", "399154"],
-             'FFF2025': ["158", "Future Film Festival 2025", "399159"],
-             'LFF2025': ["153", "LFF 2025", "399149"],
-             'FL2026': ["149", "Flare 2026", "399155"],
-             'FFF2026': ["159", "Future Film Festival 2026", "399160"],
-             'LFF2026': ["154", "LFF 2026", "399150"]}
+FESTIVALS = {
+    'FL2021': ["119", "Flare 2021", "399108"],
+    'FFF2021': ["134", "Future Film Festival 2021", "399083"],
+    'LFF2021': ["129", "LFF 2021", "399145"],
+    'FL2022': ["145", "Flare 2022", "399151"],
+    'FFF2022': ["155", "Future Film Festival 2022", "399156"],
+    'LFF2022': ["150", "LFF 2022", "399146"],
+    'FL2023': ["146", "Flare 2023", "399152"],
+    'FFF2023': ["156", "Future Film Festival 2023", "399157"],
+    'LFF2023': ["151", "LFF 2023", "399147"],
+    'FOFF23': ["281", "Film on Film Festival - June 2023", "400889"],
+    'FL2024': ["147", "Flare 2024", "399153"],
+    'FFF2024': ["157", "Future Film Festival 2024", "399158"],
+    'LFF2024': ["152", "LFF 2024", "399148"],
+    'FL2025': ["148", "Flare 2025", "399154"],
+    'FFF2025': ["158", "Future Film Festival 2025", "399159"],
+    'LFF2025': ["153", "LFF 2025", "399149"],
+    'FL2026': ["149", "Flare 2026", "399155"],
+    'FFF2026': ["159", "Future Film Festival 2026", "399160"],
+    'LFF2026': ["154", "LFF 2026", "399150"]
+}
 
 
 def check_control():

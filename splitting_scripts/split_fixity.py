@@ -65,8 +65,8 @@ LOG_PATH = os.environ['SCRIPT_LOG']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger(f'split_fixity_{NUM}')
-# hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'))
-hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'), mode='w')
+hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'))
+# hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'), mode=w)
 formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -132,6 +132,8 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
+    print(f"Checking CID media record using: {search}")
+
     query = {
         'database': 'media',
         'search': search,
@@ -141,11 +143,16 @@ def check_media_record(fname):
 
     try:
         result = CID.get(query)
-        if result.hits:
+        print(f"Check media record response: {result.hits} hits")
+        if result.hits == 1:
             return True
+        elif result.hits == 0:
+            return False
+        else:
+            return None
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
-    return False
+    return None
 
 
 def main():
@@ -267,10 +274,13 @@ def main():
                     print(f"Checking if first part has already been created or has persisted to DPI: {firstpart_check}")
                     check_result = check_media_record(firstpart_check)
                     firstpart = False
-                    if check_result:
+                    if check_result is True:
                         print(f"First part {firstpart_check} exists in CID, proceeding to check for {check_filename}")
                         firstpart = True
-                    print(f"**** AUTOINEGST: {AUTOINGEST}")
+                    if check_result is None:
+                        logger.warning("Skipping: Unable to retrieve CID Media hit information, try again next pass")
+                        continue
+                    print(f"**** AUTOINGEST: {AUTOINGEST}")
                     match_path = glob.glob(f"{AUTOINGEST}/**/*/{firstpart_check}", recursive=True)
                     print(f"****** MATCH PATH {match_path}")
                     if firstpart_check in str(match_path):
@@ -281,9 +291,13 @@ def main():
                     logger.info("%s\tPart 01of* in group found %s. Checking if part also ingested...", filepath, firstpart_check, check_filename)
 
                 check_result = check_media_record(check_filename)
-                if check_result:
+                if check_result is True:
                     print(f"SKIPPING: Filename {check_filename} matched with persisted CID media record")
                     logger.warning("%s\tPart found ingested to DPI: %s.", filepath, check_filename)
+                    continue
+                if check_result is None:
+                    print(f"SKIPPING: API hit attempt failed. Leaving for another pass.")
+                    logger.warning("%s\tAPI attempt returned None. Leaving for another pass: %s.", filepath, check_filename)
                     continue
                 matched = glob.glob(f"{AUTOINGEST}/**/*/{check_filename}", recursive=True)
                 if check_filename in str(matched):
@@ -316,6 +330,7 @@ def main():
             # Get duration of file
             print("Get file duration")
             item_duration = get_duration(filepath)
+            print(f"*********** {item_duration} ***********")
             if not item_duration:
                 print("No duration retrieved")
                 logger.warning("%s\t* Item has no duration, skipping this file.", filepath)

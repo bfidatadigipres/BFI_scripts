@@ -314,6 +314,10 @@ def main():
         job_list = []
         fsize = get_size(folderpth)
         print(f"Folder identified is {fsize} bytes, and upload size limit is {upload_size} bytes")
+        if len(os.listdir(folderpth)) == 0:
+            logs.append(f"Skipping: Folderpath found that has no content in: {folderpth}")
+            logger_write(logs)
+            continue
         if fsize > upload_size:
             # Ensure ingest folder is now pushed to black pearl
             logs.append(f"Starting move of folder path to Black Pearl ingest bucket {bucket}")

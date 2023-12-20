@@ -754,10 +754,10 @@ def check_audio(fullpath):
 
     print(f"**** LANGUAGES: Stream 0 {lang0} - Stream 1 {lang1}")
 
-    if 'NAR' in str(lang0):
+    if 'nar' in str(lang0).lower():
         print("Narration stream 0 / English stream 1")
         return ('Audio', '1')
-    elif 'NAR' in str(lang1):
+    elif 'nar' in str(lang1).lower():
         print("Narration stream 1 / English stream 0")
         return ('Audio', '0')
     else:

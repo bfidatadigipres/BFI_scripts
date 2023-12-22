@@ -515,7 +515,7 @@ def main():
                     concat_fname = value[3]
         if concat_fname:
             concat_fpath = os.path.join(DESTINATION, concat_fname)
-            success = subprocess.call(f'ffmpeg -f concat -safe 0 -i {target_concat} -c:v ffv1 -level 3 -g 1 -slicecrc 1 -slices 24 -c:a copy -map 0 -vf "setpts=PTS-STARTPTS" {concat_fpath}', shell=True)
+            success = subprocess.call(f'ffmpeg -f concat -safe 0 -i {target_concat} -c copy -map 0 {concat_fpath}', shell=True)
             if success != 0:
                 LOGGER.warning("Subprocess call for concatenation failed for %s", target_concat)
                 LOGGER.warning("Concatination failed for %s. Manual concat required: \n%s", ob_num, os.path.join(DESTINATION, ob_num))
@@ -572,9 +572,15 @@ def create_edited_file(part, outpath, cpath):
         '-ss', tcin.strip(),
         '-to', tcout.strip(),
         '-i', infile,
-        '-c', 'copy',
+        '-c:v', 'prores_ks',
+        '-profile:v', '3',
+        '-c:a', 'copy',
+        '-pix_fmt', 'yuv422p10le',
+        '-vendor', 'ap10',
+        '-flags', '+ildct',
         '-map', '0',
         '-r', '25',
+        '-movflags', '+faststart',
         outfile
     ]
 

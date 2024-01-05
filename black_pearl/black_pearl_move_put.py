@@ -167,7 +167,7 @@ def create_folderpth(autoingest):
     fname = format_dt()
     folderpth = os.path.join(autoingest, f"ingest_{fname}")
     try:
-        os.mkdir(folderpth)
+        os.mkdir(folderpth, mode=0o777)
     except OSError as err:
         logger.warning('create_folderpth(): OS error when making directory: %s\n%s', folderpth, err)
         folderpth = ''

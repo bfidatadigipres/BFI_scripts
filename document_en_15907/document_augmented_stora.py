@@ -1013,10 +1013,11 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
     if len(str(series_subject_two)) > 0:
         series_work_genres.append({'content.subject.lref': str(series_subject_two)})
 
-    print("Attempting to write series work genres and subjects to records")
-    success = push_genre_payload(series_work_id, series_work_genres)
-    if not success:
-        logger.warning("Unable to write series genre %s", err)
+    print(f"Attempting to write series work genres and subjects to records {series_work_genres}")
+    if 'content.' in series_work_genres:
+        success = push_genre_payload(series_work_id, series_work_genres)
+        if not success:
+            logger.warning("Unable to write series genre %s", err)
 
     return series_work_id
 

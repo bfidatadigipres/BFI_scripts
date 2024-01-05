@@ -48,9 +48,8 @@ STORAGE = os.environ['STORA_PATH']
 AUTOINGEST_PATH = os.environ['STORA_AUTOINGEST']
 SERIES_CACHE_PATH = os.path.join(STORAGE, 'series_cache')
 CODE_PATH = os.environ['CODE_DDP']
-GENRE_MAP = os.path.join(CODE_PATH, 'BFIscripts/document_en_15907/EPG_genre_mapping.yaml')
+GENRE_MAP = os.path.join(CODE_PATH, 'BFI_scripts/document_en_15907/EPG_genre_mapping.yaml')
 LOG_PATH = os.environ['LOG_PATH']
-CONTROL_STORA = os.path.join(os.environ['CODE'], 'stora_control.json')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
@@ -105,15 +104,9 @@ def check_control():
     Check for downtime control
     '''
 
-    with open(CONTROL_STORA) as control:
-        j = json.load(control)
-        if not j['stora_ingest']:
-            logger.info("Script run prevented by stora_control.json. Script exiting.")
-            sys.exit('Script run prevented by stora_control.json. Script exiting.')
-
     with open(CONTROL_JSON) as control:
         j = json.load(control)
-        if not j['pause_scripts']:
+        if not j['pause_scripts'] or not j['stora']:
             logger.info("Script run prevented by downtime_control.json. Script exiting.")
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 

@@ -842,8 +842,6 @@ def main():
                     print(f'** PROBLEM: Could not rename {old_vtt} to {new_vtt}')
                     logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_vtt, new_vtt, err)
 
-            sys.exit()
-
     logger.info('========== STORA documentation script END ===================================================\n')
 
 

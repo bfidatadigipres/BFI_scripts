@@ -1,0 +1,921 @@
+---
+# Genres mapped from EPG metadata supply to CID genres/subjects and new suggestions
+# Genre and Genre2 used to map genre priref / Subject and Subject2 map subject prirefs
+# New preferred and New not preferred holding potential suggestions for now
+# no '-' beforehand means Python3 handles YAML as dictionary. With '-' it's a list
+
+genres:
+   movie-drama:general:
+      Genre:
+         Drama                             : 110214
+   movie-drama:mystery:
+      Genre:
+         Detective drama                   : 73576
+   movie-drama:animated-movie-drama:
+      Genre:
+         Drama                             : 110214
+      Genre2:
+         Animation                         : 110130
+   movie-drama:biopic:
+      Genre:
+         Biopic                            : 110148
+   movie-drama:family:
+      Genre:
+         Drama                             : 110214
+   movie-drama:medical-drama:
+      Genre:
+         Medical drama                     : 73626
+   movie-drama:literary-adaptation:
+      Genre:
+         Drama                             : 110214
+   movie-drama:storytelling-reading:
+      Genre:
+         Drama                             : 110214
+   movie-drama:detective-thriller:
+      Genre:
+         Detective drama                   : 73576
+      Genre2:
+         Thriller                          : 110199
+   movie-drama:thriller:
+      Genre:
+         Thriller                          : 110199
+   movie-drama:espionage:
+      Genre:
+         Drama                             : 110214
+      Subject:
+         Espionage                         : 34846
+   movie-drama:gangster:
+      Genre:
+         Gangster                          : 73589
+   movie-drama:police-crime-drama:
+      Genre:
+         Police drama                      : 110112
+      Genre2:
+         Crime                             : 110143
+   movie-drama:prison-drama:
+      Genre:
+         Drama                             : 110214
+      Subject:
+         Prisons                           : 32467
+   movie-drama:western:
+      Genre:
+         Western                           : 110188
+   movie-drama:adventure-war:
+      Genre:
+         Adventure                         : 73513
+      Genre:
+         War                               : 110207
+   movie-drama:adventure:
+      Genre:
+         Adventure                         : 73513
+   movie-drama:war:
+      Genre:
+         War                               : 110207
+   movie-drama:disaster-movie:
+      Genre:
+         Disaster                          : 73577
+   movie-drama:science-fiction:
+       Genre:
+         Science fiction                   : 110189
+   movie-drama:fantasy:
+       Genre:
+         Fantasy                           : 110196
+   movie-drama:horror:
+      Genre:
+         Horror                            : 73611
+   movie-drama:comedy:
+      Genre:
+         Comedy                            : 110115
+   movie-drama:sitcom:
+      Genre:
+         Sitcom                            : 73715
+   movie-drama:spoof:
+      Genre:
+         Spoofs                            : 398925
+   movie-drama:sketches:
+      Genre:
+         Sketch show                       : 73563
+   movie-drama:soap-melodrama-folkloric:
+      Genre:
+         Soap opera                        : 110139
+   movie-drama:romance:
+      Genre:
+         Romance                           : 110193
+   movie-drama:tearjerker:
+      Genre:
+         Tearjerkers                       : 395683
+   movie-drama:serious-classic-religious-hist:
+      Genre:
+         Drama                             : 110214
+   movie-drama:historical-period-drama:
+      Genre:
+         Historical drama                  : 73601
+      Genre2:
+         Period drama                      : 112911
+   movie-drama:epic:
+      Genre:
+         Drama                             : 110214
+   movie-drama:adult-movie-drama:
+      Genre:
+         Undefined                         : 000000
+   news-current-affairs:general:
+      Genre:
+         Current affairs                   : 73571
+   news-current-affairs:news:
+      Genre:
+         News                              : 73680
+   news-current-affairs:weather:
+      Genre:
+         News                              : 73680
+      Subject:
+         Weather forecasting               : 22350
+   news-current-affairs:national-news:
+      Genre:
+         News                              : 73680
+   news-current-affairs:international-news:
+      Genre:
+         News                              : 73680
+   news-current-affairs:regional-news:
+      Genre:
+         Regional news                     : 73707
+   news-current-affairs:news-magazine-current-affairs:
+      Genre:
+         Magazine and Review show          : 73623
+      Genre2:
+         Current affairs                   : 73571
+   news-current-affairs:documentary:
+      Genre:
+         Documentary                       : 110198
+      Genre2:
+         Current affairs                   : 73571
+   news-current-affairs:discussion-debate:
+      Genre:
+         Discussion programme              : 73578
+   news-current-affairs:interview:
+      Genre:
+         Interview                         : 73615
+   show-game-show:general:
+      Genre:
+         Game show                         : 110187
+   show-game-show:family:
+      Genre:
+         Game show                         : 110187
+   show-game-show:award-ceremonies:
+      Genre:
+         Award ceremony                    : 132100
+      Subject:
+         Television game shows             : 52093
+   show-game-show:magazine-show:
+      Genre:
+         Magazine and Review show          : 73623
+   show-game-show:game-show-quiz-contest:
+      Genre:
+         Quiz show                         : 110176
+   show-game-show:challenge-reality-show:
+      Genre:
+         Reality television                : 110209
+   show-game-show:variety-show:
+      Genre:
+         Variety show                      : 110145
+   show-game-show:talk-show:
+      Genre:
+         Talk show                         : 110670
+   show-game-show:quiz-show:
+      Genre:
+         Quiz show                         : 110176
+   show-game-show:stand-up-comedy:
+      Genre:
+         Variety show                      : 110145
+   sports:general:
+      Genre:
+         Sport                             : 110185
+   sports:special-events:
+      Genre:
+         Sport                             : 110185
+   sports:sports-magazines:
+      Genre:
+         Sport                             : 110185
+      Genre2:
+         Magazine and Review show          : 73623
+   sports:football-soccer:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Football                          : 27181
+   sports:tennis:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Tennis                            : 33284
+   sports:team-sports:
+      Genre:
+         Sport                             : 110185
+   sports:athletics:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Athletics                         : 35448
+   sports:motor-sport:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Motor sports                      : 31226
+   sports:water-sport:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Water sports                      : 27221
+   sports:winter-sports:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Winter sports                     : 32479
+   sports:equestrian:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Equestrian sports                 : 35948
+   sports:martial-sports:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Martial arts                      : 32836
+   sports:american-football:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         American football                 : 33396
+   sports:archery:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Archery                           : 39857
+   sports:australian-rules-football:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Australian football               : 43011
+   sports:badminton:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Badminton                         : 31709
+   sports:baseball:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Baseball                          : 35534
+   sports:basketball:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Basketball                        : 33623
+   sports:billiards:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Billiards                         : 35515
+   sports:bowls:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Bowls                             : 32284
+   sports:boxing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Boxing                            : 32127
+   sports:canoeing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Canoeing                          : 33351
+   sports:combat-sports:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Combat sports                     : 32246
+   sports:competitive-dancing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Dance competitions                : 40153
+      Subject2:
+         Dance                             : 21645
+   sports:cricket-domestic:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Cricket                           : 30340
+   sports:cricket-international:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Cricket                           : 30340
+   sports:cycling:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Cycling                           : 46304
+   sports:darts:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Darts                             : 38242
+   sports:disabled:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Disabled people                   : 33641
+      Subject2:
+         Disabled athletes                 : 48255
+   sports:extreme-minority-sports:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Extreme sports                    : 35100
+   sports:fencing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Fencing                           : 38250
+   sports:figure-skating:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Figure skating                    : 32067
+   sports:fishing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Fishing                           : 21454
+   sports:football-club:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Football                          : 27181
+      Subject2:
+         Football League                   : 36272
+   sports:football-international:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Football                          : 27181
+   sports:formula-one:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Formula One                       : 40407
+   sports:golf:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Golf                              : 28054
+   sports:greyhound-racing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Greyhound racing                  : 35454
+   sports:gymnastics:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Gymnastics                        : 20943
+   sports:hockey:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Hockey                            : 27237
+   sports:horse-racing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Horse racing                      : 34274
+   sports:ice-hockey:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Ice hockey                        : 32481
+   sports:ice-skating:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Ice skating                       : 32139
+   sports:modern-pentathlon:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Modern pentathlon                 : 49966
+   sports:motorcycling:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Motorcycle racing                 : 31781
+   sports:mountainbiking:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Mountain bike racing              : 34316
+   sports:netball:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Netball                           : 37409
+   sports:olympics:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Olympic games                     : 35208
+   sports:other:
+      Genre:
+         Sport                             : 110185
+   sports:physical-fitness:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Keep fit                          : 32986
+   sports:polo:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Polo (equestrian)                 : 33028
+   sports:pool:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Pool                              : 35516
+   sports:powerboating:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Powerboat racing                  : 31869
+   sports:racquet-bat-sports:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Racket sports                     : 38600
+   sports:rallying:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Rallying                          : 32547
+   sports:rowing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Rowing                            : 34892
+   sports:rugby-league-domestic:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Rugby League                      : 33248
+   sports:rugby-league-international:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Rugby League                      : 33248
+   sports:rugby-union-domestic:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Rugby Union                       : 33247
+   sports:rugby-union-international:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Rugby Union                       : 33247
+   sports:sailing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Sailing                           : 27216
+   sports:shooting:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Shooting                          : 114401
+   sports:skiing:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Skiing                            : 27182
+   sports:snooker:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Snooker                           : 35514
+   sports:squash:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Squash                            : 31443
+   sports:strongman-contests:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Contests of strength              : 38823
+   sports:sumo:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Sumo wrestling                    : 31938
+   sports:table-tennis:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Table tennis                      : 37682
+   sports:ten-pin-bowling:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Bowling                           : 39493
+   sports:triathlon:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Triathlon                         : 34401
+   sports:volleyball:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Volleyball                        : 40038
+   sports:weightlifting:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Weight lifting                    : 38698
+   sports:world-cup:
+      Genre:
+         Sport                             : 110185
+   sports:wrestling:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Wrestling                         : 35446
+   sports:aerobics:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Aerobics                          : 44913
+   sports:bodybuilding:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Bodybuilding                      : 34003
+   sports:curling:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Curling                           : 36706
+   sports:beach-volleyball:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Beach volleyball                  : 47431
+   sports:handball:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Handball                          : 31125
+   sports:gaelic-football:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Gaelic football                   : 36648
+   sports:gaelic-games:
+      Genre:
+         Sport                             : 110185
+      Genre2:
+         Gaelic games                      : 398926
+   sports:hurling:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Hurling                           : 44592
+   sports:swimming:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Swimming                          : 34281
+   sports:diving:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Diving                            : 31056
+   sports:poker:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Poker                             : 32222
+   sports:judo:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Judo                              : 39672
+   sports:taekwondo:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Taekwondo                         : 131476
+   sports:synchronised-swimming:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Synchronised swimming             : 42462
+   sports:water-polo:
+      Genre:
+         Sport                             : 110185
+      Subject:
+         Waterpolo                         : 39777
+   childrens-youth-programmes:general:
+      Genre:
+         Childrens                         : 73558
+   childrens-youth-programmes:drama:
+      Genre:
+         Childrens                         : 73558
+      Genre2:
+         Drama                             : 110214
+   childrens-youth-programmes:pre-school:
+      Genre:
+         Preschool programme               : 73694
+   childrens-youth-programmes:entertainment-pre-teens:
+      Genre:
+         Childrens                         : 73558
+   childrens-youth-programmes:entertainment-teens:
+      Genre:
+         Childrens                         : 73558
+   childrens-youth-programmes:educational-schools-programmes:
+      Genre:
+         School programme and Educational film: 73581
+   childrens-youth-programmes:cartoons-puppets:
+      Genre:
+         Childrens                         : 73558
+      Genre2:
+         Animation                         : 110130
+   music-ballet-dance:general:
+      Genre:
+         Documentary                       : 110198
+   music-ballet-dance:easy-listening:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Easy listening music              : 398927
+   music-ballet-dance:world-music:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Folk and traditional music        : 34312
+   music-ballet-dance:country-western:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Country music                     : 26611
+   music-ballet-dance:rock:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Rock music                        : 32997
+   music-ballet-dance:pop:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Pop music (1950-)                 : 29050
+   music-ballet-dance:dance-urban-music:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Dance music                       : 32987
+   music-ballet-dance:classical:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Classical music                   : 36861
+   music-ballet-dance:folk-traditional:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Folk and traditional music        : 34312
+   music-ballet-dance:jazz:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Jazz music                        : 395226
+   music-ballet-dance:musical:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Musicals                          : 27489
+   music-ballet-dance:opera:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Opera                             : 35176
+   music-ballet-dance:ballet:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Ballet                            : 27169
+   music-ballet-dance:modern-dance:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Contemporary dance                : 41925
+   arts-culture:general:
+      Genre:
+         Documentary                       : 110198
+   arts-culture:performing-arts:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Performing arts                   : 396981
+   arts-culture:fine-arts:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Visual arts                       : 396499
+      Subject2:
+         Works of art                      : 44241
+   arts-culture:pop-culture-tv:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Popular culture                   : 48830
+   arts-culture:literature:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Literature                        : 27485
+   arts-culture:film-cinema:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Cinema                            : 29098
+   arts-culture:experimental-film:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Experimental films                : 393341
+   arts-culture:broadcasting-press:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Media                             : 35062
+   arts-culture:new-media:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         New media                         : 395784
+   arts-culture:arts-magazine:
+      Genre:
+         Magazine and Review Show          : 73623
+      Subject:
+         Arts                              : 20358
+   arts-culture:fashion:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Fashion                           : 20308
+   social-political-issues-economics:general:
+      Genre:
+         Current affairs                   : 73571
+   social-political-issues-economics:economics-social-advisory:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Economics                         : 18882
+   education-science-factual-topics:general:
+      Genre:
+         Factual TV                        : 110667
+   education-science-factual-topics:docu-soap:
+      Genre:
+         Docu-Soap                         : 73579
+   education-science-factual-topics:factual-crime:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Crime                             : 32974
+   education-science-factual-topics:agony-advice:
+      Genre:
+         Advice programme                  : 110675
+   education-science-factual-topics:archaeology:
+      Genre:
+         Documentary                       : 110198
+      Subject:
+         Archaeology                       : 20374
+   education-science-factual-topics:history:
+      Genre:
+         Documentary                       : 110198
+      Subject:
+         History                           : 20441
+   education-science-factual-topics:unexplained-mysteries:
+      Genre:
+         Documentary                       : 110198
+      Subject:
+         Unexplained phenomena             : 21885
+   education-science-factual-topics:nature-animals-environment:
+      Genre:
+         Nature and Science programme      : 110106
+   education-science-factual-topics:wildlife:
+      Genre:
+         Wildlife TV programme             : 110709
+   education-science-factual-topics:environment:
+      Genre:
+         Documentary                       : 110198
+      Subject:
+         Environment                       : 398485
+   education-science-factual-topics:rural-agricultural:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Rural life                        : 43292
+      Subject2:
+         Agriculture                       : 20368
+   education-science-factual-topics:vets-pets:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Veterinary practitioners          : 35678
+      Subject2:
+         Pets                              : 20381
+   education-science-factual-topics:technology:
+      Genre:
+         Documentary                       : 110198
+      Subject:
+         Technology                        : 20455
+   education-science-factual-topics:medical-health:
+      Genre:
+         Documentary                       : 110198
+      Subject:
+         Medical sciences                  : 30069
+      Subject2:
+         Personal health                   : 34007
+   education-science-factual-topics:foreign-countries-expeditions:
+      Genre:
+         Travelogue                        : 73750
+      Genre2:
+         Documentary                       : 110198
+   education-science-factual-topics:spritual-religious:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Religion                          : 20608
+      Subject2:
+         Spirituality                      : 37680
+   education-science-factual-topics:educational:
+      Genre:
+         Instructional film/TV programme   : 73613
+   education-science-factual-topics:languages:
+      Genre:
+         Instructional film/TV programme   : 73613
+      Subject:
+         Languages                         : 33366
+   leisure-hobbies:general:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Leisure                           : 19394
+   leisure-hobbies:antiques-collectibles:
+      Genre:
+         Antiques show                     : 110119
+   leisure-hobbies:computers-internet-gaming:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Gaming (electronic)               : 396959
+   leisure-hobbies:tourism-travel:
+      Genre:
+         Travelogue                        : 73750
+   leisure-hobbies:handicraft:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Decorative handicrafts            : 34055
+   leisure-hobbies:motoring:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Driving                           : 21148
+   leisure-hobbies:fitness-and-health:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         Keep fit                          : 32986
+      Subject2:
+         Personal health                   : 34007
+   leisure-hobbies:cooking:
+      Genre:
+         Cookery show                      : 112308
+   leisure-hobbies:advertisement-shopping-consumer:
+      Genre:
+         Advert                            : 110138
+   leisure-hobbies:gardening:
+      Genre:
+         Gardening show                    : 110123
+   leisure-hobbies:diy:
+      Genre:
+         Factual TV                        : 110667
+      Subject:
+         DIY                               : 21634
+   leisure-hobbies:property:
+      Genre:
+         Property show                     : 114329

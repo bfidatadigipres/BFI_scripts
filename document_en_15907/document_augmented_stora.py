@@ -756,6 +756,7 @@ def main():
                         if not series_work_id:
                             logger.warning("Skipping further actions: Creation of series failed in create_series() function.")
                             continue
+
                 # Create Work
                 new_work = True
                 work_values = []
@@ -775,6 +776,22 @@ def main():
                 print(f"Work error, priref not numeric from new file creation: {work_priref}")
                 continue
 
+            work_genres = []
+            if 'work_genre_one' in epg_dict:
+                work_genres.append({'content.genre.lref': epg_dict['work_genre_one']})
+            if 'work_genre_two' in epg_dict:
+                work_genres.append({'content.genre.lref': epg_dict['work_genre_two']})
+            if 'work_subject_one' in epg_dict:
+                work_genres.append({'content.subject.lref': epg_dict['work_subject_one']})
+            if 'work_subject_two' in epg_dict:
+                work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
+
+            print(f"Attempting to write Work genres and subjects to record {work_genres}")
+            if 'content.' in work_genres:
+                success = push_genre_payload(work_priref, work_genres)
+                if not success:
+                    logger.warning("Unable to write Work genre %s", err)
+
             # Create CID manifestation record
             manifestation_values = []
             manifestation_values.extend(rec_def)
@@ -787,6 +804,13 @@ def main():
                     print(f"*** Manual clean up needed for Work {work_priref}")
                 continue
 
+            # Create an occurrence of broadcast_company in manifestation
+            if 'broadcast_company' in epg_dict:
+                # Push broadcast company data
+                success = push_broadcast_payload(manifestation_priref, epg_dict['broadcast_company'])
+                if not success:
+                    logger.warning("Unable to push broadcast_company data to CID Manifestation %s: %s", manifestation_id, epg_dict['broadcast_company'])
+
             # Check if subtitles exist and build dct
             old_webvtt = os.path.join(root, "subtitles.vtt")
             webvtt_payload = build_webvtt_dct(old_webvtt)
@@ -796,10 +820,10 @@ def main():
             item_values.extend(rec_def)
             item_values.extend(item_def)
 
-            item_object_number = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, webvtt_payload, epg_dict)
-            print(f"item_object_number: {item_object_number}")
+            item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict)
+            print(f"item_object_number: {item_data}")
 
-            if not item_object_number:
+            if not item_data:
                 print(f"CID Item object number not retrieved for manifestation: {manifestation_priref}")
                 if new_work:
                     print(f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}")
@@ -807,6 +831,11 @@ def main():
                 else:
                     print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
                     continue
+
+            # Build webvtt payload
+            success = push_payload(item_data[1], webvtt_payload)
+            if not success:
+                logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_data[1], webvtt_payload)
 
             # Rename JSON with .documented
             documented = f'{fullpath}.documented'
@@ -818,7 +847,7 @@ def main():
                 logger.warning('%s\tCould not rename to %s. Error: %s', fullpath, documented, err)
 
             # Rename transport stream file with Item object number and move to autoingest
-            item_object_number_underscore = item_object_number.replace('-', '_')
+            item_object_number_underscore = item_data[0].replace('-', '_')
             new_filename = f'{item_object_number_underscore}_01of01.ts'
             destination = f'{AUTOINGEST_PATH}{new_filename}'
             print(f'* Renaming {acquired_filename} to {destination}')
@@ -830,7 +859,7 @@ def main():
                 logger.warning('%s\tCould not rename & move %s to %s. Error: %s', fullpath, acquired_filename, destination, err)
 
             # Rename .vtt subtitle file with Item object number and move to Isilon for use later in MTQ workflow
-            if webvtt_payload and item_object_number:
+            if webvtt_payload and item_data[1]:
                 old_vtt = os.path.join(root, "subtitles.vtt")
                 new_vtt_name = f'{item_object_number_underscore}_01of01.vtt'
                 new_vtt = f'{SUBS_PTH}{new_vtt_name}'
@@ -1125,7 +1154,6 @@ def build_webvtt_dct(old_webvtt):
     return webvtt_payload.replace("\'", "'")
 
 
-@tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
 def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict):
     '''
     Create work records
@@ -1245,7 +1273,6 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
     return work_id
 
 
-@tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
 def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict):
     '''
     Create a manifestation record,
@@ -1293,18 +1320,10 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         logger.critical("Unable to write manifestation record <%s> %s", manifestation_id, err)
         raise
 
-    # Create an occurrence of broadcast_company after record creation
-    if 'broadcast_company' in epg_dict:
-        # Push broadcast company data
-        success = push_broadcast_payload(manifestation_id, epg_dict['broadcast_company'])
-        if not success:
-            logger.warning("Unable to push broadcast_company data to CID Manifestation %s: %s", manifestation_id, epg_dict['broadcast_company'])
-
     return manifestation_id
 
 
-@tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, webvtt_payload, epg_dict):
+def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, epg_dict):
     '''
     Create CID Item record
     '''
@@ -1327,7 +1346,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     print(item_values_xml)
 
     try:
-        logger.info("Attemting to create CID item record for item %s", epg_dict['title'])
+        logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         data = push_record_create(item_values_xml, 'items', 'insertrecord')
         if data:
             item_id = data[0]
@@ -1385,12 +1404,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
             print(f'** PROBLEM: Could not rename {fullpath} to {problem}')
             logger.critical('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
 
-    # Build webvtt payload
-    success = push_payload(item_id, webvtt_payload)
-    if not success:
-        logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
-
-    return item_object_number
+    return item_object_number, item_id
 
 
 def push_record_create(payload, database, method):
@@ -1428,8 +1442,8 @@ def push_genre_payload(work_id, genre_dict):
     '''
     pay_head = f'<adlibXML><recordList><record priref="{work_id}">'
     payload = pay_head
-    for dict in genre_dict:
-        for key, value in dict.items():
+    for dct in genre_dict:
+        for key, value in dct.items():
             pay_addition = f'<{key}>{value}</{key}>'
             payload = payload + pay_addition
     pay_end = '</record></recordList></adlibXML>'
@@ -1443,7 +1457,7 @@ def push_genre_payload(work_id, genre_dict):
             CID_API,
             params={'database': 'works', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
             data = {'data': payload},
-            timeout=120)
+            timeout=1200)
         if '<error><info>' in str(post_response.text):
             logger.warning('push_genre_payload(): Error returned from requests post: %s %s', work_id, payload)
             print(post_response.text)
@@ -1474,7 +1488,7 @@ def push_broadcast_payload(man_id, broadcast_company):
             CID_API,
             params={'database': 'manifestations', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
             data = {'data': payload},
-            timeout=120)
+            timeout=1200)
         if '<error><info>' in str(post_response.text):
             logger.warning('push_broadcast_payload(): Error returned from requests post: %s %s', man_id, payload)
             print(post_response.text)
@@ -1504,12 +1518,12 @@ def push_payload(item_id, webvtt_payload):
 
     lock_success = write_lock(item_id)
     if lock_success:
-        post_response = requests.request(
-            'POST',
+        post_response = requests.post(
             CID_API,
             params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data = {'data': payload},
-            timeout=120)
+            data = {'data': payload})
+        print("===================")
+        print(post_response.text)
         if '<error><info>' in str(post_response.text):
             logger.warning('push_payload(): Error returned from requests post: %s %s', item_id, payload)
             print(post_response.text)

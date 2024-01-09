@@ -28,7 +28,6 @@ Refactored Py3 2023
 import os
 import sys
 import json
-import codecs
 import shutil
 import logging
 import datetime
@@ -48,9 +47,8 @@ STORAGE = os.environ['STORA_PATH']
 AUTOINGEST_PATH = os.environ['STORA_AUTOINGEST']
 SERIES_CACHE_PATH = os.path.join(STORAGE, 'series_cache')
 CODE_PATH = os.environ['CODE_DDP']
-GENRE_MAP = os.path.join(CODE_PATH, 'BFIscripts/document_en_15907/EPG_genre_mapping.yaml')
+GENRE_MAP = os.path.join(CODE_PATH, 'BFI_scripts/document_en_15907/EPG_genre_mapping.yaml')
 LOG_PATH = os.environ['LOG_PATH']
-CONTROL_STORA = os.path.join(os.environ['CODE'], 'stora_control.json')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
@@ -105,15 +103,9 @@ def check_control():
     Check for downtime control
     '''
 
-    with open(CONTROL_STORA) as control:
-        j = json.load(control)
-        if not j['stora_ingest']:
-            logger.info("Script run prevented by stora_control.json. Script exiting.")
-            sys.exit('Script run prevented by stora_control.json. Script exiting.')
-
     with open(CONTROL_JSON) as control:
         j = json.load(control)
-        if not j['pause_scripts']:
+        if not j['pause_scripts'] or not j['stora']:
             logger.info("Script run prevented by downtime_control.json. Script exiting.")
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
@@ -157,6 +149,7 @@ def cid_series_query(series_id):
     '''
     Sends CID request for series_id data
     '''
+    print(f"CID SERIES QUERY: {series_id}")
     hit_count = ""
     series_priref = ""
     series_query = {'database': 'works',
@@ -222,6 +215,7 @@ def series_check(series_id):
     '''
     Separate function that looks up series info when called in script
     '''
+
     for files in os.listdir(SERIES_CACHE_PATH):
         if series_id not in files:
             continue
@@ -236,21 +230,21 @@ def series_check(series_id):
                 # Unsure if series description has a medium set - none found
                 try:
                     series_short = lines["summary"]["short"]
-                    #series_short = remove_non_ascii(series_short)
+                    # series_short = remove_non_ascii(series_short)
                     series_descriptions.append(series_short)
                 except Exception:
                     series_short = ''
                     series_descriptions.append(series_short)
                 try:
                     series_medium = lines["summary"]["medium"]
-                    #series_medium = remove_non_ascii(series_medium)
+                    # series_medium = remove_non_ascii(series_medium)
                     series_descriptions.append(series_medium)
                 except Exception:
                     series_medium = ''
                     series_descriptions.append(series_medium)
                 try:
                     series_long = lines["summary"]["long"]
-                    #series_long = remove_non_ascii(series_long)
+                    # series_long = remove_non_ascii(series_long)
                     series_descriptions.append(series_long)
                 except Exception:
                     series_long = ''
@@ -261,7 +255,7 @@ def series_check(series_id):
                 print(f"series_check(): Series description longest: {series_description}")
                 try:
                     series_title_full = lines["title"]
-                    #series_title_full = remove_non_ascii(series_title_full)
+                    # series_title_full = remove_non_ascii(series_title_full)
                     print(f"series_check(): Series title full: {series_title_full}")
                 except Exception:
                     series_title_full = ''
@@ -372,8 +366,8 @@ def csv_retrieve(fullpath):
             csv_dump = f"{csv_chan}, {csv_title}, {csv_desc}, Date start: {csv_date}, Time: {csv_time}, \
                          Duration: {csv_dur}, Actual duration: {csv_act}"
 
-#    csv_dump = remove_non_ascii(csv_dump)
-#    csv_desc = remove_non_ascii(csv_desc)
+    # csv_dump = remove_non_ascii(csv_dump)
+    # csv_desc = remove_non_ascii(csv_desc)
     return (csv_desc, csv_dump)
 
 
@@ -414,10 +408,10 @@ def fetch_lines(fullpath, lines):
 
         # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
         title, title_article = split_title(title_for_split)
-        #title = remove_non_ascii(title)
+        # title = remove_non_ascii(title)
         title = title.replace("\'", "'")
-        #if title_article:
-            #title_article = remove_non_ascii(title_article)
+        # if title_article:
+        #     title_article = remove_non_ascii(title_article)
 
         description = []
         try:
@@ -584,7 +578,7 @@ def fetch_lines(fullpath, lines):
         elif 'itv' in fullpath:
             broadcast_company = '20425'
             print(f"Broadcast company set to ITV in {fullpath}")
-        elif 'more4' in fullpath or 'film4' in fullpath or 'channel4' in fullpath or 'e4' in fullpath:
+        elif 'more4' in fullpath or 'film4' in fullpath or 'channel4' in fullpath or '/e4/' in fullpath:
             broadcast_company = '73319'
             print(f"Broadcast company set to Channel4 in {fullpath}")
         elif '5star' in fullpath or 'five' in fullpath:
@@ -753,6 +747,7 @@ def main():
                         hit_count = series_return[0]
                         series_work_id = series_return[1]
                     except Exception:
+                        print(f"CID Series data not retrieved: {epg_dict['series_id']}")
                         series_work_id = ''
                         hit_count = ''
 
@@ -761,7 +756,9 @@ def main():
                         # Launch create series function
                         series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict)
                         if not series_work_id:
-                            logger.warning("Creation of series failed in create_series() function.")
+                            logger.warning("Skipping further actions: Creation of series failed as no series_work_id found.")
+                            continue
+
                 # Create Work
                 new_work = True
                 work_values = []
@@ -780,6 +777,22 @@ def main():
             if not work_priref.isnumeric() and new_work is True:
                 print(f"Work error, priref not numeric from new file creation: {work_priref}")
                 continue
+
+            work_genres = []
+            if 'work_genre_one' in epg_dict:
+                work_genres.append({'content.genre.lref': epg_dict['work_genre_one']})
+            if 'work_genre_two' in epg_dict:
+                work_genres.append({'content.genre.lref': epg_dict['work_genre_two']})
+            if 'work_subject_one' in epg_dict:
+                work_genres.append({'content.subject.lref': epg_dict['work_subject_one']})
+            if 'work_subject_two' in epg_dict:
+                work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
+
+            print(f"Attempting to write Work genres and subjects to record {work_genres}")
+            if 'content.' in work_genres:
+                success = push_genre_payload(work_priref, work_genres)
+                if not success:
+                    logger.warning("Unable to write Work genre %s", err)
 
             # Create CID manifestation record
             manifestation_values = []
@@ -802,10 +815,10 @@ def main():
             item_values.extend(rec_def)
             item_values.extend(item_def)
 
-            item_object_number = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, webvtt_payload, epg_dict)
-            print(f"item_object_number: {item_object_number}")
+            item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict)
+            print(f"item_object_number: {item_data}")
 
-            if not item_object_number:
+            if item_data is None or item_data[1] == '':
                 print(f"CID Item object number not retrieved for manifestation: {manifestation_priref}")
                 if new_work:
                     print(f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}")
@@ -813,6 +826,11 @@ def main():
                 else:
                     print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
                     continue
+
+            # Build webvtt payload
+            success = push_payload(item_data[1], webvtt_payload)
+            if not success:
+                logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_data[1], webvtt_payload)
 
             # Rename JSON with .documented
             documented = f'{fullpath}.documented'
@@ -824,7 +842,7 @@ def main():
                 logger.warning('%s\tCould not rename to %s. Error: %s', fullpath, documented, err)
 
             # Rename transport stream file with Item object number and move to autoingest
-            item_object_number_underscore = item_object_number.replace('-', '_')
+            item_object_number_underscore = item_data[0].replace('-', '_')
             new_filename = f'{item_object_number_underscore}_01of01.ts'
             destination = f'{AUTOINGEST_PATH}{new_filename}'
             print(f'* Renaming {acquired_filename} to {destination}')
@@ -836,7 +854,7 @@ def main():
                 logger.warning('%s\tCould not rename & move %s to %s. Error: %s', fullpath, acquired_filename, destination, err)
 
             # Rename .vtt subtitle file with Item object number and move to Isilon for use later in MTQ workflow
-            if webvtt_payload and item_object_number:
+            if webvtt_payload and item_data[1]:
                 old_vtt = os.path.join(root, "subtitles.vtt")
                 new_vtt_name = f'{item_object_number_underscore}_01of01.vtt'
                 new_vtt = f'{SUBS_PTH}{new_vtt_name}'
@@ -856,13 +874,14 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
     Call function series_check(series_id) and build all data needed
     to make new series. Return boole for success/fail
     '''
+
     series_work_id = ''
     series_data = series_check(epg_dict['series_id'])
-    if not series_data:
+    if not series_data[4]:
         print("Attempting to retrieve series data from EPG API using retrieve(fullpath)")
         retrieve(fullpath)
         series_data = series_check(epg_dict['series_id'])
-    if not series_data:
+    if not series_data[4]:
         print("No series data found in CID or in cache")
         return None
 
@@ -986,44 +1005,43 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
             print("Series description LONGEST will not be added to series_work_values")
 
     # Start creating CID Work Series record
-    try:
-        print("Attempting to create CID record")
-        w = cur.create_record(database='works',
-                              data=series_work_values,
-                              output='json',
-                              write=True)
-        if w.records:
-            try:
-                print("Populating series_work_id and object_number variables")
-                series_work_id = w.records[0]['priref'][0]
-                object_number = w.records[0]['object_number'][0]
-                print(f'* Series record created with Priref {series_work_id}')
-                print(f'* Series record created with Object number {object_number}')
-                logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
-                try:
-                    if len(str(series_genre_one)) > 0:
-                        series_work_genres = ([{'content.genre.lref': str(series_genre_one)}])
-                    if len(str(series_genre_two)) > 0:
-                        series_work_genres.append({'content.genre.lref': str(series_genre_two)})
-                    if len(str(series_subject_one)) > 0:
-                        series_work_genres.append({'content.subject.lref': str(series_subject_one)})
-                    if len(str(series_subject_two)) > 0:
-                        series_work_genres.append({'content.subject.lref': str(series_subject_two)})
-                    print("Attempting to write series work genres and subjects to records")
-                    g = cur.create_occurrences(database='works',
-                                               priref=series_work_id,
-                                               data=series_work_genres,
-                                               output='json')
-                except Exception as err:
-                    print("Unable to write series genre", err)
-                return series_work_id
-            except Exception as err:
-                print("Unable to create series record", err)
-                return None
-    except Exception as err:
-        print(f'* Unable to create Work record for <{series_title_full}> {err}')
-        logger.critical('%s\tUnable to create Work record for <%s>', fullpath, series_title_full)
+    series_values_xml = cur.create_record_data(data=series_work_values)
+    if series_values_xml is None:
         return None
+    print("***************************")
+    print(series_values_xml)
+
+    try:
+        logger.info("Attempting to create CID series record for %s", series_title_full)
+        data = push_record_create(series_values_xml, 'works', 'insertrecord')
+        if data[0] and data[1]:
+            series_work_id = data[0]
+            object_number = data[1]
+            print(f'* Series record created with Priref {series_work_id}')
+            print(f'* Series record created with Object number {object_number}')
+            logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
+        else:
+            return None
+    except Exception as err:
+        print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
+        logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+        return None
+
+    series_work_genres = []
+    if len(str(series_genre_one)) > 0:
+        series_work_genres.append({'content.genre.lref': str(series_genre_one)})
+    if len(str(series_genre_two)) > 0:
+        series_work_genres.append({'content.genre.lref': str(series_genre_two)})
+    if len(str(series_subject_one)) > 0:
+        series_work_genres.append({'content.subject.lref': str(series_subject_one)})
+    if len(str(series_subject_two)) > 0:
+        series_work_genres.append({'content.subject.lref': str(series_subject_two)})
+
+    print(f"Attempting to write series work genres and subjects to records {series_work_genres}")
+    if 'content.' in series_work_genres:
+        success = push_genre_payload(series_work_id, series_work_genres)
+        if not success:
+            logger.warning("Unable to write series genre %s", err)
 
     return series_work_id
 
@@ -1133,7 +1151,6 @@ def build_webvtt_dct(old_webvtt):
     return webvtt_payload.replace("\'", "'")
 
 
-@tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
 def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict):
     '''
     Create work records
@@ -1145,10 +1162,10 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         work_values.append({'part_of_reference.lref': series_work_id})
     if 'episode_number' in epg_dict:
         ep_num = epg_dict['episode_number']
-        if len(ep_num) == 1:
+        if isinstance(ep_num, str):
             work_values.append({'part_unit': 'EPISODE'})
             work_values.append({'part_unit.value': ep_num})
-        elif len(ep_num) > 1:
+        if isinstance(ep_num, list):
             work_values.append({'part_unit': 'EPISODE'})
             work_values.append({'part_unit.value': ep_num[0]})
             try:
@@ -1210,39 +1227,23 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
             work_values.append({'utb.content': csv_dump})
 
     work_id = ''
+    work_values_xml = cur.create_record_data(data=work_values)
+    if work_values_xml is None:
+        return None
     print("***************************")
-    print(work_values)
+    print(work_values_xml)
+
     try:
-        w = cur.create_record(database='works',
-                              data=work_values,
-                              output='json',
-                              write=True)
-        if w.records:
-            try:
-                work_id = w.records[0]['priref'][0]
-                object_number = w.records[0]['object_number'][0]
-                print(f'* Work record created with Priref {work_id} Object number {object_number}')
-                logger.info('%s\tWork record created with priref %s', fullpath, work_id)
-                if 'work_genre_one' in epg_dict:
-                    work_genres = ([{'content.genre.lref': epg_dict['work_genre_one']}])
-                if 'work_genre_two' in epg_dict:
-                    work_genres.append({'content.genre.lref': epg_dict['work_genre_two']})
-                if 'work_subject_one' in epg_dict:
-                    work_genres.append({'content.subject.lref': epg_dict['work_subject_one']})
-                if 'work_subject_two' in epg_dict:
-                    work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
-                print(f"Attempting to write Work genres and subjects to record {work_genres}")
-                try:
-                    g = cur.create_occurrences(database='works',
-                                               priref=work_id,
-                                               data=work_genres,
-                                               output='json')
-
-                except Exception as err:
-                    print(f"Unable to write work genres to Work record {err}")
-            except Exception as err:
-                print(f"Work id is not present or work genre failed to append to record- error: {err}")
-
+        logger.info("Attempting to create Work record for item %s", epg_dict['title'])
+        data = push_record_create(work_values_xml, 'works', 'insertrecord')
+        if data[0]:
+            work_id = data[0]
+            object_number = data[1]
+            print(f'* Work record created with Priref {work_id} Object number {object_number}')
+            logger.info('%s\tWork record created with priref %s', fullpath, work_id)
+        else:
+            print("Creation of record failed using method Requests: 'works', 'insertrecord'")
+            return None
     except Exception as err:
         print(f"* Unable to create Work record for <{epg_dict['title']}>")
         print(err)
@@ -1250,17 +1251,31 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         logger.critical(err)
         return None
 
+    work_genres = []
+    if 'work_genre_one' in epg_dict:
+        work_genres.append({'content.genre.lref': epg_dict['work_genre_one']})
+    if 'work_genre_two' in epg_dict:
+        work_genres.append({'content.genre.lref': epg_dict['work_genre_two']})
+    if 'work_subject_one' in epg_dict:
+        work_genres.append({'content.subject.lref': epg_dict['work_subject_one']})
+    if 'work_subject_two' in epg_dict:
+        work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
+
+    print(f"Attempting to write Work genres and subjects to record {work_genres}")
+    if 'content.' in work_genres:
+        success = push_genre_payload(work_id, work_genres)
+        if not success:
+            logger.warning("Unable to write Work genre %s", err)
+
     return work_id
 
 
-@tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
 def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict):
     '''
     Create a manifestation record,
     linked to work_priref
     '''
     manifestation_id = ''
-    print(epg_dict)
     title = epg_dict['title']
     manifestation_values = []
     manifestation_values.extend(manifestation_defaults)
@@ -1273,28 +1288,28 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     if 'epg_attribute' in epg_dict:
         manifestation_values.append({'utb.fieldname': 'EPG attributes'})
         manifestation_values.append({'utb.content': epg_dict['epg_attribute']})
+    if 'broadcast_company' in epg_dict:
+        manifestation_values.append({'broadcast_company.lref': epg_dict['broadcast_company']})
     if 'duration_total' in epg_dict:
         manifestation_values.append({'transmission_duration': epg_dict['duration_total']})
         manifestation_values.append({'runtime': epg_dict['duration_total']})
 
-    broadcast_addition = []
-    print("******************************")
-    print(manifestation_values)
+    man_values_xml = cur.create_record_data(data=manifestation_values)
+    if man_values_xml is None:
+        return None
+    print("***************************")
+    print(man_values_xml)
+
     try:
-        m = cur.create_record(database='manifestations',
-                              data=manifestation_values,
-                              output='json',
-                              write=True)
-        if m.records:
-            try:
-                manifestation_id = m.records[0]['priref'][0]
-                object_number = m.records[0]['object_number'][0]
-                print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
-                logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
-            except Exception as err:
-                print(f'* Unable to create Manifestation record for <{title}>, {err}')
-                logger.critical('%s\tUnable to create Manifestation record for <%s>', fullpath, title)
-                raise
+        logger.info("Attempting to create Manifestation record for item %s", title)
+        data = push_record_create(man_values_xml, 'manifestations', 'insertrecord')
+        if data[0] and data[1]:
+            manifestation_id = data[0]
+            object_number = data[1]
+            print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
+            logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
+        else:
+            return None
 
     except Exception as err:
         if 'bool' in str(err):
@@ -1305,24 +1320,10 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         logger.critical("Unable to write manifestation record <%s> %s", manifestation_id, err)
         raise
 
-    # Create an occurrence of broadcast_company after record creation
-    if 'broadcast_company' not in epg_dict:
-        return manifestation_id, object_number
-    broadcast_addition = ([{'broadcast_company.lref': epg_dict['broadcast_company']}])
-
-    try:
-        b = cur.create_occurrences(database='manifestations',
-                                   priref=manifestation_id,
-                                   data=broadcast_addition,
-                                   output='json')
-    except Exception as err:
-        print("Unable to write broadcast company data", err)
-
     return manifestation_id
 
 
-@tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, webvtt_payload, epg_dict):
+def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, epg_dict):
     '''
     Create CID Item record
     '''
@@ -1337,79 +1338,183 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
             item_values.append({'title.article': title_article})
     except (KeyError, IndexError, TypeError):
         print("Title article is not present")
+
+    item_values_xml = cur.create_record_data(data=item_values)
+    if item_values_xml is None:
+        return None
+    print("***************************")
+    print(item_values_xml)
+
     try:
-        i = cur.create_record(database='items',
-                              data=item_values,
-                              output='json',
-                              write=True)
-
-        if i.records:
-            print(i.records[0])
-            try:
-                item_id = i.records[0]['priref'][0]
-                item_object_number = i.records[0]['object_number'][0]
-                print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
-                logger.info('%s\tItem record created with priref %s', fullpath, item_id)
-            except Exception as err:
-                logger.warning("Item data could not be retrieved from the record <%s> %s", file, err)
-
-        # Build webvtt payload
-        success = push_payload(item_id, webvtt_payload)
-        if not success:
-            logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
-
+        logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
+        data = push_record_create(item_values_xml, 'items', 'insertrecord')
+        if data[0] and data[1]:
+            item_id = data[0]
+            item_object_number = data[1]
+            print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
+            logger.info('%s\tItem record created with priref %s', fullpath, item_id)
+        else:
+            data = None
     except Exception as error_exp:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath} {error_exp}")
+        data = None
 
-        # Update manifestation records with deletion prompt in title
-        manifestation = f'''<record>
-                            <priref>{int(manifestation_id)}</priref>
-                            <title>DELETE - STORA record creation problem</title>
-                            </record>'''
-        payload = etree.tostring(etree.fromstring(manifestation))
+    if data is None:
+        logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
+        print(f"** PROBLEM: Unable to create Item record for {fullpath}")
+
+        success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id)
+        logger.warning("Data cleaned following failure of Item record creation: %s", success)
+        return None
+
+    return item_object_number, item_id
+
+
+def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
+    '''
+    Item record creation failed
+    Update manifestation records with deletion prompt in title
+    '''
+    manifestation = f'''<record>
+                        <priref>{int(manifestation_id)}</priref>
+                        <title>DELETE - STORA record creation problem</title>
+                        </record>'''
+    payload = etree.tostring(etree.fromstring(manifestation))
+
+    try:
+        r = cur._write('collect', payload)
+        if not r.error:
+            logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
+        else:
+            logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
+    except Exception as err:
+        logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title. Error: %s', fullpath, manifestation_id, err)
+
+    # Update work record with deletion prompt in title
+    if new_work is True:
+        work = f'''<record>
+                   <priref>{int(work_id)}</priref>
+                   <title>DELETE - STORA record creation problem</title>
+                   </record>'''
+        payload = etree.tostring(etree.fromstring(work))
 
         try:
-            # This may fail in python3
             r = cur._write('collect', payload)
             if not r.error:
-                logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
+                logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
             else:
-                logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
+                logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
         except Exception as err:
-            logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title. Error: %s', fullpath, manifestation_id, err)
+            logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion. Error: %s', fullpath, work_id, err)
 
-        # Update work record with deletion prompt in title
-        if new_work is True:
-            work = f'''<record>
-                       <priref>{int(work_id)}</priref>
-                       <title>DELETE - STORA record creation problem</title>
-                       </record>'''
-            payload = etree.tostring(etree.fromstring(work))
+    # Rename JSON with .PROBLEM to prevent retry
+    problem = f'{fullpath}.PROBLEM'
+    print(f'* Renaming {fullpath} to {problem}')
+    logger.info('%s\t Renaming JSON to %s', fullpath, problem)
+    try:
+        os.rename(fullpath, problem)
+    except Exception as err:
+        print(f'** PROBLEM: Could not rename {fullpath} to {problem}')
+        logger.critical('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
 
-            try:
-                # This may fail in python3
-                r = cur._write('collect', payload)
-                if not r.error:
-                    logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
-                else:
-                    logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
-            except Exception as err:
-                logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion. Error: %s', fullpath, work_id, err)
-                print(err)
+    if os.path.exists(problem):
+        return True
 
 
-        # Rename JSON with .PROBLEM to prevent retry
-        problem = f'{fullpath}.PROBLEM'
-        print(f'* Renaming {fullpath} to {problem}')
-        logger.info('%s\t Renaming JSON to %s', fullpath, problem)
-        try:
-            os.rename(fullpath, f"{fullpath}.PROBLEM")
-        except Exception as err:
-            print(f'** PROBLEM: Could not rename {fullpath} to {problem}')
-            logger.critical('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
+def push_record_create(payload, database, method):
+    '''
+    Receive adlib formed XML but use
+    requests to create the CID record
+    '''
+    params = {
+        'command': method,
+        'database': database,
+        'xmltype': 'grouped',
+        'output': 'json'
+    }
 
-    return item_object_number
+    headers = {'Content-Type': 'text/xml'}
+
+    try:
+        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
+    except Exception as err:
+        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
+        print(err)
+        return None
+    print(f"Record list: {response.text}")
+    if 'recordList' in response.text:
+        records = json.loads(response.text)
+        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
+        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
+        return priref, object_number
+    return None
+
+
+def push_genre_payload(work_id, genre_dict):
+    '''
+    Push genre/subject payload separately to work record
+    '''
+    pay_head = f'<adlibXML><recordList><record priref="{work_id}">'
+    payload = pay_head
+    for dct in genre_dict:
+        for key, value in dct.items():
+            pay_addition = f'<{key}>{value}</{key}>'
+            payload = payload + pay_addition
+    pay_end = '</record></recordList></adlibXML>'
+    payload = payload + pay_end
+    print(f"GENRE PAYLOAD: \n{payload}")
+
+    lock_success = write_lock(work_id)
+    if lock_success:
+        post_response = requests.request(
+            'POST',
+            CID_API,
+            params={'database': 'works', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
+            data = {'data': payload},
+            timeout=1200)
+        if '<error><info>' in str(post_response.text):
+            logger.warning('push_genre_payload(): Error returned from requests post: %s %s', work_id, payload)
+            print(post_response.text)
+            unlock_record(work_id)
+            return False
+        else:
+            logger.info('push_genre_payload(): No error warning in requests post return. Payload written.')
+            return True
+    else:
+        logger.warning('push_genre_payload()): Unable to lock item record %s', work_id)
+        return False
+
+
+def push_broadcast_payload(man_id, broadcast_company):
+    '''
+    Push broadcast company payload separately to Man record
+    '''
+    # Make payload
+    pay_head = f'<adlibXML><recordList><record priref="{man_id}">'
+    pay_addition = f'<broadcast_company.lref>{broadcast_company}</broadcast_company.lref>'
+    pay_end = '</record></recordList></adlibXML>'
+    payload = pay_head + pay_addition + pay_end
+
+    lock_success = write_lock(man_id)
+    if lock_success:
+        post_response = requests.request(
+            'POST',
+            CID_API,
+            params={'database': 'manifestations', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
+            data = {'data': payload},
+            timeout=1200)
+        if '<error><info>' in str(post_response.text):
+            logger.warning('push_broadcast_payload(): Error returned from requests post: %s %s', man_id, payload)
+            print(post_response.text)
+            unlock_record(man_id)
+            return False
+        else:
+            logger.info('push_broadcast_payload(): No error warning in requests post return. Payload written.')
+            return True
+    else:
+        logger.warning('push_broadcast_payload()): Unable to lock item record %s', man_id)
+        return False
 
 
 def push_payload(item_id, webvtt_payload):
@@ -1423,7 +1528,7 @@ def push_payload(item_id, webvtt_payload):
     pay_head = f'<adlibXML><recordList><record priref="{item_id}">'
     label_type_addition = f'<label.type>{label_type}</label.type>'
     label_addition = f'<label.source>{label_source}</label.source><label.text><![CDATA[{webvtt_payload}]]></label.text>'
-    pay_end = '</record></recordList></adlibXML>'
+    pay_end = f'</record></recordList></adlibXML>'
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     lock_success = write_lock(item_id)
@@ -1431,8 +1536,7 @@ def push_payload(item_id, webvtt_payload):
         post_response = requests.post(
             CID_API,
             params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data = {'data': payload},
-            timeout=120)
+            data = {'data': payload})
         if '<error><info>' in str(post_response.text):
             logger.warning('push_payload(): Error returned from requests post: %s %s', item_id, payload)
             print(post_response.text)
@@ -1446,7 +1550,7 @@ def push_payload(item_id, webvtt_payload):
         return False
 
 
-def write_lock(item_id):
+def write_lock(priref):
     '''
     Lock Item record for requests push of XML data
     '''
@@ -1454,15 +1558,15 @@ def write_lock(item_id):
         print(f"Start record lock {str(datetime.datetime.now())}")
         response = requests.post(
             CID_API,
-            params={'database': 'items', 'command': 'lockrecord', 'priref': f'{item_id}', 'output': 'json'},
+            params={'database': 'items', 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'},
             timeout=1200)
         print(f"End record lock {str(datetime.datetime.now())}")
         return True
     except Exception as err:
-        logger.warning('write_lock(): Failed to lock Item %s \n%s\n%s', item_id, err, response.text)
+        logger.warning('write_lock(): Failed to lock Item %s, %s', priref, err)
 
 
-def unlock_record(item_id):
+def unlock_record(priref):
     '''
     Manage failed Request push
     Unlock item record again
@@ -1471,12 +1575,12 @@ def unlock_record(item_id):
         print(f"Start record unlock {str(datetime.datetime.now())}")
         response = requests.post(
             CID_API,
-            params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{item_id}', 'output': 'json'},
+            params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'},
             timout=1200)
         print(f"End record unlock {str(datetime.datetime.now())}")
         return True
     except Exception as err:
-        logger.warning('unlock_record(): Failed to unlock Item record %s\n%s\n', item_id, err, response.text)
+        logger.warning('unlock_record(): Failed to unlock Item record %s, %s', priref, err)
 
 
 if __name__ == '__main__':

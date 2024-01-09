@@ -1,3 +1,4 @@
+
 #!/usr/bin/env/python3
 
 '''
@@ -39,7 +40,7 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_STORA = os.path.join(os.environ['CODE'], 'stora_control.json')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
-CID_API = os.environ['CID_API']
+CID_API = os.environ['CID_API3']
 cid = adlib.Database(url=CID_API)
 cur = adlib.Cursor(cid)
 
@@ -105,11 +106,11 @@ def csv_retrieve(fullpath):
         return None
 
     with open(fullpath, 'rb') as inf:
-        rows = unicodecsv.reader(inf, encoding='cp1252')
+        rows = unicodecsv.reader(inf, encoding='latin1')
         for row in rows:
             print(row)
-            csv_desc = remove_non_ascii(row[2])
-            title = remove_non_ascii(row[1])
+            # csv_desc = remove_non_ascii(row[2])
+            # title = remove_non_ascii(row[1])
             data = {'channel': row[0], 'title': title, 'description': csv_desc, \
                     'title_date_start': row[3], 'time': row[4], 'duration': row[5], 'actual_duration': row[6]}
             logger.info('%s\tCSV being processed: %s', fullpath, data['title'])
@@ -171,7 +172,7 @@ def generate_variables(data):
     return (title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company)
 
 
-def build_defaults(title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel):
+def build_defaults(title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company):
     '''
     Get detailed information
     and build record_defaults dict
@@ -219,6 +220,7 @@ def build_defaults(title, description, title_date_start, time, duration_total, a
                       {'runtime': actual_duration_total},
                       {'runtime_seconds': actual_duration_seconds_integer},
                       {'broadcast_channel': channel},
+                      {'broadcast_company.lref': broadcast_company},
                       {'transmission_coverage': 'DIT'},
                       {'aspect_ratio': '16:9'},
                       {'country_manifestation': 'United Kingdom'},
@@ -252,7 +254,7 @@ def main():
             # Check control json for STORA false
             check_control()
 
-            if not file.endswith(('.redux', '.stora')):
+            if not file.endswith('.stora'):
                 continue
 
             fullpath = os.path.join(root, file)
@@ -263,25 +265,48 @@ def main():
                 print(f'* Data parsed from csv: {data}')
 
             # Create variables from csv sources
-            title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company = generate_variables(data)
+            variable_data = generate_variables(data)
+            title = data[0]
+            description = data[1]
+            title_date_start = data[2]
+            time = data[3]
+            duration_total = data[4]
+            actual_duration_total = data[5]
+            actual_duration_seconds_integer = data[6]
+            channel = data[7]
+            broadcast_company = data[8]
             acquired_filename = os.path.join(root, 'stream.mpeg2.ts')
 
             # Create defaults for all records in hierarchy
-            record, work, work_restricted, manifestation, item = build_defaults(title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel)
+            record, work, work_restricted, manifestation, item = build_defaults(
+                                                                     title,
+                                                                     description,
+                                                                     title_date_start,
+                                                                     time,
+                                                                     duration_total,
+                                                                     actual_duration_total,
+                                                                     actual_duration_seconds_integer,
+                                                                     channel,
+                                                                     broadcast_company)
 
             # create a Work-Manifestation CID record hierarchy
             work_id = create_work(fullpath, title, record, work, work_restricted)
-            man_id = create_manifestation(broadcast_company, work_id, fullpath, title, record, manifestation)
+            man_id = create_manifestation(work_id, fullpath, title, record, manifestation)
 
             # Create CID record for Item, first managing subtitles text if present
             old_webvtt = os.path.join(root, "subtitles.vtt")
             webvtt_payload = build_webvtt_dct(old_webvtt)
 
-            item_id, item_ob_num = create_item(man_id, fullpath, title, acquired_filename, record, item, webvtt_payload)
+            item_id, item_ob_num = create_item(man_id, fullpath, title, acquired_filename, record, item)
             if not item_id:
                 print('* Item record failed to create. Marking Work and Manifestation with DELETE warning')
                 mark_for_deletion(work_id, man_id, fullpath)
                 continue
+
+            # Build webvtt payload
+            success = push_payload(item_id, webvtt_payload)
+            if not success:
+                logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_data[1], webvtt_payload)
 
             # Rename csv with .documented
             documented = f'{fullpath}.documented'
@@ -333,30 +358,35 @@ def create_work(fullpath, title, record_defaults, work_defaults, work_restricted
     work_values.extend(record_defaults)
     work_values.extend(work_defaults)
     work_values.extend(work_restricted_defaults)
+
+    work_values_xml = cur.create_record_data(data=work_values)
+    if work_values_xml is None:
+        return None
+    print("***************************")
+    print(work_values_xml)
+
     try:
-        wrec = cur.create_record(database='works',
-                                 data=work_values,
-                                 output='json',
-                                 write=True)
-        if wrec.records:
-            try:
-                work_id = wrec.records[0]['priref'][0]
-                object_number = wrec.records[0]['object_number'][0]
-                print(f'* Work record created with Priref {work_id}')
-                logger.info('%s\tWork record created with priref %s object_number %s', fullpath, work_id, object_number)
-
-            except Exception as err:
-                logger.warning('Unable to create work record. Error: %s', err)
-                raise
-
+        logger.info("Attempting to create Work record for item %s", title)
+        data = push_record_create(work_values_xml, 'works', 'insertrecord')
+        if data:
+            work_id = data[0]
+            object_number = data[1]
+            print(f'* Work record created with Priref {work_id} Object number {object_number}')
+            logger.info('%s\tWork record created with priref %s', fullpath, work_id)
+        else:
+            print(f"Creation of record failed using method Requests: 'works', 'insertrecord'\n{work_values_xml}")
+            return None
     except Exception as err:
-        print(f'* Unable to create Work record for <{title}> {err}')
+        print(f"* Unable to create Work record for <{epg_dict['title']}>")
+        print(err)
         logger.critical('%s\tUnable to create Work record for <%s>', fullpath, title)
-        raise
+        logger.critical(err)
+        return None
+
     return work_id
 
 
-def create_manifestation(broadcast_company, work_id, fullpath, title, record_defaults, manifestation_defaults):
+def create_manifestation(work_id, fullpath, title, record_defaults, manifestation_defaults):
 
     '''
     Create CID record for Manifestation
@@ -367,42 +397,60 @@ def create_manifestation(broadcast_company, work_id, fullpath, title, record_def
     manifestation_values.extend(manifestation_defaults)
     manifestation_values.append({'part_of_reference.lref': work_id})
 
+    man_values_xml = cur.create_record_data(data=manifestation_values)
+    if man_values_xml is None:
+        return None
+    print("***************************")
+    print(man_values_xml)
+
     try:
-        mrec = cur.create_record(database='manifestations',
-                                 data=manifestation_values,
-                                 output='json',
-                                 write=True)
-
-        if mrec.records:
-            try:
-                manifestation_id = mrec.records[0]['priref'][0]
-                object_number = mrec.records[0]['object_number'][0]
-                print(f'* Manifestation record created with Priref {manifestation_id}')
-                logger.info('%s\tManifestation record created with priref %s object_number %s', fullpath, manifestation_id, object_number)
-
-            except Exception as err:
-                print(f'* Unable to create Manifestation record for <{title}>. {err}')
-                logger.critical('%s\tUnable to create Manifestation record for <%s>. Error: %s', fullpath, title, err)
-                raise
+        logger.info("Attempting to create Manifestation record for item %s", title)
+        data = push_record_create(man_values_xml, 'manifestations', 'insertrecord')
+        if data:
+            manifestation_id = data[0]
+            object_number = data[1]
+            print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
+            logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
 
     except Exception as err:
-        logger.critical('Manfestation record creation failed. Error: %s', err)
+        if 'bool' in str(err):
+            logger.critical("Unable to write manifestation record <%s>", manifestation_id)
+            print(f"Unable to write manifestation record - error: {err}")
+            return None
+        print(f"*** Unable to write manifestation record: {err}")
+        logger.critical("Unable to write manifestation record <%s> %s", manifestation_id, err)
         raise
 
-    # Create an occurrence of broadcast_company after record creation
-    if broadcast_company:
-        broadcast_addition = ([{'broadcast_company.lref': broadcast_company}])
-        try:
-            bc = cur.create_occurrences(database='manifestations',
-                                        priref=manifestation_id,
-                                        data=broadcast_addition,
-                                        output='json')
-            print(f"* Broadcast Company data successfully written {bc}")
-        except Exception as err:
-            print(f"Unable to write broadcast company data {err}")
-            logger.warning("Unable to write broadcast company data to Manifestation %s", manifestation_id)
-
     return manifestation_id
+
+
+def push_record_create(payload, database, method):
+    '''
+    Receive adlib formed XML but use
+    requests to create the CID record
+    '''
+    params = {
+        'command': method,
+        'database': database,
+        'xmltype': 'grouped',
+        'output': 'json'
+    }
+
+    headers = {'Content-Type': 'text/xml'}
+
+    try:
+        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
+    except Exception as err:
+        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
+        print(err)
+        return None
+    print(f"Record list: {response.text}")
+    if 'recordList' in response.text:
+        records = json.loads(response.text)
+        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
+        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
+        return priref, object_number
+    return None
 
 
 def build_webvtt_dct(old_webvtt):
@@ -445,27 +493,20 @@ def create_item(manifestation_id, fullpath, title, acquired_filename, record_def
     item_values.append({'part_of_reference.lref': manifestation_id})
     item_values.append({'digital.acquired_filename': acquired_filename})
 
+    item_values_xml = cur.create_record_data(data=item_values)
+    if item_values_xml is None:
+        return None
+    print("***************************")
+    print(item_values_xml)
+
     try:
-        irec = cur.create_record(database='items',
-                                 data=item_values,
-                                 output='json',
-                                 write=True)
-
-        if irec.records:
-            try:
-                item_id = irec.records[0]['priref'][0]
-                item_object_number = irec.records[0]['object_number'][0]
-                print(f'* Item record created with Priref {item_id}')
-                logger.info('%s\tItem record created with priref %s', fullpath, item_id)
-
-            except Exception as err:
-                print(f"<{title}> could not be written, error in block {err} {item_values}")
-                logger.warning('<%s> could not be written, error in block: %s', title, err)
-
-            # Build webvtt payload
-            success = push_payload(item_id, webvtt_payload)
-            if not success:
-                logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
+        logger.info("Attempting to create CID item record for item %s", title)
+        data = push_record_create(item_values_xml, 'items', 'insertrecord')
+        if data:
+            item_id = data[0]
+            item_object_number = data[1]
+            print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
+            logger.info('%s\tItem record created with priref %s', fullpath, item_id)
 
     except Exception as err:
         print(f'** PROBLEM: Unable to create Item record for <{title}> {err}')
@@ -515,7 +556,7 @@ def push_payload(item_id, webvtt_payload):
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     '''
-    utb_fieldname = 'Subtitles - WebVTT'
+
     label_type = 'SUBWEBVTT'
     label_source = 'Extracted from MPEG-TS created by STORA recording'
     # Make payload
@@ -568,7 +609,7 @@ def unlock_record(item_id):
             params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{item_id}', 'output': 'json'})
         return True
     except Exception as err:
-        logger.warning('unlock_record(): Failed to unlock Item record %s\n%s\n', item_id, err, response.text)
+        logger.warning('unlock_record(): Failed to unlock Item record %s\n%s', item_id, err)
 
 
 if __name__ == '__main__':

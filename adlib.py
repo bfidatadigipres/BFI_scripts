@@ -1,5 +1,4 @@
-#!/usr/bin/python3.8
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 '''
 Python interface for [Adlib API]
@@ -397,7 +396,7 @@ class Cursor:
 
         return grouped_data
 
-    def _write(self, database, payload, method='updaterecord', output=None, params=None):
+    def _write(self, database, payload, method=None, output=None, params=None):
         '''
         POST payload string to record
         '''
@@ -487,6 +486,7 @@ class Cursor:
 
         # Convert record to XML string payload
         edited_record = etree.tostring(record)
+        edited_record = edited_record.decode('utf-8')
         # Write data
         response = self._write(database, edited_record, output=output)
         return response
@@ -508,6 +508,7 @@ class Cursor:
             m.clear()
 
         edited_record = etree.tostring(record)
+        edited_record = edited_record.decode('utf-8')
 
         return self._write(database, edited_record, output=output)
 
@@ -547,6 +548,7 @@ class Cursor:
                 m.append(etree.fromstring(e))
 
         edited_record = etree.tostring(record)
+        edited_record = edited_record.decode('utf-8')
 
         return self._write(database, edited_record, output=output)
 
@@ -578,6 +580,7 @@ class Cursor:
 
         # Convert XML object to string
         payload = etree.tostring(record)
+        payload = payload.decode('utf-8')
         print(payload)
         print(params)
 
@@ -587,6 +590,36 @@ class Cursor:
             return response
         else:
             return payload
+
+    def create_record_data(self, data=None):
+        '''
+        Create a record from given XML string or dictionary (or list of dictionaries)
+        '''
+
+        # Handle all objects as list
+        if not isinstance(data, list):
+            data = [data]
+
+        # Create XML snippet
+        fragment = self._fragment(data)
+        if not fragment:
+            return False
+
+        # Create root
+        record = etree.XML('<record></record>')
+
+        # Append fragment elements to root
+        for i in fragment:
+            record.append(etree.fromstring(i))
+
+        # Insert `priref=0` element
+        record.append(etree.fromstring('<priref>0</priref>'))
+
+        # Convert XML object to string
+        payload = etree.tostring(record)
+        payload = payload.decode('utf-8')
+
+        return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
     def update_record(self, priref, database, data=None, output=None, params=None, write=True):
         '''
@@ -617,6 +650,7 @@ class Cursor:
 
         # Convert XML object to string
         payload = etree.tostring(record)
+        payload = payload.decode('utf-8')
         print(payload)
         # POST record
         if write:
@@ -644,6 +678,7 @@ class Cursor:
             e.text = value
 
         edited_record = etree.tostring(record)
+        edited_record = edited_record.decode('utf-8')
 
         response = self._write(database, edited_record, output=output, params=params)
         return response

@@ -44,8 +44,8 @@ YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
 START = f'{YESTERDAY_CLEAN}T00:00:00'
 END = f'{YESTERDAY_CLEAN}T23:59:00'
 # If a different date period needs targeting use:
-#START = '2023-07-05T00:00:00'
-#END = '2023-07-05T23:59:00'
+#START = '2024-01-03T00:00:00'
+#END = '2024-01-03T23:59:00'
 DATE_PATH = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
@@ -78,7 +78,6 @@ CHANNEL = {
     "itv3": os.environ['PA_ITV3'],
     "itv4": os.environ['PA_ITV4'],
     "itvbe": os.environ['PA_ITVBE'],
-    "citv": os.environ['PA_CITV'],
     "channel4": os.environ['PA_CHANNEL4'],
     "more4": os.environ['PA_MORE4'],
     "e4": os.environ['PA_E4'],

@@ -210,7 +210,7 @@ def main():
         sys.exit()
 
     part_whole = tar_source.split('_')[-1]
-    if not 'of' in str(part_whole):
+    if 'of' not in str(part_whole):
         LOGGER.warning("Exiting: Filename is not formatted correctly: %s", tar_source)
         log.append(f"Filename is not formatted correctly {tar_source}.\n \
                    Please ensure file is named with part whole data (eg, N_123456_01of01)")
@@ -338,9 +338,9 @@ def main():
         # Add deletion here
         try:
             os.remove(deletion_path)
-            LOGGER.info("File deleted: %s", deletions_path)
+            LOGGER.info("File deleted: %s", deletion_path)
         except Exception as err:
-            LOGGER.warning("WARNING: File could not be deleted %s", deletion_path)
+            LOGGER.warning("WARNING: File could not be deleted %s\n%s", deletion_path, err)
         LOGGER.info("Moving MD5 manifest to checksum_manifest folder")
         shutil.move(md5_manifest, checksum_path)
 
@@ -429,7 +429,7 @@ def write_payload(priref, payload):
         data={'data': payload})
 
     if "<error><info>" in str(post_response.text):
-        LOGGER.warning("write_payload(): Error returned for requests.post to %s\n%s", priref, payload)
+        LOGGER.warning("write_payload(): Error returned for requests.post to %s\n%s\n%s", priref, payload, post_response.text)
         return False
     else:
         LOGGER.info("No error warning in post_response. Assuming payload successfully written")
@@ -446,7 +446,7 @@ def unlock_record(priref):
             params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
         return True
     except Exception as err:
-        LOGGER.warning("unlock_record(): Post to unlock record failed. Check Media record %s is unlocked manually\n%s", priref, err)
+        LOGGER.warning("unlock_record(): Post to unlock record failed. Check Media record %s is unlocked manually\n%s\n%s", priref, err, post_response.text)
 
 
 if __name__ == '__main__':

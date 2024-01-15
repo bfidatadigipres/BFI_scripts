@@ -36,12 +36,11 @@ sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global variables
-STORAGE_PTH = os.environ.get('NETFLIX_INGEST_PTH') # QNAP_DIGI_OPS path QNAP-09
+STORAGE_PTH = os.environ.get('NETFLIX_INGEST_PTH')
 NET_INGEST = os.environ.get('NETFLIX_INGEST')
 AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
 STORAGE = os.path.join(STORAGE_PTH, 'svod/timed_text/')
 LOGS = os.environ.get('LOG_PATH')
-CODE = os.environ.get('CODE_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API')
 CID = adlib.Database(url=CID_API)
@@ -55,6 +54,17 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
+
+
+def check_control():
+    '''
+    Check for downtime control
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
+            sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
 def cid_check(object_number):
@@ -99,6 +109,8 @@ def main():
     read PKL XML for part whole order
     and check contents match Asset list.
     '''
+    check_control()
+
     folder_list = walk_netflix_folders()
     if len(folder_list) == 0:
         LOGGER.info("Netflix timed text record creation script. No folders found.")

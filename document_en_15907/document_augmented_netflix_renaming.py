@@ -85,6 +85,18 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
+
+def check_control():
+    '''
+    Check for downtime control
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
+            sys.exit("Script run prevented by downtime_control.json. Script exiting")
+
+
 def cid_check(imp_fname):
     '''
     Sends CID request for series_id data
@@ -157,6 +169,8 @@ def main():
     read PKL XML for part whole order
     and check contents match Asset list.
     '''
+    check_control()
+
     folder_list = walk_netflix_folders()
     if len(folder_list) == 0:
         LOGGER.info("Netflix IMP renaming script. No folders found.")

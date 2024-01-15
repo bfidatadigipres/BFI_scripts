@@ -37,7 +37,6 @@ STORAGE = os.environ['STORA_PATH']
 AUTOINGEST_PATH = os.environ['STORA_AUTOINGEST']
 CODE_PATH = os.environ['CODE_DDP']
 LOG_PATH = os.environ['LOG_PATH']
-CONTROL_STORA = os.path.join(os.environ['CODE'], 'stora_control.json')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
 CID_API = os.environ['CID_API3']
@@ -56,8 +55,8 @@ logger.setLevel(logging.INFO)
 TODAY = datetime.date.today()
 YEST = TODAY - datetime.timedelta(days=1)
 YEST_CLEAN = YEST.strftime('%Y-%m-%d')
-YEAR = YEST_CLEAN[0:4]
-# YEAR = '2022'
+# YEAR = YEST_CLEAN[0:4]
+YEAR = '2023'
 STORAGE_PATH = os.path.join(STORAGE, YEAR)
 
 
@@ -66,15 +65,9 @@ def check_control():
     Check for downtime control
     '''
 
-    with open(CONTROL_STORA) as control:
-        j = json.load(control)
-        if not j['stora_ingest']:
-            logger.info("Script run prevented by stora_control.json. Script exiting.")
-            sys.exit('Script run prevented by stora_control.json. Script exiting.')
-
     with open(CONTROL_JSON) as control:
         j = json.load(control)
-        if not j['pause_scripts']:
+        if not j['pause_scripts'] or not j['stora']:
             logger.info("Script run prevented by downtime_control.json. Script exiting.")
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
@@ -109,9 +102,7 @@ def csv_retrieve(fullpath):
         rows = unicodecsv.reader(inf, encoding='latin1')
         for row in rows:
             print(row)
-            # csv_desc = remove_non_ascii(row[2])
-            # title = remove_non_ascii(row[1])
-            data = {'channel': row[0], 'title': title, 'description': csv_desc, \
+            data = {'channel': row[0], 'title': row[1], 'description': row[2], \
                     'title_date_start': row[3], 'time': row[4], 'duration': row[5], 'actual_duration': row[6]}
             logger.info('%s\tCSV being processed: %s', fullpath, data['title'])
 
@@ -265,16 +256,16 @@ def main():
                 print(f'* Data parsed from csv: {data}')
 
             # Create variables from csv sources
-            variable_data = generate_variables(data)
-            title = data[0]
-            description = data[1]
-            title_date_start = data[2]
-            time = data[3]
-            duration_total = data[4]
-            actual_duration_total = data[5]
-            actual_duration_seconds_integer = data[6]
-            channel = data[7]
-            broadcast_company = data[8]
+            var_data = generate_variables(data)
+            title = var_data[0]
+            description = var_data[1]
+            title_date_start = var_data[2]
+            time = var_data[3]
+            duration_total = var_data[4]
+            actual_duration_total = var_data[5]
+            actual_duration_seconds_integer = var_data[6]
+            channel = var_data[7]
+            broadcast_company = var_data[8]
             acquired_filename = os.path.join(root, 'stream.mpeg2.ts')
 
             # Create defaults for all records in hierarchy
@@ -306,7 +297,7 @@ def main():
             # Build webvtt payload
             success = push_payload(item_id, webvtt_payload)
             if not success:
-                logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_data[1], webvtt_payload)
+                logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
 
             # Rename csv with .documented
             documented = f'{fullpath}.documented'
@@ -377,7 +368,7 @@ def create_work(fullpath, title, record_defaults, work_defaults, work_restricted
             print(f"Creation of record failed using method Requests: 'works', 'insertrecord'\n{work_values_xml}")
             return None
     except Exception as err:
-        print(f"* Unable to create Work record for <{epg_dict['title']}>")
+        print(f"* Unable to create Work record for <{title}>")
         print(err)
         logger.critical('%s\tUnable to create Work record for <%s>', fullpath, title)
         logger.critical(err)
@@ -481,7 +472,7 @@ def build_webvtt_dct(old_webvtt):
     return webvtt_payload.replace("\'", "'")
 
 
-def create_item(manifestation_id, fullpath, title, acquired_filename, record_defaults, item_defaults, webvtt_payload):
+def create_item(manifestation_id, fullpath, title, acquired_filename, record_defaults, item_defaults):
     '''
     Create item record, and if failure of item record
     creation then add delete warning to work and manifestation records
@@ -563,7 +554,7 @@ def push_payload(item_id, webvtt_payload):
     pay_head = f'<adlibXML><recordList><record priref="{item_id}">'
     label_type_addition = f'<label.type>{label_type}</label.type>'
     label_addition = f'<label.source>{label_source}</label.source><label.text><![CDATA[{webvtt_payload}]]></label.text>'
-    pay_end = f'</record></recordList></adlibXML>'
+    pay_end = '</record></recordList></adlibXML>'
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     lock_success = write_lock(item_id)
@@ -593,9 +584,10 @@ def write_lock(item_id):
         response = requests.post(
             CID_API,
             params={'database': 'items', 'command': 'lockrecord', 'priref': f'{item_id}', 'output': 'json'})
+        print(response.text)
         return True
     except Exception as err:
-        logger.warning('write_lock(): Failed to lock Item %s \n%s\n%s', item_id, err, response.text)
+        logger.warning('write_lock(): Failed to lock Item %s \n%s', item_id, err)
 
 
 def unlock_record(item_id):
@@ -607,6 +599,7 @@ def unlock_record(item_id):
         response = requests.post(
             CID_API,
             params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{item_id}', 'output': 'json'})
+        print(response.text)
         return True
     except Exception as err:
         logger.warning('unlock_record(): Failed to unlock Item record %s\n%s', item_id, err)

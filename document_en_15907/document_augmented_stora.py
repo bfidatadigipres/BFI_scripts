@@ -46,8 +46,8 @@ import adlib
 STORAGE = os.environ['STORA_PATH']
 AUTOINGEST_PATH = os.environ['STORA_AUTOINGEST']
 SERIES_CACHE_PATH = os.path.join(STORAGE, 'series_cache')
-CODE_PATH = os.environ['CODE_DDP']
-GENRE_MAP = os.path.join(CODE_PATH, 'BFI_scripts/document_en_15907/EPG_genre_mapping.yaml')
+CODE_PATH = os.environ['CODE']
+GENRE_MAP = os.path.join(CODE_PATH, 'document_en_15907/EPG_genre_mapping.yaml')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
@@ -69,7 +69,7 @@ TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=1)
 YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
 YEAR_PATH = YESTERDAY_CLEAN[:4]
-#YEAR_PATH = '2023'
+# YEAR_PATH = '2023'
 STORAGE_PATH = STORAGE + YEAR_PATH + "/"
 
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],
@@ -218,6 +218,8 @@ def series_check(series_id):
 
     for files in os.listdir(SERIES_CACHE_PATH):
         if series_id not in files:
+            continue
+        if not files.endswith('.json'):
             continue
         filename = os.path.splitext(files)[0]
         fullpath = os.path.join(SERIES_CACHE_PATH, files)
@@ -541,11 +543,13 @@ def fetch_lines(fullpath, lines):
             print(err)
         try:
             episode_number = lines["item"][0]["asset"]["meta"]["episode"]
+            logger.info("Episode number: %s", episode_number)
             epg_dict['episode_number'] = episode_number
         except (IndexError, KeyError, TypeError):
             episode_number = ''
         if '&' in str(episode_number):
             episode_number = episode_number.split('&')
+            logger.info("& found in episode_number: %s - %s", episode_number, type(episode_number))
             print(f"Episode number contains '&' and has been split {len(episode_number)} times")
         category_codes = []
         try:
@@ -789,7 +793,7 @@ def main():
                 work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
 
             print(f"Attempting to write Work genres and subjects to record {work_genres}")
-            if 'content.' in work_genres:
+            if 'content.' in str(work_genres):
                 success = push_genre_payload(work_priref, work_genres)
                 if not success:
                     logger.warning("Unable to write Work genre %s", err)
@@ -877,7 +881,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
 
     series_work_id = ''
     series_data = series_check(epg_dict['series_id'])
-    if not series_data[4]:
+    if series_data is None:
         print("Attempting to retrieve series data from EPG API using retrieve(fullpath)")
         retrieve(fullpath)
         series_data = series_check(epg_dict['series_id'])
@@ -1014,6 +1018,10 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         data = push_record_create(series_values_xml, 'works', 'insertrecord')
+        if data is None:
+            print(f'* Unable to create Series Work record for <{series_title_full}>')
+            logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+            return None
         if data[0] and data[1]:
             series_work_id = data[0]
             object_number = data[1]
@@ -1236,6 +1244,9 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
     try:
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         data = push_record_create(work_values_xml, 'works', 'insertrecord')
+        if data is None:
+            print(f"Creation of record failed using method Requests: 'works', 'insertrecord' for {title}")
+            return None
         if data[0]:
             work_id = data[0]
             object_number = data[1]
@@ -1303,6 +1314,9 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     try:
         logger.info("Attempting to create Manifestation record for item %s", title)
         data = push_record_create(man_values_xml, 'manifestations', 'insertrecord')
+        if data is None:
+            print(f"Unable to write manifestation record - {title}")
+            return None
         if data[0] and data[1]:
             manifestation_id = data[0]
             object_number = data[1]
@@ -1313,7 +1327,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
 
     except Exception as err:
         if 'bool' in str(err):
-            logger.critical("Unable to write manifestation record <%s>", manifestation_id)
+            logger.critical("Unable to write manifestation record <%s>", title)
             print(f"Unable to write manifestation record - error: {err}")
             return None
         print(f"*** Unable to write manifestation record: {err}")
@@ -1348,7 +1362,9 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     try:
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         data = push_record_create(item_values_xml, 'items', 'insertrecord')
-        if data[0] and data[1]:
+        if data is None:
+            print(f"** PROBLEM: Unable to create Item record for {title}")
+        elif data[0] and data[1]:
             item_id = data[0]
             item_object_number = data[1]
             print(f'* Item record created with Priref {item_id} Object number {item_object_number}')

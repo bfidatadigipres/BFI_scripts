@@ -10,7 +10,7 @@ main():
 4. When downloaded calls json_split(): to split the JSON for each channel into it's time slots
 move():
 5. Called by main(): compares the STORA generated recording foldernames against split JSON file
-6. Move matching JSON time slot file into folder for same time slot.
+6. Move matching JSON time slot file into folder for same time slot. Copy to a second if two found.
 folder_check():
 7. Called by move(): looks for folders without .json files in. If found renames the csv to end '.stora'
 
@@ -44,8 +44,8 @@ YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
 START = f'{YESTERDAY_CLEAN}T00:00:00'
 END = f'{YESTERDAY_CLEAN}T23:59:00'
 # If a different date period needs targeting use:
-#START = '2023-07-05T00:00:00'
-#END = '2023-07-05T23:59:00'
+#START = '2024-01-03T00:00:00'
+#END = '2024-01-03T23:59:00'
 DATE_PATH = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
@@ -78,7 +78,6 @@ CHANNEL = {
     "itv3": os.environ['PA_ITV3'],
     "itv4": os.environ['PA_ITV4'],
     "itvbe": os.environ['PA_ITVBE'],
-    "citv": os.environ['PA_CITV'],
     "channel4": os.environ['PA_CHANNEL4'],
     "more4": os.environ['PA_MORE4'],
     "e4": os.environ['PA_E4'],
@@ -132,7 +131,7 @@ def fetch(value):
     '''
     try:
         params = {"channelId": f"{value}", "start": START, "end": END, "aliases": "True"}
-        logger.info("fetch():", params)
+        logger.info("fetch(): %s", params)
         req = requests.request("GET", URL, headers=HEADERS, params=params, timeout=120)
         jdct = json.loads(req.text)
     except Exception as err:
@@ -143,7 +142,7 @@ def fetch(value):
     if "'message': 'Service error'" in str(jdct):
         logger.warning("Service is unreachable, pausing and retrying")
         raise tenacity.TryAgain
-    elif jdct is None:
+    if jdct is None:
         logger.warning("Failed to download EPG schedules, see log error.")
         raise tenacity.TryAgain
     return jdct
@@ -310,22 +309,46 @@ def move(path_move, item):
             print(f"move(): Skipping {file} as file is not JSON: {path_move}")
             logger.info("Skipping file=%s as file is not a JSON: path=%s", file, path_move)
 
-    for directory in os.scandir(path_move):
-        item_path = os.path.join(path_move, directory)
-        if os.path.isdir(item_path):
-            directory = str(directory)
-            dir_trim = directory[11:16]
-            # Filename trim is compared against directory trim here using file_trim dictionary
-            for key, value in file_trim.items():
-                if key == dir_trim:
-                    logger.info("MATCH! File %s and directory %s match", value, item_path)
-                    print(f"move(): MATCH! File {value} -- trim {key} with {directory} -- Moving files now")
-                    try:
-                        shutil.move(value, item_path)
-                        logger.info("File moved successfully")
-                    except Exception as err:
-                        logger.warning(("** WARNING: Unable to move file %s to folder %s", value, item_path), err)
-                        print(f"move(): Unable to move file {value} to folder {item_path} {err}")
+    # Look for JSON time matching programme folders (1 or 2, more critical)
+    directory_list = os.listdir(path_move)
+    for key, value in file_trim.items():
+        matches = [ x for x in directory_list if x.startswith(key) ]
+        if len(matches) == 0:
+            continue
+        elif len(matches) == 1:
+            item_path = os.path.join(path_move, matches[0])
+            logger.info("MATCH! File %s and directory %s match", value, item_path)
+            print(f"move(): MATCH! File {value} -- trim {key} with {matches[0]} -- Moving file now")
+            try:
+                shutil.move(value, item_path)
+                logger.info("File moved successfully")
+            except Exception as err:
+                logger.warning(("** WARNING: Unable to move file %s to folder %s", value, item_path), err)
+                print(f"move(): Unable to move file {value} to folder {item_path} {err}")
+        elif len(matches) == 2:
+            # First match
+            item_path = os.path.join(path_move, matches[0])
+            logger.info("MATCHED TWICE! File %s and directory %s match", value, item_path)
+            print(f"move(): MATCHED TWICE! File {value} -- trim {key} with {matches[0]} -- Copying JSON file to path now")
+            try:
+                shutil.copy(value, item_path)
+                logger.info("File moved successfully")
+            except Exception as err:
+                logger.warning(("** WARNING: Unable to move file %s to folder %s", value, item_path), err)
+                print(f"move(): Unable to move file {value} to folder {item_path} {err}")
+            # Second match
+            item_path = os.path.join(path_move, matches[1])
+            logger.info("MATCHED TWICE! File %s and directory %s match", value, item_path)
+            print(f"move(): MATCHED TWICE! File {value} -- trim {key} with {matches[1]} -- Moving file now")
+            try:
+                shutil.move(value, item_path)
+                logger.info("File moved successfully")
+            except Exception as err:
+                logger.warning(("** WARNING: Unable to move file %s to folder %s", value, item_path), err)
+                print(f"move(): Unable to move file {value} to folder {item_path} {err}")
+        else:
+            logger.critical("ERROR! More than two programmes have the same starting date in path: %s\n%s", path_move, matches)
+            continue
 
     # Remove json files not in programme folder and move to unmatched_jsons folder
     for file in os.scandir(path_move):

@@ -41,7 +41,7 @@ END = f"{TODAY.strftime('%Y-%m-%d')}T23:59:00"
 #END = '2023-07-26T23:59:00'
 TITLE_DATA = ''
 #TITLE_DATA = 'title=After%20Life&'
-UPDATE_AFTER = '2021-07-01T00:00:00'
+UPDATE_AFTER = '2019-07-01T00:00:00'
 
 # Setup logging
 LOGGER = logging.getLogger('fetch_netflix_augmented')

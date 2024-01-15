@@ -129,12 +129,13 @@ def check_bp_status(fname, bucket_list):
     return True
 
 
-def move_to_ingest_folder(folderpth, file_list, upload_size, autoingest, bucket_list):
+def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_list):
     '''
     Runs while loop and moves upto 2TB folder size
     End when 2TB reached or files run out
     '''
     remove_list = []
+    print("Move to ingest folder found....")
     logger.info("move_to_ingest_folder(): Moving files to %s", folderpth)
 
     for file in file_list:
@@ -303,9 +304,10 @@ def main():
             logs.append("No suitable ingest folder exists, creating new one...")
             folderpth = create_folderpth(autoingest)
 
-        # Start move to folderpth now identified
+        # Start move to folderpth now identified (failing here sometimes)
         logs.append(f"Ingest folder selected: {folderpth}")
-        files_remaining = move_to_ingest_folder(folderpth, files, upload_size, autoingest, bucket_list)
+        print(f"move_to_ingest_folder: {folderpth}, {upload_size}, {autoingest}, {files}, {bucket_list}")
+        files_remaining = move_to_ingest_folder(folderpth, upload_size, autoingest, files, bucket_list)
         if files_remaining is None:
             logs.append("Problem with folder size extraction in get_size().")
             logger_write(logs)

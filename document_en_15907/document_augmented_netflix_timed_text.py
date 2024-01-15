@@ -102,12 +102,9 @@ def walk_netflix_folders():
 
 def main():
     '''
-    Check watch folder for IMP folder
-    look to match IMP folder name with
-    CID item record.
-    Where matched, process contents
-    read PKL XML for part whole order
-    and check contents match Asset list.
+    Search for folders named after CID item records
+    Check for contents and create new CID item record
+    for each timed text within. Rename and move for ingest.
     '''
     check_control()
 

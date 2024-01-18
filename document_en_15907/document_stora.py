@@ -55,8 +55,8 @@ logger.setLevel(logging.INFO)
 TODAY = datetime.date.today()
 YEST = TODAY - datetime.timedelta(days=1)
 YEST_CLEAN = YEST.strftime('%Y-%m-%d')
-# YEAR = YEST_CLEAN[0:4]
-YEAR = '2023'
+YEAR = YEST_CLEAN[0:4]
+#YEAR = '2023'
 STORAGE_PATH = os.path.join(STORAGE, YEAR)
 
 

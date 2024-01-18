@@ -151,7 +151,7 @@ def main():
             print(f"CID Item record created: {priref}, {object_number}")
 
             # Rename file to new filename from object-number
-            new_fname = f"{object_number.replace('-', '_')}_01of01.{ext}" # Is it right to always assume 01of01?
+            new_fname = f"{object_number.replace('-', '_')}_01of01.{ext}"
             new_fpath = os.path.join(fpath, new_fname)
             LOGGER.info("%s to be renamed %s", file, new_fname)
             rename_success = rename_or_move('rename', os.path.join(fpath, file), new_fpath)

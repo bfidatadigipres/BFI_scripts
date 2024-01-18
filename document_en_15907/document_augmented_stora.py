@@ -68,8 +68,8 @@ logger.setLevel(logging.INFO)
 TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=1)
 YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
-YEAR_PATH = YESTERDAY_CLEAN[:4]
-# YEAR_PATH = '2023'
+# YEAR_PATH = YESTERDAY_CLEAN[:4]
+YEAR_PATH = '2024'
 STORAGE_PATH = STORAGE + YEAR_PATH + "/"
 
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],
@@ -1486,8 +1486,9 @@ def push_genre_payload(work_id, genre_dict):
         post_response = requests.request(
             'POST',
             CID_API,
+            headers={'Content-Type': 'text/xml'},
             params={'database': 'works', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data = {'data': payload},
+            data=payload,
             timeout=1200)
         if '<error><info>' in str(post_response.text):
             logger.warning('push_genre_payload(): Error returned from requests post: %s %s', work_id, payload)
@@ -1517,8 +1518,9 @@ def push_broadcast_payload(man_id, broadcast_company):
         post_response = requests.request(
             'POST',
             CID_API,
-            params={'database': 'manifestations', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data = {'data': payload},
+            headers={'Content-Type': 'text/xml'},
+            params={'command': 'updaterecord', 'database': 'manifestations', 'xmltype': 'grouped', 'output': 'json'},
+            data=payload,
             timeout=1200)
         if '<error><info>' in str(post_response.text):
             logger.warning('push_broadcast_payload(): Error returned from requests post: %s %s', man_id, payload)
@@ -1549,10 +1551,13 @@ def push_payload(item_id, webvtt_payload):
 
     lock_success = write_lock(item_id)
     if lock_success:
-        post_response = requests.post(
+        post_response = requests.request(
+            'POST',
             CID_API,
-            params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data = {'data': payload})
+            headers={'Content-Type': 'text/xml'},
+            params={'command': 'updaterecord', 'database': 'items', 'xmltype': 'grouped', 'output': 'json'},
+            data=payload,
+            timeout=1200)
         if '<error><info>' in str(post_response.text):
             logger.warning('push_payload(): Error returned from requests post: %s %s', item_id, payload)
             print(post_response.text)
@@ -1560,6 +1565,7 @@ def push_payload(item_id, webvtt_payload):
             return False
         else:
             logger.info('push_payload(): No error warning in requests post return. Payload written.')
+            print(post_response.text)
             return True
     else:
         logger.warning('push_payload()): Unable to lock item record %s', item_id)

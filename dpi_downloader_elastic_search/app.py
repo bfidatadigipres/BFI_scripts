@@ -89,7 +89,7 @@ def dpi_move_request():
         if not re.match(pattern, preservation_date):
             return render_template('date_error.html')
         success = check_date_range(preservation_date)
-        if not success:
+        if success is False or success is None:
             return render_template('date_error.html')
         status = 'Requested'
         date_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')

@@ -8,11 +8,11 @@ date_FULL=$(date +'%Y-%m-%d - %T')
 
 # Local variables from environmental vars
 path="$1"
-transcode_path1="${path}${TRANS}"
+transcode_path1="${path}${LEGACY_PROXY}"
 job_num="$2"
 path_insert="${1//['/']/_}"
 dump_to="${LOG_PATH}mp4_transcode${path_insert}files.txt"
-log_path="${LOG_PATH}mp4_transcode_make_jpeg.log"
+log_path="${LOG_PATH}mp4_transcode_make_jpeg_legacy.log"
 python_script="${CODE}access_copy_creation/mp4_transcode_make_jpeg_legacy.py"
 
 # replace list to ensure clean data

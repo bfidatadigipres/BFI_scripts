@@ -10,23 +10,15 @@ to determine correct transcode paths (RNA or BFI).
    Checks in CID to see if the file is accessible:
    - Yes, retrieves input date and acquisition source.
    - No, assume item record has restricted content and skip (go to stage 14).
-2. Checks metadata of each file:
-   - If moving image file extracts DAR, height, duration
-     (go to stage 3-end).
-   - If still image go to stage 10-end.
-   - If audio nothing required (go to stage 13-end).
-   - If other nothing required (go to stage 13-end).
-3. Video assets are checked in CID for RNA/BFI destination path for copy.
-4. Makes an rsync copy of file to new location, changes filename to proxy name convention
-5. Verifies new MP4 passes mediaconch policy (therefore successful).
-6. Passes through FFmpeg for blackdetect values
-7. Uses duration to calculate how many seconds until 20% of total duration.
+2. Verifies MP4 passes mediaconch policy, gives warning if fails.
+3. Passes through FFmpeg for blackdetect values
+4. Uses duration to calculate how many seconds until 20% of total duration.
    Extract JPEG image from MP4 file checking blackdetected spaces
-8. Uses 'gm' to generate full size(600x600ppi) and thumbnail(300x300ppi) from extracted JPEG.
-9. Delete the first FFmpeg JPEG created from MP4 only.
-10. Where JPEG or HLS assets (to follow) are created, write names to fields in CID media record.
-11. Moves source file to completed folder for deletion.
-12. Maintain log of all actions against file and dump in one lot to avoid log overlaps.
+5. Uses 'gm' to generate full size(600x600ppi) and thumbnail(300x300ppi) from extracted JPEG.
+6. Delete the first FFmpeg JPEG created from MP4 only.
+7. Where JPEG or HLS assets (to follow) are created, write names to fields in CID media record.
+8. Moves source file to completed folder for deletion.
+9. Maintain log of all actions against file and dump in one lot to avoid log overlaps.
 
 Joanna White 2024
 Python 3.6+
@@ -55,14 +47,14 @@ MP4_POLICY = os.environ['MP4_POLICY']
 LOG_PATH = os.environ['LOG_PATH']
 FLLPTH = sys.argv[1].split('/')[:4]
 LOG_PREFIX = '_'.join(FLLPTH)
-LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
+LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode_make_jpeg_legacy.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API']
+CID_API = os.environ['CID_API3']
 TRANSCODE = os.environ['TRANSCODING']
 HOST = os.uname()[1]
 
 # Setup logging
-logger = logging.getLogger('mp4_transcode_make_jpeg')
+logger = logging.getLogger('mp4_transcode_make_jpeg_legacy')
 HDLR = logging.FileHandler(LOG_FILE)
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
@@ -72,20 +64,6 @@ logger.setLevel(logging.INFO)
 # CID URL details
 CID = adlib.Database(CID_API)
 CUR = adlib.Cursor(CID)
-
-SUPPLIERS = {"East Anglian Film Archive": "eafa",
-             "Imperial War Museum": "iwm",
-             "London's Screen Archive": "lsa",
-             "MACE": "mace",
-             "North East Film Archive": "nefa",
-             "Northern Ireland Screen": "nis",
-             "Scottish Screen Archive": "nls",
-             "National Screen and Sound Archive of Wales": "nssaw",
-             "North West Film Archive": "nwfa",
-             "Screen Archive South East": "sase",
-             "Box, The": "thebox",
-             "Wessex Film and Sound Archive": "wfsa",
-             "Yorkshire Film Archive": "yfa"}
 
 
 def check_control():
@@ -153,7 +131,7 @@ def main():
     else:
         priref, source, groupings = check_item(object_number, 'items')
     # Check CID media record and extract input date for path
-    media_priref, input_date, largeimage, thumbnail, access = get_media_priref(file)
+    media_priref, input_date, largeimage, thumbnail, access, largeimage_old, thumbnail_old, access_old = get_media_priref(file)
     if not media_priref:
         log_build.append(f"{local_time()}\tCRITICAL\tDigital media record priref missing: {file}")
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
@@ -167,14 +145,7 @@ def main():
         sys.exit(f"EXITING: Unable to retrieve item details from CID: {object_number}")
 
     date_pth = input_date.replace('-', '')[:6]
-    if 'H22: Video Digitisation: Item Outcomes' in str(groupings) and source:
-        log_build.append(f"{local_time()}\tINFO\t** Source for H22 video: {source} ****")
-        for key, val in SUPPLIERS.items():
-            if key in str(source):
-                rna_pth = val
-        transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
-    else:
-        transcode_pth = os.path.join(TRANSCODE, 'bfi', date_pth)
+    transcode_pth = os.path.join(TRANSCODE, 'bfi', date_pth)
 
     # Check if transcode already completed
     if fname in access and thumbnail and largeimage:
@@ -189,155 +160,86 @@ def main():
             sys.exit(f"EXITING: File {file} has already been processed.")
         else:
             log_build.append(f"{local_time()}\tWARNING\tCID UMIDs exist but no transcoding. Allowing files to proceed.")
+    elif fname in access_old and thumbnail_old and largeimage_old:
+        log_build.append(f"{local_time()}\tINFO\tMedia record already has Imagen Media UMIDs. Checking for transcodes")
+        if os.path.exists(os.path.join(transcode_pth, fname)):
+            log_build.append(f"{local_time()}\tINFO\tTranscode file already exists. Moving {file} to completed folder")
+            try:
+                shutil.move(fullpath, completed_pth)
+            except Exception:
+                log_build.append(f"{local_time()}\tINFO\tMove to completed/ path has failed. Script exiting.")
+            log_output(log_build)
+            sys.exit(f"EXITING: File {file} has already been processed.")
+        else:
+            log_build.append(f"{local_time()}\tWARNING\tCID UMIDs exist but no transcoding. Allowing files to proceed.")
 
     # Get file type, video or audio etc.
     ftype = sort_ext(ext)
-    if ftype == 'audio':
-        log_build.append(f"{local_time()}\tINFO\tItem is an audio file. No actions required at this time.")
-        log_build.append(f"{local_time()}\tINFO\tMoving {file} to Autoingest completed folder: {completed_pth}")
-        shutil.move(fullpath, completed_pth)
+    if ftype != 'video':
+        log_build.append(f"{local_time()}\tINFO\tItem is not a video file. Skipping.")
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
         log_output(log_build)
         sys.exit()
 
-    elif ftype == 'document':
-        log_build.append(f"{local_time()}\tINFO\tItem is a document. No actions required at this time.")
-        log_build.append(f"{local_time()}\tINFO\tMoving {file} to Autoingest completed folder: {completed_pth}")
-        shutil.move(fullpath, completed_pth)
-        log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-        log_output(log_build)
-        sys.exit()
+    log_build.append(f"{local_time()}\tINFO\tItem is video.")
+    if not os.path.exists(transcode_pth):
+        log_build.append(f"Creating new transcode path: {transcode_pth}")
+        os.makedirs(transcode_pth, mode=0o777, exist_ok=True)
 
-    elif ftype == 'video':
-        log_build.append(f"{local_time()}\tINFO\tItem is video. Checking for DAR, height and duration of video.")
-        if not os.path.exists(transcode_pth):
-            log_build.append(f"Creating new transcode path: {transcode_pth}")
-            os.makedirs(transcode_pth, mode=0o777, exist_ok=True)
-
-        audio, stream_default = check_audio(fullpath)
-        dar = get_dar(fullpath)
-        par = get_par(fullpath)
-        height = get_height(fullpath)
-        width = get_width(fullpath)
-        duration, vs = get_duration(fullpath)
-        log_build.append(f"{local_time()}\tINFO\tData retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs")
-
-        # CID transcode paths
-        outpath = os.path.join(transcode_pth, f"{fname}.mp4")
-        outpath2 = os.path.join(transcode_pth, fname)
-        log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
-
-        # Build FFmpeg command based on dar/height
-        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs)
-        if not ffmpeg_cmd:
-            log_build.append(f"{local_time()}\tWARNING\tFailed to build FFmpeg command with data: {fullpath}\nHeight {height} Width {width} DAR {dar}")
-            log_output(log_build)
-            sys.exit("EXIT: Failure to create FFmpeg command. Please see logs")
-
-        print(ffmpeg_cmd)
-        ffmpeg_call_neat = " ".join(ffmpeg_cmd)
-        print(ffmpeg_call_neat)
-        log_build.append(f"{local_time()}\tINFO\tFFmpeg call created:\n{ffmpeg_call_neat}")
-
-        # Capture transcode timings
-        tic = time.perf_counter()
-        try:
-            data = subprocess.run(ffmpeg_cmd, shell=False, check=True, universal_newlines=True, stderr=subprocess.PIPE).stderr
-        except Exception as e:
-            log_build.append(f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}")
-            log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-            print(e)
-            log_output(log_build)
-            sys.exit("FFmpeg command failed. Script exiting.")
-        toc = time.perf_counter()
-        transcode_mins = (toc - tic) // 60
-        log_build.append(f"{local_time()}\t** Transcode took {transcode_mins} minutes to complete for file: {fullpath}")
-
-        time.sleep(5)
-        # Mediaconch conformance check file
-        policy_check = conformance_check(outpath)
-        if 'PASS!' in policy_check:
-            log_build.append(f"{local_time()}\tINFO\tMediaconch pass! MP4 transcode complete. Beginning JPEG image generation.")
-        else:
-            log_build.append(f"{local_time()}\tINFO\tWARNING: MP4 failed policy check: {policy_check}")
-            log_build.append(f"{local_time()}\tINFO\tDeleting transcoded MP4 and leaving file for repeated transcode attempt")
-            os.remove(outpath)
-            log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-            log_output(log_build)
-            sys.exit("EXIT: Transcode failure. Please see logs")
-
-        # Start JPEG extraction
-        jpeg_location = os.path.join(transcode_pth, f'{fname}.jpg')
-        print(f"JPEG output to go here: {jpeg_location}")
-
-        # Calculate seconds mark to grab screen
-        seconds = adjust_seconds(duration, data)
-        print(f"Seconds for JPEG cut: {seconds}")
-        success = get_jpeg(seconds, outpath, jpeg_location)
-        if not success:
-            log_build.append(f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file")
-            log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-            log_output(log_build)
-            sys.exit("Exiting: JPEG not created from MP4 file")
-
-        # Generate Full size 600x600, thumbnail 300x300
-        full_jpeg = make_jpg(jpeg_location, 'full', None, None)
-        thumb_jpeg = make_jpg(jpeg_location, 'thumb', None, None)
-        log_build.append(f"{local_time()}\tINFO\tNew images created at {seconds} seconds into video:\n - {full_jpeg}\n - {thumb_jpeg}")
-        if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
-            os.remove(jpeg_location)
-        else:
-            log_build.append(f"{local_time()}\tWARNING\tOne of the JPEG images hasn't created, please check outpath: {jpeg_location}")
-
-        # Clean up MP4 extension
-        os.replace(outpath, outpath2)
-
-    elif ftype == 'image':
-
-        oversize = False
-        log_build.append(f"{local_time()}\tINFO\tItem is image. Generating large (full size copy) and thumbnail jpeg images.")
-        size = os.path.getsize(fullpath)
-        if 104857600 <= int(size) <= 209715200:
-            log_build.append(f"{local_time()}\tINFO\tImage is over 100MB. Applying resize to large image.")
-            percent = '75'
-            oversize = True
-        elif 209715201 <= int(size) <= 314572800:
-            log_build.append(f"{local_time()}\tINFO\tImage is over 200MB. Applying resize to large image.")
-            percent = '60'
-            oversize = True
-        elif 314572801 <= int(size) <= 419430400:
-            log_build.append(f"{local_time()}\tINFO\tImage is over 300MB. Applying resize to large image.")
-            percent = '45'
-            oversize = True
-        elif int(size) > 419430401:
-            log_build.append(f"{local_time()}\tINFO\tImage is over 400MB. Applying resize to large image.")
-            percent = '30'
-            oversize = True
-
-        # Create image files from source image
-        if not os.path.exists(transcode_pth):
-            log_build.append(f"Creating new transcode path: {transcode_pth}")
-            os.makedirs(transcode_pth, mode=0o777, exist_ok=True)
-
-        if not oversize:
-            full_jpeg = make_jpg(fullpath, 'full', transcode_pth, None)
-        else:
-            full_jpeg = make_jpg(fullpath, 'oversize', transcode_pth, percent)
-
-        thumb_jpeg = make_jpg(fullpath, 'thumb', transcode_pth, None)
-
-        if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
-            log_build.append(f"{local_time()}\tINFO\tNew images created:\n - {full_jpeg}\n - {thumb_jpeg}")
-        else:
-            log_build.append(f"{local_time()}\tERROR\tOne of both JPEG image creations failed for file %s", file)
-
+    # Mediaconch conformance check file
+    policy_check = conformance_check(outpath)
+    if 'PASS!' in policy_check:
+        log_build.append(f"{local_time()}\tINFO\tMediaconch pass! MP4 transcode complete. Beginning JPEG image generation.")
     else:
-        log_build.append(f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}")
-        error_path = os.path.join(filepath, 'error/', file)
-        shutil.move(fullpath, error_path)
+        log_build.append(f"{local_time()}\tINFO\tWARNING: MP4 failed policy check: {policy_check}")
+
+    # CID transcode paths
+    outpath = os.path.join(transcode_pth, f"{fname}.mp4")
+    outpath2 = os.path.join(transcode_pth, fname)
+    log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
+
+    # Build FFmpeg command based on dar/height
+    ffmpeg_cmd = create_transcode(fullpath)
+    ffmpeg_call_neat = " ".join(ffmpeg_cmd)
+    log_build.append(f"{local_time()}\tINFO\tFFmpeg call created:\n{ffmpeg_call_neat}")
+
+    # Capture blackdetect info
+    try:
+        data = subprocess.run(ffmpeg_cmd, shell=False, check=True, universal_newlines=True, stderr=subprocess.PIPE).stderr
+    except Exception as e:
+        log_build.append(f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}")
+        log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
+        print(e)
+        log_output(log_build)
+        sys.exit("FFmpeg command failed. Script exiting.")
+
+    time.sleep(5)
+
+    # Start JPEG extraction
+    jpeg_location = os.path.join(transcode_pth, f'{fname}.jpg')
+    print(f"JPEG output to go here: {jpeg_location}")
+
+    # Calculate seconds mark to grab screen
+    seconds = adjust_seconds(duration, data)
+    print(f"Seconds for JPEG cut: {seconds}")
+    success = get_jpeg(seconds, outpath, jpeg_location)
+    if not success:
+        log_build.append(f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file")
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
         log_output(log_build)
-        sys.exit("Exiting as script does not recognised file type")
+        sys.exit("Exiting: JPEG not created from MP4 file")
+
+    # Generate Full size 600x600, thumbnail 300x300
+    full_jpeg = make_jpg(jpeg_location, 'full', None, None)
+    thumb_jpeg = make_jpg(jpeg_location, 'thumb', None, None)
+    log_build.append(f"{local_time()}\tINFO\tNew images created at {seconds} seconds into video:\n - {full_jpeg}\n - {thumb_jpeg}")
+    if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
+        os.remove(jpeg_location)
+    else:
+        log_build.append(f"{local_time()}\tWARNING\tOne of the JPEG images hasn't created, please check outpath: {jpeg_location}")
+
+    # Clean up MP4 extension
+    os.replace(outpath, outpath2)
 
     # Post MPEG/JPEG creation updates to Media record
     media_data = []
@@ -537,8 +439,14 @@ def get_media_priref(fname):
         access_rendition = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.mp4'][0]
     except (IndexError, KeyError):
         largeimage_umid, thumbnail_umid, access_rendition = '','',''
+    try:
+        old_largeimage_umid = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.largeimage'][0]
+        old_thumbnail_umid = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.thumbnail'][0]
+        old_access_rendition = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.mp4'][0]
+    except (IndexError, KeyError):
+        old_largeimage_umid, old_thumbnail_umid, old_access_rendition = '','',''
 
-    return (priref, input_date, largeimage_umid, thumbnail_umid, access_rendition)
+    return (priref, input_date, largeimage_umid, thumbnail_umid, access_rendition, old_largeimage_umid, old_thumbnail_umid, old_access_rendition)
 
 
 def sort_ext(ext):
@@ -802,12 +710,10 @@ def check_audio(fullpath):
         return ('Audio', None)
 
 
-def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs):
+def create_transcode(fullpath):
     '''
-    Builds FFmpeg command based on height/dar input
+    Builds FFmpeg command for blackdetect
     '''
-    print(f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs}")
-    print(f"Fullpath {fullpath} Output path {output_path}")
 
     ffmpeg_program_call = [
         "ffmpeg"
@@ -817,153 +723,18 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "-i", fullpath
     ]
 
-    video_settings = [
-        "-c:v", "libx264",
-        "-crf", "28"
-    ]
-
-    '''
-    audio_settings = [
-        "-af", "channelmap=0"
-    ]
-    '''
-
-    pix = [
-       "-pix_fmt", "yuv420p"
-    ]
-
-    fast_start = [
-        "-movflags", "faststart"
-    ]
-
-    crop_sd_608 = [
+    blackdetect = [
         "-vf",
-        "yadif,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.1"
-    ]
-
-    no_stretch_4x3 = [
-        "-vf",
-        "yadif,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    crop_sd_4x3 = [
-        "-vf",
-        "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    crop_sd_15x11 = [
-        "-vf",
-        "yadif,crop=704:572,scale=768:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    crop_ntsc_486 = [
-        "-vf",
-        "yadif,crop=672:480,scale=734:486:flags=lanczos,pad=768:486:-1:-1,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    crop_ntsc_486_16x9 = [
-        "-vf",
-        "yadif,crop=672:480,scale=1024:486:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    crop_ntsc_640x480 = [
-        "-vf",
-        "yadif,pad=768:480:-1:-1,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    crop_sd_16x9 = [
-        "-vf",
-        "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    hd_16x9 = [
-        "-vf",
-        "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    fhd_all = [
-        "-vf",
-        "yadif,scale=-1:1080:flags=lanczos,pad=1920:1080:-1:-1,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    fhd_letters = [
-        "-vf",
-        "yadif,scale=1920:-1:flags=lanczos,pad=1920:1080:-1:-1,blackdetect=d=0.05:pix_th=0.10"
+        "blackdetect=d=0.05:pix_th=0.1"
     ]
 
     output = [
-        "-nostdin", "-y",
-        output_path, "-f",
-        "null", "-"
+        "-an", "-f",
+        "null", "-",
+        "2>&1"
     ]
 
-    if vs:
-        print(f"VS {vs}")
-        map_video = [
-            "-map", f"0:v:{vs}"
-        ]
-    else:
-        map_video = [
-            "-map", "0:v:0"
-        ]
-
-    if default and audio:
-        print(f"Default {default}, Audio {audio}")
-        map_audio = [
-            "-map", "0:a?",
-            f"-disposition:a:{default}",
-            "default", "-dn"
-        ]
-    else:
-        map_audio = [
-            "-map", "0:a?",
-            "-dn"
-        ]
-
-    height = int(height)
-    width = int(width)
-    # Calculate height/width to decide HD scale path
-    aspect = round(width / height, 3)
-    cmd_mid = []
-
-    if height <= 486 and dar == '16:9':
-        cmd_mid = crop_ntsc_486_16x9
-    elif height <= 486 and dar == '4:3':
-        cmd_mid = crop_ntsc_486
-    elif height <= 486 and width == 640:
-        cmd_mid = crop_ntsc_640x480
-    elif height <= 576 and width == 768:
-        cmd_mid = no_stretch_4x3
-    elif height <= 576 and par == '1.000':
-        cmd_mid = no_stretch_4x3
-    elif height <= 576 and dar == '4:3':
-        cmd_mid = crop_sd_4x3
-    elif height <= 576 and dar == '15:11':
-        cmd_mid = crop_sd_15x11
-    elif height == 608:
-        cmd_mid = crop_sd_608
-    elif height <= 576 and dar == '16:9':
-        cmd_mid = crop_sd_16x9
-    elif height == 576 and dar == '1.85:1':
-        cmd_mid = crop_sd_16x9
-    elif height <= 720 and dar == '16:9':
-        cmd_mid = hd_16x9
-    elif width == 1920 and aspect >= 1.778:
-        cmd_mid = fhd_letters
-    elif height > 720 and width <= 1920:
-        cmd_mid = fhd_all
-    elif width >= 1920 and aspect < 1.778:
-        cmd_mid = fhd_all
-    elif height >= 1080 and aspect >= 1.778:
-        cmd_mid = fhd_letters
-    print(f"Middle command chose: {cmd_mid}")
-
-    if audio is None:
-        return ffmpeg_program_call + input_video_file + map_video + video_settings + pix + fast_start + cmd_mid + output
-    if len(cmd_mid) > 0 and audio:
-        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + fast_start + cmd_mid + output
-    if len(cmd_mid) > 0 and not audio:
-        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + fast_start + cmd_mid + output
+    return ffmpeg_program_call + input_video_file + blackdetect + output
 
 
 def make_jpg(filepath, arg, transcode_pth, percent):

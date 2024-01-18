@@ -43,6 +43,7 @@ import os
 import csv
 import sys
 import json
+import pandas
 import string
 import shutil
 import logging
@@ -57,12 +58,15 @@ import adlib
 
 # Global paths
 QNAP = os.environ['QNAP_REND1']
-FILE_PATH = os.path.join(QNAP, os.environ['FILENAME_UPDATE'])
-AUTOINGEST = os.path.join(QNAP, os.environ['AUTODETECT'])
+FILE_PATH = os.path.join(QNAP, 'filename_updater/')
+COMPLETED = os.path.join(FILE_PATH, 'completed/')
+INGEST = os.path.join(FILE_PATH, 'for_ingest/')
+PROXY_CREATE = os.path.join(FILE_PATH, 'proxy_create/')
+CSV_PATH = os.path.join(os.environ['ADMIN'], 'legacy_MP4_file_list.csv')
 LOG_PATH = os.environ['LOG_PATH']
 CID_API = os.environ['CID_API3']
 BUCKET = 'preservation01'
-CONTROL_JSON = os.path.join(LOGS_PATH 'downtime_control.json')
+CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor
 CLIENT = ds3.createClientFromEnv()
@@ -89,13 +93,55 @@ def check_control():
             sys.exit('Exit requested by downtime_control.json. Script exiting')
 
 
-def check_cid_record(ob_num, file):
+def read_csv_match_file(file):
+    '''
+    Make set of all entries
+    with title as key, and value
+    to contain all other entries
+    as a list (use pandas)
+    '''
+
+    data = pandas.read_csv(CSV_PATH)
+    data_dct = data.to_dict(orient='list')
+    length = len(data_dct['fname'])
+
+    for num in range(1, length):
+        if file in data_dct['fname'][num]:
+            return data_dct['priref'][num], data_dct['ob_num'][num]
+
+
+def check_cid_record(priref, file):
     '''
     Search for ob_num of file name
     and check MP4 in file_type for
     returned record
     '''
-    pass
+    search = f"priref='{priref}'"
+    query = {
+        'database': 'items',
+        'search': search,
+        'limit': '0',
+        'output': 'json',
+        'fields': 'item_type, file_type, imagen.media.original_filename, reference_number'
+    }
+
+    try:
+        result = CID.get(query)
+        print(result.records[0])
+    except Exception as err:
+        print(f"Unable to retrieve CID Item record {err}")
+
+    item_type = file_type = original_fname = ''
+    if 'item_type' in str(result.records[0]):
+        item_type = result.records[0]['item_type'][0]['value'][0]
+    if 'file_type' in str(result.records[0]):
+        file_type = result.records[0]['file_type'][0]
+    if 'imagen.media.original_filename' in str(result.records[0]):
+        original_fname = file_type = result.records[0]['imagen.media.original_filename'][0]
+    if 'reference_number' in str(result.records[0]):
+        ref_num = result.records[0]['reference_number'][0]
+
+    return item_type, file_type, original_fname, ref_num
 
 
 def check_media_record(fname):
@@ -109,15 +155,22 @@ def check_media_record(fname):
         'search': search,
         'limit': '0',
         'output': 'json',
+        'fields': 'imagen.media.hls_umid, access_rendition.mp4'
     }
 
     try:
         result = CID.get(query)
-        if result.hits:
-            return True
+        print(result.records[0])
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
-    return False
+
+    media_hls = access_mp4 = ''
+    if 'imagen.media.hls_umid' in str(result.records[0]):
+        media_hls = result.records[0]['imagen.media.hls_umid'][0]
+    if 'access_rendition.mp4' in str(result.records[0]):
+        access_mp4 = result.records[0]['Access_rendition'][0]['access_rendition.mp4'][0]
+
+    return media_hls, access_mp4
 
 
 def check_bp_status(fname, bucket_list):
@@ -171,11 +224,11 @@ def get_media_ingests(object_number):
 def main():
     '''
     Find all files in filename_updater/ folder
-    and check all '-' are '_' and any 'A' or 'B'
-    are converted to 01of02 and 02of02 etc.
+    and call up CID to identify whether assets
+    need ingesting or access copy work
     '''
 
-    files = os.listdir(FILE_PATH)
+    files = [ x for x in os.listdir(FILE_PATH) if os.path.isfile(os.path.join(FILE_PATH, x)) ]
     if not files:
         sys.exit()
 
@@ -187,76 +240,65 @@ def main():
         fpath = os.path.join(FILE_PATH, file)
         fname, ext = file.split('.')
         print(fname)
-        # Change N- for N_
-        if fname.startswith('N-'):
-            fname = fname.replace('-', '_')
-        print(fname)
 
-        # Check if 01of** format in name
-        count = fname.split('_')
-        new_fname = ob_num = ''
-        if len(count) >= 3 and 'of' in count[-1]:
-            LOGGER.info("PartWhole formatting present for file %s", file)
-            print(f"PartWhole present: {fname}")
-            ob_num = '-'.join(count[:-1])
-            new_fname = fname
-        elif len(count) >= 3:
-            LOGGER.info("Too many '_' in filename and no partWhole 'of' present %s", file)
+        # Find match in CSV
+        match_dict = read_csv_match_file(file)
+        print(match_dict)
+        if match_dict is None:
+            LOGGER.warning("File not found in CSV: %s", file)
             continue
-        # Check of 'AB' format indicates part whole
-        fname = fname.upper()
-        if len(count) == 2:
-            letters = re.findall(r'[A-Z]', fname, re.I)
-            print(letters)
-            if 'N' != letters[0]:
-                LOGGER.warning("First letter of name found is not 'N': %s. Skipping.", file)
-                continue
-            if len(letters) == 2:
-                part = alpha.find(letters[1]) + 1
-                if part != 1:
-                    LOGGER.warning("Skipping: Filename found that is not formatted correctly: %s", file)
-                    continue
-                part_whole = f'_01of01'
-                new_fname = f"{fname[:-1]}{part_whole}"
-                ob_num = fname[:-1].replace('_', '-')
-            if len(letters) == 3:
-                part1 = alpha.find(letters[1]) + 1
-                part2 = alpha.find(letters[2]) + 1
-                part_whole = f'_{str(part1).zfill(2)}of{str(part2).zfill(2)}'
-                new_fname = f"{fname[:-2]}{part_whole}"
-                ob_num = fname[:-2].replace('_', '-')
-            if len(letters) =< 1 or len(letter) > 3:
-                LOGGER.warning("Unanticipated file format: %s. Skipping.", file)
-                continue
+        if '#VALUE!' in str(match_dict):
+            LOGGER.warning("Skipping: Priref or object_number value missing for file %s", file)
+            continue
+
+        object_number, priref = match_dict
 
         # Look up CID item record for file_type = MP4
-        if len(ob_num) == 0:
+        if len(object_number) == 0:
             LOGGER.warning("Skipping. Object number couldn't be created from file renaming.")
             continue
-        match = check_cid_record(ob_num, file)
-        if not match:
-            LOGGER.warning("Skipping. No CID item record found for object number %s", ob_num)
-        LOGGER.info("CID item record found with MP4 file-type for %s", ob_num)
-
-        # Rename and move to Autoinges
-        new_file = f"{new_fname}.{ext}"
-        new_fpath = os.path.join(FILE_PATH, new_file)
-        LOGGER.info("Filename changed from %s to correct formatting %s", file, new_file)
-        try:
-            os.rename(fpath, new_fpath)
-        except Exception as err:
-            LOGGER.warning("Could not rename file: %s -> %s", file, new_file)
-            print(err)
+        item_type, file_type, original_fname, reference_num = check_cid_record(object_number, file)
+        if not item_type or file_type:
+            LOGGER.warning("Skipping. No CID item record found for object number %s", object_number)
             continue
-        if os.path.exists(new_fpath):
-            LOGGER.info("File renamed and moving to Autoingest: %s", new_fpath)
-            shutil.move(new_fpath, AUTOINGEST)
-        if os.path.exists(os.path.join(AUTOINGEST, new_file)):
-            LOGGER.info("File successfully moved to autoingest.")
-            LOGGER.info("--------------------------------------")
+        if item_type != 'DIGITAL':
+            LOGGER.warning("Skipping. Incorrect CID item record attached to MP4 file, not DIGITAL item_type")
+            continue
+        LOGGER.info("CID item record found with MP4 file-type for %s", object_number)
+
+        ingest = proxy = False
+        # Begin assessment of actions
+        if file_type == 'MP4' and original_fname == '':
+            ingest = True
+            proxy = True
+        elif file_type == 'MP4' and len(original_fname) > 3:
+            access_hls, access_mp4 = check_media_record(original_fname)
+            if len(access_hls) > 3:
+                LOGGER.info("File has ingested to DPI and has MP4 HLS file: %s", access_hls)
+            elif len(access_mp4) > 3:
+                LOGGER.info("File has ingested to DPI and has MP4 HLS file: %s", access_mp4)
+            else:
+                LOGGER.info("No access copy found for file. Moving MP4 for proxy")
+                proxy = True
+        elif file_type != 'MP4' and len(original_fname) > 3:
+            LOGGER.info("File type for CID item record is not MP4: %s", file_type)
+            access_hls, access_mp4 = check_media_record(original_fname)
+            if len(access_hls) > 3:
+                LOGGER.info("File has ingested to DPI and has MP4 HLS file: %s", access_hls)
+            elif len(access_mp4) > 3:
+                LOGGER.info("File has ingested to DPI and has MP4 HLS file: %s", access_mp4)
+            else:
+                LOGGER.info("No access copy found for file. Moving MP4 for proxy")
+                proxy = True
+        elif file_type != 'MP4' and original_fname = '':
+            # Would we ingest this if file_type doesn't match?
+            proxy = True
         else:
-            LOGGER.error("Error file has not moved to autoingest.")
-            LOGGER.info("----------------------------------------")
+            continue
+
+        # Start ingest
+
+        # Start MP4 move/JPEG creation
 
     LOGGER.info("============== Legacy filename updater END ====================")
 

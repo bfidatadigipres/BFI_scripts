@@ -69,7 +69,7 @@ TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=1)
 YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
 # YEAR_PATH = YESTERDAY_CLEAN[:4]
-YEAR_PATH = '2024'
+YEAR_PATH = '2023'
 STORAGE_PATH = STORAGE + YEAR_PATH + "/"
 
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],
@@ -352,7 +352,7 @@ def csv_retrieve(fullpath):
 
     with open(fullpath, 'rb') as inf:
         # rows = unicodecsv.reader(inf, encoding='cp1252')
-        rows = unicodecsv.reader(inf, encoding='latin1')
+        rows = unicodecsv.reader(inf, encoding='utf-8')
         for row in rows:
             print(row)
             data = {'channel': row[0], 'title': row[1], 'description': row[2], \
@@ -1451,7 +1451,7 @@ def push_record_create(payload, database, method):
     }
 
     headers = {'Content-Type': 'text/xml'}
-
+    payload = payload.encode('utf-8')
     try:
         response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
     except Exception as err:
@@ -1479,6 +1479,7 @@ def push_genre_payload(work_id, genre_dict):
             payload = payload + pay_addition
     pay_end = '</record></recordList></adlibXML>'
     payload = payload + pay_end
+    payload = payload.encode('utf-8')
     print(f"GENRE PAYLOAD: \n{payload}")
 
     lock_success = write_lock(work_id)
@@ -1512,6 +1513,7 @@ def push_broadcast_payload(man_id, broadcast_company):
     pay_addition = f'<broadcast_company.lref>{broadcast_company}</broadcast_company.lref>'
     pay_end = '</record></recordList></adlibXML>'
     payload = pay_head + pay_addition + pay_end
+    payload = payload.encode('utf-8')
 
     lock_success = write_lock(man_id)
     if lock_success:
@@ -1548,6 +1550,7 @@ def push_payload(item_id, webvtt_payload):
     label_addition = f'<label.source>{label_source}</label.source><label.text><![CDATA[{webvtt_payload}]]></label.text>'
     pay_end = f'</record></recordList></adlibXML>'
     payload = pay_head + label_type_addition + label_addition + pay_end
+    payload = payload.encode('utf-8')
 
     lock_success = write_lock(item_id)
     if lock_success:

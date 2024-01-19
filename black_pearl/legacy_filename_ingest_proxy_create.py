@@ -290,15 +290,19 @@ def main():
             else:
                 LOGGER.info("No access copy found for file. Moving MP4 for proxy")
                 proxy = True
-        elif file_type != 'MP4' and original_fname = '':
+        elif file_type != 'MP4' and original_fname == '':
             # Would we ingest this if file_type doesn't match?
             proxy = True
         else:
             continue
 
         # Start ingest
+        if ingest:
+            LOGGER.info("MP4 file to be ingest to Black Pearl: %s", file)
 
         # Start MP4 move/JPEG creation
+        if proxy:
+            LOGGER.info("Proxy files required for MP4 asset: %s", file)
 
     LOGGER.info("============== Legacy filename updater END ====================")
 

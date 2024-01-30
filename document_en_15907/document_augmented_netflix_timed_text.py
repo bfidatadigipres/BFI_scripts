@@ -78,11 +78,11 @@ def cid_check(object_number):
              'output': 'json'}
     try:
         query_result = CID.get(query)
+        return query_result.records
     except Exception as err:
         print(f"cid_check(): Unable to match supplied name with CID Item record: {object_number} {err}")
-        query_result = None
 
-    return query_result[0]
+    return None
 
 
 def walk_netflix_folders():
@@ -127,7 +127,7 @@ def main():
 
         # Check object number valid
         record = cid_check(object_number)
-        if record is None or 'priref' not in record:
+        if record is None:
             LOGGER.warning("Skipping: Record could not be matched with object_number")
             continue
 
@@ -138,16 +138,15 @@ def main():
         # Create CID item record for each timed text in folder
         for file in file_list:
             ext = file.split('.')[-1]
-            tt_item_data = make_item_record_dict(record, file, ext)
-            print(tt_item_data)
+            tt_item_data = make_item_record_dict(priref, file, ext, record)
             tt_item_xml = CUR.create_record_data(tt_item_data)
-            print("********************")
             print(tt_item_xml)
 
             item_data = push_record_create(tt_item_xml, 'items', 'insertrecord')
             if item_data is None:
                 LOGGER.warning("Creation of new CID item record failed with XML: \n%s", tt_item_xml)
-            LOGGER.info("** CID Item record created: %s %s", item_data[0], item_data[1])
+                continue
+            LOGGER.info("** CID Item record created: %s", item_data)
             print(f"CID Item record created: {priref}, {object_number}")
 
             # Rename file to new filename from object-number
@@ -155,19 +154,21 @@ def main():
             new_fpath = os.path.join(fpath, new_fname)
             LOGGER.info("%s to be renamed %s", file, new_fname)
             rename_success = rename_or_move('rename', os.path.join(fpath, file), new_fpath)
-            if 'Path error' in rename_success:
-                LOGGER.warning("Path error: %s", os.path.join(fpath, file))
-            if not rename_success:
+            if rename_success is False:
                 LOGGER.warning("Unable to rename file: %s", os.path.join(fpath, file))
-            LOGGER.info("File successfully renamed. Moving to Netflix ingest path")
+            elif rename_success is True:
+                LOGGER.info("File successfully renamed. Moving to Netflix ingest path")
+            elif rename_success == 'Path error':
+                LOGGER.warning("Path error: %s", os.path.join(fpath, file))
 
             # Move file to new AUTOINGEST path
             move_success = rename_or_move('move', new_fpath, os.path.join(AUTOINGEST, new_fname))
-            if 'Path error' in move_success:
-                LOGGER.warning("Path error: %s", new_fpath)
-            if not move_success:
+            if move_success is False:
                 LOGGER.warning("Error with file move to autoingest, leaving in place for manual assistance")
-            LOGGER.info("File successfully moved to Netflix ingest path: %s\n", AUTOINGEST)
+            elif move_success is True:
+                LOGGER.info("File successfully moved to Netflix ingest path: %s\n", AUTOINGEST)
+            elif move_success == 'Path error':
+                LOGGER.warning("Path error: %s", new_fpath)
 
         # Check fpath is empty and delete
         if len(os.listdir(fpath)) == 0:
@@ -226,7 +227,7 @@ def rename_or_move(arg, file_a, file_b):
     before confirming success/failure
     '''
 
-    if not os.path.exists(file_a):
+    if not os.path.isfile(file_a):
         return 'Path error'
 
     if arg == 'move':
@@ -245,18 +246,18 @@ def rename_or_move(arg, file_a, file_b):
             print(err)
             return False
 
-    if os.path.exists(file_b):
+    if os.path.isfile(file_b):
         return True
     return False
 
 
-def make_item_record_dict(record, file, ext):
+def make_item_record_dict(priref, file, ext, record):
     '''
     Get CID item record for source and borrow data
     for creation of new CID item record
     '''
 
-    if 'Acquisition_source' in record:
+    if 'Acquisition_source' in str(record):
         platform = record[0]['Acquisition_source'][0]['acquisition.source'][0]
         record_default = build_record_defaults(platform)
     else:
@@ -270,41 +271,41 @@ def make_item_record_dict(record, file, ext):
     item.append({'copy_usage.lref': '131560'})
     item.append({'accession_date': str(datetime.datetime.now())[:10]})
 
-    if 'Title' in record:
+    if 'Title' in str(record):
         imp_title = record[0]['Title'][0]['title'][0]
         item.append({'title': f"{imp_title} Timed Text"})
-        item.append({'title.article': record[0]['Title'][0]['title.article'][0]})
+        if 'title.article' in str(record):
+            item.append({'title.article': record[0]['Title'][0]['title.article'][0]})
         item.append({'title.language': 'English'})
         item.append({'title.type': '05_MAIN'})
     else:
         LOGGER.warning("No title data retrieved. Aborting record creation")
         return None
-    if 'Part_of' in record:
+    if 'Part_of' in str(record):
         item.append({'part_of_reference.lref': record[0]['Part_of'][0]['part_of_reference'][0]['priref'][0]})
     else:
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
         return None
-    if 'priref' in record:
-        item.append({'related_object.reference.lref': record[0]['priref'][0]})
-        item.append({'related_object.association': f'Supplied timed text from {platform}'})
-        item.append({'related_object.notes': 'Timed text for'})
+    item.append({'related_object.reference.lref': priref})
+    # item.append({'related_object.association': f'Supplied timed text from {platform}'}) # Error Forcing is not allowed for field error
+    item.append({'related_object.notes': 'Timed text for'})
     if len(ext) > 1:
         item.append({'file_type': ext.upper()})
-        if 'code_type' in record:
+        if 'code_type' in str(record):
             item.append({'code_type': record[0]['code_type'][0]})
-    if 'acquisition.date' in record:
+    if 'acquisition.date' in str(record):
         item.append({'acquisition.date': record[0]['acquisition.date'][0]})
-    if 'acquisition.method' in record:
+    if 'acquisition.method' in str(record):
         item.append({'acquisition.method': record[0]['acquisition.method'][0]}) # Donation
-    if 'Acquisition_source' in record:
+    if 'Acquisition_source' in str(record):
         item.append({'acquisition.source': record[0]['Acquisition_source'][0]['acquisition.source'][0]}) # Netflix
         item.append({'acquisition.source.type': record[0]['Acquisition_source'][0]['acquisition.source.type'][0]['value'][0]})
     item.append({'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                       'Please raise a request via the Collections Systems Service Desk, describing your specific use.'})
     item.append({'access_conditions.date': str(datetime.datetime.now())[:10]})
-    if 'grouping' in record:
+    if 'grouping' in str(record):
         item.append({'grouping': record[0]['grouping'][0]})
-    if 'language' in record:
+    if 'language' in str(record):
         item.append({'language': record[0]['language'][0]['language'][0]})
         item.append({'language.type': record[0]['language'][0]['language.type'][0]['value'][0]})
     if len(file) > 1:
@@ -328,6 +329,7 @@ def push_record_create(payload, database, method):
 
     try:
         response = requests.request('POST', CID_API, headers=hdrs, params=prms, data=payload, timeout=1200)
+        print(response.text)
     except Exception as err:
         LOGGER.critical("push_record_create(): Unable to create %s record with %s and payload: \n%s", database, method, payload)
         print(err)
@@ -335,8 +337,8 @@ def push_record_create(payload, database, method):
 
     if 'recordList' in response.text:
         records = json.loads(response.text)
-        priref = records['adlibXML']['recordList']['record'][0]['priref'][0]
-        object_number = records['adlibXML']['recordList']['record'][0]['object_number'][0]
+        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
+        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
         return priref, object_number
     return None
 

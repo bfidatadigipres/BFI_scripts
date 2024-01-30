@@ -295,9 +295,10 @@ def main():
                 continue
 
             # Build webvtt payload
-            success = push_payload(item_id, webvtt_payload)
-            if not success:
-                logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
+            if webvtt_payload:
+                success = push_payload(item_id, webvtt_payload)
+                if not success:
+                    logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
 
             # Rename csv with .documented
             documented = f'{fullpath}.documented'

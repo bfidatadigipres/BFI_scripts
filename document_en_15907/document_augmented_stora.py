@@ -68,8 +68,8 @@ logger.setLevel(logging.INFO)
 TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=1)
 YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
-# YEAR_PATH = YESTERDAY_CLEAN[:4]
-YEAR_PATH = '2023'
+YEAR_PATH = YESTERDAY_CLEAN[:4]
+# YEAR_PATH = '2023'
 STORAGE_PATH = STORAGE + YEAR_PATH + "/"
 
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],
@@ -194,7 +194,7 @@ def find_repeats(asset_id):
         return None
 
     priref = result.records[0]['priref'][0]
-    print(f"Manifestation priref with matching asset_id in CID: {priref}")
+    print(f"Priref with matching asset_id in CID: {priref}")
     pquery = {'database': 'manifestations',
               'search': f'(parts_reference->priref={priref})',
               'limit': '0',
@@ -227,6 +227,8 @@ def series_check(series_id):
         print(f"series_check(): Json to be opened and read for series data retrieval: {fullpath}")
         with open(fullpath, 'r', encoding='utf8') as inf:
             lines = json.load(inf)
+            if 'ResourceNotFoundError' in str(lines):
+                continue
             for k, v in lines.items():
                 series_descriptions = []
                 # Unsure if series description has a medium set - none found
@@ -544,13 +546,13 @@ def fetch_lines(fullpath, lines):
         try:
             episode_number = lines["item"][0]["asset"]["meta"]["episode"]
             logger.info("Episode number: %s", episode_number)
-            epg_dict['episode_number'] = episode_number
         except (IndexError, KeyError, TypeError):
             episode_number = ''
         if '&' in str(episode_number):
             episode_number = episode_number.split('&')
             logger.info("& found in episode_number: %s - %s", episode_number, type(episode_number))
             print(f"Episode number contains '&' and has been split {len(episode_number)} times")
+        epg_dict['episode_number'] = episode_number
         category_codes = []
         try:
             category_code_one = lines["item"][0]["asset"]["category"][0]["code"]
@@ -760,7 +762,7 @@ def main():
                         # Launch create series function
                         series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict)
                         if not series_work_id:
-                            logger.warning("Skipping further actions: Creation of series failed as no series_work_id found.")
+                            logger.warning("Skipping further actions: Creation of series failed as no series_work_id found: \n%s", epg_dict['series_id'])
                             continue
 
                 # Create Work
@@ -781,22 +783,6 @@ def main():
             if not work_priref.isnumeric() and new_work is True:
                 print(f"Work error, priref not numeric from new file creation: {work_priref}")
                 continue
-
-            work_genres = []
-            if 'work_genre_one' in epg_dict:
-                work_genres.append({'content.genre.lref': epg_dict['work_genre_one']})
-            if 'work_genre_two' in epg_dict:
-                work_genres.append({'content.genre.lref': epg_dict['work_genre_two']})
-            if 'work_subject_one' in epg_dict:
-                work_genres.append({'content.subject.lref': epg_dict['work_subject_one']})
-            if 'work_subject_two' in epg_dict:
-                work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
-
-            print(f"Attempting to write Work genres and subjects to record {work_genres}")
-            if 'content.' in str(work_genres):
-                success = push_genre_payload(work_priref, work_genres)
-                if not success:
-                    logger.warning("Unable to write Work genre %s", err)
 
             # Create CID manifestation record
             manifestation_values = []
@@ -832,9 +818,10 @@ def main():
                     continue
 
             # Build webvtt payload
-            success = push_payload(item_data[1], webvtt_payload)
-            if not success:
-                logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_data[1], webvtt_payload)
+            if webvtt_payload:
+                success = push_payload(item_data[1], webvtt_payload)
+                if not success:
+                    logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_data[1], webvtt_payload)
 
             # Rename JSON with .documented
             documented = f'{fullpath}.documented'
@@ -1008,6 +995,21 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
         except Exception:
             print("Series description LONGEST will not be added to series_work_values")
 
+    series_work_genres = []
+    if len(str(series_genre_one)) > 0:
+        series_work_genres.append({'content.genre.lref': str(series_genre_one)})
+    if len(str(series_genre_two)) > 0:
+        series_work_genres.append({'content.genre.lref': str(series_genre_two)})
+    if len(str(series_subject_one)) > 0:
+        series_work_genres.append({'content.subject.lref': str(series_subject_one)})
+    if len(str(series_subject_two)) > 0:
+        series_work_genres.append({'content.subject.lref': str(series_subject_two)})
+
+    print(f"Attempting to write series work genres and subjects to records {series_work_genres}")
+    if 'content.' in str(series_work_genres):
+        logger.warning("Appending series genres to CID work record:\n%s", series_work_genres)
+        series_work_values.extend(series_work_genres)
+
     # Start creating CID Work Series record
     series_values_xml = cur.create_record_data(data=series_work_values)
     if series_values_xml is None:
@@ -1034,7 +1036,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
         logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
         return None
-
+    '''
     series_work_genres = []
     if len(str(series_genre_one)) > 0:
         series_work_genres.append({'content.genre.lref': str(series_genre_one)})
@@ -1046,11 +1048,11 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
         series_work_genres.append({'content.subject.lref': str(series_subject_two)})
 
     print(f"Attempting to write series work genres and subjects to records {series_work_genres}")
-    if 'content.' in series_work_genres:
+    if 'content.' in str(series_work_genres):
         success = push_genre_payload(series_work_id, series_work_genres)
         if not success:
             logger.warning("Unable to write series genre %s", err)
-
+    '''
     return series_work_id
 
 
@@ -1234,6 +1236,19 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
             work_values.append({'utb.fieldname': 'Freeview EPG'})
             work_values.append({'utb.content': csv_dump})
 
+    work_genres = []
+    if 'work_genre_one' in epg_dict:
+        work_genres.append({'content.genre.lref': epg_dict['work_genre_one']})
+    if 'work_genre_two' in epg_dict:
+        work_genres.append({'content.genre.lref': epg_dict['work_genre_two']})
+    if 'work_subject_one' in epg_dict:
+        work_genres.append({'content.subject.lref': epg_dict['work_subject_one']})
+    if 'work_subject_two' in epg_dict:
+        work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
+    if 'content.' in str(work_genres):
+        logger.info("Adding work genres to CID work record: \n%s", work_genres)
+        work_values.extend(work_genres)
+
     work_id = ''
     work_values_xml = cur.create_record_data(data=work_values)
     if work_values_xml is None:
@@ -1262,6 +1277,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         logger.critical(err)
         return None
 
+    '''
     work_genres = []
     if 'work_genre_one' in epg_dict:
         work_genres.append({'content.genre.lref': epg_dict['work_genre_one']})
@@ -1273,11 +1289,11 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
 
     print(f"Attempting to write Work genres and subjects to record {work_genres}")
-    if 'content.' in work_genres:
+    if 'content.' in str(work_genres):
         success = push_genre_payload(work_id, work_genres)
         if not success:
             logger.warning("Unable to write Work genre %s", err)
-
+    '''
     return work_id
 
 
@@ -1537,6 +1553,7 @@ def push_broadcast_payload(man_id, broadcast_company):
         return False
 
 
+
 def push_payload(item_id, webvtt_payload):
     '''
     Push webvtt payload separately to Item record
@@ -1568,7 +1585,6 @@ def push_payload(item_id, webvtt_payload):
             return False
         else:
             logger.info('push_payload(): No error warning in requests post return. Payload written.')
-            print(post_response.text)
             return True
     else:
         logger.warning('push_payload()): Unable to lock item record %s', item_id)

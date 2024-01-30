@@ -195,6 +195,35 @@ def check_bp_status(fname, bucket_list):
             print(err)
 
 
+def get_buckets(bucket_collection):
+    '''
+    Read JSON list return
+    key_value and list of others
+    '''
+    bucket_list = []
+    key_bucket = ''
+
+    with open(DPI_BUCKETS) as data:
+        bucket_data = json.load(data)
+    if bucket_collection == 'netflix':
+        for key, value in bucket_data.items():
+            if bucket_collection in key:
+                if value is True:
+                    key_bucket = key
+                bucket_list.append(key)
+    elif bucket_collection == 'bfi':
+        for key, value in bucket_data.items():
+            if 'preservation' in key.lower():
+                if value is True:
+                    key_bucket = key
+                bucket_list.append(key)
+            # Imagen path read only now
+            if 'imagen' in key:
+                bucket_list.append(key)
+
+    return key_bucket, bucket_list
+
+
 def get_media_ingests(object_number):
     '''
     Use object_number to retrieve all media records
@@ -257,7 +286,7 @@ def main():
         if len(object_number) == 0:
             LOGGER.warning("Skipping. Object number couldn't be created from file renaming.")
             continue
-        item_type, file_type, original_fname, reference_num = check_cid_record(object_number, file)
+        item_type, file_type, original_fname, ref_num = check_cid_record(object_number, file)
         if not item_type or file_type:
             LOGGER.warning("Skipping. No CID item record found for object number %s", object_number)
             continue
@@ -290,19 +319,56 @@ def main():
             else:
                 LOGGER.info("No access copy found for file. Moving MP4 for proxy")
                 proxy = True
-        elif file_type != 'MP4' and original_fname = '':
+        elif file_type != 'MP4' and original_fname == '':
             # Would we ingest this if file_type doesn't match?
             proxy = True
         else:
             continue
 
         # Start ingest
-
+        if ingest:
+            LOGGER.info("MP4 file selected for ingest. Checking if already in Black Pearl: %s", file)
+            bucket, bucket_list = get_buckets('bfi')
+            check_for_ingest = check_bp_status(ref_num, bucket_list)
+            if check_for_ingest is True:
+                LOGGER.warning("Reference number found in Black Pearl library. Skipping ingest: %s %s", ref_num, priref)
+                continue
+            LOGGER.warning("Beginning PUT of file to Black Pearl tape library bucket: %s", bucket)
+            job_id = put_file(fpath, ref_num, bucket)
+            if not job_id:
+                LOGGER.warning("PUT for file %s has failed. Skip all further stages", file)
+                continue
+            LOGGER.info("Check file has persisted using reference_number: %s", ref_num)
+            confirm_persisted = check_bp_status(ref_num, bucket_list)
+            if not confirm_persisted:
+                LOGGER.warning("PUT for file %s has failed. Skip all further stages", file)
+                continue
+            LOGGER.info("Confirmation of successful PUT to Black Pearl")
+        
         # Start MP4 move/JPEG creation
+        if proxy:
+            LOGGER.info("Proxy files required for MP4 asset: %s", file)
 
     LOGGER.info("============== Legacy filename updater END ====================")
 
 
+def put_file(fpath, ref_num, bucket_name):
+    '''
+    Add the file to black pearl using helper (no MD5)
+    Retrieve job number and launch json notification
+    Untested: do we to bulk PUT or individually?
+    '''
+    file_size = os.path.getsize(fpath)
+    put_obj = [ds3Helpers.HelperPutObject(object_name=ref_num, file_path=fpath, size=file_size)]
+    try:
+        put_job_id = HELPER.put_objects(put_objects=put_obj, bucket=bucket_name)
+        print(put_job_id)
+        LOGGER.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_id)
+        return put_job_id
+    except Exception as err:
+        LOGGER.error('Exception: %s', err)
+        print('Exception: %s', err)
+        return None
 
 
 if __name__ == '__main__':

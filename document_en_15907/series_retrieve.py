@@ -36,8 +36,8 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 # API variables to access Press Association metadata
-URL = os.environ['PATV_URL']
-QUERY = {"aliases":"true"}
+URL = os.environ['PATV_FETCH']
+QUERY = {"aliases": "true"}
 HEADERS = {
     "Accept": "application/json",
     "apikey": os.environ['PATV_KEY']

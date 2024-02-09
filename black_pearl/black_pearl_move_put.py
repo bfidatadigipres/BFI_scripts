@@ -129,12 +129,13 @@ def check_bp_status(fname, bucket_list):
     return True
 
 
-def move_to_ingest_folder(folderpth, file_list, upload_size, autoingest, bucket_list):
+def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_list):
     '''
     Runs while loop and moves upto 2TB folder size
     End when 2TB reached or files run out
     '''
     remove_list = []
+    print("Move to ingest folder found....")
     logger.info("move_to_ingest_folder(): Moving files to %s", folderpth)
 
     for file in file_list:
@@ -151,9 +152,9 @@ def move_to_ingest_folder(folderpth, file_list, upload_size, autoingest, bucket_
         else:
             break
 
-    for f in remove_list:
-        if f in file_list:
-            file_list.remove(f)
+    for remove_file in remove_list:
+        if remove_file in file_list:
+            file_list.remove(remove_file)
     logger.info("move_to_ingest_folder(): Revised file list in Black Pearl ingest folder: %s", file_list)
 
     return file_list
@@ -192,9 +193,9 @@ def check_folder_age(fname):
     dt_str = fname[7:].split('_')
     dt_time = dt_str[1].replace('-', ':')
     new_name = f"{dt_str[0]} {dt_time}.000000"
-    dt = datetime.strptime(new_name, fmt)
+    date_time = datetime.strptime(new_name, fmt)
     now = datetime.strptime(str(datetime.now()), fmt)
-    difference = now - dt
+    difference = now - date_time
 
     return difference.days  # Returns days in integer using timedelta days
 
@@ -283,29 +284,30 @@ def main():
         check_control()
         folderpth = ''
         # Autoingest check for ingest_ path under 2TB
-        folders = [d for d in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, d))]
-        for folder in folders:
-            if folder.startswith('ingest_'):
-                folderpth = os.path.join(autoingest, folder)
-                logs.append(f"** Ingest folder found (and files present): {folderpth}")
-                # Only should be needed if renaming fails - may remove
-                fsize = get_size(folderpth)
+        folders = [d for d in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, d)) and d.startswith("ingest_")]
+        if len(folders) >= 1:
+            logs.append("One or more ingest folders found. Checking size of each")
+            for folder in folders:
+                folder_check_pth = os.path.join(autoingest, folder)
+                logs.append(f"** Ingest folder found (and files present): {folder_check_pth}")
+                fsize = get_size(folder_check_pth)
                 if fsize < upload_size:
                     logs.append("Folder will have more files added to reach maximum upload size.")
+                    folderpth = folder_check_pth
                 else:
                     # Any folders reaching here need a check against BP ingest to see if they've been uploaded and rename failed
-                    logs.append(f"WARNING: Skipping ingest folder already over maximum upload size and not renamed: {folderpth}")
+                    logs.append(f"WARNING: Skipping ingest folder already over maximum upload size and not renamed: {folder_check_pth}")
                     logs.append("WARNING: Please check the contents of this folder are uploaded to BP.")
-                    folderpth = ''
 
-        # Create if ingest_ doesn't yet exist
-        if not folderpth:
+        # If found ingest_ paths not selected for further ingest
+        if folderpth == '':
             logs.append("No suitable ingest folder exists, creating new one...")
             folderpth = create_folderpth(autoingest)
 
-        # Start move to folderpth now identified
+        # Start move to folderpth now identified (failing here sometimes)
         logs.append(f"Ingest folder selected: {folderpth}")
-        files_remaining = move_to_ingest_folder(folderpth, files, upload_size, autoingest, bucket_list)
+        print(f"move_to_ingest_folder: {folderpth}, {upload_size}, {autoingest}, {files}, {bucket_list}")
+        files_remaining = move_to_ingest_folder(folderpth, upload_size, autoingest, files, bucket_list)
         if files_remaining is None:
             logs.append("Problem with folder size extraction in get_size().")
             logger_write(logs)
@@ -315,9 +317,9 @@ def main():
         fsize = get_size(folderpth)
         print(f"Folder identified is {fsize} bytes, and upload size limit is {upload_size} bytes")
         if len(os.listdir(folderpth)) == 0:
-            logs.append(f"Skipping: Folderpath found that has no content in: {folderpth}")
+            logs.append(f"Script exiting: Folderpath still remains empty after move_to_ingest function: {folderpth}")
             logger_write(logs)
-            continue
+            sys.exit()
         if fsize > upload_size:
             # Ensure ingest folder is now pushed to black pearl
             logs.append(f"Starting move of folder path to Black Pearl ingest bucket {bucket}")

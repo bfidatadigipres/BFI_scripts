@@ -49,16 +49,16 @@ TODAY = str(datetime.datetime.now())
 TODAY_TIME = TODAY[11:19]
 TODAY_DATE = TODAY[:10]
 YEST = str(datetime.datetime.today() - datetime.timedelta(days=1))
-YEAR = YEST[:4]
-MONTH = YEST[5:7]
-#YEAR = '2023'
-#MONTH = '06'
+#YEAR = YEST[:4]
+#MONTH = YEST[5:7]
+YEAR = '2023'
+MONTH = '10'
 COMPLETE = os.path.join(os.environ['STORA_PATH'], 'completed')
 ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API']
+CID_API = os.environ['CID_API3']
 CODEPTH = os.environ['CODE']
-CONTROL_JSON = os.path.join(CODEPTH, 'stora_control.json')
+CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 
 # Setup logging
 LOGGER = logging.getLogger('document_stora_castcred')
@@ -117,7 +117,7 @@ def check_control():
     '''
     with open(CONTROL_JSON) as control:
         j = json.load(control)
-        if not j['stora_qnap04']:
+        if not j['stora']:
             LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
@@ -192,13 +192,13 @@ def title_filter(item_asset_title, item_title):
     return (title, title_art)
 
 
-def enum_list(credits):
+def enum_list(creds):
     '''
     Change list to dictionary pairs for sort order
     Increments of 5, beginning at 5
     '''
     n = 5
-    for item in credits:
+    for item in creds:
         yield n, item
         n += 5
 
@@ -241,13 +241,13 @@ def retrieve_epg_data(fullpath):
             try:
                 title_date_start_full = str(lines["item"][0]["dateTime"])
                 title_date_start = title_date_start_full[0:10]
-                print("Date of broadcast: {}".format(title_date_start))
+                print(f"Date of broadcast: {title_date_start}")
             except (KeyError, IndexError):
                 title_date_start = ''
             try:
                 time_full = str(lines["item"][0]["dateTime"])
                 time = time_full[11:19]
-                print("Time of broadcast: {}".format(time))
+                print(f"Time of broadcast: {time}")
             except (KeyError, IndexError):
                 time = ''
 
@@ -515,7 +515,7 @@ def main():
 
     # Iterate through all historical EPG metadata file
     # Later limit to just 1 week range before yesterday
-    for root, dirs, files in os.walk(ARCHIVE_PATH):
+    for root, _, files in os.walk(ARCHIVE_PATH):
         for file in files:
             if file.endswith('json.documented'):
                 check_control()
@@ -530,7 +530,6 @@ def main():
             item_title = credit_data[0]
             item_asset_title = credit_data[1]
             nfa_cat = credit_data[2]
-            work_type = credit_data[3]
             date = credit_data[4]
             time = credit_data[5]
             credit_list = credit_data[6]
@@ -538,7 +537,7 @@ def main():
             # Process title data
             try:
                 title, title_art = title_filter(item_asset_title, item_title)
-                LOGGER.info("Title for search: %s", title)
+                LOGGER.info("Title for search: %s %s", title_art, title)
             except Exception:
                 title = ''
                 title_art = ''
@@ -639,7 +638,7 @@ def main():
                             # Make Person record
                             person_priref = make_person_record(cast_dct_formatted)
                             if not person_priref:
-                                LOGGER.warning("Failure to create person record for %s", person_name)
+                                LOGGER.warning("Failure to create person record for %s", cast_name)
                                 continue
                             LOGGER.info("** PERSON RECORD CREATION: %s - %s - %s", cast_type, person_priref, cast_name)
 
@@ -890,33 +889,63 @@ def make_person_record(credit_dct=None):
     Where person record does not exist create new one
     and return priref for person for addition to work record
     '''
-    credit_priref = ''
-    print("************************")
-    print(credit_dct)
-    print("************************")
-
     if credit_dct is None:
         credit_dct = []
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
+    # Convert dict to xml using adlib
+    credit_xml = CUR.create_record_data(data=credit_dct)
+    if credit_xml:
+        print("*************************")
+        print(credit_xml)
+    else:
+        return None
+
     # Create basic person record
     try:
-        result = CUR.create_record(database='people',
-                                   data=credit_dct,
-                                   output='json',
-                                   write=True)
-        if result.records:
-            try:
-                credit_priref = result.records[0]['priref'][0]
-                print('* People record created with Priref {}'.format(credit_priref))
-                return credit_priref
-            except Exception as err:
-                LOGGER.warning("make_person_record(): CID Person priref is not present - error:", err)
-                return credit_priref
+        LOGGER.info("Attempting to create Person record for item")
+        credit_priref = push_record_create(credit_xml, 'people', 'insertrecord')
+        if credit_priref is None:
+            print(f"Unable to write Person record")
+            return None
+        return credit_priref
 
     except Exception as err:
+        if 'bool' in str(err):
+            LOGGER.critical('make_person_record():Unable to create People record', err)
+            print(f"*** Unable to create People record - error: {err}")
+            return None
+        print(f"*** Unable to create People record: {err}")
         LOGGER.critical('make_person_record():Unable to create People record', err)
-        return credit_priref
+        raise
+
+
+def push_record_create(payload, database, method):
+    '''
+    Receive adlib formed XML but use
+    requests to create the CID record
+    '''
+    params = {
+        'command': method,
+        'database': database,
+        'xmltype': 'grouped',
+        'output': 'json'
+    }
+
+    headers = {'Content-Type': 'text/xml'}
+
+    try:
+        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
+    except Exception as err:
+        LOGGER.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
+        print(err)
+        return None
+    print(f"Record list: {response.text}")
+    if 'recordList' in response.text:
+        records = json.loads(response.text)
+        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
+        return priref
+    return None
 
 
 def work_append(priref, work_dct=None):

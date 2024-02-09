@@ -65,8 +65,8 @@ def check_date_range(preservation_date):
         date_range.append(dt.strftime('%Y-%m-%d'))
 
     daterange = ', '.join(date_range)
-    print(f"Target range for DPI moves: {daterange}")
-    if preservation_date in date_range:
+    print(f"Target range for DPI moves: {date_range}")
+    if preservation_date in str(date_range):
         return True
 
     return False
@@ -87,9 +87,11 @@ def dpi_move_request():
         # Check manually entered date is valid for format/period
         pattern = "^20[0-9]{2}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}$"
         if not re.match(pattern, preservation_date):
+            print("Failed regex check")
             return render_template('date_error.html')
         success = check_date_range(preservation_date)
         if not success:
+            print("Failed check_date_range()")
             return render_template('date_error.html')
         status = 'Requested'
         date_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')

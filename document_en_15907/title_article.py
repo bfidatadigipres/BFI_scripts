@@ -29,6 +29,7 @@ TITLE_ARTICLES = {'af': ["Die ", "'N ", "DIE ", "'N "],
                   'pt': ["O ", "A ", "Os ", "As ", "Um ", "Uma ", "OS ", "AS ", "UM ", "UMA "],
                   'ro': ["Un ", "Una ", "O ", "UN ", "UNA "],
                   'es': ["El ", "La ", "Lo ", "Los ", "Las ", "Un ", "Una ", "EL ", "LA ", "LO ", "LOS ", "LAS ", "UN ", "UNA "],
+                  #'ca': ["El ", "La ", "L'", "Els ", "Les ", "Lo ", "Los ", "EL ", "LA ", "ELS ", "LES ", "LO ", "LOS "], Waiting to hear for expansion from Natasha
                   'sv': ["Den ", "Det ", "De ", "En ", "Ett ", "DEN ", "DET ", "DE ", "EN ", "ETT "],
                   'tr': ["Bir ", "BIR "],
                   'cy': ["Y ", "Yr ", "YR "],

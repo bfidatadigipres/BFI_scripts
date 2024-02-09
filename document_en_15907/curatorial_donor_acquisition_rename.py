@@ -102,7 +102,6 @@ def cid_retrieve(itemname, search):
         print("cid_retrieve(): Unable to retrieve data for {}".format(itemname))
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", itemname)
         query_result = None
-    print(query_result.records[0])
     try:
         acquired1 = query_result.records[0]['Acquired_filename']
     except (KeyError, IndexError) as err:
@@ -179,7 +178,7 @@ def main():
     spath = check_path(root, success_path)
     full_spath = os.path.join(root, spath)
     try:
-        os.makedirs(full_spath, exist_ok=False)
+        os.makedirs(full_spath, mode=0o777, exist_ok=False)
         LOGGER.info("Making new success folder: %s", full_spath)
     except FileExistsError as err:
         LOGGER.warning("Folder already exists... %s", err)
@@ -257,9 +256,12 @@ def main():
 
     # Rsync completed folder over
     local_logger(f"\nStarting RSYNC copy of {new_workflow_folder} to Digiops QC Curatorial path", fullpath)
+    print("Rsync start here")
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
     # Repeat for checksum pass if first pass fails
+    print("Repeat rsync start")
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
+    print("Rsync finished")
     local_logger("RSYNC complete.", fullpath)
 
     LOGGER.info("============= END Curatorial Donor Acquisition rename script END ============")
@@ -332,6 +334,7 @@ def rsync(file_path1, file_path2, folder):
 
     try:
         LOGGER.info("rsync(): Beginning rsync move of file %s to %s", file_path1, file_path2)
+        print(f"Start rsync: {rsync_cmd}")
         subprocess.call(rsync_cmd)
     except Exception:
         LOGGER.exception("rsync(): Move command failure: %s to %s", file_path1, file_path2)

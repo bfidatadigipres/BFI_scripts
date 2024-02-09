@@ -146,11 +146,13 @@ def main():
             if item_data is None:
                 LOGGER.warning("Creation of new CID item record failed with XML: \n%s", tt_item_xml)
                 continue
-            LOGGER.info("** CID Item record created: %s", item_data)
-            print(f"CID Item record created: {priref}, {object_number}")
+            LOGGER.info("** CID Item record created: %s - %s", item_data[0], item_data[1])
 
             # Rename file to new filename from object-number
-            new_fname = f"{object_number.replace('-', '_')}_01of01.{ext}"
+            tt_priref = item_data[0]
+            tt_ob_num = item_data[1]
+            print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
+            new_fname = f"{tt_ob_num.replace('-', '_')}_01of01.{ext}"
             new_fpath = os.path.join(fpath, new_fname)
             LOGGER.info("%s to be renamed %s", file, new_fname)
             rename_success = rename_or_move('rename', os.path.join(fpath, file), new_fpath)
@@ -173,7 +175,7 @@ def main():
         # Check fpath is empty and delete
         if len(os.listdir(fpath)) == 0:
             LOGGER.info("All files processed in folder: %s", object_number)
-            LOGGER.info("Deleting %s", fpath)
+            LOGGER.info("Deleting empty folder: %s", fpath)
             os.rmdir(fpath)
         else:
             LOGGER.warning("Leaving folder %s in place as files still remaining in folder %s", object_number, os.listdir(fpath))
@@ -273,7 +275,7 @@ def make_item_record_dict(priref, file, ext, record):
 
     if 'Title' in str(record):
         imp_title = record[0]['Title'][0]['title'][0]
-        item.append({'title': f"{imp_title} Timed Text"})
+        item.append({'title': f"{imp_title} (Timed Text)"})
         if 'title.article' in str(record):
             item.append({'title.article': record[0]['Title'][0]['title.article'][0]})
         item.append({'title.language': 'English'})
@@ -287,12 +289,9 @@ def make_item_record_dict(priref, file, ext, record):
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
         return None
     item.append({'related_object.reference.lref': priref})
-    # item.append({'related_object.association': f'Supplied timed text from {platform}'}) # Error Forcing is not allowed for field error
     item.append({'related_object.notes': 'Timed text for'})
     if len(ext) > 1:
         item.append({'file_type': ext.upper()})
-        if 'code_type' in str(record):
-            item.append({'code_type': record[0]['code_type'][0]})
     if 'acquisition.date' in str(record):
         item.append({'acquisition.date': record[0]['acquisition.date'][0]})
     if 'acquisition.method' in str(record):

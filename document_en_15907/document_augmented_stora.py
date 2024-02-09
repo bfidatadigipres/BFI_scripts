@@ -193,7 +193,11 @@ def find_repeats(asset_id):
     if result.hits == 0:
         return None
 
-    priref = result.records[0]['priref'][0]
+    try:
+        priref = result.records[0]['priref'][0]
+    except (IndexError, TypeError, KeyError):
+        return None
+
     print(f"Priref with matching asset_id in CID: {priref}")
     pquery = {'database': 'manifestations',
               'search': f'(parts_reference->priref={priref})',
@@ -202,7 +206,7 @@ def find_repeats(asset_id):
     presult = cid.get(pquery)
     try:
         ppriref = presult.records[0]['priref'][0]
-    except:
+    except(IndexError, TypeError, KeyError):
         ppriref = ''
 
     if len(ppriref) > 1:

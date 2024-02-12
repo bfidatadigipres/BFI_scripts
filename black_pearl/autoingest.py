@@ -189,7 +189,7 @@ def check_mime_type(fpath, log_paths):
     '''
     if fpath.endswith(('.mxf', '.ts', '.mpg')):
         mime = 'video'
-    elif fpath.endswith(('.srt', '.scc', '.xml', '.scc', '.itt', '.stl', '.cap', '.dxfp')):
+    elif fpath.endswith(('.srt', '.scc', '.xml', '.scc', '.itt', '.stl', '.cap', '.dfxp')):
         mime = 'application'
     else:
         mime = magic.from_file(fpath, mime=True)
@@ -421,7 +421,7 @@ def ext_in_file_type(ext, priref, log_paths):
            'itt': 'itt',
            'stl': 'stl',
            'cap': 'cap',
-           'dxfp': 'dxfp'}
+           'dfxp': 'dfxp'}
 
     try:
         ftype = dct[ext]

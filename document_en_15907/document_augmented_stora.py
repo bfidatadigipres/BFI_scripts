@@ -1382,9 +1382,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     try:
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         data = push_record_create(item_values_xml, 'items', 'insertrecord')
-        if data is None:
-            print(f"** PROBLEM: Unable to create Item record for {title}")
-        elif data[0] and data[1]:
+        if data[0] and data[1]:
             item_id = data[0]
             item_object_number = data[1]
             print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
@@ -1574,25 +1572,22 @@ def push_payload(item_id, webvtt_payload):
     payload = payload.encode('utf-8')
 
     lock_success = write_lock(item_id)
-    if lock_success:
+    if not lock_success:
+        logger.warning("push_payload(): Unable to lock CID item record %s", item_id)
+        return False
+    try:
         post_response = requests.request(
             'POST',
             CID_API,
             headers={'Content-Type': 'text/xml'},
             params={'command': 'updaterecord', 'database': 'items', 'xmltype': 'grouped', 'output': 'json'},
             data=payload,
-            timeout=1200)
-        if '<error><info>' in str(post_response.text):
-            logger.warning('push_payload(): Error returned from requests post: %s %s', item_id, payload)
-            print(post_response.text)
-            unlock_record(item_id)
-            return False
-        else:
-            logger.info('push_payload(): No error warning in requests post return. Payload written.')
-            return True
-    else:
-        logger.warning('push_payload()): Unable to lock item record %s', item_id)
-        return False
+            timeout=300)
+        return True
+    except Exception as err:
+         logger.warning('push_payload()): Unable to write Webvtt to record %s \n%s', item_id, err)
+         unlock_record(item_id)
+         return False
 
 
 def write_lock(priref):

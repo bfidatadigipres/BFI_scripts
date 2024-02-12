@@ -58,7 +58,6 @@ def check_date_range(preservation_date):
     Check date range is correct
     and that the file is not today
     '''
-    #if preservation_date in (TODAY, YEST, YEST2):
     if preservation_date in (TODAY, YEST):
         return False
 
@@ -86,7 +85,7 @@ def retrieve_requested():
         cursor = sqlite_connection.cursor()
         print("Database connected successfully")
 
-        cursor.execute('''SELECT * FROM DOWNLOADS WHERE status = "Requested"''')
+        cursor.execute("SELECT * FROM DOWNLOADS WHERE status = 'Requested'")
         data = cursor.fetchall()
         print(data)
         for row in data:
@@ -102,6 +101,7 @@ def retrieve_requested():
             print("Database connection closed")
 
     # Sort for unique tuples only in list
+    print(requested_data)
     sorted_data = remove_duplicates(requested_data)
     return sorted_data
 
@@ -156,10 +156,10 @@ def main():
         channel = row[3].strip()
         LOGGER.info("** User %s, email %s. Preservation date requested %s for channel %s", username, email, preservation_date, channel)
 
-        # Check date is not today/last three days
+        # Check date is not today/last three days or older than 14 days
         success = check_date_range(preservation_date)
         if not success:
-            LOGGER.info("Skipping these items are they are under 3 days old - files may not have moved to QNAP-04 yet.")
+            LOGGER.info("Skipping these items as they are not within the movable date range. If from the last three days files may not have moved to QNAP-04 yet.")
             continue
 
         # Make paths
@@ -171,7 +171,7 @@ def main():
             LOGGER.warning("Skipping: Error with source path: %s", source_path)
             continue
 
-        status = rsync_move(source_path, dest_path)
+        status = move_folder(channel, date_path)
         if not status:
             message = f"Warning: Not all files confirmed as moved to DPI path for {channel} on {preservation_date}."
             send_email_update(email, preservation_date, channel, message)
@@ -188,6 +188,7 @@ def main():
 
 def rsync_move(source_path, dest_path):
     '''
+    DEPRECATED
     Copy files from QNAP-04
     STORA_backup/yyyy/mm/dd/channel to
     STORA/yyyy/mm/dd/channel
@@ -215,6 +216,32 @@ def rsync_move(source_path, dest_path):
         LOGGER.warning("Files failed moved to DPI path: %s", dest_path)
         LOGGER.warning(err)
         return False
+
+
+def move_folder(channel, date_pth):
+    '''
+    Use Linux mv to shift folder from
+    STORA_backup to STORA path
+    '''
+
+    from_path = os.path.join(STORA_BACKUP, date_pth, channel)
+    to_path = os.path.join(STORA, date_pth, channel)
+
+    cmd = [
+        'mv',
+        from_path,
+        to_path
+    ]
+
+    try:
+        subprocess.call(cmd)
+    except Exception as err:
+        LOGGER.warning("Files failed move to DPI path: %s", to_path)
+        LOGGER.warning(err)
+        return False
+
+    if not os.path.exists(from_path) and os.path.exists(to_path):
+        return True
 
 
 def send_email_update(email, preservation_date, channel, message):

@@ -53,10 +53,11 @@ YEST = str(datetime.datetime.today() - datetime.timedelta(days=1))
 #MONTH = YEST[5:7]
 YEAR = '2023'
 MONTH = '10'
-COMPLETE = os.path.join(os.environ['STORA_PATH'], 'completed')
+COMPLETE = os.environ['STORA_PATH']
 ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH = os.environ['LOG_PATH']
 CID_API = os.environ['CID_API3']
+CID_API2 = os.environ['CID_API4']
 CODEPTH = os.environ['CODE']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 
@@ -929,13 +930,13 @@ def push_record_create(payload, database, method):
         'command': method,
         'database': database,
         'xmltype': 'grouped',
-        'output': 'json'
+        'output': 'jsonv1'
     }
 
     headers = {'Content-Type': 'text/xml'}
 
     try:
-        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
+        response = requests.request('POST', CID_API2, headers=headers, params=params, data=payload, timeout=1200)
     except Exception as err:
         LOGGER.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
         print(err)
@@ -943,7 +944,7 @@ def push_record_create(payload, database, method):
     print(f"Record list: {response.text}")
     if 'recordList' in response.text:
         records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
+        priref = records['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
         return priref
     return None
 

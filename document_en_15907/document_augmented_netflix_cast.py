@@ -26,11 +26,11 @@ Python 3.6+
 # Global packages
 import os
 import sys
+import json
 import codecs
 import logging
 import datetime
 import requests
-import tenacity
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -39,6 +39,7 @@ import adlib
 # Global vars
 LOG_PATH = os.environ['LOG_PATH']
 CID_API = os.environ['CID_API3']
+CID_API2 = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('document_netflix_castcred')
@@ -393,18 +394,20 @@ def create_contributors(priref, nfa_cat, credit_list):
 
                     # Make Person record
                     person_priref = make_person_record(cast_dct_formatted)
+                    if not person_priref:
+                        LOGGER.info("Creation of person record failed. Skipping this record for return attempt.")
+                        continue
                     LOGGER.info("** PERSON RECORD CREATION: %s - %s - %s", cast_type, person_priref, cast_name)
                     # Append biography and other data
-                    if person_priref:
-                        payload = create_payload(person_priref, known_for, early_life, bio, trivia)
-                        if len(payload) > 90:
-                            success = write_payload_manager(payload, person_priref)
-                            if success:
-                                LOGGER.info("** Payload data successfully written to Person record %s, %s", person_priref, person_name)
-                                print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
-                            else:
-                                LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
-                                print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
+                    payload = create_payload(person_priref, known_for, early_life, bio, trivia)
+                    if len(payload) > 90:
+                        success = write_payload_manager(payload, person_priref)
+                        if success:
+                            LOGGER.info("** Payload data successfully written to Person record %s, %s", person_priref, person_name)
+                            print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
+                        else:
+                            LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
+                            print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
 
                 # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
                 for key_, val_ in contributors.items():
@@ -461,6 +464,9 @@ def create_contributors(priref, nfa_cat, credit_list):
 
                     # Make Person record
                     person_priref = make_person_record(cred_dct_formatted)
+                    if not person_priref:
+                        LOGGER.info("Creation of person record failed. Skipping this record for return attempt.")
+                        continue
                     LOGGER.info("** PERSON RECORD CREATION: %s - %s - %s", cred_type, person_priref, cred_name)
                     # Append biography and other data
                     if len(person_priref) > 5:
@@ -658,7 +664,7 @@ def append_activity_type(person_priref, activity_type):
                                         priref=person_priref,
                                         data=data,
                                         output='json')
-
+        print(result)
         return True
     except Exception as err:
         LOGGER.warning("append_activity_type(): Unable to append activity_type to Person record", err)
@@ -732,37 +738,6 @@ def make_person_dct(dct=None):
     return (credit_dct, known_for, early_life, biography, trivia)
 
 
-def make_person_record(credit_dct=None):
-    '''
-    Where person record does not exist create new one
-    and return priref for person for addition to work record
-    '''
-    credit_priref = ''
-
-    if credit_dct is None:
-        credit_dct = []
-        LOGGER.warning("make_person_record(): Person record dictionary not received")
-
-    # Create basic person record
-    try:
-        result = CUR.create_record(database='people',
-                                   data=credit_dct,
-                                   output='json',
-                                   write=True)
-        if result.records:
-            try:
-                credit_priref = result.records[0]['priref'][0]
-                print(f'* People record created with Priref {credit_priref}')
-                return credit_priref
-            except Exception as err:
-                LOGGER.warning("make_person_record(): CID Person priref is not present - error: %s", err)
-                return credit_priref
-
-    except Exception as err:
-        LOGGER.critical('make_person_record():Unable to create People record: %s', err)
-        return credit_priref
-
-
 def work_append(priref, work_dct=None):
     '''
     Items passed in work_dct for amending to Work record
@@ -808,6 +783,70 @@ def write_payload_manager(payload, person_priref):
             return False
 
 
+def make_person_record(credit_dct=None):
+    '''
+    Where person record does not exist create new one
+    and return priref for person for addition to work record
+    '''
+    if credit_dct is None:
+        credit_dct = []
+        LOGGER.warning("make_person_record(): Person record dictionary not received")
+
+    # Convert dict to xml using adlib
+    credit_xml = CUR.create_record_data(data=credit_dct)
+    if credit_xml:
+        print("*************************")
+        print(credit_xml)
+    else:
+        return None
+
+    # Create basic person record
+    try:
+        LOGGER.info("Attempting to create Person record for item")
+        credit_priref = push_record_create(credit_xml, 'people', 'insertrecord')
+        if credit_priref is None:
+            print("Unable to write Person record")
+            return None
+        return credit_priref
+
+    except Exception as err:
+        if 'bool' in str(err):
+            LOGGER.critical('make_person_record():Unable to create People record', err)
+            print(f"*** Unable to create People record - error: {err}")
+            return None
+        print(f"*** Unable to create People record: {err}")
+        LOGGER.critical('make_person_record():Unable to create People record', err)
+        raise
+
+
+def push_record_create(payload, database, method):
+    '''
+    Receive adlib formed XML but use
+    requests to create the CID record
+    '''
+    params = {
+        'command': method,
+        'database': database,
+        'xmltype': 'grouped',
+        'output': 'jsonv1'
+    }
+
+    headers = {'Content-Type': 'text/xml'}
+
+    try:
+        response = requests.request('POST', CID_API2, headers=headers, params=params, data=payload, timeout=1200)
+    except Exception as err:
+        LOGGER.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
+        print(err)
+        return None
+    print(f"Record list: {response.text}")
+    if 'recordList' in response.text:
+        records = json.loads(response.text)
+        priref = records['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
+        return priref
+    return None
+
+
 def write_lock(person_priref):
     '''
     Apply a writing lock to the person record before updating metadata to Headers
@@ -816,6 +855,7 @@ def write_lock(person_priref):
         post_response = requests.post(
             CID_API,
             params={'database': 'people', 'command': 'lockrecord', 'priref': f'{person_priref}', 'output': 'json'})
+        print(post_response.text)
         return True
     except Exception as err:
         LOGGER.warning("Lock record wasn't applied to record %s\n%s", person_priref, err)
@@ -868,7 +908,7 @@ def write_payload(person_priref, payload):
         CID_API,
         params={'database': 'people', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
         data={'data': payload})
-
+    print(post_response.text)
     if "<error><info>" in str(post_response.text):
         return False
     else:
@@ -884,6 +924,7 @@ def unlock_record(priref):
         post_response = requests.post(
             CID_API,
             params={'database': 'people', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
+        print(post_response.text)
         return True
     except Exception as err:
         LOGGER.warning("Post to unlock record failed. Check Media record %s is unlocked manually\n%s", priref, err)

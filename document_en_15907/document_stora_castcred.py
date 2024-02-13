@@ -432,11 +432,19 @@ def cid_person_check(credit_id):
     except (KeyError, IndexError):
         name = ''
         priref = ''
+
     try:
-        activity_type = query_result.records[0]['activity_type']
+        act_type = query_result.records[0]['activity_type']
     except (KeyError, IndexError):
-        activity_type = ''
-    return (priref, name, activity_type)
+        return (priref, name, '')
+
+    activity_types = []
+    for count in range(0, len(act_type)):
+        try:
+            activity_types.append(act_type[count]['value'][0])
+        except (KeyError, IndexError):
+            pass
+    return (priref, name, activity_types)
 
 
 def cid_work_check(search):
@@ -582,7 +590,7 @@ def main():
                         work_priref = ''
                         continue
             else:
-                LOGGER.info("SKIPPING: No work record data found for %s transmitted on %s", title, date)
+                LOGGER.info("SKIPPING: Likely repeate as no work record data found for %s transmitted on %s", title, date)
                 LOGGER.info("Renaming JSON with _castcred appended\n")
                 rename(root, file, title)
                 continue
@@ -624,7 +632,7 @@ def main():
                                         LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
                                     else:
                                         LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
-                                        append_activity_type(person_priref, activity_type)
+                                        append_activity_type(person_priref, person_act_type, activity_type)
                             LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
                         else:
                             cast_dct_data = ''
@@ -693,7 +701,7 @@ def main():
                                         print(f"Matched activity type {activity_type_cred} : {person_act_type}")
                                     else:
                                         print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
-                                        append_activity_type(person_priref, activity_type_cred)
+                                        append_activity_type(person_priref, person_act_type, activity_type_cred)
                             print(f"** Person record already exists: {person_name} {person_priref}")
                             LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
                             LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
@@ -801,16 +809,17 @@ def sort_cred_dct(cred_list):
     return cred_dct_update
 
 
-def append_activity_type(person_priref, activity_type):
+def append_activity_type(person_priref, old_act_type, activity_type):
     '''
     Append activity type to person record if different
     '''
-    act_type = ({'activity_type': activity_type})
+    act_type = [{'activity_type': activity_type}]
+    for act in old_act_type:
+        act_type.append({'activity_type': act})
 
     # Convert dict to xml using adlib
     xml = CUR.create_record_data(person_priref, data=act_type)
     if xml:
-        print("*************************")
         print(xml)
     else:
         return None

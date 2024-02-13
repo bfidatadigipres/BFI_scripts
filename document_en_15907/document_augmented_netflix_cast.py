@@ -793,7 +793,7 @@ def make_person_record(credit_dct=None):
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = CUR.create_record_data(data=credit_dct)
+    credit_xml = CUR.create_record_data('', data=credit_dct)
     if credit_xml:
         print("*************************")
         print(credit_xml)

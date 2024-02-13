@@ -419,7 +419,7 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
     item_values.append({'title.type': '05_MAIN'})
     print(item_values)
 
-    item_values_xml = CUR.create_record_data(data=item_values)
+    item_values_xml = CUR.create_record_data('', data=item_values)
     print(item_values_xml)
 
     try:

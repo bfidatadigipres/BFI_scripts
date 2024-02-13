@@ -139,7 +139,7 @@ def main():
         for file in file_list:
             ext = file.split('.')[-1]
             tt_item_data = make_item_record_dict(priref, file, ext, record)
-            tt_item_xml = CUR.create_record_data(tt_item_data)
+            tt_item_xml = CUR.create_record_data('', tt_item_data)
             print(tt_item_xml)
 
             item_data = push_record_create(tt_item_xml, 'items', 'insertrecord')

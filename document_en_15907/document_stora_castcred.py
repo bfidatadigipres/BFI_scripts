@@ -53,7 +53,7 @@ YEST = str(datetime.datetime.today() - datetime.timedelta(days=1))
 #MONTH = YEST[5:7]
 YEAR = '2023'
 MONTH = '10'
-COMPLETE = os.environ['STORA_PATH']
+COMPLETE = os.environ['STORA_COMPLETED']
 ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH = os.environ['LOG_PATH']
 CID_API = os.environ['CID_API3']
@@ -801,22 +801,37 @@ def sort_cred_dct(cred_list):
     return cred_dct_update
 
 
-@tenacity.retry(stop=tenacity.stop_after_attempt(5))
 def append_activity_type(person_priref, activity_type):
     '''
     Append activity type to person record if different
     '''
-    data = ({'activity_type': activity_type})
-    try:
-        result = CUR.create_occurrences(database='people',
-                                        priref=person_priref,
-                                        data=data,
-                                        output='json')
+    act_type = ({'activity_type': activity_type})
 
-        return True
-    except Exception as err:
-        LOGGER.warning("append_activity_type(): Unable to append activity_type to Person record", err)
+    # Convert dict to xml using adlib
+    xml = CUR.create_record_data(person_priref, data=act_type)
+    if xml:
+        print("*************************")
+        print(xml)
+    else:
+        return None
+
+    # Create basic person record
+    try:
+        LOGGER.info("Attempting to append activity type to Person record %s", person_priref)
+        priref = push_record_create(xml, 'people', 'updaterecord')
+        if priref is None:
+            print(f"Unable to write activity type to Person record")
+            return False
         return False
+
+    except Exception as err:
+        if 'bool' in str(err):
+            LOGGER.critical('append_activity_Type():Unable to update People record', err)
+            print(f"*** Unable to update activity_type to People record - error: {err}")
+            return False
+        print(f"*** Unable to update People record: {err}")
+        LOGGER.critical('append_activity_type():Unable to update People record', err)
+        raise
 
 
 def make_person_dct(dct=None):
@@ -895,7 +910,7 @@ def make_person_record(credit_dct=None):
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = CUR.create_record_data(data=credit_dct)
+    credit_xml = CUR.create_record_data('', data=credit_dct)
     if credit_xml:
         print("*************************")
         print(credit_xml)
@@ -938,7 +953,7 @@ def push_record_create(payload, database, method):
     try:
         response = requests.request('POST', CID_API2, headers=headers, params=params, data=payload, timeout=1200)
     except Exception as err:
-        LOGGER.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
+        LOGGER.critical("Unable to %s <%s> record and payload:\n%s", method, database, payload)
         print(err)
         return None
     print(f"Record list: {response.text}")

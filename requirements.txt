@@ -1,0 +1,10 @@
+requests
+tenacity
+dicttoxml
+lxml
+pytz
+flask
+pandas
+python-magic
+elasticsearch
+unicodecsv

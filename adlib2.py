@@ -15,6 +15,67 @@ from lxml import etree, html
 import requests
 from dicttoxml import dicttoxml
 
+CID_API = os.environ['CID_API4']
+HEADERS = {
+    'Content-Type': 'text/xml'
+}
+
+
+def retrieve_record(database, search, limit, fields=None):
+    '''
+    Retrieve data from CID using new API
+    '''
+    query = {
+        'database': database,
+        'search': search,
+        'limit': limit,
+        'output': 'jsonv1'
+    }
+
+    if fields:
+        field_str = ', '.join(fields)
+        query['fields'] = field_str
+
+    record = get(query)
+    if not record:
+        return None
+
+    return record['adlibJSON']['recordList']['record']
+
+
+def get(query):
+    '''
+    Send a GET request
+    '''
+
+    try:
+       req = requests.request('GET', CID_API, headers=HEADERS, params=query)
+       dct = json.loads(req.text)
+    except Exception as err:
+       dct = {}
+
+    return dct
+
+
+def post(self, params=None, payload=False, sync=True):
+    '''
+    Send a POST request
+    '''
+    if params is None:
+        params={}
+    # Add payload data to request
+    if payload:
+        response = self.session.post(self.url, params=params, data={'data': payload})
+    else:
+        response = self.session.post(self.url, params=params)
+
+    # Wait for response
+    if sync:
+        return self._validate(response)
+    else:
+        return True
+
+
 
 def retrieve_attribute(record, fieldname):
     '''
@@ -48,7 +109,7 @@ def create_record_data(priref, data=None):
     if not isinstance(data, list):
         data = [data]
 
-    frag = fragment(data)
+    frag = get_fragments(data)
     if not frag:
         return False
 
@@ -68,7 +129,7 @@ def create_record_data(priref, data=None):
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
-def fragment(obj):
+def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
     fragment from dictionary / list of dictionaries

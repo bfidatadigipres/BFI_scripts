@@ -61,20 +61,25 @@ def post(self, params=None, payload=False, sync=True):
     '''
     Send a POST request
     '''
-    if params is None:
-        params={}
-    # Add payload data to request
-    if payload:
-        response = self.session.post(self.url, params=params, data={'data': payload})
-    else:
-        response = self.session.post(self.url, params=params)
+    params = {
+        'command': method,
+        'database': database,
+        'xmltype': 'grouped',
+        'output': 'jsonv1'
+    }
 
-    # Wait for response
-    if sync:
-        return self._validate(response)
-    else:
-        return True
+    payload = payload.encode('utf-8')
+    try:
+        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
+    except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s\n%s", database, method, payload, err)
+        print(err)
+        return None
 
+    if 'recordList' in response.text:
+        records = json.loads(response.text)
+        return records['adlibJSON']['recordList']['record'][0]
+    return None
 
 
 def retrieve_attribute(record, fieldname):

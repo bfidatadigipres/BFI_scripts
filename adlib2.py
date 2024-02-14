@@ -4,6 +4,9 @@
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
+To get metadata:
+http://212.114.101.119/CIDDataRestricted/wwwopac.ashx?&database=items&command=getmetadata&fields=title
+
 Joanna White
 2024
 '''
@@ -51,7 +54,8 @@ def get(query):
     try:
        req = requests.request('GET', CID_API, headers=HEADERS, params=query)
        dct = json.loads(req.text)
-    except Exception as err:
+    except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+       print(err)
        dct = {}
 
     return dct
@@ -72,7 +76,6 @@ def post(self, params=None, payload=False, sync=True):
     try:
         response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
     except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
-        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s\n%s", database, method, payload, err)
         print(err)
         return None
 

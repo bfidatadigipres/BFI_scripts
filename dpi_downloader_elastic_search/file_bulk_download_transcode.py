@@ -59,6 +59,7 @@ import json
 import hashlib
 import logging
 import itertools
+import subprocess
 from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError
@@ -406,8 +407,9 @@ def main():
         download_fpath = os.path.join(dpath, dfolder)
         print(download_fpath)
         if not os.path.exists(download_fpath):
-            os.makedirs(download_fpath, mode=0o777, exist_ok=True)
+            os.makedirs(download_fpath, 0o777, exist_ok=True)
             LOGGER.info("Download file path created: %s", download_fpath)
+        os.chmod(download_fpath, 0o777)
 
         priref_list = []
         # Single download
@@ -454,6 +456,9 @@ def main():
                     LOGGER.info("Updating download UMID filename with item filename: %s", orig_fname)
                     umid_fpath = os.path.join(download_fpath, fname)
                     os.rename(umid_fpath, new_fpath)
+
+                # Apply CHMOD to download
+                os.chmod(new_fpath, 0o777)
 
                 # MD5 Verification
                 local_md5, bp_md5 = make_check_md5(new_fpath, fname, bucket)
@@ -565,6 +570,9 @@ def main():
                             LOGGER.info("Updating download UMID filename with item filename: %s", orig_fname)
                             umid_fpath = os.path.join(download_fpath, filename)
                             os.rename(umid_fpath, new_fpath)
+
+                        # Apply CHMOD to download
+                        os.chmod(new_fpath, 0o777)
 
                         # MD5 Verification
                         local_md5, bp_md5 = make_check_md5(new_fpath, filename, bucket)

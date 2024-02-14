@@ -4,9 +4,6 @@
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
-To get metadata:
-http://212.114.101.119/CIDDataRestricted/wwwopac.ashx?&database=items&command=getmetadata&fields=title
-
 Joanna White
 2024
 '''

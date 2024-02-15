@@ -86,7 +86,13 @@ def retrieve_attribute(record, fieldname):
     '''
     Retrieve data from @attributes
     '''
-    return record['@attributes'][f'{fieldname}']
+    if fieldname == 'parts_of_reference.lref':
+        return record['Part_of'][0]['part_of_reference.lref'][0]['spans'][0]['text']
+    elif fieldname == 'parts.lref':
+        # Iterate
+        pass
+
+    return record['@attributes'][f'{fieldname}'][0]
 
 
 def retrieve_field_name(record, fieldname):
@@ -96,21 +102,66 @@ def retrieve_field_name(record, fieldname):
     ['adlibJSON']['recordList']['record'][0]
     '''
     field_list = []
-
-    for field in record[f'{fieldname}']:
-        if '@lang' in str(field):
-            field_list.append(field['value'][0]['spans'][0]['text'])
-        else:
-            field_list.append(field['spans'][0]['text'])
+    try:
+        for field in record[f'{fieldname}']:
+            if '@lang' in str(field):
+                field_list.append(field['value'][0]['spans'][0]['text'])
+            else:
+                field_list.append(field['spans'][0]['text'])
+    except KeyError:
+        field_list.append(group_check(record, fieldname))
 
     return field_list
 
 
-def retrieve_grouped(record, fieldname):
+def group_check(record, fname):
     '''
-    WIP: For fields embedded into group data
+    Get group that contains field key
     '''
-    pass
+    group_check = dict([ (k, v) for k, v in record.items() if f'{fname}' in str(v) ])
+
+    if len(group_check) == 1:
+        first_key = next(iter(group_check))
+        for key, val in group_check[f'{first_key}'][0].items():
+            if str(key) == str(fname):
+                if '@lang' in str(val):
+                    try:
+                        return val[0]['value'][0]['spans'][0]['text']
+                    except KeyError:
+                        print(f"Failed to extract value: {val}")
+                        return None
+                else:
+                    try:
+                        return val[0]['spans'][0]['text']
+                    except KeyError:
+                        print(f"Failed to extract value: {val}")
+                        return None
+    elif len(group_check) > 1:
+        all_keys = []
+        all_vals = []
+        for kname in group_check:
+            for key, val in group_check[f'{kname}'][0].items():
+                if key == fname:
+                    dx = {}
+                    dx[fname] = val
+                    all_vals.append(dx)
+        if len(all_vals) == 1:
+            if '@lang' in str(all_vals):
+                try:
+                    return all_vals[0][fname][0]['value'][0]['spans'][0]['text']
+                except KeyError:
+                    print(f"Failed to extract value: {all_val}")
+                    return None
+            else:
+                try:
+                    return all_vals[0][fname][0]['spans'][0]['text']
+                except KeyError:
+                    print(f"Failed to extract value: {all_vals}")
+                    return None
+        else:
+            return all_vals
+    else:
+        return None
 
 
 def create_record_data(priref, data=None):

@@ -37,10 +37,11 @@ def retrieve_record(database, search, limit, fields=None):
         query['fields'] = field_str
 
     record = get(query)
-    if not record:
-        return None
+    if not 'recordList' in str(record):
+        return (record['adlibJSON']['diagnostic']['hits'], None)
 
-    return record['adlibJSON']['recordList']['record']
+    hits = len(record['adlibJSON']['recordList']['record'])
+    return (hits, record['adlibJSON']['recordList']['record'])
 
 
 def get(query):

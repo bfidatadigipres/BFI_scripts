@@ -82,19 +82,6 @@ def post(self, params=None, payload=False, sync=True):
     return None
 
 
-def retrieve_attribute(record, fieldname):
-    '''
-    Retrieve data from @attributes
-    '''
-    if fieldname == 'parts_of_reference.lref':
-        return record['Part_of'][0]['part_of_reference.lref'][0]['spans'][0]['text']
-    elif fieldname == 'parts.lref':
-        # Iterate
-        pass
-
-    return record['@attributes'][f'{fieldname}'][0]
-
-
 def retrieve_field_name(record, fieldname):
     '''
     Retrieve record, check for language data

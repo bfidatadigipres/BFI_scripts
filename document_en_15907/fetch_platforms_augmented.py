@@ -40,8 +40,6 @@ TODAY = datetime.date.today()
 TWO_WEEKS = TODAY - datetime.timedelta(days=140)
 START = f"{TWO_WEEKS.strftime('%Y-%m-%d')}T00:00:00"
 END = f"{TODAY.strftime('%Y-%m-%d')}T23:59:00"
-# START = '2021-07-01T00:00:00'
-# END = '2024-02-19T23:59:00'
 UPDATE_AFTER = '2019-07-01T00:00:00'
 
 # Setup logging

@@ -49,10 +49,10 @@ TODAY = str(datetime.datetime.now())
 TODAY_TIME = TODAY[11:19]
 TODAY_DATE = TODAY[:10]
 YEST = str(datetime.datetime.today() - datetime.timedelta(days=1))
-#YEAR = YEST[:4]
-#MONTH = YEST[5:7]
-YEAR = '2023'
-MONTH = '10'
+YEAR = YEST[:4]
+MONTH = YEST[5:7]
+# YEAR = '2024'
+# MONTH = '01'
 COMPLETE = os.environ['STORA_COMPLETED']
 ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH = os.environ['LOG_PATH']

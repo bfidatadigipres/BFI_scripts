@@ -92,7 +92,7 @@ def retrieve_field_name(record, fieldname):
     field_list = []
     try:
         for field in record[f'{fieldname}']:
-            if '@lang' in str(field):
+            if '@lang' in str(field) or 'lang' in str(field):
                 field_list.append(field['value'][0]['spans'][0]['text'])
             else:
                 field_list.append(field['spans'][0]['text'])

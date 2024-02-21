@@ -120,6 +120,8 @@ def fetch(cat_id, search_type, search_id, title):
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
             LOGGER.critical('**** PROBLEM: Cannot fetch EPG metadata. **** \n%s', err)
             raise tenacity.TryAgain
+        else:
+            return None
     elif search_type == 'cat_asset':
         try:
             req = requests.get(os.path.join(URL, f"catalogue/{cat_id}/asset/{search_id}"), headers=HEADERS)
@@ -129,6 +131,8 @@ def fetch(cat_id, search_type, search_id, title):
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
             LOGGER.critical('**** PROBLEM: Cannot fetch EPG metadata. **** \n%s', err)
             raise tenacity.TryAgain
+        else:
+            return None
     elif search_type == 'asset':
         try:
             req = requests.get(os.path.join(URL, f'asset/{search_id}'), headers=HEADERS)
@@ -138,6 +142,8 @@ def fetch(cat_id, search_type, search_id, title):
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
             LOGGER.critical('**** PROBLEM: Cannot fetch EPG metadata. **** \n%s', err)
             raise tenacity.TryAgain
+        else:
+            return None
     elif search_type == 'contributors':
         try:
             req = requests.get(os.path.join(URL, f'asset/{search_id}/contributor'), headers=HEADERS)
@@ -147,6 +153,8 @@ def fetch(cat_id, search_type, search_id, title):
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
             LOGGER.critical('**** PROBLEM: Cannot fetch EPG metadata. **** \n%s', err)
             raise tenacity.TryAgain
+        else:
+            return None
 
 
 def json_dump(json_path, dct=None):
@@ -253,12 +261,13 @@ def main():
 
         LOGGER.info("Requests will now attempt to retrieve the %s metadata for title %s", platform, title_retrieve)
         json_dct = fetch(cat_id, 'title', '', title_retrieve)
-        if json_dct:
-            print(json_dct)
-            LOGGER.info("Fetched JSON data successfully.")
-            catalogue_path = os.path.join(storage_path, f"catalogue/{title_retrieve.replace(' ', '_')}_{START.replace(':', '-')}_{END.replace(':', '-')}_catalogue.json")
-            json_dump(catalogue_path, json_dct)
-            print("Downloaded catalogue info...")
+        if not json_dct:
+            continue
+        print(json_dct)
+        LOGGER.info("Fetched JSON data successfully.")
+        catalogue_path = os.path.join(storage_path, f"catalogue/{title_retrieve.replace(' ', '_')}_{END.replace(':', '-')}_catalogue.json")
+        json_dump(catalogue_path, json_dct)
+        print("Downloaded catalogue info...")
 
         # Iterate all data retrieved from catalogue for date range
         asset_dict = {}

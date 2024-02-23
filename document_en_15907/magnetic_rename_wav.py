@@ -37,6 +37,7 @@ import time
 import shutil
 import logging
 import datetime
+import requests
 import subprocess
 
 # Private packages
@@ -236,7 +237,7 @@ def cid_query(database, search, object_number):
         source_item = ""
         print(err)
     try:
-        sound_system_item = query_result.records[0]['sound_system_item'][0]
+        sound_system_item = query_result.records[0]['sound_system_item']
     except (KeyError, IndexError) as err:
         sound_system_item = ""
         print(err)
@@ -357,20 +358,23 @@ def main():
             if len(source_ob_num) > 0:
                 cid_data = cid_data_retrieval(source_ob_num)
                 print(cid_data)
+                if cid_data[11] != source_ob_num:
+                    LOGGER.warning("Source object number <%s> is not a match to filename converted object_number <%s>", cid_data[11], source_ob_num)
+                    continue
             # Check that source item record is Magnetic
-            if not 'Magnetic (sound)' in cid_data[15]:
-                LOGGER.info("Source item record is not Magnetic (sound) in sound_system_item")
+            if not 'Magnetic (sound)' in str(cid_data[15]):
+                LOGGER.info("Source item record is not Magnetic (sound) in sound_system_item: %s", str(cid_data[15]))
                 local_log("Skipping: 'Magnetic (sound)' not found in sound_system_item")
                 continue
             # Make CID record using source_item title / manifestation parent title
             if len(cid_data[9]) > 0:
                 LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[9])
-                local_log(f"Creating new CID item record using parent title: {cid_data[8]}")
-                wav_data = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14])
+                local_log(f"Creating new CID item record using parent title: {cid_data[9]}")
+                wav_data = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14], cid_data[11])
             elif len(cid_data[1]) > 0:
                 LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[1])
                 local_log(f"Creating new CID item record using grandparent title: {cid_data[1]}")
-                wav_data = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6])
+                wav_data = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6], cid_data[11])
             else:
                 local_log(f"Unable to retrieve CID data for: {source_ob_num}. Moving file to failed_rename folder.")
                 LOGGER.warning("Title information absent from CID data retrieval, skipping record creation")
@@ -381,25 +385,13 @@ def main():
                 continue
 
             # Check wav_ob_num present following Item creation
-            if wav_data:
-                local_log(f"Creation of new WAV item record successful: {wav_data[0]}")
-                LOGGER.info("Creation of new WAV item record successful: %s", wav_data[0])
-            else:
+            if wav_data is None:
                 LOGGER.warning("No WAV object number obtained - failed record creation")
                 local_log(f"FAILED: Creation of new WAV Item record failed for {file}. Leaving to retry")
                 continue
-            # Append source item to WAV record
-            success = append_source(source_ob_num, wav_data[1], wav_data[0])
-            if success:
-                LOGGER.info("Source item linked successfully in new WAV Item record")
-                local_log("- Source item linked with new Item record")
-            else:
-                LOGGER.warning("Source item link failed, and must be appended manually:")
-                LOGGER.warning("Source item: %s - New WAV Item record: %s", source_ob_num, wav_data[0])
-                local_log("- WARNING! Source item link failed, and must be appended manually:")
-                local_log(f"-          Source item: {source_ob_num} - New WAV Item record: {wav_data[0]}")
+
             # Rename file and move
-            success = rename(file, wav_data[0])
+            success = rename(file, wav_data[1])
             if success is not None:
                 local_log(f"File {file} renamed {success[1]}")
                 LOGGER.info("File %s renamed successfully to %s", file, success[1])
@@ -442,19 +434,19 @@ def main():
                 cid_data = cid_data_retrieval(source_ob_num)
                 print(cid_data)
             # Check that source item record is Magnetic
-            if not 'Magnetic (sound)' in cid_data[15]:
-                LOGGER.info("Source item record is not Magnetic (sound) in sound_system_item")
+            if not 'Magnetic (sound)' in str(cid_data[15]):
+                LOGGER.info("Source item record is not Magnetic (sound) in sound_system_item: %s", str(cid_data[15]))
                 local_log("Skipping: 'Magnetic (sound)' not found in sound_system_item")
                 continue
             # Make record, retrieve object number
             if len(cid_data[9]) > 0:
                 LOGGER.info("Making new CID item record for WAV using parent title %s", cid_data[9])
-                local_log(f"Creating new CID item record using parent title: {cid_data[8]}")
-                wav_data = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14])
+                local_log(f"Creating new CID item record using parent title: {cid_data[9]}")
+                wav_data = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14], cid_data[11])
             elif len(cid_data[1]) > 0:
                 LOGGER.info("Making new CID item record for WAV using grandparent title %s", cid_data[1])
                 local_log(f"Creating new CID item record using grandparent title: {cid_data[1]}")
-                wav_data = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6])
+                wav_data = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6], cid_data[11])
             else:
                 local_log(f"Unable to retrieve CID data for: {source_ob_num}. Moving files to failed_rename folder.")
                 LOGGER.warning("Title information absent from CID data retrieval, skipping record creation")
@@ -468,6 +460,12 @@ def main():
                     shutil.move(local_filepath, local_fail_path)
                 continue
 
+            # Check wav_ob_num present following Item creation
+            if wav_data is None:
+                LOGGER.warning("No WAV object number obtained - failed record creation")
+                local_log(f"FAILED: Creation of new WAV Item record failed for {file}. Leaving to retry")
+                continue
+
             # Remove any items that fail policy before rename/move
             for key, val, in success_check.items():
                 if 'FAIL!' in str(val):
@@ -475,31 +473,13 @@ def main():
                     local_fail_path = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename', filename)
                     print(f"Moving {key} to {local_fail_path}")
                     local_log(f"FAILED MEDIACONCH POLICY: Moving {filename} to {local_fail_path}")
-                    local_log(f"Please resupply and conformance check this file manually. Object number: {wav_data[0]}")
+                    local_log(f"Please resupply and conformance check this file manually. Object number: {wav_data[1]}")
                     LOGGER.info("Moving %s to fail path: %s", filename, local_fail_path)
                     shutil.move(key, local_fail_path)
 
-            # Check wav_ob_num present following Item creation
-            if wav_data:
-                local_log(f"Creation of new WAV item record successful: {wav_data[0]}")
-                LOGGER.info("Creation of new WAV item record successful: %s", wav_data[0])
-            else:
-                LOGGER.warning("No WAV object number obtained - failed record creation")
-                local_log(f"FAILED: Creation of new WAV Item record failed for {file}. Leaving to retry")
-                continue
-            # Append source item to WAV record
-            success = append_source(source_ob_num, wav_data[1], wav_data[0])
-            if success:
-                LOGGER.info("Source item linked successfully in new WAV Item record")
-                local_log("- Source item linked successfully in new WAV Item record")
-            else:
-                LOGGER.warning("Source item link failed, and must be appended manually:")
-                LOGGER.warning("Source item: %s - New WAV Item record: %s", source_ob_num, wav_data[0])
-                local_log("- WARNING! Source item link failed, and must be appended manually:")
-                local_log(f"-          Source item: {source_ob_num} - New WAV Item record: {wav_data[0]}")
             # Rename all files and move to autoingest
             for local_file in range_list:
-                success = rename(local_file, wav_data[0])
+                success = rename(local_file, wav_data[1])
                 if success is not None:
                     local_log(f"File {local_file} renamed {success[1]}")
                     LOGGER.info("File %s renamed successfully to %s", local_file, success[1])
@@ -540,7 +520,7 @@ def main():
     LOGGER.info("================ END magnetic_rename_wav.py END =================")
 
 
-def create_wav_record(gp_priref, title, title_article, title_language):
+def create_wav_record(gp_priref, title, title_article, title_language, source_ob_num):
     '''
     Item record creation for WAV file
     TO DO: Needs reviewing with Lucy
@@ -574,6 +554,7 @@ def create_wav_record(gp_priref, title, title_article, title_language):
                       {'description.date': str(datetime.datetime.now())[:10]},
                       {'file_type': 'WAV'},
                       {'item_type': 'DIGITAL'},
+                      {'source_item': source_ob_num},
                       {'source_item.content': 'SOUND'},
                       {'production.reason': 'Magnetic preservation WAV digitisation project'},
                       {'production.notes': 'WAV file'}])
@@ -593,29 +574,23 @@ def create_wav_record(gp_priref, title, title_article, title_language):
     else:
         item_values.append({'title.language': 'English'})
     item_values.append({'title.type': '05_MAIN'})
-    print(item_values)
+    item_values_xml = CUR.create_record_data('', data=item_values)
+    print(item_values_xml)
 
     try:
-        i = CUR.create_record(database='items',
-                              data=item_values,
-                              output='json',
-                              write=True)
-        print(i)
-        print(i.records)
-        if i.records:
-            try:
-                wav_priref = i.records[0]['priref'][0]
-                wav_ob_num = i.records[0]['object_number'][0]
-                print(f'** WAV Item record created with Priref {wav_priref}')
-                print(f'** WAV Item record created with object number {wav_ob_num}')
-                LOGGER.info('WAV Item record created with priref %s', wav_priref)
-                return wav_ob_num, wav_priref
-            except Exception:
-                LOGGER.exception("WAV Item record failed to retrieve object number")
-                return None
-        else:
+        wav_data = push_record_create(item_values_xml, 'items', 'insertrecord')
+        if wav_data is None:
             print(f"\nUnable to create CID WAV item record for {title}")
             LOGGER.exception("Unable to create WAV item record!")
+            return None
+        if wav_data[0] and wav_data[1]:
+            wav_priref = wav_data[0]
+            wav_ob_num = wav_data[1]
+            print(f'** WAV Item record created with Priref {wav_priref}')
+            print(f'** WAV Item record created with object number {wav_ob_num}')
+            LOGGER.info('WAV Item record created with priref %s', wav_priref)
+            return wav_priref, wav_ob_num
+        else:
             return None
     except Exception:
         print(f"\nUnable to create CID WAV item record for {title}")
@@ -623,35 +598,33 @@ def create_wav_record(gp_priref, title, title_article, title_language):
         return None
 
 
-def append_source(source_ob_num, priref, ob_num):
+def push_record_create(payload, database, method):
     '''
-    Where source_item can't be written with record creation
-    appended after record created. Check source_item field
-    after push is only way to verify if successful.
+    Receive adlib formed XML but use
+    requests to create the CID record
     '''
-    source = {'source_item': source_ob_num}
+    params = {
+        'command': method,
+        'database': database,
+        'xmltype': 'grouped',
+        'output': 'json'
+    }
+
+    headers = {'Content-Type': 'text/xml'}
 
     try:
-        result = CUR.create_occurrences(database='items',
-                                        priref=priref,
-                                        data=source,
-                                        output='json')
-        print(result)
+        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
     except Exception as err:
-        LOGGER.warning("Unable to append work data to CID work record: %s", err)
-
-    # Attempt retrieval of source_item, only means to check if populated
-    time.sleep(10)
-    search = f'(priref="{priref}")'
-    data = cid_query('items', search, ob_num)
-    print(f"CHECK FOR SOURCE_ITEM: {data}")
-
-    if str(data[5]) == str(source_ob_num):
-        print(f"Retrieved source_item field from Item record: {data[5]} match {source_ob_num}")
-        return True
-    else:
-        print(f"Retrieved source_item field from Item. No match for {source_ob_num}")
-        return False
+        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
+        print(err)
+        return None
+    print(f"Record list: {response.text}")
+    if 'recordList' in response.text:
+        records = json.loads(response.text)
+        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
+        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
+        return priref, object_number
+    return None
 
 
 def rename(file, ob_num):

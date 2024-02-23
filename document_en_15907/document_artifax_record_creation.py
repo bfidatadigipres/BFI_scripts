@@ -76,7 +76,8 @@ HEADERS = {
 }
 
 # CID URL details
-cid = adlib.Database(os.environ['CID_API'])
+CID_API = os.environ['CID_API3']
+cid = adlib.Database(CID_API)
 cur = adlib.Cursor(cid)
 
 # Data for CID Festival/Artifax season thesaurus look up
@@ -385,6 +386,7 @@ def main():
 
                         # Create CID record and extract priref/object_number
                         cid_data = create_work(work_data_dct)
+                        print(f"CID data returned from create_work: {cid_data}")
                         cid_priref = cid_data[0]
                         cid_object_number = cid_data[1]
                         # Push back if priref to Artifax
@@ -484,6 +486,8 @@ def create_work(work_data_dct=None):
         logger.warning("create_work(): Work data dictionary failed to send from main()")
 
     # Work record defaults, basic and retrieve priref/object_numberfor Artifax push
+    title = work_data_dct[0]['title']
+    print(title)
     application_restriction_date = str(datetime.date.today() + datetime.timedelta(120))
     application_restriction_date_8yr = str(datetime.date.today() + datetime.timedelta(2922))
     work_default = []
@@ -530,27 +534,57 @@ def create_work(work_data_dct=None):
     work_values.extend(work_default)
 
     # Create basic work record
+    work_values_xml = cur.create_record_data('', data=work_values)
+    if work_values_xml is None:
+        return None
+    print("***************************")
+    print(work_values_xml)
+
     try:
-        wrk = cur.create_record(database='works',
-                                data=work_values,
-                                output='json',
-                                write=True)
-        if wrk.records:
-            try:
-                cid_priref = wrk.records[0]['priref'][0]
-                cid_object_number = wrk.records[0]['object_number'][0]
-                print(f'* Work record created with Priref {cid_priref}')
-                logger.info('create_work(): Work record created with priref %s', cid_priref)
-
-            except Exception as error:
-                logger.warning("CID work id is not present - error:", error)
-                raise
-
+        logger.info("Attempting to create Work record for item %s", title)
+        data = push_record_create(work_values_xml, 'works', 'insertrecord')
+        if data[0]:
+            cid_priref = data[0]
+            cid_object_number = data[1]
+            print(f'* Work record created with Priref {cid_priref} Object number {cid_object_number}')
+            logger.info('create_work(): Work record created with priref %s', cid_priref)
+        else:
+            logger.warning("CID priref/object_number is not present after creating CID record")
+            print("Creation of record failed using method Requests: 'works', 'insertrecord'")
     except Exception as err:
         print('* Unable to create Work record')
         logger.critical('create_work():Unable to create Work record', err)
 
     return (cid_priref, cid_object_number)
+
+
+def push_record_create(payload, database, method):
+    '''
+    Receive adlib formed XML but use
+    requests to create the CID record
+    '''
+    params = {
+        'command': method,
+        'database': database,
+        'xmltype': 'grouped',
+        'output': 'json'
+    }
+
+    headers = {'Content-Type': 'text/xml'}
+
+    try:
+        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
+    except Exception as err:
+        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
+        print(err)
+        return None
+    print(f"Record list: {response.text}")
+    if 'recordList' in response.text:
+        records = json.loads(response.text)
+        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
+        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
+        return priref, object_number
+    return None
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
@@ -560,7 +594,7 @@ def push_priref_artifax(object_id, priref):
     '''
     dct = []
     data = {'object_id': object_id,
-            'object_type_id': '55',
+            'object_type_id': '69',
             'custom_form_element_id': '1004',
             'custom_form_assignment_id': '25493',
             'custom_form_data_value': priref}
@@ -578,7 +612,7 @@ def push_ob_num_artifax(object_id, object_number):
     '''
     dct = []
     data = {'object_id': object_id,
-            'object_type_id': '55',
+            'object_type_id': '69',
             'custom_form_element_id': '1003',
             'custom_form_assignment_id': '25493',
             'custom_form_data_value': object_number}

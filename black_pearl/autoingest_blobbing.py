@@ -675,8 +675,10 @@ def main():
             if 'ingest/netflix' in fpath:
                 logger.info('%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder')
                 black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_netflix_ingest')
+                black_pearl_blobbing = os.path.join(linux_host, 'autoingest/black_pearl_netflix_ingest_blobbing')
             else:
                 black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_ingest')
+                black_pearl_folder_blobbing = os.path.join(linux_host, 'autoingest/black_pearl_ingest_blobbing')
 
             if '.DS_Store' in fname:
                 continue
@@ -834,10 +836,17 @@ def main():
             # Perform ingest if under 1TB
             if do_ingest:
                 size = get_size(fpath)
-                if int(size) > 1099511627776:
-                    logger.warning('%s\tFile is larger than 1TB. Leaving in ingest folder', log_paths)
-                    continue
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
+                if int(size) > 1099511627776:
+                    logger.warning('%s\tFile is larger than 1TB. Moving to blobbing folder', log_paths)
+                    try:
+                        shutil.move(fpath, os.path.join(black_pearl_folder_blobbing, fname))
+                        print(f'\t** File moved to {os.path.join(black_pearl_folder_blobbing, fname)}')
+                        logger.info('%s\tMoved ingest-ready file to BlackPearl ingest blobbing folder', log_paths)
+                    except Exception as err:
+                        print(f'Failed to move file to black_pearl_ingest_blobbing: {err}')
+                        logger.warning('%s\tFailed to move ingest-ready file to BlackPearl ingest blobbing folder', log_paths)
+                    continue
                 try:
                     shutil.move(fpath, os.path.join(black_pearl_folder, fname))
                     print(f'\t** File moved to {os.path.join(black_pearl_folder, fname)}')

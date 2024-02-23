@@ -534,7 +534,7 @@ def create_work(work_data_dct=None):
     work_values.extend(work_default)
 
     # Create basic work record
-    work_values_xml = cur.create_record_data(data=work_values)
+    work_values_xml = cur.create_record_data('', data=work_values)
     if work_values_xml is None:
         return None
     print("***************************")

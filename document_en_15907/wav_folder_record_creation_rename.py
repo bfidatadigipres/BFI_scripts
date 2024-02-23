@@ -26,12 +26,11 @@ import os
 import re
 import sys
 import json
-import time
 import shutil
 import logging
-import requests
 import datetime
 import subprocess
+import requests
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -146,44 +145,36 @@ def cid_query(database, search, object_number):
     try:
         priref = query_result.records[0]['priref'][0]
         print(priref)
-    except (KeyError, IndexError) as err:
+    except (KeyError, IndexError):
         priref = ""
-        print(err)
     try:
         title = query_result.records[0]['Title'][0]['title'][0]
-    except (KeyError, IndexError) as err:
+    except (KeyError, IndexError):
         title = ""
-        print(err)
     try:
         title_article = query_result.records[0]['Title'][0]['title.article'][0]
-    except (KeyError, IndexError) as err:
-        print(err)
+    except (KeyError, IndexError):
         title_article = ""
     try:
         title_language = query_result.records[0]['Title'][0]['title.language'][0]
-    except (KeyError, IndexError) as err:
+    except (KeyError, IndexError):
         title_language = ""
-        print(err)
     try:
         ob_num = query_result.records[0]['object_number'][0]
-    except (KeyError, IndexError) as err:
+    except (KeyError, IndexError):
         ob_num = ""
-        print(err)
     try:
         source_item = query_result.records[0]['Source_item'][0]['source_item'][0]
-    except (KeyError, IndexError) as err:
+    except (KeyError, IndexError):
         source_item = ""
-        print(err)
     try:
         derived_item = query_result.records[0]['Derived_item'][0]['derived_item'][0]
-    except (KeyError, IndexError) as err:
+    except (KeyError, IndexError):
         derived_item = ""
-        print(err)
     try:
         sound_item = query_result.records[0]['sound_item'][0]['value'][1]
-    except (KeyError, IndexError) as err:
+    except (KeyError, IndexError):
         sound_item = ""
-        print(err)
 
     new_title = remove_whitespace(title)
 
@@ -300,7 +291,7 @@ def main():
         print(cid_data)
 
         # Check source Item source_item field
-        if cid_data[15] != 'Sound':
+        if cid_data[15] not in ('Sound', 'Combined', 'Mixed', 'Combined as Sound'):
             LOGGER.info("Skipping: Supplied CID item record source does not have 'sound_item': 'Sound'")
             local_log(f"Skipping: Could not find 'Sound' in sound_item record for source item {source_ob_num}")
             continue
@@ -393,10 +384,6 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
                         {'record_access.owner': 'Acquisitions Full'}])
 
     item_defaults = ([{'record_type': 'ITEM'},
-                      {'code_type': 'Uncompressed'}, # Unsure
-                      {'bit_depth.type': 'AUDIO'}, # Unsure
-                      {'bit_depth': '24'}, # Unsure
-                      {'sample_rate': '96kHz'}, # Unsure
                       #{'grouping.lref': ''},
                       {'acquisition.method': 'Created by'},
                       {'acquisition.source': 'BFI National Archive'},
@@ -409,7 +396,8 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
                       {'creator.lref': '999570701'},
                       {'creator.role.lref': '392405'},
                       {'description.date': str(datetime.datetime.now())[:10]},
-                      {'file_type': 'WAV'},
+                      {'file_type': 'TAR'},
+                      {'code_type': 'Uncompressed'},
                       {'item_type': 'DIGITAL'},
                       {'source_item.lref': source_priref},
                       {'source_item.content': 'SOUND'}])
@@ -431,7 +419,7 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
     item_values.append({'title.type': '05_MAIN'})
     print(item_values)
 
-    item_values_xml = CUR.create_record_data(data=item_values)
+    item_values_xml = CUR.create_record_data('', data=item_values)
     print(item_values_xml)
 
     try:
@@ -441,7 +429,7 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
         LOGGER.info('WAV Item record created with priref %s', wav_priref)
         return wav_ob_num, wav_priref
     except Exception as err:
-        print(f"\nUnable to create CID WAV item record for {title}")
+        print(f"\nUnable to create CID WAV item record for {title} {err}")
         LOGGER.exception("Unable to create WAV item record!")
         return None
 
@@ -522,6 +510,7 @@ def write_lock(priref):
         print(f"Write lock response: {response.text}")
         return True
     except Exception as err:
+        print(err)
         LOGGER.warning("write_lock(): Failed to lock item record %s", priref)
         return False
 
@@ -539,6 +528,7 @@ def unlock_record(priref):
         print(f"Unlock response: {response.text}")
         return True
     except Exception as err:
+        print(err)
         LOGGER.warning("unlock_record(): Failed to unlock item record %s", priref)
         return False
 

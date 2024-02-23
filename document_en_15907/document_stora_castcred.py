@@ -49,14 +49,15 @@ TODAY = str(datetime.datetime.now())
 TODAY_TIME = TODAY[11:19]
 TODAY_DATE = TODAY[:10]
 YEST = str(datetime.datetime.today() - datetime.timedelta(days=1))
-#YEAR = YEST[:4]
-#MONTH = YEST[5:7]
-YEAR = '2023'
-MONTH = '10'
-COMPLETE = os.path.join(os.environ['STORA_PATH'], 'completed')
+YEAR = YEST[:4]
+MONTH = YEST[5:7]
+# YEAR = '2024'
+# MONTH = '01'
+COMPLETE = os.environ['STORA_COMPLETED']
 ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH = os.environ['LOG_PATH']
 CID_API = os.environ['CID_API3']
+CID_API2 = os.environ['CID_API4']
 CODEPTH = os.environ['CODE']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 
@@ -431,11 +432,19 @@ def cid_person_check(credit_id):
     except (KeyError, IndexError):
         name = ''
         priref = ''
+
     try:
-        activity_type = query_result.records[0]['activity_type']
+        act_type = query_result.records[0]['activity_type']
     except (KeyError, IndexError):
-        activity_type = ''
-    return (priref, name, activity_type)
+        return (priref, name, '')
+
+    activity_types = []
+    for count in range(0, len(act_type)):
+        try:
+            activity_types.append(act_type[count]['value'][0])
+        except (KeyError, IndexError):
+            pass
+    return (priref, name, activity_types)
 
 
 def cid_work_check(search):
@@ -581,7 +590,7 @@ def main():
                         work_priref = ''
                         continue
             else:
-                LOGGER.info("SKIPPING: No work record data found for %s transmitted on %s", title, date)
+                LOGGER.info("SKIPPING: Likely repeate as no work record data found for %s transmitted on %s", title, date)
                 LOGGER.info("Renaming JSON with _castcred appended\n")
                 rename(root, file, title)
                 continue
@@ -623,7 +632,7 @@ def main():
                                         LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
                                     else:
                                         LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
-                                        append_activity_type(person_priref, activity_type)
+                                        append_activity_type(person_priref, person_act_type, activity_type)
                             LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
                         else:
                             cast_dct_data = ''
@@ -692,7 +701,7 @@ def main():
                                         print(f"Matched activity type {activity_type_cred} : {person_act_type}")
                                     else:
                                         print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
-                                        append_activity_type(person_priref, activity_type_cred)
+                                        append_activity_type(person_priref, person_act_type, activity_type_cred)
                             print(f"** Person record already exists: {person_name} {person_priref}")
                             LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
                             LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
@@ -800,22 +809,38 @@ def sort_cred_dct(cred_list):
     return cred_dct_update
 
 
-@tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def append_activity_type(person_priref, activity_type):
+def append_activity_type(person_priref, old_act_type, activity_type):
     '''
     Append activity type to person record if different
     '''
-    data = ({'activity_type': activity_type})
-    try:
-        result = CUR.create_occurrences(database='people',
-                                        priref=person_priref,
-                                        data=data,
-                                        output='json')
+    act_type = [{'activity_type': activity_type}]
+    for act in old_act_type:
+        act_type.append({'activity_type': act})
 
-        return True
-    except Exception as err:
-        LOGGER.warning("append_activity_type(): Unable to append activity_type to Person record", err)
+    # Convert dict to xml using adlib
+    xml = CUR.create_record_data(person_priref, data=act_type)
+    if xml:
+        print(xml)
+    else:
+        return None
+
+    # Create basic person record
+    try:
+        LOGGER.info("Attempting to append activity type to Person record %s", person_priref)
+        priref = push_record_create(xml, 'people', 'updaterecord')
+        if priref is None:
+            print(f"Unable to write activity type to Person record")
+            return False
         return False
+
+    except Exception as err:
+        if 'bool' in str(err):
+            LOGGER.critical('append_activity_Type():Unable to update People record', err)
+            print(f"*** Unable to update activity_type to People record - error: {err}")
+            return False
+        print(f"*** Unable to update People record: {err}")
+        LOGGER.critical('append_activity_type():Unable to update People record', err)
+        raise
 
 
 def make_person_dct(dct=None):
@@ -894,7 +919,7 @@ def make_person_record(credit_dct=None):
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = CUR.create_record_data(data=credit_dct)
+    credit_xml = CUR.create_record_data('', data=credit_dct)
     if credit_xml:
         print("*************************")
         print(credit_xml)
@@ -929,21 +954,21 @@ def push_record_create(payload, database, method):
         'command': method,
         'database': database,
         'xmltype': 'grouped',
-        'output': 'json'
+        'output': 'jsonv1'
     }
 
     headers = {'Content-Type': 'text/xml'}
 
     try:
-        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
+        response = requests.request('POST', CID_API2, headers=headers, params=params, data=payload, timeout=1200)
     except Exception as err:
-        LOGGER.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
+        LOGGER.critical("Unable to %s <%s> record and payload:\n%s", method, database, payload)
         print(err)
         return None
     print(f"Record list: {response.text}")
     if 'recordList' in response.text:
         records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
+        priref = records['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
         return priref
     return None
 

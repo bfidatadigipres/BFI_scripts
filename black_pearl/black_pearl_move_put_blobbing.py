@@ -20,19 +20,13 @@ Script VALIDATE actions:
 3. Checksums compared to ensure that the PUT item is a perfect match
 4. Write output to persistence_queue.csv
     'Ready for persistence checking'
-5. Complete a series of BP validation checks including
-    ObjectList present, 'AssignedToStorageDomain: true' check, Length match, MD5 checksum match
-    Write output to persistence_queue.csv using terms that trigger autoingest deletion
-    'Persistence checks passed: delete file'
-6. Create CID media record and link to Item record
+5. Create CID media record and link to Item record
     If this fails, the script updates the folder with 'record_failed_' but continues with the rest
     duration 'HH:MM:SS' of media asset -> unknown field
     byte size of media asset -> unknown field
     Move finished filename to autoingest/transcode folder
-7. Once completed above move JSON to Logs/black_pearl/completed folder.
+6. Once completed above move JSON to Logs/black_pearl/completed folder.
    The empty job id folder is deleted if empty, if not prepended 'error_'
-
-WIP: Validate functions imported but main() needs extending & duration/size write to CSV need adding
 
 Joanna White
 2024

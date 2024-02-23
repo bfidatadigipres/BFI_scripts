@@ -48,7 +48,6 @@ import hashlib
 import logging
 import subprocess
 from datetime import datetime
-import pytz
 import yaml
 from ds3 import ds3, ds3Helpers
 
@@ -75,13 +74,12 @@ CUR = adlib.Cursor(CID)
 TODAY = str(datetime.date.today())
 
 # Setup logging
-log_name = sys.argv[1].replace("/", '_')
-logger = logging.getLogger(f'black_pearl_move_put_blobbing_{sys.argv[1]}')
+LOGGER = logging.getLogger(f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", '_')}')
 HDLR = logging.FileHandler(os.path.join(LOG_PATH, f'black_pearl_move_put_blobbing_{log_name}.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
-logger.addHandler(HDLR)
-logger.setLevel(logging.INFO)
+LOGGER.addHandler(HDLR)
+LOGGER.setLevel(logging.INFO)
 
 LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
              os.environ['QNAP_08']: os.environ['L_QNAP08'],
@@ -112,7 +110,7 @@ def check_control():
     with open(CONTROL_JSON) as control:
         j = json.load(control)
         if not j['black_pearl']:
-            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
 
@@ -192,7 +190,7 @@ def checksum_write(filename, checksum, filepath):
                 fname.close()
             return checksum_path
         except Exception:
-            logger.exception("%s - Unable to write checksum: %s", filename, checksum_path)
+            LOGGER.exception("%s - Unable to write checksum: %s", filename, checksum_path)
     else:
         try:
             with open(checksum_path, 'x') as fnm:
@@ -202,23 +200,7 @@ def checksum_write(filename, checksum, filepath):
                 fname.close()
             return checksum_path
         except Exception:
-            logger.exception("%s Unable to write checksum to path: %s", filename, checksum_path)
-
-
-def json_check(json_pth):
-    '''
-    Open json and return value for ObjectsNotPersisted
-    Has to be a neater way than this!
-    '''
-    with open(json_pth) as file:
-        dct = json.load(file)
-        for k, v in dct.items():
-            if k == 'Notification':
-                for ky, vl in v.items():
-                    if ky == 'Event':
-                        for key, val in vl.items():
-                            if key == 'ObjectsNotPersisted':
-                                return val
+            LOGGER.exception("%s Unable to write checksum to path: %s", filename, checksum_path)
 
 
 def get_file_size(filepath):
@@ -226,21 +208,6 @@ def get_file_size(filepath):
     Retrieve size of path item in bytes
     '''
     return os.path.getsize(filepath)
-
-
-def check_bp_status(fname, bucket):
-    '''
-    Look up filename in BP buckets
-    to avoid multiple ingest of files
-    '''
-    query = ds3.HeadObjectRequest(bucket, fname)
-    result = CLIENT.head_object(query)
-    # Only return false if DOESNTEXIST is missing, eg file found
-    if 'DOESNTEXIST' not in str(result.result):
-        logger.info("File %s found in Black Pearl bucket %s", fname, bucket)
-        return False
-
-    return True
 
 
 def make_object_num(fname):
@@ -300,7 +267,7 @@ def get_ms(filepath):
         duration = subprocess.check_output(cmd)
         duration = duration.decode('utf-8')
     except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
+        LOGGER.info("Unable to extract duration: %s", err)
     if duration:
         return duration.rstrip('\n')
     else:
@@ -324,7 +291,7 @@ def get_duration(filepath):
         duration = subprocess.check_output(cmd)
         duration = duration.decode('utf-8')
     except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
+        LOGGER.info("Unable to extract duration: %s", err)
     if duration:
         return duration.rstrip('\n')
     else:
@@ -370,12 +337,12 @@ def check_for_media_record(fname):
              'search': search,
              'limit': '0',
              'output': 'json',
-             'fields': 'access_rendition.mp4, imagen.media.largeimage_umid'}
+             'fields': 'access_rendition.mp4'}
 
     try:
         result = CID.get(query)
     except Exception as err:
-        logger.exception('CID check for media record failed: %s', err)
+        LOGGER.exception('CID check for media record failed: %s', err)
         result = None
     try:
         priref = result.records[0]['priref'][0]
@@ -385,12 +352,8 @@ def check_for_media_record(fname):
         access_mp4 = result.records[0]['access_rendition.mp4'][0]
     except (KeyError, IndexError):
         access_mp4 = ''
-    try:
-        image = result.records[0]['imagen.media.largeimage_umid'][0]
-    except (KeyError, IndexError):
-        image = ''
 
-    return (priref, access_mp4, image)
+    return priref, access_mp4
 
 
 def check_global_log(fname):
@@ -417,46 +380,6 @@ def check_global_log_again(fname):
             if fname in str(row) and 'Renewed ingest of file will be attempted' in str(row):
                 print(row)
                 return row
-
-
-def create_folderpth(autoingest):
-    '''
-    Create new folderpth for ingest
-    '''
-
-    fname = format_dt()
-    folderpth = os.path.join(autoingest, f"ingest_{fname}")
-    try:
-        os.mkdir(folderpth, mode=0o777)
-    except OSError as err:
-        logger.warning('create_folderpth(): OS error when making directory: %s\n%s', folderpth, err)
-        folderpth = ''
-
-    return folderpth
-
-
-def format_dt():
-    '''
-    Return date correctly formatted
-    '''
-    now = datetime.now(pytz.timezone('Europe/London'))
-    return now.strftime('%Y-%m-%d_%H-%M-%S')
-
-
-def check_folder_age(fname):
-    '''
-    Retrieve date time stamp from folder
-    Return number of days old
-    '''
-    fmt = "%Y-%m-%d %H:%M:%S.%f"
-    dt_str = fname[7:].split('_')
-    dt_time = dt_str[1].replace('-', ':')
-    new_name = f"{dt_str[0]} {dt_time}.000000"
-    date_time = datetime.strptime(new_name, fmt)
-    now = datetime.strptime(str(datetime.now()), fmt)
-    difference = now - date_time
-
-    return difference.days  # Returns days in integer using timedelta days
 
 
 def main():
@@ -487,7 +410,7 @@ def main():
     print(f"Fullpath: {fullpath} {autoingest}")
 
     if not os.path.exists(autoingest):
-        logger.warning("Complication with autoingest path: %s", autoingest)
+        LOGGER.warning("Complication with autoingest path: %s", autoingest)
         sys.exit('Supplied argument did not match path')
 
     # Get current bucket name for bucket_collection type
@@ -498,8 +421,7 @@ def main():
     if not files:
         sys.exit()
 
-    logs = []
-    logger.info("======== START Black Pearl blob ingest and validation %s START ========", sys.argv[1])
+    LOGGER.info("======== START Black Pearl blob ingest and validation %s START ========", sys.argv[1])
 
     for fname in files:
         check_control()
@@ -510,30 +432,30 @@ def main():
         
         # Confirm job list exists
         if not put_job_id:
-            logger.warning("JOB list retrieved for file is not correct. %s: %s", fname, put_job_id)
-            logger.warning("Skipping further verification stages. Please investigate error.")
+            LOGGER.warning("JOB list retrieved for file is not correct. %s: %s", fname, put_job_id)
+            LOGGER.warning("Skipping further verification stages. Please investigate error.")
             continue
-        logger.info("Successfully written data to BP. Job ID for file: %s", put_job_id)
+        LOGGER.info("Successfully written data to BP. Job ID for file: %s", put_job_id)
 
         # Begin retrieval
-        get_job_id = get_file(fname, download_folder, bucket)
+        get_job_id = get_bp_file(fname, download_folder, bucket)
         delivery_path = os.path.join(download_folder, fname)
         if not get_job_id or os.path.exists(delivery_path):
-            logger.warning("Skipping: Failed to download file from Black Pearl: %s", fname)
+            LOGGER.warning("Skipping: Failed to download file from Black Pearl: %s", fname)
             continue
-        logger.info("Retrieved asset again. GET job ID: %s", get_job_id)
+        LOGGER.info("Retrieved asset again. GET job ID: %s", get_job_id)
 
         # Checksum validation
-        logger.info("Generating checksum for downloaded file and comparing to existing local MD5.")
+        LOGGER.info("Generating checksum for downloaded file and comparing to existing local MD5.")
         local_checksum, remote_checksum = make_check_md5(fpath, delivery_path, fname)
         if local_checksum is None or local_checksum != remote_checksum:
-            logger.warning("Checksums absent / do not match: \n%s\n%s", local_checksum, remote_checksum)
-            logger.warning("Skipping further actions with this file")
+            LOGGER.warning("Checksums absent / do not match: \n%s\n%s", local_checksum, remote_checksum)
+            LOGGER.warning("Skipping further actions with this file")
             continue
-        logger.info("Checksums match for file >1TB local and stored on Black Pearl:\n%s\n%s", local_checksum, remote_checksum)
+        LOGGER.info("Checksums match for file >1TB local and stored on Black Pearl:\n%s\n%s", local_checksum, remote_checksum)
 
         # Delete downloaded file and move to further validation checks
-        logger.info("Deleting downloaded file: %s", delivery_path)
+        LOGGER.info("Deleting downloaded file: %s", delivery_path)
         os.remove(delivery_path)
 
         # App size, duration data to CSV
@@ -542,7 +464,7 @@ def main():
         duration = get_duration(fpath)
         duration_ms = get_ms(fpath)
         if duration or duration_ms:
-            logger.info("Duration: %s MS: %s", duration, duration_ms)
+            LOGGER.info("Duration: %s MS: %s", duration, duration_ms)
 
         # Handle string returns - back up to CSV
         if not duration:
@@ -558,7 +480,7 @@ def main():
         duration_size_log(fname, object_number, duration, byte_size, duration_ms)
 
         # Make global log message
-        logger.info("Writing persistence checking message to persistence_queue.csv.")
+        LOGGER.info("Writing persistence checking message to persistence_queue.csv.")
         persistence_log_message("Ready for persistence checking", fpath, wpath, fname)
 
         # Prepare move path to not include XML/MXF for transcoding
@@ -569,44 +491,44 @@ def main():
             move_path = os.path.join(root_path, 'transcode', fname)
 
         # Check for Media Record first and clean up file if found
-        logger.info("Checking if Media record already exists for file: %s", fname)
+        LOGGER.info("Checking if Media record already exists for file: %s", fname)
         media_priref, access_mp4 = check_for_media_record(fname)
         if media_priref:
-            logger.info("Media record %s already exists for file: %s", media_priref, fpath)
+            LOGGER.info("Media record %s already exists for file: %s", media_priref, fpath)
             # Check for previous 'deleted' message in global.log
             deletion_confirm = check_global_log(fname)
             reingest_confirm = check_global_log_again(fname)
             if deletion_confirm:
-                logger.info("DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s", deletion_confirm)
+                LOGGER.info("DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s", deletion_confirm)
                 try:
                     # os.remove(fpath)
-                    logger.info(" # Deleted file: %s", fpath)
+                    LOGGER.info(" # Deleted file: %s", fpath)
                 except Exception as err:
-                    logger.warning("Unable to delete asset: %s", fpath)
-                    logger.warning("Manual inspection of asset required")
+                    LOGGER.warning("Unable to delete asset: %s", fpath)
+                    LOGGER.warning("Manual inspection of asset required")
             if reingest_confirm:
-                logger.info("File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion.")
+                LOGGER.info("File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion.")
                 persistence_log_message("Persistence checks passed: delete file", fpath, wpath, fname)
                 # Move to next folder for autoingest deletion - may not be duplicate
                 try:
                     shutil.move(fpath, move_path)
                 except Exception:
-                    logger.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
+                    LOGGER.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
             elif not access_mp4:
                 persistence_log_message("Persistence checks passed: delete file", fpath, wpath, fname)
-                logger.info("File has media record but has no Access MP4. Moving to transcode folder and updating global.log for deletion.")
+                LOGGER.info("File has media record but has no Access MP4. Moving to transcode folder and updating global.log for deletion.")
                 # Move to next folder for autoingest deletion - may not be duplicate
                 try:
                     shutil.move(fpath, move_path)
                 except Exception:
-                    logger.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
+                    LOGGER.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
             else:
-                logger.warning("Problem with file %s: Has media record but no deletion message in global.log", fpath)
+                LOGGER.warning("Problem with file %s: Has media record but no deletion message in global.log", fpath)
             continue
 
         # Create CID media record only if all BP checks pass and no CID Media record already exists
-        logger.info("No Media record found for file: %s", fname)
-        logger.info("Creating media record and linking via object_number: %s", object_number)
+        LOGGER.info("No Media record found for file: %s", fname)
+        LOGGER.info("Creating media record and linking via object_number: %s", object_number)
         media_priref = create_media_record(object_number, duration, byte_size, fname, bucket)
         print(media_priref)
 
@@ -615,16 +537,16 @@ def main():
             try:
                 shutil.move(fpath, move_path)
             except Exception:
-                logger.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
+                LOGGER.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
 
             # Make global log message
-            logger.info("Writing persistence checking message to persistence_queue.csv.")
+            LOGGER.info("Writing persistence checking message to persistence_queue.csv.")
             persistence_log_message("Persistence checks passed: delete file", fpath, wpath, fname)
         else:
-            logger.warning("File %s has no associated CID media record created.", fname)
-            logger.warning("File will be left in folder for manual intervention.")
+            LOGGER.warning("File %s has no associated CID media record created.", fname)
+            LOGGER.warning("File will be left in folder for manual intervention.")
 
-    logger.info(f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========")
+    LOGGER.info(f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========")
 
 
 def put_file(fname, fpath, bucket_choice):
@@ -635,13 +557,13 @@ def put_file(fname, fpath, bucket_choice):
     file_size = get_file_size(fpath)
     put_objects = [ds3Helpers.HelperPutObject(object_name=f"{fname}", file_path=fpath, size=file_size)]
     put_job_id = HELPER.put_objects(put_objects=put_objects, bucket=bucket_choice, calculate_checksum=True)
-    logger.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_id)
+    LOGGER.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_id)
     if len(put_job_id) == 36:
         return put_job_id
     return None
 
 
-def get_file(fname, delivery_path, bucket_choice):
+def get_bp_file(fname, delivery_path, bucket_choice):
     '''
     Retrieve the file again for checksum
     validation against original
@@ -651,74 +573,6 @@ def get_file(fname, delivery_path, bucket_choice):
     if len(get_job_id) == 36:
         return get_job_id
     return None
-
-
-def pth_rename(folderpth, job_list):
-    '''
-    Take folder path and change name for job_list
-    '''
-    pth = os.path.split(folderpth)[0]
-    if len(job_list) > 1:
-        logger.warning("More than one job id returned for folder: %s", folderpth)
-        foldername = '_'.join(job_list)
-    elif len(job_list) == 1:
-        foldername = job_list[0]
-    else:
-        return None
-
-    new_folderpth = os.path.join(pth, foldername)
-    os.rename(folderpth, new_folderpth)
-    return new_folderpth
-
-
-def get_job_status(job_id):
-    '''
-    Fetch job status for specific ID
-    '''
-    size = cached = status = ''
-
-    job_status = CLIENT.get_job_spectra_s3(
-                   ds3.GetJobSpectraS3Request(job_id.strip()))
-
-    if job_status.result['CompletedSizeInBytes']:
-        size = job_status.result['CompletedSizeInBytes']
-    if job_status.result['CachedSizeInBytes']:
-        cached = job_status.result['CachedSizeInBytes']
-    if job_status.result['Status']:
-        status = job_status.result['Status']
-    return (status, size, cached)
-
-
-def get_object_list(fname, bucket):
-    '''
-    Get all details to check file persisted
-    '''
-
-    print(f"Bucket list here in case needed: {bucket}")
-    confirmed, md5, length = '', '', ''
-    request = ds3.GetObjectsWithFullDetailsSpectraS3Request(name=f"{fname}", include_physical_placement=True)
-    try:
-        result = CLIENT.get_objects_with_full_details_spectra_s3(request)
-        data = result.result
-    except Exception as err:
-        return None
-
-    if not data['ObjectList']:
-        return 'No object list', None, None
-    if "'TapeList': [{'AssignedToStorageDomain': 'true'" in str(data):
-        confirmed = 'True'
-    elif "'TapeList': [{'AssignedToStorageDomain': 'false'" in str(data):
-        confirmed = 'False'
-    try:
-        md5 = data['ObjectList'][0]['ETag']
-    except (TypeError, IndexError):
-        pass
-    try:
-        length = data['ObjectList'][0]['Blobs']['ObjectList'][0]['Length']
-    except (TypeError, IndexError):
-        pass
-
-    return confirmed, md5, length
 
 
 def persistence_log_message(message, path, wpath, file):
@@ -758,6 +612,7 @@ def duration_size_log(filename, ob_num, duration, size, ms):
 def create_media_record(ob_num, duration, byte_size, filename, bucket):
     '''
     Media record creation for BP ingested file
+    duration, and byte_size waiting for new fields
     '''
     record_data = []
     part, whole = get_part_whole(filename)
@@ -784,12 +639,12 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
             try:
                 media_priref = i.records[0]['priref'][0]
                 print(f'** CID media record created with Priref {media_priref}')
-                logger.info('CID media record created with priref %s', media_priref)
+                LOGGER.info('CID media record created with priref %s', media_priref)
             except Exception:
-                logger.exception("CID media record failed to retrieve priref")
+                LOGGER.exception("CID media record failed to retrieve priref")
     except Exception:
         print(f"\nUnable to create CID media record for {ob_num}")
-        logger.exception("Unable to create CID media record!")
+        LOGGER.exception("Unable to create CID media record!")
 
     return media_priref
 

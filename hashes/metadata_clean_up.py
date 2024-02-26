@@ -71,10 +71,11 @@ def cid_retrieve(fname):
     query = {'database': 'media',
              'search': search,
              'limit': '0',
-             'output': 'json',
-             'fields': 'priref'}
+             'output': 'json'
+    }
     try:
         query_result = CID.get(query)
+        print(query_result)
     except Exception as err:
         print(err)
         query_result = None

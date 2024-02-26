@@ -103,6 +103,9 @@ def get_size(fpath):
     Check the size of given folder path
     return size in kb
     '''
+    if os.path.isfile(fpath):
+        return os.path.getsize(fpath)
+
     try:
         byte_size = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
     except OSError as err:
@@ -138,19 +141,22 @@ def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_
     print("Move to ingest folder found....")
     logger.info("move_to_ingest_folder(): Moving files to %s", folderpth)
 
+    folder_size = get_size(folderpth)
+    max_fill_size = upload_size - folder_size
     for file in file_list:
+        if not max_fill_size >= 0:
+            logger.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
+            break
         status = check_bp_status(file, bucket_list)
         if not status:
             logger.warning("move_to_ingest_folder(): Skipping. File already found in Black Pearl: %s", file)
             continue
         fpath = os.path.join(autoingest, file)
-        folder_size = get_size(folderpth)
-        if folder_size < upload_size:
-            shutil.move(fpath, os.path.join(folderpth, file))
-            logger.info("move_to_ingest_folder(): Moved file into new Ingest folder: %s", file)
-            remove_list.append(file)
-        else:
-            break
+        file_size = get_size(fpath)
+        max_fill_size -= file_size
+        shutil.move(fpath, os.path.join(folderpth, file))
+        logger.info("move_to_ingest_folder(): Moved file into new Ingest folder: %s", file)
+        remove_list.append(file)
 
     for remove_file in remove_list:
         if remove_file in file_list:
@@ -306,7 +312,7 @@ def main():
 
         # Start move to folderpth now identified (failing here sometimes)
         logs.append(f"Ingest folder selected: {folderpth}")
-        print(f"move_to_ingest_folder: {folderpth}, {upload_size}, {autoingest}, {files}, {bucket_list}")
+        print(f"move_to_ingest_folder: {folderpth}, {autoingest}, {files}, {bucket_list}")
         files_remaining = move_to_ingest_folder(folderpth, upload_size, autoingest, files, bucket_list)
         if files_remaining is None:
             logs.append("Problem with folder size extraction in get_size().")

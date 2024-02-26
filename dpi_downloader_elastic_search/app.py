@@ -66,7 +66,9 @@ def check_date_range(preservation_date):
 
     daterange = ', '.join(date_range)
     print(f"Target range for DPI moves: {date_range}")
+    print(preservation_date)
     if preservation_date in str(date_range):
+        print("Requested date is in date range")
         return True
 
     return False

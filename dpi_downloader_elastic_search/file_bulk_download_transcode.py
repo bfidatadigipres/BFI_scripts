@@ -7,6 +7,9 @@ Stores username, email, download path, folder
 filename and status.
 
 Checks if the download type is single or bulk:
+Before any actions checks that status has not been
+updated to 'Cancelled' since first downloaded.
+
 Bulk:
 1. Checks Saved Search number is correctly formatted
 2. Counts if prirefs listed in saved search exceed
@@ -56,6 +59,7 @@ import json
 import hashlib
 import logging
 import itertools
+import subprocess
 from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError
@@ -296,6 +300,18 @@ def retrieve_requested():
     return remove_duplicates(requested_data)
 
 
+def check_for_cancellation(user_id):
+    '''
+    Pull data from ES index for user ID being processed
+    Return status update
+    '''
+    search_results = ES.search(index='dpi_downloads', query={'term': {'_id': {'value': f'{user_id}'}}}, size=200)
+    if len(search_results['hits']['hits']) != 1:
+        return None
+
+    return search_results['hits']['hits'][0]['_source']['status']
+
+
 def remove_duplicates(list_data):
     '''
     Sort and remove duplicates
@@ -391,8 +407,9 @@ def main():
         download_fpath = os.path.join(dpath, dfolder)
         print(download_fpath)
         if not os.path.exists(download_fpath):
-            os.makedirs(download_fpath, mode=0o777, exist_ok=True)
+            os.makedirs(download_fpath, 0o777, exist_ok=True)
             LOGGER.info("Download file path created: %s", download_fpath)
+        os.chmod(download_fpath, 0o777)
 
         priref_list = []
         # Single download
@@ -415,6 +432,12 @@ def main():
                 update_table(user_id, 'Download complete, no transcode required')
                 LOGGER.warning("Downloaded file (no transcode) in location already. Skipping further processing.")
                 continue
+            status_check = check_for_cancellation(user_id)
+            LOGGER.info("Checking status remains 'Requested': %s", status_check)
+            if status_check == 'Cancelled':
+                LOGGER.warning("File download has been cancelled. Skipping further processing.")
+                continue
+
             if not skip_download:
                 # Download from BP
                 LOGGER.info("Beginning download of file %s to download path", fname)
@@ -433,6 +456,9 @@ def main():
                     LOGGER.info("Updating download UMID filename with item filename: %s", orig_fname)
                     umid_fpath = os.path.join(download_fpath, fname)
                     os.rename(umid_fpath, new_fpath)
+
+                # Apply CHMOD to download
+                os.chmod(new_fpath, 0o777)
 
                 # MD5 Verification
                 local_md5, bp_md5 = make_check_md5(new_fpath, fname, bucket)
@@ -463,12 +489,22 @@ def main():
                 update_table(user_id, 'Error with DPI collection details')
                 LOGGER.warning("Problem seems to have occurred with retrieval of DPI Browser collection details. Skipping.")
                 continue
+            status_check = check_for_cancellation(user_id)
+            LOGGER.info("Checking status remains 'Requested': %s", status_check)
+            if status_check == 'Cancelled':
+                LOGGER.warning("DPI browser file download has been cancelled. Skipping further processing.")
+                continue
         # dtype is bulk
         elif dtype == 'bulk':
             print(f"Finding prirefs from Pointer file with number: {fname}")
             if not fname.isnumeric():
                 update_table(user_id, 'Error with pointer file number')
                 LOGGER.warning("Bulk download request. Error with pointer file number: %s.", fname)
+                continue
+            status_check = check_for_cancellation(user_id)
+            LOGGER.info("Checking status remains 'Requested': %s", status_check)
+            if status_check == 'Cancelled':
+                LOGGER.warning("Bulk download has been cancelled. Skipping further processing.")
                 continue
             priref_list = get_prirefs(fname)
             if not isinstance(priref_list, list):
@@ -534,6 +570,9 @@ def main():
                             LOGGER.info("Updating download UMID filename with item filename: %s", orig_fname)
                             umid_fpath = os.path.join(download_fpath, filename)
                             os.rename(umid_fpath, new_fpath)
+
+                        # Apply CHMOD to download
+                        os.chmod(new_fpath, 0o777)
 
                         # MD5 Verification
                         local_md5, bp_md5 = make_check_md5(new_fpath, filename, bucket)

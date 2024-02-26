@@ -124,9 +124,15 @@ def mediainfo_create(arg, output_type, filepath):
         ]
 
     else:
-        if 'XML' in output_type or 'Core' in output_type:
+        if 'XML' in output_type:
             ext = 'xml'
             outp = 'XML'
+        elif 'EBUCore' in output_type:
+            ext = 'xml'
+            outp = 'EBUCore'
+        elif 'PBCore' in output_type:
+            ext = 'xml'
+            outp = 'PBCore2'
         elif 'JSON' in output_type:
             ext = 'json'
             outp = 'JSON'

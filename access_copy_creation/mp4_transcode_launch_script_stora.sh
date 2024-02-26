@@ -24,7 +24,7 @@ echo " == Shell script creating dump_text.txt output for parallel launch of Pyth
 
 # Command to build file list to supply to Python
 for entry in "${transcode_path1}*"; do
-    echo ${entry} >> "${dump_to}"
+    echo -e "${entry}\n" >> "${dump_to}"
 done
 
 echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"

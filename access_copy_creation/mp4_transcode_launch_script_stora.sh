@@ -23,8 +23,8 @@ echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_p
 echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
 
 # Command to build file list to supply to Python
-for entry in "${transcode_path1}*"; do
-    echo -e "${entry}\n" >> "${dump_to}"
+for entry in "${transcode_path1}"*; do
+  echo -e "${entry}" >> "${dump_to}"
 done
 
 echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"

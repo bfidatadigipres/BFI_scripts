@@ -119,6 +119,24 @@ def local_time():
     return datetime.datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def check_ps_runs(fpath):
+    '''
+    Subprocess ps aux call to check
+    if a file already has an FFmpeg command
+    operational where a '.mp4' is found
+    '''
+    cmd = [
+        f'ps aux | grep -c {fpath}'
+    ]
+
+    proc_num = subprocess.check_output(cmd, shell=True)
+    proc_num = int(proc_num.decode('utf-8'))
+    if proc_num == 1:
+        return False
+    if proc_num >= 2:
+        return True
+
+
 def main():
     '''
     Check sys.argv[1] populated
@@ -185,11 +203,16 @@ def main():
 
     # Check to ensure that the file isn't already being processed
     if os.path.exists(os.path.join(transcode_pth, f"{fname}.mp4")):
-        logger.info("Script exiting: This file is currently being transcoded.")
-        log_build.append(f"{local_time()}\tINFO\tFile is already being processed by another transcode script: {fname}.mp4")
-        log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-        log_output(log_build)
-        sys.exit(f'EXITING: Script already processing this file: {file}')
+        instance_running = check_ps_runs(fullpath)
+        if instance_running is True:
+            logger.info("Script exiting: This file is currently being transcoded.")
+            log_build.append(f"{local_time()}\tINFO\tFile is already being processed by another transcode script: {fname}.mp4")
+            log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
+            log_output(log_build)
+            sys.exit(f'EXITING: Script already processing this file: {file}')
+        else:
+            logger.info("Found MP4 file is from a broken transcode attempt. Deleting file.")
+            os.remove(os.path.join(transcode_pth, f"{fname}.mp4"))
     if os.path.exists(os.path.join(transcode_pth, fname)):
         logger.info("Script exiting: This file has been transcoded.")
         log_build.append(f"{local_time()}\tINFO\tFile has already being processed by another transcode script: {os.path.join(transcode_pth, fname)}")
@@ -260,9 +283,9 @@ def main():
         log_build.append(f"{local_time()}\tINFO\tFFmpeg call created:\n{ffmpeg_call_neat}")
 
         try:
-            data = subprocess.run(ffmpeg_cmd, shell=False, check=True, universal_newlines=True, stderr=subprocess.PIPE).stderr
-        except Exception as e:
-            log_build.append(f"{local_time()}\tWARNING\tFFmpeg command failed first pass. Retrying without video filters")
+            subprocess.run(ffmpeg_cmd, shell=False, check=True, universal_newlines=True, stderr=subprocess.PIPE).stderr
+        except Exception as err:
+            log_build.append(f"{local_time()}\tWARNING\tFFmpeg command failed first pass. Retrying without video filters:\n{err}")
 
         if os.path.exists(outpath):
             log_build.append("MP4 transcode completed successfully")
@@ -276,15 +299,15 @@ def main():
             ffmpeg_call_neat2 = " ".join(ffmpeg_cmd_retry)
             log_build.append(f"{local_time()}\tINFO\tFFmpeg retry call created with video filters:\n{ffmpeg_call_neat2}")
             try:
-                data = subprocess.run(ffmpeg_cmd_retry, shell=False, check=True, universal_newlines=True, stderr=subprocess.PIPE).stderr
-            except Exception as e:
-                log_build.append(f"{local_time()}\tCRITICAL\tFFmpeg command failed twice: {ffmpeg_call_neat}\n{e}")
+                subprocess.run(ffmpeg_cmd_retry, shell=False, check=True, universal_newlines=True, stderr=subprocess.PIPE).stderr
+            except Exception as err:
+                log_build.append(f"{local_time()}\tCRITICAL\tFFmpeg command failed twice: {ffmpeg_call_neat}\n{err}")
                 log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-                print(e)
+                print(err)
                 log_output(log_build)
                 sys.exit("FFmpeg command failed twice. Script exiting.")
 
-        time.sleep(5)
+        time.sleep(2)
         # Mediaconch conformance check file
         policy_check = conformance_check(outpath)
         if 'PASS!' in policy_check:
@@ -452,8 +475,7 @@ def make_object_number(fname):
         return "-".join(name_split[:2])
     if len(name_split) == 4:
         return "-".join(name_split[:3])
-    else:
-        return None
+    return None
 
 
 def check_item(ob_num, database):
@@ -571,8 +593,7 @@ def get_par(fullpath):
 
     if len(par_full) <= 5:
         return par_full
-    else:
-        return par_full[:5]
+    return par_full[:5]
 
 
 def get_height(fullpath):
@@ -625,9 +646,8 @@ def get_height(fullpath):
         return '720'
     if '1080' == height or '1 080' == height:
         return '1080'
-    else:
-        height = height.split(' pixel', maxsplit=1)[0]
-        return re.sub("[^0-9]", "", height)
+    height = height.split(' pixel', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", height)
 
 
 def get_width(fullpath):
@@ -655,15 +675,14 @@ def get_width(fullpath):
         return '1280'
     if '1920' == width or '1 920' == width:
         return '1920'
-    else:
-        width = width.split(' pixel', maxsplit=1)[0]
-        return re.sub("[^0-9]", "", width)
+    width = width.split(' pixel', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", width)
 
 
 def get_duration(fullpath):
     '''
     Retrieves duration information via mediainfo
-    where more than two returned, file longest of
+    where more than two returned, find longest of
     first two and return video stream info to main
     for update to ffmpeg map command
     '''
@@ -705,7 +724,7 @@ def get_duration(fullpath):
         if int(dur1) > int(dur2):
             second_duration = int(dur1) // 1000
             return (second_duration, '0')
-        elif int(dur1) < int(dur2):
+        if int(dur1) < int(dur2):
             second_duration = int(dur2) // 1000
             return (second_duration, '1')
 
@@ -760,11 +779,10 @@ def check_audio(fullpath):
     if 'nar' in str(lang0).lower():
         print("Narration stream 0 / English stream 1")
         return ('Audio', '1')
-    elif 'nar' in str(lang1).lower():
+    if 'nar' in str(lang1).lower():
         print("Narration stream 1 / English stream 0")
         return ('Audio', '0')
-    else:
-        return ('Audio', None)
+    return ('Audio', None)
 
 
 def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs, retry):
@@ -849,6 +867,11 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,scale=-1:1080:flags=lanczos,pad=1920:1080:-1:-1"
     ]
 
+    fhd_letters = [
+        "-vf",
+        "yadif,scale=1920:-1:flags=lanczos,pad=1920:1080:-1:-1,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
     max_mux = [
         "-max_muxing_queue_size",
         "9999"
@@ -919,9 +942,8 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     print(f"Middle command chose: {cmd_mid}")
 
     if retry:
-        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + max_mux + fast_start + output
-    else:
-        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + max_mux + fast_start + cmd_mid + output
+        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + deinterlace + max_mux + fast_start + output
+    return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + cmd_mid + max_mux + fast_start + output
 
 
 def make_jpg(filepath, arg, transcode_pth, percent):
@@ -999,10 +1021,9 @@ def conformance_check(file):
 
     if 'pass!' in str(success):
         return "PASS!"
-    elif success.startswith('fail!'):
+    if success.startswith('fail!'):
         return f"FAIL! This policy has failed {success}"
-    else:
-        return "FAIL!"
+    return "FAIL!"
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))
@@ -1027,12 +1048,11 @@ def cid_media_append(fname, priref, data):
     if "<error><info>" in str(post_response.text) or "<error>" in str(post_response.text):
         logger.warning("cid_media_append(): Post of data failed for file %s: %s - %s", fname, priref, post_response.text)
         return False
-    elif f'"modification":"{date_supplied}' in str(post_response.text):
+    if f'"modification":"{date_supplied}' in str(post_response.text):
         logger.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
         return True
-    else:
-        logger.info("cid_media_append(): Write of access_rendition data appear successful for %s - Priref %s", fname, priref)
-        return True
+    logger.info("cid_media_append(): Write of access_rendition data appear successful for %s - Priref %s", fname, priref)
+    return True
 
 
 if __name__ == "__main__":

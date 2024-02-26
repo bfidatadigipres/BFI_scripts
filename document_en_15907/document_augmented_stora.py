@@ -825,7 +825,7 @@ def main():
             if webvtt_payload:
                 success = push_payload(item_data[1], webvtt_payload)
                 if not success:
-                    logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_data[1], webvtt_payload)
+                    logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
 
             # Rename JSON with .documented
             documented = f'{fullpath}.documented'
@@ -1281,23 +1281,6 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         logger.critical(err)
         return None
 
-    '''
-    work_genres = []
-    if 'work_genre_one' in epg_dict:
-        work_genres.append({'content.genre.lref': epg_dict['work_genre_one']})
-    if 'work_genre_two' in epg_dict:
-        work_genres.append({'content.genre.lref': epg_dict['work_genre_two']})
-    if 'work_subject_one' in epg_dict:
-        work_genres.append({'content.subject.lref': epg_dict['work_subject_one']})
-    if 'work_subject_two' in epg_dict:
-        work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
-
-    print(f"Attempting to write Work genres and subjects to record {work_genres}")
-    if 'content.' in str(work_genres):
-        success = push_genre_payload(work_id, work_genres)
-        if not success:
-            logger.warning("Unable to write Work genre %s", err)
-    '''
     return work_id
 
 

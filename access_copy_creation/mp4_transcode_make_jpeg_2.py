@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 '''
-VERSION WRITTEN FOR QNAP-05 STORA MP4 TRANSCODING
+VERSION WRITTEN FOR QNAP-04 STORA MP4 TRANSCODING
 Script to be launched from parallel, requires sys.argv arguments
 to determine correct transcode paths (RNA or BFI).
 
@@ -27,9 +27,6 @@ to determine correct transcode paths (RNA or BFI).
 12. Where JPEG or HLS assets (to follow) are created, write names to fields in CID media record.
 13. Moves source file to completed folder for deletion.
 14. Maintain log of all actions against file and dump in one lot to avoid log overlaps.
-
-NOTES: Still to create HLS workflow.
-       Need to test in other transcode paths (if thought necessary per storage).
 
 Joanna White 2022
 Python 3.6+

@@ -133,6 +133,9 @@ def main():
     if not os.path.isfile(fullpath):
         sys.exit("EXIT: Supplied path is not a file")
 
+    if LOG_PREFIX != '_mnt_qnap_imagen_storage_Public':
+        sys.exit(f"Incorrect filepath received: {LOG_PREFIX}")
+
     # Multiple instances of script so collecting logs for one burst output
     log_build = []
     check_control()

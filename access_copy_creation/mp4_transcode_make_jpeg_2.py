@@ -95,7 +95,6 @@ def check_control():
     with open(CONTROL_JSON) as control:
         j = json.load(control)
         if not j['mp4_transcode']:
-            logger.info('%s\tINFO\tScript run prevented by downtime_control.json. Script exiting.', local_time())
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
 

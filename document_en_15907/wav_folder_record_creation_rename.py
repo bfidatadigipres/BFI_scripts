@@ -363,8 +363,6 @@ def main():
             shutil.move(key, fail_path)
             continue
 
-        sys.exit("Stopping after first record")
-
     LOGGER.info("================ END WAV folder record creation rename END =================")
 
 
@@ -423,7 +421,7 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
     print(item_values_xml)
 
     try:
-        wav_priref, wav_ob_num = push_record_create(item_values_xml, 'items', 'insert_record')
+        wav_priref, wav_ob_num = push_record_create(item_values_xml, 'items', 'insertrecord')
         print(f'** WAV Item record created with Priref {wav_priref}')
         print(f'** WAV Item record created with object number {wav_ob_num}')
         LOGGER.info('WAV Item record created with priref %s', wav_priref)
@@ -443,7 +441,8 @@ def push_record_create(payload, database, method):
         'command': method,
         'database': database,
         'xmltype': 'grouped',
-        'output': 'json'}
+        'output': 'json'
+    }
     headers = {'Content-Type': 'text/xml'}
 
     try:
@@ -468,13 +467,13 @@ def add_quality_comments(priref, comments):
     and updaterecord with data
     '''
 
-    p_start = f"<adlibXML><recordList><record priref={priref}><quality_comments>"
+    p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
     date_now = str(datetime.datetime.now())[:10]
-    p_data = f"<quality_comments.date>{date_now}</quality_comments.date>"
     p_comm = f"<quality_comments>{comments}</quality_comments>"
+    p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
     p_writer = "<quality_comments.writer>datadigipres</quality_comments.writer>"
     p_end = "</quality_comments></record></recordList></adlibXML>"
-    payload = p_start + p_data + p_comm + p_writer + p_end
+    payload = p_start + p_comm + p_date + p_writer + p_end
     LOGGER.info("Payload for quality comments: %s", payload)
 
     lock_success = write_lock(priref)

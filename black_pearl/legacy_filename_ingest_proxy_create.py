@@ -3,20 +3,20 @@
 '''
 Launched from shell script to multiple jobs for parallel processing
 
-1. Receive file path and validate path is a file/exists
+1. Receive file path and validate is a file/exists
 2. Take filename and look up in CSV_PATH, if not there/no priref skip.
 3. If priref associated with filename, check CID for item record
-   and extract item_type, file_type, imagen.media.original_filename:
-   a. If item_type = Digital, file_type = MP4, and i.m.o_f is empty:
+   and extract item_type, file_type, code_type, imagen.media.original_filename:
+   a. If item_type = Digital, file_type = MP4, code_type matches file, and i.m.o_f is empty:
     - Ingest MP4 to DPI, create new CID media record
     - Create JPEG images thumbnail/largeimage
-    - Copy MP4 with correct filename to proxy path
+    - Copy MP4 with correct filename to proxy path if codec compatible (if not encode to H.264?)
     - Write access rendition values to new CID media record
     - Move MP4 to completed folder for deletion
    b. If i_t = Digital, f_t = non MP4, i.m.o_f is populated:
     - Check CID media record for access rendition values
     - If present, no further actions move MP4 to 'already_ingested' folder
-    - If not present then create JPEG images and move MP4 to proxy path
+    - If not present then create JPEG images and move MP4 to proxy path if codec compatible (if not encode to H.264?)
     - Update existing CID digital media record with access rendition vals
    c. If i_t is not Digital
     - Skip with note in logs, as CID item record data is inaccruate
@@ -27,6 +27,7 @@ This script needs to:
 - BP Put of individual items
 - BP validation of said individual item
 - Create CID Digital Media record
+- Transcode old MP4 codec types to H.264 (to be discussed)
 - Create JPEG file/thumbnail/largeimage from blackdetected MP4 scan
 - Append data to CID media records
 
@@ -122,7 +123,7 @@ def check_cid_record(priref, file):
         'search': search,
         'limit': '0',
         'output': 'json',
-        'fields': 'item_type, file_type, imagen.media.original_filename, reference_number'
+        'fields': 'item_type, file_type, imagen.media.original_filename, reference_number, code_type'
     }
 
     try:
@@ -131,7 +132,7 @@ def check_cid_record(priref, file):
     except Exception as err:
         print(f"Unable to retrieve CID Item record {err}")
 
-    item_type = file_type = original_fname = ''
+    item_type = file_type = original_fname = ref_num = code_type = ''
     if 'item_type' in str(result.records[0]):
         item_type = result.records[0]['item_type'][0]['value'][0]
     if 'file_type' in str(result.records[0]):
@@ -140,8 +141,10 @@ def check_cid_record(priref, file):
         original_fname = file_type = result.records[0]['imagen.media.original_filename'][0]
     if 'reference_number' in str(result.records[0]):
         ref_num = result.records[0]['reference_number'][0]
+    if 'code_type' in str(result.records[0]):
+        code_type = result.records[0]['code_type'][0]
 
-    return item_type, file_type, original_fname, ref_num
+    return item_type, file_type, original_fname, ref_num, code_type
 
 
 def check_media_record(fname):
@@ -286,7 +289,7 @@ def main():
         if len(object_number) == 0:
             LOGGER.warning("Skipping. Object number couldn't be created from file renaming.")
             continue
-        item_type, file_type, original_fname, ref_num = check_cid_record(object_number, file)
+        item_type, file_type, original_fname, ref_num, code_type = check_cid_record(object_number, file)
         if not item_type or file_type:
             LOGGER.warning("Skipping. No CID item record found for object number %s", object_number)
             continue

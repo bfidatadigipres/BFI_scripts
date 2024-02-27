@@ -583,27 +583,39 @@ def fetch_lines(fullpath, lines):
 
         # Broadcast details
         if 'bbc' in fullpath or 'cbeebies' in fullpath or 'cbbc' in fullpath:
+            code_type = 'MPEG-4 AVC'
             broadcast_company = '454'
             print(f"Broadcast company set to BBC in {fullpath}")
         elif 'itv' in fullpath:
+            code_type = 'MPEG-4 AVC'
             broadcast_company = '20425'
             print(f"Broadcast company set to ITV in {fullpath}")
-        elif 'more4' in fullpath or 'film4' in fullpath or 'channel4' in fullpath or '/e4/' in fullpath:
+        elif 'more4' in fullpath or 'film4' in fullpath or '/e4/' in fullpath:
+            code_type = 'MPEG-2'
+            broadcast_company = '73319'
+            print(f"Broadcast company set to Channel4 in {fullpath}")
+        elif 'channel4' in fullpath:
+            code_type = 'MPEG-4 AVC'
             broadcast_company = '73319'
             print(f"Broadcast company set to Channel4 in {fullpath}")
         elif '5star' in fullpath or 'five' in fullpath:
+            code_type = 'MPEG-2'
             broadcast_company = '24404'
             print(f"Broadcast company set to Five in {fullpath}")
         elif 'sky_news' in fullpath:
+            code_type = 'MPEG-2'
             broadcast_company = '78200'
             print(f"Broadcast company set to Sky News in {fullpath}")
         elif 'al_jazeera' in fullpath:
+            code_type = 'MPEG-4 AVC'
             broadcast_company = '125338'
             print(f"Broadcast company set to Al Jazeera in {fullpath}")
         elif 'gb_news' in fullpath:
+            code_type = 'MPEG-4 AVC'
             broadcast_company = '999831694'
             print(f"Broadcast company set to GB News in {fullpath}")
         elif 'talk_tv' in fullpath:
+            code_type = 'MPEG-4 AVC'
             broadcast_company = '999883795'
             print(f"Broadcast company set to Talk TV in {fullpath}")
         else:
@@ -611,6 +623,8 @@ def fetch_lines(fullpath, lines):
 
         if broadcast_company:
             epg_dict['broadcast_company'] = broadcast_company
+        if code_type:
+            epg_dict['code_type'] = code_type
 
         # Broadcast details
         for key, val in CHANNELS.items():
@@ -1040,23 +1054,6 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
         logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
         return None
-    '''
-    series_work_genres = []
-    if len(str(series_genre_one)) > 0:
-        series_work_genres.append({'content.genre.lref': str(series_genre_one)})
-    if len(str(series_genre_two)) > 0:
-        series_work_genres.append({'content.genre.lref': str(series_genre_two)})
-    if len(str(series_subject_one)) > 0:
-        series_work_genres.append({'content.subject.lref': str(series_subject_one)})
-    if len(str(series_subject_two)) > 0:
-        series_work_genres.append({'content.subject.lref': str(series_subject_two)})
-
-    print(f"Attempting to write series work genres and subjects to records {series_work_genres}")
-    if 'content.' in str(series_work_genres):
-        success = push_genre_payload(series_work_id, series_work_genres)
-        if not success:
-            logger.warning("Unable to write series genre %s", err)
-    '''
     return series_work_id
 
 
@@ -1130,7 +1127,7 @@ def build_defaults(epg_dict):
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
              {'file_type': 'MPEG-TS'},
-             {'code_type': 'MPEG-2'},
+             {'code_type': epg_dict['code_type']},
              {'source_device': 'STORA'},
              {'acquisition.method': 'Off-Air'}])
 
@@ -1568,9 +1565,9 @@ def push_payload(item_id, webvtt_payload):
             timeout=300)
         return True
     except Exception as err:
-         logger.warning('push_payload()): Unable to write Webvtt to record %s \n%s', item_id, err)
-         unlock_record(item_id)
-         return False
+        logger.warning('push_payload()): Unable to write Webvtt to record %s \n%s', item_id, err)
+        unlock_record(item_id)
+        return False
 
 
 def write_lock(priref):

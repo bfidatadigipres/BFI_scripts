@@ -48,6 +48,7 @@ import sys
 import json
 import pandas
 import shutil
+import hashlib
 import logging
 import requests
 import datetime
@@ -68,7 +69,7 @@ PROXY_CREATE = os.path.join(FILE_PATH, 'proxy_create/')
 CSV_PATH = os.path.join(os.environ['ADMIN'], 'legacy_MP4_file_list.csv')
 LOG_PATH = os.environ['LOG_PATH']
 CID_API = os.environ['CID_API3']
-BUCKET = 'preservation01'
+DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor
@@ -134,7 +135,7 @@ def check_cid_record(priref, file):
     except Exception as err:
         print(f"Unable to retrieve CID Item record {err}")
 
-    item_type = file_type = original_fname = ref_num = code_type = input_date = ''
+    item_type = file_type = original_fname = ref_num = code_type = ''
     if 'item_type' in str(result.records[0]):
         item_type = result.records[0]['item_type'][0]['value'][0]
     if 'file_type' in str(result.records[0]):
@@ -198,7 +199,6 @@ def check_bp_status(fname, bucket_list, local_md5):
         try:
             md5 = result.response.msg['ETag']
             length = result.response.msg['Content-Length']
-            etag = result.response.msg['ETag']
             if int(length) > 1 and md5.strip() == local_md5:
                 return True
         except (IndexError, TypeError, KeyError) as err:
@@ -303,7 +303,7 @@ def correct_filename(fname):
             new_fname = f'{filenum}_{additional_data1}_{additional_data2}'
             return new_fname
 
-    LOGGER.warning("Skipping: File name has anomalies: %s", file)
+    LOGGER.warning("Skipping: File name has anomalies: %s", fname)
     return None
 
 
@@ -365,12 +365,20 @@ def main():
         if item_type != 'DIGITAL':
             LOGGER.warning("Skipping. Incorrect CID item record attached to MP4 file, not DIGITAL item_type")
             continue
-        LOGGER.info("CID item record found with MP4 file-type for %s", object_number)
+        LOGGER.info("CID item record found with MP4 file-type for %s - codec type %s", object_number, code_type)
 
-        ingest = proxy = False
         # Begin assessment of actions
+        ingest = proxy = False
         media_priref, access_hls, access_mp4, input_date = check_media_record(original_fname)
-        if file_type == 'MP4' and original_fname == '':
+        if media_priref:
+            LOGGER.warning('CID Media record already exists - no ingest needed for file %s', file)
+            if len(access_mp4) == 0:
+                proxy = True
+            else:
+                LOGGER.info("MP4 has CID media record with access_mp4 populated. No action necessary.")
+                # JMW to ask: Do we move files here, or check for thumbnails?
+                continue
+        elif file_type == 'MP4' and original_fname == '':
             ingest = True
             proxy = True
         elif file_type == 'MP4' and len(original_fname) > 3:
@@ -391,11 +399,12 @@ def main():
                 LOGGER.info("No access copy found for file. Moving MP4 for proxy")
                 proxy = True
         elif file_type != 'MP4' and original_fname == '':
-            # Would we ingest this if file_type doesn't match?
+            # JMW to ask: Would we ingest this if file_type doesn't match?
             proxy = True
         else:
             continue
 
+        # JMW to ask: Do we ingest with corrected filename, or existing N-123456_01of01.mp4
         # Prepare new filename and path formatting (N_123456_01of01, from N-123456)
         new_file = correct_filename(fname)
         if not new_file:
@@ -405,8 +414,6 @@ def main():
 
         # Start ingest
         if ingest:
-            # Should filename be standardised before ingesting?
-
             LOGGER.info("MP4 file selected for ingest. Checking if already in Black Pearl: %s", file)
             bucket, bucket_list = get_buckets('bfi')
             check_for_ingest = check_bp_status(ref_num, bucket_list)
@@ -425,9 +432,12 @@ def main():
                 LOGGER.warning("PUT for file %s has failed. Skip all further stages", file)
                 continue
             LOGGER.info("Confirmation of successful PUT to Black Pearl")
-        
-            # CREATE CID MEDIA RECORD HERE
 
+            # Create CID media record
+            byte_size = os.path.getsize(fpath)
+            media_priref = create_media_record(object_number, duration, byte_size, file, bucket)
+            if not media_priref:
+                continue
 
         # Start MP4 check/JPEG creation
         if proxy:
@@ -531,13 +541,14 @@ def get_duration(fullpath):
     elif len(duration) > 2:
         print("More than one duration returned")
         dur1 = f"{duration[0]}"
-        dur2 = f"{duration[1][6:]}"1, dur2)
+        dur2 = f"{duration[1][6:]}"
+        print(dur1, dur2)
         if int(dur1) > int(dur2):
             second_duration = int(dur1) // 1000
-            return second_duration
+            return (second_duration, '0')
         elif int(dur1) < int(dur2):
             second_duration = int(dur2) // 1000
-            return second_duration
+            return (second_duration, '1')
 
 
 def get_blackdetect(fpath):
@@ -589,6 +600,22 @@ def adjust_seconds(duration, data):
             return frame_secs
 
     return duration // 2
+
+
+def check_seconds(blackspace, seconds):
+    '''
+    Create range and check for second within
+    '''
+    clash = []
+    for item in blackspace:
+        start, end = item.split(" - ")
+        st = int(start) - 1
+        ed = int(end) + 1
+        if seconds in range(st, ed):
+            clash.append(seconds)
+
+    if len(clash) > 0:
+        return True
 
 
 def retrieve_blackspaces(data):
@@ -652,7 +679,7 @@ def get_jpeg(seconds, fullpath, outpath):
         subprocess.call(cmd)
         return True
     except Exception as err:
-        logger.warning("%s\tINFO\tget_jpeg(): failed to extract JPEG\n%s\n%s", local_time(), command, err)
+        LOGGER.warning("get_jpeg(): failed to extract JPEG\n%s\n%s", command, err)
         return False
 
 
@@ -701,11 +728,75 @@ def make_jpg(filepath, arg, transcode_pth, percent):
     try:
         subprocess.call(cmd)
     except Exception as err:
-        LOGGER.error("%s\tERROR\tJPEG creation failed for filepath: %s\n%s", local_time(), filepath, err)
+        LOGGER.error("JPEG creation failed for filepath: %s\n%s", filepath, err)
 
     if os.path.exists(outfile):
         return outfile
-    
+
+
+def get_part_whole(fname):
+    '''
+    Receive a filename extract part whole from end
+    Return items split up
+    '''
+    name = os.path.splitext(fname)[0]
+    name_split = name.split('_')
+    if len(name_split) == 3:
+        part_whole = name_split[2]
+    elif len(name_split) == 4:
+        part_whole = name_split[3]
+    else:
+        part_whole = ''
+        return None
+
+    part, whole = part_whole.split('of')
+    if part[0] == '0':
+        part = part[1]
+    if whole[0] == '0':
+        whole = whole[1]
+
+    return (part, whole)
+
+
+def create_media_record(ob_num, duration, byte_size, filename, bucket):
+    '''
+    Media record creation for BP ingested file
+    '''
+    record_data = []
+    part, whole = get_part_whole(filename)
+
+    record_data = ([{'input.name': 'datadigipres'},
+                    {'input.date': str(datetime.now())[:10]},
+                    {'input.time': str(datetime.now())[11:19]},
+                    {'input.notes': 'Digital preservation ingest - automated bulk documentation.'},
+                    {'reference_number': filename},
+                    {'imagen.media.original_filename': filename},
+                    {'object.object_number': ob_num},
+                    {'imagen.media.part': part},
+                    {'imagen.media.total': whole},
+                    {'preservation_bucket': bucket}])
+    print(record_data)
+    print(f"Using CUR create_record: database='media', data, output='json', write=True")
+    media_priref = ""
+
+    try:
+        i = CUR.create_record(database='media',
+                              data=record_data,
+                              output='json',
+                              write=True)
+        if i.records:
+            try:
+                media_priref = i.records[0]['priref'][0]
+                print(f'** CID media record created with Priref {media_priref}')
+                LOGGER.info('CID media record created with priref %s', media_priref)
+            except Exception:
+                LOGGER.exception("CID media record failed to retrieve priref")
+    except Exception:
+        print(f"\nUnable to create CID media record for {ob_num}")
+        LOGGER.exception("Unable to create CID media record!")
+
+    return media_priref
+
 
 def cid_media_append(fname, priref, data):
     '''

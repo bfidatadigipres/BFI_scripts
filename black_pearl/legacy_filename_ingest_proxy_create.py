@@ -27,7 +27,7 @@ This script needs to:
 - BP Put of individual items
 - BP validation of said individual item
 - Create CID Digital Media record
-- Transcode old MP4 codec types to H.264 (to be discussed)
+- Transcode old MP4 codec types to H.264 (JMW to ask)
 - Create JPEG file/thumbnail/largeimage from blackdetected MP4 scan
 - Append data to CID media records
 
@@ -442,7 +442,7 @@ def main():
         # Start MP4 check/JPEG creation
         if proxy:
             LOGGER.info("Proxy files required for MP4 asset: %s", file)
-            LOGGER.info("MP4 file has MP4 codec: %s" check_codec(fpath))
+            LOGGER.info("MP4 file has MP4 codec: %s", check_codec(fpath))
 
             # Build path to proxies and new file names
             date_path = input_date[:8].replace('-', '')
@@ -812,9 +812,7 @@ def cid_media_append(fname, priref, data):
         CID_API,
         params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
         data={'data': payload})
-    print("**************************************************************")
     print(post_response.text)
-    print("**************************************************************")
 
     if "<error><info>" in str(post_response.text) or "<error>" in str(post_response.text):
         LOGGER.warning("cid_media_append(): Post of data failed for file %s: %s - %s", fname, priref, post_response.text)

@@ -27,7 +27,9 @@ This script needs to:
 - BP Put of individual items
 - BP validation of said individual item
 - Create CID Digital Media record
-- Transcode old MP4 codec types to H.264 (JMW to ask)
+- Transcode old MP4 codec types to H.264? (JMW to ask)
+  Answer: if codec != 'avc' then push to folder for 'review' 
+
 - Create JPEG file/thumbnail/largeimage from blackdetected MP4 scan
 - Append data to CID media records
 
@@ -338,13 +340,12 @@ def main():
     LOGGER.info("Files located in filename_updated/ folder: %s", ', '.join(files))
 
     for file in files:
+        LOGGER.info("Processing file: %s", file)
         fpath = os.path.join(FILE_PATH, file)
         fname, ext = file.split('.')
-        print(fname)
 
         # Find match in CSV
         match_dict = read_csv_match_file(file)
-        print(match_dict)
         if match_dict is None:
             LOGGER.warning("File not found in CSV: %s", file)
             continue
@@ -376,7 +377,7 @@ def main():
                 proxy = True
             else:
                 LOGGER.info("MP4 has CID media record with access_mp4 populated. No action necessary.")
-                # JMW to ask: Do we move files here, or check for thumbnails?
+                # JMW to ask: Move files to a 'ingest_check_review' folder
                 continue
         elif file_type == 'MP4' and original_fname == '':
             ingest = True
@@ -399,12 +400,13 @@ def main():
                 LOGGER.info("No access copy found for file. Moving MP4 for proxy")
                 proxy = True
         elif file_type != 'MP4' and original_fname == '':
-            # JMW to ask: Would we ingest this if file_type doesn't match?
-            proxy = True
+            # JMW to ask: Move to a folder for 'cid_documentation_review' folder
+            shutil.move(here)
+            continue
         else:
             continue
 
-        # JMW to ask: Do we ingest with corrected filename, or existing N-123456_01of01.mp4
+        # JMW to ask: We will always force underscore at start N-123456_01of01.mp4
         # Prepare new filename and path formatting (N_123456_01of01, from N-123456)
         new_file = correct_filename(fname)
         if not new_file:

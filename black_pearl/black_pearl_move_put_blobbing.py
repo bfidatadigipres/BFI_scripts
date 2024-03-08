@@ -317,7 +317,7 @@ def get_md5(filename):
         return None
     else:
         return local_md5
-    
+
 
 def check_for_media_record(fname):
     '''
@@ -423,7 +423,7 @@ def main():
 
         # Begin blobbed PUT one item at a time
         put_job_id = put_file(fname, fpath, bucket)
-        
+
         # Confirm job list exists
         if not put_job_id:
             LOGGER.warning("JOB list retrieved for file is not correct. %s: %s", fname, put_job_id)

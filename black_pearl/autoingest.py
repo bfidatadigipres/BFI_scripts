@@ -578,39 +578,6 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
         return 'False'
 
 
-def sequence_is_next(fpath, fname, object_number, ext, log_paths):
-    '''
-    Ingest image sequences that do not have
-    complete reels as MKV or TAR
-    '''
-    if not fname.endswith(('.mkv', '.tar')):
-        print(f"* Incorrect sequence file type received: {fname} with extension {ext}")
-        logger.warning('%s\tIncorrect film sequence file type in folder incomplete_sequences', log_paths)
-        return False
-
-    filepath = os.path.split(fpath)[0]
-    filename = fname.split('_')
-    filename = '_'.join(filename[:2])
-
-    # Check if fname already ingested or if only item in incomplete_scans/ folder
-    ingest_fnames = get_media_ingests(object_number)
-    if fname in ingest_fnames:
-        return 'Ingested already'
-    file_list = [ x for x in os.listdir(filepath) if filename in x ]
-    if len(file_list) == 1:
-        print('* Suitable for ingest')
-        return True
-
-    # Check if fname is first in line for ingest from file_list
-    sorted_list = file_list.sort()
-    if fname == sorted_list[0]:
-        print('* Suitable for ingest')
-        return True
-    else:
-        print('* Currently unsuitable for ingest')
-        return False
-
-
 def load_yaml(file):
     '''
     Safe open yaml and return as dict
@@ -779,19 +746,8 @@ def main():
 
             # Move first part of incomplete scans
             if '/incomplete_scans/' in fpath:
-                print('\n*** File is an incomplete scan. Checking if next for ingest ======')
-                confirm = sequence_is_next(fpath, fname, object_number, ext, log_paths)
-                if confirm is True:
-                    print(f"Ingest approved for file {fname}")
-                    do_ingest = True
-                elif 'Ingested already' in confirm:
-                    print('\t\t* Already ingested! Not to be reingested')
-                    logger.warning('%s\tThis file name has already been ingested and has CID Media record', log_paths)
-                    continue
-                else:
-                    print('\t\t*Skipping object as previous part has not yet been ingested')
-                    logger.info("%s\tSkip object as previous part not yet ingested or queued for ingest", log_paths)
-                    continue
+                print('\n*** File is an incomplete scan. Moving for ingest ======')
+                do_ingest = True
             else:
                 # Move items for ingest if they are single parts, first parts, or next in queue
                 print('\n*** TEST for ASSET_MULTIPART ======')

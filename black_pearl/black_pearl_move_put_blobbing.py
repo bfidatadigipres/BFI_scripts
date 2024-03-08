@@ -37,6 +37,7 @@ import sys
 import csv
 import json
 import glob
+import time
 import shutil
 import hashlib
 import logging
@@ -420,9 +421,13 @@ def main():
     for fname in files:
         check_control()
         fpath = os.path.join(autoingest, fname)
-
-        # Begin blobbed PUT one item at a time
-        put_job_id = put_file(fname, fpath, bucket)
+        
+        # Begin blobbed PUT (bool argument for checksum validation off/on in ds3Helpers)
+        tic = time.perf_counter()
+        put_job_id = put_file(fname, fpath, bucket, False)
+        toc = time.perf_counter()
+        checksum_put_time = (toc - tic) // 60
+        LOGGER.info("** Total time in minutes for PUT without BP hash validation: %s", checksum_put_time)
 
         # Confirm job list exists
         if not put_job_id:
@@ -447,6 +452,9 @@ def main():
             LOGGER.warning("Skipping further actions with this file")
             continue
         LOGGER.info("Checksums match for file >1TB local and stored on Black Pearl:\n%s\n%s", local_checksum, remote_checksum)
+        toc = time.perf_counter()
+        checksum_put_time = (toc - tic) // 60
+        LOGGER.info("Total time in minutes for PUT without Spectra checksum, but download and whole file checksum comparison: %s", checksum_put_time)
 
         # Delete downloaded file and move to further validation checks
         LOGGER.info("Deleting downloaded file: %s", delivery_path)
@@ -539,18 +547,21 @@ def main():
         else:
             LOGGER.warning("File %s has no associated CID media record created.", fname)
             LOGGER.warning("File will be left in folder for manual intervention.")
+        toc2 = time.perf_counter()
+        whole_put_time = (toc2 - tic) // 60
+        LOGGER.info("** Total time for whole process for PUT without BP hash validation: %s", whole_put_time)
 
     LOGGER.info(f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========")
 
 
-def put_file(fname, fpath, bucket_choice):
+def put_file(fname, fpath, bucket_choice, bool):
     '''
     Add the directory to black pearl using helper (no MD5)
     Retrieve job number and launch json notification
     '''
     file_size = get_file_size(fpath)
     put_objects = [ds3Helpers.HelperPutObject(object_name=f"{fname}", file_path=fpath, size=file_size)]
-    put_job_id = HELPER.put_objects(put_objects=put_objects, bucket=bucket_choice, calculate_checksum=True)
+    put_job_id = HELPER.put_objects(put_objects=put_objects, bucket=bucket_choice, calculate_checksum=bool)
     LOGGER.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_id)
     if len(put_job_id) == 36:
         return put_job_id

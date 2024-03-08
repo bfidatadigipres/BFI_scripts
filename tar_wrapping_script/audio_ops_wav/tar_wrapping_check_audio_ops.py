@@ -79,8 +79,11 @@ def get_cid_data(fname):
         file_type = results['adlibJSON']['recordList']['record'][0]['file_type'][0]
     except (IndexError, KeyError):
         file_type = ''
-
-    return (priref, file_type)
+    try:
+        input_note = results['adlibJSON']['recordList']['record'][0]['input.notes'][0]
+    except (IndexError, KeyError):
+        input_note = ''
+    return (priref, file_type, input_note)
 
 
 def tar_file(fpath):
@@ -221,7 +224,7 @@ def main():
 
     # Attempt to retrieve CID item record
     data = get_cid_data(tar_source)
-    if not data:
+    if not data[0]:
         log.append("Unable to retrieve priref or file_type for this record. Exiting.")
         log.append(f"==== Log actions complete: {fullpath} ====")
         for item in log:
@@ -230,8 +233,11 @@ def main():
 
     priref = data[0]
     file_type = data[1]
-    if not file_type.lower() == 'wav':
+    input_note = data[2]
+    if file_type.lower() != 'wav' or file_type.lower() != 'tar':
         log.append(f"WARNING: Please review this file's file_type in CID Item record {priref} as file type is not 'WAV'")
+    if file_type.lower() == 'tar' and 'Created by automation to aid ingest of legacy projects and workflows.' not in input_note:
+        log.append(f"WARNING: Please review this file's file_type in CID Item record {priref} as file type is 'TAR' but not from automation workflow")
 
     # Make paths for moving later
     failures_path = os.path.join(AUTO_TAR, 'failures/')
@@ -337,7 +343,7 @@ def main():
         shutil.move(fullpath, deletion_path)
         # Add deletion here
         try:
-            os.remove(deletion_path)
+            os.rmdir(deletion_path)
             LOGGER.info("File deleted: %s", deletion_path)
         except Exception as err:
             LOGGER.warning("WARNING: File could not be deleted %s\n%s", deletion_path, err)

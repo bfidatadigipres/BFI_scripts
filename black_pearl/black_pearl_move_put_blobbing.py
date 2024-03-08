@@ -424,7 +424,8 @@ def main():
         
         # Begin blobbed PUT (bool argument for checksum validation off/on in ds3Helpers)
         tic = time.perf_counter()
-        put_job_id = put_file(fname, fpath, bucket, False)
+        check = False
+        put_job_id = put_file(fname, fpath, bucket, check)
         toc = time.perf_counter()
         checksum_put_time = (toc - tic) // 60
         LOGGER.info("** Total time in minutes for PUT without BP hash validation: %s", checksum_put_time)
@@ -554,14 +555,14 @@ def main():
     LOGGER.info(f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========")
 
 
-def put_file(fname, fpath, bucket_choice, bool):
+def put_file(fname, fpath, bucket_choice, check):
     '''
     Add the directory to black pearl using helper (no MD5)
     Retrieve job number and launch json notification
     '''
     file_size = get_file_size(fpath)
     put_objects = [ds3Helpers.HelperPutObject(object_name=f"{fname}", file_path=fpath, size=file_size)]
-    put_job_id = HELPER.put_objects(put_objects=put_objects, bucket=bucket_choice, calculate_checksum=bool)
+    put_job_id = HELPER.put_objects(put_objects=put_objects, bucket=bucket_choice, calculate_checksum=bool(check))
     LOGGER.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_id)
     if len(put_job_id) == 36:
         return put_job_id

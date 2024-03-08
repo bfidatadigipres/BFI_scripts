@@ -476,16 +476,19 @@ def get_media_ingests(object_number):
            'output': 'json'}
 
     original_filenames = []
-    try:
-        result = CID.get(dct)
-        print(f'\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number')
-        print(result.records)
-        for r in result.records:
+    result = CID.get(dct)
+    if not result:
+        return None
+
+    print(f'\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number')
+    print(result.records)
+    for r in result.records:
+        try:
             filename = r['imagen.media.original_filename']
             print(f"File found with CID record: {filename}")
             original_filenames.append(filename[0])
-    except Exception as err:
-        print(err)
+        except KeyError as err:
+            print(err)
 
     return original_filenames
 

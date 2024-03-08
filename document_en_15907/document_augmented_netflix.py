@@ -26,11 +26,8 @@ Steps:
 6. Create CID records
 7. Append contributors where available
 
-NOTES: Update so Episode * works prepended
-       with Series title
-       Acquisition date carried over from CSV
-       Only series have work_type T, all other
-       have F (inc shorts/monographic docs)
+NOTES: Dependency for cast create_contributors()
+       will need review when API updates complete
 
 Joanna White
 2023
@@ -60,7 +57,7 @@ LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API')
+CID_API = os.environ.get('CID_API') # May need to run from CID_API4 for cast/credit
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 

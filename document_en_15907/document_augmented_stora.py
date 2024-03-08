@@ -190,6 +190,9 @@ def find_repeats(asset_id):
              'fields': 'priref, object_number, alternative_number.type'}
 
     result = cid.get(query)
+    if not result:
+        return None
+
     if result.hits == 0:
         return None
 

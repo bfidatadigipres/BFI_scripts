@@ -166,9 +166,9 @@ def make_check_md5(fpath, dpath, fname):
     except Exception as err:
         print(err)
 
-    if local_checksum and download_checksum:
-        print(f"Created from download: {download_checksum} | Retrieved from BP: {local_checksum}")
-        return str(download_checksum), str(local_checksum)
+    if len(local_checksum) > 10 and len(download_checksum) > 10:
+        print(f"Created from download: {download_checksum} | Original file checksum: {local_checksum}")
+        return download_checksum, local_checksum
     return None, None
 
 
@@ -421,9 +421,10 @@ def main():
     for fname in files:
         check_control()
         fpath = os.path.join(autoingest, fname)
-        
+
         # Begin blobbed PUT (bool argument for checksum validation off/on in ds3Helpers)
         tic = time.perf_counter()
+        '''
         LOGGER.info("Beginning PUT of blobbing file: %s", tic)
         check = False
         put_job_id = put_file(fname, fpath, bucket, check)
@@ -437,18 +438,21 @@ def main():
             LOGGER.warning("Skipping further verification stages. Please investigate error.")
             continue
         LOGGER.info("Successfully written data to BP. Job ID for file: %s", put_job_id)
-
+        '''
         # Begin retrieval
-        get_job_id = get_bp_file(fname, download_folder, bucket)
         delivery_path = os.path.join(download_folder, fname)
+        get_job_id = get_bp_file(fname, delivery_path, bucket)
+        print(f"File downloaded: {delivery_path}")
         if not get_job_id or os.path.exists(delivery_path):
             LOGGER.warning("Skipping: Failed to download file from Black Pearl: %s", fname)
             continue
         LOGGER.info("Retrieved asset again. GET job ID: %s", get_job_id)
 
         # Checksum validation
+        print("Making checksums...")
         LOGGER.info("Generating checksum for downloaded file and comparing to existing local MD5.")
         local_checksum, remote_checksum = make_check_md5(fpath, delivery_path, fname)
+        print(local_checksum, remote_checksum)
         if local_checksum is None or local_checksum != remote_checksum:
             LOGGER.warning("Checksums absent / do not match: \n%s\n%s", local_checksum, remote_checksum)
             LOGGER.warning("Skipping further actions with this file")

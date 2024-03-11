@@ -1350,9 +1350,9 @@ def write_lock(database, priref):
         post_response = requests.post(
             CID_API,
             params={'database': database, 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'})
+        print(post_response.text)
     except Exception as err:
         LOGGER.warning("Lock record wasn't applied to record %s\n%s", priref, err)
-        print(post_response.text)
 
 
 def unlock_record(database, priref):
@@ -1363,9 +1363,9 @@ def unlock_record(database, priref):
         post_response = requests.post(
             CID_API,
             params={'database': database, 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
+        print(post_response.text)
     except Exception as err:
         LOGGER.warning("Post to unlock record failed. Check record %s is unlocked manually\n%s", priref, err)
-        print(post_response.text)
 
 
 if __name__ == '__main__':

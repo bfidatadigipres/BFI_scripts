@@ -4,7 +4,7 @@
 Script to create People records from EPG metadata
 dict and attach to existing CID Work records
 
-1. Receive EPG dictionary from augmented Netflix script
+1. Receive EPG dictionary from augmented streaming platform scripts
    plus work priref and nfa_category
    - Extract contributor data from EPG metadata
 2. Look in CID for matching people PATV IDs person dB
@@ -42,8 +42,8 @@ CID_API = os.environ['CID_API3']
 CID_API2 = os.environ['CID_API4']
 
 # Setup logging
-LOGGER = logging.getLogger('document_netflix_castcred')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'document_netflix_castcred.log'))
+LOGGER = logging.getLogger('document_streaming_castcred')
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'document_streaming_castcred.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -272,12 +272,13 @@ def cid_person_check(credit_id):
     return (priref, name, activity_type)
 
 
-def cid_work_check(search):
+def cid_work_check(search, platform):
     '''
     Retrieve CID work record priref where search matches
     '''
     prirefs = []
     edit_names = []
+    platform = platform.title()
 
     query = {'database': 'works',
              'search': search,
@@ -303,7 +304,7 @@ def cid_work_check(search):
         except (KeyError, IndexError):
             edit_name = ''
 
-        if 'Netflix metadata integration - automated bulk documentation' in str(input_note):
+        if f'{platform} metadata integration - automated bulk documentation' in str(input_note):
             prirefs.append(priref)
             edit_names.append(edit_name)
 
@@ -333,7 +334,7 @@ def cid_manifestation_check(priref):
     return start_time
 
 
-def create_contributors(priref, nfa_cat, credit_list):
+def create_contributors(priref, nfa_cat, credit_list, platform):
     '''
     Iterate dct extracting cast/credit and other metadata
     Check in CID for existing People records and extract priref
@@ -344,7 +345,7 @@ def create_contributors(priref, nfa_cat, credit_list):
     if not credit_list:
         return None
 
-    LOGGER.info("============= START document_aug_netflix_castcred script START =============")
+    LOGGER.info("============= START document_augmented_streaming_castcred script START =============")
     LOGGER.info("Retrieved contributors for priref %s", priref)
 
     # Get people data
@@ -514,16 +515,16 @@ def create_contributors(priref, nfa_cat, credit_list):
     work_append(priref, work_append_dct)
     LOGGER.info("Checking work_append_dct written to CID Work record")
 
-    edit_name = cid_work_check(f"priref='{priref}'")[1]
+    edit_name = cid_work_check(f"priref='{priref}'", platform)[1]
     if 'datadigipres' in str(edit_name):
         print(f"Work appended successful! {priref}")
         LOGGER.info("Successfully appended additional cast credit EPG metadata to Work record %s\n", priref)
-        LOGGER.info("=============== END document_aug_netflix_castcred script END ===============\n")
+        LOGGER.info("=============== END document_augmented_streaming_castcred script END ===============\n")
         return (cast_dct, cred_dct)
     else:
         LOGGER.warning("Writing EPG cast credit metadata to Work %s failed\n", priref)
         print(f"Work append FAILED!! {priref}")
-        LOGGER.info("=============== END document_aug_netflix_castcred script END ===============\n")
+        LOGGER.info("=============== END document_augmented_streaming_castcred script END ===============\n")
         return False
 
 

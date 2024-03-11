@@ -2,7 +2,7 @@
 
 '''
 Script to ingest
-Netflix EPG metadata
+Amazon EPG metadata
 based on CSV list of
 required programmes
 
@@ -42,7 +42,7 @@ import datetime
 import requests
 import pandas
 import yaml
-
+c
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib
@@ -50,8 +50,8 @@ from document_augmented_streaming_cast import create_contributors
 
 # Global variables
 STORAGE = os.environ.get('QNAP_IMAGEN')
-NETFLIX = os.path.join(STORAGE, 'NETFLIX')
-CAT_ID = os.environ.get('PA_NETFLIX')
+AMAZON = os.path.join(STORAGE, 'AMAZON')
+CAT_ID = os.environ.get('PA_AMAZON') # UPDATE THIS
 ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
@@ -69,17 +69,17 @@ END = f"{TODAY.strftime('%Y-%m-%d')}T23:59:00"
 TITLE_DATA = ''
 UPDATE_AFTER = '2022-07-01T00:00:00'
 
-# PATV API details including unique identifiers for Netflix catalogue
-URL = os.path.join(os.environ['PATV_NETFLIX_URL'], f'catalogue/{CAT_ID}/')
-URL2 = os.path.join(os.environ['PATV_NETFLIX_URL'], 'asset/')
+# PATV API details including unique identifiers for Amazon catalogue
+URL = os.path.join(os.environ['PATV_AMAZON_URL'], f'catalogue/{CAT_ID}/') # UPDATE AMAZON URL
+URL2 = os.path.join(os.environ['PATV_AMAZON_URL'], 'asset/')
 HEADERS = {
     "accept": "application/json",
     "apikey": os.environ['PATV_KEY']
 }
 
 # Setup logging
-LOGGER = logging.getLogger('document_augmented_netflix')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_netflix.log'))
+LOGGER = logging.getLogger('document_augmented_amazon')
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_amazon.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -145,11 +145,11 @@ def split_title(title_article):
 def get_folder_match(foldername):
     '''
     Get full folder path
-    from Netflix folder excluding
+    from Amazon folder excluding
     any folders that have additional
     title data, eg 'Enola_Holmes_2_'
     '''
-    folder_list = [x for x in os.listdir(NETFLIX) if x.startswith(foldername)]
+    folder_list = [x for x in os.listdir(AMAZON) if x.startswith(foldername)]
     for fr in folder_list:
         id_ = fr.split(foldername)[-1]
         if '_' in id_:
@@ -207,7 +207,7 @@ def get_cat_data(data=None):
     except:
         pass
     try:
-        c_data['cert_netflix'] = data['certification']['netflix']
+        c_data['cert_amaxon'] = data['certification']['amazon']
     except (IndexError, TypeError, KeyError):
         pass
     try:
@@ -324,7 +324,7 @@ def get_json_data(data=None):
             pass
     if 'certification' in data:
         try:
-            j_data['cert_netflix'] = data['certification']['netflix']
+            j_data['cert_amazon'] = data['certification']['amazon']
         except (IndexError, TypeError, KeyError):
             pass
         try:
@@ -354,7 +354,7 @@ def get_json_data(data=None):
             pass
     if 'vod' in data:
         try:
-            j_data['start_date'] = data['vod']['netflix-uk']['start']
+            j_data['start_date'] = data['vod']['amazon-uk']['start']
         except (IndexError, TypeError, KeyError):
             pass
     return j_data
@@ -526,10 +526,10 @@ def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
         work_dict['production_year'] = json_dct['production_year']
     elif 'production_year' in cat_dct:
         work_dict['production_year'] = cat_dct['production_year']
-    if 'cert_netflix' in json_dct:
-        work_dict['certification_netflix'] = json_dct['cert_netflix']
-    elif 'cert_netflix' in cat_dct:
-        work_dict['certification_netflix'] = cat_dct['cert_netflix']
+    if 'cert_amazon' in json_dct:
+        work_dict['certification_amazon'] = json_dct['cert_amazon']
+    elif 'cert_amazon' in cat_dct:
+        work_dict['certification_amazon'] = cat_dct['cert_amazon']
     if 'cert_bbfc' in json_dct:
         work_dict['certification_bbfc'] = json_dct['cert_bbfc']
     elif 'cert_bbfc' in cat_dct:
@@ -586,7 +586,7 @@ def main():
     matches to episodes, in case of
     repeat runs of CSV and skip.
     Retrieve metadata by title matching
-    to NETFLIX programme folders
+    to AMAZON programme folders
     Where an episodic series, create a
     series work. Link all records as needed.
     '''
@@ -598,7 +598,7 @@ def main():
 
     prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct['title'])
-    LOGGER.info("=== Document augmented Netflix start ===============================")
+    LOGGER.info("=== Document augmented Amazon start ===============================")
     for num in range(0, csv_range):
         # Capture CSV supplied data to vars
         title = prog_dct['title'][num]
@@ -613,7 +613,7 @@ def main():
         acquisition_date = prog_dct['acquisition_date'][num]
         print(article, title, nfa, level, season_num, genres, episode_num, platform, year_release, acquisition_date)
 
-        if platform != 'Netflix':
+        if platform != 'Amazon':
             continue
 
         LOGGER.info("** Processing item: %s %s", article, title)
@@ -621,7 +621,7 @@ def main():
         # Make season number a list
         csv_data = [year_release, title, article, nfa, level, season_num, genres, episode_num, acquisition_date]
 
-        # Match NETFLIX folder to article/title
+        # Match AMAZON folder to article/title
         foldertitle = get_folder_title(article, title)
         matched_folders = get_folder_match(foldertitle)
         if len(matched_folders) > 1:
@@ -643,7 +643,7 @@ def main():
                 print(f"SKIPPING PRIREF FOUND: {priref_work}")
                 LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
                 continue
-            prog_path = os.path.join(NETFLIX, matched_folders[0])
+            prog_path = os.path.join(AMAZON, matched_folders[0])
 
             print(f"Found priref is for monographic work: {priref_work}")
             if priref_work.isnumeric():
@@ -682,7 +682,7 @@ def main():
             # Create contributors if supplied / or in addition to solo contributors
             if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
                 print('** Contributor data found')
-                success = create_contributors(priref_work, data_dct['nfa_category'], data_dct['contributors'], 'Netflix')
+                success = create_contributors(priref_work, data_dct['nfa_category'], data_dct['contributors'], 'Amazon')
                 if success:
                     LOGGER.info("Contributor data written to Work record: %s", priref_work)
                 else:
@@ -704,7 +704,7 @@ def main():
             print(f"PRIREF FOR ITEM: {priref_item}")
 
         elif 'series' in level.lower():
-            prog_path = os.path.join(NETFLIX, matched_folders[0])
+            prog_path = os.path.join(AMAZON, matched_folders[0])
             json_fpaths = get_json_files(prog_path)
             series_priref = ''
             # Check CID work exists / Make work if needed
@@ -786,7 +786,7 @@ def main():
                 # Create contributors if supplied / or in addition to solo contributors
                 if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
                     print('** Contributor data found')
-                    success = create_contributors(priref_episode, data_dct['nfa_category'], data_dct['contributors'], 'Netflix')
+                    success = create_contributors(priref_episode, data_dct['nfa_category'], data_dct['contributors'], 'Amazon')
                     if success:
                         LOGGER.info("Contributor data written to Work record: %s", priref_episode)
                     else:
@@ -809,9 +809,9 @@ def main():
                 print(f"PRIREF FOR ITEM: {priref_ep_item}")
 
             if episode_count != int(episode_num):
-                print("============ Episodes found in NETFLIX folder do not match total episodes supplied =============")
+                print("============ Episodes found in AMAZON folder do not match total episodes supplied =============")
 
-    LOGGER.info("=== Document augmented Netflix end =================================")
+    LOGGER.info("=== Document augmented Amazon end =================================")
 
 
 def firstname_split(person):
@@ -864,7 +864,7 @@ def build_defaults(data):
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
-               {'input.notes': 'Netflix metadata integration - automated bulk documentation'},
+               {'input.notes': 'Amazon metadata integration - automated bulk documentation'},
                {'record_access.user': 'BFIiispublic'},
                {'record_access.rights': '0'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
@@ -916,7 +916,7 @@ def build_defaults(data):
                         {'application_restriction.duration': 'PERM'},
                         {'application_restriction.review_date': '2030-01-01'},
                         {'application_restriction.authoriser': 'mcconnachies'},
-                        {'application_restriction.notes': 'Netflix UK streaming content - pending discussion'}])
+                        {'application_restriction.notes': 'Amazon UK streaming content - pending discussion'}])
 
     manifestation = ([{'record_type': 'MANIFESTATION'},
                       {'manifestationlevel_type': 'INTERNET'},
@@ -941,7 +941,7 @@ def build_defaults(data):
              {'accession_date': str(datetime.datetime.now())[:10]},
              {'acquisition.date': data['acquisition_date']}, # Contract date from CSV
              {'acquisition.method.lref': '132853'}, # Donation - with written agreement ACQMETH
-             {'acquisition.source.lref': '143463'}, # Netflix
+             {'acquisition.source.lref': '143463'}, # Netflix NEEDS TO BE AMAZON
              {'acquisition.source.type': 'DONOR'},
              {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                    'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
@@ -972,7 +972,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
         if series_dct['title_article'] != '-' and series_dct['title_article'] != '':
             series_work_values.append({'title.article': series_dct['title_article']})
     if len('patv_id') > 0:
-        series_work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
+        series_work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
         series_work_values.append({'alternative_number': patv_id})
     if 'd_short' in series_dct:
         series_work_values.append({'label.type': 'EPGSHORT'})
@@ -1074,13 +1074,13 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
         work_values.append({'title_date_start': work_dict['title_date_start']})
         work_values.append({'title_date.type': '03_R'})
     if 'patv_id' in work_dict:
-        work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
+        work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
         work_values.append({'alternative_number': work_dict['patv_id']})
     if 'cat_id' in work_dict:
-        work_values.append({'alternative_number.type': 'PATV Netflix catalogue ID'})
+        work_values.append({'alternative_number.type': 'PATV Amazon catalogue ID'})
         work_values.append({'alternative_number': work_dict['cat_id']})
     if 'episode_id' in work_dict:
-        work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
+        work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
         work_values.append({'alternative_number': work_dict['episode_id']})
     if part_of_priref:
         work_values.append({'part_of_reference.lref': part_of_priref})
@@ -1259,12 +1259,12 @@ def append_cred_cast_names(priref, cast_list, cred_list):
     if result:
         print(f"Work appended successful! {priref}")
         LOGGER.info("Successfully appended additional cast credit EPG metadata to Work record %s\n", priref)
-        LOGGER.info("=============== END document_aug_netflix_castcred script END ===============\n")
+        LOGGER.info("=============== END document_augmented_amazon script END ===============\n")
         return True
     else:
         LOGGER.warning("Writing EPG cast credit metadata to Work %s failed\n", priref)
         print(f"Work append FAILED!! {priref}")
-        LOGGER.info("=============== END document_aug_netflix_castcred script END ===============\n")
+        LOGGER.info("=============== END document_augmented_amazon script END ===============\n")
         return False
 
 
@@ -1320,16 +1320,16 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     if 'runtime' in work_dict:
         manifestation_values.append({'runtime': int(work_dict['runtime'])})
     if 'episode_id' in work_dict:
-        manifestation_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
+        manifestation_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
         manifestation_values.append({'alternative_number': work_dict['episode_id']})
     if 'attribute' in work_dict:
         if work_dict['attribute']:
             atts = ', '.join(work_dict['attribute'])
-            manifestation_values.append({'utb.fieldname': 'PATV Netflix attributes'})
+            manifestation_values.append({'utb.fieldname': 'PATV Amazon attributes'})
             manifestation_values.append({'utb.content': atts})
-    if 'certification_netflix' in work_dict:
-        manifestation_values.append({'utb.fieldname': 'Netflix certification'})
-        manifestation_values.append({'utb.content': work_dict['certification_netflix']})
+    if 'certification_amazon' in work_dict:
+        manifestation_values.append({'utb.fieldname': 'Amazon certification'})
+        manifestation_values.append({'utb.content': work_dict['certification_amazon']})
     if 'certification_bbfc' in work_dict:
         manifestation_values.append({'utb.fieldname': 'BBFC certification'})
         manifestation_values.append({'utb.content': work_dict['certification_bbfc']})
@@ -1368,12 +1368,12 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
 
 def append_url_data(work_priref, man_priref, data=None):
     '''
-    Receive Netflix URLs and priref and append to CID manifestation
+    Receive Amazon URLs and priref and append to CID manifestation
     '''
 
     if 'watch_url' in data:
         # Write to manifest
-        payload_mid = f"<URL>{data['watch_url']}</URL><URL.description>Netflix viewing URL</URL.description>"
+        payload_mid = f"<URL>{data['watch_url']}</URL><URL.description>Amazon viewing URL</URL.description>"
         payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
         payload_end = "</URL></record></recordList></adlibXML>"
         payload = payload_head + payload_mid + payload_end

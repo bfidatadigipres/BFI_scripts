@@ -70,8 +70,8 @@ TITLE_DATA = ''
 UPDATE_AFTER = '2022-07-01T00:00:00'
 
 # PATV API details including unique identifiers for Netflix catalogue
-URL = os.path.join(os.environ['PATV_NETFLIX_URL'], f'catalogue/{CAT_ID}/')
-URL2 = os.path.join(os.environ['PATV_NETFLIX_URL'], 'asset/')
+URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
+URL2 = os.path.join(os.environ['PATV_STREAM_URL'], 'asset/')
 HEADERS = {
     "accept": "application/json",
     "apikey": os.environ['PATV_KEY']

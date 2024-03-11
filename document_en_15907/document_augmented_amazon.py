@@ -51,7 +51,7 @@ from document_augmented_streaming_cast import create_contributors
 # Global variables
 STORAGE = os.environ.get('QNAP_IMAGEN')
 AMAZON = os.path.join(STORAGE, 'AMAZON')
-CAT_ID = os.environ.get('PA_AMAZON') # UPDATE THIS
+CAT_ID = os.environ.get('PA_AMAZON')
 ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
@@ -70,8 +70,8 @@ TITLE_DATA = ''
 UPDATE_AFTER = '2022-07-01T00:00:00'
 
 # PATV API details including unique identifiers for Amazon catalogue
-URL = os.path.join(os.environ['PATV_AMAZON_URL'], f'catalogue/{CAT_ID}/') # UPDATE AMAZON URL
-URL2 = os.path.join(os.environ['PATV_AMAZON_URL'], 'asset/')
+URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
+URL2 = os.path.join(os.environ['PATV_STREAM_URL'], 'asset/')
 HEADERS = {
     "accept": "application/json",
     "apikey": os.environ['PATV_KEY']

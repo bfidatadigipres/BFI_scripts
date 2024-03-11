@@ -66,7 +66,7 @@ GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
-TODAY = str(datetime.date.today())
+TODAY = str(datetime.today())
 
 # Setup logging
 LOGGER = logging.getLogger(f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", "_")}')

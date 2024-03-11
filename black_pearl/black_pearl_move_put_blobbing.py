@@ -69,8 +69,8 @@ CUR = adlib.Cursor(CID)
 TODAY = str(datetime.date.today())
 
 # Setup logging
-LOGGER = logging.getLogger(f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", '_')}')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", '_')}.log'))
+LOGGER = logging.getLogger(f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", "_")}')
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", "_")}.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -399,7 +399,7 @@ def main():
             if str(sys.argv[1]) in key:
                 fullpath = key
     autoingest = os.path.join(fullpath, os.environ['BP_INGEST_BLOBS'])
-    download_folder = os.path.join(fullpath, os.environ['BLOB_DOWNLOAD'])
+    download_folder = os.path.join(autoingest, 'download_check/')
     bucket_collection = 'bfi'
     print(f"*** Bucket collection: {bucket_collection}")
     print(f"Fullpath: {fullpath} {autoingest}")
@@ -424,6 +424,7 @@ def main():
         
         # Begin blobbed PUT (bool argument for checksum validation off/on in ds3Helpers)
         tic = time.perf_counter()
+        LOGGER.info("Beginning PUT of blobbing file: %s", tic)
         check = False
         put_job_id = put_file(fname, fpath, bucket, check)
         toc = time.perf_counter()

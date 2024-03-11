@@ -30,7 +30,7 @@ NOTES: Dependency for cast create_contributors()
        will need review when API updates complete
 
 Joanna White
-2023
+2024
 '''
 
 # Public packages
@@ -42,7 +42,7 @@ import datetime
 import requests
 import pandas
 import yaml
-c
+
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib
@@ -207,7 +207,7 @@ def get_cat_data(data=None):
     except:
         pass
     try:
-        c_data['cert_amaxon'] = data['certification']['amazon']
+        c_data['cert_amazon'] = data['certification']['amazon']
     except (IndexError, TypeError, KeyError):
         pass
     try:
@@ -892,7 +892,7 @@ def build_defaults(data):
                {'record_access.user': '$REST'},
                {'record_access.rights': '1'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'grouping.lref': '400947'},
+               {'grouping.lref': '400947'}, # JMW Will need replacing when new grouping made for Amazon
                {'language.lref': '74129'},
                {'language.type': 'DIALORIG'}])
 
@@ -936,12 +936,12 @@ def build_defaults(data):
              {'item_type': 'DIGITAL'},
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
-             {'file_type.lref': '401103'}, # IMP
-             {'code_type.lref': '400945'}, # Mixed
+             {'file_type.lref': '401103'}, # JMW IMP - Needs changing to ProRes MOV
+             {'code_type.lref': '400945'}, # JMW Mixed
              {'accession_date': str(datetime.datetime.now())[:10]},
-             {'acquisition.date': data['acquisition_date']}, # Contract date from CSV
+             {'acquisition.date': data['acquisition_date']}, # JMW Contract date from CSV - CSV needs updating
              {'acquisition.method.lref': '132853'}, # Donation - with written agreement ACQMETH
-             {'acquisition.source.lref': '143463'}, # Netflix NEEDS TO BE AMAZON
+             {'acquisition.source.lref': '143463'}, # JMW Netflix NEEDS TO BE AMAZON
              {'acquisition.source.type': 'DONOR'},
              {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                    'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
@@ -1163,111 +1163,6 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
     return work_id
 
 
-def create_credit_names(nfa_category, cat_dct):
-    '''
-    DEPRECATED FUNCTION
-    Append cast/credit names from
-    catalogue string to credit name fields
-    '''
-
-    cast_seq_start = 0
-    cred_seq_start = 0
-    cast_dct_update = []
-    cred_dct_update = []
-    if 'cast' in cat_dct:
-        if isinstance(cat_dct['cast'], list):
-            cast_list = cat_dct['cast']
-        else:
-            cast_list = cat_dct['cast'].split(',')
-        print(f"List of cast found: {cast_list}")
-        for ident in cast_list:
-            cast_name = firstname_split(ident)
-            cast_seq_start += 5
-            cast_dct_update.append({'cast.credit_credited_name': f'{cast_name}'})
-            cast_dct_update.append({'cast.credit_type': 'cast member'})
-            cast_dct_update.append({'cast.sequence': str(cast_seq_start)})
-            cast_dct_update.append({'cast.sequence.sort': f"7300{str(cast_seq_start).zfill(4)}"})
-            cast_dct_update.append({'cast.section': '[normal cast]'})
-    if 'directors' in cat_dct or 'writers' in cat_dct:
-        if 'directors' in cat_dct:
-            if isinstance(cat_dct['directors'], list):
-                cred_list = cat_dct['directors']
-            else:
-                cred_list = cat_dct['directors'].split(',')
-            print(f"Directors found in catalogue data: {cred_list}")
-            for ident in cred_list:
-                cred_name = firstname_split(ident)
-                cred_seq_start += 5
-                cred_dct_update.append({'credit.credited_name': f'{cred_name}'})
-                cred_dct_update.append({'credit.type': 'Director'})
-                cred_dct_update.append({'credit.sequence': str(cred_seq_start)})
-                cred_dct_update.append({'credit.sequence.sort': f"500{str(cred_seq_start).zfill(4)}"})
-                cred_dct_update.append({'credit.section': '[normal credit]'})
-        if 'writers' in cat_dct and nfa_category == 'F':
-            if isinstance(cat_dct['writers'], list):
-                cred_list = cat_dct['writers']
-            else:
-                cred_list = cat_dct['writers'].split(',')
-            print(f"Writers found in catalogue data: {cred_list}")
-            for ident in cred_list:
-                cred_name = firstname_split(ident)
-                cred_seq_start += 5
-                cred_dct_update.append({'credit.credited_name': f'{cred_name}'})
-                cred_dct_update.append({'credit.type': 'Screenplay'})
-                cred_dct_update.append({'credit.sequence': str(cred_seq_start)})
-                cred_dct_update.append({'credit.sequence.sort': f"15000{str(cred_seq_start).zfill(4)}"})
-                cred_dct_update.append({'credit.section': '[normal credit]'})
-        elif 'writers' in cat_dct and nfa_category == 'D':
-            if isinstance(cat_dct['writers'], list):
-                cred_list = cat_dct['writers']
-            else:
-                cred_list = cat_dct['writers'].split(',')
-            print(f"Writers found in catalogue data: {cred_list}")
-            for ident in cred_list:
-                cred_name = firstname_split(ident)
-                cred_seq_start += 5
-                cred_dct_update.append({'credit.credited_name': f'{cred_name}'})
-                cred_dct_update.append({'credit_type': 'Script'})
-                cred_dct_update.append({'credit.sequence': str(cred_seq_start)})
-                cred_dct_update.append({'credit.sequence.sort': f"15500{str(cred_seq_start).zfill(4)}"})
-                cred_dct_update.append({'credit.section': '[normal credit]'})
-
-    return cast_dct_update, cred_dct_update
-
-
-def append_cred_cast_names(priref, cast_list, cred_list):
-    '''
-    Appending cast/cred names where no contributor data
-    '''
-
-    # Append cast/credit and edit name blocks to work_append_dct
-    work_append_dct = []
-    work_append_dct.extend(cast_list)
-    work_append_dct.extend(cred_list)
-    work_edit_data = ([{'edit.name': 'datadigipres'},
-                       {'edit.date': str(datetime.datetime.now())[:10]},
-                       {'edit.time': str(datetime.datetime.now())[11:19]},
-                       {'edit.notes': 'Automated cast and credit update from PATV augmented EPG metadata'}])
-
-    work_append_dct.extend(work_edit_data)
-    LOGGER.info("** Appending data to work record now...")
-    print("*********************")
-    print(work_append_dct)
-    print("*********************")
-
-    result = work_append(priref, work_append_dct)
-    if result:
-        print(f"Work appended successful! {priref}")
-        LOGGER.info("Successfully appended additional cast credit EPG metadata to Work record %s\n", priref)
-        LOGGER.info("=============== END document_augmented_amazon script END ===============\n")
-        return True
-    else:
-        LOGGER.warning("Writing EPG cast credit metadata to Work %s failed\n", priref)
-        print(f"Work append FAILED!! {priref}")
-        LOGGER.info("=============== END document_augmented_amazon script END ===============\n")
-        return False
-
-
 def work_append(priref, work_dct=None):
     '''
     Items passed in work_dct for amending to Work record
@@ -1465,6 +1360,7 @@ def write_lock(database, priref):
             params={'database': database, 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'})
     except Exception as err:
         LOGGER.warning("Lock record wasn't applied to record %s\n%s", priref, err)
+        print(post_response.text)
 
 
 def unlock_record(database, priref):
@@ -1477,7 +1373,7 @@ def unlock_record(database, priref):
             params={'database': database, 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
     except Exception as err:
         LOGGER.warning("Post to unlock record failed. Check record %s is unlocked manually\n%s", priref, err)
-
+        print(post_response.text)
 
 
 if __name__ == '__main__':

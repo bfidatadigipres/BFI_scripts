@@ -61,14 +61,6 @@ CID_API = os.environ.get('CID_API') # May need to run from CID_API4 for cast/cre
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 
-# Date variables
-TODAY = datetime.date.today()
-TWO_WEEKS = TODAY - datetime.timedelta(days=14)
-START = f"{TWO_WEEKS.strftime('%Y-%m-%d')}T00:00:00"
-END = f"{TODAY.strftime('%Y-%m-%d')}T23:59:00"
-TITLE_DATA = ''
-UPDATE_AFTER = '2022-07-01T00:00:00'
-
 # PATV API details including unique identifiers for Amazon catalogue
 URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
 URL2 = os.path.join(os.environ['PATV_STREAM_URL'], 'asset/')

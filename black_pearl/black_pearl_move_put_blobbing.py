@@ -483,6 +483,7 @@ def main():
             os.makedirs(error_folder, mode=0o777, exist_ok=True)
             LOGGER.warning("Moving file to error folder for human assessment")
             shutil.move(fpath, error_folder)
+            persistence_log_message("Failed fixity check: checksums do not match", fpath, wpath, file)
             continue
         LOGGER.info("Checksums match for file >1TB local and stored on Black Pearl:\n%s\n%s", local_checksum, remote_checksum)
         toc3 = time.perf_counter()

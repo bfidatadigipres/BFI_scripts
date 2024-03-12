@@ -423,6 +423,10 @@ def main():
                 LOGGER.warning("Filename is a Netflix item and will not be downloaded")
                 update_table(user_id, 'Filename not accessible')
                 continue
+            if 'amazon' in bucket:
+                LOGGER.warning("Filename is an Amazon item and will not be downloaded")
+                update_table(user_id, 'Filename not accessible')
+                continue
             LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)
 
             # Check if download already exists

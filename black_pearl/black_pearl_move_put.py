@@ -79,13 +79,7 @@ def get_buckets(bucket_collection):
 
     with open(DPI_BUCKETS) as data:
         bucket_data = json.load(data)
-    if bucket_collection == 'netflix':
-        for key, value in bucket_data.items():
-            if bucket_collection in key:
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-    elif bucket_collection == 'bfi':
+    if bucket_collection == 'bfi':
         for key, value in bucket_data.items():
             if 'preservation' in key.lower():
                 if value is True:
@@ -93,6 +87,12 @@ def get_buckets(bucket_collection):
                 bucket_list.append(key)
             # Imagen path read only now
             if 'imagen' in key:
+                bucket_list.append(key)
+    else:
+        for key, value in bucket_data.items():
+            if bucket_collection in key:
+                if value is True:
+                    key_bucket = key
                 bucket_list.append(key)
 
     return key_bucket, bucket_list
@@ -218,10 +218,15 @@ def main():
 
     upload_size = fullpath = autoingest = bucket_collection = ''
     if 'qnap09_netflix' in sys.argv[1]:
-        fullpath = os.environ['NETFLIX_INGEST_PTH']
+        fullpath = os.environ['PLATFORM_INGEST_PTH']
         upload_size = 559511627776
         autoingest = os.path.join(fullpath, os.environ['BP_INGEST_NETFLIX'])
         bucket_collection = 'netflix'
+    if 'qnap09_amazon' in sys.argv[1]:
+        fullpath = os.environ['PLATFORM_INGEST_PTH']
+        upload_size = 559511627776
+        autoingest = os.path.join(fullpath, os.environ['BP_INGEST_AMAZON'])
+        bucket_collection = 'amazon'
     else:
         # Retrieve an upload size limit in bytes
         data_sizes = load_yaml(INGEST_CONFIG)

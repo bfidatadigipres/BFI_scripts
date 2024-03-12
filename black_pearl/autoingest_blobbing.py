@@ -86,7 +86,7 @@ PERS_LOG = os.path.join(LOGS, 'persistence_confirmation.log')
 PERS_QUEUE = os.path.join(LOGS, 'autoingest/persistence_queue.csv')
 PERS_QUEUE2 = os.path.join(LOGS, 'autoingest/persistence_queue2.csv')
 CONFIG = os.environ['CONFIG_YAML']
-DPI_BUCKETS = os.environ['DPI_BUCKET']
+DPI_BUCKETS = os.environ['DPI_BUCKET_BLOB']
 
 # Setup logging
 logger = logging.getLogger('autoingest')
@@ -189,7 +189,7 @@ def check_mime_type(fpath, log_paths):
     '''
     if fpath.endswith(('.mxf', '.ts', '.mpg')):
         mime = 'video'
-    elif fpath.endswith(('.srt', '.scc', '.xml', '.scc', '.itt', '.stl', '.cap', '.dfxp')):
+    elif fpath.endswith(('.srt', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml')):
         mime = 'application'
     else:
         mime = magic.from_file(fpath, mime=True)
@@ -360,16 +360,13 @@ def get_buckets(bucket_collection):
 
     with open(DPI_BUCKETS) as data:
         bucket_data = json.load(data)
-    if bucket_collection == 'netflix':
+    if bucket_collection == 'netflix' or bucket_collection == 'amazon':
         for key, _ in bucket_data.items():
             if bucket_collection in key:
                 bucket_list.append(key)
     elif bucket_collection == 'bfi':
         for key, _ in bucket_data.items():
             if 'preservation' in key.lower():
-                bucket_list.append(key)
-            # Imagen path read only now
-            if 'imagen' in key:
                 bucket_list.append(key)
 
     return bucket_list
@@ -641,11 +638,15 @@ def main():
             # Allow path changes for black_pearl_ingest Netflix
             if 'ingest/netflix' in fpath:
                 logger.info('%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder')
-                black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_netflix_ingest')
-                black_pearl_blobbing = os.path.join(linux_host, 'autoingest/black_pearl_netflix_ingest_blobbing')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_NETFLIX']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+            if 'ingest/amazon' in fpath:
+                logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             else:
-                black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_ingest')
-                black_pearl_folder_blobbing = os.path.join(linux_host, 'autoingest/black_pearl_ingest_blobbing')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
 
             if '.DS_Store' in fname:
                 continue
@@ -729,6 +730,8 @@ def main():
             bucket_list = []
             if 'ingest/netflix' in fpath:
                 bucket_list = get_buckets('netflix')
+            elif 'ingest/amazon' in fpath:
+                bucket_list = get_buckets('amazon')
             else:
                 bucket_list = get_buckets('bfi')
 
@@ -745,7 +748,7 @@ def main():
 
             # Move first part of incomplete scans
             if '/incomplete_scans/' in fpath:
-                print('\n*** File is an incomplete scan. Checking if next for ingest ======')
+                print('\n*** File is an incomplete scan. Moving for ingest ======')
                 do_ingest = True
             else:
                 # Move items for ingest if they are single parts, first parts, or next in queue
@@ -796,12 +799,12 @@ def main():
                 if int(size) > 1099511627776:
                     logger.warning('%s\tFile is larger than 1TB. Moving to blobbing folder', log_paths)
                     try:
-                        shutil.move(fpath, os.path.join(black_pearl_folder_blobbing, fname))
-                        print(f'\t** File moved to {os.path.join(black_pearl_folder_blobbing, fname)}')
+                        shutil.move(fpath, os.path.join(black_pearl_blobbing, fname))
+                        print(f'\t** File moved to {os.path.join(black_pearl_blobbing, fname)}')
                         logger.info('%s\tMoved ingest-ready file to BlackPearl ingest blobbing folder', log_paths)
                     except Exception as err:
-                        print(f'Failed to move file to black_pearl_ingest_blobbing: {err}')
-                        logger.warning('%s\tFailed to move ingest-ready file to BlackPearl ingest blobbing folder', log_paths)
+                        print(f'Failed to move file to blobbing folder: {black_pearl_blobbing} {err}')
+                        logger.warning('%s\tFailed to move ingest-ready file to blobbing folder', log_paths)
                     continue
                 try:
                     shutil.move(fpath, os.path.join(black_pearl_folder, fname))

@@ -360,16 +360,16 @@ def get_buckets(bucket_collection):
 
     with open(DPI_BUCKETS) as data:
         bucket_data = json.load(data)
-    if bucket_collection == 'netflix':
-        for key, _ in bucket_data.items():
-            if bucket_collection in key:
-                bucket_list.append(key)
-    elif bucket_collection == 'bfi':
+    if bucket_collection == 'bfi':
         for key, _ in bucket_data.items():
             if 'preservation' in key.lower():
                 bucket_list.append(key)
             # Imagen path read only now
             if 'imagen' in key:
+                bucket_list.append(key)
+    else:
+        for key, _ in bucket_data.items():
+            if bucket_collection in key:
                 bucket_list.append(key)
 
     return bucket_list
@@ -545,7 +545,7 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
     filename_range = []
 
     # Netflix extensions vary within IMP so shouldn't be included in range check
-    if 'netflix_ingest' in black_pearl_folder:
+    if 'netflix_ingest' in black_pearl_folder or 'amazon_ingest' in black_pearl_folder:
         fname_check = fname.split('.')[0]
         for num in range(1, range_whole):
             filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}")
@@ -641,12 +641,19 @@ def main():
             fpath = os.path.abspath(pth)
             fname = os.path.split(fpath)[-1]
 
-            # Allow path changes for black_pearl_ingest Netflix
+            # Allow path changes for black_pearl_ingest Netflix / Get buckets
+            bucket_list = []
             if 'ingest/netflix' in fpath:
                 logger.info('%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder')
-                black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_netflix_ingest')
+                black_pearl_folder = os.path.join(linux_host, os.environ['BP_INGEST_NETFLIX'])
+                bucket_list = get_buckets('netflix')
+            elif 'ingest/amazon' in fpath:
+                logger.info('%s\tIngest-ready file is from Netflix AMAZON path, setting Black Pearl Amazon ingest folder')
+                black_pearl_folder = os.path.join(linux_host, os.environ['BP_INGEST_AMAZON'])
+                bucket_list = get_buckets('amazon')
             else:
-                black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_ingest')
+                black_pearl_folder = os.path.join(linux_host, os.environ['BP_INGEST'])
+                bucket_list = get_buckets('bfi')
 
             if '.DS_Store' in fname:
                 continue
@@ -725,13 +732,6 @@ def main():
                 logger.warning('%s\tFilename already has a CID Media record: %s', log_paths, fname)
                 continue
             print(f'* File {fname} has no CID Media record.')
-
-            # Get BP buckets
-            bucket_list = []
-            if 'ingest/netflix' in fpath:
-                bucket_list = get_buckets('netflix')
-            else:
-                bucket_list = get_buckets('bfi')
 
             # BP ingest check
             ingest_check = check_bp_status(fname, bucket_list)

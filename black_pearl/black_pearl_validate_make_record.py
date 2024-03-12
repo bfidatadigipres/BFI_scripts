@@ -659,7 +659,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             logger.info("MD5 MATCH: Local %s and BP ETag %s", local_md5, remote_md5)
             md5_match = True
 
-        # Prepare move path to not include any files for transcoding
+        # Prepare move path to not include Netflix/Amazon for transcoding
         root_path = os.path.split(autoingest)[0]
         if 'black_pearl_netflix_ingest' in autoingest:
             move_path = os.path.join(root_path, 'completed', file)
@@ -840,8 +840,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
-    print(record_data)
-    print(f"Using CUR create_record: database='media', data, output='json', write=True")
+
     media_priref = ""
 
     try:

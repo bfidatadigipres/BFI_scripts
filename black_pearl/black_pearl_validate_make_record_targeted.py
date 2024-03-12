@@ -6,8 +6,8 @@ JSON notifications, matching job id to folder name in
 black_pearl_ingest paths.
 
 Iterates all autoingest paths looking for folders that
-don't start with 'ingest_'. Extract folder name and look
-for JSON file matching. Open matching JSON.
+don't start with 'ingest', 'error' or 'blob'. Extract folder
+name and look for JSON file matching. Open matching JSON.
 
 If JSON indicates that some files haven't successfully
 written to tape, then those matching items need removing
@@ -58,6 +58,7 @@ import adlib
 # Global variables
 BPINGEST = os.environ['BP_INGEST']
 BPINGEST_NETFLIX = os.environ['BP_INGEST_NETFLIX']
+BPINGEST_AMAZON = os.environ['BP_INGEST_AMAZON']
 LOG_PATH = os.environ['LOG_PATH']
 JSON_PATH = os.path.join(LOG_PATH, 'black_pearl')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
@@ -142,13 +143,7 @@ def get_buckets(bucket_collection):
 
     with open(DPI_BUCKETS) as data:
         bucket_data = json.load(data)
-    if bucket_collection == 'netflix':
-        for key, value in bucket_data.items():
-            if bucket_collection in key:
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-    elif bucket_collection == 'bfi':
+    if bucket_collection == 'bfi':
         for key, value in bucket_data.items():
             if 'preservation' in key.lower():
                 if value is True:
@@ -156,6 +151,12 @@ def get_buckets(bucket_collection):
                 bucket_list.append(key)
             # Imagen path read only now
             if 'imagen' in key:
+                bucket_list.append(key)
+    else:
+        for key, value in bucket_data.items():
+            if bucket_collection in key:
+                if value is True:
+                    key_bucket = key
                 bucket_list.append(key)
 
     return key_bucket, bucket_list
@@ -341,7 +342,7 @@ def check_for_media_record(fname):
     except (KeyError, IndexError):
         image = ''
 
-    return (priref, access_mp4, image)
+    return priref, access_mp4, image
 
 
 def check_global_log(fname):
@@ -383,16 +384,15 @@ def main():
 
     autoingest_list = []
     for host in hosts:
-        # Targets just this path
+        # This path has own script
         if not 'qnap_imagen_storage/Public' in str(host):
             continue
         # Build autoingest list for separate iteration
         for pth in host.keys():
-            autoingest_pth = os.path.join(pth, BPINGEST)
-            autoingest_list.append(autoingest_pth)
+            autoingest_list.append(os.path.join(pth, BPINGEST))
             if '/mnt/qnap_digital_operations' in pth:
-                autoingest_pth = os.path.join(pth, BPINGEST_NETFLIX)
-                autoingest_list.append(autoingest_pth)
+                autoingest_list.append(os.path.join(pth, BPINGEST_NETFLIX))
+                autoingest_list.append(os.path.join(pth, BPINGEST_AMAZON))
 
     print(autoingest_list)
     for autoingest in autoingest_list:
@@ -402,6 +402,8 @@ def main():
 
         if 'black_pearl_netflix_ingest' in autoingest:
             bucket, bucket_list = get_buckets('netflix')
+        elif 'black_pearl_amazon_ingest' in autoingest:
+            bucket, bucket_list = get_buckets('amazon')
         else:
             bucket, bucket_list = get_buckets('bfi')
 
@@ -415,7 +417,7 @@ def main():
 
         for folder in folders:
             check_control()
-            if folder.startswith(('ingest_', 'error_')):
+            if folder.startswith(('ingest_', 'error_', 'blob')):
                 continue
 
             logger.info("Folder found that is not an ingest folder, or has failed or errored files within: %s", folder)
@@ -637,6 +639,10 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             persistence_log_message("BlackPearl has not persisted file to data tape but ObjectList exists", fpath, wpath, file)
             continue
 
+        local_md5 = get_md5(file)
+        if not local_md5:
+            logger.warning("No Local MD5 found: %s", fpath)
+            continue
         # Make global log message [ THIS MESSAGE TO BE DEPRECATED, KEEPING FOR TIME BEING FOR CONSISTENCY ]
         logger.info("Writing persistence checking message to persistence_queue.csv.")
         persistence_log_message("Ready for persistence checking", fpath, wpath, file)
@@ -644,11 +650,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         if int(byte_size) != int(length):
             logger.warning("FILES BYTE SIZE DO NOT MATCH: Local %s and Remote %s", byte_size, length)
             persistence_log_message("Filesize does not match BlackPearl object length", fpath, wpath, file)
-            continue
-        local_md5 = get_md5(file)
-        if not local_md5:
-            logger.warning("No Local MD5 found: %s", fpath)
-            persistence_log_message("MD5 checksum does not yet exist for this file. Skipping", fpath, wpath, file)
             continue
         if remote_md5 != local_md5:
             logger.warning("MD5 FILES DO NOT MATCH: Local MD5 %s and Remote MD5 %s", local_md5, remote_md5)
@@ -658,13 +659,14 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             logger.info("MD5 MATCH: Local %s and BP ETag %s", local_md5, remote_md5)
             md5_match = True
 
-        # Prepare move path to not include XML/MXF for transcoding
+        # Prepare move path to not include Netflix/Amazon for transcoding
         root_path = os.path.split(autoingest)[0]
         if 'black_pearl_netflix_ingest' in autoingest and not file.endswith(('.mov', '.MOV')):
             move_path = os.path.join(root_path, 'completed', file)
+        elif 'black_pearl_amazon_ingest' in autoingest:
+            move_path = os.path.join(root_path, 'completed', file)
         else:
             move_path = os.path.join(root_path, 'transcode', file)
-
 
         # New section here to check for Media Record first and clean up file if found
         logger.info("Checking if Media record already exists for file: %s", file)

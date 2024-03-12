@@ -86,7 +86,7 @@ def cid_check_items(grouping, file_type, platform):
         query_result = None
     try:
         return_count = query_result.hits
-        LOGGER.info("%s %s CID item records found", return_count, platform)
+        LOGGER.info("%s CID item records found: %s", platform, return_count)
     except (IndexError, TypeError, KeyError):
         pass
 
@@ -192,7 +192,7 @@ def main():
 
     LOGGER.info("=== Streaming Platform original filename updates START ===================")
 
-    for key, value in GROUPINGS.item():
+    for key, value in GROUPINGS.items():
         platform = key
         grouping_lref, file_type = value.split(', ')
 
@@ -200,7 +200,6 @@ def main():
         if not records:
             LOGGER.info("Skipping: No records recovered for %s", platform)
             continue
-        LOGGER.info("Records found for %s", platform)
 
         # Generate ISO date range for last 30 days for edit.date check
         date_range = []
@@ -216,7 +215,7 @@ def main():
         # Iterate list of prirefs
         for priref in priref_list:
             check_control()
-            digital_filenames, edit_date = cid_check_filenames(priref)
+            digital_filenames, edit_date = cid_check_filenames(priref, platform)
             if edit_date not in date_range:
                 LOGGER.info("Skipping priref %s, out of date range: %s", priref, edit_date)
                 continue

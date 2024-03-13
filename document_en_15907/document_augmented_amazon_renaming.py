@@ -1,46 +1,41 @@
-#!/usr/bin/ python3
+#!/usr/bin/ spython3
 
 '''
-Script to receive IMP
-Netflix folder named with UID.
+Script to receive MOV
+Amazon files named with UID.
 UID placed into Item record
 digital.acquired_filename field
 of CID item record.
 
-Receives IMP folder complete with
-MXF video and audio files, and XML
-metadata files.
+Receives folder of MOVs complete with
+video and audio desc also MOV wrapped.
 
-1. Searches STORAGE for 'rename_netflix'
-   folders and checks for items with
-   content returning as a folder_list.
-2. Iterates, finds match for IMP folder name
-   within folder, from CID item
-   record, ie 'N-123456'. Creates N_123456_
-   filename prefix
-3. Opens each XML in folder looking
-   for string match to '<PackingList'
-4. Iterates <PackingList><AssetList><Asset>
-   blocks extracting <OriginalFilmName language='en'>
-   into list of items
-5. Numbers each following order retrieved,
-   ie, if 6 assets 'N_123456_01of06' for first item
-   and 'N_123456_06of06' for last item, adds to dict.
-   Checks same amount of items in PKL as in folder.
-6. Iterates dictionary adding original filename and
-   new name to CID item record 'digital.acquired_filename'
-   field, which allows repeated entries. Formatting:
+1. Searches STORAGE for 'rename_amazon'
+   folders and extracts CID item record
+   number from enclosed folders.
+2. Iterates folders, finds match for folder name
+   with CID item record, ie 'N-123456'. Creates
+   N_123456_filename prefix
+3. Retrieves metadata for each MOV (or possibly
+   other file wrapper) in folder
+4. Uses CID item record filename prefix to name
+   the AV MOV file with UHD HDR content (colour
+   primaries denote HDR with BT.2020)
+5. New CID item records are made for the remaining
+   files (anticipated a UHD SDR colourspace BT.709,
+   and mov with audio description only, no video stream)
+6. These files are renamed with the CID item record
+   object_number, likely all with 01of01.
+7. Adds original filename and to existing and new
+   CID item records in 'digital.acquired_filename'
+   field. Formatting for this:
    "<Original Filename> - Renamed to: N_123456_01of06.mxf"
-7. Open each XML and write content to the label.text
-   and label.type field (possibly new field)
-8. XML and MXF contents of IMP folder are renamed
-   as per dictionary and moved to autoingest new
-   black_pearl_ingest_netflix path (to be confirmed)
-   where new put scripts ensure file is moved to
-   the netflix01 bucket.
+8. Renamed files are moved to autoingest new
+   black_pearl_amazon_ingest path where new put
+   scripts ensure file is moved to amazon01 bucket.
 
 Joanna White
-2023
+2024
 '''
 
 # Public packages
@@ -58,8 +53,8 @@ import adlib
 
 # Global variables
 STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
-NETFLIX_PTH = os.environ.get('NETFLIX_PATH')
-NET_INGEST = os.environ.get('NETFLIX_INGEST')
+NETFLIX_PTH = os.environ.get('AMAZON_PATH')
+NET_INGEST = os.environ.get('AMAZON_INGEST')
 AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
 STORAGE = os.path.join(STORAGE_PTH, NETFLIX_PTH)
 ADMIN = os.environ.get('ADMIN')

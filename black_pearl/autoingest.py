@@ -335,6 +335,7 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
+    print(search)
     query = {
         'database': 'media',
         'search': search,
@@ -345,6 +346,7 @@ def check_media_record(fname):
     try:
         result = CID.get(query)
         num = int(result.hits)
+        print(f"Hits: {num}")
         if num >= 1:
             return True
     except Exception as err:
@@ -672,6 +674,7 @@ def main():
             if 'autoingest/completed/' in fpath:
                 # Push completed/ paths straight to deletions checks
                 print('* Item is in completed/ path, moving to persistence checks')
+                print(f"check_for_deletions({fpath}, {fname}, {log_paths}, {messages}")
                 boole = check_for_deletions(fpath, fname, log_paths, messages)
                 print(f'File successfully deleted: {boole}')
                 continue
@@ -822,6 +825,7 @@ def check_for_deletions(fpath, fname, log_paths, messages):
         return False
 
     mssg_pth, message = '', ''
+    print(messages)
     for key, value in messages.items():
         if fname in key:
             mssg_pth = key

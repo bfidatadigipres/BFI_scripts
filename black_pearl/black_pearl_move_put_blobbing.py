@@ -394,13 +394,13 @@ def main():
     if not sys.argv[1]:
         sys.exit("Missing launch path, script exiting")
 
-    if 'qnap09_netflix' in sys.argv[1]:
+    if 'netflix' in str(sys.argv[1]):
         fullpath = os.environ['PLATFORM_INGEST_PTH']
         upload_size = 559511627776
         autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST_NETFLIX']}/blobbing/")
         download_folder = os.path.join(autoingest, 'download_check/')
         bucket_collection = 'netflix'
-    elif 'qnap09_amazon' in sys.argv[1]:
+    elif 'amazon' in str(sys.argv[1]):
         fullpath = os.environ['PLATFORM_INGEST_PTH']
         upload_size = 559511627776
         autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST_AMAZON']}/blobbing/")

@@ -344,7 +344,8 @@ def check_media_record(fname):
 
     try:
         result = CID.get(query)
-        if result.hits:
+        num = int(result.hits)
+        if num >= 1:
             return True
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")

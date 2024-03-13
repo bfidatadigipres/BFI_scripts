@@ -53,10 +53,10 @@ import adlib
 
 # Global variables
 STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
-NETFLIX_PTH = os.environ.get('AMAZON_PATH')
-NET_INGEST = os.environ.get('AMAZON_INGEST')
-AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
-STORAGE = os.path.join(STORAGE_PTH, NETFLIX_PTH)
+AMZ_PTH = os.environ.get('AMAZON_PATH')
+AMZ_INGEST = os.environ.get('AMAZON_INGEST')
+AUTOINGEST = os.path.join(STORAGE_PTH, AMZ_INGEST)
+STORAGE = os.path.join(STORAGE_PTH, AMZ_PTH)
 ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
@@ -65,17 +65,9 @@ CID_API = os.environ.get('CID_API')
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 
-# Date variables
-TODAY = datetime.date.today()
-TWO_WEEKS = TODAY - datetime.timedelta(days=14)
-START = f"{TWO_WEEKS.strftime('%Y-%m-%d')}T00:00:00"
-END = f"{TODAY.strftime('%Y-%m-%d')}T23:59:00"
-TITLE_DATA = ''
-UPDATE_AFTER = '2022-07-01T00:00:00'
-
 # Setup logging
-LOGGER = logging.getLogger('document_augmented_netflix_renaming')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_netflix_renaming.log'))
+LOGGER = logging.getLogger('document_augmented_amazon_renaming')
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_amazon_renaming.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -126,16 +118,16 @@ def cid_check(imp_fname):
     return priref, ob_num, file_type.title()
 
 
-def walk_netflix_folders():
+def walk_folders():
     '''
     Collect list of folderpaths
-    for files named rename_netflix
+    for files named rename_amazon
     '''
     print(STORAGE)
     rename_folders = []
     for root, dirs, _ in os.walk(STORAGE):
         for dir in dirs:
-            if 'rename_netflix' == dir:
+            if 'rename_amazon' == dir:
                 rename_folders.append(os.path.join(root, dir))
     print(f"{len(rename_folders)} rename folder(s) found")
     folder_list = []
@@ -143,7 +135,7 @@ def walk_netflix_folders():
         print(rename_folder)
         folders = os.listdir(rename_folder)
         if not folders:
-            LOGGER.info("Netflix IMP renaming script. Skipping as rename folder empty: %s", rename_folder)
+            LOGGER.info("Amazon file renaming script. Skipping as rename folder empty: %s", rename_folder)
             continue
         for folder in folders:
             print(folder)
@@ -151,7 +143,7 @@ def walk_netflix_folders():
             if os.path.isdir(fpath):
                 folder_list.append(os.path.join(rename_folder, folder))
             else:
-                LOGGER.warning("Netflix IMP renaming script. Non-folder item found in rename_netflix path: %s", fpath)
+                LOGGER.warning("Amazon file renaming script. Non-folder item found in rename_amazon path: %s", fpath)
 
     return folder_list
 
@@ -167,12 +159,12 @@ def main():
     '''
     check_control()
 
-    folder_list = walk_netflix_folders()
+    folder_list = walk_folders()
     if len(folder_list) == 0:
-        LOGGER.info("Netflix IMP renaming script. No folders found.")
+        LOGGER.info("Amazon file renaming script. No folders found.")
         sys.exit()
 
-    LOGGER.info("== Document augmented Netflix renaming start =================")
+    LOGGER.info("== Document augmented Amazon renaming start =================")
     for fpath in folder_list:
         folder = os.path.split(fpath)[1]
         LOGGER.info("Folder path found: %s", fpath)
@@ -187,74 +179,23 @@ def main():
             continue
 
         LOGGER.info("Folder matched to CID Item record: %s | %s | %s", folder, priref, ob_num)
-        xml_list = [x for x in os.listdir(fpath) if x.endswith(('.xml', '.XML'))]
-        mxf_list = [x for x in os.listdir(fpath) if x.endswith(('.mxf', '.MXF'))]
+        mov_list = [x for x in os.listdir(fpath) if x.endswith(('.mov', '.MOV'))]
         all_items = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
-        total_items = len(mxf_list) + len(xml_list)
-        if total_items != len(all_items):
-            LOGGER.warning("Folder contains files that are not XML or MXF: %s", fpath)
+        if len(mov_list) != len(all_items):
+            LOGGER.warning("Folder contains files that are not MOV: %s", fpath)
             continue
         packing_list = ''
-        xml_content_all = []
-        # Read/write to CID item record, and identify the PackingList
-        for xml in xml_list:
-            with open(os.path.join(fpath, xml), 'r') as xml_text:
-                xml_content = xml_text.readlines()
-            if '<PackingList' in xml_content[1]:
-                packing_list = os.path.join(fpath, xml)
-            lines = ''.join(xml_content)
-            xml_content_all.append(lines)
-        print(xml_content_all)
-        print(packing_list)
-        success = xml_item_append(priref, xml_content_all)
-        if not success:
-            LOGGER.warning("Problem writing to CID record %s", priref)
-            LOGGER.warning("Skipping further actions: Failed write of XML data")
-            LOGGER.info(xml_content_all)
-            continue
-        if not packing_list:
-            LOGGER.warning("No PackingList found in folder: %s", fpath)
-            continue
-        LOGGER.info("PackingList located and XML data written to CID item record")
 
-        # Extracting PackingList content to dict and count
-        asset_dct = {}
-        with open(packing_list, 'r') as readfile:
-            asset_text = readfile.read()
-            asset_dct = xmltodict.parse(f"""{asset_text}""")
-        asset_dct_list = asset_dct['PackingList']['AssetList']['Asset']
+        # Retrieving metadata for all MOV files
+        for mov_file in mov_list:
+            metadata = retrieve_metadata(fpath, mov_file)
+            if 'HDR' in metadata:
+                ext = mov_file.split('.')[1]
+                new_hdr_filename = f"{ob_num.replace('-', '_')}_01of01.{ext}"
+                digital_note = f'{mov_file}. Renamed to {new_hdr_filename}'
 
-        # If XML asset not in PKL, add here:
-        asset_whole = len(asset_dct_list)
-        if asset_whole != (total_items - 2):
-            LOGGER.warning("Folder contents does not match length of packing list: %s", fpath)
-            LOGGER.warning("PKL length %s -- Total MXF + CPL file in folder %s", asset_whole, total_items)
-            continue
 
-        # Build asset_list, PKL order first, followed by remaining XML
-        LOGGER.info("PackingList returned %s items, matching MXF content + CPL XML.", asset_whole)
-        asset_items = {}
-        object_num = 1
-        new_filenum_prefix = ob_num.replace('-', '_')
-        for asset in asset_dct_list:
-            filename = asset['OriginalFileName']['#text']
-            ext = os.path.splitext(filename)[1]
-            if not filename:
-                LOGGER.warning("Exiting processing this asset - Could not retrieve original filename: %s", asset)
-                continue
-            print(f"Filename found {filename}")
-            new_filename = f"{new_filenum_prefix}_{str(object_num).zfill(2)}of{str(total_items).zfill(2)}{ext}"
-            asset_items[filename] = new_filename
-            object_num += 1
-        for xml in xml_list:
-            if xml not in asset_items.keys():
-                new_filename = f"{new_filenum_prefix}_{str(object_num).zfill(2)}of{str(total_items).zfill(2)}.xml"
-                asset_items[xml] = new_filename
-                object_num += 1
-
-        if len(asset_items) != total_items:
-            LOGGER.warning("Failed to retrieve all filenames from PackingList Assets: %s", asset_dct_list)
-            continue
+        # JMW UPTO HERE
 
         # Write all dict names to digital.acquired_filename in CID item record, re-write folder name
         success = create_digital_original_filenames(priref, folder.strip(), asset_items)
@@ -280,7 +221,7 @@ def main():
             LOGGER.warning("SKIPPING: Failure to rename files in IMP %s", fpath)
             continue
 
-        # Move to local autoingest black_pearl_netflix_ingest (subfolder for netflix01 bucket put)
+        # Move to local autoingest black_pearl_amazon_ingest (subfolder for amazon01 bucket put)
         LOGGER.info("ALL IMP %s FILES RENAMED SUCCESSFULLY", folder)
         LOGGER.info("Moving to autoingest:")
         for file in asset_items.values():
@@ -299,7 +240,7 @@ def main():
         else:
             LOGGER.warning("IMP not empty, leaving in place for checks: %s", fpath)
 
-    LOGGER.info("== Document augmented Netflix renaming end ===================\n")
+    LOGGER.info("== Document augmented Amazon renaming end ===================\n")
 
 
 def build_defaults():
@@ -311,7 +252,7 @@ def build_defaults():
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
-               {'input.notes': 'Netflix metadata integration - automated bulk documentation'},
+               {'input.notes': 'Amazon metadata integration - automated bulk documentation'},
                {'record_access.user': 'BFIiispublic'},
                {'record_access.rights': '0'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
@@ -327,31 +268,26 @@ def build_defaults():
              {'code_type.lref': '400945'}, # Mixed
              {'accession_date': str(datetime.datetime.now())[:10]},
              {'acquisition.method.lref': '132853'}, # Donation - with written agreement ACQMETH
-             {'acquisition.source.lref': '143463'}, # Netflix
+             {'acquisition.source.lref': '999823516'}, # Amazon Prime Video
              {'acquisition.source.type': 'DONOR'}])
 
     return record, item
 
 
-def create_digital_original_filenames(priref, folder_name, asset_list_dct):
+def create_digital_original_filenames(priref, digital_note):
     '''
     Create entries for digital.acquired_filename
     and append to the CID item record.
     '''
-    name_updates = []
-    for key, val in asset_list_dct.items():
-        name_updates.append({'digital.acquired_filename': f'{key} - Renamed to: {val}'})
-        name_updates.append({'digital.acquired_filename.type': 'File'})
-    name_updates.append({'digital.acquired_filename': folder_name})
-    name_updates.append({'digital.acquired_filename.type': 'Folder'})
 
-    # Append cast/credit and edit name blocks to work_append_dct
     item_append_dct = []
-    item_append_dct.extend(name_updates)
+    item_append_dct.append({'digital.acquired_filename': digital_note})
+    item_append_dct.append({'digital.acquired_filename.type': 'File'})
+
     item_edit_data = ([{'edit.name': 'datadigipres'},
                        {'edit.date': str(datetime.datetime.now())[:10]},
                        {'edit.time': str(datetime.datetime.now())[11:19]},
-                       {'edit.notes': 'Netflix automated digital acquired filename update'}])
+                       {'edit.notes': 'Amazon automated digital acquired filename update'}])
 
     item_append_dct.extend(item_edit_data)
     LOGGER.info("** Appending data to work record now...")
@@ -368,20 +304,27 @@ def create_digital_original_filenames(priref, folder_name, asset_list_dct):
         return False
 
 
-def xml_item_append(priref, xml_data):
+def retrieve_metadata(fpath, mfile):
     '''
-    Write XML data to CID item record
+    Retrieve metadata for each file
     '''
-    num = 1
-    label_dct = []
-    for xml_block in xml_data:
-        label_dct.append({'label.source': f'Netflix XML data {num}'})
-        label_dct.append({'label.text': xml_block})
-        num += 1
+    cmd = [
+        'mediainfo', '-f',
+        '--Language=raw',
+        '--Output=Video;%colour_primaries%',
+        os.path.join(fpath, mfile)
+    ]
 
-    success = item_append(priref, label_dct)
-    if success:
-        return True
+    colour_prim = subprocess.check_output(cmd)
+    colour_prim = colour_prim.decode('utf-8')
+    if '2020' in colour_prim:
+        return {f'{fname}': 'UHD HDR'}
+    elif '709' in colour_prim:
+        return {f'{fname}': 'UHD SDR'}
+    elif colour_prim == '':
+        return {f'{fname}': 'No video'}
+    else:
+        return None
 
 
 def item_append(priref, item_append_dct):

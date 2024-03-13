@@ -70,14 +70,6 @@ CID_API = os.environ.get('CID_API')
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 
-# Date variables
-TODAY = datetime.date.today()
-TWO_WEEKS = TODAY - datetime.timedelta(days=14)
-START = f"{TWO_WEEKS.strftime('%Y-%m-%d')}T00:00:00"
-END = f"{TODAY.strftime('%Y-%m-%d')}T23:59:00"
-TITLE_DATA = ''
-UPDATE_AFTER = '2022-07-01T00:00:00'
-
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_netflix_renaming')
 HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_netflix_renaming.log'))

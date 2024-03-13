@@ -192,10 +192,10 @@ def main():
         if item.startswith('.'):
             continue
         itempath = os.path.join(fullpath, item)
+        if itempath.endswith(('.ini', '.json', '.document', '.edl', '.doc', '.docx', '.txt', '.mhl', '.DS_Store', '.log', '.md5')):
+            continue
         LOGGER.info("Item found checking file validity: %s", itempath)
         cid_data, priref, ob_num, title, acquired1 = '', '', '', '', ''
-        if itempath.endswith(('.ini', '.json', '.document', '.edl', '.doc', '.docx', '.txt', '.mhl', '.DS_Store', '.log')):
-            continue
         print(f"Item path found to process: {itempath}")
         LOGGER.info("** File okay to process: %s", item)
         LOGGER.info("Looking in CID item records for filename match...")

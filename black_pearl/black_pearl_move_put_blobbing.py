@@ -125,7 +125,7 @@ def get_buckets(bucket_collection):
         bucket_data = json.load(data)
     if bucket_collection == 'netflix':
         for key, value in bucket_data.items():
-            if 'netflixblobbing' in key.lower()c:
+            if 'netflixblobbing' in key.lower():
                 if value is True:
                     key_bucket = key
     elif bucket_collection == 'amazon':
@@ -414,7 +414,7 @@ def main():
             for key, val in host.items():
                 if str(sys.argv[1]) in key:
                     fullpath = key
-        autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST']}/blobbing/")
+        autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST']}/blobbing")
         download_folder = os.path.join(autoingest, 'download_check/')
         bucket_collection = 'bfi'
         print(f"*** Bucket collection: {bucket_collection}")

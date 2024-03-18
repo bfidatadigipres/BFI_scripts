@@ -219,13 +219,13 @@ def get_buckets(bucket_collection):
         bucket_data = json.load(data)
     if bucket_collection == 'netflix':
         for key, value in bucket_data.items():
-            if bucket_collection in key:
+            if bucket_collection in key and 'bucket' not in key:
                 if value is True:
                     key_bucket = key
                 bucket_list.append(key)
     elif bucket_collection == 'bfi':
         for key, value in bucket_data.items():
-            if 'preservation' in key.lower():
+            if 'preservation' in key.lower() and 'bucket' not in key.lower():
                 if value is True:
                     key_bucket = key
                 bucket_list.append(key)

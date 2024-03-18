@@ -86,7 +86,7 @@ PERS_LOG = os.path.join(LOGS, 'persistence_confirmation.log')
 PERS_QUEUE = os.path.join(LOGS, 'autoingest/persistence_queue.csv')
 PERS_QUEUE2 = os.path.join(LOGS, 'autoingest/persistence_queue2.csv')
 CONFIG = os.environ['CONFIG_YAML']
-DPI_BUCKETS = os.environ['DPI_BUCKET_BLOB']
+DPI_BUCKETS = os.environ['DPI_BUCKET']
 
 # Setup logging
 logger = logging.getLogger('autoingest')
@@ -180,6 +180,23 @@ def check_filename(fname):
     if len(sname) == 4 and len(sname[2]) != 1:
         return False
     return True
+
+
+def check_mov_prores(fpath):
+    '''
+    Retrieve codec and ensure file is ProRes
+    '''
+    cmd = [
+        'mediainfo',
+        '--Output=Video;%Format%',
+        fpath
+    ]
+
+    format = subprocess.check_output(cmd)
+    format = format.decode('utf-8')
+
+    if format == 'ProRes':
+        return True
 
 
 def check_mime_type(fpath, log_paths):
@@ -798,15 +815,19 @@ def main():
                 size = get_size(fpath)
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
                 if int(size) > 1099511627776:
-                    logger.warning('%s\tFile is larger than 1TB. Moving to blobbing folder', log_paths)
-                    try:
-                        shutil.move(fpath, os.path.join(black_pearl_blobbing, fname))
-                        print(f'\t** File moved to {os.path.join(black_pearl_blobbing, fname)}')
-                        logger.info('%s\tMoved ingest-ready file to BlackPearl ingest blobbing folder', log_paths)
-                    except Exception as err:
-                        print(f'Failed to move file to blobbing folder: {black_pearl_blobbing} {err}')
-                        logger.warning('%s\tFailed to move ingest-ready file to blobbing folder', log_paths)
-                    continue
+                    logger.warning('%s\tFile is larger than 1TB. Checking file is ProRes', log_paths)
+                    is_prores = check_mov_prores(fpath)
+                    if is_prores is True:
+                        try:
+                            shutil.move(fpath, os.path.join(black_pearl_blobbing, fname))
+                            print(f'\t** File moved to {os.path.join(black_pearl_blobbing, fname)}')
+                            logger.info('%s\tMoved ingest-ready file to BlackPearl ingest blobbing folder', log_paths)
+                        except Exception as err:
+                            print(f'Failed to move file to blobbing folder: {black_pearl_blobbing} {err}')
+                            logger.warning('%s\tFailed to move ingest-ready file to blobbing folder', log_paths)
+                    else:
+                        logger.warning('%s\tFile is larger than 1TB and not ProRes. Leaving in ingest folder', log_paths)
+                        continue
                 try:
                     shutil.move(fpath, os.path.join(black_pearl_folder, fname))
                     print(f'\t** File moved to {os.path.join(black_pearl_folder, fname)}')

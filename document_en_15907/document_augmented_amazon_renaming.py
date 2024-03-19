@@ -44,8 +44,9 @@ import sys
 import json
 import shutil
 import logging
+import requests
 import datetime
-import xmltodict
+import subprocess
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -85,37 +86,22 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
-def cid_check(imp_fname):
+def cid_check(object_number):
     '''
-    Sends CID request for series_id data
+    Looks up object_number and retrieves title
+    and other data for new timed text record
     '''
     query = {'database': 'items',
-             'search': f'digital.acquired_filename="{imp_fname}"',
+             'search': f'object_number="{object_number}"',
              'limit': '1',
-             'output': 'json',
-             'fields': 'priref, object_number, digital.acquired_filename.type'}
+             'output': 'json'}
     try:
         query_result = CID.get(query)
+        return query_result.records
     except Exception as err:
-        print(f"cid_check(): Unable to match IMP with Item record: {imp_fname} {err}")
-        query_result = None
-    try:
-        priref = query_result.records[0]['priref'][0]
-        print(f"cid_check(): Priref: {priref}")
-    except (IndexError, KeyError, TypeError):
-        priref = ''
-    try:
-        ob_num = query_result.records[0]['object_number'][0]
-        print(f"cid_check(): Object number: {ob_num}")
-    except (IndexError, KeyError, TypeError):
-        ob_num = ''
-    try:
-        file_type = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename.type'][0]['value'][0]
-        print(f"cid_check(): File type: {file_type}")
-    except (IndexError, KeyError, TypeError):
-        file_type = ''
+        print(f"cid_check(): Unable to match supplied name with CID Item record: {object_number} {err}")
 
-    return priref, ob_num, file_type.title()
+    return None
 
 
 def walk_folders():
@@ -148,14 +134,38 @@ def walk_folders():
     return folder_list
 
 
+def retrieve_metadata(fpath, mfile):
+    '''
+    Retrieve metadata for each file
+    '''
+    cmd = [
+        'mediainfo', '-f',
+        '--Language=raw',
+        '--Output=Video;%colour_primaries%',
+        os.path.join(fpath, mfile)
+    ]
+
+    colour_prim = subprocess.check_output(cmd)
+    colour_prim = colour_prim.decode('utf-8')
+    if '2020' in str(colour_prim):
+        return 'HDR'
+    elif '709' in str(colour_prim):
+        return 'SDR'
+    elif str(colour_prim) == '':
+        return 'No audio'
+    else:
+        return None
+    
+
 def main():
     '''
-    Check watch folder for IMP folder
-    look to match IMP folder name with
+    Check watch folder for folder containing
+    MOV files. Look to match to folder name with
     CID item record.
-    Where matched, process contents
-    read PKL XML for part whole order
-    and check contents match Asset list.
+    Where matched, identify HDR and process as
+    digital asset for matched CID item record
+    then create additional CID item records for
+    remaining video/audio files (wrapped .mov)
     '''
     check_control()
 
@@ -166,17 +176,14 @@ def main():
 
     LOGGER.info("== Document augmented Amazon renaming start =================")
     for fpath in folder_list:
-        folder = os.path.split(fpath)[1]
+        folder = os.path.split(fpath)[1].strip()
         LOGGER.info("Folder path found: %s", fpath)
-        priref, ob_num, file_type = cid_check(folder.strip())
-        print(f"CID item record found: {priref} with matching {file_type.title()}")
-
-        if not priref:
-            LOGGER.warning("Cannot find CID Item record for this folder: %s", fpath)
+        record = cid_check(folder)
+        if record is None:
+            LOGGER.warning("Skipping: Record could not be matched with object_number")
             continue
-        if file_type != 'Folder':
-            LOGGER.warning("Incorrect filename type retrieved in CID. Skipping.")
-            continue
+        priref = record[0]['priref'][0]
+        ob_num = record[0]['object_number'][0]
 
         LOGGER.info("Folder matched to CID Item record: %s | %s | %s", folder, priref, ob_num)
         mov_list = [x for x in os.listdir(fpath) if x.endswith(('.mov', '.MOV'))]
@@ -184,94 +191,127 @@ def main():
         if len(mov_list) != len(all_items):
             LOGGER.warning("Folder contains files that are not MOV: %s", fpath)
             continue
-        packing_list = ''
 
-        # Retrieving metadata for all MOV files
+        # Retrieving metadata for all MOV file
         for mov_file in mov_list:
+            ext = mov_file.split('.')[1]
+            if ext.lower != 'mov':
+                LOGGER.warning("Extension of file found that is not MOV. Skipping: %s", mov_file)
+                continue
             metadata = retrieve_metadata(fpath, mov_file)
             if 'HDR' in metadata:
-                ext = mov_file.split('.')[1]
-                new_hdr_filename = f"{ob_num.replace('-', '_')}_01of01.{ext}"
-                digital_note = f'{mov_file}. Renamed to {new_hdr_filename}'
+                LOGGER.info("UHD HDR file found: %s", mov_file)
+                new_filename = f"{ob_num.replace('-', '_')}_01of01.{ext}"
+                new_fpath = os.path.join(fpath, new_filename)
+                digital_note = f'{mov_file}. Renamed to {new_filename}'
 
-
-        # JMW UPTO HERE
-
-        # Write all dict names to digital.acquired_filename in CID item record, re-write folder name
-        success = create_digital_original_filenames(priref, folder.strip(), asset_items)
-        if not success:
-            LOGGER.warning("Skipping further actions. Asset item list not written to CID item record: %s", priref)
-            continue
-        LOGGER.info("CID item record <%s> filenames appended to digital.acquired_filenamed field", priref)
-
-        # Rename all files in IMP folder
-        LOGGER.info("Beginning renaming of IMP folder assets:")
-        success_rename = True
-        for key, value in asset_items.items():
-            filepath = os.path.join(fpath, key)
-            new_filepath = os.path.join(fpath, value)
-            if os.path.isfile(filepath):
-                LOGGER.info("\t- Renaming %s to new filename %s", key, value)
-                os.rename(filepath, new_filepath)
-                if not os.path.isfile(new_filepath):
-                    LOGGER.warning("\t-  Error renaming file %s!", key)
-                    success_rename = False
+                success = create_digital_original_filenames(priref, folder.strip(), digital_note)
+                if not success:
+                    LOGGER.warning("Skipping further actions. Acquired filename not written to CID item record: %s", priref)
                     break
-        if not success_rename:
-            LOGGER.warning("SKIPPING: Failure to rename files in IMP %s", fpath)
-            continue
+                LOGGER.info("CID item record <%s> filenames appended to digital.acquired_filenamed field", priref)
+                LOGGER.info("Renaming file %s to %s", mov_file, new_filename)
+                os.rename(os.path.join(fpath, mov_file), new_fpath)
+                if os.path.exists(new_fpath):
+                    LOGGER.info("File renamed successfully. Moving to autoingest/ingest/amazon")
+                    shutil.move(os.path.join(fpath, mov_file), os.path.join(AUTOINGEST, new_filename))
+                    continue
+                else:
+                    LOGGER.warning("Failed to rename file. Leaving in folder for manual intervention.")
+                    continue
+            elif 'SDR' in metadata:
+                LOGGER.info("UHD SDR file found: %s", mov_file)
+                ext = file.split('.')[-1]
 
-        # Move to local autoingest black_pearl_amazon_ingest (subfolder for amazon01 bucket put)
-        LOGGER.info("ALL IMP %s FILES RENAMED SUCCESSFULLY", folder)
-        LOGGER.info("Moving to autoingest:")
-        for file in asset_items.values():
-            moving_asset = os.path.join(fpath, file)
-            LOGGER.info("\t- %s", moving_asset)
-            shutil.move(moving_asset, AUTOINGEST)
-            if os.path.isfile(moving_asset):
-                LOGGER.warning("Movement of file %s to autoingest failed!", moving_asset)
-                LOGGER.warning(" - Please move manually")
+                # Build dictionary from CID item record
+                sdr_item_data = make_item_record_dict(priref, mov_file, ext, record, 'UHD SDR video')
+                sdr_item_xml = CUR.create_record_data('', sdr_item_data)
+                print(sdr_item_xml)
 
-        # Check IMP folder is empty and delete - Is this stage wanted? Waiting to hear from Andy
+                # Make new item record
+                sdr_priref, sdr_ob_num = push_record_create(sdr_item_xml, 'items', 'insertrecord')
+                if sdr_priref is None:
+                    LOGGER.warning("Creation of new CID item record failed with XML: \n%s", sdr_item_xml)
+                    continue
+                LOGGER.info("** CID Item record created: %s - %s", sdr_priref, sdr_ob_num)
+
+            # JMW up to here
+            elif 'No Video' in metadata:
+                LOGGER.info("Audio Description file found: %s", mov_file)
+
+                success = create_digital_original_filenames(new_priref, folder.strip(), digital_note)
+                if not success:
+                    LOGGER.warning("Skipping further actions. Asset item list not written to CID item record: %s", priref)
+                    continue
+                LOGGER.info("CID item record <%s> filenames appended to digital.acquired_filenamed field", priref)
+            else:
+                LOGGER.warning("File found with metadata not recognised. Skipping this item.")
+                continue
+
+
+        # Check folder is empty and delete
         contents = list(os.listdir(fpath))
         if len(contents) == 0:
             os.rmdir(fpath)
-            LOGGER.info("IMP folder empty, deleting %s", fpath)
+            LOGGER.info("Amazon folder empty, deleting %s", fpath)
         else:
-            LOGGER.warning("IMP not empty, leaving in place for checks: %s", fpath)
+            LOGGER.warning("Amazon folder not empty, leaving in place for checks: %s", fpath)
 
     LOGGER.info("== Document augmented Amazon renaming end ===================\n")
 
 
-def build_defaults():
+def make_item_record_dict(priref, file, ext, record, arg):
     '''
-    Build record and item defaults
-    Not active, may not be needed
-    Record contents may need review!
+    Get CID item record for source and borrow data
+    for creation of new CID item record
     '''
-    record = ([{'input.name': 'datadigipres'},
-               {'input.date': str(datetime.datetime.now())[:10]},
-               {'input.time': str(datetime.datetime.now())[11:19]},
-               {'input.notes': 'Amazon metadata integration - automated bulk documentation'},
-               {'record_access.user': 'BFIiispublic'},
-               {'record_access.rights': '0'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'grouping.lref': '400947'},
-               {'language.lref': '71429'},
-               {'language.type': 'DIALORIG'}])
+    item = []
+    record_default = defaults()
+    item.extend(record_default)
+    item.append({'record_type': 'ITEM'})
+    item.append({'item_type': 'DIGITAL'})
+    item.append({'copy_status': 'M'})
+    item.append({'copy_usage.lref': '131560'})
+    item.append({'accession_date': str(datetime.datetime.now())[:10]})
 
-    item = ([{'record_type': 'ITEM'},
-             {'item_type': 'DIGITAL'},
-             {'copy_status': 'M'},
-             {'copy_usage.lref': '131560'},
-             {'file_type.lref': '401103'}, # IMP
-             {'code_type.lref': '400945'}, # Mixed
-             {'accession_date': str(datetime.datetime.now())[:10]},
-             {'acquisition.method.lref': '132853'}, # Donation - with written agreement ACQMETH
-             {'acquisition.source.lref': '999823516'}, # Amazon Prime Video
-             {'acquisition.source.type': 'DONOR'}])
+    if 'Title' in str(record):
+        imp_title = record[0]['Title'][0]['title'][0]
+        item.append({'title': f"{imp_title} (Timed Text)"})
+        if 'title.article' in str(record):
+            item.append({'title.article': record[0]['Title'][0]['title.article'][0]})
+        item.append({'title.language': 'English'})
+        item.append({'title.type': '05_MAIN'})
+    else:
+        LOGGER.warning("No title data retrieved. Aborting record creation")
+        return None
+    if 'Part_of' in str(record):
+        item.append({'part_of_reference.lref': record[0]['Part_of'][0]['part_of_reference'][0]['priref'][0]})
+    else:
+        LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
+        return None
+    item.append({'related_object.reference.lref': priref})
+    item.append({'related_object.notes': f'{arg} for'})
+    if 'SDR' in arg:
+        item.append({'file_type.lref': })
+    if 'acquisition.date' in str(record):
+        item.append({'acquisition.date': record[0]['acquisition.date'][0]})
+    if 'acquisition.method' in str(record):
+        item.append({'acquisition.method.lref': record[0]['acquisition.method.lref'][0]})
+    if 'Acquisition_source' in str(record):
+        item.append({'acquisition.source.lref': record[0]['Acquisition_source'][0]['acquisition.source.lref'][0]})
+        item.append({'acquisition.source.type': record[0]['Acquisition_source'][0]['acquisition.source.type'][0]['value'][0]})
+    item.append({'access_conditions': 'Access requests for this collection are subject to an approval process. '\
+                                      'Please raise a request via the Collections Systems Service Desk, describing your specific use.'})
+    item.append({'access_conditions.date': str(datetime.datetime.now())[:10]})
+    if 'grouping' in str(record):
+        item.append({'grouping': record[0]['grouping'][0]})
+    if 'language' in str(record):
+        item.append({'language': record[0]['language'][0]['language'][0]})
+        item.append({'language.type': record[0]['language'][0]['language.type'][0]['value'][0]})
+    if len(file) > 1:
+        item.append({'digital.acquired_filename': file})
 
-    return record, item
+    return item
 
 
 def create_digital_original_filenames(priref, digital_note):
@@ -304,29 +344,6 @@ def create_digital_original_filenames(priref, digital_note):
         return False
 
 
-def retrieve_metadata(fpath, mfile):
-    '''
-    Retrieve metadata for each file
-    '''
-    cmd = [
-        'mediainfo', '-f',
-        '--Language=raw',
-        '--Output=Video;%colour_primaries%',
-        os.path.join(fpath, mfile)
-    ]
-
-    colour_prim = subprocess.check_output(cmd)
-    colour_prim = colour_prim.decode('utf-8')
-    if '2020' in colour_prim:
-        return {f'{fname}': 'UHD HDR'}
-    elif '709' in colour_prim:
-        return {f'{fname}': 'UHD SDR'}
-    elif colour_prim == '':
-        return {f'{fname}': 'No video'}
-    else:
-        return None
-
-
 def item_append(priref, item_append_dct):
     '''
     Items passed in item_dct for amending to CID item record
@@ -345,6 +362,83 @@ def item_append(priref, item_append_dct):
         LOGGER.warning("item_append(): Unable to append work data to CID item record %s", err)
         print(err)
         return False
+
+
+def defaults():
+    '''
+    Build defaults for new CID item records
+    '''
+    record = ([{'input.name': 'datadigipres'},
+               {'input.date': str(datetime.datetime.now())[:10]},
+               {'input.time': str(datetime.datetime.now())[11:19]},
+               {'input.notes': 'Amazon metadata integration - automated bulk documentation'},
+               {'record_access.user': 'BFIiispublic'},
+               {'record_access.rights': '0'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'System Management'},
+               {'record_access.rights': '3'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Information Specialist'},
+               {'record_access.rights': '3'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Digital Operations'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Documentation'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Curator'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Special Collections'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Librarian'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': '$REST'},
+               {'record_access.rights': '1'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'grouping.lref': '400947'}, # JMW Will need replacing when new grouping made for Amazon
+               {'language.lref': '74129'},
+               {'language.type': 'DIALORIG'},
+               {'record_type': 'ITEM'},
+               {'item_type': 'DIGITAL'},
+               {'copy_status': 'M'},
+               {'copy_usage.lref': '131560'},
+               {'file_type.lref': '397457'}, # ProRes 422 HQ Interlaced (can't find progressive)
+               {'accession_date': str(datetime.datetime.now())[:10]}])
+
+    return record
+
+
+def push_record_create(payload, database, method):
+    '''
+    Use requests.request to push data to the
+    CID API as grouped XML
+    '''
+    hdrs = {'Content-Type': 'text/xml'}
+    prms = {
+        'command': method,
+        'database': database,
+        'xmltype': 'grouped',
+        'output': 'json'
+    }
+
+    try:
+        response = requests.request('POST', CID_API, headers=hdrs, params=prms, data=payload, timeout=1200)
+        print(response.text)
+    except Exception as err:
+        LOGGER.critical("push_record_create(): Unable to create %s record with %s and payload: \n%s", database, method, payload)
+        print(err)
+        return None, None
+
+    if 'recordList' in response.text:
+        records = json.loads(response.text)
+        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
+        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
+        return priref, object_number
+    return None, None
 
 
 if __name__ == '__main__':

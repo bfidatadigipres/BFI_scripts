@@ -145,16 +145,28 @@ def retrieve_metadata(fpath, mfile):
         os.path.join(fpath, mfile)
     ]
 
+    cmd2 = [
+        'ffprobe', '-v',
+        'error', '-select_streams',
+        'a', '-show_entries',
+        'stream=index:stream_tags=language',
+        '-of', 'compact=p=0:nk=1',
+        os.path.join(fpath, mfile)
+    ]
+
     colour_prim = subprocess.check_output(cmd)
     colour_prim = colour_prim.decode('utf-8')
-    if '2020' in str(colour_prim):
+    audio_spec = subprocess.check_output(cmd2)
+    audio_spec = audio_spec.decode('utf-8')
+    print(colour_prim, audio_spec)
+
+    if 'BT.2020' in str(colour_prim):
         return 'HDR'
-    elif '709' in str(colour_prim):
+    if 'BT.709' in str(colour_prim):
         return 'SDR'
-    elif str(colour_prim) == '':
-        return 'No audio'
-    else:
-        return None
+    if '0|eng' in str(audio_spec):
+        return 'Audio Description'
+    return None
     
 
 def main():
@@ -195,6 +207,7 @@ def main():
         # Retrieving metadata for all MOV file
         for mov_file in mov_list:
             ext = mov_file.split('.')[1]
+            item_xml = ''
             if ext.lower != 'mov':
                 LOGGER.warning("Extension of file found that is not MOV. Skipping: %s", mov_file)
                 continue
@@ -219,35 +232,46 @@ def main():
                 else:
                     LOGGER.warning("Failed to rename file. Leaving in folder for manual intervention.")
                     continue
-            elif 'SDR' in metadata:
+            if 'SDR' in metadata:
                 LOGGER.info("UHD SDR file found: %s", mov_file)
-                ext = file.split('.')[-1]
-
                 # Build dictionary from CID item record
-                sdr_item_data = make_item_record_dict(priref, mov_file, ext, record, 'UHD SDR video')
-                sdr_item_xml = CUR.create_record_data('', sdr_item_data)
-                print(sdr_item_xml)
-
-                # Make new item record
-                sdr_priref, sdr_ob_num = push_record_create(sdr_item_xml, 'items', 'insertrecord')
-                if sdr_priref is None:
-                    LOGGER.warning("Creation of new CID item record failed with XML: \n%s", sdr_item_xml)
-                    continue
-                LOGGER.info("** CID Item record created: %s - %s", sdr_priref, sdr_ob_num)
-
-            # JMW up to here
-            elif 'No Video' in metadata:
+                item_data = make_item_record_dict(priref, mov_file, ext, record, 'UHD SDR version')
+                item_xml = CUR.create_record_data('', item_data)
+                print(item_xml)
+            elif 'Audio Description' in metadata:
                 LOGGER.info("Audio Description file found: %s", mov_file)
-
-                success = create_digital_original_filenames(new_priref, folder.strip(), digital_note)
-                if not success:
-                    LOGGER.warning("Skipping further actions. Asset item list not written to CID item record: %s", priref)
-                    continue
-                LOGGER.info("CID item record <%s> filenames appended to digital.acquired_filenamed field", priref)
+                # Build dictionary from CID item record
+                item_data = make_item_record_dict(priref, mov_file, ext, record, 'Audio Description')
+                item_xml = CUR.create_record_data('', item_data)
+                print(item_xml)
             else:
                 LOGGER.warning("File found with metadata not recognised. Skipping this item.")
                 continue
 
+            # Make new item record
+            new_priref, new_ob_num = push_record_create(item_xml, 'items', 'insertrecord')
+            if new_priref is None:
+                LOGGER.warning("Creation of new CID item record failed with XML: \n%s", item_xml)
+                continue
+            LOGGER.info("** CID Item record created: %s - %s", new_priref, new_ob_num)
+
+            new_filename = f"{new_ob_num.replace('-', '_')}_01of01.{ext}"
+            new_fpath = os.path.join(fpath, new_filename)
+            digital_note = f'{mov_file}. Renamed to {new_filename}'
+            success = create_digital_original_filenames(new_priref, folder.strip(), digital_note)
+            if not success:
+                LOGGER.warning("Skipping further actions. Asset item list not written to CID item record: %s", new_priref)
+                continue
+            LOGGER.info("CID item record <%s> filenames appended to digital.acquired_filenamed field", new_priref)
+            LOGGER.info("Renaming file %s to %s", mov_file, new_filename)
+            os.rename(os.path.join(fpath, mov_file), new_fpath)
+            if os.path.exists(new_fpath):
+                LOGGER.info("File renamed successfully. Moving to autoingest/ingest/amazon")
+                shutil.move(os.path.join(fpath, mov_file), os.path.join(AUTOINGEST, new_filename))
+                continue
+            else:
+                LOGGER.warning("Failed to rename file. Leaving in folder for manual intervention.")
+                continue
 
         # Check folder is empty and delete
         contents = list(os.listdir(fpath))
@@ -275,8 +299,8 @@ def make_item_record_dict(priref, file, ext, record, arg):
     item.append({'accession_date': str(datetime.datetime.now())[:10]})
 
     if 'Title' in str(record):
-        imp_title = record[0]['Title'][0]['title'][0]
-        item.append({'title': f"{imp_title} (Timed Text)"})
+        mov_title = record[0]['Title'][0]['title'][0]
+        item.append({'title': f"{mov_title} ({arg})"})
         if 'title.article' in str(record):
             item.append({'title.article': record[0]['Title'][0]['title.article'][0]})
         item.append({'title.language': 'English'})
@@ -292,7 +316,9 @@ def make_item_record_dict(priref, file, ext, record, arg):
     item.append({'related_object.reference.lref': priref})
     item.append({'related_object.notes': f'{arg} for'})
     if 'SDR' in arg:
-        item.append({'file_type.lref': })
+        item.append({'file_type.lref': '397457'}) # Unsure how to set file type here also, MOV?
+    elif 'Audio Description' in arg:
+        item.append({file_type: 'MOV'}) # Unsure how to set file type here - MOV?
     if 'acquisition.date' in str(record):
         item.append({'acquisition.date': record[0]['acquisition.date'][0]})
     if 'acquisition.method' in str(record):
@@ -331,15 +357,14 @@ def create_digital_original_filenames(priref, digital_note):
 
     item_append_dct.extend(item_edit_data)
     LOGGER.info("** Appending data to work record now...")
-    LOGGER.info(name_updates)
 
     result = item_append(priref, item_append_dct)
     if result:
         print(f"Item appended successful! {priref}")
-        LOGGER.info("Successfully appended IMP digital.acquired_filenames to Item record %s", priref)
+        LOGGER.info("Successfully appended MOV digital.acquired_filenames to Item record %s", priref)
         return True
     else:
-        LOGGER.warning("Failed to append IMP digital.acquired_filenames to Item record %s", priref)
+        LOGGER.warning("Failed to append MOV digital.acquired_filenames to Item record %s", priref)
         print(f"CID item record append FAILED!! {priref}")
         return False
 

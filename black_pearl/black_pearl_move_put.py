@@ -81,16 +81,17 @@ def get_buckets(bucket_collection):
         bucket_data = json.load(data)
     if bucket_collection == 'bfi':
         for key, value in bucket_data.items():
-            if 'preservation' in key.lower() and 'bucket' not in key.lower():
+            if 'preservationbucket' in str(key):
+                pass
+            elif 'preservation0' in str(key):
                 if value is True:
                     key_bucket = key
                 bucket_list.append(key)
-            # Imagen path read only now
-            if 'imagen' in key:
+            elif 'imagen' in str(key):
                 bucket_list.append(key)
     else:
         for key, value in bucket_data.items():
-            if bucket_collection in key and 'bucket' not in key::
+            if f"{bucket_collection}0" in str(key):
                 if value is True:
                     key_bucket = key
                 bucket_list.append(key)
@@ -251,6 +252,10 @@ def main():
 
     # Get current bucket name for bucket_collection type
     bucket, bucket_list = get_buckets(bucket_collection)
+    logger.info("Key bucket selected %s, bucket list %s", bucket, bucket_list)
+    if 'blobbing' in str(bucket):
+        logger.warning("Blobbing bucket selected. Aborting PUT")
+        sys.exit()
 
     # Get initial filenames / foldernames
     files = [f for f in os.listdir(autoingest) if os.path.isfile(os.path.join(autoingest, f))]
@@ -306,16 +311,14 @@ def main():
                     logs.append("Folder will have more files added to reach maximum upload size.")
                     folderpth = folder_check_pth
                 else:
-                    # Any folders reaching here need a check against BP ingest to see if they've been uploaded and rename failed
-                    logs.append(f"WARNING: Skipping ingest folder already over maximum upload size and not renamed: {folder_check_pth}")
-                    logs.append("WARNING: Please check the contents of this folder are uploaded to BP.")
+                    logs.append(f"Already over maximum upload size, will not add more files: {folder_check_pth}")
 
         # If found ingest_ paths not selected for further ingest
         if folderpth == '':
             logs.append("No suitable ingest folder exists, creating new one...")
             folderpth = create_folderpth(autoingest)
 
-        # Start move to folderpth now identified (failing here sometimes)
+        # Start move to folderpth now identified
         logs.append(f"Ingest folder selected: {folderpth}")
         print(f"move_to_ingest_folder: {folderpth}, {autoingest}, {files}, {bucket_list}")
         files_remaining = move_to_ingest_folder(folderpth, upload_size, autoingest, files, bucket_list)

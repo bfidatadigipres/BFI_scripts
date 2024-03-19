@@ -884,7 +884,7 @@ def build_defaults(data):
                {'record_access.user': '$REST'},
                {'record_access.rights': '1'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'grouping.lref': '400947'}, # JMW Will need replacing when new grouping made for Amazon
+               {'grouping.lref': '401361'}, # Amazon
                {'language.lref': '74129'},
                {'language.type': 'DIALORIG'}])
 
@@ -928,12 +928,11 @@ def build_defaults(data):
              {'item_type': 'DIGITAL'},
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
-             {'file_type.lref': '401103'}, # JMW IMP - Needs changing to ProRes MOV
-             {'code_type.lref': '400945'}, # JMW Mixed
+             {'file_type.lref': '397457'}, # ProRes MOV 422HQ Interlaced
              {'accession_date': str(datetime.datetime.now())[:10]},
              {'acquisition.date': data['acquisition_date']}, # JMW Contract date from CSV - CSV needs updating
-             {'acquisition.method.lref': '132853'}, # Donation - with written agreement ACQMETH
-             {'acquisition.source.lref': '143463'}, # JMW Netflix NEEDS TO BE AMAZON
+             {'acquisition.method.lref': '132853'},
+             {'acquisition.source.lref': '999923912'}, # Amazon Digital UK Ltd
              {'acquisition.source.type': 'DONOR'},
              {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                    'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
@@ -1220,9 +1219,9 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     if 'certification_bbfc' in work_dict:
         manifestation_values.append({'utb.fieldname': 'BBFC certification'})
         manifestation_values.append({'utb.content': work_dict['certification_bbfc']})
+    manifestation_values.append({'broadcast_company.lref': '999823516'}) # Amazon Prime Video
     print(f"Manifestation values:\n{manifestation_values}")
 
-    broadcast_addition = []
     try:
         m = CUR.create_record(database='manifestations',
                               data=manifestation_values,
@@ -1241,15 +1240,6 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     except Exception as err:
         print(f"Unable to write manifestation record - error: {err}")
 
-    broadcast_addition = ([{'broadcast_company.lref': '143463'}])
-
-    try:
-        b = CUR.update_record(database='manifestations',
-                              priref=manifestation_id,
-                              data=broadcast_addition,
-                              output='json')
-    except Exception as err:
-        LOGGER.info("Unable to write broadcast company data\n%s", err)
     return manifestation_id
 
 

@@ -17,7 +17,6 @@ import sys
 import json
 import logging
 import datetime
-import requests
 
 # Local packages
 sys.path.append(os.environ['CODE'])

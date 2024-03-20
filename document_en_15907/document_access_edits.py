@@ -63,6 +63,7 @@ def main():
 
     LOGGER.info("======== Document Access Edits scripts start =====================")
     for file in file_list:
+        check_control()
         fpath = os.path.join(STORAGE, file)
         LOGGER.info("File found to process: %s", fpath)
         if not os.path.isfile(fpath):
@@ -83,12 +84,15 @@ def main():
         item_dct = make_item_record_dict(source_priref, file, source_record)
         LOGGER.info(item_dct)
         item_xml = adlib.create_record_data('', item_dct)
-        priref, ob_num = push_record_create(item_xml, 'items', 'insertrecord')
-        if priref is None:
+        new_record = adlib.post(item_xml, 'items', 'insertrecord')
+        if new_record is None:
             LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
             continue
 
         # Rename/move to autoingest
+        priref = adlib.retrieve_field_name('priref', new_record)
+        ob_num = adlib.retrieve_field_name('object_number', new_record)
+        LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
         part_whole = file.split('EDIT_')[1].split('_')[-1]
         new_fname = f"{ob_num.replace('-', '_')}_{part_whole}"
         new_fpath = os.path.join(AUTOINGEST, new_fname)
@@ -164,39 +168,11 @@ def defaults():
                {'item_type': 'DIGITAL'},
                {'copy_status': 'V'},
                {'copy_usage.lref': '131560'},
-               {'access_conditions': 'Before reusing BFI National Archive digital collections please ensure the required clearances from copyright holders, contributors or other stakeholders have been obtained for specific use.'},
+               {'access_conditions': 'Before reusing BFI National Archive digital collections please ensure the required clearances \
+                                      from copyright holders, contributors or other stakeholders have been obtained for specific use.'},
                {'access_contitions.date': str(datetime.datetime.now())[:10]}])
 
     return record
-
-
-def push_record_create(payload, database, method):
-    '''
-    Use requests.request to push data to the
-    CID API as grouped XML
-    '''
-    hdrs = {'Content-Type': 'text/xml'}
-    prms = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'json'
-    }
-
-    try:
-        response = requests.request('POST', CID_API, headers=hdrs, params=prms, data=payload, timeout=1200)
-        print(response.text)
-    except Exception as err:
-        LOGGER.critical("push_record_create(): Unable to create %s record with %s and payload: \n%s", database, method, payload)
-        print(err)
-        return None, None
-
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
-        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
-        return priref, object_number
-    return None, None
 
 
 if __name__ == '__main__':

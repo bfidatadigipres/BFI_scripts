@@ -1,7 +1,7 @@
-#!/usr/bin/ spython3
+#!/usr/bin/ python3
 
 '''
-Script to look for files named 'EDIT_{source_item}', 
+Script to look for files named 'EDIT_{source_item}',
 create new CID item record with VIEW specifics, rename
 file then move to autoingest path
 
@@ -14,8 +14,8 @@ import os
 import sys
 import json
 import logging
-import requests
 import datetime
+import requests
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -63,7 +63,7 @@ def cid_check(object_number):
         query_result = CID.get(query)
         return query_result.records
     except Exception as err:
-        print(f"cid_check(): Unable to match supplied name with CID Item record: {object_number} {err}")
+        print(f"cid_check(): Unable to match supplied name with CID Item record: {err}")
 
     return None
 
@@ -76,7 +76,7 @@ def main():
     file_list = [x for x in os.listdir(STORAGE) if x.startswith('EDIT_')]
     if len(file_list) == 0:
         sys.exit()
-    
+
     LOGGER.info("======== Document Access Edits scripts start =====================")
     for file in file_list:
         fpath = os.path.join(STORAGE, file)
@@ -84,7 +84,7 @@ def main():
         if not os.path.isfile(fpath):
             LOGGER.warning("Skipping: File type has not been recoginsed.")
             continue
-        
+
         # Get source Item record ob_num from filename
         source_file = file.split('EDIT_')[1].split('_')[:-1]
         source_ob_num = '-'.join(source_file)
@@ -168,7 +168,7 @@ def defaults():
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
-               {'input.notes': 'DMS Access Edit integration - automated bulk documentation'},
+               {'input.notes': 'DMS access edit integration - automated bulk documentation'},
                {'record_access.user': 'BFIiispublic'},
                {'record_access.rights': '0'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},

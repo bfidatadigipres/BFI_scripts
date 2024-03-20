@@ -5,6 +5,8 @@ Script to look for files named 'EDIT_{source_item}',
 create new CID item record with VIEW specifics, rename
 file then move to autoingest path
 
+NOTES: Integrated into adlib_v3 for test
+
 Joanna White
 2024
 '''

@@ -51,6 +51,20 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
+def get_source_record(file):
+    '''
+    Get source Item record ob_num from filename
+    '''
+
+    source_file = file.split('EDIT_')[1].split('_')[:-1]
+    source_ob_num = '-'.join(source_file)
+    search = f"object_number='{source_ob_num}'"
+    hits, record = adlib.retrieve_record('items', search, '0', fields=None)
+    if hits == 0:
+        return None
+    return record
+
+
 def main():
     '''
     Iterate access_edits folder working through edited
@@ -70,25 +84,17 @@ def main():
             continue
 
         # Get source Item record ob_num from filename
-        source_file = file.split('EDIT_')[1].split('_')[:-1]
-        source_ob_num = '-'.join(source_file)
-        search = f"object_number='{source_ob_num}'"
-        hits, source_record = adlib.retrieve_record('items', search, '0', fields=None)
-        if hits == '0':
-            LOGGER.warning("Skipping: Unable to match source object number %s to CID item record", source_ob_num)
+        source_record = get_source_record(file)
+        if source_record is None:
+            LOGGER.warning("Skipping: Unable to match source object number %s to CID item record", file)
             continue
+        source_priref = adlib.retrieve_field_name('priref', source_record)
 
-        # Build new CID item record from existing data and make CID item record
-        source_priref = source_record[0]['priref'][0]
-        item_dct = make_item_record_dict(source_priref, file, source_record)
-        LOGGER.info(item_dct)
-        item_xml = adlib.create_record_data('', item_dct)
-        new_record = adlib.post(item_xml, 'items', 'insertrecord')
+        # Create new Item record
+        new_record = create_new_item_record(source_priref, file, source_record)
         if new_record is None:
             LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
             continue
-
-        # Rename/move to autoingest
         priref = adlib.retrieve_field_name('priref', new_record)
         ob_num = adlib.retrieve_field_name('object_number', new_record)
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
@@ -104,6 +110,19 @@ def main():
             LOGGER.warning("Failed to rename/move file: %s", fpath)
 
     LOGGER.info("======== Document Access Edits scripts end =======================")
+
+
+def create_new_item_record(source_priref, file, source_record):
+    '''
+    Build new CID item record from existing data and make CID item record
+    '''
+    item_dct = make_item_record_dict(source_priref, file, source_record)
+    LOGGER.info(item_dct)
+    item_xml = adlib.create_record_data('', item_dct)
+    new_record = adlib.post(item_xml, 'items', 'insertrecord')
+    if new_record is None:
+        LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
+        return None
 
 
 def make_item_record_dict(priref, file, record):

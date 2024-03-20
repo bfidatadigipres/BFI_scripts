@@ -5,6 +5,8 @@ Script to look for files named 'EDIT_{source_item}',
 create new CID item record with VIEW specifics, rename
 file then move to autoingest path
 
+NOTES: Integrated with adlib_v3 for test
+
 Joanna White
 2024
 '''
@@ -50,24 +52,6 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
-def cid_check(object_number):
-    '''
-    Looks up object_number and retrieves title
-    and other data for new timed text record
-    '''
-    query = {'database': 'items',
-             'search': f'object_number="{object_number}"',
-             'limit': '1',
-             'output': 'json'}
-    try:
-        query_result = CID.get(query)
-        return query_result.records
-    except Exception as err:
-        print(f"cid_check(): Unable to match supplied name with CID Item record: {err}")
-
-    return None
-
-
 def main():
     '''
     Iterate access_edits folder working through edited
@@ -88,8 +72,9 @@ def main():
         # Get source Item record ob_num from filename
         source_file = file.split('EDIT_')[1].split('_')[:-1]
         source_ob_num = '-'.join(source_file)
-        source_record = cid_check(source_ob_num)
-        if source_record is None:
+        search = f"object_number='{source_ob_num}'"
+        hits, source_record = adlib.retrieve_record('items', search, '0', fields=None)
+        if hits == '0':
             LOGGER.warning("Skipping: Unable to match source object number %s to CID item record", source_ob_num)
             continue
 
@@ -155,7 +140,8 @@ def make_item_record_dict(priref, file, record):
     item.append({'scan.type': 'Progressive'})
     item.append({'source_item.lref': priref})
     item.append({'quality_comments.date': str(datetime.datetime.now())[:10]})
-    item.append({'quality_comments': 'Viewing copy creted from digital master which has been ingested for access instances. The file may have had adverts, bars and tones cut out, or other fixes applied.'})
+    item.append({'quality_comments': 'Viewing copy creted from digital master which has been ingested for access instances. \
+                                      The file may have had adverts, bars and tones cut out, or other fixes applied.'})
     item.append({'quality_comments.writer': 'BFI National Archive'})
 
     return item

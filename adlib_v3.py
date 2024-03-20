@@ -59,7 +59,7 @@ def get(query):
     return dct
 
 
-def post(self, params=None, payload=False, sync=True):
+def post(payload, database, method):
     '''
     Send a POST request
     '''
@@ -68,6 +68,10 @@ def post(self, params=None, payload=False, sync=True):
         'database': database,
         'xmltype': 'grouped',
         'output': 'jsonv1'
+    }
+
+    headers = {
+        'Content-Type': 'text/xml'
     }
 
     payload = payload.encode('utf-8')

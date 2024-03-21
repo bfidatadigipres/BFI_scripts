@@ -94,7 +94,6 @@ def main():
         # Create new Item record
         new_record = create_new_item_record(source_priref, file, source_record)
         if new_record is None:
-            LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
             continue
         priref = adlib.retrieve_field_name('priref', new_record)
         ob_num = adlib.retrieve_field_name('object_number', new_record)
@@ -124,6 +123,7 @@ def create_new_item_record(source_priref, file, source_record):
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None
+    return new_record
 
 
 def make_item_record_dict(priref, file, record):

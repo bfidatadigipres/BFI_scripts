@@ -23,8 +23,9 @@ sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
 # Global variables
-STORAGE = os.path.join(os.environ['QNAP_11'], 'access_edits')
-AUTOINGEST = os.path.join(os.environ['QNAP_11'], 'autoingest/ingest/autodetect')
+INGEST = os.environ['AUTOINGEST_QNAP10']
+STORAGE = os.path.join(INGEST, 'access_edits')
+AUTOINGEST = os.path.join(INGEST 'ingest/autodetect')
 LOGS = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API')

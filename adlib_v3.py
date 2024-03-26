@@ -97,7 +97,7 @@ def post(payload, database, method, priref):
             unlock = _unlock(priref, database)
             if unlock is False:
                 raise Exception(f"Failed to unlock record following update {priref}")
-            return records['adlibJSON']['recordList']['record'][0]
+            return records
         return None
 
     return None

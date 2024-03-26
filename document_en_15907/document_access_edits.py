@@ -212,7 +212,7 @@ def add_quality_comments(priref):
     LOGGER.info("Payload for quality comments: %s", payload)
 
     update_record = adlib.post(payload, 'items', 'updaterecord', priref)
-    if update_record is True:
+    if update_record is not None:
         LOGGER.info("add_quality_comments(): No error returned. Payload written successfully")
         return True
     else:

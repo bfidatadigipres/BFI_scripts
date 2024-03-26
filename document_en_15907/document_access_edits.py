@@ -29,8 +29,6 @@ AUTOINGEST = os.path.join(INGEST, 'ingest/autodetect')
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API4')
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
 
 # Setup logging
 LOGGER = logging.getLogger('document_access_edits')
@@ -88,14 +86,14 @@ def main():
         if source_record is None:
             LOGGER.warning("Skipping: Unable to match source object number %s to CID item record", file)
             continue
-        source_priref = adlib.retrieve_field_name(source_record, 'priref')
+        source_priref = adlib.retrieve_field_name(source_record[0], 'priref')
 
         # Create new Item record
         new_record = create_new_item_record(source_priref, file, source_record)
         if new_record is None:
             continue
-        priref = adlib.retrieve_field_name(new_record, 'priref')
-        ob_num = adlib.retrieve_field_name(new_record, 'object_number')
+        priref = adlib.retrieve_field_name(new_record[0], 'priref')
+        ob_num = adlib.retrieve_field_name(new_record[0], 'object_number')
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
         part_whole = file.split('EDIT_')[1].split('_')[-1]
         new_fname = f"{ob_num.replace('-', '_')}_{part_whole}"

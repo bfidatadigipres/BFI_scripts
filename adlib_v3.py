@@ -80,12 +80,8 @@ def post(payload, database, method, priref):
         if 'recordList' in response.text:
             records = json.loads(response.text)
             return records['adlibJSON']['recordList']['record'][0]
-        return None
 
     if method == 'updaterecord':
-        #lock = _lock(priref, database)
-        #if lock is False:
-        #    return None
         try:
             response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
             print(response.text)
@@ -95,11 +91,7 @@ def post(payload, database, method, priref):
 
         if 'recordList' in response.text:
             records = json.loads(response.text)
-        #    unlock = _unlock(priref, database)
-        #    if unlock is False:
-        #        raise Exception(f"Failed to unlock record following update {priref}")
             return records
-        return None
 
     return None
 
@@ -228,32 +220,3 @@ def get_fragments(obj):
 
     return data
 
-
-def _lock(priref, database):
-    '''
-    Lock item record for update
-    '''
-    try:
-        response = requests.request(
-            'POST',
-            CID_API,
-            params={'database': database, 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'jsonv1'}
-        )
-        return True
-    except Exception:
-        return False
-
-
-def _unlock(priref, database):
-    '''
-    Unlock item record if failed update
-    '''
-    try:
-        response = requests.request(
-            'POST',
-            CID_API,
-            params={'database': database, 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'jsonv1'},
-        )
-        return True
-    except Exception:
-        return False

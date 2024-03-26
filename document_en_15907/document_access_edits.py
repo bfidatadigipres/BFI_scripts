@@ -88,14 +88,14 @@ def main():
         if source_record is None:
             LOGGER.warning("Skipping: Unable to match source object number %s to CID item record", file)
             continue
-        source_priref = adlib.retrieve_field_name('priref', source_record)
+        source_priref = adlib.retrieve_field_name(source_record, 'priref')
 
         # Create new Item record
         new_record = create_new_item_record(source_priref, file, source_record)
         if new_record is None:
             continue
-        priref = adlib.retrieve_field_name('priref', new_record)
-        ob_num = adlib.retrieve_field_name('object_number', new_record)
+        priref = adlib.retrieve_field_name(new_record, 'priref')
+        ob_num = adlib.retrieve_field_name(new_record, 'object_number')
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
         part_whole = file.split('EDIT_')[1].split('_')[-1]
         new_fname = f"{ob_num.replace('-', '_')}_{part_whole}"
@@ -136,25 +136,25 @@ def make_item_record_dict(priref, file, record):
     item.extend(defaults())
 
     if 'Title' in str(record):
-        title = adlib.retrieve_field_name('title', record)
+        title = adlib.retrieve_field_name(record, 'title')
         item.append({'title': title})
         if 'title.article' in str(record):
-            item.append({'title.article': adlib.retrieve_field_name('title.article', record)})
+            item.append({'title.article': adlib.retrieve_field_name(record, 'title.article')})
         item.append({'title.language': 'English'})
         item.append({'title.type': '05_MAIN'})
     else:
         LOGGER.warning("No title data retrieved. Aborting record creation")
         return None
     if 'part_of_reference' in str(record):
-        item.append({'part_of_reference.lref': adlib.retrieve_field_name('part_of_reference.lref', record)})
+        item.append({'part_of_reference.lref': adlib.retrieve_field_name(record, 'part_of_reference.lref')})
     else:
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
         return None
     if 'grouping.lref' in str(record):
-        item.append({'grouping.lref': adlib.retrieve_field_name('grouping.lref', record)})
+        item.append({'grouping.lref': adlib.retrieve_field_name(record, 'grouping.lref')})
     if 'language' in str(record):
-        item.append({'language': adlib.retrieve_field_name('language', record)})
-        item.append({'language.type': adlib.retrieve_field_name('language.type', record)})
+        item.append({'language': adlib.retrieve_field_name(record, 'language')})
+        item.append({'language.type': adlib.retrieve_field_name(record, 'language.type')})
 
     item.append({'digital.acquired_filename': file})
     item.append({'digital.acquired_fileame.type': 'File'})

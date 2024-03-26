@@ -203,9 +203,9 @@ def add_quality_comments(priref):
     date_now = str(datetime.datetime.now())[:10]
 
     p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
-    p_comm = f"<quality_comments>'{comments}'</quality_comments>"
-    p_date = f"<quality_comments.date>'{date_now}'</quality_comments.date>"
-    p_writer = f"<quality_comments.writer>'BFI National Archive'</quality_comments.writer>"
+    p_comm = f"<quality_comments>{comments}</quality_comments>"
+    p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
+    p_writer = f"<quality_comments.writer>BFI National Archive</quality_comments.writer>"
     p_end = "</quality_comments></record></recordList></adlibXML>"
     payload = p_start + p_comm + p_date + p_writer + p_end
     LOGGER.info("Payload for quality comments: %s", payload)

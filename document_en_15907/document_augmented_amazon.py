@@ -57,7 +57,7 @@ LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API') # May need to run from CID_API4 for cast/credit
+CID_API = os.environ.get('CID_API3') # May need to run from CID_API4 for cast/credit
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 
@@ -108,7 +108,7 @@ def get_folder_title(article, title):
     Match title to folder naming
     '''
 
-    title = title.replace("/","").replace("'","").replace("&", "and").replace("(","").replace(")","")
+    title = title.replace("/","").replace("'","").replace("&", "and").replace("(","").replace(")","").replace("!", "").replace("’", "")
     if article != '-':
         title = f'{article}_{title.replace(" ", "_")}_'
     else:
@@ -380,12 +380,12 @@ def cid_check_works(patv_id):
     except Exception as err:
         priref = ''
     try:
-        title = query_result.records[0]['Title']['title']
+        title = query_result.records[0]['Title'][0]['title'][0]
         print(f"cid_check_works(): Series title: {title}")
     except Exception as err:
         title = ''
     try:
-        title_art = query_result.records[0]['Title']['title.article']
+        title_art = query_result.records[0]['Title'][0]['title.article'][0]
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''
@@ -615,6 +615,7 @@ def main():
 
         # Match AMAZON folder to article/title
         foldertitle = get_folder_title(article, title)
+        print(foldertitle)
         matched_folders = get_folder_match(foldertitle)
         if len(matched_folders) > 1:
             print(f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}")
@@ -623,7 +624,7 @@ def main():
             print(f"No match found: {article} {title}")
             # At some point initiate 'title' search in PATV data
             continue
-
+        continue
         print(f"TITLE MATCH: {article} {title} -- {matched_folders[0]}")
         patv_id = matched_folders[0].split('_')[-1]
 
@@ -694,7 +695,7 @@ def main():
                 LOGGER.warning("Monograph item record creation failed, skipping all further stages")
                 continue
             print(f"PRIREF FOR ITEM: {priref_item}")
-
+            sys.exit()
         elif 'series' in level.lower():
             prog_path = os.path.join(AMAZON, matched_folders[0])
             json_fpaths = get_json_files(prog_path)
@@ -799,7 +800,7 @@ def main():
                     LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
                     continue
                 print(f"PRIREF FOR ITEM: {priref_ep_item}")
-
+                sys.exit()
             if episode_count != int(episode_num):
                 print("============ Episodes found in AMAZON folder do not match total episodes supplied =============")
 
@@ -913,11 +914,11 @@ def build_defaults(data):
     manifestation = ([{'record_type': 'MANIFESTATION'},
                       {'manifestationlevel_type': 'INTERNET'},
                       {'format_high_level': 'Video - Digital'},
-                      {'format_low_level.lref': '400949'},
+                      {'format_low_level.lref': '397457'},
                       {'colour_manifestation': data['colour_manifestation']},
                       {'sound_manifestation': 'SOUN'},
                       {'transmission_date': data['title_date_start']},
-                      {'availability.name.lref': '143463'},
+                      {'availability.name.lref': '999823516'},
                       {'transmission_coverage': 'STR'},
                       {'vod_service_type.lref': '398712'},
                       {'aspect_ratio': '16:9'},
@@ -930,9 +931,9 @@ def build_defaults(data):
              {'copy_usage.lref': '131560'},
              {'file_type.lref': '397457'}, # ProRes MOV 422HQ Interlaced
              {'accession_date': str(datetime.datetime.now())[:10]},
-             {'acquisition.date': data['acquisition_date']}, # JMW Contract date from CSV - CSV needs updating
+             {'acquisition.date': data['acquisition_date']},
              {'acquisition.method.lref': '132853'},
-             {'acquisition.source.lref': '999923912'}, # Amazon Digital UK Ltd
+             {'acquisition.source.lref': '999923912'},
              {'acquisition.source.type': 'DONOR'},
              {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                    'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
@@ -1250,38 +1251,46 @@ def append_url_data(work_priref, man_priref, data=None):
 
     if 'watch_url' in data:
         # Write to manifest
-        payload_mid = f"<URL>{data['watch_url']}</URL><URL.description>Amazon viewing URL</URL.description>"
+        if '/?autoplay' in data['watch_url']:
+            url_trim = data['watch_url'].split('/?autoplay')[0]
+        else:
+            url_trim = data['watch_url']
+        payload_mid = f"<URL>{url_trim}</URL><URL.description>Amazon viewing URL</URL.description>"
         payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
         payload_end = "</URL></record></recordList></adlibXML>"
         payload = payload_head + payload_mid + payload_end
 
         write_lock('manifestations', man_priref)
-        post_response = requests.post(
+        post_response = requests.request(
+            'POST',
             CID_API,
+            headers={'Content-Type': 'text/xml'},
             params={'database': 'manifestations', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data={'data': payload})
+            data=payload)
 
         if "<error><info>" in str(post_response.text):
-            LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", man_priref, post_response.text)
+            LOGGER.warning("append_url_data(): Post of data failed: %s - %s\nFaulty payload: %s", man_priref, post_response.text, payload)
             unlock_record('manifestations', man_priref)
         else:
-            LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", man_priref)
+            LOGGER.info("append_url_data(): Write of access_rendition data appear successful for Priref %s", man_priref)
 
         # Write to work
         payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
         payload = payload_head + payload_mid + payload_end
 
         write_lock('works', work_priref)
-        post_response = requests.post(
+        post_response = requests.request(
+            'POST',
             CID_API,
+            headers={'Content-Type': 'text/xml'},
             params={'database': 'works', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data={'data': payload})
+            data=payload)
 
         if "<error><info>" in str(post_response.text):
-            LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", work_priref, post_response.text)
+            LOGGER.warning("append_url_data(): Post of data failed: %s - %s", work_priref, post_response.text)
             unlock_record('works', work_priref)
         else:
-            LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", work_priref)
+            LOGGER.info("append_url_data(): Write of access_rendition data appear successful for Priref %s", work_priref)
 
 
 def create_item(man_priref, work_title, work_title_art, work_dict, record_defaults, item_default):

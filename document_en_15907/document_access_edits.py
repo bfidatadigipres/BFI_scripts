@@ -156,7 +156,7 @@ def make_item_record_dict(priref, file, record):
         item.append({'language.type': adlib.retrieve_field_name(record, 'language.type')[0]})
 
     item.append({'digital.acquired_filename': file})
-    item.append({'digital.acquired_fileame.type': 'File'})
+    item.append({'digital.acquired_filename.type': 'File'})
     item.append({'file_type': ext})
     item.append({'scan.type': 'Progressive'})
     item.append({'source_item.lref': priref[0]})

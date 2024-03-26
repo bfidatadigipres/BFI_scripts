@@ -57,7 +57,7 @@ LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API') # May need to run from CID_API4 for cast/credit
+CID_API = os.environ.get('CID_API3') # May need to run from CID_API4 for cast/credit
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 
@@ -380,12 +380,12 @@ def cid_check_works(patv_id):
     except Exception as err:
         priref = ''
     try:
-        title = query_result.records[0]['Title']['title']
+        title = query_result.records[0]['Title'][0]['title'][0]
         print(f"cid_check_works(): Series title: {title}")
     except Exception as err:
         title = ''
     try:
-        title_art = query_result.records[0]['Title']['title.article']
+        title_art = query_result.records[0]['Title'][0]['title.article'][0]
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''
@@ -701,6 +701,7 @@ def main():
             series_priref = ''
             # Check CID work exists / Make work if needed
             hits, series_priref, work_title, work_title_art = cid_check_works(patv_id)
+            print(f"Work title found: {work_title}")
             if series_priref.isnumeric():
                 print(f"Series work already exists for {title}.")
             else:
@@ -1272,10 +1273,10 @@ def append_url_data(work_priref, man_priref, data=None):
             data={'data': payload})
 
         if "<error><info>" in str(post_response.text):
-            LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", man_priref, post_response.text)
+            LOGGER.warning("append_url_data(): Post of data failed: %s - %s", man_priref, post_response.text)
             unlock_record('manifestations', man_priref)
         else:
-            LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", man_priref)
+            LOGGER.info("append_url_data(): Write of access_rendition data appear successful for Priref %s", man_priref)
 
         # Write to work
         payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
@@ -1288,10 +1289,10 @@ def append_url_data(work_priref, man_priref, data=None):
             data={'data': payload})
 
         if "<error><info>" in str(post_response.text):
-            LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", work_priref, post_response.text)
+            LOGGER.warning("append_url_data(): Post of data failed: %s - %s", work_priref, post_response.text)
             unlock_record('works', work_priref)
         else:
-            LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", work_priref)
+            LOGGER.info("append_url_data(): Write of access_rendition data appear successful for Priref %s", work_priref)
 
 
 def create_item(man_priref, work_title, work_title_art, work_dict, record_defaults, item_default):

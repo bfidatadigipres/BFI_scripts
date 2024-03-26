@@ -88,6 +88,7 @@ def post(payload, database, method, priref):
             return None
         try:
             response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
+            print(response.text)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
             return None

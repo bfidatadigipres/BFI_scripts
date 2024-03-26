@@ -199,7 +199,7 @@ def add_quality_comments(priref):
     and updaterecord with data
     '''
 
-    comments = 'Viewing copy creted from digital master which has been ingested for access instances. The file may have had adverts, bars and tones cut out, or other fixes applied.'
+    comments = 'Viewing copy created from digital master which has been ingested for access instances. The file may have had adverts, bars and tones cut out, or other fixes applied.'
     date_now = str(datetime.datetime.now())[:10]
 
     p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"

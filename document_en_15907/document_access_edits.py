@@ -185,7 +185,7 @@ def defaults():
                {'copy_status': 'V'},
                {'copy_usage.lref': '131560'},
                {'access_conditions': 'Before reusing BFI National Archive digital collections please ensure the required clearances from copyright holders, contributors or other stakeholders have been obtained for specific use.'},
-               {'access_contitions.date': str(datetime.datetime.now())[:10]}])
+               {'access_conditions.date': str(datetime.datetime.now())[:10]}])
 
     return record
 

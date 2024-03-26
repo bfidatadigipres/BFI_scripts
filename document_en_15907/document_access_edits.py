@@ -89,6 +89,7 @@ def main():
         source_priref = adlib.retrieve_field_name(source_record[0], 'priref')
 
         # Create new Item record
+        print("Going to create new record!")
         new_record = create_new_item_record(source_priref, file, source_record)
         if new_record is None:
             continue
@@ -113,7 +114,7 @@ def create_new_item_record(source_priref, file, source_record):
     '''
     Build new CID item record from existing data and make CID item record
     '''
-    item_dct = make_item_record_dict(source_priref, file, source_record)
+    item_dct = make_item_record_dict(source_priref, file, source_record[0])
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
     new_record = adlib.post(item_xml, 'items', 'insertrecord')
@@ -135,35 +136,34 @@ def make_item_record_dict(priref, file, record):
 
     if 'Title' in str(record):
         title = adlib.retrieve_field_name(record, 'title')
-        item.append({'title': title})
+        item.append({'title': title[0]})
         if 'title.article' in str(record):
-            item.append({'title.article': adlib.retrieve_field_name(record, 'title.article')})
+            item.append({'title.article': adlib.retrieve_field_name(record, 'title.article')[0]})
         item.append({'title.language': 'English'})
         item.append({'title.type': '05_MAIN'})
     else:
         LOGGER.warning("No title data retrieved. Aborting record creation")
         return None
     if 'part_of_reference' in str(record):
-        item.append({'part_of_reference.lref': adlib.retrieve_field_name(record, 'part_of_reference.lref')})
+        item.append({'part_of_reference.lref': adlib.retrieve_field_name(record['Part_of'][0]['part_of_reference'][0], 'priref')[0]})
     else:
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
         return None
     if 'grouping.lref' in str(record):
-        item.append({'grouping.lref': adlib.retrieve_field_name(record, 'grouping.lref')})
+        item.append({'grouping.lref': adlib.retrieve_field_name(record, 'grouping.lref')[0]})
     if 'language' in str(record):
-        item.append({'language': adlib.retrieve_field_name(record, 'language')})
-        item.append({'language.type': adlib.retrieve_field_name(record, 'language.type')})
+        item.append({'language': adlib.retrieve_field_name(record, 'language')[0]})
+        item.append({'language.type': adlib.retrieve_field_name(record, 'language.type')[0]})
 
     item.append({'digital.acquired_filename': file})
     item.append({'digital.acquired_fileame.type': 'File'})
     item.append({'file_type': ext})
     item.append({'scan.type': 'Progressive'})
-    item.append({'source_item.lref': priref})
+    item.append({'source_item.lref': priref[0]})
     item.append({'quality_comments.date': str(datetime.datetime.now())[:10]})
-    item.append({'quality_comments': 'Viewing copy creted from digital master which has been ingested for access instances. \
-                                      The file may have had adverts, bars and tones cut out, or other fixes applied.'})
+    item.append({'quality_comments': 'Viewing copy creted from digital master which has been ingested for access instances. The file may have had adverts, bars and tones cut out, or other fixes applied.'})
     item.append({'quality_comments.writer': 'BFI National Archive'})
-
+    print(f"Item record assembled:\n{item}")
     return item
 
 
@@ -184,8 +184,7 @@ def defaults():
                {'item_type': 'DIGITAL'},
                {'copy_status': 'V'},
                {'copy_usage.lref': '131560'},
-               {'access_conditions': 'Before reusing BFI National Archive digital collections please ensure the required clearances \
-                                      from copyright holders, contributors or other stakeholders have been obtained for specific use.'},
+               {'access_conditions': 'Before reusing BFI National Archive digital collections please ensure the required clearances from copyright holders, contributors or other stakeholders have been obtained for specific use.'},
                {'access_contitions.date': str(datetime.datetime.now())[:10]}])
 
     return record

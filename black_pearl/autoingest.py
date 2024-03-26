@@ -654,11 +654,12 @@ def main():
             fname = os.path.split(fpath)[-1]
 
             # Allow path changes for black_pearl_ingest Netflix
-            if 'ingest/netflix' in fpath:
+            print(fpath)
+            if 'ingest/netflix' in str(fpath):
                 logger.info('%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder')
                 black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_NETFLIX']}")
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
-            if 'ingest/amazon' in fpath:
+            elif 'ingest/amazon' in str(fpath):
                 logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
                 black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"

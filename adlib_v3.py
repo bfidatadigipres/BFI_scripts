@@ -83,9 +83,9 @@ def post(payload, database, method, priref):
         return None
 
     if method == 'updaterecord':
-        lock = _lock(priref, database)
-        if lock is False:
-            return None
+        #lock = _lock(priref, database)
+        #if lock is False:
+        #    return None
         try:
             response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
             print(response.text)
@@ -95,9 +95,9 @@ def post(payload, database, method, priref):
 
         if 'recordList' in response.text:
             records = json.loads(response.text)
-            unlock = _unlock(priref, database)
-            if unlock is False:
-                raise Exception(f"Failed to unlock record following update {priref}")
+        #    unlock = _unlock(priref, database)
+        #    if unlock is False:
+        #        raise Exception(f"Failed to unlock record following update {priref}")
             return records
         return None
 

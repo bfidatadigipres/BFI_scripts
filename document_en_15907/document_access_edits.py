@@ -88,7 +88,7 @@ def main():
             continue
         source_priref = adlib.retrieve_field_name(source_record[0], 'priref')
 
-        # Create new Item record
+        # Create new Item record and append quality comments
         print("Going to create new record!")
         new_record = create_new_item_record(source_priref, file, source_record)
         if new_record is None:
@@ -96,6 +96,11 @@ def main():
         priref = adlib.retrieve_field_name(new_record, 'priref')[0]
         ob_num = adlib.retrieve_field_name(new_record, 'object_number')[0]
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
+        success = add_quality_comments(priref)
+        if not success:
+            LOGGER.warning("Quality comments were not written to record: %s", priref)
+        LOGGER.info("Quality comments added to CID item record %s", priref)
+
         new_fname = f"{ob_num.replace('-', '_')}_01of01.{file.split('.')[-1]}"
         new_fpath = os.path.join(AUTOINGEST, new_fname)
         LOGGER.info("Renaming file:\n%s\n%s", fpath, new_fpath)
@@ -116,7 +121,7 @@ def create_new_item_record(source_priref, file, source_record):
     item_dct = make_item_record_dict(source_priref, file, source_record[0])
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
-    new_record = adlib.post(item_xml, 'items', 'insertrecord')
+    new_record = adlib.post(item_xml, 'items', 'insertrecord', '')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None
@@ -160,9 +165,6 @@ def make_item_record_dict(priref, file, record):
     item.append({'file_type': ext})
     item.append({'scan.type': 'Progressive'})
     item.append({'source_item.lref': priref[0]})
-    item.append({'quality_comments.date': str(datetime.datetime.now())[:10]})
-    item.append({'quality_comments': 'Viewing copy creted from digital master which has been ingested for access instances. The file may have had adverts, bars and tones cut out, or other fixes applied.'})
-    item.append({'quality_comments.writer': 'BFI National Archive'})
     print(f"Item record assembled:\n{item}")
     return item
 
@@ -189,6 +191,33 @@ def defaults():
 
     return record
 
+
+def add_quality_comments(priref):
+    '''
+    Receive list of wav files in folder
+    and make into XML quality comments
+    and updaterecord with data
+    '''
+
+    comments = 'Viewing copy creted from digital master which has been ingested for access instances. \
+                The file may have had adverts, bars and tones cut out, or other fixes applied.'
+    date_now = str(datetime.datetime.now())[:10]
+
+    p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
+    p_comm = f"<quality_comments>{comments}</quality_comments>"
+    p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
+    p_writer = f"<quality_comments.writer>BFI National Archive</quality_comments.writer>"
+    p_end = "</quality_comments></record></recordList></adlibXML>"
+    payload = p_start + p_comm + p_date + p_writer + p_end
+    LOGGER.info("Payload for quality comments: %s", payload)
+
+    update_record = adlib.post(payload, 'items', 'updaterecord', priref)
+    if update_record is True:
+        LOGGER.info("add_quality_comments(): No error returned. Payload written successfully")
+        return True
+    else:
+        return False
+    
 
 if __name__ == '__main__':
     main()

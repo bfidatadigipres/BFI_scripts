@@ -58,7 +58,7 @@ def get(query):
     return dct
 
 
-def post(payload, database, method):
+def post(payload, database, method, priref):
     '''
     Send a POST request
     '''
@@ -68,17 +68,38 @@ def post(payload, database, method):
         'xmltype': 'grouped',
         'output': 'jsonv1'
     }
-
     payload = payload.encode('utf-8')
-    try:
-        response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
-    except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
-        print(err)
+
+    if method == 'insertrecord':
+        try:
+            response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+            print(err)
+            return None
+
+        if 'recordList' in response.text:
+            records = json.loads(response.text)
+            return records['adlibJSON']['recordList']['record'][0]
         return None
 
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        return records['adlibJSON']['recordList']['record'][0]
+    if method == 'updaterecord':
+        lock = _lock(priref, database)
+        if lock is False:
+            return None
+        try:
+            response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+            print(err)
+            return None
+
+        if 'recordList' in response.text:
+            records = json.loads(response.text)
+            unlock = _unlock(priref, database)
+            if unlock is False:
+                raise Exception(f"Failed to unlock record following update {priref}")
+            return records['adlibJSON']['recordList']['record'][0]
+        return None
+
     return None
 
 
@@ -205,3 +226,33 @@ def get_fragments(obj):
             raise TypeError(f'Invalid XML:\n{sub_item}') from err
 
     return data
+
+
+def _lock(priref, database):
+    '''
+    Lock item record for update
+    '''
+    try:
+        response = requests.request(
+            'POST',
+            CID_API,
+            params={'database': database, 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'jsonv1'}
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _unlock(priref, database):
+    '''
+    Unlock item record if failed update
+    '''
+    try:
+        response = requests.request(
+            'POST',
+            CID_API,
+            params={'database': database, 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'jsonv1'},
+        )
+        return True
+    except Exception:
+        return False

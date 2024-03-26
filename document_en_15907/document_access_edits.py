@@ -28,7 +28,7 @@ STORAGE = os.path.join(INGEST, 'access_edits')
 AUTOINGEST = os.path.join(INGEST 'ingest/autodetect')
 LOGS = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API')
+CID_API = os.environ.get('CID_API4')
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 
@@ -57,8 +57,7 @@ def get_source_record(file):
     Get source Item record ob_num from filename
     '''
 
-    source_file = file.split('EDIT_')[1].split('_')[:-1]
-    source_ob_num = '-'.join(source_file)
+    source_ob_num = file.split('EDIT_')[1].split('.')[0]
     search = f"object_number='{source_ob_num}'"
     hits, record = adlib.retrieve_record('items', search, '0', fields=None)
     if hits == 0:

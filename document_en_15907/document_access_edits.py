@@ -93,11 +93,10 @@ def main():
         new_record = create_new_item_record(source_priref, file, source_record)
         if new_record is None:
             continue
-        priref = adlib.retrieve_field_name(new_record, 'priref')
-        ob_num = adlib.retrieve_field_name(new_record, 'object_number')
+        priref = adlib.retrieve_field_name(new_record, 'priref')[0]
+        ob_num = adlib.retrieve_field_name(new_record, 'object_number')[0]
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
-        part_whole = file.split('EDIT_')[1].split('_')[-1]
-        new_fname = f"{ob_num.replace('-', '_')}_{part_whole}"
+        new_fname = f"{ob_num.replace('-', '_')}_01of01.{file.split('.')[-1]}"
         new_fpath = os.path.join(AUTOINGEST, new_fname)
         LOGGER.info("Renaming file:\n%s\n%s", fpath, new_fpath)
 

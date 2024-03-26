@@ -93,8 +93,8 @@ def main():
         new_record = create_new_item_record(source_priref, file, source_record)
         if new_record is None:
             continue
-        priref = adlib.retrieve_field_name(new_record[0], 'priref')
-        ob_num = adlib.retrieve_field_name(new_record[0], 'object_number')
+        priref = adlib.retrieve_field_name(new_record, 'priref')
+        ob_num = adlib.retrieve_field_name(new_record, 'object_number')
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
         part_whole = file.split('EDIT_')[1].split('_')[-1]
         new_fname = f"{ob_num.replace('-', '_')}_{part_whole}"
@@ -121,6 +121,7 @@ def create_new_item_record(source_priref, file, source_record):
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None
+    LOGGER.info("New CID item record created: %s", new_record)
     return new_record
 
 

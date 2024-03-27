@@ -624,7 +624,7 @@ def main():
             print(f"No match found: {article} {title}")
             # At some point initiate 'title' search in PATV data
             continue
-        continue
+
         print(f"TITLE MATCH: {article} {title} -- {matched_folders[0]}")
         patv_id = matched_folders[0].split('_')[-1]
 
@@ -929,7 +929,8 @@ def build_defaults(data):
              {'item_type': 'DIGITAL'},
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
-             {'file_type.lref': '397457'}, # ProRes MOV 422HQ Interlaced
+             {'file_type.lref': '114307'}, # MOV
+             {'code_type.lref': '114308'}, # ProRes 422 (HQ)
              {'accession_date': str(datetime.datetime.now())[:10]},
              {'acquisition.date': data['acquisition_date']},
              {'acquisition.method.lref': '132853'},

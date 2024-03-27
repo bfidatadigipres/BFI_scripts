@@ -26,7 +26,8 @@ Steps:
 6. Create CID records
 7. Append contributors where available
 
-NOTES: Dependency for cast create_contributors()
+NOTES: TEMP SET UP TO EXIT AFTER ONE RECORD GROUP
+       Dependency for cast create_contributors()
        will need review when API updates complete
 
 Joanna White
@@ -607,7 +608,6 @@ def main():
 
         if platform != 'Amazon':
             continue
-
         LOGGER.info("** Processing item: %s %s", article, title)
 
         # Make season number a list
@@ -695,6 +695,7 @@ def main():
                 LOGGER.warning("Monograph item record creation failed, skipping all further stages")
                 continue
             print(f"PRIREF FOR ITEM: {priref_item}")
+            # Temporary creation restriction
             sys.exit()
         elif 'series' in level.lower():
             prog_path = os.path.join(AMAZON, matched_folders[0])
@@ -800,6 +801,7 @@ def main():
                     LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
                     continue
                 print(f"PRIREF FOR ITEM: {priref_ep_item}")
+                # Temporary creation restriction
                 sys.exit()
             if episode_count != int(episode_num):
                 print("============ Episodes found in AMAZON folder do not match total episodes supplied =============")
@@ -914,7 +916,7 @@ def build_defaults(data):
     manifestation = ([{'record_type': 'MANIFESTATION'},
                       {'manifestationlevel_type': 'INTERNET'},
                       {'format_high_level': 'Video - Digital'},
-                      {'format_low_level.lref': '397457'},
+                      {'format_low_level.lref': '395150'}, # Apple ProRes 422 HQ
                       {'colour_manifestation': data['colour_manifestation']},
                       {'sound_manifestation': 'SOUN'},
                       {'transmission_date': data['title_date_start']},

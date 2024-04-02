@@ -109,7 +109,7 @@ def enum_list(creds):
     Change list to dictionary pairs for sort order
     Increments of 5, beginning at 5
     '''
-    n = 5
+    n = 50
     for item in creds:
         yield n, item
         n += 5
@@ -232,7 +232,7 @@ def retrieve_person(credit_list_raw, nfa_cat):
             if str(role) in production.keys():
                 cred_list.append({str(role): credit_list})
 
-    # Convert list to dict {5: {'actor': '..'}, 10: {'actor': '..'}}
+    # Convert list to dict {50: {'actor': '..'}, 55: {'actor': '..'}}
     if len(cast_list) > 0:
         cast_dct = dict(enum_list(cast_list))
     else:
@@ -497,9 +497,6 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
     cred_list.sort()
     cred_dct_sorted = sort_cred_dct(cred_list)
 
-    # Check for additional names in catalogue string for inclusion - DEPRECATED
-    # cast_dct_complete, cred_dct_complete = create_credit_names(cast_dct_sorted, cred_dct_sorted, name_list, nfa_cat, cat_dct)
-
     # Append cast/credit and edit name blocks to work_append_dct
     work_append_dct = []
     work_append_dct.extend(cast_dct_sorted)
@@ -526,100 +523,6 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
         print(f"Work append FAILED!! {priref}")
         LOGGER.info("=============== END document_augmented_streaming_castcred script END ===============\n")
         return False
-
-
-def create_credit_names(cast_dct, cred_dct, name_list, nfa_category, cat_dct):
-    '''
-    DEPRECATED FUNCTION
-    Append additional cast/credit names from
-    catalogue string to credit name fields
-    '''
-    if cast_dct:
-        sort = list(cast_dct)[-3]
-        cast_seq_start = int(sort['cast.sequence'])
-    else:
-        cast_seq_start = 0
-    if cred_dct:
-        sort = list(cred_dct)[-3]
-        cred_seq_start = int(sort['credit.sequence'])
-    else:
-        cred_seq_start = 0
-    cast_dct_update = []
-    cred_dct_update = []
-
-    if 'cast' in cat_dct:
-        if isinstance(cat_dct['cast'], list):
-            cast_list = cat_dct['cast']
-        else:
-            cast_list = cat_dct['cast'].split(',')
-        print(f"List of cast found: {cast_list}")
-        for ident in cast_list:
-            cast_name = firstname_split(ident)
-            if cast_name in name_list:
-                print(f"Skipping {cast_name}, already written to record")
-                continue
-            cast_seq_start += 5
-            cast_dct_update.append({'cast.credit_credited_name': f'{cast_name}'})
-            cast_dct_update.append({'cast.credit_type': 'cast member'})
-            cast_dct_update.append({'cast.sequence': str(cast_seq_start)})
-            cast_dct_update.append({'cast.sequence.sort': f"7300{str(cast_seq_start).zfill(4)}"})
-            cast_dct_update.append({'cast.section': '[normal cast]'})
-    if 'directors' in cat_dct or 'writers' in cat_dct:
-        if 'directors' in cat_dct:
-            if isinstance(cat_dct['directors'], list):
-                cred_list = cat_dct['directors']
-            else:
-                cred_list = cat_dct['directors'].split(',')
-            print(f"Directors found in catalogue data: {cred_list}")
-            for ident in cred_list:
-                cred_name = firstname_split(ident)
-                if cred_name in name_list:
-                    print(f"Skipping {cred_name}, already written to record")
-                    continue
-                cred_seq_start += 5
-                cred_dct_update.append({'credit.credited_name': f'{cred_name}'})
-                cred_dct_update.append({'credit.type': 'Director'})
-                cred_dct_update.append({'credit.sequence': str(cred_seq_start)})
-                cred_dct_update.append({'credit.sequence.sort': f"500{str(cred_seq_start).zfill(4)}"})
-                cred_dct_update.append({'credit.section': '[normal credit]'})
-        if 'writers' in cat_dct and nfa_category == 'F':
-            if isinstance(cat_dct['writers'], list):
-                cred_list = cat_dct['writers']
-            else:
-                cred_list = cat_dct['writers'].split(',')
-            print(f"Writers found in catalogue data: {cred_list}")
-            for ident in cred_list:
-                cred_name = firstname_split(ident)
-                if cred_name in name_list:
-                    print(f"Skipping {cred_name}, already written to record")
-                    continue
-                cred_seq_start += 5
-                cred_dct_update.append({'credit.credited_name': f'{cred_name}'})
-                cred_dct_update.append({'credit.type': 'Screenplay'})
-                cred_dct_update.append({'credit.sequence': str(cred_seq_start)})
-                cred_dct_update.append({'credit.sequence.sort': f"15000{str(cred_seq_start).zfill(4)}"})
-                cred_dct_update.append({'credit.section': '[normal credit]'})
-        elif 'writers' in cat_dct and nfa_category == 'D':
-            if isinstance(cat_dct['writers'], list):
-                cred_list = cat_dct['writers']
-            else:
-                cred_list = cat_dct['writers'].split(',')
-            print(f"Writers found in catalogue data: {cred_list}")
-            for ident in cred_list:
-                cred_name = firstname_split(ident)
-                if cred_name in name_list:
-                    print(f"Skipping {cred_name}, already written to record")
-                    continue
-                cred_seq_start += 5
-                cred_dct_update.append({'credit.credited_name': f'{cred_name}'})
-                cred_dct_update.append({'credit_type': 'Script'})
-                cred_dct_update.append({'credit.sequence': str(cred_seq_start)})
-                cred_dct_update.append({'credit.sequence.sort': f"15500{str(cred_seq_start).zfill(4)}"})
-                cred_dct_update.append({'credit.section': '[normal credit]'})
-
-    cast_dct = cast_dct + cast_dct_update
-    cred_dct = cred_dct + cred_dct_update
-    return cast_dct, cred_dct
 
 
 def sort_cast_dct(cast_list):

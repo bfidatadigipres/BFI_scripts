@@ -35,7 +35,6 @@ import requests
 import yaml
 import tenacity
 from lxml import etree
-import unicodecsv
 
 # Private packages
 from series_retrieve import retrieve
@@ -241,21 +240,18 @@ def series_check(series_id):
                 # Unsure if series description has a medium set - none found
                 try:
                     series_short = lines["summary"]["short"]
-                    # series_short = remove_non_ascii(series_short)
                     series_descriptions.append(series_short)
                 except Exception:
                     series_short = ''
                     series_descriptions.append(series_short)
                 try:
                     series_medium = lines["summary"]["medium"]
-                    # series_medium = remove_non_ascii(series_medium)
                     series_descriptions.append(series_medium)
                 except Exception:
                     series_medium = ''
                     series_descriptions.append(series_medium)
                 try:
                     series_long = lines["summary"]["long"]
-                    # series_long = remove_non_ascii(series_long)
                     series_descriptions.append(series_long)
                 except Exception:
                     series_long = ''
@@ -266,7 +262,6 @@ def series_check(series_id):
                 print(f"series_check(): Series description longest: {series_description}")
                 try:
                     series_title_full = lines["title"]
-                    # series_title_full = remove_non_ascii(series_title_full)
                     print(f"series_check(): Series title full: {series_title_full}")
                 except Exception:
                     series_title_full = ''
@@ -359,9 +354,8 @@ def csv_retrieve(fullpath):
         print("No info.csv file found. Skipping CSV retrieve")
         return None
 
-    with open(fullpath, 'rb') as inf:
-        # rows = unicodecsv.reader(inf, encoding='cp1252')
-        rows = unicodecsv.reader(inf, encoding='utf-8')
+    with open(fullpath, 'rb', encoding='utf-8') as inf:
+        rows = csv.reader(inf)
         for row in rows:
             print(row)
             data = {'channel': row[0], 'title': row[1], 'description': row[2], \
@@ -377,16 +371,7 @@ def csv_retrieve(fullpath):
             csv_dump = f"{csv_chan}, {csv_title}, {csv_desc}, Date start: {csv_date}, Time: {csv_time}, \
                          Duration: {csv_dur}, Actual duration: {csv_act}"
 
-    # csv_dump = remove_non_ascii(csv_dump)
-    # csv_desc = remove_non_ascii(csv_desc)
     return (csv_desc, csv_dump)
-
-
-def remove_non_ascii(var):
-    '''
-    Removes non ascii characters from variables
-    '''
-    return ''.join([i if ord(i) < 128 else ' ' for i in var])
 
 
 def fetch_lines(fullpath, lines):
@@ -419,10 +404,7 @@ def fetch_lines(fullpath, lines):
 
         # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
         title, title_article = split_title(title_for_split)
-        # title = remove_non_ascii(title)
         title = title.replace("\'", "'")
-        # if title_article:
-        #     title_article = remove_non_ascii(title_article)
 
         description = []
         try:

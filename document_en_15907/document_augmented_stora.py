@@ -181,7 +181,7 @@ def find_repeats(asset_id):
     Use asset_id to check in CID for duplicate
     PATV showings of a manifestation
     '''
-    search = f'(alternative_number="{asset_id}" WHEN alternative_number.type="PATV asset id")'
+    search = f'(alternative_number="{asset_id}")'
     priref = ppriref = ''
     query = {'database': 'manifestations',
              'search': search,

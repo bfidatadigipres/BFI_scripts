@@ -768,7 +768,8 @@ def write_lock(person_priref):
 
 def create_payload(priref, known_for, early_life, bio, trivia):
     '''
-    Take string blocks and wrap in xml for appending to CID person record
+    Take string blocks, protect any escape characters using !CDATA
+    and wrap in xml for appending to CID person record
     '''
     payload = []
     payload1, payload2, payload4 = '', '', ''

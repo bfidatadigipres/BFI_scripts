@@ -1261,7 +1261,8 @@ def append_url_data(work_priref, man_priref, data=None):
 
     if 'watch_url' in data:
         # Write to manifest
-        payload_mid = f"<URL>{data['watch_url']}</URL><URL.description>Netflix viewing URL</URL.description>"
+        url = data['watch_url']
+        payload_mid = f"<URL><![CDATA[{url}]]></URL><URL.description>Netflix viewing URL</URL.description>"
         payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
         payload_end = "</URL></record></recordList></adlibXML>"
         payload = payload_head + payload_mid + payload_end

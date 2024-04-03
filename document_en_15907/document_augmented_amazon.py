@@ -1258,7 +1258,7 @@ def append_url_data(work_priref, man_priref, data=None):
             url_trim = data['watch_url'].split('/?autoplay')[0]
         else:
             url_trim = data['watch_url']
-        payload_mid = f"<URL>{url_trim}</URL><URL.description>Amazon viewing URL</URL.description>"
+        payload_mid = f"<URL><![CDATA[{url_trim}]]></URL><URL.description>Amazon viewing URL</URL.description>"
         payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
         payload_end = "</URL></record></recordList></adlibXML>"
         payload = payload_head + payload_mid + payload_end

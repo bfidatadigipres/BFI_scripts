@@ -203,7 +203,7 @@ def add_quality_comments(priref):
     date_now = str(datetime.datetime.now())[:10]
 
     p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
-    p_comm = f"<quality_comments>{comments}</quality_comments>"
+    p_comm = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"
     p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
     p_writer = f"<quality_comments.writer>BFI National Archive</quality_comments.writer>"
     p_end = "</quality_comments></record></recordList></adlibXML>"
@@ -216,7 +216,7 @@ def add_quality_comments(priref):
         return True
     else:
         return False
-    
+
 
 if __name__ == '__main__':
     main()

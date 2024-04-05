@@ -20,12 +20,12 @@ Refactored Py3 2023
 # Public packages
 import os
 import sys
+import csv
 import json
 import shutil
 import logging
 import datetime
 import requests
-import unicodecsv
 from lxml import etree
 
 # Private packages
@@ -98,8 +98,8 @@ def csv_retrieve(fullpath):
         print("No info.csv file found. Skipping CSV retrieve")
         return None
 
-    with open(fullpath, 'rb') as inf:
-        rows = unicodecsv.reader(inf, encoding='latin1')
+    with open(fullpath, 'r', encoding='utf-8') as inf:
+        rows = csv.reader(inf)
         for row in rows:
             print(row)
             data = {'channel': row[0], 'title': row[1], 'description': row[2], \
@@ -107,13 +107,6 @@ def csv_retrieve(fullpath):
             logger.info('%s\tCSV being processed: %s', fullpath, data['title'])
 
     return data
-
-
-def remove_non_ascii(var):
-    '''
-    Removes non ascii characters from variables
-    '''
-    return ''.join([i if ord(i) < 128 else ' ' for i in var])
 
 
 def generate_variables(data):

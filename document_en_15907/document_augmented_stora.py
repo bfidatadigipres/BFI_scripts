@@ -27,6 +27,7 @@ Refactored Py3 2023
 # Public packages
 import os
 import sys
+import csv
 import json
 import shutil
 import logging
@@ -354,7 +355,7 @@ def csv_retrieve(fullpath):
         print("No info.csv file found. Skipping CSV retrieve")
         return None
 
-    with open(fullpath, 'rb', encoding='utf-8') as inf:
+    with open(fullpath, 'r', encoding='utf-8') as inf:
         rows = csv.reader(inf)
         for row in rows:
             print(row)

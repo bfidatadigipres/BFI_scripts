@@ -163,7 +163,7 @@ def make_item_record_dict(priref, file, record):
     item.append({'digital.acquired_filename': file})
     item.append({'digital.acquired_filename.type': 'FILE'})
     item.append({'file_type': ext})
-    item.append({'scan.type': 'Progressive'})
+    item.append({'scan.type': 'PROGRESSIVE'})
     item.append({'source_item.lref': priref[0]})
     print(f"Item record assembled:\n{item}")
     return item

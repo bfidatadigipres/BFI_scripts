@@ -161,7 +161,7 @@ def make_item_record_dict(priref, file, record):
         item.append({'language.type': adlib.retrieve_field_name(record, 'language.type')[0]})
 
     item.append({'digital.acquired_filename': file})
-    item.append({'digital.acquired_filename.type': 'File'})
+    item.append({'digital.acquired_filename.type': 'FILE'})
     item.append({'file_type': ext})
     item.append({'scan.type': 'Progressive'})
     item.append({'source_item.lref': priref[0]})
@@ -186,6 +186,8 @@ def defaults():
                {'item_type': 'DIGITAL'},
                {'copy_status': 'V'},
                {'copy_usage.lref': '131560'},
+               {'creator.lref': '999570701'},
+               {'creator.role.lref': '75250'},
                {'access_conditions': 'Before reusing BFI National Archive digital collections please ensure the required clearances from copyright holders, contributors or other stakeholders have been obtained for specific use.'},
                {'access_conditions.date': str(datetime.datetime.now())[:10]}])
 

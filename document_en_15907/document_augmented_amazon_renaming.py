@@ -167,7 +167,7 @@ def retrieve_metadata(fpath, mfile):
     if '0|eng' in str(audio_spec):
         return 'Audio Description'
     return None
-    
+
 
 def main():
     '''
@@ -316,9 +316,9 @@ def make_item_record_dict(priref, file, ext, record, arg):
     item.append({'related_object.reference.lref': priref})
     item.append({'related_object.notes': f'{arg} for'})
     if 'SDR' in arg:
-        item.append({'file_type.lref': '397457'}) # Unsure how to set file type here also, MOV?
+        item.append({'file_type.lref': '114307'})
     elif 'Audio Description' in arg:
-        item.append({file_type: 'MOV'}) # Unsure how to set file type here - MOV?
+        item.append({'file_type.lref': '114307'})
     if 'acquisition.date' in str(record):
         item.append({'acquisition.date': record[0]['acquisition.date'][0]})
     if 'acquisition.method' in str(record):
@@ -424,14 +424,14 @@ def defaults():
                {'record_access.user': '$REST'},
                {'record_access.rights': '1'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'grouping.lref': '400947'}, # JMW Will need replacing when new grouping made for Amazon
+               {'grouping.lref': '401361'},
                {'language.lref': '74129'},
                {'language.type': 'DIALORIG'},
                {'record_type': 'ITEM'},
                {'item_type': 'DIGITAL'},
                {'copy_status': 'M'},
                {'copy_usage.lref': '131560'},
-               {'file_type.lref': '397457'}, # ProRes 422 HQ Interlaced (can't find progressive)
+               {'file_type.lref': '114307'},
                {'accession_date': str(datetime.datetime.now())[:10]}])
 
     return record

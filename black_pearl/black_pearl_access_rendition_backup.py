@@ -241,6 +241,7 @@ def main():
                     LOGGER.warning("Failed to move file back to STORAGE path. Script exiting!")
                     sys.exit()
             file_list = new_file_list
+            sleep(3600)
 
 
 def put_dir(directory_pth):

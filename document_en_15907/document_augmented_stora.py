@@ -68,8 +68,8 @@ logger.setLevel(logging.INFO)
 TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=1)
 YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
-YEAR_PATH = YESTERDAY_CLEAN[:4]
-# YEAR_PATH = '2023'
+# YEAR_PATH = YESTERDAY_CLEAN[:4]
+YEAR_PATH = '2023'
 STORAGE_PATH = STORAGE + YEAR_PATH + "/"
 
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],
@@ -187,7 +187,7 @@ def find_repeats(asset_id):
              'search': search,
              'limit': '0',
              'output': 'json',
-             'fields': 'priref, object_number, alternative_number.type'}
+             'fields': 'priref, object_number'}
 
     result = cid.get(query)
     if not result:
@@ -195,25 +195,43 @@ def find_repeats(asset_id):
 
     if result.hits == 0:
         return None
-
     try:
         priref = result.records[0]['priref'][0]
     except (IndexError, TypeError, KeyError):
         return None
 
-    print(f"Priref with matching asset_id in CID: {priref}")
-    pquery = {'database': 'manifestations',
-              'search': f'(parts_reference->priref={priref})',
-              'limit': '0',
-              'output': 'json'}
-    presult = cid.get(pquery)
-    try:
-        ppriref = presult.records[0]['priref'][0]
-    except(IndexError, TypeError, KeyError):
-        ppriref = ''
+    query = {'database': 'manifestations',
+             'search': f'(priref="{priref}")',
+             'limit': '0',
+             'output': 'json',
+             'fields': 'priref, object_number, alternative_number.type'}
 
-    if len(ppriref) > 1:
-        return ppriref
+    full_result = cid.get(query)
+    if not full_result:
+        return None
+    try:
+        print(full_result.records[0])
+        alt_num_type = full_result.records[0]['Alternative_number'][0]['alternative_number.type'][0]
+    except (IndexError, TypeError, KeyError):
+        alt_num_type = ''
+
+    print(f"********** Alternative number type: {alt_num_type} ************")
+    if alt_num_type == '':
+        sys.exit()
+    if alt_num_type == 'PATV asset id':
+        print(f"Priref with matching asset_id in CID: {priref}")
+        pquery = {'database': 'manifestations',
+                  'search': f'(parts_reference->priref={priref})',
+                  'limit': '0',
+                  'output': 'json'}
+        presult = cid.get(pquery)
+        try:
+            ppriref = presult.records[0]['priref'][0]
+        except(IndexError, TypeError, KeyError):
+            ppriref = ''
+
+        if len(ppriref) > 1:
+            return ppriref
     else:
         return None
 

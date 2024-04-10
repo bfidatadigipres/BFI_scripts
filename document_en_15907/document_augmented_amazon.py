@@ -361,9 +361,9 @@ def cid_check_works(patv_id):
     priref = ""
     query = {'database': 'works',
              'search': f'alternative_number="{patv_id}"',
-             'limit': '1',
+             'limit': '0',
              'output': 'json',
-             'fields': 'priref, title, title.article'}
+             'fields': 'priref, title, title.article, grouping.lref'}
     try:
         query_result = CID.get(query)
     except Exception as err:
@@ -390,8 +390,16 @@ def cid_check_works(patv_id):
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''
+    groupings = []
+    for num in range(0, hit_count):
+        try:
+            grouping = query_result.records[num]['grouping.lref'][0]
+            print(f"cid_check_works(): Grouping: {grouping}")
+            groupings.append(grouping)
+        except Exception as err:
+            pass
 
-    return hit_count, priref, title, title_art
+    return hit_count, priref, title, title_art, groupings
 
 
 def genre_retrieval(category_code, description, title):
@@ -631,17 +639,19 @@ def main():
         # Create Work/Manifestation if film/programme
         if 'film' in level.lower() or 'programme' in level.lower():
             # Check CID work exists / Make work if needed
-            hits, priref_work, work_title, work_title_art = cid_check_works(patv_id)
+            hits, priref_work, work_title, work_title_art, groupings = cid_check_works(patv_id)
             if int(hits) > 0:
-                print(f"SKIPPING PRIREF FOUND: {priref_work}")
-                LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
-                continue
+                if '401361' in str(groupings):
+                    print(f"SKIPPING PRIREF FOUND: {priref_work}")
+                    LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
+                    continue
             prog_path = os.path.join(AMAZON, matched_folders[0])
 
             print(f"Found priref is for monographic work: {priref_work}")
             if priref_work.isnumeric():
-                print(f"SKIPPING: Monograph work already exists for {title}.")
-                continue
+                if '401361' in str(groupings):
+                    print(f"SKIPPING: Monograph work already exists for {title}.")
+                    continue
             # Retrieve all available
             mono_cat = [ x for x in os.listdir(prog_path) if x.startswith('mono_catalogue_') ]
             mono = [ x for x in os.listdir(prog_path) if x.startswith('monographic_') ]
@@ -695,16 +705,16 @@ def main():
                 LOGGER.warning("Monograph item record creation failed, skipping all further stages")
                 continue
             print(f"PRIREF FOR ITEM: {priref_item}")
-            # Temporary creation restriction
-            sys.exit()
+
         elif 'series' in level.lower():
             prog_path = os.path.join(AMAZON, matched_folders[0])
             json_fpaths = get_json_files(prog_path)
             series_priref = ''
             # Check CID work exists / Make work if needed
-            hits, series_priref, work_title, work_title_art = cid_check_works(patv_id)
+            hits, series_priref, work_title, work_title_art, groupings = cid_check_works(patv_id)
             if series_priref.isnumeric():
-                print(f"Series work already exists for {title}.")
+                if '401361' in str(groupings):
+                    print(f"Series work already exists for {title}.")
             else:
                 print("Series work does not exist, creating series work now.")
                 series_json = [ x for x in os.listdir(prog_path) if x.startswith('series_') and x.endswith('.json')]
@@ -740,11 +750,12 @@ def main():
                 print(f"** Episode ID: {episode_id} {title}")
 
                 # Check CID work exists / Make work if needed
-                hits, priref_episode, _, _ = cid_check_works(episode_id)
+                hits, priref_episode, _, _, groupings = cid_check_works(episode_id)
                 if int(hits) > 0:
-                    print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
-                    LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
-                    continue
+                    if '401361' in str(groupings):
+                        print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
+                        LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
+                        continue
                 print("New episode_id found for Work. Linking to series work")
 
                 # Retrieve all available data
@@ -801,8 +812,7 @@ def main():
                     LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
                     continue
                 print(f"PRIREF FOR ITEM: {priref_ep_item}")
-                # Temporary creation restriction
-                sys.exit()
+
             if episode_count != int(episode_num):
                 print("============ Episodes found in AMAZON folder do not match total episodes supplied =============")
 

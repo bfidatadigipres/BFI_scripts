@@ -2,18 +2,16 @@
 
 '''
 Script to frequently back up
-MP4 proxy files created as part
+MP4 and JPG proxy files created as part
 of autoingest to DPI.
 
 Initially this script is to be
-run with an open modification time
-limitation, but later to be set to
-x amount of days that match when the
-script last ran.
+run with an open modification time but
+later to be set to a given amount of
+days that matches script run frequency.
 
-NOTE: will we need multiple buckets to
-manage all these files? If so dict needed
-to manage the multiple bucket choices
+NOTE: Assuming one bucket will suffice
+      initially, to be expanded if needed.
 
 Joanna White
 2024

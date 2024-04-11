@@ -133,7 +133,7 @@ def move_to_ingest_folder(new_path, file_list):
     folder_size = get_size(INGEST_POINT)
     max_fill_size = UPLOAD_MAX - folder_size
     for fname in file_list:
-        folderpath, file = os.path.split(fpath)
+        file = os.path.split(fpath)[-1]
         fpath = os.path.join(STORAGE, fname)
 
         if not max_fill_size >= 0:
@@ -202,7 +202,7 @@ def main():
         replace_list = []
         for folder in folder_list:
             files = os.listdir(os.path.join(access_path, folder))
-            new_path = os.path.join(INGEST_POINT, folder),
+            new_path = os.path.join(INGEST_POINT, key, folder),
             os.makedirs(new_path, mode=0o777, exist_ok=True)
             for file in files:
                 if not check_mod_time(os.path.join(new_path, file)):
@@ -213,7 +213,7 @@ def main():
                 else:
                     file_list.append(f"{key}/{folder}/file")
                     replace_list.append(f"{key}/{folder}/file")
-        new_path = os.path.join(INGEST_POINT, folder),
+        new_path = os.path.join(INGEST_POINT, key, folder),
         os.makedirs(new_path, mode=0o777, exist_ok=True)
         success_list = delete_existing_proxy(f"{key}/{folder}/", replace_list)
         if success_list == []:

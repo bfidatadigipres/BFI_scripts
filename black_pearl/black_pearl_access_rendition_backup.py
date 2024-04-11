@@ -124,8 +124,7 @@ def move_to_ingest_folder(new_path, file_list):
     '''
     File list to be formatted structured:
     'bfi/202402/filename1', 'bfi/202402/filename2'
-    Runs while loop and moves upto 2TB folder size
-    End when 2TB reached or files run out
+    Runs while loop and moves upto 1TB folder size
     '''
     remove_list = []
     LOGGER.info("move_to_ingest_folder(): %s", INGEST_POINT)
@@ -180,16 +179,10 @@ def main():
     '''
     Search through list of files in folder path
     Check for modification times newer than MOD_MAX
-    Move upto 1TB of files (into folder structures)
-    to INGEST_POINT and PUT to BP bucket. Folders not
-    meeting 1TB max are fine to PUT.
+    Move to INGEST_POINT and PUT to BP bucket.
     Move all contents of folder back to matching
     folder structures. Iterate to next folder path and
     check INGEST_POINT empty for next PUT.
-    Initially running for mod days < 1000, will reduce
-    to match script run time in future, approx 7 days.
-    Need to consider removing duplicates and replacing
-    with newer file versions...
     '''
     for key, value in START_FOLDERS.items():
         access_path = os.path.join(STORAGE, key)
@@ -198,12 +191,14 @@ def main():
         if folder_list[0] != value:
             LOGGER.warning('Problems with retrieved folder list for %s:\n%s', access_path, folder_list)
             continue
+
+        # Iterate folders building lists
         file_list = []
         replace_list = []
         for folder in folder_list:
-            files = os.listdir(os.path.join(access_path, folder))
             new_path = os.path.join(INGEST_POINT, key, folder),
             os.makedirs(new_path, mode=0o777, exist_ok=True)
+            files = os.listdir(os.path.join(access_path, folder))
             for file in files:
                 if not check_mod_time(os.path.join(new_path, file)):
                     LOGGER.info("File %s mod time outside of maximum time %s", file, MOD_MAX)
@@ -213,33 +208,38 @@ def main():
                 else:
                     file_list.append(f"{key}/{folder}/file")
                     replace_list.append(f"{key}/{folder}/file")
-        new_path = os.path.join(INGEST_POINT, key, folder),
-        os.makedirs(new_path, mode=0o777, exist_ok=True)
-        success_list = delete_existing_proxy(f"{key}/{folder}/", replace_list)
-        if success_list == []:
-            LOGGER.info("All repeated files successfully deleted before replacement.")
-        else:
-            LOGGER.warning("Duplicate files remaining in Black Pearl: %s", replace_list)
-        while file_list:
-            empty_check = os.listdir(INGEST_POINT)
-            if len(empty_check) != 0:
-                LOGGER.warning("Exiting: Files in %s", INGEST_POINT)
-                sys.exit()
-            new_file_list = move_to_ingest_folder(new_path, file_list)
-            job_list = put_dir(INGEST_POINT, BUCKET)
-            LOGGER.info("PUT folder confirmation: %s", job_list)
-            LOGGER.info("PUT items:\n%s", file_list)
-            for entry in file_list:
-                if entry in new_file_list:
-                    continue
-                shutil.move(os.path.join(INGEST_POINT, entry), os.path.join(STORAGE, entry))
-                if os.path.isfile(os.path.join(STORAGE, entry)):
-                    LOGGER.info("Moved ingested file back to QNAP-11 storage path.")
+
+            # Delete existing versions if being replaced
+            if replace_list:
+                success_list = delete_existing_proxy(f"{key}/{folder}/", replace_list)
+                if success_list == []:
+                    LOGGER.info("All repeated files successfully deleted before replacement.")
                 else:
-                    LOGGER.warning("Failed to move file back to STORAGE path. Script exiting!")
+                    LOGGER.warning("Duplicate files remaining in Black Pearl: %s", success_list)
+
+            # While files remaing in list, move to ingest folder, PUT, and remove again
+            while file_list:
+                empty_check = os.listdir(INGEST_POINT)
+                if len(empty_check) != 0:
+                    LOGGER.warning("Exiting: Files in %s", INGEST_POINT)
                     sys.exit()
-            file_list = new_file_list
-            sleep(3600)
+                # Returns list of items not moved to ingest point
+                new_file_list = move_to_ingest_folder(new_path, file_list)
+                job_list = put_dir(INGEST_POINT, BUCKET)
+                LOGGER.info("PUT folder confirmation: %s", job_list)
+                LOGGER.info("PUT items:\n%s", file_list)
+                for entry in file_list:
+                    if entry in new_file_list:
+                        continue
+                    shutil.move(os.path.join(INGEST_POINT, entry), os.path.join(STORAGE, entry))
+                    if os.path.isfile(os.path.join(STORAGE, entry)):
+                        LOGGER.info("Moved ingested file back to QNAP-11 storage path.")
+                    else:
+                        LOGGER.warning("Failed to move file back to STORAGE path. Script exiting!")
+                        sys.exit()
+                file_list = new_file_list
+                # Sleep duration to be discussed, to ease load on Black Pearl
+                sleep(3600)
 
 
 def put_dir(directory_pth):

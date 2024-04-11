@@ -102,14 +102,14 @@ def check_mod_time(fpath):
     if time_delta.days > MOD_MAX:
         return False
     return True
-    
+
 
 def check_bp_status(fname):
     '''
     Look up filename in BP buckets
     to avoid multiple ingest of files
     '''
-    
+
     query = ds3.HeadObjectRequest(BUCKET, fname)
     result = CLIENT.head_object(query)
     # Only return false if DOESNTEXIST is missing, eg file found

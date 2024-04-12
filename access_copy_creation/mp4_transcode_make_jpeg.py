@@ -668,9 +668,9 @@ def get_height(fullpath):
         return '720'
     if '1080' == height or '1 080' == height:
         return '1080'
-    else:
-        height = height.split(' pixel', maxsplit=1)[0]
-        return re.sub("[^0-9]", "", height)
+
+    height = height.split(' pixel', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", height)
 
 
 def get_width(fullpath):
@@ -698,12 +698,11 @@ def get_width(fullpath):
         return '1280'
     if '1920' == width or '1 920' == width:
         return '1920'
-    else:
-        if width.isdigit():
-            return str(width)
-        else:
-            width = width.split(' p', maxsplit=1)[0]
-            return re.sub("[^0-9]", "", width)
+    if width.isdigit():
+        return str(width)
+    
+    width = width.split(' p', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", width)
 
 
 def check_for_mixed_audio(fpath):
@@ -821,7 +820,7 @@ def check_audio(fullpath):
     audio = str(audio)
 
     if len(audio) == 0:
-        return None, None
+        return None, None, None
 
     try:
         lang0 = subprocess.check_output(cmd0)

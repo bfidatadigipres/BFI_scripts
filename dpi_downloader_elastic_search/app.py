@@ -38,9 +38,6 @@ else:
 DBASE = os.environ['DATABASE_NEWS_PRESERVATION']
 CONNECT = sqlite3.connect(DBASE)
 CONNECT.execute('CREATE TABLE IF NOT EXISTS DOWNLOADS (name TEXT, email TEXT, preservation_date TEXT, channel TEXT, status TEXT, date TEXT)')
-TODAY = str(datetime.date.today())
-YESTERDAY = datetime.date.today() - datetime.timedelta(days=1)
-YEST = str(YESTERDAY)
 
 
 def date_gen(date_str):
@@ -60,7 +57,8 @@ def check_date_range(preservation_date):
     and that the file is not today
     '''
     date_range = []
-    period = itertools.islice(date_gen(TODAY), 14)
+    today_date = str(datetime.date.today())
+    period = itertools.islice(date_gen(today_date), 14)
     for dt in period:
         date_range.append(dt.strftime('%Y-%m-%d'))
 

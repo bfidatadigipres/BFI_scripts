@@ -20,12 +20,12 @@ Refactored Py3 2023
 # Public packages
 import os
 import sys
+import csv
 import json
 import shutil
 import logging
 import datetime
 import requests
-import unicodecsv
 from lxml import etree
 
 # Private packages
@@ -98,8 +98,8 @@ def csv_retrieve(fullpath):
         print("No info.csv file found. Skipping CSV retrieve")
         return None
 
-    with open(fullpath, 'rb') as inf:
-        rows = unicodecsv.reader(inf, encoding='latin1')
+    with open(fullpath, 'r', encoding='utf-8') as inf:
+        rows = csv.reader(inf)
         for row in rows:
             print(row)
             data = {'channel': row[0], 'title': row[1], 'description': row[2], \
@@ -107,13 +107,6 @@ def csv_retrieve(fullpath):
             logger.info('%s\tCSV being processed: %s', fullpath, data['title'])
 
     return data
-
-
-def remove_non_ascii(var):
-    '''
-    Removes non ascii characters from variables
-    '''
-    return ''.join([i if ord(i) < 128 else ' ' for i in var])
 
 
 def generate_variables(data):
@@ -129,22 +122,33 @@ def generate_variables(data):
     title_date_start = data['title_date_start']
     time = data['time']
 
-    broadcast_company = ''
+    broadcast_company = code_type = ''
     if 'BBC' in channel or 'CBeebies' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '454'
     if 'ITV' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '20425'
-    if channel in ('More4', 'Film4', 'Channel 4', 'E4'):
+    if channel == 'More4' or channel == 'Film4' or channel == 'E4':
+        code_type = 'MPEG-2'
+        broadcast_company = '73319'
+    if channel == 'Channel4':
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '73319'
     if '5' in channel or 'Five' in channel:
+        code_type = 'MPEG-2'
         broadcast_company = '24404'
     if 'Al Jazeera' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '125338'
     if 'GB News' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '999831694'
     if 'Sky News' in channel:
+        code_type = 'MPEG-2'
         broadcast_company = '78200'
     if 'Talk TV' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '999883795'
 
     duration = data['duration']
@@ -160,10 +164,10 @@ def generate_variables(data):
     actual_duration_total = (actual_duration_hours_integer * 60) + actual_duration_minutes_integer
     actual_duration_seconds_integer = int(actual_duration_seconds)
 
-    return (title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company)
+    return (title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company, code_type)
 
 
-def build_defaults(title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company):
+def build_defaults(title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company, code_type):
     '''
     Get detailed information
     and build record_defaults dict
@@ -222,7 +226,7 @@ def build_defaults(title, description, title_date_start, time, duration_total, a
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
              {'file_type': 'MPEG-TS'},
-             {'code_type': 'MPEG-2'},
+             {'code_type': code_type},
              {'source_device': 'STORA'},
              {'acquisition.method': 'Off-Air'}])
 
@@ -266,6 +270,7 @@ def main():
             actual_duration_seconds_integer = var_data[6]
             channel = var_data[7]
             broadcast_company = var_data[8]
+            code_type = var_data[9]
             acquired_filename = os.path.join(root, 'stream.mpeg2.ts')
 
             # Create defaults for all records in hierarchy
@@ -278,7 +283,8 @@ def main():
                                                                      actual_duration_total,
                                                                      actual_duration_seconds_integer,
                                                                      channel,
-                                                                     broadcast_company)
+                                                                     broadcast_company,
+                                                                     code_type)
 
             # create a Work-Manifestation CID record hierarchy
             work_id = create_work(fullpath, title, record, work, work_restricted)

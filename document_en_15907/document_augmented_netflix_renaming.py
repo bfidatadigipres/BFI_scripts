@@ -57,7 +57,7 @@ sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global variables
-STORAGE_PTH = os.environ.get('NETFLIX_INGEST_PTH')
+STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
 NETFLIX_PTH = os.environ.get('NETFLIX_PATH')
 NET_INGEST = os.environ.get('NETFLIX_INGEST')
 AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
@@ -69,14 +69,6 @@ CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API')
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
-
-# Date variables
-TODAY = datetime.date.today()
-TWO_WEEKS = TODAY - datetime.timedelta(days=14)
-START = f"{TWO_WEEKS.strftime('%Y-%m-%d')}T00:00:00"
-END = f"{TODAY.strftime('%Y-%m-%d')}T23:59:00"
-TITLE_DATA = ''
-UPDATE_AFTER = '2022-07-01T00:00:00'
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_netflix_renaming')

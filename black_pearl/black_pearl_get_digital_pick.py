@@ -41,6 +41,7 @@ import csv
 import json
 import hashlib
 import logging
+from xml.sax.saxutils import escape
 from datetime import datetime, timedelta
 import requests
 from ds3 import ds3, ds3Helpers
@@ -70,6 +71,7 @@ FMT = "%Y-%m-%d"
 FORMAT = "%Y-%m-%d %H:%M:%S"
 TODAY = datetime.strftime(datetime.now(), FORMAT)
 CONTROL_JSON = os.environ['CONTROL_JSON']
+HEADERS = {'Content-Type': 'text/xml'}
 
 # Set up logging
 LOGGER = logging.getLogger('bp_get_digital_pick')
@@ -604,8 +606,9 @@ def build_payload(priref, data, today):
     '''
     Build payload info to write to Workflow record
     '''
+    cleaned_data = escape(data)
     payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_addition = f"<request.details>DPI Download completed {today}. {data}</request.details>"
+    payload_addition = f"<request.details>DPI Download completed {today}. {cleaned_data}</request.details>"
     payload_edit = f"<edit.name>{USERNAME}</edit.name><edit.date>{today[:10]}</edit.date><edit.time>{today[11:]}</edit.time>"
     payload_end = "</record></recordList></adlibXML>"
     return payload_head + payload_addition + payload_edit + payload_end
@@ -616,9 +619,11 @@ def write_payload(priref, payload):
     Recieve header, payload and priref and write
     to CID workflow record
     '''
-    post_response = requests.post(
+    post_response = requests.request(
+        'POST',
         CID_API,
-        params={'database': 'workflow', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
+        headers=HEADERS
+        params={'command': 'updaterecord', 'database': 'workflow', 'xmltype': 'grouped', 'output': 'json'},
         data={'data': payload}
     )
     print("write_payload() response:")

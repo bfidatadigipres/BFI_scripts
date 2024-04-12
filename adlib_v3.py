@@ -9,7 +9,6 @@ Joanna White
 '''
 
 import os
-import sys
 import json
 from lxml import etree, html
 import requests
@@ -37,7 +36,7 @@ def retrieve_record(database, search, limit, fields=None):
         query['fields'] = field_str
 
     record = get(query)
-    if not 'recordList' in str(record):
+    if 'recordList' not in str(record):
         return (record['adlibJSON']['diagnostic']['hits'], None)
 
     hits = len(record['adlibJSON']['recordList']['record'])
@@ -50,16 +49,16 @@ def get(query):
     '''
 
     try:
-       req = requests.request('GET', CID_API, headers=HEADERS, params=query)
-       dct = json.loads(req.text)
+        req = requests.request('GET', CID_API, headers=HEADERS, params=query)
+        dct = json.loads(req.text)
     except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
-       print(err)
-       dct = {}
+        print(err)
+        dct = {}
 
     return dct
 
 
-def post(self, params=None, payload=False, sync=True):
+def post(payload, database, method, priref):
     '''
     Send a POST request
     '''
@@ -69,17 +68,31 @@ def post(self, params=None, payload=False, sync=True):
         'xmltype': 'grouped',
         'output': 'jsonv1'
     }
-
     payload = payload.encode('utf-8')
-    try:
-        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
-    except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
-        print(err)
-        return None
 
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        return records['adlibJSON']['recordList']['record'][0]
+    if method == 'insertrecord':
+        try:
+            response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+            print(err)
+            return None
+
+        if 'recordList' in response.text:
+            records = json.loads(response.text)
+            return records['adlibJSON']['recordList']['record'][0]
+
+    if method == 'updaterecord':
+        try:
+            response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
+            print(response.text)
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+            print(err)
+            return None
+
+        if 'recordList' in response.text:
+            records = json.loads(response.text)
+            return records
+
     return None
 
 
@@ -125,20 +138,19 @@ def group_check(record, fname):
                         print(f"Failed to extract value: {val}")
                         return None
     elif len(group_check) > 1:
-        all_keys = []
         all_vals = []
         for kname in group_check:
             for key, val in group_check[f'{kname}'][0].items():
                 if key == fname:
-                    dx = {}
-                    dx[fname] = val
-                    all_vals.append(dx)
+                    dictionary = {}
+                    dictionary[fname] = val
+                    all_vals.append(dictionary)
         if len(all_vals) == 1:
             if '@lang' in str(all_vals):
                 try:
                     return all_vals[0][fname][0]['value'][0]['spans'][0]['text']
                 except KeyError:
-                    print(f"Failed to extract value: {all_val}")
+                    print(f"Failed to extract value: {all_vals}")
                     return None
             else:
                 try:
@@ -204,8 +216,7 @@ def get_fragments(obj):
                 xml = etree.fromstring(etree.tostring(itm))
                 data.append(etree.tostring(xml))
         except Exception as err:
-            raise TypeError(f'Invalid XML:\n{s}') from err
+            raise TypeError(f'Invalid XML:\n{sub_item}') from err
 
     return data
-
 

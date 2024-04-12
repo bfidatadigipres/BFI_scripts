@@ -59,7 +59,6 @@ import json
 import hashlib
 import logging
 import itertools
-import subprocess
 from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError
@@ -424,6 +423,10 @@ def main():
                 LOGGER.warning("Filename is a Netflix item and will not be downloaded")
                 update_table(user_id, 'Filename not accessible')
                 continue
+            if 'amazon' in bucket:
+                LOGGER.warning("Filename is an Amazon item and will not be downloaded")
+                update_table(user_id, 'Filename not accessible')
+                continue
             LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)
 
             # Check if download already exists
@@ -527,7 +530,7 @@ def main():
             update_table(user_id, 'Pointer file found no digital media records')
             LOGGER.warning("CID item number supplied in pointer file have no associated CID digital media records: %s", pointer_dct)
             continue
-        # update_table(user_id, 'Processing bulk request')
+        download_failures = []
         for key, value in pointer_dct.items():
             media_priref = key
             print(key)
@@ -561,9 +564,13 @@ def main():
                         download_job_id = download_bp_object(filename, download_fpath, bucket)
                         if download_job_id == '404':
                             LOGGER.warning("Download of file %s failed. File not found in Black Pearl tape library.", filename)
+                            update_table(user_id, f'Unable to download {filename} in batch')
+                            download_failures.append(f"CID media priref: {media_priref} - Filename: {filename}")
                             continue
                         elif not download_job_id:
-                            LOGGER.warning("Download of file %s failed. Resetting download status and script exiting.", filename)
+                            LOGGER.warning("Download of file %s failed. Attempting to download next item in queue", filename)
+                            update_table(user_id, f'Unable to download {filename} in batch')
+                            download_failures.append(f"CID media priref: {media_priref} - Filename: {filename}")
                             continue
                         LOGGER.info("Downloaded file retrieved successfully. Job ID: %s", download_job_id)
                         if str(orig_fname).strip() != str(filename).strip():
@@ -592,13 +599,19 @@ def main():
                         LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                         os.remove(new_fpath)
                     files_processed[orig_fname] = f"{trans}"
-
         # Send notification email
-        if len(files_processed) == 0:
+        if len(files_processed) == 0 and len(download_failures) > 0:
+            LOGGER.warning("Files failed to download: %s", download_failures)
+            send_email_failures_bulk(email, download_fpath, download_failures)
+            update_table(user_id, "All downloads failed. Please see email for details")
             continue
         LOGGER.info("Files processed: %s", files_processed)
-        send_email_update_bulk(email, download_fpath, files_processed)
-        update_table(user_id, "Bulk download complete. See email for details")
+        send_email_update_bulk(email, download_fpath, files_processed, download_failures)
+        if len(download_failures) > 0:
+            LOGGER.warning("Files failed to process: %s", download_failures)
+            update_table(user_id, "Some items failed to download. See email for successful downloads")
+        else:
+            update_table(user_id, "Bulk download complete. See email for details")
 
     LOGGER.info("================ DPI DOWNLOAD REQUESTS COMPLETED. Date: %s =================\n", datetime.now().strftime(FMT)[:19])
 
@@ -765,7 +778,7 @@ Digital Preservation team'''
             LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
 
 
-def send_email_update_bulk(email, download_fpath, files_processed):
+def send_email_update_bulk(email, download_fpath, files_processed, failure_list):
     '''
     Update user that their item has been
     downloaded, with path, folder and
@@ -798,6 +811,7 @@ def send_email_update_bulk(email, download_fpath, files_processed):
         elif value == 'no_transcode':
             file_list.append(f"{key}. No transcode was requested for this download.")
 
+    num_failed = len(failure_list)
     name_extracted = email.split('.')[0]
     subject = 'DPI bulk file download request completed'
     data = '\n'.join(file_list)
@@ -806,12 +820,59 @@ Hello {name_extracted.title()},
 
 Your DPI bulk download request has completed for your files. If you selected a download and transcode option for a new file then the downloaded item will have been deleted and only the transcoded file will remain.
 
+There were {num_failed} failed downloads in your bulk request.
+
 The files were downloaded to the DPI location that you specified:
 {download_fpath}
 
 {data}
 
 If there are problems with the files, please raise an issue in the BFI Collections Systems Service Desk:
+https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1
+
+This is an automated notification, please do not reply to this email.
+
+Thank you,
+Digital Preservation team'''
+
+    send_mail = EmailMessage()
+    send_mail['From'] = EMAIL_SENDER
+    send_mail['To'] = email
+    send_mail['Subject'] = subject
+    send_mail.set_content(body)
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
+        try:
+            smtp.login(EMAIL_SENDER, EMAIL_PSWD)
+            smtp.sendmail(EMAIL_SENDER, email, send_mail.as_string())
+            LOGGER.info("Email notification sent to %s", email)
+        except Exception as exc:
+            LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
+
+
+def send_email_failures_bulk(email, download_fpath, failed_downloads):
+    '''
+    Update user that their item has failed
+    to download, with path, folder and
+    filenames of failed items
+    '''
+    from email.message import EmailMessage
+    import ssl
+    import smtplib
+
+    name_extracted = email.split('.')[0]
+    subject = 'FAILED: DPI bulk file download request'
+    data = '\n'.join(failed_downloads)
+    body = f'''
+Hello {name_extracted.title()},
+
+I'm afraid your DPI bulk download request has failed. None of your items could be downloaded to your specified path:
+{download_fpath}
+
+Failed file details:
+{data}
+
+Please raise an issue in the BFI Collections Systems Service Desk:
 https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1
 
 This is an automated notification, please do not reply to this email.

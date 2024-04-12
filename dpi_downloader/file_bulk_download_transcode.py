@@ -45,6 +45,8 @@ Single:
 9. Sends notification email to user who requested download
    with unique transcode message when complete.
 
+Blocks download from 'netflix' or 'amazon' buckets.
+
 Joanna White
 2023
 '''
@@ -396,8 +398,8 @@ def main():
                 LOGGER.warning("Filename is not recognised, no matching CID Media record")
                 update_table(fname, transcode, 'Filename not in CID')
                 continue
-            if 'netflix' in bucket:
-                LOGGER.warning("Filename is a Netflix item and will not be downloaded")
+            if 'netflix' in str(bucket) or 'amazon' in str(bucket):
+                LOGGER.warning("Filename is a Netflix/Amazon item and will not be downloaded")
                 update_table(fname, transcode, 'Filename not accessible')
                 continue
             LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)
@@ -483,8 +485,8 @@ def main():
                         if not len(filename) > 0:
                             LOGGER.warning("Filename is not recognised, no matching CID Media record")
                             continue
-                        if 'Netflix' in bucket:
-                            LOGGER.warning("Filename is a Netflix item and will not be downloaded")
+                        if 'netflix' in str(bucket) or 'amazon' in str(bucket):
+                            LOGGER.warning("Filename is a Netflix/Amazon item and will not be downloaded")
                             update_table(fname, transcode, 'Filename not accessible')
                             continue
                         LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)

@@ -161,8 +161,8 @@ def main():
     completed_pth = os.path.join(os.path.split(filepath)[0], 'completed/', file)
 
     log_build.append(f"{local_time()}\tINFO\t================== START Transcode MP4 make JPEG {file} {HOST} ==================")
-
     print(f"File to be processed: {file}. Completed path: {completed_pth}")
+
     outpath, outpath2 = "", ""
 
     ext = ext.lstrip('.')

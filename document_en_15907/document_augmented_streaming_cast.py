@@ -4,7 +4,7 @@
 Script to create People records from EPG metadata
 dict and attach to existing CID Work records
 
-1. Receive EPG dictionary from augmented Netflix script
+1. Receive EPG dictionary from augmented streaming platform scripts
    plus work priref and nfa_category
    - Extract contributor data from EPG metadata
 2. Look in CID for matching people PATV IDs person dB
@@ -42,8 +42,8 @@ CID_API = os.environ['CID_API3']
 CID_API2 = os.environ['CID_API4']
 
 # Setup logging
-LOGGER = logging.getLogger('document_netflix_castcred')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'document_netflix_castcred.log'))
+LOGGER = logging.getLogger('document_streaming_castcred')
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'document_streaming_castcred.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -109,7 +109,7 @@ def enum_list(creds):
     Change list to dictionary pairs for sort order
     Increments of 5, beginning at 5
     '''
-    n = 5
+    n = 50
     for item in creds:
         yield n, item
         n += 5
@@ -232,7 +232,7 @@ def retrieve_person(credit_list_raw, nfa_cat):
             if str(role) in production.keys():
                 cred_list.append({str(role): credit_list})
 
-    # Convert list to dict {5: {'actor': '..'}, 10: {'actor': '..'}}
+    # Convert list to dict {50: {'actor': '..'}, 55: {'actor': '..'}}
     if len(cast_list) > 0:
         cast_dct = dict(enum_list(cast_list))
     else:
@@ -272,12 +272,13 @@ def cid_person_check(credit_id):
     return (priref, name, activity_type)
 
 
-def cid_work_check(search):
+def cid_work_check(search, platform):
     '''
     Retrieve CID work record priref where search matches
     '''
     prirefs = []
     edit_names = []
+    platform = platform.title()
 
     query = {'database': 'works',
              'search': search,
@@ -303,7 +304,7 @@ def cid_work_check(search):
         except (KeyError, IndexError):
             edit_name = ''
 
-        if 'Netflix metadata integration - automated bulk documentation' in str(input_note):
+        if f'{platform} metadata integration - automated bulk documentation' in str(input_note):
             prirefs.append(priref)
             edit_names.append(edit_name)
 
@@ -333,7 +334,7 @@ def cid_manifestation_check(priref):
     return start_time
 
 
-def create_contributors(priref, nfa_cat, credit_list):
+def create_contributors(priref, nfa_cat, credit_list, platform):
     '''
     Iterate dct extracting cast/credit and other metadata
     Check in CID for existing People records and extract priref
@@ -344,7 +345,7 @@ def create_contributors(priref, nfa_cat, credit_list):
     if not credit_list:
         return None
 
-    LOGGER.info("============= START document_aug_netflix_castcred script START =============")
+    LOGGER.info("============= START document_augmented_streaming_castcred script START =============")
     LOGGER.info("Retrieved contributors for priref %s", priref)
 
     # Get people data
@@ -496,9 +497,6 @@ def create_contributors(priref, nfa_cat, credit_list):
     cred_list.sort()
     cred_dct_sorted = sort_cred_dct(cred_list)
 
-    # Check for additional names in catalogue string for inclusion - DEPRECATED
-    # cast_dct_complete, cred_dct_complete = create_credit_names(cast_dct_sorted, cred_dct_sorted, name_list, nfa_cat, cat_dct)
-
     # Append cast/credit and edit name blocks to work_append_dct
     work_append_dct = []
     work_append_dct.extend(cast_dct_sorted)
@@ -514,111 +512,17 @@ def create_contributors(priref, nfa_cat, credit_list):
     work_append(priref, work_append_dct)
     LOGGER.info("Checking work_append_dct written to CID Work record")
 
-    edit_name = cid_work_check(f"priref='{priref}'")[1]
+    edit_name = cid_work_check(f"priref='{priref}'", platform)[1]
     if 'datadigipres' in str(edit_name):
         print(f"Work appended successful! {priref}")
         LOGGER.info("Successfully appended additional cast credit EPG metadata to Work record %s\n", priref)
-        LOGGER.info("=============== END document_aug_netflix_castcred script END ===============\n")
+        LOGGER.info("=============== END document_augmented_streaming_castcred script END ===============\n")
         return (cast_dct, cred_dct)
     else:
         LOGGER.warning("Writing EPG cast credit metadata to Work %s failed\n", priref)
         print(f"Work append FAILED!! {priref}")
-        LOGGER.info("=============== END document_aug_netflix_castcred script END ===============\n")
+        LOGGER.info("=============== END document_augmented_streaming_castcred script END ===============\n")
         return False
-
-
-def create_credit_names(cast_dct, cred_dct, name_list, nfa_category, cat_dct):
-    '''
-    DEPRECATED FUNCTION
-    Append additional cast/credit names from
-    catalogue string to credit name fields
-    '''
-    if cast_dct:
-        sort = list(cast_dct)[-3]
-        cast_seq_start = int(sort['cast.sequence'])
-    else:
-        cast_seq_start = 0
-    if cred_dct:
-        sort = list(cred_dct)[-3]
-        cred_seq_start = int(sort['credit.sequence'])
-    else:
-        cred_seq_start = 0
-    cast_dct_update = []
-    cred_dct_update = []
-
-    if 'cast' in cat_dct:
-        if isinstance(cat_dct['cast'], list):
-            cast_list = cat_dct['cast']
-        else:
-            cast_list = cat_dct['cast'].split(',')
-        print(f"List of cast found: {cast_list}")
-        for ident in cast_list:
-            cast_name = firstname_split(ident)
-            if cast_name in name_list:
-                print(f"Skipping {cast_name}, already written to record")
-                continue
-            cast_seq_start += 5
-            cast_dct_update.append({'cast.credit_credited_name': f'{cast_name}'})
-            cast_dct_update.append({'cast.credit_type': 'cast member'})
-            cast_dct_update.append({'cast.sequence': str(cast_seq_start)})
-            cast_dct_update.append({'cast.sequence.sort': f"7300{str(cast_seq_start).zfill(4)}"})
-            cast_dct_update.append({'cast.section': '[normal cast]'})
-    if 'directors' in cat_dct or 'writers' in cat_dct:
-        if 'directors' in cat_dct:
-            if isinstance(cat_dct['directors'], list):
-                cred_list = cat_dct['directors']
-            else:
-                cred_list = cat_dct['directors'].split(',')
-            print(f"Directors found in catalogue data: {cred_list}")
-            for ident in cred_list:
-                cred_name = firstname_split(ident)
-                if cred_name in name_list:
-                    print(f"Skipping {cred_name}, already written to record")
-                    continue
-                cred_seq_start += 5
-                cred_dct_update.append({'credit.credited_name': f'{cred_name}'})
-                cred_dct_update.append({'credit.type': 'Director'})
-                cred_dct_update.append({'credit.sequence': str(cred_seq_start)})
-                cred_dct_update.append({'credit.sequence.sort': f"500{str(cred_seq_start).zfill(4)}"})
-                cred_dct_update.append({'credit.section': '[normal credit]'})
-        if 'writers' in cat_dct and nfa_category == 'F':
-            if isinstance(cat_dct['writers'], list):
-                cred_list = cat_dct['writers']
-            else:
-                cred_list = cat_dct['writers'].split(',')
-            print(f"Writers found in catalogue data: {cred_list}")
-            for ident in cred_list:
-                cred_name = firstname_split(ident)
-                if cred_name in name_list:
-                    print(f"Skipping {cred_name}, already written to record")
-                    continue
-                cred_seq_start += 5
-                cred_dct_update.append({'credit.credited_name': f'{cred_name}'})
-                cred_dct_update.append({'credit.type': 'Screenplay'})
-                cred_dct_update.append({'credit.sequence': str(cred_seq_start)})
-                cred_dct_update.append({'credit.sequence.sort': f"15000{str(cred_seq_start).zfill(4)}"})
-                cred_dct_update.append({'credit.section': '[normal credit]'})
-        elif 'writers' in cat_dct and nfa_category == 'D':
-            if isinstance(cat_dct['writers'], list):
-                cred_list = cat_dct['writers']
-            else:
-                cred_list = cat_dct['writers'].split(',')
-            print(f"Writers found in catalogue data: {cred_list}")
-            for ident in cred_list:
-                cred_name = firstname_split(ident)
-                if cred_name in name_list:
-                    print(f"Skipping {cred_name}, already written to record")
-                    continue
-                cred_seq_start += 5
-                cred_dct_update.append({'credit.credited_name': f'{cred_name}'})
-                cred_dct_update.append({'credit_type': 'Script'})
-                cred_dct_update.append({'credit.sequence': str(cred_seq_start)})
-                cred_dct_update.append({'credit.sequence.sort': f"15500{str(cred_seq_start).zfill(4)}"})
-                cred_dct_update.append({'credit.section': '[normal credit]'})
-
-    cast_dct = cast_dct + cast_dct_update
-    cred_dct = cred_dct + cred_dct_update
-    return cast_dct, cred_dct
 
 
 def sort_cast_dct(cast_list):
@@ -864,7 +768,8 @@ def write_lock(person_priref):
 
 def create_payload(priref, known_for, early_life, bio, trivia):
     '''
-    Take string blocks and wrap in xml for appending to CID person record
+    Take string blocks, protect any escape characters using !CDATA
+    and wrap in xml for appending to CID person record
     '''
     payload = []
     payload1, payload2, payload4 = '', '', ''

@@ -43,7 +43,8 @@ import adlib
 CURATORIAL_PATH = os.environ['IS_CURATORIAL']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-DIGIOPS_PATH = os.path.join(os.environ['QNAP_11_DIGIOPS'], 'Acquisitions/Curatorial/')
+# DIGIOPS_PATH = os.path.join(os.environ['QNAP_11_DIGIOPS'], 'Acquisitions/Curatorial/')
+DIGIOPS_PATH = os.path.join(os.environ['QNAP_09'], 'Acquisitions/Curatorial/')
 RSYNC_LOG = os.path.join(DIGIOPS_PATH, 'transfer_logs')
 CID_API = os.environ['CID_API3']
 
@@ -191,10 +192,10 @@ def main():
         if item.startswith('.'):
             continue
         itempath = os.path.join(fullpath, item)
+        if itempath.endswith(('.ini', '.json', '.document', '.edl', '.doc', '.docx', '.txt', '.mhl', '.DS_Store', '.log', '.md5')):
+            continue
         LOGGER.info("Item found checking file validity: %s", itempath)
         cid_data, priref, ob_num, title, acquired1 = '', '', '', '', ''
-        if itempath.endswith(('.ini', '.json', '.document', '.edl', '.doc', '.docx', '.txt', '.mhl', '.DS_Store', '.log')):
-            continue
         print(f"Item path found to process: {itempath}")
         LOGGER.info("** File okay to process: %s", item)
         LOGGER.info("Looking in CID item records for filename match...")

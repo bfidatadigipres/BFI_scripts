@@ -185,7 +185,7 @@ genres:
          Quiz show                         : 110176
    show-game-show:stand-up-comedy:
       Genre:
-         Variety show                      : 110145
+         Stand-up Comedy                   : 73740
    sports:general:
       Genre:
          Sport                             : 110185
@@ -627,6 +627,9 @@ genres:
          Sport                             : 110185
       Subject:
          Waterpolo                         : 39777
+   childrens-youth-programmes:
+      Genre:
+         Childrens                         :73558
    childrens-youth-programmes:general:
       Genre:
          Childrens                         : 73558
@@ -869,6 +872,9 @@ genres:
          Instructional film/TV programme   : 73613
       Subject:
          Languages                         : 33366
+   leisure-hobbies:
+      Genre:
+         Factual TV                        : 110667
    leisure-hobbies:general:
       Genre:
          Factual TV                        : 110667

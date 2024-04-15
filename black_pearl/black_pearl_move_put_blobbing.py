@@ -7,10 +7,9 @@ Script to manage ingest of items over 1TB in size
 
 Script PUT actions:
 1. Identify supply path and collection for blobbing bucket selection
-2. Adds item found top level in black_pearl_(netflix_)ingest_blobbing to dated ingest
-   subfolder - just one per folder.
-3. The script takes subfolder contents and PUT to Black Pearl using ds3 client, and
-   using the blobbing command for items over 1TB
+2. Adds item found second level in black_pearl_(netflix_)ingest/blobbing
+3. The script takes subfolder contents and PUT to Black Pearl using ds3Helper
+   client, and using the blobbing command for items over 1TB
 4. Once complete request that a notification JSON is issued to validate PUT success.
 5. Use receieved job_id to rename the PUT subfolder.
 
@@ -37,6 +36,7 @@ import sys
 import csv
 import json
 import glob
+import time
 import shutil
 import hashlib
 import logging
@@ -58,18 +58,18 @@ CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
 CONTROL_JSON = os.environ['CONTROL_JSON']
 INGEST_CONFIG = os.path.join(CODE_PATH, 'black_pearl/dpi_ingests.yaml')
 JSON_END = os.environ['JSON_END_POINT']
-DPI_BUCKETS = os.environ.get('DPI_BUCKET_BLOB')
+DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 CID_API = os.environ['CID_API3']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
-TODAY = str(datetime.date.today())
+TODAY = str(datetime.today())
 
 # Setup logging
-LOGGER = logging.getLogger(f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", '_')}')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", '_')}.log'))
+LOGGER = logging.getLogger(f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", "_")}')
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", "_")}.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -125,7 +125,12 @@ def get_buckets(bucket_collection):
         bucket_data = json.load(data)
     if bucket_collection == 'netflix':
         for key, value in bucket_data.items():
-            if bucket_collection in key:
+            if 'netflixblobbing' in key.lower():
+                if value is True:
+                    key_bucket = key
+    elif bucket_collection == 'amazon':
+        for key, value in bucket_data.items():
+            if 'amazonblobbing' in key.lower():
                 if value is True:
                     key_bucket = key
     elif bucket_collection == 'bfi':
@@ -145,6 +150,7 @@ def make_check_md5(fpath, dpath, fname):
     '''
     download_checksum = ''
     local_checksum = get_md5(fname)
+    print(f"Local checksum found: {local_checksum}")
     if not local_checksum:
         try:
             hash_md5 = hashlib.md5()
@@ -152,6 +158,7 @@ def make_check_md5(fpath, dpath, fname):
                 for chunk in iter(lambda: file.read(65536), b""):
                     hash_md5.update(chunk)
             local_checksum = hash_md5.hexdigest()
+            print(f"Local checksum created: {local_checksum}")
             checksum_write(fname, local_checksum, fpath)
         except Exception as err:
             print(err)
@@ -162,12 +169,13 @@ def make_check_md5(fpath, dpath, fname):
             for chunk in iter(lambda: file.read(65536), b""):
                 hash_md5.update(chunk)
         download_checksum = hash_md5.hexdigest()
+        print(f"Downloaded checksum {download_checksum}")
     except Exception as err:
         print(err)
 
-    if local_checksum and download_checksum:
-        print(f"Created from download: {download_checksum} | Retrieved from BP: {local_checksum}")
-        return str(download_checksum), str(local_checksum)
+    if len(local_checksum) > 10 and len(download_checksum) > 10:
+        print(f"Created from download: {download_checksum} | Original file checksum: {local_checksum}")
+        return download_checksum, local_checksum
     return None, None
 
 
@@ -317,7 +325,7 @@ def get_md5(filename):
         return None
     else:
         return local_md5
-    
+
 
 def check_for_media_record(fname):
     '''
@@ -386,23 +394,35 @@ def main():
     if not sys.argv[1]:
         sys.exit("Missing launch path, script exiting")
 
+    if 'netflix' in str(sys.argv[1]):
+        fullpath = os.environ['PLATFORM_INGEST_PTH']
+        upload_size = 559511627776
+        autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST_NETFLIX']}/blobbing/")
+        download_folder = os.path.join(autoingest, 'download_check/')
+        bucket_collection = 'netflix'
+    elif 'amazon' in str(sys.argv[1]):
+        fullpath = os.environ['PLATFORM_INGEST_PTH']
+        upload_size = 559511627776
+        autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST_AMAZON']}/blobbing/")
+        download_folder = os.path.join(autoingest, 'download_check/')
+        bucket_collection = 'amazon'
+    else:
+        # Just configuring for BFI ingests >1TB at this time
+        data_sizes = load_yaml(INGEST_CONFIG)
+        hosts = data_sizes['Host_size']
+        for host in hosts:
+            for key, val in host.items():
+                if str(sys.argv[1]) in key:
+                    fullpath = key
+        autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST']}/blobbing")
+        download_folder = os.path.join(autoingest, 'download_check/')
+        bucket_collection = 'bfi'
+        print(f"*** Bucket collection: {bucket_collection}")
+        print(f"Fullpath: {fullpath} {autoingest}")
+
     for key, val in LOG_PATHS.items():
-        if key in sys.argv[1]:
+        if key in autoingest:
             wpath = val
-
-    # Just configuring for BFI ingests >1TB at this time
-    data_sizes = load_yaml(INGEST_CONFIG)
-    hosts = data_sizes['Host_size']
-    for host in hosts:
-        for key, val in host.items():
-            if str(sys.argv[1]) in key:
-                fullpath = key
-    autoingest = os.path.join(fullpath, os.environ['BP_INGEST_BLOBS'])
-    download_folder = os.path.join(fullpath, os.environ['BLOB_DOWNLOAD'])
-    bucket_collection = 'bfi'
-    print(f"*** Bucket collection: {bucket_collection}")
-    print(f"Fullpath: {fullpath} {autoingest}")
-
     if not os.path.exists(autoingest):
         LOGGER.warning("Complication with autoingest path: %s", autoingest)
         sys.exit('Supplied argument did not match path')
@@ -421,9 +441,15 @@ def main():
         check_control()
         fpath = os.path.join(autoingest, fname)
 
-        # Begin blobbed PUT one item at a time
-        put_job_id = put_file(fname, fpath, bucket)
-        
+        # Begin blobbed PUT (bool argument for checksum validation off/on in ds3Helpers)
+        tic = time.perf_counter()
+        LOGGER.info("Beginning PUT of blobbing file %s", fname)
+        check = True
+        put_job_id = put_file(fname, fpath, bucket, check)
+        toc = time.perf_counter()
+        checksum_put_time = (toc - tic) // 60
+        LOGGER.info("** Total time in minutes for PUT without BP hash validation: %s", checksum_put_time)
+
         # Confirm job list exists
         if not put_job_id:
             LOGGER.warning("JOB list retrieved for file is not correct. %s: %s", fname, put_job_id)
@@ -432,21 +458,37 @@ def main():
         LOGGER.info("Successfully written data to BP. Job ID for file: %s", put_job_id)
 
         # Begin retrieval
-        get_job_id = get_bp_file(fname, download_folder, bucket)
         delivery_path = os.path.join(download_folder, fname)
-        if not get_job_id or os.path.exists(delivery_path):
-            LOGGER.warning("Skipping: Failed to download file from Black Pearl: %s", fname)
+        get_job_id = get_bp_file(fname, delivery_path, bucket)
+        print(f"File downloaded: {delivery_path}")
+        if not os.path.exists(delivery_path):
+            LOGGER.warning("Skipping: Failed to download file from Black Pearl: %s", delivery_path)
             continue
         LOGGER.info("Retrieved asset again. GET job ID: %s", get_job_id)
+        toc2 = time.perf_counter()
+        checksum_put_time2 = (toc2 - toc) // 60
+        LOGGER.info("** Total time in minutes for retrieval of BP item: %s", checksum_put_time2)
 
         # Checksum validation
+        print("Obtaining checksum for local file and creating one for downloaded file...")
         LOGGER.info("Generating checksum for downloaded file and comparing to existing local MD5.")
         local_checksum, remote_checksum = make_check_md5(fpath, delivery_path, fname)
+        print(local_checksum, remote_checksum)
         if local_checksum is None or local_checksum != remote_checksum:
             LOGGER.warning("Checksums absent / do not match: \n%s\n%s", local_checksum, remote_checksum)
-            LOGGER.warning("Skipping further actions with this file")
+            LOGGER.warning("Skipping further actions with this file. Upload failed.")
+            LOGGER.warning("Deleting downloaded file to save space: %s", delivery_path)
+            os.remove(delivery_path)
+            error_folder = os.path.join(autoingest, 'error/')
+            os.makedirs(error_folder, mode=0o777, exist_ok=True)
+            LOGGER.warning("Moving file to error folder for human assessment")
+            shutil.move(fpath, error_folder)
+            persistence_log_message("Failed fixity check: checksums do not match", fpath, wpath, file)
             continue
         LOGGER.info("Checksums match for file >1TB local and stored on Black Pearl:\n%s\n%s", local_checksum, remote_checksum)
+        toc3 = time.perf_counter()
+        checksum_put_time3 = (toc3 - toc2) // 60
+        LOGGER.info("Total time in minutes for PUT without Spectra checksum, but download and whole file checksum comparison: %s", checksum_put_time3)
 
         # Delete downloaded file and move to further validation checks
         LOGGER.info("Deleting downloaded file: %s", delivery_path)
@@ -478,8 +520,11 @@ def main():
         persistence_log_message("Ready for persistence checking", fpath, wpath, fname)
 
         # Prepare move path to not include XML/MXF for transcoding
-        root_path = os.path.split(autoingest)[0]
+        ingest_path = os.path.split(autoingest)[0]
+        root_path = os.path.split(ingest_path)[0]
         if 'black_pearl_netflix_ingest' in autoingest and not fname.endswith(('.mov', '.MOV')):
+            move_path = os.path.join(root_path, 'completed', fname)
+        elif 'black_pearl_amazon_ingest' in autoingest and fname.endswith(('.mov', '.MOV')):
             move_path = os.path.join(root_path, 'completed', fname)
         else:
             move_path = os.path.join(root_path, 'transcode', fname)
@@ -489,14 +534,14 @@ def main():
         media_priref, access_mp4 = check_for_media_record(fname)
         if media_priref:
             LOGGER.info("Media record %s already exists for file: %s", media_priref, fpath)
-            # Check for previous 'deleted' message in global.log
+            # Check for already deleted message in global.log
             deletion_confirm = check_global_log(fname)
             reingest_confirm = check_global_log_again(fname)
             if deletion_confirm:
                 LOGGER.info("DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s", deletion_confirm)
                 try:
-                    # os.remove(fpath)
-                    LOGGER.info(" # Deleted file: %s", fpath)
+                    os.remove(fpath)
+                    LOGGER.info("Deleted file: %s", fpath)
                 except Exception as err:
                     LOGGER.warning("Unable to delete asset: %s", fpath)
                     LOGGER.warning("Manual inspection of asset required")
@@ -539,18 +584,21 @@ def main():
         else:
             LOGGER.warning("File %s has no associated CID media record created.", fname)
             LOGGER.warning("File will be left in folder for manual intervention.")
+        toc4 = time.perf_counter()
+        whole_put_time = (toc4 - tic) // 60
+        LOGGER.info("** Total time for whole process for PUT without BP hash validation: %s", whole_put_time)
 
     LOGGER.info(f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========")
 
 
-def put_file(fname, fpath, bucket_choice):
+def put_file(fname, fpath, bucket_choice, check):
     '''
     Add the directory to black pearl using helper (no MD5)
     Retrieve job number and launch json notification
     '''
     file_size = get_file_size(fpath)
     put_objects = [ds3Helpers.HelperPutObject(object_name=f"{fname}", file_path=fpath, size=file_size)]
-    put_job_id = HELPER.put_objects(put_objects=put_objects, bucket=bucket_choice, calculate_checksum=True)
+    put_job_id = HELPER.put_objects(put_objects=put_objects, bucket=bucket_choice, calculate_checksum=bool(check))
     LOGGER.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_id)
     if len(put_job_id) == 36:
         return put_job_id

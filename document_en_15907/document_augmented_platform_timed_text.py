@@ -2,7 +2,7 @@
 
 '''
 Script to retrieve folders of
-Netflix timed text named after IMF.
+Platform timed text named after
 CID Item record object_number.
 
 1. Looks for subfolders in STORAGE path
@@ -14,7 +14,7 @@ CID Item record object_number.
    c/ Push data to CID to create item record
    d/ If successful rename file after new CID
       item object_number (forced 01of01) and move
-      to AUTOINGEST path
+      to autoingest path
 4. When all files in a folder processed the
    folder is checked as empty and deleted
 
@@ -36,10 +36,6 @@ sys.path.append(os.environ['CODE'])
 import adlib
 
 # Global variables
-STORAGE_PTH = os.environ.get('NETFLIX_INGEST_PTH')
-NET_INGEST = os.environ.get('NETFLIX_INGEST')
-AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
-STORAGE = os.path.join(STORAGE_PTH, 'svod/timed_text/')
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API')
@@ -48,12 +44,20 @@ CUR = adlib.Cursor(CID)
 TODAY = datetime.date.today()
 
 # Setup logging
-LOGGER = logging.getLogger('document_augmented_netflix_timed_text')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_netflix_timed_text.log'))
+PLATFORM_STORAGE = os.environ.get('PLATFORM_INGEST_PTH')
+NET_INGEST = os.environ.get('NETFLIX_INGEST')
+AMZ_INGEST = os.environ.get('AMAZON_INGEST')
+LOGGER = logging.getLogger('document_augmented_platform_timed_text')
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_platform_timed_text.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
+
+STORAGE = {
+    'Netflix': f"{os.path.join(PLATFORM_STORAGE, NET_INGEST)}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/timed_text/')}",
+    'Amazon': f"{os.path.join(PLATFORM_STORAGE, AMZ_INGEST)}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/timed_text/')}"
+}
 
 
 def check_control():
@@ -85,14 +89,14 @@ def cid_check(object_number):
     return None
 
 
-def walk_netflix_folders():
+def walk_folders(storage):
     '''
     Collect list of folderpaths
-    for files named rename_netflix
+    for files named rename_<platform>
     '''
-    print(STORAGE)
+    print(storage)
     timed_text_folders = []
-    for root, dirs, _ in os.walk(STORAGE):
+    for root, dirs, _ in os.walk(storage):
         for directory in dirs:
             timed_text_folders.append(os.path.join(root, directory))
     print(f"{len(timed_text_folders)} rename folder(s) found")
@@ -106,81 +110,85 @@ def main():
     Check for contents and create new CID item record
     for each timed text within. Rename and move for ingest.
     '''
-    check_control()
 
-    folder_list = walk_netflix_folders()
-    if len(folder_list) == 0:
-        LOGGER.info("Netflix timed text record creation script. No folders found.")
-        sys.exit()
+    LOGGER.info("== Document augmented streaming platform timed text start ===================")
+    for key, value in STORAGE.items():
+        check_control()
+        platform = key
+        autoingest, storage = value.split(', ')
 
-    LOGGER.info("== Document augmented Netflix timed text start ===================")
-    for fpath in folder_list:
-        if not os.path.exists(fpath):
-            LOGGER.warning("Folder path is not valid: %s", fpath)
-            continue
-        object_number = os.path.basename(fpath)
-        file_list = os.listdir(fpath)
-        if not file_list:
-            LOGGER.warning("Skipping. No files found in folderpath: %s", fpath)
-            continue
-        LOGGER.info("Files found in target folder %s: %s", object_number, ', '.join(file_list))
-
-        # Check object number valid
-        record = cid_check(object_number)
-        if record is None:
-            LOGGER.warning("Skipping: Record could not be matched with object_number")
+        folder_list = walk_folders(storage)
+        if len(folder_list) == 0:
+            LOGGER.info("%s timed text record creation script. No folders found.", platform)
             continue
 
-        priref = record[0]['priref'][0]
-        print(f"Priref matched with retrieved folder name: {priref}")
-        LOGGER.info("Priref matched with folder name: %s", priref)
-
-        # Create CID item record for each timed text in folder
-        for file in file_list:
-            ext = file.split('.')[-1]
-            tt_item_data = make_item_record_dict(priref, file, ext, record)
-            tt_item_xml = CUR.create_record_data('', tt_item_data)
-            print(tt_item_xml)
-
-            item_data = push_record_create(tt_item_xml, 'items', 'insertrecord')
-            if item_data is None:
-                LOGGER.warning("Creation of new CID item record failed with XML: \n%s", tt_item_xml)
+        for fpath in folder_list:
+            if not os.path.exists(fpath):
+                LOGGER.warning("Folder path is not valid: %s", fpath)
                 continue
-            LOGGER.info("** CID Item record created: %s - %s", item_data[0], item_data[1])
+            object_number = os.path.basename(fpath)
+            file_list = os.listdir(fpath)
+            if not file_list:
+                LOGGER.warning("Skipping. No files found in folderpath: %s", fpath)
+                continue
+            LOGGER.info("Files found in target folder %s: %s", object_number, ', '.join(file_list))
 
-            # Rename file to new filename from object-number
-            tt_priref = item_data[0]
-            tt_ob_num = item_data[1]
-            print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
-            new_fname = f"{tt_ob_num.replace('-', '_')}_01of01.{ext}"
-            new_fpath = os.path.join(fpath, new_fname)
-            LOGGER.info("%s to be renamed %s", file, new_fname)
-            rename_success = rename_or_move('rename', os.path.join(fpath, file), new_fpath)
-            if rename_success is False:
-                LOGGER.warning("Unable to rename file: %s", os.path.join(fpath, file))
-            elif rename_success is True:
-                LOGGER.info("File successfully renamed. Moving to Netflix ingest path")
-            elif rename_success == 'Path error':
-                LOGGER.warning("Path error: %s", os.path.join(fpath, file))
+            # Check object number valid
+            record = cid_check(object_number)
+            if record is None:
+                LOGGER.warning("Skipping: Record could not be matched with object_number")
+                continue
 
-            # Move file to new AUTOINGEST path
-            move_success = rename_or_move('move', new_fpath, os.path.join(AUTOINGEST, new_fname))
-            if move_success is False:
-                LOGGER.warning("Error with file move to autoingest, leaving in place for manual assistance")
-            elif move_success is True:
-                LOGGER.info("File successfully moved to Netflix ingest path: %s\n", AUTOINGEST)
-            elif move_success == 'Path error':
-                LOGGER.warning("Path error: %s", new_fpath)
+            priref = record[0]['priref'][0]
+            print(f"Priref matched with retrieved folder name: {priref}")
+            LOGGER.info("Priref matched with folder name: %s", priref)
 
-        # Check fpath is empty and delete
-        if len(os.listdir(fpath)) == 0:
-            LOGGER.info("All files processed in folder: %s", object_number)
-            LOGGER.info("Deleting empty folder: %s", fpath)
-            os.rmdir(fpath)
-        else:
-            LOGGER.warning("Leaving folder %s in place as files still remaining in folder %s", object_number, os.listdir(fpath))
+            # Create CID item record for each timed text in folder
+            for file in file_list:
+                ext = file.split('.')[-1]
+                tt_item_data = make_item_record_dict(priref, file, ext, record)
+                tt_item_xml = CUR.create_record_data('', tt_item_data)
+                print(tt_item_xml)
 
-    LOGGER.info("== Document augmented Netflix timed text end =====================\n")
+                item_data = push_record_create(tt_item_xml, 'items', 'insertrecord')
+                if item_data is None:
+                    LOGGER.warning("Creation of new CID item record failed with XML: \n%s", tt_item_xml)
+                    continue
+                LOGGER.info("** CID Item record created: %s - %s", item_data[0], item_data[1])
+
+                # Rename file to new filename from object-number
+                tt_priref = item_data[0]
+                tt_ob_num = item_data[1]
+                print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
+                new_fname = f"{tt_ob_num.replace('-', '_')}_01of01.{ext}"
+                new_fpath = os.path.join(fpath, new_fname)
+                LOGGER.info("%s to be renamed %s", file, new_fname)
+                rename_success = rename_or_move('rename', os.path.join(fpath, file), new_fpath)
+                if rename_success is False:
+                    LOGGER.warning("Unable to rename file: %s", os.path.join(fpath, file))
+                elif rename_success is True:
+                    LOGGER.info("File successfully renamed. Moving to %s ingest path", platform)
+                elif rename_success == 'Path error':
+                    LOGGER.warning("Path error: %s", os.path.join(fpath, file))
+
+                # Move file to new autoingest path
+                move_success = rename_or_move('move', new_fpath, os.path.join(autoingest, new_fname))
+                if move_success is False:
+                    LOGGER.warning("Error with file move to autoingest, leaving in place for manual assistance")
+                elif move_success is True:
+                    LOGGER.info("File successfully moved to %s ingest path: %s\n", platform, autoingest)
+                elif move_success == 'Path error':
+                    LOGGER.warning("Path error: %s", new_fpath)
+
+            # Check fpath is empty and delete
+            if len(os.listdir(fpath)) == 0:
+                LOGGER.info("All files processed in folder: %s", object_number)
+                LOGGER.info("Deleting empty folder: %s", fpath)
+                os.rmdir(fpath)
+            else:
+                LOGGER.warning("Leaving folder %s in place as files still remaining in folder %s", object_number, os.listdir(fpath))
+
+    LOGGER.info("== Document augmented streaming platform timed text end =====================\n")
 
 
 def build_record_defaults(platform):
@@ -295,9 +303,9 @@ def make_item_record_dict(priref, file, ext, record):
     if 'acquisition.date' in str(record):
         item.append({'acquisition.date': record[0]['acquisition.date'][0]})
     if 'acquisition.method' in str(record):
-        item.append({'acquisition.method': record[0]['acquisition.method'][0]}) # Donation
+        item.append({'acquisition.method': record[0]['acquisition.method'][0]})
     if 'Acquisition_source' in str(record):
-        item.append({'acquisition.source': record[0]['Acquisition_source'][0]['acquisition.source'][0]}) # Netflix
+        item.append({'acquisition.source': record[0]['Acquisition_source'][0]['acquisition.source'][0]})
         item.append({'acquisition.source.type': record[0]['Acquisition_source'][0]['acquisition.source.type'][0]['value'][0]})
     item.append({'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                       'Please raise a request via the Collections Systems Service Desk, describing your specific use.'})

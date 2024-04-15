@@ -145,16 +145,20 @@ def get_buckets(bucket_collection):
         bucket_data = json.load(data)
     if bucket_collection == 'bfi':
         for key, value in bucket_data.items():
-            if 'preservation' in key.lower():
+            if 'preservationbucket' in key.lower():
+                continue
+            elif 'preservation0' in key.lower():
                 if value is True:
                     key_bucket = key
                 bucket_list.append(key)
             # Imagen path read only now
-            if 'imagen' in key:
+            elif 'imagen' in key:
                 bucket_list.append(key)
     else:
         for key, value in bucket_data.items():
-            if bucket_collection in key:
+            if f"{bucket_collection.strip()}bucket" in key:
+                continue
+            elif f"{bucket_collection.strip()}0" in key:
                 if value is True:
                     key_bucket = key
                 bucket_list.append(key)

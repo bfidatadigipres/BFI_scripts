@@ -60,7 +60,8 @@ LOG_PREFIX = '_'.join(FLLPTH)
 LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API']
-TRANSCODE = os.environ['TRANSCODING']
+# TRANSCODE = os.environ['TRANSCODING']
+TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
 HOST = os.uname()[1]
 
 # Setup logging
@@ -215,21 +216,27 @@ def main():
             log_build.append(f"Creating new transcode path: {transcode_pth}")
             os.makedirs(transcode_pth, mode=0o777, exist_ok=True)
 
-        audio, stream_default = check_audio(fullpath)
+        audio, stream_default, stream_count = check_audio(fullpath)
         dar = get_dar(fullpath)
         par = get_par(fullpath)
         height = get_height(fullpath)
         width = get_width(fullpath)
         duration, vs = get_duration(fullpath)
-        log_build.append(f"{local_time()}\tINFO\tData retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs")
+        log_build.append(f"{local_time()}\tINFO\tData retrieved: Stream number: {stream_count} Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs")
 
         # CID transcode paths
         outpath = os.path.join(transcode_pth, f"{fname}.mp4")
         outpath2 = os.path.join(transcode_pth, fname)
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
+        # Check stream count and see if 'DL' 'DR' present
+        if len(stream_count) > 6:
+            mixed_dict = check_for_mixed_audio(fullpath)
+        else:
+            mixed_dict = None
+
         # Build FFmpeg command based on dar/height
-        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs)
+        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, mixed_dict)
         if not ffmpeg_cmd:
             log_build.append(f"{local_time()}\tWARNING\tFailed to build FFmpeg command with data: {fullpath}\nHeight {height} Width {width} DAR {dar}")
             log_output(log_build)
@@ -662,9 +669,9 @@ def get_height(fullpath):
         return '720'
     if '1080' == height or '1 080' == height:
         return '1080'
-    else:
-        height = height.split(' pixel', maxsplit=1)[0]
-        return re.sub("[^0-9]", "", height)
+
+    height = height.split(' pixel', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", height)
 
 
 def get_width(fullpath):
@@ -692,12 +699,39 @@ def get_width(fullpath):
         return '1280'
     if '1920' == width or '1 920' == width:
         return '1920'
-    else:
-        if width.isdigit():
-            return str(width)
-        else:
-            width = width.split(' p', maxsplit=1)[0]
-            return re.sub("[^0-9]", "", width)
+    if width.isdigit():
+        return str(width)
+    
+    width = width.split(' p', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", width)
+
+
+def check_for_mixed_audio(fpath):
+    '''
+    For use where audio channels 6+ exist
+    check for 'DL' and 'DR' and build different
+    FFmpeg command that uses mixed audio only
+    '''
+    cmd = [
+        'ffprobe', '-v', 'error',
+        '-show_entries', 'stream=channel_layout',
+        '-of', 'csv=p=0', fpath
+    ]
+    audio = subprocess.check_output(cmd)
+    audio = audio.decode('utf-8').lstrip('\n').rstrip('\n')
+    audio_channels = audio.split('\n')
+    if len(audio_channels) > 1:
+        audio_downmix = {}
+        for num in range(0, len(audio_channels)):
+            if '(DL)' in audio_channels[num]:
+                audio_downmix['DL'] = num
+            if '(DR)' in audio_channels[num]:
+                audio_downmix['DR'] = num
+
+        if len(audio_downmix) == 2:
+            return audio_downmix
+
+    return None
 
 
 def get_duration(fullpath):
@@ -775,12 +809,19 @@ def check_audio(fullpath):
         fullpath
     ]
 
+    cmd2 = [
+        'ffprobe', '-v',
+        'error', '-select_streams', 'a',
+        '-show_entries', 'stream=index',
+        '-of', 'compact=p=0', fullpath
+    ]
+
     cmd[3] = cmd[3].replace('"', '')
     audio = subprocess.check_output(cmd)
     audio = str(audio)
 
     if len(audio) == 0:
-        return None, None
+        return None, None, None
 
     try:
         lang0 = subprocess.check_output(cmd0)
@@ -790,24 +831,28 @@ def check_audio(fullpath):
         lang1 = subprocess.check_output(cmd1)
     except Exception:
         lang1 = ''
-
+    try:
+        streams = subprocess.check_output(cmd2)
+        streams = streams.decode('utf-8').lstrip('\n').rstrip('\n').split('\n')
+    except Exception:
+        streams = None
     print(f"**** LANGUAGES: Stream 0 {lang0} - Stream 1 {lang1}")
 
     if 'nar' in str(lang0).lower():
         print("Narration stream 0 / English stream 1")
-        return ('Audio', '1')
+        return ('Audio', '1', streams)
     elif 'nar' in str(lang1).lower():
         print("Narration stream 1 / English stream 0")
-        return ('Audio', '0')
+        return ('Audio', '0', streams)
     else:
-        return ('Audio', None)
+        return ('Audio', None, streams)
 
 
-def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs):
+def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs, mixed_dict):
     '''
     Builds FFmpeg command based on height/dar input
     '''
-    print(f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs}")
+    print(f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs} Mixed audio {mixed_dict}")
     print(f"Fullpath {fullpath} Output path {output_path}")
 
     ffmpeg_program_call = [
@@ -820,14 +865,8 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
 
     video_settings = [
         "-c:v", "libx264",
-        "-crf", "28"
+        "-crf", "28",
     ]
-
-    '''
-    audio_settings = [
-        "-af", "channelmap=0"
-    ]
-    '''
 
     pix = [
        "-pix_fmt", "yuv420p"
@@ -908,7 +947,14 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
             "-map", "0:v:0"
         ]
 
-    if default and audio:
+    if mixed_dict:
+        print(f"Mixed DL DR audio found: {mixed_dict}")
+        map_audio = [
+            f"-map 0:a:{mixed_dict['DL']}", f"-map 0:a:{mixed_dict['DR']}",
+            "-ac", "2", "-c:a:0", "aac", "-ab:1", "320k", "-ar:1", "48000", "-ac:1", "2", "-disposition:a:0", "default",
+            "-c:a:1", "aac", "-ab:2", "210k", "-ar:2", "48000", "-ac:2", "1", "-disposition:a:1", "0", "-strict", "2", "-async", "1", "-dn"
+        ]
+    elif default and audio:
         print(f"Default {default}, Audio {audio}")
         map_audio = [
             "-map", "0:a?",
@@ -957,14 +1003,14 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = fhd_all
     elif height >= 1080 and aspect >= 1.778:
         cmd_mid = fhd_letters
-    print(f"Middle command chose: {cmd_mid}")
+    print(f"Middle command chosen: {cmd_mid}")
 
     if audio is None:
         return ffmpeg_program_call + input_video_file + map_video + video_settings + pix + fast_start + cmd_mid + output
     if len(cmd_mid) > 0 and audio:
-        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + fast_start + cmd_mid + output
+        return ffmpeg_program_call + input_video_file + map_video + video_settings + pix + cmd_mid + map_audio + fast_start + output
     if len(cmd_mid) > 0 and not audio:
-        return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + fast_start + cmd_mid + output
+        return ffmpeg_program_call + input_video_file + map_video + video_settings + pix + cmd_mid + map_audio + fast_start + output
 
 
 def make_jpg(filepath, arg, transcode_pth, percent):

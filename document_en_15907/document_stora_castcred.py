@@ -52,7 +52,7 @@ YEST = str(datetime.datetime.today() - datetime.timedelta(days=1))
 YEAR = YEST[:4]
 MONTH = YEST[5:7]
 # YEAR = '2024'
-# MONTH = '01'
+# MONTH = '03'
 COMPLETE = os.environ['STORA_COMPLETED']
 ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH = os.environ['LOG_PATH']
@@ -196,9 +196,9 @@ def title_filter(item_asset_title, item_title):
 def enum_list(creds):
     '''
     Change list to dictionary pairs for sort order
-    Increments of 5, beginning at 5
+    Increments of 5, beginning at 50
     '''
-    n = 5
+    n = 50
     for item in creds:
         yield n, item
         n += 5
@@ -614,7 +614,7 @@ def main():
             if len(cast_dct) > 0 and time_match:
                 for key, val in cast_dct.items():
                     cast_sort = str(key)
-                    cast_sort.zfill(2)  # 5, 10, 15
+                    cast_sort.zfill(2)  # 50, 55, 60
                     for k, v in val.items():
                         cast_type = k  # Cast, etc
                         cast_id = v[0]  # EPG ID

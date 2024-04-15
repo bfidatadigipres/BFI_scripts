@@ -54,7 +54,7 @@ LOGGER.setLevel(logging.INFO)
 
 GROUPINGS = {
     'Netflix': '400947, IMP',
-    'Amazon': 'TBC, ProRes'
+    'Amazon': '401361, MOV'
 }
 
 

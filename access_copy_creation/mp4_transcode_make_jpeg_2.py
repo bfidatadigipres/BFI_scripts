@@ -58,7 +58,8 @@ LOG_PREFIX = '_'.join(FLLPTH)
 LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API3']
-TRANSCODE = os.environ['TRANSCODING']
+# TRANSCODE = os.environ['TRANSCODING']
+TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
 HOST = os.uname()[1]
 
 # Setup logging
@@ -160,8 +161,8 @@ def main():
     completed_pth = os.path.join(os.path.split(filepath)[0], 'completed/', file)
 
     log_build.append(f"{local_time()}\tINFO\t================== START Transcode MP4 make JPEG {file} {HOST} ==================")
-
     print(f"File to be processed: {file}. Completed path: {completed_pth}")
+
     outpath, outpath2 = "", ""
 
     ext = ext.lstrip('.')

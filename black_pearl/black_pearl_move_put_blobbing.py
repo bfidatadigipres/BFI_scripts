@@ -58,7 +58,7 @@ CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
 CONTROL_JSON = os.environ['CONTROL_JSON']
 INGEST_CONFIG = os.path.join(CODE_PATH, 'black_pearl/dpi_ingests.yaml')
 JSON_END = os.environ['JSON_END_POINT']
-DPI_BUCKETS = os.environ.get('DPI_BUCKET_BLOB')
+DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
@@ -125,7 +125,7 @@ def get_buckets(bucket_collection):
         bucket_data = json.load(data)
     if bucket_collection == 'netflix':
         for key, value in bucket_data.items():
-            if 'netflixblobbing' in key.lower()c:
+            if 'netflixblobbing' in key.lower():
                 if value is True:
                     key_bucket = key
     elif bucket_collection == 'amazon':
@@ -394,13 +394,13 @@ def main():
     if not sys.argv[1]:
         sys.exit("Missing launch path, script exiting")
 
-    if 'qnap09_netflix' in sys.argv[1]:
+    if 'netflix' in str(sys.argv[1]):
         fullpath = os.environ['PLATFORM_INGEST_PTH']
         upload_size = 559511627776
         autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST_NETFLIX']}/blobbing/")
         download_folder = os.path.join(autoingest, 'download_check/')
         bucket_collection = 'netflix'
-    elif 'qnap09_amazon' in sys.argv[1]:
+    elif 'amazon' in str(sys.argv[1]):
         fullpath = os.environ['PLATFORM_INGEST_PTH']
         upload_size = 559511627776
         autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST_AMAZON']}/blobbing/")
@@ -414,7 +414,7 @@ def main():
             for key, val in host.items():
                 if str(sys.argv[1]) in key:
                     fullpath = key
-        autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST']}/blobbing/")
+        autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST']}/blobbing")
         download_folder = os.path.join(autoingest, 'download_check/')
         bucket_collection = 'bfi'
         print(f"*** Bucket collection: {bucket_collection}")

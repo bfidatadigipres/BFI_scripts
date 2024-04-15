@@ -26,7 +26,8 @@ Steps:
 6. Create CID records
 7. Append contributors where available
 
-NOTES: Dependency for cast create_contributors()
+NOTES: TEMP SET UP TO EXIT AFTER ONE RECORD GROUP
+       Dependency for cast create_contributors()
        will need review when API updates complete
 
 Joanna White
@@ -57,7 +58,7 @@ LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API') # May need to run from CID_API4 for cast/credit
+CID_API = os.environ.get('CID_API3') # May need to run from CID_API4 for cast/credit
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 
@@ -108,7 +109,7 @@ def get_folder_title(article, title):
     Match title to folder naming
     '''
 
-    title = title.replace("/","").replace("'","").replace("&", "and").replace("(","").replace(")","")
+    title = title.replace("/","").replace("'","").replace("&", "and").replace("(","").replace(")","").replace("!", "").replace("’", "")
     if article != '-':
         title = f'{article}_{title.replace(" ", "_")}_'
     else:
@@ -360,9 +361,9 @@ def cid_check_works(patv_id):
     priref = ""
     query = {'database': 'works',
              'search': f'alternative_number="{patv_id}"',
-             'limit': '1',
+             'limit': '0',
              'output': 'json',
-             'fields': 'priref, title, title.article'}
+             'fields': 'priref, title, title.article, grouping.lref'}
     try:
         query_result = CID.get(query)
     except Exception as err:
@@ -380,17 +381,25 @@ def cid_check_works(patv_id):
     except Exception as err:
         priref = ''
     try:
-        title = query_result.records[0]['Title']['title']
+        title = query_result.records[0]['Title'][0]['title'][0]
         print(f"cid_check_works(): Series title: {title}")
     except Exception as err:
         title = ''
     try:
-        title_art = query_result.records[0]['Title']['title.article']
+        title_art = query_result.records[0]['Title'][0]['title.article'][0]
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''
+    groupings = []
+    for num in range(0, hit_count):
+        try:
+            grouping = query_result.records[num]['grouping.lref'][0]
+            print(f"cid_check_works(): Grouping: {grouping}")
+            groupings.append(grouping)
+        except Exception as err:
+            pass
 
-    return hit_count, priref, title, title_art
+    return hit_count, priref, title, title_art, groupings
 
 
 def genre_retrieval(category_code, description, title):
@@ -607,7 +616,6 @@ def main():
 
         if platform != 'Amazon':
             continue
-
         LOGGER.info("** Processing item: %s %s", article, title)
 
         # Make season number a list
@@ -615,6 +623,7 @@ def main():
 
         # Match AMAZON folder to article/title
         foldertitle = get_folder_title(article, title)
+        print(foldertitle)
         matched_folders = get_folder_match(foldertitle)
         if len(matched_folders) > 1:
             print(f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}")
@@ -630,17 +639,19 @@ def main():
         # Create Work/Manifestation if film/programme
         if 'film' in level.lower() or 'programme' in level.lower():
             # Check CID work exists / Make work if needed
-            hits, priref_work, work_title, work_title_art = cid_check_works(patv_id)
+            hits, priref_work, work_title, work_title_art, groupings = cid_check_works(patv_id)
             if int(hits) > 0:
-                print(f"SKIPPING PRIREF FOUND: {priref_work}")
-                LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
-                continue
+                if '401361' in str(groupings):
+                    print(f"SKIPPING PRIREF FOUND: {priref_work}")
+                    LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
+                    continue
             prog_path = os.path.join(AMAZON, matched_folders[0])
 
             print(f"Found priref is for monographic work: {priref_work}")
             if priref_work.isnumeric():
-                print(f"SKIPPING: Monograph work already exists for {title}.")
-                continue
+                if '401361' in str(groupings):
+                    print(f"SKIPPING: Monograph work already exists for {title}.")
+                    continue
             # Retrieve all available
             mono_cat = [ x for x in os.listdir(prog_path) if x.startswith('mono_catalogue_') ]
             mono = [ x for x in os.listdir(prog_path) if x.startswith('monographic_') ]
@@ -700,9 +711,10 @@ def main():
             json_fpaths = get_json_files(prog_path)
             series_priref = ''
             # Check CID work exists / Make work if needed
-            hits, series_priref, work_title, work_title_art = cid_check_works(patv_id)
+            hits, series_priref, work_title, work_title_art, groupings = cid_check_works(patv_id)
             if series_priref.isnumeric():
-                print(f"Series work already exists for {title}.")
+                if '401361' in str(groupings):
+                    print(f"Series work already exists for {title}.")
             else:
                 print("Series work does not exist, creating series work now.")
                 series_json = [ x for x in os.listdir(prog_path) if x.startswith('series_') and x.endswith('.json')]
@@ -738,11 +750,12 @@ def main():
                 print(f"** Episode ID: {episode_id} {title}")
 
                 # Check CID work exists / Make work if needed
-                hits, priref_episode, _, _ = cid_check_works(episode_id)
+                hits, priref_episode, _, _, groupings = cid_check_works(episode_id)
                 if int(hits) > 0:
-                    print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
-                    LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
-                    continue
+                    if '401361' in str(groupings):
+                        print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
+                        LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
+                        continue
                 print("New episode_id found for Work. Linking to series work")
 
                 # Retrieve all available data
@@ -884,7 +897,7 @@ def build_defaults(data):
                {'record_access.user': '$REST'},
                {'record_access.rights': '1'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'grouping.lref': '400947'}, # JMW Will need replacing when new grouping made for Amazon
+               {'grouping.lref': '401361'}, # Amazon
                {'language.lref': '74129'},
                {'language.type': 'DIALORIG'}])
 
@@ -913,11 +926,11 @@ def build_defaults(data):
     manifestation = ([{'record_type': 'MANIFESTATION'},
                       {'manifestationlevel_type': 'INTERNET'},
                       {'format_high_level': 'Video - Digital'},
-                      {'format_low_level.lref': '400949'},
+                      {'format_low_level.lref': '395150'}, # Apple ProRes 422 HQ
                       {'colour_manifestation': data['colour_manifestation']},
                       {'sound_manifestation': 'SOUN'},
                       {'transmission_date': data['title_date_start']},
-                      {'availability.name.lref': '143463'},
+                      {'availability.name.lref': '999823516'},
                       {'transmission_coverage': 'STR'},
                       {'vod_service_type.lref': '398712'},
                       {'aspect_ratio': '16:9'},
@@ -928,12 +941,12 @@ def build_defaults(data):
              {'item_type': 'DIGITAL'},
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
-             {'file_type.lref': '401103'}, # JMW IMP - Needs changing to ProRes MOV
-             {'code_type.lref': '400945'}, # JMW Mixed
+             {'file_type.lref': '114307'}, # MOV
+             {'code_type.lref': '114308'}, # ProRes 422 (HQ)
              {'accession_date': str(datetime.datetime.now())[:10]},
-             {'acquisition.date': data['acquisition_date']}, # JMW Contract date from CSV - CSV needs updating
-             {'acquisition.method.lref': '132853'}, # Donation - with written agreement ACQMETH
-             {'acquisition.source.lref': '143463'}, # JMW Netflix NEEDS TO BE AMAZON
+             {'acquisition.date': data['acquisition_date']},
+             {'acquisition.method.lref': '132853'},
+             {'acquisition.source.lref': '999923912'},
              {'acquisition.source.type': 'DONOR'},
              {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                    'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
@@ -1220,9 +1233,9 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     if 'certification_bbfc' in work_dict:
         manifestation_values.append({'utb.fieldname': 'BBFC certification'})
         manifestation_values.append({'utb.content': work_dict['certification_bbfc']})
+    manifestation_values.append({'broadcast_company.lref': '999823516'}) # Amazon Prime Video
     print(f"Manifestation values:\n{manifestation_values}")
 
-    broadcast_addition = []
     try:
         m = CUR.create_record(database='manifestations',
                               data=manifestation_values,
@@ -1241,15 +1254,6 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     except Exception as err:
         print(f"Unable to write manifestation record - error: {err}")
 
-    broadcast_addition = ([{'broadcast_company.lref': '143463'}])
-
-    try:
-        b = CUR.update_record(database='manifestations',
-                              priref=manifestation_id,
-                              data=broadcast_addition,
-                              output='json')
-    except Exception as err:
-        LOGGER.info("Unable to write broadcast company data\n%s", err)
     return manifestation_id
 
 
@@ -1260,38 +1264,46 @@ def append_url_data(work_priref, man_priref, data=None):
 
     if 'watch_url' in data:
         # Write to manifest
-        payload_mid = f"<URL>{data['watch_url']}</URL><URL.description>Amazon viewing URL</URL.description>"
+        if '/?autoplay' in data['watch_url']:
+            url_trim = data['watch_url'].split('/?autoplay')[0]
+        else:
+            url_trim = data['watch_url']
+        payload_mid = f"<URL><![CDATA[{url_trim}]]></URL><URL.description>Amazon viewing URL</URL.description>"
         payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
         payload_end = "</URL></record></recordList></adlibXML>"
         payload = payload_head + payload_mid + payload_end
 
         write_lock('manifestations', man_priref)
-        post_response = requests.post(
+        post_response = requests.request(
+            'POST',
             CID_API,
+            headers={'Content-Type': 'text/xml'},
             params={'database': 'manifestations', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data={'data': payload})
+            data=payload)
 
         if "<error><info>" in str(post_response.text):
-            LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", man_priref, post_response.text)
+            LOGGER.warning("append_url_data(): Post of data failed: %s - %s\nFaulty payload: %s", man_priref, post_response.text, payload)
             unlock_record('manifestations', man_priref)
         else:
-            LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", man_priref)
+            LOGGER.info("append_url_data(): Write of access_rendition data appear successful for Priref %s", man_priref)
 
         # Write to work
         payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
         payload = payload_head + payload_mid + payload_end
 
         write_lock('works', work_priref)
-        post_response = requests.post(
+        post_response = requests.request(
+            'POST',
             CID_API,
+            headers={'Content-Type': 'text/xml'},
             params={'database': 'works', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data={'data': payload})
+            data=payload)
 
         if "<error><info>" in str(post_response.text):
-            LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", work_priref, post_response.text)
+            LOGGER.warning("append_url_data(): Post of data failed: %s - %s", work_priref, post_response.text)
             unlock_record('works', work_priref)
         else:
-            LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", work_priref)
+            LOGGER.info("append_url_data(): Write of access_rendition data appear successful for Priref %s", work_priref)
 
 
 def create_item(man_priref, work_title, work_title_art, work_dict, record_defaults, item_default):

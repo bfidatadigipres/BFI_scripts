@@ -182,6 +182,23 @@ def check_filename(fname):
     return True
 
 
+def check_mov_prores(fpath):
+    '''
+    Retrieve codec and ensure file is ProRes
+    '''
+    cmd = [
+        'mediainfo',
+        '--Output=Video;%Format%',
+        fpath
+    ]
+
+    formt = subprocess.check_output(cmd)
+    formt = formt.decode('utf-8')
+
+    if 'ProRes' in str(formt):
+        return True
+
+
 def check_mime_type(fpath, log_paths):
     '''
     Checks the mime type of the file
@@ -344,7 +361,8 @@ def check_media_record(fname):
 
     try:
         result = CID.get(query)
-        if result.hits:
+        num = int(result.hits)
+        if num >= 1:
             return True
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
@@ -360,16 +378,13 @@ def get_buckets(bucket_collection):
 
     with open(DPI_BUCKETS) as data:
         bucket_data = json.load(data)
-    if bucket_collection == 'bfi':
-        for key, _ in bucket_data.items():
-            if 'preservation' in key.lower():
-                bucket_list.append(key)
-            # Imagen path read only now
-            if 'imagen' in key:
-                bucket_list.append(key)
-    else:
+    if bucket_collection == 'netflix' or bucket_collection == 'amazon':
         for key, _ in bucket_data.items():
             if bucket_collection in key:
+                bucket_list.append(key)
+    elif bucket_collection == 'bfi':
+        for key, _ in bucket_data.items():
+            if 'preservation' in key.lower():
                 bucket_list.append(key)
 
     return bucket_list
@@ -476,19 +491,16 @@ def get_media_ingests(object_number):
            'output': 'json'}
 
     original_filenames = []
-    result = CID.get(dct)
-    if not result:
-        return None
-
-    print(f'\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number')
-    print(result.records)
-    for r in result.records:
-        try:
+    try:
+        result = CID.get(dct)
+        print(f'\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number')
+        print(result.records)
+        for r in result.records:
             filename = r['imagen.media.original_filename']
             print(f"File found with CID record: {filename}")
             original_filenames.append(filename[0])
-        except KeyError as err:
-            print(err)
+    except Exception as err:
+        print(err)
 
     return original_filenames
 
@@ -545,7 +557,7 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
     filename_range = []
 
     # Netflix extensions vary within IMP so shouldn't be included in range check
-    if 'netflix_ingest' in black_pearl_folder or 'amazon_ingest' in black_pearl_folder:
+    if 'netflix_ingest' in black_pearl_folder:
         fname_check = fname.split('.')[0]
         for num in range(1, range_whole):
             filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}")
@@ -641,19 +653,19 @@ def main():
             fpath = os.path.abspath(pth)
             fname = os.path.split(fpath)[-1]
 
-            # Allow path changes for black_pearl_ingest Netflix / Get buckets
-            bucket_list = []
-            if 'ingest/netflix' in fpath:
+            # Allow path changes for black_pearl_ingest Netflix
+            print(fpath)
+            if 'ingest/netflix' in str(fpath):
                 logger.info('%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder')
-                black_pearl_folder = os.path.join(linux_host, os.environ['BP_INGEST_NETFLIX'])
-                bucket_list = get_buckets('netflix')
-            elif 'ingest/amazon' in fpath:
-                logger.info('%s\tIngest-ready file is from Netflix AMAZON path, setting Black Pearl Amazon ingest folder')
-                black_pearl_folder = os.path.join(linux_host, os.environ['BP_INGEST_AMAZON'])
-                bucket_list = get_buckets('amazon')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_NETFLIX']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+            elif 'ingest/amazon' in str(fpath):
+                logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             else:
-                black_pearl_folder = os.path.join(linux_host, os.environ['BP_INGEST'])
-                bucket_list = get_buckets('bfi')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
 
             if '.DS_Store' in fname:
                 continue
@@ -733,6 +745,15 @@ def main():
                 continue
             print(f'* File {fname} has no CID Media record.')
 
+            # Get BP buckets
+            bucket_list = []
+            if 'ingest/netflix' in fpath:
+                bucket_list = get_buckets('netflix')
+            elif 'ingest/amazon' in fpath:
+                bucket_list = get_buckets('amazon')
+            else:
+                bucket_list = get_buckets('bfi')
+
             # BP ingest check
             ingest_check = check_bp_status(fname, bucket_list)
             if ingest_check is True:
@@ -793,10 +814,21 @@ def main():
             # Perform ingest if under 1TB
             if do_ingest:
                 size = get_size(fpath)
-                if int(size) > 1099511627776:
-                    logger.warning('%s\tFile is larger than 1TB. Leaving in ingest folder', log_paths)
-                    continue
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
+                if int(size) > 1099511627776:
+                    logger.info('%s\tFile is larger than 1TB. Checking file is ProRes', log_paths)
+                    is_prores = check_mov_prores(fpath)
+                    if is_prores is True:
+                        try:
+                            shutil.move(fpath, os.path.join(black_pearl_blobbing, fname))
+                            print(f'\t** File moved to {os.path.join(black_pearl_blobbing, fname)}')
+                            logger.info('%s\tMoved ingest-ready file to BlackPearl ingest blobbing folder', log_paths)
+                        except Exception as err:
+                            print(f'Failed to move file to blobbing folder: {black_pearl_blobbing} {err}')
+                            logger.warning('%s\tFailed to move ingest-ready file to blobbing folder', log_paths)
+                    else:
+                        logger.warning('%s\tFile is larger than 1TB and not ProRes. Leaving in ingest folder', log_paths)
+                    continue
                 try:
                     shutil.move(fpath, os.path.join(black_pearl_folder, fname))
                     print(f'\t** File moved to {os.path.join(black_pearl_folder, fname)}')

@@ -14,7 +14,7 @@ PATH_INSERT="${1//['/']/_}"
 # Paths from environmental variables
 LOG_LEAD="$LOG_PATH"
 CODE_LEAD="$CODE_PATH"
-PY3_LAUNCH="$PY3_ENV"
+PY3_LAUNCH="$PYENV311"
 LOG="${LOG_LEAD}checksum_maker${PATH_INSERT}launch.log"
 AUTOINGEST="${PTH}autoingest/black_pearl_ingest/"
 HASHES="$HASH_PATH"
@@ -39,7 +39,7 @@ echo "${list}" >> "${LOG}"
 
 # Hardcoded Python3 version with local library dependency installations necessary for script (tenacity)
 echo " == Launching GNU parallel to run multiple Python3 scripts for MD5 generation == " >> "${LOG}"
-grep '/mnt/' "${DUMP_TO}" | parallel --jobs 10 "$PY3_LAUNCH checksum_maker_mediainfo.py {}"
+grep '/mnt/' "${DUMP_TO}" | parallel --jobs "$JOBS" "$PY3_LAUNCH checksum_maker_mediainfo.py {}"
 
 DATE_CLOSE=$(date +'%Y-%m-%d - %T')
 echo " ========================================== SHELL SCRIPT END ============================================= $DATE_CLOSE" >> "${LOG}"

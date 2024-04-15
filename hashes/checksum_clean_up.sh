@@ -6,7 +6,7 @@
 
 LOG_LEAD="$LOG_PATH"
 CODE_LEAD="$CODE"
-PY3_LAUNCH="$PY3_ENV"
+PY3_LAUNCH="$PYENV311"
 LOG="${LOG_LEAD}checksum_clean_up.log"
 CHECKSUM_PATH="${LOG_LEAD}checksum_md5/"
 CHECKSUM_LIST="${CODE_LEAD}checksum_list.txt"

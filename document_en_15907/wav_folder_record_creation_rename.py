@@ -234,10 +234,10 @@ def main():
     for directory in dirs:
         if directory == 'failed_rename':
             continue
-        dirpath = os.path.join(root, directory)
+        dirpath = os.path.join(WAV_RENAME_PATH, directory)
         wav_files = []
         other_files = []
-        for root, dirs, files in os.path.walk(dirpath):
+        for root, dirs, files in os.walk(dirpath):
             for file in files:
                 if file.endswith(('.wav', '.WAV')):
                     wav_files.append(os.path.join(root, file))
@@ -272,11 +272,11 @@ def main():
         quality_comments = []
         mediaconch_assess = []
         for filepath in value:
-            if file.endswith(('.wav', '.WAV')):
+            if filepath.endswith(('.wav', '.WAV')):
                 file = os.path.split(filepath)[-1]
                 success = conformance_check(filepath)
                 LOGGER.info("Conformance check results for %s: %s", file, success)
-                quality_comments.append(file)
+                quality_comments.append(os.path.relpath(filepath, key))
                 if 'PASS!' not in success:
                     mediaconch_assess.append('FAIL')
                     local_log(f"File failed Mediaconch policy: {file}\n{success}")
@@ -290,7 +290,6 @@ def main():
             local_log(f"Skipping: Unable to retrieve Source object number from folder: {folder}")
             LOGGER.warning("Skipping: Unable to retrieve source object number from folder: %s", folder)
             continue
-
         print(source_ob_num, part_whole)
         local_log(f"Source object number retrieved from folder {folder}: {source_ob_num}")
         cid_data = cid_data_retrieval(source_ob_num)
@@ -306,7 +305,6 @@ def main():
             LOGGER.info("Skipping: No priref retrieved for folder %s", folder)
             local_log(f"SKIPPING: Could not find priref for source item {source_ob_num}")
             continue
-
         # Make CID record with Title of source item
         if len(cid_data[9]) > 0:
             LOGGER.info("Making new CID item record for WAV using source item title %s", cid_data[9])
@@ -328,7 +326,6 @@ def main():
             local_log(f"Moving {key} to {fail_path}")
             shutil.move(key, fail_path)
             continue
-
         # Check wav_ob_num present following Item creation
         if wav_ob_num:
             local_log(f"Creation of new WAV item record successful: {wav_ob_num}")
@@ -400,7 +397,7 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
                       {'creator.lref': '999570701'},
                       {'creator.role.lref': '392405'},
                       {'description.date': str(datetime.datetime.now())[:10]},
-                      {'file_type': 'TAR'},
+                      {'file_type': 'WAV'},
                       {'code_type': 'Uncompressed'},
                       {'item_type': 'DIGITAL'},
                       {'source_item.lref': source_priref},

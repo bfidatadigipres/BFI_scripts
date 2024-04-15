@@ -221,36 +221,42 @@ def cid_data_retrieval(ob_num):
 
 def main():
     '''
-    Looks through WAV_ARCHIVE_PATH for files ending .wav/.WAV
+    Looks through WAV_RENAME_PATH for files ending .wav/.WAV
     If part whole is greater than 01, extract all parts to list and check all present
     Find 01of* and check against policy, before CID actions to generate Item record
     extract object number and make new filename. Apply filename to all parts (mediaconch check)
     and move to autoingest path in audio isilon share.
     '''
-
-    LOGGER.info("========== wav folder record creation rename START ============")
     check_control()
     cid_check()
-
     directory_list = {}
-    for root, dirs, _ in os.walk(WAV_RENAME_PATH):
-        for directory in dirs:
-            if directory == 'failed_rename':
-                continue
-            dirpath = os.path.join(root, directory)
-            dirlist = os.listdir(dirpath)
-            wav_files = [ x for x in dirlist if x.endswith(('.wav', '.WAV', '.mp3', '.MP3')) ]
-            if len(wav_files) != len(dirlist):
-                LOGGER.info("Non audio files found in directory %s", directory)
-            if len(wav_files) > 0:
-                directory_list[dirpath] = wav_files
-            else:
-                LOGGER.info("Skipping: No audio files in folder %s", directory)
-                continue
+    dirs = [ x for x in os.listdir(WAV_RENAME_PATH) if os.path.isdir(os.path.join(WAV_RENAME_PATH, x)) ]
+    for directory in dirs:
+        if directory == 'failed_rename':
+            continue
+        dirpath = os.path.join(root, directory)
+        wav_files = []
+        other_files = []
+        for root, dirs, files in os.path.walk(dirpath):
+            for file in files:
+                if file.endswith(('.wav', '.WAV')):
+                    wav_files.append(os.path.join(root, file))
+                else:
+                    other_files.append(os.path.join(root, file))
+        if len(other_files) > 0:
+            LOGGER.warning("Non WAV files found in %s: %s", directory, other_files)
+            LOGGER.warning("Skipping processing this folder until files reviewed.")
+            continue
+        if len(wav_files) > 0:
+            directory_list[dirpath] = wav_files
+        else:
+            LOGGER.info("Skipping: No audio files in folder %s", directory)
+            continue
     if not directory_list:
         LOGGER.info("No items found this time. Script exiting")
         sys.exit()
 
+    LOGGER.info("========== wav folder record creation rename START ============")
     print(directory_list)
     for key, value in directory_list.items():
         print(key, value)
@@ -258,16 +264,16 @@ def main():
         LOGGER.info("Contents of folder being processed:")
         join_up = ', '.join(value)
         LOGGER.info("%s", join_up)
-        folder = os.path.split(key)[1]
+        folder = os.path.split(key)[-1]
         local_log(f"============= NEW WAV FOLDER FOUND {folder} ============= {str(datetime.datetime.now())}")
         local_log(f"Folder contents: {', '.join(value)}")
 
         # Mediaconch policy assessment
         quality_comments = []
         mediaconch_assess = []
-        for file in value:
+        for filepath in value:
             if file.endswith(('.wav', '.WAV')):
-                filepath = os.path.join(key, file)
+                file = os.path.split(filepath)[-1]
                 success = conformance_check(filepath)
                 LOGGER.info("Conformance check results for %s: %s", file, success)
                 quality_comments.append(file)

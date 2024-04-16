@@ -31,7 +31,6 @@ import json
 import shutil
 import logging
 import datetime
-import requests
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -40,7 +39,6 @@ import adlib_v3 as adlib
 # Global variables
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API4')
 PLATFORM_STORAGE = os.environ.get('PLATFORM_INGEST_PTH')
 
 # Setup logging
@@ -141,22 +139,23 @@ def main():
                 if not file.endswith(('.WAV', '.wav')):
                     LOGGER.warning("File contained in separate5_1 audio folder that is not WAV: %s", file)
                 ext = file.split('.')[-1]
-                item_data = create_new_item_record(priref, file, record)
-                if item_data is None:
+                item_record = create_new_item_record(priref, file, record)
+                if item_record is None:
                     continue
-                LOGGER.info("** CID Item record created: %s - %s", item_data[0], item_data[1])
+
+                tt_priref = adlib.retrieve_field_name(item_record[0], 'priref')
+                tt_ob_num = adlib.retrieve_field_name(item_record[0], 'object_number')
+                LOGGER.info("** CID Item record created: %s - %s", tt_priref, tt_ob_num)
+                print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
 
                 # Append quality comments to new CID item record
                 qual_comm = "5.1 audio supplied separately as IMP contains Dolby Atmos IAB"
-                success = adlib.add_quality_comments(priref, qual_comm)
+                success = adlib.add_quality_comments(tt_priref, qual_comm)
                 if not success:
-                    LOGGER.warning("Quality comments were not written to record: %s", priref)
-                LOGGER.info("Quality comments added to CID item record %s", priref)
+                    LOGGER.warning("Quality comments were not written to record: %s", tt_priref)
+                LOGGER.info("Quality comments added to CID item record %s", tt_priref)
 
                 # Rename file to new filename from object-number
-                tt_priref = item_data[0]
-                tt_ob_num = item_data[1]
-                print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
                 new_fname = f"{tt_ob_num.replace('-', '_')}_01of01.{ext}"
                 new_fpath = os.path.join(fpath, new_fname)
                 LOGGER.info("%s to be renamed %s", file, new_fname)

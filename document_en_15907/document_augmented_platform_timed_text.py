@@ -10,13 +10,15 @@ CID Item record object_number.
    and makes list of all files within folder
 3. Iterates the enclosed files completing stages:
    a/ Build dictionary for new Item record
-   b/ Convert to XML using adlib
+   b/ Convert to XML using adlib_v3
    c/ Push data to CID to create item record
    d/ If successful rename file after new CID
       item object_number (forced 01of01) and move
       to autoingest path
 4. When all files in a folder processed the
    folder is checked as empty and deleted
+   
+NOTES: Integrated with adlib_v3 for test
 
 Joanna White
 2024
@@ -29,24 +31,17 @@ import json
 import shutil
 import logging
 import datetime
-import requests
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+from adlib_v3 import adlib
 
 # Global variables
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API')
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
-TODAY = datetime.date.today()
+PLATFORM_STORAGE = os.environ.get('PLATFORM_INGEST_PTH')
 
 # Setup logging
-PLATFORM_STORAGE = os.environ.get('PLATFORM_INGEST_PTH')
-NET_INGEST = os.environ.get('NETFLIX_INGEST')
-AMZ_INGEST = os.environ.get('AMAZON_INGEST')
 LOGGER = logging.getLogger('document_augmented_platform_timed_text')
 HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_platform_timed_text.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
@@ -55,8 +50,8 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 STORAGE = {
-    'Netflix': f"{os.path.join(PLATFORM_STORAGE, NET_INGEST)}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/timed_text/')}",
-    'Amazon': f"{os.path.join(PLATFORM_STORAGE, AMZ_INGEST)}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/timed_text/')}"
+    'Netflix': f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/timed_text/')}",
+    'Amazon': f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/timed_text/')}"
 }
 
 
@@ -76,17 +71,11 @@ def cid_check(object_number):
     Looks up object_number and retrieves title
     and other data for new timed text record
     '''
-    query = {'database': 'items',
-             'search': f'object_number="{object_number}"',
-             'limit': '1',
-             'output': 'json'}
-    try:
-        query_result = CID.get(query)
-        return query_result.records
-    except Exception as err:
-        print(f"cid_check(): Unable to match supplied name with CID Item record: {object_number} {err}")
-
-    return None
+    search = f"object_number='{object_number}'"
+    hits, record = adlib.retrieve_record('items', search, '1', fields=None)
+    if hits == 0:
+        return None
+    return record
 
 
 def walk_folders(storage):
@@ -139,27 +128,23 @@ def main():
                 LOGGER.warning("Skipping: Record could not be matched with object_number")
                 continue
 
-            priref = record[0]['priref'][0]
+            priref = adlib.retrieve_field_name(record[0], 'priref')
             print(f"Priref matched with retrieved folder name: {priref}")
             LOGGER.info("Priref matched with folder name: %s", priref)
 
             # Create CID item record for each timed text in folder
             for file in file_list:
                 ext = file.split('.')[-1]
-                tt_item_data = make_item_record_dict(priref, file, ext, record)
-                tt_item_xml = CUR.create_record_data('', tt_item_data)
-                print(tt_item_xml)
-
-                item_data = push_record_create(tt_item_xml, 'items', 'insertrecord')
-                if item_data is None:
-                    LOGGER.warning("Creation of new CID item record failed with XML: \n%s", tt_item_xml)
+                item_record = create_new_item_record(priref, file, record)
+                if item_record is None:
                     continue
-                LOGGER.info("** CID Item record created: %s - %s", item_data[0], item_data[1])
+
+                tt_priref = adlib.retrieve_field_name(item_record[0], 'priref')
+                tt_ob_num = adlib.retrieve_field_name(item_record[0], 'object_number')
+                LOGGER.info("** CID Item record created: %s", tt_priref)
+                print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
 
                 # Rename file to new filename from object-number
-                tt_priref = item_data[0]
-                tt_ob_num = item_data[1]
-                print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
                 new_fname = f"{tt_ob_num.replace('-', '_')}_01of01.{ext}"
                 new_fpath = os.path.join(fpath, new_fname)
                 LOGGER.info("%s to be renamed %s", file, new_fname)
@@ -261,12 +246,12 @@ def rename_or_move(arg, file_a, file_b):
     return False
 
 
-def make_item_record_dict(priref, file, ext, record):
+def make_item_record_dict(priref, file, record):
     '''
     Get CID item record for source and borrow data
     for creation of new CID item record
     '''
-
+    ext = file.split('.')[-1]
     if 'Acquisition_source' in str(record):
         platform = record[0]['Acquisition_source'][0]['acquisition.source'][0]
         record_default = build_record_defaults(platform)
@@ -321,33 +306,19 @@ def make_item_record_dict(priref, file, ext, record):
     return item
 
 
-def push_record_create(payload, database, method):
+def create_new_item_record(priref, fname, record):
     '''
-    Use requests.request to push data to the
-    CID API as grouped XML
+    Build new CID item record from existing data and make CID item record
     '''
-    hdrs = {'Content-Type': 'text/xml'}
-    prms = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'json'
-    }
-
-    try:
-        response = requests.request('POST', CID_API, headers=hdrs, params=prms, data=payload, timeout=1200)
-        print(response.text)
-    except Exception as err:
-        LOGGER.critical("push_record_create(): Unable to create %s record with %s and payload: \n%s", database, method, payload)
-        print(err)
+    item_dct = make_item_record_dict(priref, fname, record[0])
+    LOGGER.info(item_dct)
+    item_xml = adlib.create_record_data('', item_dct)
+    new_record = adlib.post(item_xml, 'items', 'insertrecord', '')
+    if new_record is None:
+        LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None
-
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
-        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
-        return priref, object_number
-    return None
+    LOGGER.info("New CID item record created: %s", new_record)
+    return new_record
 
 
 if __name__ == '__main__':

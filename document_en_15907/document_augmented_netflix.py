@@ -362,7 +362,7 @@ def cid_check_works(patv_id):
              'search': f'alternative_number="{patv_id}"',
              'limit': '1',
              'output': 'json',
-             'fields': 'priref, title, title.article'}
+             'fields': 'priref, title, title.article, grouping.lref'}
     try:
         query_result = CID.get(query)
     except Exception as err:
@@ -389,8 +389,38 @@ def cid_check_works(patv_id):
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''
+    groupings = []
+    for num in range(0, hit_count):
+        try:
+            grouping = query_result.records[num]['grouping.lref'][0]
+            print(f"cid_check_works(): Grouping: {grouping}")
+            groupings.append(grouping)
+        except Exception as err:
+            pass
+    alt_type = []
+    for num in range(0, query_result.hits):
+        try:
+            priref_all = query_result.records[num]['priref'][0]
+        except (IndexError, TypeError, KeyError):
+            return None
 
-    return hit_count, priref, title, title_art
+        query = {'database': 'manifestations',
+                 'search': f'(priref="{priref_all}")',
+                 'limit': '0',
+                 'output': 'json',
+                 'fields': 'alternative_number.type'}
+
+        full_result = cid.get(query)
+        if not full_result:
+            return None
+        try:
+            alt_num_type = full_result.records[0]['Alternative_number'][0]['alternative_number.type'][0]
+            print(f"cid_check_works(): Alternative number type {alt_num_type}")
+            alt_type.append(alt_num_type)
+        except (IndexError, TypeError, KeyError):
+            alt_type.append('')
+
+    return hit_count, priref, title, title_art, groupings, alt_type
 
 
 def genre_retrieval(category_code, description, title):
@@ -629,18 +659,20 @@ def main():
 
         # Create Work/Manifestation if film/programme
         if 'film' in level.lower() or 'programme' in level.lower():
-            # Check CID work exists / Make work if needed
-            hits, priref_work, work_title, work_title_art = cid_check_works(patv_id)
-            if int(hits) > 0:
-                print(f"SKIPPING PRIREF FOUND: {priref_work}")
-                LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
-                continue
             prog_path = os.path.join(NETFLIX, matched_folders[0])
 
-            print(f"Found priref is for monographic work: {priref_work}")
-            if priref_work.isnumeric():
-                print(f"SKIPPING: Monograph work already exists for {title}.")
-                continue
+            # Check CID work exists / Make work if needed
+            hits, priref_work, work_title, work_title_art, groupings, alt_type = cid_check_works(patv_id)
+            if int(hits) > 0:
+                if '400947' in str(groupings):
+                    print(f"SKIPPING PRIREF FOUND: {priref_work}")
+                    LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
+                    continue
+                if 'PATV asset id' in str(alt_type):
+                    LOGGER.warning("STORA PATV id found to match work priref for this title: %s", priref_work)
+                if 'PATV Amazon asset id' in str(alt_type):
+                    LOGGER.warning("Amazon PATV id found to match work priref for this title: %s", priref_work)
+
             # Retrieve all available
             mono_cat = [ x for x in os.listdir(prog_path) if x.startswith('mono_catalogue_') ]
             mono = [ x for x in os.listdir(prog_path) if x.startswith('monographic_') ]
@@ -660,16 +692,23 @@ def main():
             if not cat_dct:
                 print("SKIPPING: Missing data from JSON files.")
                 continue
+
             # Make monographic work here
             data_dct = make_work_dictionary('', '', csv_data, cat_dct, mono_dct)
             print(f"Dictionary for monograph creation: \n{data_dct}")
             print("*************")
             record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
-            priref_work = create_work('', '', '', data_dct, record, work, work_restricted)
-            if len(priref_work) == 0:
-                LOGGER.warning("Monograph work record creation failed, skipping all further record creations")
-                continue
-            print(f"PRIREF MONOGRAPH WORK: {priref_work}")
+
+            if priref_work.isnumeric():
+                print(f"Found priref is for monographic work: {priref_work}")
+                print(f"Monograph work already exists for {title}.")
+                LOGGER.info("Monograph work exists that is not Netflix origin. Linking repeat to existing work")
+            else:
+                priref_work = create_work('', '', '', data_dct, record, work, work_restricted)
+                if len(priref_work) == 0:
+                    LOGGER.warning("Monograph work record creation failed, skipping all further record creations")
+                    continue
+                print(f"PRIREF MONOGRAPH WORK: {priref_work}")
 
             # Create contributors if supplied / or in addition to solo contributors
             if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
@@ -700,10 +739,14 @@ def main():
             json_fpaths = get_json_files(prog_path)
             series_priref = ''
             # Check CID work exists / Make work if needed
-            hits, series_priref, work_title, work_title_art = cid_check_works(patv_id)
+            hits, series_priref, work_title, work_title_art, _, alt_type = cid_check_works(patv_id)
             print(f"Work title found: {work_title}")
             if series_priref.isnumeric():
                 print(f"Series work already exists for {title}.")
+                if 'PATV asset id' in str(alt_type):
+                    LOGGER.warning("Series work found is from STORA off-air recording: %s", series_priref)
+                if 'PATV Amazon asset id' in str(alt_type):
+                    LOGGER.warning("Series work found is from Amazon streaming recording: %s", series_priref)
             else:
                 print("Series work does not exist, creating series work now.")
                 series_json = [ x for x in os.listdir(prog_path) if x.startswith('series_') and x.endswith('.json')]
@@ -739,11 +782,16 @@ def main():
                 print(f"** Episode ID: {episode_id} {title}")
 
                 # Check CID work exists / Make work if needed
-                hits, priref_episode, _, _ = cid_check_works(episode_id)
+                hits, priref_episode, _, _, groupings, alt_type = cid_check_works(episode_id)
                 if int(hits) > 0:
-                    print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
-                    LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
-                    continue
+                    if '400947' in str(groupings):
+                        print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
+                        LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
+                        continue
+                    if 'PATV asset id' in str(alt_type):
+                        LOGGER.warning("Episode work exists from STORA off-air recordings: %s", priref_episode)
+                    if 'PATV Amazon asset id' in str(alt_type):
+                        LOGGER.warning("Episode work exists from Amazon streaming platform: %s", priref_episode)
                 print("New episode_id found for Work. Linking to series work")
 
                 # Retrieve all available data

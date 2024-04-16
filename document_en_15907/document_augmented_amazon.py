@@ -247,7 +247,6 @@ def get_cat_data(data=None):
     try:
         c_data['start_date'] = data['availability']['start']
     except (IndexError, TypeError, KeyError):
-        c_data['start_date'] = ''
         pass
     if 'deeplink' in data:
         for link in data['deeplink']:
@@ -711,15 +710,15 @@ def main():
                     LOGGER.warning("Monograph work record creation failed, skipping all further record creations")
                     continue
 
-                print(f"PRIREF MONOGRAPH WORK CREATED: {priref_work}")
-                # Create contributors if supplied / or in addition to solo contributors
-                if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
-                    print('** Contributor data found')
-                    success = create_contributors(priref_work, data_dct['nfa_category'], data_dct['contributors'], 'Amazon')
-                    if success:
-                        LOGGER.info("Contributor data written to Work record: %s", priref_work)
-                    else:
-                        LOGGER.warning("Failure to write contributor data to Work record: %s", priref_work)
+            print(f"PRIREF MONOGRAPH WORK CREATED: {priref_work}")
+            # Create contributors if supplied / or in addition to solo contributors
+            if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
+                print('** Contributor data found')
+                success = create_contributors(priref_work, data_dct['nfa_category'], data_dct['contributors'], 'Amazon')
+                if success:
+                    LOGGER.info("Contributor data written to Work record: %s", priref_work)
+                else:
+                    LOGGER.warning("Failure to write contributor data to Work record: %s", priref_work)
 
             # Make monographic manifestation here
             priref_man = create_manifestation(priref_work, work_title, work_title_art, data_dct, record, manifestation)

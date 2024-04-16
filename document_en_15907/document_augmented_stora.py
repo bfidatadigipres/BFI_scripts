@@ -219,6 +219,10 @@ def find_repeats(asset_id):
 
         print(f"********** Alternative number types: {alt_num_type} ************")
         if alt_num_type != 'PATV asset id':
+            if 'Amazon' in alt_num_type:
+                logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
+            if 'Netflix' in alt_num_type:
+                logger.warning("Matching episode work found to be an Netflix work record: %s", priref)
             continue
 
         print(f"Priref with matching asset_id in CID: {priref}")

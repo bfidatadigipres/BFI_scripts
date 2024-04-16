@@ -313,6 +313,7 @@ def make_item_record_dict(priref, fname, record):
         item.append({'language.type': record[0]['language'][0]['language.type'][0]['value'][0]})
     if len(fname) > 1:
         item.append({'digital.acquired_filename': fname})
+        item.append({'digital.acquired_filename.type': 'FILE'})
 
     return item
 

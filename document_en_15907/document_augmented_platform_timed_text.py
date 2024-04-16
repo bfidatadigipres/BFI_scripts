@@ -291,8 +291,12 @@ def make_item_record_dict(priref, file, record):
     if 'acquisition.method' in str(record):
         item.append({'acquisition.method': adlib.retrieve_field_name(record[0], 'acquisition.method')[0]})
     if 'Acquisition_source' in str(record):
-        item.append({'acquisition.source': adlib.retrieve_field_name(record[0], 'acquisition.source')[0]})
-        item.append({'acquisition.source.type': adlib.retrieve_field_name(record[0], 'acquisition.source.type')[0]})
+        if 'Netflix' in adlib.retrieve_field_name(record[0], 'acquisition.source')[0]:
+            item.append({'acquisition.source.lref': '143463'})
+            item.append({'acquisition.source.type': 'DONOR'})
+        elif 'Amazon' in adlib.retrieve_field_name(record[0], 'acquisition.source')[0]:
+            item.append({'acquisition.source.lref': '999923912'})
+            item.append({'acquisition.source.type': 'DONOR'})
     item.append({'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                       'Please raise a request via the Collections Systems Service Desk, describing your specific use.'})
     item.append({'access_conditions.date': str(datetime.datetime.now())[:10]})

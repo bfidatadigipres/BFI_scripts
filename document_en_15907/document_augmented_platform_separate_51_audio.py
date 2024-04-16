@@ -143,8 +143,8 @@ def main():
                 if item_record is None:
                     continue
                 print(item_record)
-                tt_priref = adlib.retrieve_field_name(item_record[0], 'priref')[0]
-                tt_ob_num = adlib.retrieve_field_name(item_record[0], 'object_number')[0]
+                tt_priref = adlib.retrieve_field_name(item_record, 'priref')[0]
+                tt_ob_num = adlib.retrieve_field_name(item_record, 'object_number')[0]
                 LOGGER.info("** CID Item record created: %s - %s", tt_priref, tt_ob_num)
                 print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
 

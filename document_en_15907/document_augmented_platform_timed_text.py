@@ -128,7 +128,7 @@ def main():
                 LOGGER.warning("Skipping: Record could not be matched with object_number")
                 continue
 
-            priref = adlib.retrieve_field_name(record[0], 'priref')
+            priref = adlib.retrieve_field_name(record[0], 'priref')[0]
             print(f"Priref matched with retrieved folder name: {priref}")
             LOGGER.info("Priref matched with folder name: %s", priref)
 
@@ -139,8 +139,8 @@ def main():
                 if item_record is None:
                     continue
 
-                tt_priref = adlib.retrieve_field_name(item_record[0], 'priref')
-                tt_ob_num = adlib.retrieve_field_name(item_record[0], 'object_number')
+                tt_priref = adlib.retrieve_field_name(item_record[0], 'priref')[0]
+                tt_ob_num = adlib.retrieve_field_name(item_record[0], 'object_number')[0]
                 LOGGER.info("** CID Item record created: %s", tt_priref)
                 print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
 

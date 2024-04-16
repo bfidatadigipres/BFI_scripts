@@ -96,7 +96,10 @@ def main():
         priref = adlib.retrieve_field_name(new_record, 'priref')[0]
         ob_num = adlib.retrieve_field_name(new_record, 'object_number')[0]
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
-        success = add_quality_comments(priref)
+
+        comments = '''Viewing copy created from digital master which has been ingested for access instances. \
+                      The file may have had adverts, bars and tones cut out, or other fixes applied.'''
+        success = adlib.add_quality_comments(priref, comments)
         if not success:
             LOGGER.warning("Quality comments were not written to record: %s", priref)
         LOGGER.info("Quality comments added to CID item record %s", priref)
@@ -192,32 +195,6 @@ def defaults():
                {'access_conditions.date': str(datetime.datetime.now())[:10]}])
 
     return record
-
-
-def add_quality_comments(priref):
-    '''
-    Receive list of wav files in folder
-    and make into XML quality comments
-    and updaterecord with data
-    '''
-
-    comments = 'Viewing copy created from digital master which has been ingested for access instances. The file may have had adverts, bars and tones cut out, or other fixes applied.'
-    date_now = str(datetime.datetime.now())[:10]
-
-    p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
-    p_comm = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"
-    p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
-    p_writer = f"<quality_comments.writer>BFI National Archive</quality_comments.writer>"
-    p_end = "</quality_comments></record></recordList></adlibXML>"
-    payload = p_start + p_comm + p_date + p_writer + p_end
-    LOGGER.info("Payload for quality comments: %s", payload)
-
-    update_record = adlib.post(payload, 'items', 'updaterecord', priref)
-    if update_record is not None:
-        LOGGER.info("add_quality_comments(): No error returned. Payload written successfully")
-        return True
-    else:
-        return False
 
 
 if __name__ == '__main__':

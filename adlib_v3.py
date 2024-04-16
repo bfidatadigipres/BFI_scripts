@@ -12,6 +12,7 @@ import os
 import json
 from lxml import etree, html
 import requests
+import datetime
 from dicttoxml import dicttoxml
 
 CID_API = os.environ['CID_API4']
@@ -220,3 +221,62 @@ def get_fragments(obj):
 
     return data
 
+
+def add_quality_comments(priref, comments):
+    '''
+    Receive list of wav files in folder
+    and make into XML quality comments
+    and updaterecord with data
+    '''
+    p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
+    date_now = str(datetime.datetime.now())[:10]
+    p_comm = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"
+    p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
+    p_writer = "<quality_comments.writer>datadigipres</quality_comments.writer>"
+    p_end = "</quality_comments></record></recordList></adlibXML>"
+    payload = p_start + p_comm + p_date + p_writer + p_end
+
+    lock_success = _lock(priref)
+    if lock_success:
+        response = requests.request(
+            'POST',
+            CID_API,
+            headers={'Content-Type': 'text/xml'},
+            params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
+            data=payload,
+            timeout=1200)
+        if '<error><info>' in str(response.text):
+            _unlock(priref)
+            return False
+        return True
+    return False
+
+
+def _lock(priref):
+    '''
+    Lock item record for requests updaterecord
+    '''
+    try:
+        response = requests.request(
+            'POST',
+            CID_API,
+            params={'database': 'items', 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'jsonv1'},
+            timeout=1200)
+        return True
+    except Exception as err:
+        return False
+
+
+def _unlock(priref):
+    '''
+    Unlock item record following dailed updaterecord
+    '''
+    try:
+        response = requests.request(
+            'POST',
+            CID_API,
+            params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'},
+            timeout=1200)
+        return True
+    except Exception as err:
+        return False

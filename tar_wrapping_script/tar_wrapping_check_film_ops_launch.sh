@@ -34,5 +34,5 @@ cat "$FLIST" >> "$LOGS"
 
 # Launching Python script using parallel
 echo " Launching Python script to TAR wrap files/folders " >> "$LOGS"
-grep "/mnt/" "$FLIST" | parallel --jobs 1 "${PY3_ENV} ${CODE}tar_wrapping_script/tar_wrapping_check_film_ops.py {}"
+grep "/mnt/" "$FLIST" | parallel --jobs 1 "${PYENV311} ${CODE}tar_wrapping_script/tar_wrapping_check_film_ops.py {}"
 echo " =========== TAR WRAPPING CHECKSUM SCRIPT END =========== $date_FULL" >> "$LOGS"

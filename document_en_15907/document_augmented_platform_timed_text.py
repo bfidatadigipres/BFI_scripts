@@ -253,7 +253,7 @@ def make_item_record_dict(priref, file, record):
     '''
     ext = file.split('.')[-1]
     if 'Acquisition_source' in str(record):
-        platform = record[0]['Acquisition_source'][0]['acquisition.source'][0]
+        platform = adlib.retrieve_field_name(record[0], 'acquisition.source')[0]
         record_default = build_record_defaults(platform)
     else:
         record_default = build_record_defaults('Streaming platform')
@@ -267,17 +267,18 @@ def make_item_record_dict(priref, file, record):
     item.append({'accession_date': str(datetime.datetime.now())[:10]})
 
     if 'Title' in str(record):
-        imp_title = record[0]['Title'][0]['title'][0]
+        imp_title = adlib.retrieve_field_name(record[0], 'title')[0]
         item.append({'title': f"{imp_title} (Timed Text)"})
-        if 'title.article' in str(record):
-            item.append({'title.article': record[0]['Title'][0]['title.article'][0]})
+        if adlib.retrieve_field_name(record[0], 'title_article')[0]:
+            item.append({'title.article': adlib.retrieve_field_name(record[0], 'title_article')[0]})
         item.append({'title.language': 'English'})
         item.append({'title.type': '05_MAIN'})
     else:
         LOGGER.warning("No title data retrieved. Aborting record creation")
         return None
     if 'Part_of' in str(record):
-        item.append({'part_of_reference.lref': record[0]['Part_of'][0]['part_of_reference'][0]['priref'][0]})
+        parent_priref = adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]
+        item.append({'part_of_reference.lref': parent_priref})
     else:
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
         return None
@@ -286,20 +287,20 @@ def make_item_record_dict(priref, file, record):
     if len(ext) > 1:
         item.append({'file_type': ext.upper()})
     if 'acquisition.date' in str(record):
-        item.append({'acquisition.date': record[0]['acquisition.date'][0]})
+        item.append({'acquisition.date': adlib.retrieve_field_name(record[0], 'acquisition.date')[0]})
     if 'acquisition.method' in str(record):
-        item.append({'acquisition.method': record[0]['acquisition.method'][0]})
+        item.append({'acquisition.method': adlib.retrieve_field_name(record[0], 'acquisition.method')[0]})
     if 'Acquisition_source' in str(record):
-        item.append({'acquisition.source': record[0]['Acquisition_source'][0]['acquisition.source'][0]})
-        item.append({'acquisition.source.type': record[0]['Acquisition_source'][0]['acquisition.source.type'][0]['value'][0]})
+        item.append({'acquisition.source': adlib.retrieve_field_name(record[0], 'acquisition.source')[0]})
+        item.append({'acquisition.source.type': adlib.retrieve_field_name(record[0], 'acquisition.source.type')[0]})
     item.append({'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                       'Please raise a request via the Collections Systems Service Desk, describing your specific use.'})
     item.append({'access_conditions.date': str(datetime.datetime.now())[:10]})
     if 'grouping' in str(record):
-        item.append({'grouping': record[0]['grouping'][0]})
+        item.append({'grouping': adlib.retrieve_field_name(record[0], 'grouping')[0]})
     if 'language' in str(record):
-        item.append({'language': record[0]['language'][0]['language'][0]})
-        item.append({'language.type': record[0]['language'][0]['language.type'][0]['value'][0]})
+        item.append({'language': adlib.retrieve_field_name(record[0], 'language')[0]})
+        item.append({'language.type': adlib.retrieve_field_name(record[0], 'language.type')[0]})
     if len(file) > 1:
         item.append({'digital.acquired_filename': file})
         item.append({'digital.acquired_filename.type': 'FILE'})
@@ -311,7 +312,7 @@ def create_new_item_record(priref, fname, record):
     '''
     Build new CID item record from existing data and make CID item record
     '''
-    item_dct = make_item_record_dict(priref, fname, record[0])
+    item_dct = make_item_record_dict(priref, fname, record)
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
     new_record = adlib.post(item_xml, 'items', 'insertrecord', '')

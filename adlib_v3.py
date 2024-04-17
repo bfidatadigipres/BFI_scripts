@@ -13,7 +13,6 @@ import json
 import requests
 import datetime
 from lxml import etree, html
-from xml.sax.saxutils import escape
 from dicttoxml import dicttoxml
 
 CID_API = os.environ['CID_API4']

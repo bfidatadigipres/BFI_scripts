@@ -10,9 +10,10 @@ Joanna White
 
 import os
 import json
-from lxml import etree, html
 import requests
 import datetime
+from lxml import etree, html
+from xml.sax.saxutils import escape
 from dicttoxml import dicttoxml
 
 CID_API = os.environ['CID_API4']
@@ -75,9 +76,9 @@ def post(payload, database, method, priref):
         try:
             response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
-            print(err)
+            print(response.text, err)
             return None
-
+        print(response.text)
         if 'recordList' in response.text:
             records = json.loads(response.text)
             return records['adlibJSON']['recordList']['record'][0]
@@ -235,48 +236,17 @@ def add_quality_comments(priref, comments):
     p_writer = "<quality_comments.writer>datadigipres</quality_comments.writer>"
     p_end = "</quality_comments></record></recordList></adlibXML>"
     payload = p_start + p_comm + p_date + p_writer + p_end
+    print(payload)
 
-    lock_success = _lock(priref)
-    if lock_success:
-        response = requests.request(
-            'POST',
-            CID_API,
-            headers={'Content-Type': 'text/xml'},
-            params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
-            data=payload,
-            timeout=1200)
-        if '<error><info>' in str(response.text):
-            _unlock(priref)
-            return False
-        return True
-    return False
-
-
-def _lock(priref):
-    '''
-    Lock item record for requests updaterecord
-    '''
-    try:
-        response = requests.request(
-            'POST',
-            CID_API,
-            params={'database': 'items', 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'jsonv1'},
-            timeout=1200)
-        return True
-    except Exception as err:
+    response = requests.request(
+        'POST',
+        CID_API,
+        headers={'Content-Type': 'text/xml'},
+        params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
+        data=payload,
+        timeout=1200)
+    if "error" in str(response.text):
         return False
-
-
-def _unlock(priref):
-    '''
-    Unlock item record following dailed updaterecord
-    '''
-    try:
-        response = requests.request(
-            'POST',
-            CID_API,
-            params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'},
-            timeout=1200)
+    else:
         return True
-    except Exception as err:
-        return False
+

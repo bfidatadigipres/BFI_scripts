@@ -31,7 +31,7 @@ CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
-STORAGE = os.environ['QNAP_11']
+STORAGE = os.environ['TRANSCODING']
 INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest/')
 MOD_MAX = 2000 # Modification time restriction
 UPLOAD_MAX = 1099511627776 # 1TB max
@@ -112,11 +112,11 @@ def check_bp_status(fname):
 
     query = ds3.HeadObjectRequest(BUCKET, fname)
     result = CLIENT.head_object(query)
-    # Only return false if DOESNTEXIST is missing, eg file found
-    if 'DOESNTEXIST' not in str(result.result):
-        LOGGER.info("File %s found in Black Pearl bucket %s", fname, BUCKET)
-        return False
 
+    # Only return false if DOESNTEXIST is missing, eg file found
+    if 'DOESNTEXIST' in str(result.result):
+        return False
+    LOGGER.info("File %s found in Black Pearl bucket %s", fname, BUCKET)
     return True
 
 
@@ -132,7 +132,7 @@ def move_to_ingest_folder(new_path, file_list):
     folder_size = get_size(INGEST_POINT)
     max_fill_size = UPLOAD_MAX - folder_size
     for fname in file_list:
-        file = os.path.split(fpath)[-1]
+        file = os.path.split(new_path)[-1]
         fpath = os.path.join(STORAGE, fname)
 
         if not max_fill_size >= 0:
@@ -141,10 +141,11 @@ def move_to_ingest_folder(new_path, file_list):
 
         file_size = get_size(fpath)
         max_fill_size -= file_size
+        print(f"Moving file {fpath} to {new_path}")
         shutil.move(fpath, new_path)
         LOGGER.info("move_to_ingest_folder(): Moved file into new Ingest folder: %s - %s", new_path, file)
         remove_list.append(fname)
-
+        sys.exit()
     for remove_file in remove_list:
         if remove_file in file_list:
             file_list.remove(remove_file)
@@ -153,7 +154,7 @@ def move_to_ingest_folder(new_path, file_list):
     return file_list
 
 
-def delete_existing_proxy(folderpath, file_list):
+def delete_existing_proxy(file_list):
     '''
     A proxy is being replaced so the
     existing version should be cleared
@@ -162,16 +163,15 @@ def delete_existing_proxy(folderpath, file_list):
         LOGGER.info("No files being replaced at this time")
         return []
     for file in file_list:
-        delete_path = os.path.join(folderpath, file)
-        request = ds3.DeleteObjectRequest(BUCKET, delete_path)
+        request = ds3.DeleteObjectRequest(BUCKET, file)
         CLIENT.delete_object(request)
         sleep(20)
-        success = check_bp_status(delete_path, BUCKET)
+        success = check_bp_status(file)
         if success:
-            LOGGER.info("File %s deleted successfully", delete_path)
+            LOGGER.info("File %s deleted successfully", file)
             file_list.remove(file)
         else:
-            LOGGER.warning("Failed to delete file - %s", delete_path)
+            LOGGER.warning("Failed to delete file - %s", file)
     return file_list
 
 
@@ -186,8 +186,10 @@ def main():
     '''
     for key, value in START_FOLDERS.items():
         access_path = os.path.join(STORAGE, key)
+        print(access_path)
         folder_list = os.listdir(access_path)
-        folder_list = folder_list.sort()
+        print(folder_list)
+        folder_list.sort()
         if folder_list[0] != value:
             LOGGER.warning('Problems with retrieved folder list for %s:\n%s', access_path, folder_list)
             continue
@@ -203,29 +205,29 @@ def main():
             os.makedirs(new_path, mode=0o777, exist_ok=True)
             files = os.listdir(os.path.join(access_path, folder))
             for file in files:
-                print("Checking mod time")
-                if not check_mod_time(os.path.join(new_path, file)):
+                old_fpath = os.path.join(access_path, folder, file)
+                if not check_mod_time(old_fpath):
                     LOGGER.info("File %s mod time outside of maximum time %s", file, MOD_MAX)
                     continue
-                print("Checking BP status")
-                if not check_bp_status(file):
-                    file_list.append(f"{key}/{folder}/file")
+                if not check_bp_status(f"{key}/{folder}/{file}"):
+                    file_list.append(f"{key}/{folder}/{file}")
                 else:
-                    print(f"File found, needs deleting and replacing: {file}")
-                    file_list.append(f"{key}/{folder}/file")
-                    replace_list.append(f"{key}/{folder}/file")
-            sys.exit()
+                    file_list.append(f"{key}/{folder}/{file}")
+                    replace_list.append(f"{key}/{folder}/{file}")
+
+            '''
             # Delete existing versions if being replaced
             if replace_list:
-                success_list = delete_existing_proxy(f"{key}/{folder}/", replace_list)
+                print(f"Deleting items in replace_list: {replace_list}")
+                success_list = delete_existing_proxy(replace_list)
                 if success_list == []:
                     LOGGER.info("All repeated files successfully deleted before replacement.")
                 else:
                     LOGGER.warning("Duplicate files remaining in Black Pearl: %s", success_list)
-
+            '''
             # While files remaing in list, move to ingest folder, PUT, and remove again
             while file_list:
-                empty_check = os.listdir(INGEST_POINT)
+                empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
                 if len(empty_check) != 0:
                     LOGGER.warning("Exiting: Files in %s", INGEST_POINT)
                     sys.exit()

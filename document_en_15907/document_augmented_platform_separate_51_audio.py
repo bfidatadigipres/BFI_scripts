@@ -54,6 +54,14 @@ STORAGE = {
     'Amazon': f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate5_1/')}"
 }
 
+ORDER = {
+    'L': '01',
+    'R': '02',
+    'C': '03',
+    'LFE': '04',
+    'Ls': '05',
+    'Rs': '06'
+}
 
 def check_control():
     '''
@@ -120,6 +128,9 @@ def main():
             if not file_list:
                 LOGGER.warning("Skipping. No files found in folderpath: %s", fpath)
                 continue
+            if file_list != 6:
+                LOGGER.warning("Skipping. Incorrect amount of files found in path: %s", fpath)
+                continue
             LOGGER.info("Files found in target folder %s: %s", object_number, ', '.join(file_list))
 
             # Check object number valid
@@ -134,48 +145,55 @@ def main():
             print(f"Priref matched with retrieved folder name: {priref}")
             LOGGER.info("Priref matched with folder name: %s", priref)
 
-            # Create CID item record for each audio file in folder
-            for file in file_list:
-                if not file.endswith(('.WAV', '.wav')):
-                    LOGGER.warning("File contained in separate5_1 audio folder that is not WAV: %s", file)
-                ext = file.split('.')[-1]
-                item_record = create_new_item_record(priref, file, record)
-                if item_record is None:
-                    continue
-                print(item_record)
-                tt_priref = adlib.retrieve_field_name(item_record, 'priref')[0]
-                tt_ob_num = adlib.retrieve_field_name(item_record, 'object_number')[0]
-                LOGGER.info("** CID Item record created: %s - %s", tt_priref, tt_ob_num)
-                print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
+            # Create CID item record for batch of six audio files in folder
+            item_record, file_names = create_new_item_record(priref, file_list, record)
+            if item_record is None:
+                continue
+            print(item_record)
+            new_priref = adlib.retrieve_field_name(item_record, 'priref')[0]
+            new_ob_num = adlib.retrieve_field_name(item_record, 'object_number')[0]
+            LOGGER.info("** CID Item record created: %s - %s", new_priref, new_ob_num)
+            print(f"CID Item record created: {new_priref}, {new_ob_num}")
 
-                # Append quality comments to new CID item record
-                qual_comm = "5.1 audio supplied separately as IMP contains Dolby Atmos IAB"
-                success = adlib.add_quality_comments(tt_priref, qual_comm)
-                if not success:
-                    LOGGER.warning("Quality comments were not written to record: %s", tt_priref)
-                LOGGER.info("Quality comments added to CID item record %s", tt_priref)
+            file_names = build_fname_dct(file_list, new_ob_num)
+            filename_dct = []
+            for key, value in file_names.items():
+                if not key.endswith(('.WAV', '.wav')):
+                    LOGGER.warning("File contained in separate5_1 audio folder that is not WAV: %s", key)
 
-                # Rename file to new filename from object-number
-                new_fname = f"{tt_ob_num.replace('-', '_')}_01of01.{ext}"
-                new_fpath = os.path.join(fpath, new_fname)
-                LOGGER.info("%s to be renamed %s", file, new_fname)
-                rename_success = rename_or_move('rename', os.path.join(fpath, file), new_fpath)
+                new_fpath = os.path.join(fpath, value)
+                LOGGER.info("%s to be renamed %s", key, value)
+                rename_success = rename_or_move('rename', os.path.join(fpath, key), new_fpath)
                 if rename_success is False:
-                    LOGGER.warning("Unable to rename file: %s", os.path.join(fpath, file))
+                    LOGGER.warning("Unable to rename file: %s", os.path.join(fpath, key))
                 elif rename_success is True:
                     LOGGER.info("File successfully renamed. Moving to %s ingest path", platform)
                 elif rename_success == 'Path error':
-                    LOGGER.warning("Path error: %s", os.path.join(fpath, file))
+                    LOGGER.warning("Path error: %s", os.path.join(fpath, key))
 
                 # Move file to new autoingest path
-                move_success = rename_or_move('move', new_fpath, os.path.join(autoingest, new_fname))
+                move_success = rename_or_move('move', new_fpath, os.path.join(autoingest, value))
                 if move_success is False:
                     LOGGER.warning("Error with file move to autoingest, leaving in place for manual assistance")
                 elif move_success is True:
                     LOGGER.info("File successfully moved to %s ingest path: %s\n", platform, autoingest)
                 elif move_success == 'Path error':
                     LOGGER.warning("Path error: %s", new_fpath)
-                sys.exit("One run only")
+                filename_dct.append({"digital.acquired_filename": f"{value} - Renamed to: {key}"})
+                filename_dct.append({"digital.acquired_filename.type": "FILE"})
+
+            # Append digital.acquired_filename and quality_comments to new CID item record
+            payload = adlib.create_record_data(new_priref, filename_dct)
+            record = adlib.post(payload, 'items', 'updaterecord', new_priref)
+            if not record:
+                LOGGER.warning("Filename changes were not updated to digital.acquired_filename fields: %s", filename_dct)
+            LOGGER.info("Digital Acquired Filename data added to CID item record %s", new_priref)
+            qual_comm = "5.1 audio supplied separately as IMP contains Dolby Atmos IAB."
+            success = adlib.add_quality_comments(new_priref, qual_comm)
+            if not success:
+                LOGGER.warning("Quality comments were not written to record: %s", new_priref)
+            LOGGER.info("Quality comments added to CID item record %s", new_priref)
+
             # Check fpath is empty and delete
             if len(os.listdir(fpath)) == 0:
                 LOGGER.info("All files processed in folder: %s", object_number)
@@ -185,6 +203,33 @@ def main():
                 LOGGER.warning("Leaving folder %s in place as files still remaining in folder %s", object_number, os.listdir(fpath))
 
     LOGGER.info("== Document augmented streaming platform separate audio end =====================\n")
+
+
+def build_fname_dct(file_list, ob_num):
+    '''
+    Take file list and build dict of names
+    '''
+    fallback_num = 1
+    alt_numbering = False
+    file_names = {}
+    for file in file_list:
+        # Build file name/new filename dict
+        channel, ext = file.split('.')[-2:]
+        if alt_numbering:
+            part = str(fallback_num).zfill(2)
+            fallback_num += 1
+        else:
+            for key, val in ORDER.items():
+                if channel == key:
+                    part = val
+        if not part:
+            part = str(fallback_num).zfill(2)
+            fallback_num += 1
+            alt_numbering = True
+        new_fname = f"{ob_num.replace('-', '_')}_{part}of06.{ext}"
+        file_names[file] = new_fname
+
+    return file_names
 
 
 def build_record_defaults(platform):
@@ -257,7 +302,7 @@ def rename_or_move(arg, file_a, file_b):
     return False
 
 
-def make_item_record_dict(priref, fname, record):
+def make_item_record_dict(priref, record):
     '''
     Get CID item record for source and borrow data
     for creation of new CID item record
@@ -316,18 +361,15 @@ def make_item_record_dict(priref, fname, record):
     if 'language' in str(record):
         item.append({'language': adlib.retrieve_field_name(record[0], 'language')[0]})
         item.append({'language.type': adlib.retrieve_field_name(record[0], 'language.type')[0]})
-    if len(fname) > 1:
-        item.append({'digital.acquired_filename': fname})
-        item.append({'digital.acquired_filename.type': 'FILE'})
 
     return item
 
 
-def create_new_item_record(priref, fname, record):
+def create_new_item_record(priref, record):
     '''
     Build new CID item record from existing data and make CID item record
     '''
-    item_dct = make_item_record_dict(priref, fname, record)
+    item_dct = make_item_record_dict(priref, record)
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
     new_record = adlib.post(item_xml, 'items', 'insertrecord', '')

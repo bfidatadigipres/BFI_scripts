@@ -33,9 +33,9 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 STORAGE = os.environ['QNAP_11']
 INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest/')
-MOD_MAX = 1000 # Modification time restriction
+MOD_MAX = 2000 # Modification time restriction
 UPLOAD_MAX = 1099511627776 # 1TB max
-BUCKET = 'access_renditions_backup01'
+BUCKET = 'Access_Renditions_backup'
 
 # Setup logging
 LOGGER = logging.getLogger(f'black_pearl_access_rendition_backup')
@@ -47,19 +47,19 @@ LOGGER.setLevel(logging.INFO)
 
 START_FOLDERS = {
     'bfi': '201605',
-    'eafa': '201605',
-    'iwm': '201605',
-    'lsa': '201605',
-    'mace': '201605',
-    'nefa': '201605',
-    'nis': '201605',
-    'nls': '201605',
-    'nssaw': '201605',
-    'nwfa': '201605',
-    'sase': '201605',
-    'thebox': '201605',
-    'wfsa': '201605',
-    'yfa': '201605'
+#    'eafa': '201605',
+#    'iwm': '201605',
+#    'lsa': '201605',
+#    'mace': '201605',
+#    'nefa': '201605',
+#    'nis': '201605',
+#    'nls': '201605',
+#    'nssaw': '201605',
+#    'nwfa': '201605',
+#    'sase': '201605',
+#    'thebox': '201605',
+#    'wfsa': '201605',
+#    'yfa': '201605'
 }
 
 
@@ -196,19 +196,25 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-            new_path = os.path.join(INGEST_POINT, key, folder),
+            if folder != '201605':
+                continue
+            new_path = os.path.join(INGEST_POINT, key, folder)
+            print(f"Create new path: {new_path}")
             os.makedirs(new_path, mode=0o777, exist_ok=True)
             files = os.listdir(os.path.join(access_path, folder))
             for file in files:
+                print("Checking mod time")
                 if not check_mod_time(os.path.join(new_path, file)):
                     LOGGER.info("File %s mod time outside of maximum time %s", file, MOD_MAX)
                     continue
+                print("Checking BP status")
                 if not check_bp_status(file):
                     file_list.append(f"{key}/{folder}/file")
                 else:
+                    print(f"File found, needs deleting and replacing: {file}")
                     file_list.append(f"{key}/{folder}/file")
                     replace_list.append(f"{key}/{folder}/file")
-
+            sys.exit()
             # Delete existing versions if being replaced
             if replace_list:
                 success_list = delete_existing_proxy(f"{key}/{folder}/", replace_list)

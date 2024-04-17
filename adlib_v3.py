@@ -63,6 +63,8 @@ def get(query):
 def post(payload, database, method, priref):
     '''
     Send a POST request
+    If using updaterecord consider if the record
+    would benefit from a lock/unlock functionc
     '''
     params = {
         'command': method,
@@ -228,7 +230,10 @@ def add_quality_comments(priref, comments):
     Receive list of wav files in folder
     and make into XML quality comments
     and updaterecord with data
+    If updating quality_comments to an old record
+    please consider implementing lock/unlock features
     '''
+
     p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
     date_now = str(datetime.datetime.now())[:10]
     p_comm = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"

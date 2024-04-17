@@ -12,9 +12,13 @@ CID Item record object_number.
    a/ Build dictionary for new Item record
    b/ Convert to XML using adlib_v3
    c/ Push data to CID to create item record
-   d/ If successful rename file after new CID
-      item object_number (forced 01of01) and move
-      to autoingest path
+   d/ Build dct for all contained WAV files for
+      5.1 audio, and create dict of old filenames
+      and new filenames ordered for 5.1 L,R,C,LFE,Ls,Rs
+   e/ Rename the files one by one with partwhole 0*of06
+      and move to autoingest
+   f/ Update all digital.acquired_filenames to CID item
+      record and append quality_comments also
 4. When all files in a folder processed the
    folder is checked as empty and deleted
 
@@ -116,7 +120,6 @@ def main():
 
         folder_list = walk_folders(storage)
         if len(folder_list) == 0:
-            LOGGER.info("%s Separate 5.1 audio record creation script. No folders found.", platform)
             continue
 
         for fpath in folder_list:
@@ -128,7 +131,7 @@ def main():
             if not file_list:
                 LOGGER.warning("Skipping. No files found in folderpath: %s", fpath)
                 continue
-            if file_list != 6:
+            if len(file_list) != 6:
                 LOGGER.warning("Skipping. Incorrect amount of files found in path: %s", fpath)
                 continue
             LOGGER.info("Files found in target folder %s: %s", object_number, ', '.join(file_list))
@@ -146,7 +149,7 @@ def main():
             LOGGER.info("Priref matched with folder name: %s", priref)
 
             # Create CID item record for batch of six audio files in folder
-            item_record, file_names = create_new_item_record(priref, file_list, record)
+            item_record = create_new_item_record(priref, record)
             if item_record is None:
                 continue
             print(item_record)
@@ -156,30 +159,34 @@ def main():
             print(f"CID Item record created: {new_priref}, {new_ob_num}")
 
             file_names = build_fname_dct(file_list, new_ob_num)
+            print(file_names)
+
             filename_dct = []
             for key, value in file_names.items():
-                if not key.endswith(('.WAV', '.wav')):
-                    LOGGER.warning("File contained in separate5_1 audio folder that is not WAV: %s", key)
+                new_fname = key
+                old_fname = value
+                if not old_fname.endswith(('.WAV', '.wav')):
+                    LOGGER.warning("File contained in separate5_1 audio folder that is not WAV: %s", old_fname)
 
-                new_fpath = os.path.join(fpath, value)
-                LOGGER.info("%s to be renamed %s", key, value)
-                rename_success = rename_or_move('rename', os.path.join(fpath, key), new_fpath)
+                new_fpath = os.path.join(fpath, new_fname)
+                LOGGER.info("%s to be renamed %s", old_fname, new_fname)
+                rename_success = rename_or_move('rename', os.path.join(fpath, old_fname), new_fpath)
                 if rename_success is False:
-                    LOGGER.warning("Unable to rename file: %s", os.path.join(fpath, key))
+                    LOGGER.warning("Unable to rename file: %s", os.path.join(fpath, old_fname))
                 elif rename_success is True:
                     LOGGER.info("File successfully renamed. Moving to %s ingest path", platform)
                 elif rename_success == 'Path error':
-                    LOGGER.warning("Path error: %s", os.path.join(fpath, key))
+                    LOGGER.warning("Path error: %s", os.path.join(fpath, old_fname))
 
                 # Move file to new autoingest path
-                move_success = rename_or_move('move', new_fpath, os.path.join(autoingest, value))
+                move_success = rename_or_move('move', new_fpath, os.path.join(autoingest, new_fname))
                 if move_success is False:
                     LOGGER.warning("Error with file move to autoingest, leaving in place for manual assistance")
                 elif move_success is True:
                     LOGGER.info("File successfully moved to %s ingest path: %s\n", platform, autoingest)
                 elif move_success == 'Path error':
                     LOGGER.warning("Path error: %s", new_fpath)
-                filename_dct.append({"digital.acquired_filename": f"{value} - Renamed to: {key}"})
+                filename_dct.append({"digital.acquired_filename": f"{old_fname} - Renamed to: {new_fname}"})
                 filename_dct.append({"digital.acquired_filename.type": "FILE"})
 
             # Append digital.acquired_filename and quality_comments to new CID item record
@@ -227,9 +234,9 @@ def build_fname_dct(file_list, ob_num):
             fallback_num += 1
             alt_numbering = True
         new_fname = f"{ob_num.replace('-', '_')}_{part}of06.{ext}"
-        file_names[file] = new_fname
+        file_names[new_fname] = file
 
-    return file_names
+    return dict(sorted(file_names.items()))
 
 
 def build_record_defaults(platform):

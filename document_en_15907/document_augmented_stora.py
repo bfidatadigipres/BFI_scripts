@@ -40,7 +40,8 @@ from lxml import etree
 # Private packages
 from series_retrieve import retrieve
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
+# import adlib
 
 # Global variables
 STORAGE = os.environ['STORA_PATH']
@@ -52,9 +53,9 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
-CID_API = os.environ['CID_API3']
-cid = adlib.Database(url=CID_API)
-cur = adlib.Cursor(cid)
+CID_API = os.environ['CID_API4']
+# cid = adlib.Database(url=CID_API)
+# cur = adlib.Cursor(cid)
 
 # Setup logging
 logger = logging.getLogger('document_augmented_stora')
@@ -111,18 +112,15 @@ def check_control():
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def check_cid():
+def cid_check():
     '''
-    Run a CID check to ensure online
+    Test if CID API online
     '''
     try:
-        logger.info('* Initialising CID session... Script will exit if CID off line')
-        cid = adlib.Database(url=CID_API)
-        cur = adlib.Cursor(cid)
-        logger.info("* CID online, script will proceed")
-    except Exception:
+        adlib.check(CID_API)
+    except KeyError:
         print("* Cannot establish CID session, exiting script")
-        logger.exception('Cannot establish CID session, exiting script')
+        logger.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 

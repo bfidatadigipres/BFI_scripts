@@ -633,7 +633,9 @@ def main():
         platform = prog_dct['platform'][num]
         year_release = prog_dct['year_of_release'][num]
         acquisition_date = prog_dct['acquisition_date'][num]
+        episode = prog_dct['episode'][num]
         print(article, title, nfa, level, season_num, genres, episode_num, platform, year_release, acquisition_date)
+        print(f"Episode only wanted: {episode}")
 
         if platform != 'Netflix':
             continue
@@ -768,91 +770,127 @@ def main():
                     print("Series work creation failure. Skipping episodes...")
                     continue
 
-            # Fetch target season data
             season_fpaths = [x for x in json_fpaths if f'season_{season_num}_' in str(x)]
-            episode_count = 0
-            for num in range(1, episode_num + 1):
-                episode_count += 1
-                episode_fpaths = [x for x in season_fpaths if f'episode_{num}_' in str(x) and x.endswith('.json')]
-                if not episode_fpaths:
-                    continue
-
-                episode_folder = os.path.basename(os.path.split(episode_fpaths[0])[0])
-                episode_id = episode_folder.split('_')[-1]
-                print(f"** Episode ID: {episode_id} {title}")
-
-                # Check CID work exists / Make work if needed
-                hits, priref_episode, _, _, groupings, alt_type = cid_check_works(episode_id)
-                if int(hits) > 0:
-                    if '400947' in str(groupings):
-                        print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
-                        LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
+            
+            # Fetch just single episodes
+            if episode != 'all':
+                episodes = episode.split(', ')
+                total_eps = len(episodes)
+                count = 0
+                for ep in episodes:
+                    LOGGER.info("Creating one-off episode record for %s episode number %s", title, ep)
+                    success = make_episodes(int(ep), season_fpaths, title, csv_data, work_title, work_title_art)
+                    if success is None:
+                        LOGGER.warning("Failed to make records for episode {num}")
                         continue
-                    if 'PATV asset id' in str(alt_type):
-                        LOGGER.warning("Episode work exists from STORA off-air recordings: %s", priref_episode)
-                    if 'PATV Amazon asset id' in str(alt_type):
-                        LOGGER.warning("Episode work exists from Amazon streaming platform: %s", priref_episode)
-                print("New episode_id found for Work. Linking to series work")
+                    LOGGER.info("Episode %s made successfully: Work %s Manifestation %s Item %s", num, success[0], success[1], success[2])
+                    count += 1
+                if total_eps != count:
+                    LOGGER.warning("Unable to create all requested records for epsides: %s", episode)
+                LOGGER.info("** All records created for %s episodes %s", title, episode)
 
-                # Retrieve all available data
-                ep_cat_json = [ x for x in episode_fpaths if 'episode_catalogue_' in str(x) ]
-                ep_json = [ x for x in episode_fpaths if 'episode_' in str(x) and x.endswith(f"{episode_id}.json") ]
-                print(ep_cat_json)
-                print(ep_json)
+            # Fetch all episodes in target season
+            if episode == 'all':
+                episode_count = 0
+                for num in range(1, episode_num + 1):
+                    success = make_episodes(num, season_fpaths, title, csv_data, work_title, work_title_art)
+                    if success is None:
+                        LOGGER.warning("Failed to make records for episode {num}")
+                        continue
+                    LOGGER.info("Episode %s made successfully: Work %s Manifestation %s Item %s", num, success[0], success[1], success[2])
+                    episode_count += 1
 
-                try:
-                    ep_cat_data = retrieve_json(ep_cat_json[0])
-                    ep_cat_dct = get_cat_data(ep_cat_data)
-                except Exception as exc:
-                    print(exc)
-                    ep_cat_dct = {}
-                try:
-                    ep_data = retrieve_json(ep_json[0])
-                    ep_dct = get_json_data(ep_data)
-                except Exception as exc:
-                    print(exc)
-                    ep_dct = {}
-
-                # Make episodic work here
-                data_dct = make_work_dictionary(num, episode_id, csv_data, ep_cat_dct, ep_dct)
-                print(f"Dictionary for Work creation:\n{data_dct}")
-                print('**************')
-                record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
-                priref_episode = create_work(series_priref, work_title, work_title_art, data_dct, record, work, work_restricted)
-                if len(priref_episode) == 0:
-                    LOGGER.warning("Episodic Work record creation failed, skipping all further record creations")
-                    continue
-                print(f"Episode work priref: {priref_episode}")
-
-                # Create contributors if supplied / or in addition to solo contributors
-                if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
-                    print('** Contributor data found')
-                    success = create_contributors(priref_episode, data_dct['nfa_category'], data_dct['contributors'], 'Netflix')
-                    if success:
-                        LOGGER.info("Contributor data written to Work record: %s", priref_episode)
-                    else:
-                        LOGGER.warning("Failure to write contributor data to Work record: %s", priref_episode)
-
-                # Make episodic manifestation here
-                priref_ep_man = create_manifestation(priref_episode, work_title, work_title_art, data_dct, record, manifestation)
-                if len(priref_ep_man) == 0:
-                    LOGGER.warning("Episodic manifestation record creation failed, skipping all further record creations")
-                    continue
-                print(f"PRIREF EP MANIFESTATION: {priref_ep_man}")
-                # Append URLS if present
-                append_url_data(priref_episode, priref_ep_man, data_dct)
-
-                # Make episodic item record here
-                priref_ep_item = create_item(priref_ep_man, work_title, work_title_art, data_dct, record, item)
-                if len(priref_ep_item) == 0:
-                    LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
-                    continue
-                print(f"PRIREF FOR ITEM: {priref_ep_item}")
-
-            if episode_count != int(episode_num):
-                print("============ Episodes found in NETFLIX folder do not match total episodes supplied =============")
+                if episode_count != int(episode_num):
+                    LOGGER.warning("Not all episodes created for %s - total episodes %s", title, episode_num)
+                    print("============ Episodes found in NETFLIX folder do not match total episodes supplied =============")
 
     LOGGER.info("=== Document augmented Netflix end =================================")
+
+
+def make_episodes(num, season_fpaths, title, csv_data, work_title, work_title_art): 
+    '''
+    Receive number for episode (individual or
+    from range count) and build programme records
+    '''
+
+    episode_fpaths = [x for x in season_fpaths if f'episode_{num}_' in str(x) and x.endswith('.json')]
+    if not episode_fpaths:
+        LOGGER.warning("Cannot find any episode number %s in season path: %s", num, season_fpaths)
+        return None
+
+    episode_folder = os.path.basename(os.path.split(episode_fpaths[0])[0])
+    episode_id = episode_folder.split('_')[-1]
+    print(f"** Episode ID: {episode_id} {title}")
+
+    # Check CID work exists / Make work if needed
+    hits, priref_episode, _, _, groupings, alt_type = cid_check_works(episode_id)
+    if int(hits) > 0:
+        if '400947' in str(groupings):
+            print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
+            LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
+            return None
+        if 'PATV asset id' in str(alt_type):
+            LOGGER.warning("Episode work exists from STORA off-air recordings: %s", priref_episode)
+        if 'PATV Amazon asset id' in str(alt_type):
+            LOGGER.warning("Episode work exists from Amazon streaming platform: %s", priref_episode)
+    print("New episode_id found for Work. Linking to series work")
+
+    # Retrieve all available data
+    ep_cat_json = [ x for x in episode_fpaths if 'episode_catalogue_' in str(x) ]
+    ep_json = [ x for x in episode_fpaths if 'episode_' in str(x) and x.endswith(f"{episode_id}.json") ]
+    print(ep_cat_json)
+    print(ep_json)
+
+    try:
+        ep_cat_data = retrieve_json(ep_cat_json[0])
+        ep_cat_dct = get_cat_data(ep_cat_data)
+    except Exception as exc:
+        print(exc)
+        ep_cat_dct = {}
+    try:
+        ep_data = retrieve_json(ep_json[0])
+        ep_dct = get_json_data(ep_data)
+    except Exception as exc:
+        print(exc)
+        ep_dct = {}
+
+    # Make episodic work here
+    data_dct = make_work_dictionary(num, episode_id, csv_data, ep_cat_dct, ep_dct)
+    print(f"Dictionary for Work creation:\n{data_dct}")
+    print('**************')
+    record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)
+    priref_episode = create_work(data_dct, record, work, work_restricted)
+    if len(priref_episode) == 0:
+        LOGGER.warning("Episodic Work record creation failed, skipping all further record creations")
+        return None
+    print(f"Episode work priref: {priref_episode}")
+
+    # Create contributors if supplied / or in addition to solo contributors
+    if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
+        print('** Contributor data found')
+        success = create_contributors(priref_episode, data_dct['nfa_category'], data_dct['contributors'], 'Netflix')
+        if success:
+            LOGGER.info("Contributor data written to Work record: %s", priref_episode)
+        else:
+            LOGGER.warning("Failure to write contributor data to Work record: %s", priref_episode)
+
+    # Make episodic manifestation here
+    priref_ep_man = create_manifestation(priref_episode, work_title, work_title_art, data_dct, record, manifestation)
+    if len(priref_ep_man) == 0:
+        LOGGER.warning("Episodic manifestation record creation failed, skipping all further record creations")
+        return None
+    print(f"PRIREF EP MANIFESTATION: {priref_ep_man}")
+
+    # Append URLS if present
+    append_url_data(priref_episode, priref_ep_man, data_dct)
+
+    # Make episodic item record here
+    priref_ep_item = create_item(priref_ep_man, work_title, work_title_art, data_dct, record, item)
+    if len(priref_ep_item) == 0:
+        LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
+        return None
+    print(f"PRIREF FOR ITEM: {priref_ep_item}")
+    return priref_episode, priref_ep_man, priref_ep_item
 
 
 def firstname_split(person):

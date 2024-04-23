@@ -51,6 +51,18 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        test = adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+
 def get_source_record(file):
     '''
     Get source Item record ob_num from filename
@@ -58,7 +70,7 @@ def get_source_record(file):
 
     source_ob_num = file.split('EDIT_')[1].split('.')[0]
     search = f"object_number='{source_ob_num}'"
-    hits, record = adlib.retrieve_record('items', search, '0', fields=None)
+    hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
     if hits == 0:
         return None
     return record
@@ -76,6 +88,7 @@ def main():
     LOGGER.info("======== Document Access Edits scripts start =====================")
     for file in file_list:
         check_control()
+        cid_check()
         fpath = os.path.join(STORAGE, file)
         LOGGER.info("File found to process: %s", fpath)
         if not os.path.isfile(fpath):
@@ -100,7 +113,7 @@ def main():
 
         comments = '''Viewing copy created from digital master which has been ingested for access instances. \
                       The file may have had adverts, bars and tones cut out, or other fixes applied.'''
-        success = adlib.add_quality_comments(priref, comments)
+        success = adlib.add_quality_comments(CID_API, priref, comments)
         if not success:
             LOGGER.warning("Quality comments were not written to record: %s", priref)
         LOGGER.info("Quality comments added to CID item record %s", priref)
@@ -126,7 +139,7 @@ def create_new_item_record(source_priref, file, source_record):
     item_dct = make_item_record_dict(source_priref, file, source_record[0])
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
-    new_record = adlib.post(item_xml, 'items', 'insertrecord')
+    new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

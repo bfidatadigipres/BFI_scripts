@@ -30,6 +30,8 @@ Script actions:
    f. Overwrite request.details data to Workflow record.
 4. Exit script with final log message.
 
+NOTES: Partially updated to work with adlib_v3
+
 Joanna White
 2022
 '''
@@ -54,6 +56,7 @@ import adlib
 
 # API VARIABLES
 CID_API = os.environ['CID_API3']
+CID_API2 = os.environ['CID_API4']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor(CID)
 CLIENT = ds3.createClientFromEnv()
@@ -95,6 +98,18 @@ def check_control():
         if not j['pause_scripts']:
             LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
+
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        test = adlib.check(CID_API2)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
 
 
 def fetch_workflow_jobs():
@@ -399,6 +414,8 @@ def main():
     to avoid repeating unecessary DPI downloads
     '''
     check_control()
+    check_cid()
+
     workflow_jobs = fetch_workflow_jobs()
     if not workflow_jobs:
         sys.exit("Script exiting. No workflow jobs found status=InProgress for next two weeks.")
@@ -549,7 +566,7 @@ def main():
         # Update workflow request.details field when all completed
         payload = build_payload(priref, request_details, datetime.strftime(datetime.now(), FORMAT))
         print(payload)
-        record = ad.post(payload, 'workflow', 'updaterecord', '')
+        record = ad.post(CID_API2, payload, 'workflow', 'updaterecord')
         if not record:
             LOGGER.warning("FAILED: Payload write to CID workflow request.details field: %s", priref)
         else:

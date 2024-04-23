@@ -46,7 +46,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 START_FOLDERS = {
-    'bfi': '201605',
+    'bfi': '201605'
 #    'eafa': '201605',
 #    'iwm': '201605',
 #    'lsa': '201605',
@@ -195,7 +195,7 @@ def main():
         replace_list = []
         for folder in folder_list:
             check_control()
-            if folder == '201605':
+            if folder in ['201605', '201606', '201607', '201611', '201612', '201701', '201702']:
                 continue
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)

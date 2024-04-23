@@ -88,6 +88,18 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        test = adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+
 def read_csv_to_dict(csv_path):
     '''
     Make set of all entries
@@ -356,7 +368,7 @@ def cid_check_works(patv_id):
 
     query = f'alternative_number="{patv_id}"'
     try:
-        hits, record = adlib.retrieve_record('works', query, 0)
+        hits, record = adlib.retrieve_record(CID_API, 'works', query, 0)
     except Exception as err:
         LOGGER.warning("cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s", patv_id, err)
         print("cid_check_works(): Record not found. Series hit count and series priref will return empty strings")
@@ -395,7 +407,7 @@ def cid_check_works(patv_id):
             return None
 
         type_query = f'priref="{all_priref}"'
-        hits, type_record = adlib.retrieve_record('works', type_query, 1)
+        hits, type_record = adlib.retrieve_record(CID_API, 'works', type_query, 1)
         try:
             alt_num_type = adlib.retrieve_field_name(type_record[0]['Alternative_number'][0], 'alternative_number.type')[0] # Untested
             print(f"cid_check_works(): Alternative number type {alt_num_type}")
@@ -596,6 +608,7 @@ def main():
     series work. Link all records as needed.
     '''
     check_control()
+    cid_check()
 
     csv_path = sys.argv[1]
     if not os.path.isfile(csv_path):
@@ -1063,7 +1076,7 @@ def create_series_work(patv_id, series_dct, series_work, work_restricted, record
     series_work_xml = adlib.create_record_data('', series_work_values)
     try:
         print("Attempting to create CID record")
-        work_rec = adlib.post(series_work_xml, 'works', 'insertrecord')
+        work_rec = adlib.post(CID_API, series_work_xml, 'works', 'insertrecord')
         if work_rec:
             try:
                 print("Populating series_work_id and object_number variables")
@@ -1093,7 +1106,7 @@ def create_series_work(patv_id, series_dct, series_work, work_restricted, record
     print(series_genres, series_genres_filter)
     print("**** Attempting to write work genres to records ****")
     series_genres_xml = adlib.create_record_data(series_work_id, series_genres_filter)
-    success = adlib.post(series_genres_xml, 'works', 'updaterecord')
+    success = adlib.post(CID_API, series_genres_xml, 'works', 'updaterecord')
     if success is None:
         LOGGER.info("Failed to update genres to Series Work record: %s", series_work_id)
     LOGGER.info("Series genres updated to work: %s", series_work_id)
@@ -1179,7 +1192,7 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
     work_xml = adlib.create_record_data('', work_values)
     try:
         print("Attempting to create CID record")
-        work_rec = adlib.post(work_xml, 'works', 'insertrecord')
+        work_rec = adlib.post(CID_API, work_xml, 'works', 'insertrecord')
         if work_rec:
             try:
                 print("Populating work_id and object_number variables")
@@ -1209,7 +1222,7 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
 
     print("**** Attempting to write work genres to records ****")
     work_genres_xml = adlib.create_record_data(work_id, work_genres_filter)
-    success = adlib.post(work_genres_xml, 'works', 'updaterecord')
+    success = adlib.post(CID_API, work_genres_xml, 'works', 'updaterecord')
     if success is None:
         LOGGER.info("Failed to update genres to Series Work record: %s", work_id)
     LOGGER.info("Series genres updated to work: %s", work_id)
@@ -1265,7 +1278,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     manifestation_xml = adlib.create_record_data('', manifestation_values)
     try:
         print("Attempting to create CID record")
-        man_rec = adlib.post(manifestation_xml, 'manifestations', 'insertrecord')
+        man_rec = adlib.post(CID_API, manifestation_xml, 'manifestations', 'insertrecord')
         if man_rec:
             try:
                 print("Populating manifestation_id and object_number variables")
@@ -1288,7 +1301,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
         broadcast_xml = adlib.create_record_data(manifestation_id, broadcast_addition)
         print("**** Attempting to write work genres to records ****")
 
-        success = adlib.post(broadcast_xml, 'manifestations', 'updaterecord')
+        success = adlib.post(CID_API, broadcast_xml, 'manifestations', 'updaterecord')
         if success is None:
             LOGGER.info("Failed to update Broadcast Company data to Manifestation record: %s", manifestation_id)
         LOGGER.info("Broadcast Company data updated to work: %s", manifestation_id)
@@ -1306,7 +1319,7 @@ def append_url_data(work_priref, man_priref, data=None):
     payload_end = "</URL></record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
 
-    success = adlib.post(payload, 'manifestations', 'updaterecord')
+    success = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
     if success is None:
         LOGGER.info("append_url_data(): Failed to update Watch URL data to Manifestation record: %s", man_priref)
     LOGGER.info("append_url_data(): Watch URL data updated to Manifestation: %s", man_priref)
@@ -1314,7 +1327,7 @@ def append_url_data(work_priref, man_priref, data=None):
     payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
     payload = payload_head + payload_mid + payload_end
 
-    success = adlib.post(payload, 'works', 'updaterecord')
+    success = adlib.post(CID_API, payload, 'works', 'updaterecord')
     if success is None:
         LOGGER.info("append_url_data(): Failed to update Watch URL data to Work record: %s", work_priref)
     LOGGER.info("append_url_data(): Watch URL data updated to work: %s", work_priref)
@@ -1349,7 +1362,7 @@ def create_item(man_priref, work_title, work_title_art, work_dict, record_defaul
     item_xml = adlib.create_record_data('', item_values)
     try:
         print("Attempting to create CID Item record")
-        item_rec = adlib.post(item_xml, 'items', 'insertrecord')
+        item_rec = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
         if item_rec:
             try:
                 print("Populating item_id and object_number variables")

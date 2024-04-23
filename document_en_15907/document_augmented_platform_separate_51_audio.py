@@ -44,6 +44,7 @@ import adlib_v3 as adlib
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 PLATFORM_STORAGE = os.environ.get('PLATFORM_INGEST_PTH')
+CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_platform_separate_51_audio')
@@ -78,13 +79,25 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
-def cid_check(object_number):
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        test = adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+
+def cid_check_ob_num(object_number):
     '''
     Looks up object_number and retrieves title
     and other data for new separate 5.1 audio record
     '''
     search = f"object_number='{object_number}'"
-    hits, record = adlib.retrieve_record('items', search, '0')
+    hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
     if hits == 0:
         return None
     return record
@@ -115,6 +128,8 @@ def main():
     LOGGER.info("== Document augmented streaming platform separate audio start ===================")
     for key, value in STORAGE.items():
         check_control()
+        cid_check()
+
         platform = key
         autoingest, storage = value.split(', ')
 
@@ -137,7 +152,7 @@ def main():
             LOGGER.info("Files found in target folder %s: %s", object_number, ', '.join(file_list))
 
             # Check object number valid
-            record = cid_check(object_number)
+            record = cid_check_ob_num(object_number)
             if record is None:
                 LOGGER.warning("Skipping: Record could not be matched with object_number")
                 continue
@@ -191,12 +206,12 @@ def main():
 
             # Append digital.acquired_filename and quality_comments to new CID item record
             payload = adlib.create_record_data(new_priref, filename_dct)
-            record = adlib.post(payload, 'items', 'updaterecord')
+            record = adlib.post(CID_API, payload, 'items', 'updaterecord')
             if not record:
                 LOGGER.warning("Filename changes were not updated to digital.acquired_filename fields: %s", filename_dct)
             LOGGER.info("Digital Acquired Filename data added to CID item record %s", new_priref)
             qual_comm = "5.1 audio supplied separately as IMP contains Dolby Atmos IAB."
-            success = adlib.add_quality_comments(new_priref, qual_comm)
+            success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
             if not success:
                 LOGGER.warning("Quality comments were not written to record: %s", new_priref)
             LOGGER.info("Quality comments added to CID item record %s", new_priref)
@@ -379,7 +394,7 @@ def create_new_item_record(priref, record):
     item_dct = make_item_record_dict(priref, record)
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
-    new_record = adlib.post(item_xml, 'items', 'insertrecord')
+    new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

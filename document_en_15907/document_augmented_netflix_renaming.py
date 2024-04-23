@@ -88,13 +88,25 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        test = adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+
 def cid_check(imp_fname):
     '''
     Sends CID request for series_id data
     '''
     search = f'digital.acquired_filename="{imp_fname}"'
     try:
-        query_result = adlib.retrieve_record('items', search, '1')
+        query_result = adlib.retrieve_record(CID_API, 'items', search, '1')
     except Exception as err:
         print(f"cid_check(): Unable to match IMP with Item record: {imp_fname} {err}")
         query_result = None
@@ -157,6 +169,7 @@ def main():
     and check contents match Asset list.
     '''
     check_control()
+    cid_check()
 
     folder_list = walk_netflix_folders()
     if len(folder_list) == 0:
@@ -382,7 +395,7 @@ def item_append(priref, item_append_dct):
 
     item_xml = adlib.create_record_data(priref, item_append_dct)
     try:
-        result = adlib.post(item_xml, 'items', 'instertrecord')
+        result = adlib.post(CID_API, item_xml, 'items', 'instertrecord')
         print("*** CID item record append result:")
         print(result)
         return True

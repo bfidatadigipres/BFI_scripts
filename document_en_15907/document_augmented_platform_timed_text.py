@@ -17,8 +17,8 @@ CID Item record object_number.
       to autoingest path
 4. When all files in a folder processed the
    folder is checked as empty and deleted
-   
-NOTES: Integrated with adlib_v3 for test
+
+NOTES: Updated to work with adlib_v3
 
 Joanna White
 2024
@@ -40,6 +40,7 @@ from adlib_v3 import adlib
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 PLATFORM_STORAGE = os.environ.get('PLATFORM_INGEST_PTH')
+CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_platform_timed_text')
@@ -66,13 +67,25 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
-def cid_check(object_number):
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        test = adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+
+def cid_check_ob_num(object_number):
     '''
     Looks up object_number and retrieves title
     and other data for new timed text record
     '''
     search = f"object_number='{object_number}'"
-    hits, record = adlib.retrieve_record('items', search, '1', fields=None)
+    hits, record = adlib.retrieve_record(CID_API, 'items', search, '1', fields=None)
     if hits == 0:
         return None
     return record
@@ -103,6 +116,8 @@ def main():
     LOGGER.info("== Document augmented streaming platform timed text start ===================")
     for key, value in STORAGE.items():
         check_control()
+        cid_check()
+
         platform = key
         autoingest, storage = value.split(', ')
 
@@ -123,7 +138,7 @@ def main():
             LOGGER.info("Files found in target folder %s: %s", object_number, ', '.join(file_list))
 
             # Check object number valid
-            record = cid_check(object_number)
+            record = cid_check_ob_num(object_number)
             if record is None:
                 LOGGER.warning("Skipping: Record could not be matched with object_number")
                 continue
@@ -319,7 +334,7 @@ def create_new_item_record(priref, fname, record):
     item_dct = make_item_record_dict(priref, fname, record)
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
-    new_record = adlib.post(item_xml, 'items', 'insertrecord', '')
+    new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord', '')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

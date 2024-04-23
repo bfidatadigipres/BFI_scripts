@@ -54,7 +54,7 @@ import xmltodict
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global variables
 STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
@@ -66,9 +66,7 @@ ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API')
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_netflix_renaming')
@@ -94,28 +92,24 @@ def cid_check(imp_fname):
     '''
     Sends CID request for series_id data
     '''
-    query = {'database': 'items',
-             'search': f'digital.acquired_filename="{imp_fname}"',
-             'limit': '1',
-             'output': 'json',
-             'fields': 'priref, object_number, digital.acquired_filename.type'}
+    search = f'digital.acquired_filename="{imp_fname}"'
     try:
-        query_result = CID.get(query)
+        query_result = adlib.retrieve_record('items', search, '1')
     except Exception as err:
         print(f"cid_check(): Unable to match IMP with Item record: {imp_fname} {err}")
         query_result = None
     try:
-        priref = query_result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(query_result[0], 'priref')[0]
         print(f"cid_check(): Priref: {priref}")
     except (IndexError, KeyError, TypeError):
         priref = ''
     try:
-        ob_num = query_result.records[0]['object_number'][0]
+        ob_num = adlib.retrieve_field_name(query_result[0], 'object_number')[0]
         print(f"cid_check(): Object number: {ob_num}")
     except (IndexError, KeyError, TypeError):
         ob_num = ''
     try:
-        file_type = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename.type'][0]['value'][0]
+        file_type = adlib.retrieve_field_name(query_result[0]['Acquired_filename'][0], 'digital.acquired_filename.type')[0]
         print(f"cid_check(): File type: {file_type}")
     except (IndexError, KeyError, TypeError):
         file_type = ''
@@ -386,12 +380,9 @@ def item_append(priref, item_append_dct):
     Items passed in item_dct for amending to CID item record
     '''
 
+    item_xml = adlib.create_record_data(priref, item_append_dct)
     try:
-        result = CUR.update_record(priref=priref,
-                                   database='items',
-                                   data=item_append_dct,
-                                   output='json',
-                                   write=True)
+        result = adlib.post(item_xml, 'items', 'instertrecord', '')
         print("*** CID item record append result:")
         print(result)
         return True

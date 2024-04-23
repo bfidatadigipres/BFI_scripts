@@ -25,6 +25,7 @@ import adlib_v3 as adlib
 # Global variables
 INGEST = os.environ.get('AUTOINGEST_QNAP10')
 STORAGE = os.path.join(INGEST, 'access_edits')
+LOCAL_LOG = os.path.join(STORAGE, 'access_edits_renamed.log')
 AUTOINGEST = os.path.join(INGEST, 'ingest/autodetect')
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
@@ -107,7 +108,8 @@ def main():
         new_fname = f"{ob_num.replace('-', '_')}_01of01.{file.split('.')[-1]}"
         new_fpath = os.path.join(AUTOINGEST, new_fname)
         LOGGER.info("Renaming file:\n%s\n%s", fpath, new_fpath)
-
+        local_log(f"Edit file: {fpath}")
+        local_log(f"Renamed to: {new_fpath}")
         os.rename(fpath, new_fpath)
         if os.path.exists(new_fpath):
             LOGGER.info("New file successfully renamed and moved to autoingest path")
@@ -195,6 +197,17 @@ def defaults():
                {'access_conditions.date': str(datetime.datetime.now())[:10]}])
 
     return record
+
+
+def local_log(data):
+    '''
+    Write collected data actions list of items
+    to local log in audio_operations
+    '''
+    if len(data) > 0:
+        with open(LOCAL_LOG, 'a+') as log:
+            log.write(f"{str(datetime.datetime.now())[0:16]}: {data}\n")
+            log.close()
 
 
 if __name__ == '__main__':

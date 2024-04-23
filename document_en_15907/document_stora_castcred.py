@@ -860,6 +860,7 @@ def make_person_dct(dct=None):
         # Making person dictionary
         credit_dct.append({"name": f"{formatted_name}"})
         credit_dct.append({'name.type': 'CASTCREDIT'})
+        credit_dct.append({'name.type': 'PERSON'})
         credit_dct.append({'name.status': '5'})
         if len(value[2]) > 0:
             credit_dct.append({'birth.date.start': value[2]})

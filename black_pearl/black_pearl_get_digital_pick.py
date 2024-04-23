@@ -49,6 +49,7 @@ from ds3 import ds3, ds3Helpers
 # Local package
 CODE = os.environ['CODE']
 sys.path.append(CODE)
+import adlib_v3 as ad
 import adlib
 
 # API VARIABLES
@@ -548,20 +549,11 @@ def main():
         # Update workflow request.details field when all completed
         payload = build_payload(priref, request_details, datetime.strftime(datetime.now(), FORMAT))
         print(payload)
-
-        success_lock = write_lock(priref)
-        if not success_lock:
-            print("Request to lock record failed")
+        record = ad.post(payload, 'workflow', 'updaterecord', '')
+        if not record:
+            LOGGER.warning("FAILED: Payload write to CID workflow request.details field: %s", priref)
         else:
-            completed = write_payload(priref, payload)
-            if not completed:
-                success_unlock = unlock_record(priref)
-                if not success_unlock:
-                    print("Request to unlock record failed")
-                    LOGGER.warning("FAILED: Unlock of Workflow record %s", priref)
-                LOGGER.warning("FAILED: Payload write to CID workflow request.details field: %s", priref)
-            else:
-                LOGGER.info("Workflow %s - DPI download complete and request.details field updated", priref)
+            LOGGER.info("Workflow %s - DPI download complete and request.details field updated", priref)
 
     LOGGER.info("=========== Digital Pick script end =============\n")
 
@@ -622,13 +614,13 @@ def write_payload(priref, payload):
     post_response = requests.request(
         'POST',
         CID_API,
-        headers=HEADERS
+        headers=HEADERS,
         params={'command': 'updaterecord', 'database': 'workflow', 'xmltype': 'grouped', 'output': 'json'},
         data={'data': payload}
     )
     print("write_payload() response:")
     print(post_response.text)
-    if "<error><info>" in str(post_response.text) or 'error' in str(post_response.text):
+    if "error" in str(post_response.text):
         LOGGER.warning("write_payload: Error returned for requests.post for %s:\n%s", priref, payload)
         return False
     else:

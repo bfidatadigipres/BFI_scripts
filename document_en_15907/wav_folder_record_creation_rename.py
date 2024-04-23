@@ -535,7 +535,6 @@ def unlock_record(priref):
         return False
 
 
-
 def rename(folder, ob_num):
     '''
     Receive original folder path and rename

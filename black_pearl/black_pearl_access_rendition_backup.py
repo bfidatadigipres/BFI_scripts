@@ -141,9 +141,8 @@ def move_to_ingest_folder(new_path, file_list):
 
         file_size = get_size(fpath)
         max_fill_size -= file_size
-        print(f"Moving file {fpath} to {new_path}")
+        print(f"Moving file {fname} to {new_path}")
         shutil.move(fpath, new_path)
-        LOGGER.info("move_to_ingest_folder(): Moved file into new Ingest folder: %s - %s", new_path, file)
         ingest_list.append(fname)
     LOGGER.info("move_to_ingest_folder(): Ingest list: %s", ingest_list)
 
@@ -196,7 +195,7 @@ def main():
         replace_list = []
         for folder in folder_list:
             check_control()
-            if folder != '201605':
+            if folder == '201605':
                 continue
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
@@ -204,7 +203,7 @@ def main():
             LOGGER.info("Created new ingest path: %s", new_path)
 
             files = os.listdir(os.path.join(access_path, folder))
-            LOGGER.info("Starting batch ingest of target files in date folder - within modification date %s", MOD_MAX)
+            LOGGER.info("Starting batch ingest of target files in date folder - modified within last %s days", MOD_MAX)
             for file in files:
                 old_fpath = os.path.join(access_path, folder, file)
                 if not check_mod_time(old_fpath):
@@ -244,6 +243,9 @@ def main():
                     LOGGER.info("** PUT folder confirmation: %s", job_list)
                     LOGGER.info("Moving files back to original qnap_access_renditions folders: %s", ingest_list)
                     success = move_items_back(ingest_list)
+                else:
+                    LOGGER.warning("Exiting: Failed to PUT data to Black Pearl. Clean up work needed")
+                    sys.exit("Failed to PUT data to BP. See logs")
                 if success:
                     new_file_list = []
                     set_ingest_list = set(ingest_list)

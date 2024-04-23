@@ -1,14 +1,14 @@
-#! /usr/bin/env LANG=en_UK.UTF-8 /usr/local/bin/python3
+#!/usr/bin/env python3
 
 '''
 Curatorial Donor Acquisition Rename:
 
 *** MUST BE LAUNCHED FROM SHELL START SCRIPT ***
-1. Receive list of ‘workflow ****’ folders at a maximum and minimum depth of 2
+1. Receive list of 'workflow ****' folders at a maximum and minimum depth of 2
    folders from the curatorial isilon share. Each entry is passed to this
    Python script and populates sys.argv[1] with the path name and launching
    a single run of the script.
-2. Look through ‘workflow ****’ folder for files or folders, iterating through each.
+2. Look through 'workflow ****' folder for files or folders, iterating through each.
 3. Where a folder is found, the contents are checked for image sequence files
    (TIF, DPX, MXF) and a note is appended to a local log (placed within the
    'workflow ****' folder) recommending certain actions to be taken.
@@ -37,7 +37,9 @@ import sys
 import os
 
 # Private packages
-import adlib
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
+# import adlib
 
 # Global path variables
 CURATORIAL_PATH = os.environ['IS_CURATORIAL']
@@ -46,7 +48,7 @@ CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 DIGIOPS_PATH = os.path.join(os.environ['QNAP_11_DIGIOPS'], 'Acquisitions/Curatorial/')
 # DIGIOPS_PATH = os.path.join(os.environ['QNAP_09'], 'Acquisitions/Curatorial/')
 RSYNC_LOG = os.path.join(DIGIOPS_PATH, 'transfer_logs')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('curatorial_donor_acquisition_rename.log')
@@ -57,8 +59,8 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 # Global variables
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+# CID = adlib.Database(url=CID_API)
+# CUR = adlib.Cursor(CID)
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
@@ -80,7 +82,7 @@ def cid_check():
     Tests if CID active before all other operations commence
     '''
     try:
-        CUR = adlib.Cursor(CID)
+        test = adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical('Cannot establish CID session, exiting script')

@@ -21,7 +21,20 @@ HEADERS = {
 }
 
 
-def retrieve_record(database, search, limit, fields=None):
+def check(api):
+    '''
+    Check API responds
+    '''
+    query = {
+        'command': 'getversion',
+        'limit': 0,
+        'output': 'jsonv1'
+    }
+
+    return get(api, query)
+
+
+def retrieve_record(api, database, search, limit fields=None):
     '''
     Retrieve data from CID using new API
     '''
@@ -36,7 +49,8 @@ def retrieve_record(database, search, limit, fields=None):
         field_str = ', '.join(fields)
         query['fields'] = field_str
 
-    record = get(query)
+    record = get(query, api)
+
     if 'recordList' not in str(record):
         return (record['adlibJSON']['diagnostic']['hits'], None)
 
@@ -44,27 +58,22 @@ def retrieve_record(database, search, limit, fields=None):
     return (hits, record['adlibJSON']['recordList']['record'])
 
 
-def get(query, database):
+def get(api, query):
     '''
     Send a GET request
     '''
-    params = {
-        'database': database,
-        'search': query,
-        'output': 'jsonv1'
-    }
-
     try:
-        req = requests.request('GET', CID_API, headers=HEADERS, params=params)
+        req = requests.request('GET', api, headers=HEADERS, params=query)
         dct = json.loads(req.text)
+        dct = dct['adlibJSON']['recordList']['record']
     except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
         print(err)
         dct = {}
 
-    return dct['adlibJSON']['recordList']['record']
+    return dct
 
 
-def post(payload, database, method):
+def post(api, payload, database, method):
     '''
     Send a POST request
     If using updaterecord consider if the record
@@ -80,7 +89,7 @@ def post(payload, database, method):
 
     if method == 'insertrecord':
         try:
-            response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
+            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(response.text, err)
             return None
@@ -91,7 +100,7 @@ def post(payload, database, method):
 
     if method == 'updaterecord':
         try:
-            response = requests.request('POST', CID_API, headers=HEADERS, params=params, data=payload, timeout=1200)
+            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
             print(response.text)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
@@ -229,7 +238,7 @@ def get_fragments(obj):
     return data
 
 
-def add_quality_comments(priref, comments):
+def add_quality_comments(api, priref, comments):
     '''
     Receive list of wav files in folder
     and make into XML quality comments
@@ -249,7 +258,7 @@ def add_quality_comments(priref, comments):
 
     response = requests.request(
         'POST',
-        CID_API,
+        api,
         headers={'Content-Type': 'text/xml'},
         params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
         data=payload,

@@ -246,7 +246,6 @@ def get_cat_data(data=None):
         c_data['start_date'] = data['availability']['start']
     except (IndexError, TypeError, KeyError):
         c_data['start_date'] = ''
-        pass
     if 'deeplink' in data:
         for link in data['deeplink']:
             if link['rel'] == 'url':
@@ -271,10 +270,9 @@ def get_json_data(data=None):
     and return as dictionary
     '''
     if data is None:
-        data == {}
+        data = {}
 
     j_data = {}
-
     if 'id' in data:
         j_data['work_id'] = data['id']
     if 'type' in data:
@@ -355,71 +353,57 @@ def cid_check_works(patv_id):
     '''
     Sends CID request for series_id data
     '''
-    hit_count = ""
-    priref = ""
-    query = {'database': 'works',
-             'search': f'alternative_number="{patv_id}"',
-             'limit': '1',
-             'output': 'json',
-             'fields': 'priref, title, title.article, grouping.lref'}
+
+    query = f'alternative_number="{patv_id}"'
     try:
-        query_result = CID.get(query)
+        hits, record = adlib.retrieve_record('works', query, 0)
     except Exception as err:
-        print(f"cid_check_works(): Unable to access series data from CID using Series ID: {patv_id} {err}")
-        print("cid_check_works(): Series hit count and series priref will return empty strings")
-        query_result = None
+        LOGGER.warning("cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s", patv_id, err)
+        print("cid_check_works(): Record not found. Series hit count and series priref will return empty strings")
+        return None
+
     try:
-        hit_count = query_result.hits
-        print(f"cid_check_works(): Hit counts returned for series: {hit_count}")
-    except Exception as err:
-        hit_count = ''
-    try:
-        priref = query_result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"cid_check_works(): Series priref: {priref}")
     except Exception as err:
         priref = ''
     try:
-        title = query_result.records[0]['Title'][0]['title'][0]
+        title = adlib.retrieve_field_name(record[0]['Title'][0], 'title')[0]
         print(f"cid_check_works(): Series title: {title}")
     except Exception as err:
         title = ''
     try:
-        title_art = query_result.records[0]['Title'][0]['title.article'][0]
+        title_art = title = adlib.retrieve_field_name(record[0]['Title'][0], 'title_article')[0]
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''
+
     groupings = []
-    for num in range(0, hit_count):
+    for num in range(0, hits):
         try:
-            grouping = query_result.records[num]['grouping.lref'][0]
+            grouping = adlib.retrieve_field_name(record[num], 'grouping.lref')[0]
             print(f"cid_check_works(): Grouping: {grouping}")
             groupings.append(grouping)
-        except Exception as err:
+        except (IndexError, TypeError, KeyError):
             pass
+
     alt_type = []
-    for num in range(0, query_result.hits):
+    for num in range(0, hits):
         try:
-            priref_all = query_result.records[num]['priref'][0]
+            all_priref = adlib.retrieve_field_name(record[num], 'priref')[0]
         except (IndexError, TypeError, KeyError):
             return None
 
-        query = {'database': 'manifestations',
-                 'search': f'(priref="{priref_all}")',
-                 'limit': '0',
-                 'output': 'json',
-                 'fields': 'alternative_number.type'}
-
-        full_result = cid.get(query)
-        if not full_result:
-            return None
+        type_query = f'priref="{all_priref}"'
+        hits, type_record = adlib.retrieve_record('works', type_query, 1)
         try:
-            alt_num_type = full_result.records[0]['Alternative_number'][0]['alternative_number.type'][0]
+            alt_num_type = adlib.retrieve_field_name(type_record[0]['Alternative_number'][0], 'alternative_number.type')[0] # Untested
             print(f"cid_check_works(): Alternative number type {alt_num_type}")
             alt_type.append(alt_num_type)
         except (IndexError, TypeError, KeyError):
-            alt_type.append('')
+            pass
 
-    return hit_count, priref, title, title_art, groupings, alt_type
+    return hits, priref, title, title_art, groupings, alt_type
 
 
 def genre_retrieval(category_code, description, title):
@@ -427,7 +411,7 @@ def genre_retrieval(category_code, description, title):
     Retrieve genre data, return as list
     '''
     with open(GENRE_MAP, 'r') as files:
-        data = (yaml.load(files, Loader=yaml.FullLoader))
+        data = yaml.load(files, Loader=yaml.FullLoader)
         print(f"genre_retrieval(): The genre data is being retrieved for: {category_code}")
         for _ in data:
             if category_code in data['genres']:
@@ -771,7 +755,7 @@ def main():
                     continue
 
             season_fpaths = [x for x in json_fpaths if f'season_{season_num}_' in str(x)]
-            
+
             # Fetch just single episodes
             if episode != 'all':
                 episodes = episode.split(', ')
@@ -807,7 +791,7 @@ def main():
     LOGGER.info("=== Document augmented Netflix end =================================")
 
 
-def make_episodes(num, season_fpaths, title, csv_data, work_title, work_title_art): 
+def make_episodes(num, season_fpaths, title, csv_data, work_title, work_title_art):
     '''
     Receive number for episode (individual or
     from range count) and build programme records
@@ -1095,7 +1079,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
         print(f'* Unable to create Work record for <{title}> {err}')
         LOGGER.critical('Unable to create Work record for <%s>', title)
         return None
-    
+
     series_genres = []
     if 'genres' in series_dct:
         extracted = series_dct['genres']
@@ -1194,7 +1178,7 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
     # Start creating CID Work Series record
     work_xml = adlib.create_record_data('', work_values)
     try:
-        print("Attempting to create CID record")      
+        print("Attempting to create CID record")
         work_rec = adlib.post(work_xml, 'works', 'insertrecord')
         if work_rec:
             try:
@@ -1281,7 +1265,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     broadcast_addition = []
     manifestation_xml = adlib.create_record_data('', manifestation_values)
     try:
-        print("Attempting to create CID record")      
+        print("Attempting to create CID record")
         man_rec = adlib.post(manifestation_xml, 'manifestations', 'insertrecord')
         if man_rec:
             try:
@@ -1301,7 +1285,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
 
     broadcast_comp = adlib.retrieve_field_name(man_rec, 'broadcast_company.lref')[0]
     if broadcast_comp != '143463':
-        broadcast_addition = ([{'broadcast_company.lref': '143463'}])
+        broadcast_addition = [{'broadcast_company.lref': '143463'}]
         broadcast_xml = adlib.create_record_data(manifestation_id, broadcast_addition)
         print("**** Attempting to write work genres to records ****")
 
@@ -1365,7 +1349,7 @@ def create_item(man_priref, work_title, work_title_art, work_dict, record_defaul
     print(item_values)
     item_xml = adlib.create_record_data('', item_values)
     try:
-        print("Attempting to create CID Item record")      
+        print("Attempting to create CID Item record")
         item_rec = adlib.post(item_xml, 'items', 'insertrecord')
         if item_rec:
             try:

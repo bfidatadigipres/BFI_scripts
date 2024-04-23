@@ -39,7 +39,6 @@ import os
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-# import adlib
 
 # Global path variables
 CURATORIAL_PATH = os.environ['IS_CURATORIAL']
@@ -59,8 +58,6 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 # Global variables
-# CID = adlib.Database(url=CID_API)
-# CUR = adlib.Cursor(CID)
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
@@ -94,36 +91,34 @@ def cid_retrieve(itemname, search):
     Receive filename and search in CID items
     Return object number to main
     '''
-    query = {'database': 'items',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, object_number, title, Acquired_filename, digital.acquired_filename'}
     try:
-        query_result = CID.get(query)
+        query_result = adlib.retrieve_record(CID_API, 'items', search, 0)
     except Exception:
         print("cid_retrieve(): Unable to retrieve data for {}".format(itemname))
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", itemname)
         query_result = None
     try:
-        acquired1 = query_result.records[0]['Acquired_filename']
+        acquired1 = []
+        all_filenames = len(query_result[0]['Acquired_filename'])
+        for num in range(0, all_filenames):
+            acquired1.append(adlib.retrieve_field_name(query_result[0]['Acquired_filename'][num], 'digital.acquired_filename')[0])
     except (KeyError, IndexError) as err:
         acquired1 = []
         LOGGER.warning("cid_retrieve(): Unable to access acquired filename1 %s", err)
         print(err)
     try:
-        priref = query_result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(query_result[0], 'priref')[0]
         print(priref)
     except (KeyError, IndexError) as err:
         priref = ""
         LOGGER.warning("cid_retrieve(): Unable to access priref %s", err)
     try:
-        ob_num = query_result.records[0]['object_number'][0]
+        ob_num = adlib.retrieve_field_name(query_result[0], 'object_number')[0]
     except (KeyError, IndexError) as err:
         ob_num = ""
         LOGGER.warning("cid_retrieve(): Unable to access object_number: %s", err)
     try:
-        title = query_result.records[0]['Title'][0]['title'][0]
+        title = adlib.retrieve_field_name(query_result[0]['Title'][0], 'title')[0]
     except (KeyError, IndexError) as err:
         title = ""
         LOGGER.warning("cid_retrieve(): Unable to access title: %s", err)
@@ -298,18 +293,15 @@ def make_filename(ob_num, item_list, item):
     '''
     Take individual elements and calculate part whole
     '''
+    print("** Might break here")
+    print(item_list)
     extension = False
     file = ob_num.replace('-', '_')
     ext = os.path.splitext(item)
     if len(ext[1]) > 0:
         extension = True
-    acquired_list = []
-    for dct in item_list:
-        for _, val in dct.items():
-            for string in val:
-                acquired_list.append(string)
-    part = acquired_list.index(item)
-    whole = len(acquired_list)
+    part = item_list.index(item)
+    whole = len(item_list)
     part_ = int(part) + 1
     part_ = str(part_).zfill(2)
     whole_ = str(whole).zfill(2)

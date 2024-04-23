@@ -34,7 +34,7 @@ def check(api):
     return get(api, query)
 
 
-def retrieve_record(api, database, search, limit fields=None):
+def retrieve_record(api, database, search, limit, fields=None):
     '''
     Retrieve data from CID using new API
     '''

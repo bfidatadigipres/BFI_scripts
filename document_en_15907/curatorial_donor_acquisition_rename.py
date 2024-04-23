@@ -79,7 +79,7 @@ def cid_check():
     Tests if CID active before all other operations commence
     '''
     try:
-        test = adlib.check(CID_API)
+        adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical('Cannot establish CID session, exiting script')
@@ -94,7 +94,7 @@ def cid_retrieve(itemname, search):
     try:
         query_result = adlib.retrieve_record(CID_API, 'items', search, 0)
     except Exception:
-        print("cid_retrieve(): Unable to retrieve data for {}".format(itemname))
+        print(f"cid_retrieve(): Unable to retrieve data for {itemname}")
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", itemname)
         query_result = None
     try:
@@ -281,12 +281,12 @@ def check_path(root, spath):
 
     if not dir_list:
         return f"{spath}_01"
-    else:
-        dir_list.sort()
-        last_dir = dir_list[-1]
-        num = int(last_dir[-2:]) + 1
-        number = str(num).zfill(2)
-        return f"{spath}_{number}"
+
+    dir_list.sort()
+    last_dir = dir_list[-1]
+    num = int(last_dir[-2:]) + 1
+    number = str(num).zfill(2)
+    return f"{spath}_{number}"
 
 
 def make_filename(ob_num, item_list, item):
@@ -348,16 +348,16 @@ def folder_found(fullpath):
             if file.endswith(('.dpx', '.DPX')):
                 image_seq = 'DPX'
                 break
-            elif file.endswith(('.tif', '.tiff', '.TIF', '.TIFF')):
+            if file.endswith(('.tif', '.tiff', '.TIF', '.TIFF')):
                 image_seq = 'TIF'
                 break
-            elif file.endswith(('.mxf', '.MXF')):
+            if file.endswith(('.mxf', '.MXF')):
                 image_seq = 'MXF'
                 break
-            elif os.path.isfile(filepath):
+            if os.path.isfile(filepath):
                 local_logger(f"\n{fullpath}:\nSub folder found containing files. Please review contents and remove from Workflow folder", path)
                 break
-            else:
+            if os.path.isdir(filepath):
                 local_logger(f"\n{fullpath}: Folder found containing no files. Please review and remove from Workflow folder", path)
                 break
     if len(image_seq) > 0:
@@ -372,7 +372,7 @@ def rename_pth(filepath, new_filename):
     new_filepath = ''
     path, old_filename = os.path.split(filepath)
     new_filepath = os.path.join(path, new_filename)
-    print("Renaming {} to {}".format(old_filename, new_filename))
+    print(f"Renaming {old_filename} to {new_filename}")
 
     try:
         os.rename(filepath, new_filepath)

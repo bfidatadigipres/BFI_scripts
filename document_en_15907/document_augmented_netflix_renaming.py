@@ -382,7 +382,7 @@ def item_append(priref, item_append_dct):
 
     item_xml = adlib.create_record_data(priref, item_append_dct)
     try:
-        result = adlib.post(item_xml, 'items', 'instertrecord', '')
+        result = adlib.post(item_xml, 'items', 'instertrecord')
         print("*** CID item record append result:")
         print(result)
         return True

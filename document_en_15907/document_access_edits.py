@@ -87,7 +87,7 @@ def main():
         if source_record is None:
             LOGGER.warning("Skipping: Unable to match source object number %s to CID item record", file)
             continue
-        source_priref = adlib.retrieve_field_name(source_record[0], 'priref')
+        source_priref = adlib.retrieve_field_name(source_record[0], 'priref')[0]
 
         # Create new Item record and append quality comments
         print("Going to create new record!")
@@ -126,7 +126,7 @@ def create_new_item_record(source_priref, file, source_record):
     item_dct = make_item_record_dict(source_priref, file, source_record[0])
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
-    new_record = adlib.post(item_xml, 'items', 'insertrecord', '')
+    new_record = adlib.post(item_xml, 'items', 'insertrecord')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None
@@ -145,8 +145,8 @@ def make_item_record_dict(priref, file, record):
     item.extend(defaults())
 
     if 'Title' in str(record):
-        title = adlib.retrieve_field_name(record, 'title')
-        item.append({'title': title[0]})
+        title = adlib.retrieve_field_name(record, 'title')[0]
+        item.append({'title': title})
         if 'title.article' in str(record):
             item.append({'title.article': adlib.retrieve_field_name(record, 'title.article')[0]})
         item.append({'title.language': 'English'})

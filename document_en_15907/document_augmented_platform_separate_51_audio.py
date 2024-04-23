@@ -84,7 +84,7 @@ def cid_check(object_number):
     and other data for new separate 5.1 audio record
     '''
     search = f"object_number='{object_number}'"
-    hits, record = adlib.retrieve_record('items', search, '0', fields=None)
+    hits, record = adlib.retrieve_record('items', search, '0')
     if hits == 0:
         return None
     return record
@@ -191,7 +191,7 @@ def main():
 
             # Append digital.acquired_filename and quality_comments to new CID item record
             payload = adlib.create_record_data(new_priref, filename_dct)
-            record = adlib.post(payload, 'items', 'updaterecord', new_priref)
+            record = adlib.post(payload, 'items', 'updaterecord')
             if not record:
                 LOGGER.warning("Filename changes were not updated to digital.acquired_filename fields: %s", filename_dct)
             LOGGER.info("Digital Acquired Filename data added to CID item record %s", new_priref)
@@ -379,7 +379,7 @@ def create_new_item_record(priref, record):
     item_dct = make_item_record_dict(priref, record)
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
-    new_record = adlib.post(item_xml, 'items', 'insertrecord', '')
+    new_record = adlib.post(item_xml, 'items', 'insertrecord')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

@@ -44,22 +44,27 @@ def retrieve_record(database, search, limit, fields=None):
     return (hits, record['adlibJSON']['recordList']['record'])
 
 
-def get(query):
+def get(query, database):
     '''
     Send a GET request
     '''
+    params = {
+        'database': database,
+        'search': query,
+        'output': 'jsonv1'
+    }
 
     try:
-        req = requests.request('GET', CID_API, headers=HEADERS, params=query)
+        req = requests.request('GET', CID_API, headers=HEADERS, params=params)
         dct = json.loads(req.text)
     except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
         print(err)
         dct = {}
 
-    return dct
+    return dct['adlibJSON']['recordList']['record']
 
 
-def post(payload, database, method, priref):
+def post(payload, database, method):
     '''
     Send a POST request
     If using updaterecord consider if the record

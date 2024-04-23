@@ -40,14 +40,14 @@ import sys
 import json
 import logging
 import datetime
-import requests
 import pandas
 import yaml
 
 # Local packages
+from document_augmented_streaming_cast import create_contributors
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-from document_augmented_streaming_cast import create_contributors
+
 
 # Global variables
 STORAGE = os.environ.get('QNAP_IMAGEN')
@@ -195,7 +195,7 @@ def get_cat_data(data=None):
         c_data['runtime'] = data['runtime']
     try:
         c_data['production_year'] = data['productionYear']
-    except:
+    except (IndexError, TypeError, KeyError):
         pass
     try:
         c_data['cert_netflix'] = data['certification']['netflix']
@@ -428,7 +428,7 @@ def genre_retrieval(category_code, description, title):
                             genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
                         genre_one_priref = ''
                     else:
-                        for key, val in genre_one.items():
+                        for val in genre_one.values():
                             genre_one_priref = val
                         print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
                 except Exception:
@@ -449,7 +449,7 @@ def genre_retrieval(category_code, description, title):
                     genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
 
 
-def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
+def make_work_dictionary(episode_no, csv_data, cat_dct, json_dct):
     '''
     Build up work data into dictionary for Work creation
     '''
@@ -519,12 +519,12 @@ def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
 
     try:
         work_dict['patv_id'] = json_dct['work_id']
-    except:
+    except (IndexError, TypeError, KeyError):
         work_dict['patv_id'] = ''
 
     try:
         work_dict['cat_id'] = cat_dct['cat_id']
-    except:
+    except (IndexError, TypeError, KeyError):
         work_dict['cat_id'] = ''
 
     if 'production_year' in json_dct:
@@ -634,7 +634,7 @@ def main():
         if len(matched_folders) > 1:
             print(f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}")
             continue
-        elif len(matched_folders) == 0:
+        if len(matched_folders) == 0:
             print(f"No match found: {article} {title}")
             # At some point initiate 'title' search in PATV data
             continue
@@ -664,13 +664,13 @@ def main():
             try:
                 cat_data = retrieve_json(os.path.join(prog_path, mono_cat[0]))
                 cat_dct = get_cat_data(cat_data)
-            except Exception as exc:
+            except (IndexError, TypeError, KeyError) as exc:
                 print(exc)
                 cat_dct = {}
             try:
                 mono_data = retrieve_json(os.path.join(prog_path, mono[0]))
                 mono_dct = get_json_data(mono_data)
-            except Exception as exc:
+            except (IndexError, TypeError, KeyError) as exc:
                 print(exc)
                 mono_dct = {}
 
@@ -679,7 +679,7 @@ def main():
                 continue
 
             # Make monographic work here
-            data_dct = make_work_dictionary('', '', csv_data, cat_dct, mono_dct)
+            data_dct = make_work_dictionary('', csv_data, cat_dct, mono_dct)
             print(f"Dictionary for monograph creation: \n{data_dct}")
             print("*************")
             record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
@@ -742,14 +742,14 @@ def main():
                 # Get series ID title and genre
                 series_data = retrieve_json(os.path.join(prog_path, series_json[0]))
                 series_dct = get_json_data(series_data)
-                series_data_dct = make_work_dictionary('', '', csv_data, None, series_dct)
+                series_data_dct = make_work_dictionary('', csv_data, None, series_dct)
                 record, series_work, work, work_restricted, manifestation, item = build_defaults(series_data_dct)
                 work_title, work_title_art = split_title(series_data_dct['title'])
 
                 # Make series work here
                 if not series_data_dct:
                     continue
-                series_priref = create_series_work(patv_id, series_data_dct, csv_data, series_work, work_restricted, record)
+                series_priref = create_series_work(patv_id, series_data_dct, series_work, work_restricted, record)
                 if not series_priref:
                     print("Series work creation failure. Skipping episodes...")
                     continue
@@ -828,18 +828,18 @@ def make_episodes(num, season_fpaths, title, csv_data, work_title, work_title_ar
     try:
         ep_cat_data = retrieve_json(ep_cat_json[0])
         ep_cat_dct = get_cat_data(ep_cat_data)
-    except Exception as exc:
+    except (IndexError, TypeError, KeyError) as exc:
         print(exc)
         ep_cat_dct = {}
     try:
         ep_data = retrieve_json(ep_json[0])
         ep_dct = get_json_data(ep_data)
-    except Exception as exc:
+    except (IndexError, TypeError, KeyError) as exc:
         print(exc)
         ep_dct = {}
 
     # Make episodic work here
-    data_dct = make_work_dictionary(num, episode_id, csv_data, ep_cat_dct, ep_dct)
+    data_dct = make_work_dictionary(num, csv_data, ep_cat_dct, ep_dct)
     print(f"Dictionary for Work creation:\n{data_dct}")
     print('**************')
     record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)
@@ -902,19 +902,19 @@ def genre_retrieval_term(category_code, description, title):
     category_data = genre_retrieval(category_code, description, title)
     try:
         genre1 = category_data[0]
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         genre1 = ''
     try:
         genre2 = category_data[1]
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         genre2 = ''
     try:
         subject1 = category_data[2]
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         subject1 = ''
     try:
         subject2 = category_data[3]
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         subject2 = ''
 
     return (genre1, genre2, subject1, subject2)
@@ -1014,7 +1014,7 @@ def build_defaults(data):
     return (record, series_work, work, work_restricted, manifestation, item)
 
 
-def create_series_work(patv_id, series_dct, csv_data, series_work, work_restricted, record):
+def create_series_work(patv_id, series_dct, series_work, work_restricted, record):
     '''
     Build data needed to make
     episodic series work to
@@ -1072,7 +1072,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
                 print(f'* Series record created with Priref {series_work_id}')
                 print(f'* Series record created with Object number {object_number}')
                 LOGGER.info('Work record created with priref %s', series_work_id)
-            except Exception as err:
+            except (IndexError, TypeError, KeyError) as err:
                 print("Unable to create series record", err)
                 return None
     except Exception as err:
@@ -1188,7 +1188,7 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
                 print(f'* Work record created with Priref {work_id}')
                 print(f'* Work record created with Object number {object_number}')
                 LOGGER.info('Work record created with priref %s', work_id)
-            except Exception as err:
+            except (IndexError, TypeError, KeyError) as err:
                 print("Unable to create work record", err)
                 return None
     except Exception as err:
@@ -1224,7 +1224,6 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     '''
     manifestation_id = ''
     print(work_dict)
-    title = work_dict['title']
     manifestation_values = []
     manifestation_values.extend(record_defaults)
     manifestation_values.extend(manifestation_defaults)

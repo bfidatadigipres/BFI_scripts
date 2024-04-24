@@ -32,7 +32,6 @@ import json
 import shutil
 import logging
 import datetime
-import requests
 import yaml
 import tenacity
 from lxml import etree
@@ -135,8 +134,8 @@ def split_title(title_article):
         title = ' '.join(ttl)
         title_art = title_split[0]
         return title, title_art
-    else:
-        return title_article, ''
+
+    return title_article, ''
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
@@ -158,7 +157,7 @@ def cid_series_query(series_id):
     try:
         series_priref = adlib.retrieve_field_name(series_query_result[0], 'priref')[0]
         print(f"cid_series_query(): Series priref: {series_priref}")
-    except Exception as err:
+    except (IndexError, TypeError, KeyError) as err:
         print(f"cid_series_query(): Unable to access series_priref: {err}")
         series_priref = ''
 
@@ -234,52 +233,52 @@ def series_check(series_id):
             lines = json.load(inf)
             if 'ResourceNotFoundError' in str(lines):
                 continue
-            for k, v in lines.items():
+            for _ in lines:
                 series_descriptions = []
                 # Unsure if series description has a medium set - none found
                 try:
                     series_short = lines["summary"]["short"]
                     series_descriptions.append(series_short)
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     series_short = ''
                     series_descriptions.append(series_short)
                 try:
                     series_medium = lines["summary"]["medium"]
                     series_descriptions.append(series_medium)
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     series_medium = ''
                     series_descriptions.append(series_medium)
                 try:
                     series_long = lines["summary"]["long"]
                     series_descriptions.append(series_long)
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     series_long = ''
                     series_descriptions.append(series_long)
                 # Sort and return longest of descriptions
                 series_descriptions.sort(key=len, reverse=True)
-                series_description = (series_descriptions[0])
+                series_description = series_descriptions[0]
                 print(f"series_check(): Series description longest: {series_description}")
                 try:
                     series_title_full = lines["title"]
                     print(f"series_check(): Series title full: {series_title_full}")
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     series_title_full = ''
                 series_category_codes = []
                 # series category codes, unsure if there's always two parts to category, selects longest
                 try:
                     series_category_code_one = lines["category"][0]["code"]
                     series_category_codes.append(series_category_code_one)
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     series_category_code_one = ''
                     series_category_codes.append(series_category_code_one)
                 try:
                     series_category_code_two = lines["category"][1]["code"]
                     series_category_codes.append(series_category_code_two)
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     series_category_code_two = ''
                     series_category_codes.append(series_category_code_two)
                 series_category_codes.sort(key=len, reverse=True)
-                series_category_code = (series_category_codes[0])
+                series_category_code = series_category_codes[0]
                 print(f"series_check(): Series category code, longest: {series_category_code}")
 
                 return (series_description, series_short, series_medium, series_long, series_title_full, series_category_code)
@@ -290,7 +289,7 @@ def genre_retrieval(category_code, description, title):
     Retrieve genre data, return as list
     '''
     with open(GENRE_MAP, 'r', encoding='utf8') as files:
-        data = (yaml.load(files, Loader=yaml.FullLoader))
+        data = yaml.load(files, Loader=yaml.FullLoader)
         print(f"genre_retrieval(): The genre data is being retrieved for: {category_code}")
         for _ in data:
             if category_code in data['genres']:
@@ -312,33 +311,32 @@ def genre_retrieval(category_code, description, title):
                         for key, val in genre_one.items():
                             genre_one_priref = val
                         print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     genre_one_priref = ''
                 try:
                     genre_two = data['genres'][category_code.strip('u')]['Genre2']
-                    for key, val in genre_two.items():
+                    for _, val in genre_two.items():
                         genre_two_priref = val
                     print(f"genre_retrieval(): Key value for genre_two_priref: {genre_two_priref}")
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     genre_two_priref = ''
                 try:
                     subject_one = data['genres'][category_code.strip('u')]['Subject']
                     for key, val in subject_one.items():
                         subject_one_priref = val
                     print(f"genre_retrieval(): Key value for subject_one_priref: {subject_one_priref}")
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     subject_one_priref = ''
                 try:
                     subject_two = data['genres'][category_code.strip('u')]['Subject2']
                     for key, val in subject_two.items():
                         subject_two_priref = val
                     print(f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}")
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     subject_two_priref = ''
                 return [genre_one_priref, genre_two_priref, subject_one_priref, subject_two_priref]
 
-            else:
-                logger.warning("%s -- New category not in EPG_genre_map.yaml: %s", category_code, title)
+            logger.warning("%s -- New category not in EPG_genre_map.yaml: %s", category_code, title)
 
 
 def csv_retrieve(fullpath):
@@ -617,7 +615,7 @@ def fetch_lines(fullpath, lines):
                     channel = val[0]
                     print(f"Broadcast channel is {channel}")
                     epg_dict['channel'] = channel
-                except Exception as err:
+                except (IndexError, TypeError, KeyError) as err:
                     print(err)
 
         # Sort category data
@@ -639,7 +637,7 @@ def fetch_lines(fullpath, lines):
                 work_subject_two = category_data[3]
                 print(f"Subject two work priref: {work_subject_two}")
                 epg_dict['work_subject_two'] = work_subject_two
-        except Exception as err:
+        except (IndexError, TypeError, KeyError) as err:
             print(err)
 
         if "factual-topics" in category_code:
@@ -668,7 +666,7 @@ def fetch_lines(fullpath, lines):
 
         # Generate work_type
         if 'work' in epg_dict:
-            if work == "episode" or work == "one-off":
+            if work in ("episode", "one-off"):
                 work_type = "T"
             elif work == "movie":
                 work_type = "F"
@@ -725,7 +723,7 @@ def main():
                     print(f"** CSV DESCRIPTION: {csv_description}")
                     csv_dump = csv_data[1]
                     print(f"** CSV DATA FOR UTB: {csv_dump}")
-                except Exception:
+                except (IndexError, TypeError, KeyError):
                     csv_data = []
                     csv_description = ""
                     csv_dump = ""
@@ -754,7 +752,7 @@ def main():
                         series_return = cid_series_query(epg_dict['series_id'])
                         hit_count = series_return[0]
                         series_work_id = series_return[1]
-                    except Exception:
+                    except (IndexError, TypeError, KeyError):
                         print(f"CID Series data not retrieved: {epg_dict['series_id']}")
                         series_work_id = ''
                         hit_count = ''
@@ -894,7 +892,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
         series_title = split_title(series_title_full)[0]
         series_title_article = split_title(series_title_full)[1]
         print(f"***** Series title: {series_title}, and article {series_title_article}")
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         series_title = series_title_full
         series_title_article = ''
         print(f"** Series title: {series_title}")
@@ -902,27 +900,27 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
     try:
         series_category_data = genre_retrieval(series_category_code, series_description, series_title)
         print(f"*** SERIES CATEGORY DATA FROM GENRE_RETRIEVAL(): {series_category_data}")
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         print("Unable to retrieve series category data from genre_retrieval() function")
     try:
         series_genre_one = series_category_data[0]
         print(f"Genre one series priref: {series_genre_one}")
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         series_genre_one = ''
     try:
         series_genre_two = series_category_data[1]
         print(f"Genre two series priref: {series_genre_two}")
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         series_genre_two = ''
     try:
         series_subject_one = series_category_data[2]
         print(f"Subject one series priref: {series_subject_one}")
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         series_subject_one = ''
     try:
         series_subject_two = series_category_data[3]
         print(f"Subject two series priref: {series_subject_two}")
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         series_subject_two = ''
     try:
         if "factual-topics" in series_category_code:
@@ -945,7 +943,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
             nfa_category = "D"
         else:
             nfa_category = "F"
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         nfa_category = ''
 
     # Series work value extensions for missing series data
@@ -958,12 +956,12 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
     series_work_values.append({'nfa_category': nfa_category})
     try:
         series_work_values.append({'title.article': series_title_article})
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         print("There is no series title article")
     try:
         series_work_values.append({'alternative_number.type': 'EBS augmented EPG supply'})
         series_work_values.append({'alternative_number': epg_dict['series_id']})
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         print("series_id will not be added to series_work_values")
     if len(series_short) > 0:
         try:
@@ -971,7 +969,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
             series_work_values.append({'label.text': series_short})
             series_work_values.append({'label.source': 'EBS augmented EPG supply'})
             series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-        except Exception:
+        except (IndexError, TypeError, KeyError):
             print("Series description short will not be added to series_work_values")
     if len(series_medium) > 0:
         try:
@@ -979,7 +977,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
             series_work_values.append({'label.text': series_medium})
             series_work_values.append({'label.source': 'EBS augmented EPG supply'})
             series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-        except Exception:
+        except (IndexError, TypeError, KeyError):
             print("Series description medium will not be added to series_work_values")
     if len(series_long) > 0:
         try:
@@ -987,14 +985,14 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
             series_work_values.append({'label.text': series_long})
             series_work_values.append({'label.source': 'EBS augmented EPG supply'})
             series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-        except Exception:
+        except (IndexError, TypeError, KeyError):
             print("Series description long will not be added to series_work_values")
     if len(series_description) > 0:
         try:
             series_work_values.append({'description': series_description})
             series_work_values.append({'description.type': 'Synopsis'})
             series_work_values.append({'description.date': str(datetime.datetime.now())[:10]})
-        except Exception:
+        except (IndexError, TypeError, KeyError):
             print("Series description LONGEST will not be added to series_work_values")
 
     series_work_genres = []
@@ -1030,7 +1028,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
                 print(f'* Series record created with Object number {object_number}')
                 logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
             except (IndexError, TypeError, KeyError) as err:
-                print(f'* Unable to create Series Work record for <{series_title_full}>')
+                print(f'* Unable to create Series Work record for <{series_title_full}>\n{err}')
                 logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
                 return None
     except Exception as err:
@@ -1173,7 +1171,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
                 if ep_num[3]:
                     work_values.append({'part_unit': 'EPISODE'})
                     work_values.append({'part_unit.value': ep_num[3]})
-            except Exception as err:
+            except (IndexError, TypeError, KeyError) as err:
                 print(err)
         if 'episode_total' in epg_dict:
             work_values.append({'part_unit.valuetotal': epg_dict['episode_total']})
@@ -1379,8 +1377,8 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     payload = etree.tostring(etree.fromstring(manifestation))
 
     try:
-        r = cur._write('collect', payload)
-        if not r.error:
+        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
+        if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
         else:
             logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
@@ -1396,8 +1394,8 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         payload = etree.tostring(etree.fromstring(work))
 
         try:
-            r = cur._write('collect', payload)
-            if not r.error:
+            response = adlib.post(CID_API, payload, 'works', 'updaterecord')
+            if response:
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
             else:
                 logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)

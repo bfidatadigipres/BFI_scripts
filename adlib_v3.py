@@ -61,7 +61,7 @@ def retrieve_record(api, database, search, limit, fields=None):
         except (IndexError, KeyError, TypeError):
             return 0, record
 
-    hits = len(record['adlibJSON']['recordList']['record'])
+    hits = record['adlibJSON']['diagnostic']['hits']
     return (hits, record['adlibJSON']['recordList']['record'])
 
 

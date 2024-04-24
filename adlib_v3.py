@@ -106,7 +106,7 @@ def post(api, payload, database, method):
             print(err)
             return None
 
-        if 'recordList' in response.text:
+        if '@attributes' in response.text:
             records = json.loads(response.text)
             return records
 
@@ -213,6 +213,7 @@ def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
     fragment from dictionary / list of dictionaries
+    Attribution @ Edward Anderson
     '''
 
     if not isinstance(obj, list):

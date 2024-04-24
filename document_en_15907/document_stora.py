@@ -25,13 +25,11 @@ import json
 import shutil
 import logging
 import datetime
-import requests
 from lxml import etree
 
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-# import adlib
 
 # Global variables
 STORAGE = os.environ['STORA_PATH']
@@ -41,8 +39,6 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
 CID_API = os.environ['CID_API4']
-# cid = adlib.Database(url=CID_API)
-# cur = adlib.Cursor(cid)
 
 # Setup logging
 logger = logging.getLogger('document_stora')

@@ -49,10 +49,10 @@ def retrieve_record(api, database, search, limit, fields=None):
         field_str = ', '.join(fields)
         query['fields'] = field_str
 
-    record = get(query, api)
+    record = get(api, query)
 
     if 'recordList' not in str(record):
-        return (record['adlibJSON']['diagnostic']['hits'], None)
+        return (len(record), record)
 
     hits = len(record['adlibJSON']['recordList']['record'])
     return (hits, record['adlibJSON']['recordList']['record'])
@@ -65,7 +65,8 @@ def get(api, query):
     try:
         req = requests.request('GET', api, headers=HEADERS, params=query)
         dct = json.loads(req.text)
-        dct = dct['adlibJSON']['recordList']['record']
+        if 'recordList' in dct:
+            dct = dct['adlibJSON']['recordList']['record']
     except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
         print(err)
         dct = {}

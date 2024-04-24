@@ -62,7 +62,7 @@ def retrieve_record(api, database, search, limit, fields=None):
             return 0, record
 
     hits = record['adlibJSON']['diagnostic']['hits']
-    return (hits, record['adlibJSON']['recordList']['record'])
+    return hits, record['adlibJSON']['recordList']['record']
 
 
 def get(api, query):

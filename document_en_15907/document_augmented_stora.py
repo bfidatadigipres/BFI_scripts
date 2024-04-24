@@ -40,7 +40,7 @@ from lxml import etree
 # Private packages
 from series_retrieve import retrieve
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global variables
 STORAGE = os.environ['STORA_PATH']
@@ -52,9 +52,7 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
-CID_API = os.environ['CID_API3']
-cid = adlib.Database(url=CID_API)
-cur = adlib.Cursor(cid)
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 logger = logging.getLogger('document_augmented_stora')
@@ -111,18 +109,15 @@ def check_control():
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def check_cid():
+def cid_check():
     '''
-    Run a CID check to ensure online
+    Test if CID API online
     '''
     try:
-        logger.info('* Initialising CID session... Script will exit if CID off line')
-        cid = adlib.Database(url=CID_API)
-        cur = adlib.Cursor(cid)
-        logger.info("* CID online, script will proceed")
-    except Exception:
+        adlib.check(CID_API)
+    except KeyError:
         print("* Cannot establish CID session, exiting script")
-        logger.exception('Cannot establish CID session, exiting script')
+        logger.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -150,29 +145,24 @@ def cid_series_query(series_id):
     Sends CID request for series_id data
     '''
     print(f"CID SERIES QUERY: {series_id}")
-    hit_count = ""
-    series_priref = ""
-    series_query = {'database': 'works',
-                    'search': f'alternative_number="{series_id}"',
-                    'limit': '1',
-                    'output': 'json',
-                    'fields': 'priref'}
+    search = f'alternative_number="{series_id}"'
+
     try:
-        series_query_result = cid.get(series_query)
-        hit_count = series_query_result.hits
+        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '0')
         print(f"cid_series_query(): Hit counts returned for series: {hit_count}")
-    except Exception as err:
+    except (IndexError, KeyError, TypeError) as err:
         print(f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id} {err}")
         print("cid_series_query(): Series hit count and series priref will return empty strings")
+        hit_count = ''
         raise
     try:
-        series_priref = series_query_result.records[0]['priref'][0]
+        series_priref = adlib.retrieve_field_name(series_query_result[0], 'priref')[0]
         print(f"cid_series_query(): Series priref: {series_priref}")
     except Exception as err:
         print(f"cid_series_query(): Unable to access series_priref: {err}")
         series_priref = ''
 
-    return (hit_count, series_priref)
+    return hit_count, series_priref
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
@@ -181,39 +171,26 @@ def find_repeats(asset_id):
     Use asset_id to check in CID for duplicate
     PATV showings of a manifestation
     '''
-    search = f'(alternative_number="{asset_id}")'
-    priref = ppriref = ''
-    query = {'database': 'manifestations',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, object_number'}
+    search = f'alternative_number="{asset_id}"'
 
-    result = cid.get(query)
+    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '0')
     if not result:
         return None
-
-    if result.hits == 0:
+    if hits == 0:
         return None
 
-    for num in range(0, result.hits):
+    for num in range(0, hits):
         try:
-            priref = result.records[num]['priref'][0]
+            priref = adlib.retrieve_field_name(result[num], 'priref')[0]
         except (IndexError, TypeError, KeyError):
             return None
 
-        query = {'database': 'manifestations',
-                 'search': f'(priref="{priref}")',
-                 'limit': '0',
-                 'output': 'json',
-                 'fields': 'priref, object_number, alternative_number.type'}
-
-        full_result = cid.get(query)
+        full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '0', ['alternative_number.type'])[1]
         if not full_result:
             return None
         try:
-            print(full_result.records[0])
-            alt_num_type = full_result.records[0]['Alternative_number'][0]['alternative_number.type'][0]
+            print(full_result[0])
+            alt_num_type = adlib.retrieve_field_name(full_result[0]['Alternative_number'][0], 'alternative_number.type')[0]
         except (IndexError, TypeError, KeyError):
             alt_num_type = ''
 
@@ -226,14 +203,11 @@ def find_repeats(asset_id):
             continue
 
         print(f"Priref with matching asset_id in CID: {priref}")
-        pquery = {'database': 'manifestations',
-                  'search': f'(parts_reference->priref={priref})',
-                  'limit': '0',
-                  'output': 'json'}
-        presult = cid.get(pquery)
+        search = f'(parts_reference.lref="{priref}")'
+        presult = adlib.retrieve_record(CID_API, 'manifestations', search, '0')[1]
         try:
-            ppriref = presult.records[0]['priref'][0]
-        except(IndexError, TypeError, KeyError):
+            ppriref =  adlib.retrieve_field_name(presult[0], 'priref')[0]
+        except (IndexError, TypeError, KeyError):
             ppriref = ''
 
         if len(ppriref) > 1:
@@ -1039,7 +1013,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
         series_work_values.extend(series_work_genres)
 
     # Start creating CID Work Series record
-    series_values_xml = cur.create_record_data('', data=series_work_values)
+    series_values_xml = adlib.create_record_data('', series_work_values)
     if series_values_xml is None:
         return None
     print("***************************")
@@ -1047,23 +1021,23 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
 
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
-        data = push_record_create(series_values_xml, 'works', 'insertrecord')
-        if data is None:
-            print(f'* Unable to create Series Work record for <{series_title_full}>')
-            logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
-            return None
-        if data[0] and data[1]:
-            series_work_id = data[0]
-            object_number = data[1]
-            print(f'* Series record created with Priref {series_work_id}')
-            print(f'* Series record created with Object number {object_number}')
-            logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
-        else:
-            return None
+        work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
+        if work_rec:
+            try:
+                series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+                print(f'* Series record created with Priref {series_work_id}')
+                print(f'* Series record created with Object number {object_number}')
+                logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
+            except (IndexError, TypeError, KeyError) as err:
+                print(f'* Unable to create Series Work record for <{series_title_full}>')
+                logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+                return None
     except Exception as err:
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
         logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
         return None
+
     return series_work_id
 
 
@@ -1261,7 +1235,8 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         work_values.extend(work_genres)
 
     work_id = ''
-    work_values_xml = cur.create_record_data('', data=work_values)
+    # Start creating CID Work record
+    work_values_xml = adlib.create_record_data('', work_values)
     if work_values_xml is None:
         return None
     print("***************************")
@@ -1269,18 +1244,17 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
 
     try:
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
-        data = push_record_create(work_values_xml, 'works', 'insertrecord')
-        if data is None:
-            print(f"Creation of record failed using method Requests: 'works', 'insertrecord' for {title}")
-            return None
-        if data[0]:
-            work_id = data[0]
-            object_number = data[1]
-            print(f'* Work record created with Priref {work_id} Object number {object_number}')
-            logger.info('%s\tWork record created with priref %s', fullpath, work_id)
-        else:
-            print("Creation of record failed using method Requests: 'works', 'insertrecord'")
-            return None
+        work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
+        if work_rec:
+            try:
+                print("Populating work_id and object_number variables")
+                work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+                print(f'* Work record created with Priref {work_id} Object number {object_number}')
+                logger.info('%s\tWork record created with priref %s', fullpath, work_id)
+            except (IndexError, TypeError, KeyError) as err:
+                print(f"Creation of record failed using adlib_v3: 'works', 'insertrecord' for {epg_dict['title']}")
+                return None
     except Exception as err:
         print(f"* Unable to create Work record for <{epg_dict['title']}>")
         print(err)
@@ -1315,7 +1289,8 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         manifestation_values.append({'transmission_duration': epg_dict['duration_total']})
         manifestation_values.append({'runtime': epg_dict['duration_total']})
 
-    man_values_xml = cur.create_record_data('', data=manifestation_values)
+
+    man_values_xml = adlib.create_record_data('', manifestation_values)
     if man_values_xml is None:
         return None
     print("***************************")
@@ -1323,23 +1298,17 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
 
     try:
         logger.info("Attempting to create Manifestation record for item %s", title)
-        data = push_record_create(man_values_xml, 'manifestations', 'insertrecord')
-        if data is None:
-            print(f"Unable to write manifestation record - {title}")
-            return None
-        if data[0] and data[1]:
-            manifestation_id = data[0]
-            object_number = data[1]
-            print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
-            logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
-        else:
-            return None
-
+        man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
+        if man_rec:
+            try:
+                manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
+                object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
+                print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
+                logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
+            except (IndexError, KeyError, TypeError) as err:
+                print(f"Unable to write manifestation record - {title}")
+                return None
     except Exception as err:
-        if 'bool' in str(err):
-            logger.critical("Unable to write manifestation record <%s>", title)
-            print(f"Unable to write manifestation record - error: {err}")
-            return None
         print(f"*** Unable to write manifestation record: {err}")
         logger.critical("Unable to write manifestation record <%s> %s", manifestation_id, err)
         raise
@@ -1363,7 +1332,8 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     except (KeyError, IndexError, TypeError):
         print("Title article is not present")
 
-    item_values_xml = cur.create_record_data('', data=item_values)
+
+    item_values_xml = adlib.create_record_data('', item_values)
     if item_values_xml is None:
         return None
     print("***************************")
@@ -1371,20 +1341,22 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
 
     try:
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
-        data = push_record_create(item_values_xml, 'items', 'insertrecord')
-        if data[0] and data[1]:
-            item_id = data[0]
-            item_object_number = data[1]
-            print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
-            logger.info('%s\tItem record created with priref %s', fullpath, item_id)
-        else:
-            data = None
-    except Exception as error_exp:
+        item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+        if item_rec:
+            try:
+                item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
+                item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
+                print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
+                logger.info('%s\tItem record created with priref %s', fullpath, item_id)
+            except (IndexError, KeyError, TypeError) as err:
+                print("Unable to create Item record", err)
+                return None
+    except Exception as err:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
-        print(f"** PROBLEM: Unable to create Item record for {fullpath} {error_exp}")
-        data = None
+        print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
+        item_rec = None
 
-    if data is None:
+    if item_rec is None:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath}")
 
@@ -1446,106 +1418,6 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         return True
 
 
-def push_record_create(payload, database, method):
-    '''
-    Receive adlib formed XML but use
-    requests to create the CID record
-    '''
-    params = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'json'
-    }
-
-    headers = {'Content-Type': 'text/xml'}
-    payload = payload.encode('utf-8')
-    try:
-        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
-    except Exception as err:
-        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
-        print(err)
-        return None
-    print(f"Record list: {response.text}")
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
-        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
-        return priref, object_number
-    return None
-
-
-def push_genre_payload(work_id, genre_dict):
-    '''
-    Push genre/subject payload separately to work record
-    '''
-    pay_head = f'<adlibXML><recordList><record priref="{work_id}">'
-    payload = pay_head
-    for dct in genre_dict:
-        for key, value in dct.items():
-            pay_addition = f'<{key}>{value}</{key}>'
-            payload = payload + pay_addition
-    pay_end = '</record></recordList></adlibXML>'
-    payload = payload + pay_end
-    payload = payload.encode('utf-8')
-    print(f"GENRE PAYLOAD: \n{payload}")
-
-    lock_success = write_lock(work_id)
-    if lock_success:
-        post_response = requests.request(
-            'POST',
-            CID_API,
-            headers={'Content-Type': 'text/xml'},
-            params={'database': 'works', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data=payload,
-            timeout=1200)
-        if '<error><info>' in str(post_response.text):
-            logger.warning('push_genre_payload(): Error returned from requests post: %s %s', work_id, payload)
-            print(post_response.text)
-            unlock_record(work_id)
-            return False
-        else:
-            logger.info('push_genre_payload(): No error warning in requests post return. Payload written.')
-            return True
-    else:
-        logger.warning('push_genre_payload()): Unable to lock item record %s', work_id)
-        return False
-
-
-def push_broadcast_payload(man_id, broadcast_company):
-    '''
-    Push broadcast company payload separately to Man record
-    '''
-    # Make payload
-    pay_head = f'<adlibXML><recordList><record priref="{man_id}">'
-    pay_addition = f'<broadcast_company.lref>{broadcast_company}</broadcast_company.lref>'
-    pay_end = '</record></recordList></adlibXML>'
-    payload = pay_head + pay_addition + pay_end
-    payload = payload.encode('utf-8')
-
-    lock_success = write_lock(man_id)
-    if lock_success:
-        post_response = requests.request(
-            'POST',
-            CID_API,
-            headers={'Content-Type': 'text/xml'},
-            params={'command': 'updaterecord', 'database': 'manifestations', 'xmltype': 'grouped', 'output': 'json'},
-            data=payload,
-            timeout=1200)
-        if '<error><info>' in str(post_response.text):
-            logger.warning('push_broadcast_payload(): Error returned from requests post: %s %s', man_id, payload)
-            print(post_response.text)
-            unlock_record(man_id)
-            return False
-        else:
-            logger.info('push_broadcast_payload(): No error warning in requests post return. Payload written.')
-            return True
-    else:
-        logger.warning('push_broadcast_payload()): Unable to lock item record %s', man_id)
-        return False
-
-
-
 def push_payload(item_id, webvtt_payload):
     '''
     Push webvtt payload separately to Item record
@@ -1559,58 +1431,14 @@ def push_payload(item_id, webvtt_payload):
     label_addition = f'<label.source>{label_source}</label.source><label.text><![CDATA[{webvtt_payload}]]></label.text>'
     pay_end = f'</record></recordList></adlibXML>'
     payload = pay_head + label_type_addition + label_addition + pay_end
-    payload = payload.encode('utf-8')
 
-    lock_success = write_lock(item_id)
-    if not lock_success:
-        logger.warning("push_payload(): Unable to lock CID item record %s", item_id)
-        return False
     try:
-        post_response = requests.request(
-            'POST',
-            CID_API,
-            headers={'Content-Type': 'text/xml'},
-            params={'command': 'updaterecord', 'database': 'items', 'xmltype': 'grouped', 'output': 'json'},
-            data=payload,
-            timeout=300)
-        return True
+        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        if post_resp:
+            return True
     except Exception as err:
         logger.warning('push_payload()): Unable to write Webvtt to record %s \n%s', item_id, err)
-        unlock_record(item_id)
-        return False
-
-
-def write_lock(priref):
-    '''
-    Lock Item record for requests push of XML data
-    '''
-    try:
-        print(f"Start record lock {str(datetime.datetime.now())}")
-        response = requests.post(
-            CID_API,
-            params={'database': 'items', 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'},
-            timeout=1200)
-        print(f"End record lock {str(datetime.datetime.now())}")
-        return True
-    except Exception as err:
-        logger.warning('write_lock(): Failed to lock Item %s, %s', priref, err)
-
-
-def unlock_record(priref):
-    '''
-    Manage failed Request push
-    Unlock item record again
-    '''
-    try:
-        print(f"Start record unlock {str(datetime.datetime.now())}")
-        response = requests.post(
-            CID_API,
-            params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'},
-            timout=1200)
-        print(f"End record unlock {str(datetime.datetime.now())}")
-        return True
-    except Exception as err:
-        logger.warning('unlock_record(): Failed to unlock Item record %s, %s', priref, err)
+    return False
 
 
 if __name__ == '__main__':

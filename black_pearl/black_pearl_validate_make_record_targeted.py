@@ -440,11 +440,16 @@ def main():
                 # Check in JSON for failed BP job object
                 failed_files = json_check(json_file)
                 if failed_files:
-                    for key, value in failed_files[0].items():
-                        if key == 'Name':
-                            logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", value)
-                            print(f"shutil.move({os.path.join(fpath, value)}, {os.path.join(autoingest, value)})")
-                            shutil.move(os.path.join(fpath, value), os.path.join(autoingest, value))
+                    for ffile in failed_files:
+                        for key, value in ffile.items():
+                            if key == 'Name':
+                                logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", value)
+                                print(f"shutil.move({os.path.join(fpath, value)}, {os.path.join(autoingest, value)})")
+                                try:
+                                    shutil.move(os.path.join(fpath, value), os.path.join(autoingest, value))
+                                except Exception as exc:
+                                    print(exc)
+                                    logger.warning("Failed ingest file %s couldn't be moved out of path: %s", value, fpath)
                 else:
                     logger.info("No files failed transfer to BP data tape")
 
@@ -604,7 +609,8 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             move_path = os.path.join(root_path, 'completed', file)
         else:
             move_path = os.path.join(root_path, 'transcode', file)
-        cached_size -= int(byte_size)
+        if arg == 'check':
+            cached_size -= int(byte_size)
 
         # New section here to check for Media Record first and clean up file if found
         logger.info("Checking if Media record already exists for file: %s", file)
@@ -668,7 +674,8 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             logger.warning("File %s has no associated CID media record created.", file)
             logger.warning("File will be left in folder for manual intervention.")
 
-    logger.info("Cache size should be 0: %s", cached_size)
+    if arg == 'check':
+        logger.info("Cache size should be 0: %s", cached_size)
     check_list.sort()
     adjusted_list.sort()
     if check_list == adjusted_list:

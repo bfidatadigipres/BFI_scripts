@@ -318,22 +318,23 @@ def check_for_media_record(fname):
     Check if media record already exists
     In which case the file may be a duplicate
     '''
-
+    priref = access_mp4 = ''
     search = f"imagen.media.original_filename='{fname}'"
 
     try:
         result = adlib.retrieve_record(CID_API, 'media', search, '0', ['access_rendition.mp4'])[1]
     except Exception as err:
         logger.exception('CID check for media record failed: %s', err)
-        result = None
-    try:
-        priref = adlib.retrieve_field_name(result[0], 'priref')[0]
-    except (KeyError, IndexError):
-        priref = ''
-    try:
-        access_mp4 = adlib.retrieve_field_name(result[0], 'access_rendition.mp4')[0]
-    except (KeyError, IndexError):
-        access_mp4 = ''
+
+    if result:
+        try:
+            priref = adlib.retrieve_field_name(result[0], 'priref')[0]
+        except (KeyError, IndexError):
+            pass
+        try:
+            access_mp4 = adlib.retrieve_field_name(result[0], 'access_rendition.mp4')[0]
+        except (KeyError, IndexError):
+            pass
 
     return priref, access_mp4
 

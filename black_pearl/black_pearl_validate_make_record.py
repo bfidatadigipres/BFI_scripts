@@ -120,7 +120,7 @@ def cid_check():
         test = adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
+        logger.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -425,6 +425,11 @@ def main():
                 fpath = os.path.join(autoingest, folder)
                 logger.info("Failed folder found, will pass on for repeat processing. No JSON needed: %s", folder)
                 failed_folder = folder.split("_")[-1]
+
+            elif len(folder) > 36:
+                logger.info("Too many concatenated job IDs - skipping! %s", folder)
+                success = None
+                continue
 
             else:
                 fpath = os.path.join(autoingest, folder)

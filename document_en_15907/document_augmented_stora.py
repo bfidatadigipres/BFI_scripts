@@ -143,11 +143,18 @@ def cid_series_query(series_id):
     '''
     Sends CID request for series_id data
     '''
+    # BBC News (BBC News HD) failed retrieval work around
+    if series_id == '2af14f77-ef15-517c-a463-04dc0a7c81ad':
+        return 1, '156538079'
+    # BBC News (BBC One HD) failed retrieval work around
+    if series_id == '6a9ad900-6bc1-5507-a607-4b638e90cb47':
+        return 1, '156546009'
+
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
 
     try:
-        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '0')
+        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
         print(f"cid_series_query(): Hit counts returned for series: {hit_count}")
     except (IndexError, KeyError, TypeError) as err:
         print(f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id} {err}")

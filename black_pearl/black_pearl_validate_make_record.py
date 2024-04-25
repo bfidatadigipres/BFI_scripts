@@ -449,6 +449,7 @@ def main():
                                 except Exception as exc:
                                     print(exc)
                                     logger.warning("Failed ingest file %s couldn't be moved out of path: %s", value, fpath)
+                                    pass
                 else:
                     logger.info("No files failed transfer to BP data tape")
 

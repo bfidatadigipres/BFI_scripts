@@ -322,7 +322,7 @@ def check_for_media_record(fname):
     search = f"imagen.media.original_filename='{fname}'"
 
     try:
-        result = adlib.retrieve_record(CID_API, 'media', search, '0', ['access_rendition.mp4', 'access_rendition.largeimage'])[1]
+        result = adlib.retrieve_record(CID_API, 'media', search, '0', ['access_rendition.mp4'])[1]
     except Exception as err:
         logger.exception('CID check for media record failed: %s', err)
         result = None
@@ -334,12 +334,8 @@ def check_for_media_record(fname):
         access_mp4 = adlib.retrieve_field_name(result[0], 'access_rendition.mp4')[0]
     except (KeyError, IndexError):
         access_mp4 = ''
-    try:
-        image = adlib.retrieve_field_name(result[0], 'access_rendition.largeimage')[0]
-    except (KeyError, IndexError):
-        image = ''
 
-    return priref, access_mp4, image
+    return priref, access_mp4
 
 
 def check_global_log(fname):
@@ -418,7 +414,7 @@ def main():
                 continue
 
             logger.info("Folder found that is not an ingest folder, or has failed or errored files within: %s", folder)
-            json_file = json_file1 = json_file2 = success = ''
+            json_file = success = ''
 
             failed_folder = None
             if folder.startswith('pending_'):
@@ -612,7 +608,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
 
         # New section here to check for Media Record first and clean up file if found
         logger.info("Checking if Media record already exists for file: %s", file)
-        media_priref, access_mp4, image = check_for_media_record(file)
+        media_priref, access_mp4 = check_for_media_record(file)
         if media_priref:
             logger.info("Media record %s already exists for file: %s", media_priref, fpath)
             # Check for previous 'deleted' message in global.log

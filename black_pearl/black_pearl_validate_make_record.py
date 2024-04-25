@@ -10,7 +10,8 @@ don't start with 'ingest', 'error' or 'blob'. Extract folder
 name and look for JSON file matching. Open matching JSON.
 
 If JSON indicates that some files haven't successfully
-written to tape, then those matching items need removing
+written to tape, then those matching items are removed
+(using dictionary enclodes in JSON file 'ObjectsNotPersisted')
 from folder and placing back into Black Pearl ingest top
 level for reattempt to ingest.
 
@@ -53,7 +54,7 @@ from ds3 import ds3
 # Local import
 CODE_PATH = os.environ['CODE']
 sys.path.append(CODE_PATH)
-import adlib
+import adlib_v3 as adlib
 
 # Global variables
 BPINGEST = os.environ['BP_INGEST']
@@ -62,9 +63,7 @@ BPINGEST_AMAZON = os.environ['BP_INGEST_AMAZON']
 LOG_PATH = os.environ['LOG_PATH']
 JSON_PATH = os.path.join(LOG_PATH, 'black_pearl')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ['CID_API4']
 INGEST_CONFIG = os.path.join(CODE_PATH, 'black_pearl/dpi_ingests.yaml')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
@@ -115,13 +114,13 @@ def check_control():
 
 def cid_check():
     '''
-    Tests if CID active before all other operations commence
+    Test if CID API online
     '''
     try:
-        CUR = adlib.Cursor(CID)
+        test = adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
-        logger.critical('Cannot establish CID session, exiting script')
+        LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -322,27 +321,21 @@ def check_for_media_record(fname):
 
     search = f"imagen.media.original_filename='{fname}'"
 
-    query = {'database': 'media',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'access_rendition.mp4, imagen.media.largeimage_umid'}
-
     try:
-        result = CID.get(query)
+        result = adlib.retrieve_record(CID_API, 'media', search, '0', ['access_rendition.mp4', 'access_rendition.largeimage'])[1]
     except Exception as err:
         logger.exception('CID check for media record failed: %s', err)
         result = None
     try:
-        priref = result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(result[0], 'priref')[0]
     except (KeyError, IndexError):
         priref = ''
     try:
-        access_mp4 = result.records[0]['access_rendition.mp4'][0]
+        access_mp4 = adlib.retrieve_field_name(result[0], 'access_rendition.mp4')[0]
     except (KeyError, IndexError):
         access_mp4 = ''
     try:
-        image = result.records[0]['imagen.media.largeimage_umid'][0]
+        image = adlib.retrieve_field_name(result[0], 'access_rendition.largeimage')[0]
     except (KeyError, IndexError):
         image = ''
 
@@ -425,7 +418,7 @@ def main():
                 continue
 
             logger.info("Folder found that is not an ingest folder, or has failed or errored files within: %s", folder)
-            json_file = json_file1 = json_file2 = success = ''
+            json_file = success = ''
 
             failed_folder = None
             if folder.startswith('pending_'):
@@ -433,63 +426,10 @@ def main():
                 logger.info("Failed folder found, will pass on for repeat processing. No JSON needed: %s", folder)
                 failed_folder = folder.split("_")[-1]
 
-            # Process double job_id
-            elif len(folder) > 36 and len(folder) < 74:
-                folder1, folder2 = folder.split('_')
-                logger.info("Folder has two job ID's associated with this one PUT: %s  -  %s", folder1, folder2)
-
-                # Make double paths and check both present/not faults before processing
-                fpath = os.path.join(autoingest, folder)
-                json_file1 = retrieve_json_data(folder1)
-                json_file2 = retrieve_json_data(folder2)
-                if not json_file1 and not json_file2:
-                    logger.info("Both JSON files are still absent")
-                    continue
-                if not json_file1 and json_file2:
-                    logger.info("One of the JSON files are still absent")
-                    continue
-                if json_file1 and not json_file2:
-                    logger.info("One of the JSON files are still absent")
-                    continue
-
-                failed_files1 = json_check(json_file1)
-                if failed_files1:
-                    logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", failed_files1)
-                    for failure in failed_files1:
-                        logger.info("Moving failed BP file")
-                        shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
-                else:
-                    logger.info("No files failed transfer to BP data tape for %s", folder1)
-
-                failed_files2 = json_check(json_file2)
-                if failed_files2:
-                    logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", failed_files2)
-                    for failure in failed_files2:
-                        logger.info("Moving failed BP file")
-                        shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
-                else:
-                    logger.info("No files failed transfer to BP data tape for %s", folder2)
-
-                status, size, cached = get_job_status(folder2)
-                if 'COMPLETED' in status and size == cached:
-                    logger.info("Completed check < %s >.  Sizes match < %s : %s >", status, size, cached)
-                else:
-                    logger.info("***** Completed check failed: %s. Size %s. Cached size %s", status, size, cached)
-                    continue
-
-                # Iterate through files in folders and extract data / write logs / create CID record
-                success = process_files(autoingest, folder, '', bucket, bucket_list)
-
-            elif len(folder) > 74:
-                logger.info("Too many concatenated job IDs - skipping! %s", folder)
-                success = None
-                continue
-
             else:
                 fpath = os.path.join(autoingest, folder)
                 logger.info("Folder found that is not ingest or errored folder. Checking if JSON exists for %s.", folder)
                 json_file = retrieve_json_data(folder)
-
                 if not json_file:
                     logger.info("No matching JSON found for folder.")
                     continue
@@ -498,10 +438,11 @@ def main():
                 # Check in JSON for failed BP job object
                 failed_files = json_check(json_file)
                 if failed_files:
-                    logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", failed_files)
-                    for failure in failed_files:
-                        logger.info("Moving failed BP file")
-                        shutil.move(os.path.join(fpath, failure), os.path.join(autoingest, failure))
+                    for key, value in failed_files[0].items():
+                        if key == 'Name':
+                            logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", value)
+                            print(f"shutil.move({os.path.join(fpath, value)}, {os.path.join(autoingest, value)})")
+                            shutil.move(os.path.join(fpath, value), os.path.join(autoingest, value))
                 else:
                     logger.info("No files failed transfer to BP data tape")
 
@@ -553,17 +494,6 @@ def main():
                     shutil.move(json_file, move_path)
                 except Exception:
                     logger.warning("JSON file failed to move to completed folder: %s.", json_file)
-            if json_file1:
-                logger.info("Moving JSON files to completed folder: %s - %s.", json_file1, json_file2)
-                pth, jsn1 = os.path.split(json_file1)
-                jsn2 = os.path.split(json_file2)[1]
-                move_path1 = os.path.join(pth, 'completed', jsn1)
-                move_path2 = os.path.join(pth, 'completed', jsn2)
-                try:
-                    shutil.move(json_file1, move_path1)
-                    shutil.move(json_file2, move_path2)
-                except Exception:
-                    logger.warning("JSON files failed to move to completed folder: %s - %s.", json_file1, json_file2)
 
     logger.info("======== END Black Pearl validate/CID media record END ========")
 
@@ -586,10 +516,11 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
 
     if arg == 'check':
         # Get status
-        status = get_job_status(job_id)
+        status, cached = get_job_status(job_id)
         if status != 'COMPLETED':
             logger.info("%s - Job ID has not completed: %s", job_id, status)
-            return 'Not complete'
+        cached_size = int(cached)
+        logger.info("Checking that cached sizes matches files remaining in folder... %s", cached_size)
 
     check_list = []
     adjusted_list = file_list
@@ -671,6 +602,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             move_path = os.path.join(root_path, 'completed', file)
         else:
             move_path = os.path.join(root_path, 'transcode', file)
+        cached_size -= int(byte_size)
 
         # New section here to check for Media Record first and clean up file if found
         logger.info("Checking if Media record already exists for file: %s", file)
@@ -734,6 +666,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             logger.warning("File %s has no associated CID media record created.", file)
             logger.warning("File will be left in folder for manual intervention.")
 
+    logger.info("Cache size should be 0: %s", cached_size)
     check_list.sort()
     adjusted_list.sort()
     if check_list == adjusted_list:
@@ -747,18 +680,19 @@ def get_job_status(job_id):
     '''
     Fetch job status for specific ID
     '''
-    size = cached = status = ''
+    cached = status = ''
 
     job_status = CLIENT.get_job_spectra_s3(
                    ds3.GetJobSpectraS3Request(job_id.strip()))
 
-    if job_status.result['CompletedSizeInBytes']:
-        size = job_status.result['CompletedSizeInBytes']
     if job_status.result['CachedSizeInBytes']:
         cached = job_status.result['CachedSizeInBytes']
     if job_status.result['Status']:
         status = job_status.result['Status']
-    return (status, size, cached)
+    print(f"Status for JOB ID: {job_id}")
+    print(f"{status}, {cached}")
+
+    return status, cached
 
 
 def get_object_list(fname, bucket_list):
@@ -847,14 +781,12 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
 
     media_priref = ""
 
+    record_data_xml = adlib.create_record_data('', record_data)
     try:
-        i = CUR.create_record(database='media',
-                              data=record_data,
-                              output='json',
-                              write=True)
-        if i.records:
+        item_rec = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
+        if item_rec:
             try:
-                media_priref = i.records[0]['priref'][0]
+                media_priref = adlib.retrieve_field_name(item_rec[0], 'priref')[0]
                 print(f'** CID media record created with Priref {media_priref}')
                 logger.info('CID media record created with priref %s', media_priref)
             except Exception:

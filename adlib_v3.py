@@ -104,7 +104,10 @@ def post(api, payload, database, method):
         print(response.text)
         if 'recordList' in response.text:
             records = json.loads(response.text)
-            return records['adlibJSON']['recordList']['record'][0]
+            if records['adlibJSON']['recordList']['record'][0]:
+                return records['adlibJSON']['recordList']['record'][0]
+            else:
+                return records['adlibJSON']['recordList']['record']
 
     if method == 'updaterecord':
         try:

@@ -414,20 +414,20 @@ def cid_person_check(credit_id):
     '''
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
     try:
-        result = adlib.retrieve_record(CID_API, 'people', search, '0', ['name', 'activity_type'])
+        result = adlib.retrieve_record(CID_API, 'people', search, '0', ['name', 'activity_type'])[1]
     except (KeyError, IndexError, TypeError):
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
     try:
-        name = query_result.records[0]['name'][0]
-        priref = query_result.records[0]['priref'][0]
+        name = adlib.retrieve_field_name(result[0], 'name')[0]
+        priref = adlib.retrieve_field_name(result[0], 'priref')[0]
     except (KeyError, IndexError):
         name = ''
         priref = ''
 
     try:
-        act_type = query_result.records[0]['activity_type']
+        act_type = adlib.retrieve_field_name(result[0], 'activity_type')
     except (KeyError, IndexError):
-        return (priref, name, '')
+        return priref, name, ''
 
     activity_types = []
     for count in range(0, len(act_type)):
@@ -435,7 +435,7 @@ def cid_person_check(credit_id):
             activity_types.append(act_type[count]['value'][0])
         except (KeyError, IndexError):
             pass
-    return (priref, name, activity_types)
+    return priref, name, activity_types
 
 
 def cid_work_check(search):

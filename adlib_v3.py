@@ -104,7 +104,7 @@ def post(api, payload, database, method):
         print(response.text)
         if 'recordList' in response.text:
             records = json.loads(response.text)
-            if records['adlibJSON']['recordList']['record'][0]:
+            if isinstance(records['adlibJSON']['recordList']['record'], list):                 
                 return records['adlibJSON']['recordList']['record'][0]
             else:
                 return records['adlibJSON']['recordList']['record']
@@ -131,8 +131,6 @@ def retrieve_field_name(record, fieldname):
     ['adlibJSON']['recordList']['record'][0]
     '''
     field_list = []
-    print(fieldname)
-    print(record)
     try:
         for field in record[f'{fieldname}']:
             if '@lang' in str(field) or 'lang' in str(field):

@@ -131,6 +131,7 @@ def retrieve_field_name(record, fieldname):
     ['adlibJSON']['recordList']['record'][0]
     '''
     field_list = []
+    print(fieldname)
     try:
         for field in record[f'{fieldname}']:
             if '@lang' in str(field) or 'lang' in str(field):

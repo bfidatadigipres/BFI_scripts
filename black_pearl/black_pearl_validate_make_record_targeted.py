@@ -797,7 +797,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
         item_rec = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
         if item_rec:
             try:
-                media_priref = adlib.retrieve_field_name(item_rec[0], 'priref')[0]
+                media_priref = adlib.retrieve_field_name(item_rec, 'priref')[0]
                 print(f'** CID media record created with Priref {media_priref}')
                 logger.info('CID media record created with priref %s', media_priref)
             except Exception:

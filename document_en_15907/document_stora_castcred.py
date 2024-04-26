@@ -1,4 +1,4 @@
-#!/usr/bin/env LANG=en_UK.UTF-8 /usr/local/bin/python3
+#!/usr/bin/env python3
 
 '''
 Script to create People records from EPG metadata
@@ -38,11 +38,10 @@ import codecs
 import logging
 import datetime
 import requests
-import tenacity
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global vars
 TODAY = str(datetime.datetime.now())
@@ -56,8 +55,7 @@ MONTH = YEST[5:7]
 COMPLETE = os.environ['STORA_COMPLETED']
 ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API3']
-CID_API2 = os.environ['CID_API4']
+CID_API = os.environ['CID_API4']
 CODEPTH = os.environ['CODE']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 
@@ -68,10 +66,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-# CID URL details
-CID = adlib.Database(CID_API)
-CUR = adlib.Cursor(CID)
 
 # First val index CID cast.credit_type (Work),  activity_type (Person), term_code for sort.sequence (work)
 contributors = {'actor': ['cast member', 'Cast', '73000'],
@@ -125,13 +119,13 @@ def check_control():
 
 def cid_check():
     '''
-    Check CID online or exit
+    Tests if CID active before all other operations commence
     '''
     try:
-        CUR = adlib.Cursor(CID)
-    except Exception:
+        adlib.check(CID_API)
+    except KeyError:
         print("* Cannot establish CID session, exiting script")
-        LOGGER.exception('Cannot establish CID session, exiting script')
+        LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -222,11 +216,13 @@ def firstname_split(person):
 
 
 def retrieve_epg_data(fullpath):
-    ''' Retrieve credits dct, asset/type and asset/category/code list '''
+    '''
+    Retrieve credits dct, asset/type and asset/category/code list
+    '''
 
     with open(fullpath, 'r') as inf:
         lines = json.load(inf)
-        for key, value in lines.items():
+        for _ in lines.items():
 
             # Get titles
             try:
@@ -417,14 +413,9 @@ def cid_person_check(credit_id):
     Retrieve if Person record with priref already exist for credit_entity_id
     '''
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
-    query = {'database': 'people',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'name, priref, activity_type'}
     try:
-        query_result = CID.get(query)
-    except (KeyError, IndexError):
+        result = adlib.retrieve_record(CID_API, 'people', search, '0', ['name', 'activity_type'])
+    except (KeyError, IndexError, TypeError):
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
     try:
         name = query_result.records[0]['name'][0]

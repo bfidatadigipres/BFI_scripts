@@ -242,7 +242,6 @@ def series_check(series_id):
                 continue
             for _ in lines:
                 series_descriptions = []
-                # Unsure if series description has a medium set - none found
                 try:
                     series_short = lines["summary"]["short"]
                     series_descriptions.append(series_short)

@@ -776,7 +776,7 @@ def main():
                 count = 0
                 for ep in episodes:
                     LOGGER.info("Creating one-off episode record for %s episode number %s", title, ep)
-                    success = make_episodes(int(ep), season_fpaths, title, csv_data, work_title, work_title_art)
+                    success = make_episodes(series_priref, work_title, work_title_art, int(ep), season_fpaths, title, csv_data)
                     if success is None:
                         LOGGER.warning("Failed to make records for episode {num}")
                         continue
@@ -790,7 +790,7 @@ def main():
             if episode == 'all':
                 episode_count = 0
                 for num in range(1, episode_num + 1):
-                    success = make_episodes(num, season_fpaths, title, csv_data, work_title, work_title_art)
+                    success = make_episodes(series_priref, work_title, work_title_art, num, season_fpaths, title, csv_data)
                     if success is None:
                         LOGGER.warning("Failed to make records for episode {num}")
                         continue
@@ -804,7 +804,7 @@ def main():
     LOGGER.info("=== Document augmented Netflix end =================================")
 
 
-def make_episodes(num, season_fpaths, title, csv_data, work_title, work_title_art):
+def make_episodes(series_priref, work_title, work_title_art, num, season_fpaths, title, csv_data):
     '''
     Receive number for episode (individual or
     from range count) and build programme records
@@ -856,7 +856,7 @@ def make_episodes(num, season_fpaths, title, csv_data, work_title, work_title_ar
     print(f"Dictionary for Work creation:\n{data_dct}")
     print('**************')
     record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)
-    priref_episode = create_work(data_dct, record, work, work_restricted)
+    priref_episode = create_work(series_priref, work_title, work_title_art, data_dct, record, work, work_restricted)
     if len(priref_episode) == 0:
         LOGGER.warning("Episodic Work record creation failed, skipping all further record creations")
         return None

@@ -448,7 +448,9 @@ def cid_work_check(search):
         hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', ['input.notes, edit.name'])
     except (KeyError, IndexError):
         LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
-    
+    print("--------------------------------------")
+    print(record)
+    print("--------------------------------------")
     for num in range(0, int(hits)):
         try:
             priref = adlib.retrieve_field_name(record[num], 'priref')[0]
@@ -544,7 +546,9 @@ def main():
             # Check in CID for Work title/date match
             search = f"(title='{title}' AND title_date_start='{date}')"
             work_data = cid_work_check(search)
+            print("--------------------------------------")
             print(work_data)
+            print("--------------------------------------")
             work_priref = ''
             time_match = False
 

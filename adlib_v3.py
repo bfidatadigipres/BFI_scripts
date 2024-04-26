@@ -132,6 +132,7 @@ def retrieve_field_name(record, fieldname):
     '''
     field_list = []
     print(fieldname)
+    print(record)
     try:
         for field in record[f'{fieldname}']:
             if '@lang' in str(field) or 'lang' in str(field):

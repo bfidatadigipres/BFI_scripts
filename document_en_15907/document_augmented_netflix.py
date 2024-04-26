@@ -1271,7 +1271,6 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     if 'certification_bbfc' in work_dict:
         manifestation_values.append({'utb.fieldname': 'BBFC certification'})
         manifestation_values.append({'utb.content': work_dict['certification_bbfc']})
-    manifestation_values.append([{'broadcast_company.lref': '143463'}])
     print(f"Manifestation values:\n{manifestation_values}")
 
     broadcast_addition = []
@@ -1295,16 +1294,14 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
         LOGGER.critical('** Unable to create Manifestation record for <%s>', work_dict['title'])
         return None
 
-    broadcast_comp = adlib.retrieve_field_name(man_rec, 'broadcast_company.lref')[0]
-    if broadcast_comp != '143463':
-        broadcast_addition = [{'broadcast_company.lref': '143463'}]
-        broadcast_xml = adlib.create_record_data(manifestation_id, broadcast_addition)
-        print("**** Attempting to write work genres to records ****")
+    broadcast_addition = [{'broadcast_company.lref': '143463'}]
+    broadcast_xml = adlib.create_record_data(manifestation_id, broadcast_addition)
+    print("**** Attempting to write work genres to records ****")
 
-        success = adlib.post(CID_API, broadcast_xml, 'manifestations', 'updaterecord')
-        if success is None:
-            LOGGER.info("Failed to update Broadcast Company data to Manifestation record: %s", manifestation_id)
-        LOGGER.info("Broadcast Company data updated to work: %s", manifestation_id)
+    success = adlib.post(CID_API, broadcast_xml, 'manifestations', 'updaterecord')
+    if success is None:
+        LOGGER.info("Failed to update Broadcast Company data to Manifestation record: %s", manifestation_id)
+    LOGGER.info("Broadcast Company data updated to work: %s", manifestation_id)
 
     return manifestation_id
 

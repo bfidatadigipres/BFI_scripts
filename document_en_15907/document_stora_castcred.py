@@ -568,7 +568,7 @@ def main():
                         work_priref = ''
                         continue
             else:
-                LOGGER.info("SKIPPING: Likely repeate as no work record data found for %s transmitted on %s", title, date)
+                LOGGER.info("SKIPPING: Likely repeat as no work record data found for %s transmitted on %s", title, date)
                 LOGGER.info("Renaming JSON with _castcred appended\n")
                 rename(root, file, title)
                 continue

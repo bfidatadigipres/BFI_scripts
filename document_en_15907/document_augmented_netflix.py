@@ -1103,13 +1103,14 @@ def create_series_work(patv_id, series_dct, series_work, work_restricted, record
         for sub in subs:
             series_genres.append({'content.subject.lref': sub})
     series_genres_filter = [i for n, i in enumerate(series_genres) if i not in series_genres[n + 1:]]
-    print(series_genres, series_genres_filter)
-    print("**** Attempting to write work genres to records ****")
-    series_genres_xml = adlib.create_record_data(series_work_id, series_genres_filter)
-    success = adlib.post(CID_API, series_genres_xml, 'works', 'updaterecord')
-    if success is None:
-        LOGGER.info("Failed to update genres to Series Work record: %s", series_work_id)
-    LOGGER.info("Series genres updated to work: %s", series_work_id)
+    if series_genres_filter:
+        print(series_genres, series_genres_filter)
+        print("**** Attempting to write work genres to records ****")
+        series_genres_xml = adlib.create_record_data(series_work_id, series_genres_filter)
+        success = adlib.post(CID_API, series_genres_xml, 'works', 'updaterecord')
+        if success is None:
+            LOGGER.info("Failed to update genres to Series Work record: %s", series_work_id)
+        LOGGER.info("Series genres updated to work: %s", series_work_id)
 
     return series_work_id
 
@@ -1219,13 +1220,13 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
         for sub in subs:
             work_genres.append({'content.subject.lref': sub})
     work_genres_filter = [i for n, i in enumerate(work_genres) if i not in work_genres[n + 1:]]
-
-    print("**** Attempting to write work genres to records ****")
-    work_genres_xml = adlib.create_record_data(work_id, work_genres_filter)
-    success = adlib.post(CID_API, work_genres_xml, 'works', 'updaterecord')
-    if success is None:
-        LOGGER.info("Failed to update genres to Series Work record: %s", work_id)
-    LOGGER.info("Series genres updated to work: %s", work_id)
+    if work_genres_filter:
+        print(f"**** Attempting to write work genres to records {work_genres_filter} ****")
+        work_genres_xml = adlib.create_record_data(work_id, work_genres_filter)
+        success = adlib.post(CID_API, work_genres_xml, 'works', 'updaterecord')
+        if success is None:
+            LOGGER.info("Failed to update genres to Series Work record: %s", work_id)
+        LOGGER.info("Series genres updated to work: %s", work_id)
 
     return work_id
 

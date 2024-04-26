@@ -48,7 +48,6 @@ from document_augmented_streaming_cast import create_contributors
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
-
 # Global variables
 STORAGE = os.environ.get('QNAP_IMAGEN')
 NETFLIX = os.path.join(STORAGE, 'NETFLIX')
@@ -385,7 +384,7 @@ def cid_check_works(patv_id):
     except Exception as err:
         title = ''
     try:
-        title_art = title = adlib.retrieve_field_name(record[0], 'title_article')[0]
+        title_art = adlib.retrieve_field_name(record[0], 'title_article')[0]
         print(f"cid_check_works(): Series title: {title_art}")
         if title_art is None:
             title_art = ''
@@ -759,10 +758,8 @@ def main():
                 series_dct = get_json_data(series_data)
                 series_data_dct = make_work_dictionary('', csv_data, None, series_dct)
                 record, series_work, work, work_restricted, manifestation, item = build_defaults(series_data_dct)
-                print("---------------------------")
-                print(series_data_dct)
                 work_title, work_title_art = split_title(series_data_dct['title'])
-                print(work_title, work_title_art)
+
 
                 # Make series work here
                 if not series_data_dct:

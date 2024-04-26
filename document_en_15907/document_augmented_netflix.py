@@ -380,12 +380,12 @@ def cid_check_works(patv_id):
     except Exception as err:
         priref = ''
     try:
-        title = adlib.retrieve_field_name(record[0]['Title'][0], 'title')[0]
+        title = adlib.retrieve_field_name(record[0], 'title')[0]
         print(f"cid_check_works(): Series title: {title}")
     except Exception as err:
         title = ''
     try:
-        title_art = title = adlib.retrieve_field_name(record[0]['Title'][0], 'title_article')[0]
+        title_art = title = adlib.retrieve_field_name(record[0], 'title_article')[0]
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''

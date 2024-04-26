@@ -423,7 +423,6 @@ def cid_person_check(credit_id):
     except (KeyError, IndexError):
         name = ''
         priref = ''
-
     try:
         act_type = adlib.retrieve_field_name(result[0], 'activity_type')
     except (KeyError, IndexError):
@@ -432,7 +431,7 @@ def cid_person_check(credit_id):
     activity_types = []
     for count in range(0, len(act_type)):
         try:
-            activity_types.append(act_type[count]['value'][0])
+            activity_types.append(act_type[count])
         except (KeyError, IndexError):
             pass
     return priref, name, activity_types
@@ -445,31 +444,24 @@ def cid_work_check(search):
     prirefs = []
     edit_names = []
 
-    query = {'database': 'works',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, input.notes, edit.name'}
     try:
-        query_result = CID.get(query)
+        hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', ['input.notes, edit.name'])
     except (KeyError, IndexError):
         LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
-
-    records = query_result.records
-    print(records)
-    for record in records:
+    
+    for num in range(0, int(hits)):
         try:
-            priref = record['priref']
-            input_note = record['input.notes']
-        except (KeyError, IndexError):
+            priref = adlib.retrieve_field_name(record[num], 'priref')[0]
+            input_note = adlib.retrieve_field_name(record[num], 'input.notes')[0]
+        except (KeyError, IndexError, TypeError):
             priref = ''
             input_note = ''
         try:
-            edit_name = record['Edit'][0]['edit.name']
+            edit_name = adlib.retrieve_field_name(record[num], 'edit.name')[0]
         except (KeyError, IndexError):
             edit_name = ''
 
-        if 'STORA off-air television capture - automated bulk documentation' in str(input_note):
+        if 'STORA off-air television capture - automated bulk documentation' in input_note:
             prirefs.append(priref)
             edit_names.append(edit_name)
 
@@ -481,17 +473,12 @@ def cid_manifestation_check(priref):
     Retrieve Manifestation transmission start time from parent priref
     '''
     search = f"(part_of_reference->priref='{priref}')"
-    query = {'database': 'manifestations',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'transmission_start_time'}
     try:
-        query_result = CID.get(query)
+        record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', ['transmission_start_time'])[1]
     except (KeyError, IndexError):
         LOGGER.exception("cid_manifestation_check(): Unable to check for record with priref: %s", priref)
     try:
-        start_time = query_result.records[0]['transmission_start_time'][0]
+        start_time = adlib.retrieve_field_name(record[0], 'transmission_start_time')[0]
     except (KeyError, IndexError):
         LOGGER.info("cid_manifestation_check(): Unable to extract start time for manifestation")
         start_time = ''
@@ -646,7 +633,7 @@ def main():
                             if len(person_priref) > 5:
                                 payload = create_payload(person_priref, known_for, early_life, bio, trivia)
                                 if len(payload) > 90:
-                                    success = write_payload_manager(payload, person_priref)
+                                    success = write_payload(payload, person_priref)
                                     if success:
                                         LOGGER.info("** Payload data successfully written to Person record %s, %s", person_priref, person_name)
                                         print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
@@ -692,7 +679,11 @@ def main():
                                         print(f"Matched activity type {activity_type_cred} : {person_act_type}")
                                     else:
                                         print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
-                                        append_activity_type(person_priref, person_act_type, activity_type_cred)
+                                        success = append_activity_type(person_priref, person_act_type, activity_type_cred)
+                                        if success is True:
+                                            LOGGER.info("Activity type appended successfully to person: %s", person_priref)
+                                        else:
+                                            LOGGER.warning("Activity type was not appended to person: %s", person_priref)
                             print(f"** Person record already exists: {person_name} {person_priref}")
                             LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
                             LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
@@ -717,7 +708,7 @@ def main():
                             if len(person_priref) > 5:
                                 payload = create_payload(person_priref, cred_known_for, cred_early_life, cred_bio, cred_trivia)
                             if len(payload) > 90:
-                                success = write_payload_manager(payload, person_priref)
+                                success = write_payload(payload, person_priref)
                                 if success:
                                     LOGGER.info("** Payload data successfully written to Person record %s, %s", person_priref, person_name)
                                     print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
@@ -809,7 +800,7 @@ def append_activity_type(person_priref, old_act_type, activity_type):
         act_type.append({'activity_type': act})
 
     # Convert dict to xml using adlib
-    xml = CUR.create_record_data(person_priref, data=act_type)
+    xml = adlib.create_record_data(person_priref, act_type)
     if xml:
         print(xml)
     else:
@@ -818,15 +809,14 @@ def append_activity_type(person_priref, old_act_type, activity_type):
     # Create basic person record
     try:
         LOGGER.info("Attempting to append activity type to Person record %s", person_priref)
-        priref = push_record_create(xml, 'people', 'updaterecord')
-        if priref is None:
+        record = adlib.post(CID_API, xml, 'people', 'updaterecord')
+        if record is None:
             print(f"Unable to write activity type to Person record")
             return False
-        return False
-
+        return True
     except Exception as err:
         if 'bool' in str(err):
-            LOGGER.critical('append_activity_Type():Unable to update People record', err)
+            LOGGER.critical('append_activity_type():Unable to update People record', err)
             print(f"*** Unable to update activity_type to People record - error: {err}")
             return False
         print(f"*** Unable to update People record: {err}")
@@ -911,7 +901,7 @@ def make_person_record(credit_dct=None):
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = CUR.create_record_data('', data=credit_dct)
+    credit_xml = adlib.create_record_data('', credit_dct)
     if credit_xml:
         print("*************************")
         print(credit_xml)
@@ -919,68 +909,35 @@ def make_person_record(credit_dct=None):
         return None
 
     # Create basic person record
+    LOGGER.info("Attempting to create Person record for item")
     try:
-        LOGGER.info("Attempting to create Person record for item")
-        credit_priref = push_record_create(credit_xml, 'people', 'insertrecord')
-        if credit_priref is None:
+        record = adlib.post(CID_API, credit_xml, 'people', 'insertrecord')
+    except (IndexError, TypeError, KeyError) as err:
+        LOGGER.critical('make_person_record():Unable to create People record', err)
+        return None
+    try:
+        credit_priref = adlib.retrieve_field_name(record, 'priref')[0]
+        if not credit_priref:
             print(f"Unable to write Person record")
             return None
-        return credit_priref
-
-    except Exception as err:
-        if 'bool' in str(err):
-            LOGGER.critical('make_person_record():Unable to create People record', err)
-            print(f"*** Unable to create People record - error: {err}")
-            return None
-        print(f"*** Unable to create People record: {err}")
-        LOGGER.critical('make_person_record():Unable to create People record', err)
-        raise
-
-
-def push_record_create(payload, database, method):
-    '''
-    Receive adlib formed XML but use
-    requests to create the CID record
-    '''
-    params = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'jsonv1'
-    }
-
-    headers = {'Content-Type': 'text/xml'}
-
-    try:
-        response = requests.request('POST', CID_API2, headers=headers, params=params, data=payload, timeout=1200)
-    except Exception as err:
-        LOGGER.critical("Unable to %s <%s> record and payload:\n%s", method, database, payload)
-        print(err)
+    except (IndexError, TypeError, KeyboardInterrupt):
         return None
-    print(f"Record list: {response.text}")
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
-        return priref
-    return None
+    return credit_priref
 
 
 def work_append(priref, work_dct=None):
     '''
-    Alter this to requests.request('POST')
     Items passed in work_dct for amending to Work record
     '''
     if work_dct is None:
-        work_dct = []
         LOGGER.warning("work_append(): work_update_dct passed to function as None")
-    try:
-        result = CUR.update_record(priref=priref,
-                                   database='works',
-                                   data=work_dct,
-                                   output='json',
-                                   write=True)
-        return True
+        return False
 
+    work_dct_xml = adlib.create_record_data(priref, work_dct)
+    try:
+        rec = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord')
+        if rec:
+            return True
     except Exception as err:
         LOGGER.warning("work_append(): Unable to append work data to CID work record %s", err)
         return False
@@ -1000,44 +957,6 @@ def rename(root, file, info):
         print(f" --- RENAME {fullpath} TO {new_path} ---")
     except OSError:
         LOGGER.critical("%s not renamed %s:\n - %s", file, new_fname, info)
-
-
-def write_payload_manager(payload, person_priref):
-    '''
-    Removed from main to avoid repetition
-    '''
-    print('REQUESTS: Sending POST request to people database to lock record')
-    locked = write_lock(person_priref)
-    if locked:
-        try:
-            success = write_payload(person_priref, payload)
-        except Exception as err:
-            LOGGER.warning("write_payload_manager(): WRITE TO CID PERSON RECORD %s FAILED:\n%s", person_priref, err)
-        if success:
-            return True
-        else:
-            LOGGER.info("write_payload_manager(): Data write failed. Unlocking media record %s", person_priref)
-            unlocked = unlock_record(person_priref)
-            if unlocked:
-                LOGGER.info("write_payload_manager(): Unlock of media record %s succeeded", person_priref)
-            else:
-                LOGGER.warning("write_payload_manager(): PERSON RECORD %s STILL LOCKED IN CID", person_priref)
-            return False
-
-
-def write_lock(person_priref):
-    '''
-    Apply a writing lock to the person record before updating metadata to Headers
-    '''
-    print('======= REQUESTS: Sending POST request to Media database to lock record ====================')
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'people', 'command': 'lockrecord', 'priref': f'{person_priref}', 'output': 'json'})
-        return True
-    except Exception as err:
-        LOGGER.warning("Lock record wasn't applied to record %s\n%s", person_priref, err)
-        return False
 
 
 def create_payload(priref, known_for, early_life, bio, trivia):
@@ -1075,39 +994,21 @@ def create_payload(priref, known_for, early_life, bio, trivia):
     return payload
 
 
-def write_payload(person_priref, payload):
+def write_payload(payload, person_priref):
     '''
-    Receive field data as payload and priref and write to CID person record
+    Removed from main to avoid repetition
     '''
-    print(f'======= REQUESTS: Sending POST request to People database {person_priref} ====================')
-    LOGGER.info('======= REQUESTS: Sending POST request to People database ==================== %s', person_priref)
-
-    post_response = requests.post(
-        CID_API,
-        params={'database': 'people', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-        data={'data': payload})
-
-    if "<error><info>" in str(post_response.text):
+    print('REQUESTS: Sending POST request to people database to lock record')
+    
+    try:
+        record = adlib.post(CID_API, payload, 'people', 'updaterecord')
+        print(record)
+    except Exception as err:
+        LOGGER.warning("write_payload(): WRITE TO CID PERSON RECORD %s FAILED:\n%s", person_priref, err)
+    if "error" in str(record):
         return False
     else:
         return True
-
-
-def unlock_record(priref):
-    '''
-    Only used if write fails and lock was successful, to guard against file remaining locked
-    '''
-
-    print('======= REQUESTS: Sending POST request to People database to unlock record ====================')
-
-    # Post to unlock record
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'people', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
-        return True
-    except Exception as err:
-        LOGGER.warning("Post to unlock record failed. Check Media record %s is unlocked manually\n%s", priref, err)
 
 
 if __name__ == '__main__':

@@ -389,6 +389,8 @@ def cid_check_works(patv_id):
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''
+    if title_art is None:
+        title_art = ''
 
     groupings = []
     for num in range(0, hits):

@@ -790,9 +790,9 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
 
-    media_priref = ""
-
     record_data_xml = adlib.create_record_data('', record_data)
+    print(record_data_xml)
+    sys.exit()
     try:
         item_rec = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
         if item_rec:
@@ -802,9 +802,11 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                 logger.info('CID media record created with priref %s', media_priref)
             except Exception:
                 logger.exception("CID media record failed to retrieve priref")
+                return None
     except Exception:
         print(f"\nUnable to create CID media record for {ob_num}")
         logger.exception("Unable to create CID media record!")
+        return None
 
     return media_priref
 

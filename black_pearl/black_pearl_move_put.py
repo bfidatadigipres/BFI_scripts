@@ -260,7 +260,7 @@ def main():
     # Get initial filenames / foldernames
     files = [f for f in os.listdir(autoingest) if os.path.isfile(os.path.join(autoingest, f))]
     folders = [d for d in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, d))]
-    if len(files) == 0 and len(folders) >= 1:
+    if len(files) == 0 and len(folders) <= 1:
         print(f"Files found: {len(files)} - Folders found: {len(folders)}")
         sys.exit()
 

@@ -50,7 +50,7 @@ import subprocess
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global variables
 STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
@@ -62,9 +62,7 @@ ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API')
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_amazon_renaming')
@@ -86,22 +84,31 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
-def cid_check(object_number):
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        test = adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+
+def cid_check_fname(object_number):
     '''
     Looks up object_number and retrieves title
     and other data for new timed text record
     '''
-    query = {'database': 'items',
-             'search': f'object_number="{object_number}"',
-             'limit': '1',
-             'output': 'json'}
+    search = f'object_number="{object_number}"'
     try:
-        query_result = CID.get(query)
-        return query_result.records
+        record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
     except Exception as err:
-        print(f"cid_check(): Unable to match supplied name with CID Item record: {object_number} {err}")
+        print(f"cid_check_fname(): Unable to match CID record to folder: {object_number} {err}")
+        record = None
 
-    return None
+    return record
 
 
 def walk_folders():
@@ -180,6 +187,7 @@ def main():
     remaining video/audio files (wrapped .mov)
     '''
     check_control()
+    cid_check()
 
     folder_list = walk_folders()
     if len(folder_list) == 0:
@@ -190,12 +198,12 @@ def main():
     for fpath in folder_list:
         folder = os.path.split(fpath)[1].strip()
         LOGGER.info("Folder path found: %s", fpath)
-        record = cid_check(folder)
+        record = cid_check_fname(folder)
         if record is None:
             LOGGER.warning("Skipping: Record could not be matched with object_number")
             continue
-        priref = record[0]['priref'][0]
-        ob_num = record[0]['object_number'][0]
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
 
         LOGGER.info("Folder matched to CID Item record: %s | %s | %s", folder, priref, ob_num)
         mov_list = [x for x in os.listdir(fpath) if x.endswith(('.mov', '.MOV'))]
@@ -235,24 +243,26 @@ def main():
             if 'SDR' in metadata:
                 LOGGER.info("UHD SDR file found: %s", mov_file)
                 # Build dictionary from CID item record
-                item_data = make_item_record_dict(priref, mov_file, ext, record, 'UHD SDR version')
-                item_xml = CUR.create_record_data('', item_data)
+                item_data = make_item_record_dict(priref, mov_file, record, 'UHD SDR version')
+                item_xml = adlib.create_record_data('', item_data)
                 print(item_xml)
             elif 'Audio Description' in metadata:
                 LOGGER.info("Audio Description file found: %s", mov_file)
                 # Build dictionary from CID item record
-                item_data = make_item_record_dict(priref, mov_file, ext, record, 'Audio Description')
-                item_xml = CUR.create_record_data('', item_data)
+                item_data = make_item_record_dict(priref, mov_file, record, 'Audio Description')
+                item_xml = adlib.create_record_data('', item_data)
                 print(item_xml)
             else:
                 LOGGER.warning("File found with metadata not recognised. Skipping this item.")
                 continue
 
             # Make new item record
-            new_priref, new_ob_num = push_record_create(item_xml, 'items', 'insertrecord')
-            if new_priref is None:
+            new_record = adlib.post(CID_API, item_xml, 'items', 'instertrecord')
+            if new_record is None:
                 LOGGER.warning("Creation of new CID item record failed with XML: \n%s", item_xml)
                 continue
+            new_priref = adlib.retrieve_field_name(new_record, 'priref')[0]
+            new_ob_num = adlib.retrieve_field_name(new_record, 'object_number')[0]
             LOGGER.info("** CID Item record created: %s - %s", new_priref, new_ob_num)
 
             new_filename = f"{new_ob_num.replace('-', '_')}_01of01.{ext}"
@@ -284,7 +294,7 @@ def main():
     LOGGER.info("== Document augmented Amazon renaming end ===================\n")
 
 
-def make_item_record_dict(priref, file, ext, record, arg):
+def make_item_record_dict(priref, file, record, arg):
     '''
     Get CID item record for source and borrow data
     for creation of new CID item record
@@ -299,17 +309,17 @@ def make_item_record_dict(priref, file, ext, record, arg):
     item.append({'accession_date': str(datetime.datetime.now())[:10]})
 
     if 'Title' in str(record):
-        mov_title = record[0]['Title'][0]['title'][0]
+        mov_title = adlib.retrieve_field_name(record, 'title')[0]
         item.append({'title': f"{mov_title} ({arg})"})
         if 'title.article' in str(record):
-            item.append({'title.article': record[0]['Title'][0]['title.article'][0]})
+            item.append({'title.article': adlib.retrieve_field_name(record, 'title.article')[0]})
         item.append({'title.language': 'English'})
         item.append({'title.type': '05_MAIN'})
     else:
         LOGGER.warning("No title data retrieved. Aborting record creation")
         return None
-    if 'Part_of' in str(record):
-        item.append({'part_of_reference.lref': record[0]['Part_of'][0]['part_of_reference'][0]['priref'][0]})
+    if 'part_of_reference' in str(record):
+        item.append({'part_of_reference.lref': adlib.retrieve_field_name(record['Part_of'][0]['part_of_reference'][0], 'priref')[0]})
     else:
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
         return None
@@ -320,20 +330,20 @@ def make_item_record_dict(priref, file, ext, record, arg):
     elif 'Audio Description' in arg:
         item.append({'file_type.lref': '114307'})
     if 'acquisition.date' in str(record):
-        item.append({'acquisition.date': record[0]['acquisition.date'][0]})
+        item.append({'acquisition.date': adlib.retrieve_field_name(record, 'acquisition.date')[0]})
     if 'acquisition.method' in str(record):
-        item.append({'acquisition.method.lref': record[0]['acquisition.method.lref'][0]})
+        item.append({'acquisition.method.lref': adlib.retrieve_field_name(record, 'acquisition.method.lref')[0]})
     if 'Acquisition_source' in str(record):
-        item.append({'acquisition.source.lref': record[0]['Acquisition_source'][0]['acquisition.source.lref'][0]})
-        item.append({'acquisition.source.type': record[0]['Acquisition_source'][0]['acquisition.source.type'][0]['value'][0]})
+        item.append({'acquisition.source.lref': adlib.retrieve_field_name(record, 'acquisition.source.lref')[0]})
+        item.append({'acquisition.source.type': adlib.retrieve_field_name(record, 'acquisition.source.type')[0]})
     item.append({'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                       'Please raise a request via the Collections Systems Service Desk, describing your specific use.'})
     item.append({'access_conditions.date': str(datetime.datetime.now())[:10]})
     if 'grouping' in str(record):
-        item.append({'grouping': record[0]['grouping'][0]})
+        item.append({'grouping': adlib.retrieve_field_name(record, 'grouping')[0]})
     if 'language' in str(record):
-        item.append({'language': record[0]['language'][0]['language'][0]})
-        item.append({'language.type': record[0]['language'][0]['language.type'][0]['value'][0]})
+        item.append({'language': adlib.retrieve_field_name(record, 'language')[0]})
+        item.append({'language.type': adlib.retrieve_field_name(record, 'language.type')[0]})
     if len(file) > 1:
         item.append({'digital.acquired_filename': file})
 
@@ -373,13 +383,9 @@ def item_append(priref, item_append_dct):
     '''
     Items passed in item_dct for amending to CID item record
     '''
-
+    item_xml = adlib.create_record_data(priref, item_append_dct)
     try:
-        result = CUR.update_record(priref=priref,
-                                   database='items',
-                                   data=item_append_dct,
-                                   output='json',
-                                   write=True)
+        result = adlib.post(CID_API, item_xml, 'items', 'updaterecord')
         print("*** CID item record append result:")
         print(result)
         return True
@@ -435,35 +441,6 @@ def defaults():
                {'accession_date': str(datetime.datetime.now())[:10]}])
 
     return record
-
-
-def push_record_create(payload, database, method):
-    '''
-    Use requests.request to push data to the
-    CID API as grouped XML
-    '''
-    hdrs = {'Content-Type': 'text/xml'}
-    prms = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'json'
-    }
-
-    try:
-        response = requests.request('POST', CID_API, headers=hdrs, params=prms, data=payload, timeout=1200)
-        print(response.text)
-    except Exception as err:
-        LOGGER.critical("push_record_create(): Unable to create %s record with %s and payload: \n%s", database, method, payload)
-        print(err)
-        return None, None
-
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
-        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
-        return priref, object_number
-    return None, None
 
 
 if __name__ == '__main__':

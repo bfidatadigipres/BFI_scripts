@@ -39,6 +39,8 @@ metadata files.
    where new put scripts ensure file is moved to
    the netflix01 bucket.
 
+Note: Configured for adlib_v3 and will require API update
+
 Joanna White
 2023
 '''
@@ -93,14 +95,14 @@ def cid_check():
     Test if CID API online
     '''
     try:
-        test = adlib.check(CID_API)
+        adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
-def cid_check(imp_fname):
+def cid_check_filename(imp_fname):
     '''
     Sends CID request for series_id data
     '''
@@ -180,7 +182,7 @@ def main():
     for fpath in folder_list:
         folder = os.path.split(fpath)[1]
         LOGGER.info("Folder path found: %s", fpath)
-        priref, ob_num, file_type = cid_check(folder.strip())
+        priref, ob_num, file_type = cid_check_filename(folder.strip())
         print(f"CID item record found: {priref} with matching {file_type.title()}")
 
         if not priref:
@@ -395,7 +397,7 @@ def item_append(priref, item_append_dct):
 
     item_xml = adlib.create_record_data(priref, item_append_dct)
     try:
-        result = adlib.post(CID_API, item_xml, 'items', 'instertrecord')
+        result = adlib.post(CID_API, item_xml, 'items', 'updaterecord')
         print("*** CID item record append result:")
         print(result)
         return True

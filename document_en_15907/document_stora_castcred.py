@@ -544,6 +544,7 @@ def main():
 
             # Check in CID for Work title/date match
             search = f"(title='{title}' AND title_date_start='{date}')"
+            print(search)
             work_data = cid_work_check(search)
             print("--------------------------------------")
             print(work_data)

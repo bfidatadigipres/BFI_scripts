@@ -561,6 +561,7 @@ def main():
 
                     # Check manifestation for matching transmission time
                     transmission_time = cid_manifestation_check(work_priref_check)
+                    print(f"If {str(time)} == {str(transmission_time[:8])}:")
                     if str(time) == str(transmission_time)[:8]:
                         LOGGER.info("Programme times match: %s and %s\n", time, transmission_time[0:8])
                         time_match = True

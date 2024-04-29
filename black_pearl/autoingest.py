@@ -470,22 +470,19 @@ def get_media_ingests(object_number):
     '''
     Use object_number to retrieve all media records
     '''
-
-    dct = {'database': 'media',
-           'search': f'object.object_number="{object_number}"',
-           'fields': 'imagen.media.original_filename',
-           'limit': 0,
-           'output': 'json'}
+    
+    search = f'object.object_number="{object_number}"'
+    hits, record = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])
+    print(f"get_media_ingests(): AdlibV3 record returned:\n{record}")
 
     original_filenames = []
     try:
-        result = CID.get(dct)
-        print(f'\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number')
-        print(result.records)
-        for r in result.records:
-            filename = r['imagen.media.original_filename']
+        print(f'\t* MEDIA_RECORDS test - {hits} media records returned with matching object_number')
+        for r in record:
+            filename = adlib.retrieve_field_name(r, 'imagen.media.original_filename')[0]
+            print(f"get_media_ingests(): AdlibV3 original file name found: {filename}")
             print(f"File found with CID record: {filename}")
-            original_filenames.append(filename[0])
+            original_filenames.append(filename)
     except Exception as err:
         print(err)
 

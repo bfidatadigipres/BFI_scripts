@@ -118,7 +118,7 @@ def get_folder_title(article, title):
     Match title to folder naming
     '''
 
-    title = title.replace("/","").replace("'","").replace("&", "and").replace("(","").replace(")","")
+    title = title.replace("/","").replace("'","").replace("&", "and").replace("(","").replace(")","").replace("!", "").replace("’", "")
     if article != '-':
         title = f'{article}_{title.replace(" ", "_")}_'
     else:
@@ -410,7 +410,7 @@ def cid_check_works(patv_id):
         type_query = f'priref="{all_priref}"'
         hits, type_record = adlib.retrieve_record(CID_API, 'works', type_query, 1)
         try:
-            alt_num_type = adlib.retrieve_field_name(type_record[0]['Alternative_number'][0], 'alternative_number.type')[0] # Untested
+            alt_num_type = adlib.retrieve_field_name(type_record[0]['Alternative_number'][0], 'alternative_number.type')[0]
             print(f"cid_check_works(): Alternative number type {alt_num_type}")
             alt_type.append(alt_num_type)
         except (IndexError, TypeError, KeyError):

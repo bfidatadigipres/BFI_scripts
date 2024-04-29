@@ -26,9 +26,8 @@ Steps:
 6. Create CID records
 7. Append contributors where available
 
-NOTES: TEMP SET UP TO EXIT AFTER ONE RECORD GROUP
-       Dependency for cast create_contributors()
-       will need review when API updates complete
+NOTES: Configured for adlib_v3, API will need
+       updating when available.
 
 Joanna White
 2024
@@ -40,14 +39,13 @@ import sys
 import json
 import logging
 import datetime
-import requests
 import pandas
 import yaml
 
 # Local packages
-sys.path.append(os.environ['CODE'])
-import adlib
 from document_augmented_streaming_cast import create_contributors
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
 
 # Global variables
 STORAGE = os.environ.get('QNAP_IMAGEN')
@@ -58,9 +56,7 @@ LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API3') # May need to run from CID_API4 for cast/credit
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ.get('CID_API4')
 
 # PATV API details including unique identifiers for Amazon catalogue
 URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
@@ -88,6 +84,18 @@ def check_control():
         if not j['pause_scripts']:
             LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
+
+
+def cid_check():
+    '''
+    Tests if CID active before all other operations commence
+    '''
+    try:
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
 
 
 def read_csv_to_dict(csv_path):
@@ -272,10 +280,9 @@ def get_json_data(data=None):
     and return as dictionary
     '''
     if data is None:
-        data == {}
+        data = {}
 
     j_data = {}
-
     if 'id' in data:
         j_data['work_id'] = data['id']
     if 'type' in data:
@@ -356,43 +363,32 @@ def cid_check_works(patv_id):
     '''
     Sends CID request for series_id data
     '''
-    hit_count = ""
-    priref = ""
-    query = {'database': 'works',
-             'search': f'alternative_number="{patv_id}"',
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, title, title.article, grouping.lref'}
+    query = f'alternative_number="{patv_id}"'
     try:
-        query_result = CID.get(query)
+        hits, record = adlib.retrieve_record(CID_API, 'works', query, 0)
     except Exception as err:
-        print(f"cid_check_works(): Unable to access series data from CID using Series ID: {patv_id} {err}")
-        print("cid_check_works(): Series hit count and series priref will return empty strings")
-        query_result = None
+        LOGGER.warning("cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s", patv_id, err)
+        print("cid_check_works(): Record not found. Series hit count and series priref will return empty strings")
+        return None
     try:
-        hit_count = query_result.hits
-        print(f"cid_check_works(): Hit counts returned for series: {hit_count}")
-    except Exception as err:
-        hit_count = ''
-    try:
-        priref = query_result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"cid_check_works(): Series priref: {priref}")
     except Exception as err:
         priref = ''
     try:
-        title = query_result.records[0]['Title'][0]['title'][0]
+        title = adlib.retrieve_field_name(record[0], 'title')[0]
         print(f"cid_check_works(): Series title: {title}")
     except Exception as err:
         title = ''
     try:
-        title_art = query_result.records[0]['Title'][0]['title.article'][0]
+        title_art = adlib.retrieve_field_name(record[0], 'title_article')[0]
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''
     groupings = []
-    for num in range(0, hit_count):
+    for num in range(0, hits):
         try:
-            grouping = query_result.records[num]['grouping.lref'][0]
+            grouping = adlib.retrieve_field_name(record[num], 'grouping.lref')[0]
             print(f"cid_check_works(): Grouping: {grouping}")
             groupings.append(grouping)
         except Exception as err:
@@ -401,27 +397,20 @@ def cid_check_works(patv_id):
     alt_type = []
     for num in range(0, query_result.hits):
         try:
-            priref = query_result.records[num]['priref'][0]
+            all_priref = adlib.retrieve_field_name(record[num], 'priref')[0]
         except (IndexError, TypeError, KeyError):
             return None
 
-        query = {'database': 'manifestations',
-                 'search': f'(priref="{priref}")',
-                 'limit': '0',
-                 'output': 'json',
-                 'fields': 'alternative_number.type'}
-
-        full_result = cid.get(query)
-        if not full_result:
-            return None
+        type_query = f'priref="{all_priref}"'
+        hits, type_record = adlib.retrieve_record(CID_API, 'works', type_query, 1)
         try:
-            alt_num_type = full_result.records[0]['Alternative_number'][0]['alternative_number.type'][0]
+            alt_num_type = adlib.retrieve_field_name(type_record[0]['Alternative_number'][0], 'alternative_number.type')[0]
             print(f"cid_check_works(): Alternative number type {alt_num_type}")
             alt_type.append(alt_num_type)
         except (IndexError, TypeError, KeyError):
-            alt_type.append('')
+            pass
 
-    return hit_count, priref, title, title_art, groupings, alt_type
+    return hits, priref, title, title_art, groupings, alt_type
 
 
 def genre_retrieval(category_code, description, title):
@@ -727,7 +716,8 @@ def main():
                 continue
             print(f"PRIREF FOR MANIFESTATION: {priref_man}")
             # Append URLS if present
-            append_url_data(priref_work, priref_man, data_dct)
+            if 'watch_url' in data_dct:
+                append_url_data(priref_work, priref_man, data_dct)
             # Make monographic item record here
             priref_item = create_item(priref_man, work_title, work_title_art, data_dct, record, item)
             if len(priref_item) == 0:
@@ -843,7 +833,8 @@ def main():
                     continue
                 print(f"PRIREF EP MANIFESTATION: {priref_ep_man}")
                 # Append URLS if present
-                append_url_data(priref_episode, priref_ep_man, data_dct)
+                if 'watch_url' in data_dct:
+                    append_url_data(priref_episode, priref_ep_man, data_dct)
 
                 # Make episodic item record here
                 priref_ep_item = create_item(priref_ep_man, work_title, work_title_art, data_dct, record, item)
@@ -1040,47 +1031,45 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
     print(f"Series work values:\n{series_work_values}")
 
     # Start creating CID Work Series record
+    series_work_xml = adlib.create_record_data('', series_work_values)
+
     try:
         print("Attempting to create CID record")
-        w = CUR.create_record(database='works',
-                              data=series_work_values,
-                              output='json',
-                              write=True)
-        if w.records:
+        work_rec = adlib.post(CID_API, series_work_xml, 'works', 'insertrecord')
+        if work_rec:
             try:
                 print("Populating series_work_id and object_number variables")
-                series_work_id = w.records[0]['priref'][0]
-                object_number = w.records[0]['object_number'][0]
+                series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
                 print(f'* Series record created with Priref {series_work_id}')
                 print(f'* Series record created with Object number {object_number}')
                 LOGGER.info('Work record created with priref %s', series_work_id)
-            except Exception as err:
+            except (IndexError, TypeError, KeyError) as err:
                 print("Unable to create series record", err)
                 return None
-
-            try:
-                series_genres = []
-                if 'genres' in series_dct:
-                    extracted = series_dct['genres']
-                    for genr in extracted:
-                        series_genres.append({'content.genre.lref': genr})
-                if 'subjects' in series_dct:
-                    subs = series_dct['subjects']
-                    for sub in subs:
-                        series_genres.append({'content.subject.lref': sub})
-                series_genres_filter = [i for n, i in enumerate(series_genres) if i not in series_genres[n + 1:]]
-                print(series_genres, series_genres_filter)
-                print("**** Attempting to write work genres to records ****")
-                g = CUR.create_occurrences(database='works',
-                                           priref=series_work_id,
-                                           data=series_genres_filter,
-                                           output='json')
-            except Exception as err:
-                print("Unable to write genre", err)
     except Exception as err:
         print(f'* Unable to create Work record for <{title}> {err}')
         LOGGER.critical('Unable to create Work record for <%s>', title)
         return None
+    
+    series_genres = []
+    if 'genres' in series_dct:
+        extracted = series_dct['genres']
+        for genr in extracted:
+            series_genres.append({'content.genre.lref': genr})
+    if 'subjects' in series_dct:
+        subs = series_dct['subjects']
+        for sub in subs:
+            series_genres.append({'content.subject.lref': sub})
+    series_genres_filter = [i for n, i in enumerate(series_genres) if i not in series_genres[n + 1:]]
+    if series_genres_filter:
+        print(series_genres, series_genres_filter)
+        print("**** Attempting to write work genres to records ****")
+        series_genres_xml = adlib.create_record_data(series_work_id, series_genres_filter)
+        success = adlib.post(CID_API, series_genres_xml, 'works', 'updaterecord')
+        if success is None:
+            LOGGER.info("Failed to update genres to Series Work record: %s", series_work_id)
+        LOGGER.info("Series genres updated to work: %s", series_work_id)
 
     return series_work_id
 
@@ -1160,74 +1149,45 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
     print(f"Work values:\n{work_values}")
 
     # Start creating CID Work Series record
+    work_xml = adlib.create_record_data('', work_values)
     try:
         print("Attempting to create CID record")
-        w = CUR.create_record(database='works',
-                              data=work_values,
-                              output='json',
-                              write=True)
-        if w.records:
+        work_rec = adlib.post(CID_API, work_xml, 'works', 'insertrecord')
+        if work_rec:
             try:
                 print("Populating work_id and object_number variables")
-                work_id = w.records[0]['priref'][0]
-                object_number = w.records[0]['object_number'][0]
+                work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
                 print(f'* Work record created with Priref {work_id}')
                 print(f'* Work record created with Object number {object_number}')
-                LOGGER.info('** Work record created with priref %s', work_id)
-                try:
-                    work_genres = []
-                    if 'genres' in work_dict:
-                        extracted = work_dict['genres']
-                        for genr in extracted:
-                            work_genres.append({'content.genre.lref': genr})
-                    if 'subjects' in work_dict:
-                        subs = work_dict['subjects']
-                        for sub in subs:
-                            work_genres.append({'content.subject.lref': sub})
-                    work_genres_filter = [i for n, i in enumerate(work_genres) if i not in work_genres[n + 1:]]
-                    print("**** Attempting to write work genres to records ****")
-                    print(work_genres)
-                    print(work_genres_filter)
-                    # BROKEN HERE, try work_append() module below
-                    g = CUR.update_record(database='works',
-                                          priref=work_id,
-                                          data=work_genres_filter,
-                                          output='json')
-                except Exception as err:
-                    print("Unable to write genre", err)
-                return work_id
-            except Exception as err:
+                LOGGER.info('Work record created with priref %s', work_id)
+            except (IndexError, TypeError, KeyError) as err:
                 print("Unable to create work record", err)
-                return work_id
+                return None
     except Exception as err:
         print(f"* Unable to create Work record for <{work_dict['title']}> {err}")
         LOGGER.critical('** Unable to create Work record for <%s>', work_dict['title'])
-        return work_id
+        return None
+
+    work_genres = []
+    if 'genres' in work_dict:
+        extracted = work_dict['genres']
+        for genr in extracted:
+            work_genres.append({'content.genre.lref': genr})
+    if 'subjects' in work_dict:
+        subs = work_dict['subjects']
+        for sub in subs:
+            work_genres.append({'content.subject.lref': sub})
+    work_genres_filter = [i for n, i in enumerate(work_genres) if i not in work_genres[n + 1:]]
+    if work_genres_filter:
+        print(f"**** Attempting to write work genres to records {work_genres_filter} ****")
+        work_genres_xml = adlib.create_record_data(work_id, work_genres_filter)
+        success = adlib.post(CID_API, work_genres_xml, 'works', 'updaterecord')
+        if success is None:
+            LOGGER.info("Failed to update genres to Series Work record: %s", work_id)
+        LOGGER.info("Series genres updated to work: %s", work_id)
 
     return work_id
-
-
-def work_append(priref, work_dct=None):
-    '''
-    Items passed in work_dct for amending to Work record
-    '''
-    print(work_dct)
-    if work_dct is None:
-        work_dct = []
-        LOGGER.warning("work_append(): work_update_dct passed to function as None")
-    try:
-        result = CUR.update_record(priref=priref,
-                                   database='works',
-                                   data=work_dct,
-                                   output='json',
-                                   write=True)
-        print("*** Work append result:")
-        print(result)
-        return True
-    except Exception as err:
-        LOGGER.warning("work_append(): Unable to append work data to CID work record %s", err)
-        print(err)
-        return False
 
 
 def create_manifestation(work_priref, work_title, work_title_art, work_dict, record_defaults, manifestation_defaults):
@@ -1272,26 +1232,37 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     if 'certification_bbfc' in work_dict:
         manifestation_values.append({'utb.fieldname': 'BBFC certification'})
         manifestation_values.append({'utb.content': work_dict['certification_bbfc']})
-    manifestation_values.append({'broadcast_company.lref': '999823516'}) # Amazon Prime Video
     print(f"Manifestation values:\n{manifestation_values}")
 
+    broadcast_addition = []
+    manifestation_xml = adlib.create_record_data('', manifestation_values)
     try:
-        m = CUR.create_record(database='manifestations',
-                              data=manifestation_values,
-                              output='json',
-                              write=True)
-        if m.records:
+        print("Attempting to create CID record")
+        man_rec = adlib.post(CID_API, manifestation_xml, 'manifestations', 'insertrecord')
+        if man_rec:
             try:
-                manifestation_id = m.records[0]['priref'][0]
-                object_number = m.records[0]['object_number'][0]
-                print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
+                print("Populating manifestation_id and object_number variables")
+                manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
+                object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
+                print(f'* Manifestation record created with Priref {manifestation_id}')
+                print(f'* Manifestation record created with Object number {object_number}')
                 LOGGER.info('Manifestation record created with priref %s', manifestation_id)
             except Exception as err:
-                print(f'* Unable to create Manifestation record for <{title}>, {err}')
-                LOGGER.critical('Unable to create Manifestation record for <%s>', title)
-
+                print("Unable to create Manifestation record", err)
+                return None
     except Exception as err:
-        print(f"Unable to write manifestation record - error: {err}")
+        print(f"* Unable to create Manifestation record for <{work_dict['title']}> {err}")
+        LOGGER.critical('** Unable to create Manifestation record for <%s>', work_dict['title'])
+        return None
+
+    broadcast_addition = [{'broadcast_company.lref': '999823516'}] # Amazon Prime Video
+    broadcast_xml = adlib.create_record_data(manifestation_id, broadcast_addition)
+    print("**** Attempting to write work genres to records ****")
+
+    success = adlib.post(CID_API, broadcast_xml, 'manifestations', 'updaterecord')
+    if success is None:
+        LOGGER.info("Failed to update Broadcast Company data to Manifestation record: %s", manifestation_id)
+    LOGGER.info("Broadcast Company data updated to work: %s", manifestation_id)
 
     return manifestation_id
 
@@ -1301,48 +1272,28 @@ def append_url_data(work_priref, man_priref, data=None):
     Receive Amazon URLs and priref and append to CID manifestation
     '''
 
-    if 'watch_url' in data:
-        # Write to manifest
-        if '/?autoplay' in data['watch_url']:
-            url_trim = data['watch_url'].split('/?autoplay')[0]
-        else:
-            url_trim = data['watch_url']
-        payload_mid = f"<URL><![CDATA[{url_trim}]]></URL><URL.description>Amazon viewing URL</URL.description>"
-        payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
-        payload_end = "</URL></record></recordList></adlibXML>"
-        payload = payload_head + payload_mid + payload_end
+    # Write to manifest
+    if '/?autoplay' in data['watch_url']:
+        url_trim = data['watch_url'].split('/?autoplay')[0]
+    else:
+        url_trim = data['watch_url']
+    payload_mid = f"<URL><![CDATA[{url_trim}]]></URL><URL.description>Amazon viewing URL</URL.description>"
+    payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
+    payload_end = "</URL></record></recordList></adlibXML>"
+    payload = payload_head + payload_mid + payload_end
 
-        write_lock('manifestations', man_priref)
-        post_response = requests.request(
-            'POST',
-            CID_API,
-            headers={'Content-Type': 'text/xml'},
-            params={'database': 'manifestations', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data=payload)
+    success = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
+    if success is None:
+        LOGGER.info("append_url_data(): Failed to update Watch URL data to Manifestation record: %s", man_priref)
+    LOGGER.info("append_url_data(): Watch URL data updated to Manifestation: %s", man_priref)
 
-        if "<error><info>" in str(post_response.text):
-            LOGGER.warning("append_url_data(): Post of data failed: %s - %s\nFaulty payload: %s", man_priref, post_response.text, payload)
-            unlock_record('manifestations', man_priref)
-        else:
-            LOGGER.info("append_url_data(): Write of access_rendition data appear successful for Priref %s", man_priref)
+    payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
+    payload = payload_head + payload_mid + payload_end
 
-        # Write to work
-        payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
-        payload = payload_head + payload_mid + payload_end
-
-        write_lock('works', work_priref)
-        post_response = requests.request(
-            'POST',
-            CID_API,
-            headers={'Content-Type': 'text/xml'},
-            params={'database': 'works', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data=payload)
-
-        if "<error><info>" in str(post_response.text):
-            LOGGER.warning("append_url_data(): Post of data failed: %s - %s", work_priref, post_response.text)
-            unlock_record('works', work_priref)
-        else:
-            LOGGER.info("append_url_data(): Write of access_rendition data appear successful for Priref %s", work_priref)
+    success = adlib.post(CID_API, payload, 'works', 'updaterecord')
+    if success is None:
+        LOGGER.info("append_url_data(): Failed to update Watch URL data to Work record: %s", work_priref)
+    LOGGER.info("append_url_data(): Watch URL data updated to work: %s", work_priref)
 
 
 def create_item(man_priref, work_title, work_title_art, work_dict, record_defaults, item_default):
@@ -1371,52 +1322,27 @@ def create_item(man_priref, work_title, work_title_art, work_dict, record_defaul
         item_values.append({'title.type': '05_MAIN'})
 
     print(item_values)
+    item_xml = adlib.create_record_data('', item_values)
     try:
-        i = CUR.create_record(database='items',
-                              data=item_values,
-                              output='json',
-                              write=True)
-
-        if i.records:
+        print("Attempting to create CID Item record")
+        item_rec = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
+        if item_rec:
             try:
-                item_id = i.records[0]['priref'][0]
-                item_object_number = i.records[0]['object_number'][0]
-                print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
+                print("Populating item_id and object_number variables")
+                item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
+                item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
+                print(f'* Item record created with Priref {item_id}')
+                print(f'* Item record created with Object number {item_object_number}')
                 LOGGER.info('Item record created with priref %s', item_id)
             except Exception as err:
-                LOGGER.warning("Item data could not be retrieved from the record: %s", err)
-
+                print("Unable to create Item record", err)
+                return None
     except Exception as err:
-        LOGGER.critical('PROBLEM: Unable to create Item record for <%s> manifestation', man_priref)
-        print(f"** PROBLEM: Unable to create Item record attached to manifestation: {man_priref}\nError: {err}")
+        print(f"* Unable to create Item record for <{work_dict['title']}> {err}")
+        LOGGER.critical('** Unable to create Item record for <%s>', work_dict['title'])
+        return None
 
     return item_object_number, item_id
-
-
-def write_lock(database, priref):
-    '''
-    Apply a writing lock to the person record before updating metadata to Headers
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': database, 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'})
-        print(post_response.text)
-    except Exception as err:
-        LOGGER.warning("Lock record wasn't applied to record %s\n%s", priref, err)
-
-
-def unlock_record(database, priref):
-    '''
-    Only used if write fails and lock was successful, to guard against file remaining locked
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': database, 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
-        print(post_response.text)
-    except Exception as err:
-        LOGGER.warning("Post to unlock record failed. Check record %s is unlocked manually\n%s", priref, err)
 
 
 if __name__ == '__main__':

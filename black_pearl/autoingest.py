@@ -77,7 +77,6 @@ from ds3 import ds3
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-# import adlib
 
 # Global paths
 LOGS = os.environ['LOG_PATH']
@@ -99,9 +98,7 @@ logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
 CID_API = os.environ['CID_API4']
-# CID = adlib.Database(url=CID_API)
-# CUR = adlib.Cursor
-# CLIENT = ds3.createClientFromEnv()
+CLIENT = ds3.createClientFromEnv()
 
 PREFIX = [
     'N',
@@ -334,9 +331,10 @@ def get_item_priref(ob_num):
     ob_num = ob_num.strip()
     search = f"object_number='{ob_num}'"
     record = adlib.retrieve_record(CID_API, 'collect', search, '1')[1]
-
+    print(f"get_item_priref(): AdlibV3 record for priref:\n{record}")
     try:
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        print(f"get_item_priref(): AdlibV3 priref: {priref}")
     except Exception:
         priref = ''
 
@@ -352,6 +350,7 @@ def check_media_record(fname):
 
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+        print(f"check_media_record(): AdlibV3 record for hits:\n{hits}")
         num = int(hits)
         if num >= 1:
             return True

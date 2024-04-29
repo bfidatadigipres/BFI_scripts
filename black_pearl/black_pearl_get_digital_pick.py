@@ -30,7 +30,7 @@ Script actions:
    f. Overwrite request.details data to Workflow record.
 4. Exit script with final log message.
 
-NOTES: Partially updated to work with adlib_v3
+NOTES: Updated to work with adlib_v3
 
 Joanna White
 2022
@@ -45,20 +45,14 @@ import hashlib
 import logging
 from xml.sax.saxutils import escape
 from datetime import datetime, timedelta
-import requests
 from ds3 import ds3, ds3Helpers
 
 # Local package
-CODE = os.environ['CODE']
-sys.path.append(CODE)
-import adlib_v3 as ad
-import adlib
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
 
 # API VARIABLES
-CID_API = os.environ['CID_API3']
-CID_API2 = os.environ['CID_API4']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ['CID_API4']
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 
@@ -102,7 +96,7 @@ def cid_check():
     Test if CID API online
     '''
     try:
-        test = adlib.check(CID_API2)
+        adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical("* Cannot establish CID session, exiting script")
@@ -116,45 +110,31 @@ def fetch_workflow_jobs():
     '''
     todayd, endd = get_date_range()
     search = f"request.details='*{SEARCH_TERM}*' and completion.date>'{todayd}' and completion.date<'{endd}' and status=InProgress sort completion.date ascending"
-    query = {
-        'database': 'workflow',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-        'fields': 'priref, object_number, jobnumber, contact_person, request.details, request.from.name'
-    }
+    hits, records = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['priref', 'jobnumber', 'contact_person', 'request.details', 'request.from.name'])
+    if not records:
+        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data")
+        records = None
 
-    try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s\n%s", d, err)
-        print(err)
-        query_result = None
-    print(query_result)
-    if not query_result:
-        return None
-
-    total_jobs = len(query_result.records)
     workflow_jobs = {}
-    for num in range(total_jobs):
+    for num in range(0, hits):
         try:
-            priref = query_result.records[num]['priref'][0]
+            priref = adlib.retrieve_field_name(records[num], 'priref')[0]
         except (IndexError, TypeError, KeyError):
             priref = ''
         try:
-            jobnumber = query_result.records[num]['jobnumber'][0]
+            jobnumber = adlib.retrieve_field_name(records[num], 'jobnumber')[0]
         except (IndexError, KeyError, TypeError):
             jobnumber = ''
         try:
-            contact_person = query_result.records[num]['contact_person'][0]
+            contact_person = adlib.retrieve_field_name(records[num], 'contact_person')[0]
         except (IndexError, KeyError, TypeError):
             contact_person = ''
         try:
-            request_details = query_result.records[num]['request.details'][0]
+            request_details = adlib.retrieve_field_name(records[num], 'request.details')[0]
         except (IndexError, KeyError, TypeError):
             request_details = ''
         try:
-            request_from = query_result.records[num]['request.from.name'][0]
+            request_from = adlib.retrieve_field_name(records[num], 'request.from.name')[0]
         except (IndexError, KeyError, TypeError):
             request_from = ''
 
@@ -183,22 +163,14 @@ def fetch_item_list(priref):
     Fetch a workflow job's items list
     '''
     search = f"parent_record={priref} and recordType=ObjectList"
-    query = {
-        'database': 'workflow',
-        'search': search,
-        'limit': '0',
-        'output': 'json'
-    }
+    records = adlib.retrieve_record(CID_API, 'workflow', search, '0')[1]
+    if not records:
+        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s", priref)
+        return None
+    print(records)
 
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s\n%s", priref, err)
-        query_result = None
-    print(query_result.records)
-
-    try:
-        children = query_result.records[0]['child']
+        children = adlib.retrieve_field_name(records[0], 'child')
     except (IndexError, TypeError, KeyError):
         children = ''
     print(children, len(children))
@@ -211,21 +183,12 @@ def get_child_ob_num(priref):
     Retrieve the child's object number from workflow
     '''
     search = f"priref={priref}"
-    query = {
-        'database': 'workflow',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-        'fields': 'description'
-    }
+    records = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['description'])[1]
+    if not records:
+        LOGGER.exception("get_child_ob_num: Unable to retrieve workflow data")
+        return None
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("get_child_ob_num: Unable to retrieve workflow data upto: %s", err)
-        print(err)
-        query_result = None
-    try:
-        ob_num = query_result.records[0]['description'][0]
+        ob_num = adlib.retrieve_field_name(records[0], 'description')[0]
         print(ob_num)
         return ob_num
     except (IndexError, TypeError, KeyError):
@@ -238,31 +201,21 @@ def get_media_original_filename(search):
     for a match against object.object_number
     (may return many)
     '''
-    query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-        'fields': 'imagen.media.original_filename, reference_number, preservation_bucket'
-    }
+    records = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename', 'reference_number', 'preservation_bucket'])[1]
+    if not records:
+        LOGGER.exception("get_media_original_filename: Unable to retrieve Media data")
+        return None
 
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("get_media_original_filename: Unable to retrieve Media data upto: %s", err)
-        print(err)
-        query_result = None
-
-    try:
-        orig_fname = query_result.records[0]['imagen.media.original_filename'][0]
+        orig_fname = adlib.retrieve_field_name(records[0], 'imagen.media.original_filename')[0]
     except (IndexError, TypeError, KeyError):
         orig_fname = ''
     try:
-        ref_num = query_result.records[0]['reference_number'][0]
+        ref_num = adlib.retrieve_field_name(records[0], 'reference_number')[0]
     except (IndexError, TypeError, KeyError):
         ref_num = ''
     try:
-        bucket = query_result.records[0]['preservation_bucket'][0]
+        bucket = adlib.retrieve_field_name(records[0], 'preservation_bucket')[0]
     except (IndexError, TypeError, KeyError):
         bucket = ''
 
@@ -277,22 +230,14 @@ def bucket_check(bucket, filename):
     Check CID media record that bucket
     matches for all parts
     '''
-    query = {
-        'database': 'media',
-        'search': f'reference_number="{filename}"',
-        'limit': '1',
-        'output': 'json',
-        'fields': 'preservation_bucket'
-    }
-
+    
+    search = f'reference_number="{filename}"'
+    records = adlib.retrieve_record(CID_API, 'media', search, '1', ['preservation_bucket'])[1] 
+    if not records:
+        LOGGER.exception("get_media_original_filename: Unable to retrieve Media data")
+        return None
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("get_media_original_filename: Unable to retrieve Media data upto: %s", err)
-        print(err)
-        query_result = None
-    try:
-        download_bucket = query_result.records[0]['preservation_bucket'][0]
+        download_bucket = adlib.retrieve_field_name(records[0], 'preservation_bucket')[0]
     except (IndexError, TypeError, KeyError):
         download_bucket = ''
 
@@ -411,7 +356,7 @@ def main():
     to avoid repeating unecessary DPI downloads
     '''
     check_control()
-    check_cid()
+    cid_check()
 
     workflow_jobs = fetch_workflow_jobs()
     if not workflow_jobs:
@@ -433,7 +378,7 @@ def main():
 
         # Fetch child items of ObjectList
         children = fetch_item_list(priref)
-        if len(children) == 0:
+        if children is None or len(children) == 0:
             LOGGER.info("Skipping. No children found for Priref: %s", priref)
             continue
 
@@ -563,7 +508,7 @@ def main():
         # Update workflow request.details field when all completed
         payload = build_payload(priref, request_details, datetime.strftime(datetime.now(), FORMAT))
         print(payload)
-        record = ad.post(CID_API2, payload, 'workflow', 'updaterecord')
+        record = adlib.post(CID_API, payload, 'workflow', 'updaterecord')
         if not record:
             LOGGER.warning("FAILED: Payload write to CID workflow request.details field: %s", priref)
         else:
@@ -592,22 +537,6 @@ def download_bp_object(fname, outpath, bucket):
     return get_job_id
 
 
-def write_lock(priref):
-    '''
-    Apply a write lock to record before updating metadata
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'workflow', 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'}
-        )
-        print("write_lock() response:")
-        print(post_response.text)
-        return True
-    except Exception as err:
-        LOGGER.warning("write_lock: Unable to lock record %s:\n%s", priref, err)
-
-
 def build_payload(priref, data, today):
     '''
     Build payload info to write to Workflow record
@@ -625,37 +554,15 @@ def write_payload(priref, payload):
     Recieve header, payload and priref and write
     to CID workflow record
     '''
-    post_response = requests.request(
-        'POST',
-        CID_API,
-        headers=HEADERS,
-        params={'command': 'updaterecord', 'database': 'workflow', 'xmltype': 'grouped', 'output': 'json'},
-        data={'data': payload}
-    )
-    print("write_payload() response:")
-    print(post_response.text)
-    if "error" in str(post_response.text):
+    record = adlib.post(CID_API, payload, 'workflow', 'updaterecord')
+    if not record:
         LOGGER.warning("write_payload: Error returned for requests.post for %s:\n%s", priref, payload)
         return False
     else:
+        print("write_payload() response:")
+        print(record)
         LOGGER.info("write_payload: No error returned in post_response.text. Payload successfully written.")
         return True
-
-
-def unlock_record(priref):
-    '''
-    Only used if write fails to unlock record
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'workflow', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'}
-        )
-        print("unlock_record() response:")
-        print(post_response.text)
-        return True
-    except Exception as err:
-        LOGGER.warning("unlock_record: Unable to unlock record. Please check record and unlock manually %s:\n%s", priref, err)
 
 
 def write_to_csv(data):

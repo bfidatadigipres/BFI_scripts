@@ -76,7 +76,8 @@ from ds3 import ds3
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
+# import adlib
 
 # Global paths
 LOGS = os.environ['LOG_PATH']
@@ -97,10 +98,10 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor
-CLIENT = ds3.createClientFromEnv()
+CID_API = os.environ['CID_API4']
+# CID = adlib.Database(url=CID_API)
+# CUR = adlib.Cursor
+# CLIENT = ds3.createClientFromEnv()
 
 PREFIX = [
     'N',
@@ -331,18 +332,14 @@ def get_item_priref(ob_num):
     Retrieve item priref, title from CID
     '''
     ob_num = ob_num.strip()
+    search = f"object_number='{ob_num}'"
+    record = adlib.retrieve_record(CID_API, 'collect', search, '1')[1]
 
-    data = {'database': 'collect',
-            'search': f"object_number='{ob_num}'",
-            'fields': 'priref',
-            'output': 'json'}
-
-    result = CID.get(data)
     try:
-        priref = int(result.records[0]['priref'][0])
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     except Exception:
         priref = ''
-        pass
+
     return priref
 
 
@@ -352,16 +349,10 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-    query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-    }
 
     try:
-        result = CID.get(query)
-        num = int(result.hits)
+        hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+        num = int(hits)
         if num >= 1:
             return True
     except Exception as err:

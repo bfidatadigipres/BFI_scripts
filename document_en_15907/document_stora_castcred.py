@@ -37,7 +37,6 @@ import json
 import codecs
 import logging
 import datetime
-import requests
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -501,18 +500,18 @@ def main():
     check_control()
     cid_check()
     LOGGER.info("Checking path for documented JSON: %s", ARCHIVE_PATH)
+    print(ARCHIVE_PATH)
 
     # Iterate through all historical EPG metadata file
     # Later limit to just 1 week range before yesterday
     for root, _, files in os.walk(ARCHIVE_PATH):
         for file in files:
-            if file.endswith('json.documented'):
-                check_control()
-                LOGGER.info("New file found for processing: %s", file)
-                fullpath = os.path.join(root, file)
-            else:
+            if not file.endswith('json.documented'):
                 continue
 
+            check_control()
+            LOGGER.info("New file found for processing: %s", file)
+            fullpath = os.path.join(root, file)
             credit_data = ''
             # Retrieve all data from EPG
             credit_data = retrieve_epg_data(fullpath)

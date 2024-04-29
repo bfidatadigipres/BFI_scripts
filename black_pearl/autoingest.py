@@ -437,15 +437,12 @@ def ext_in_file_type(ext, priref, log_paths):
         return False
 
     print(ftype)
-    query = {'database': 'collect',
-             'search': f'priref={priref}',
-             'limit': 1,
-             'output': 'json',
-             'fields': 'file_type'}
-
-    result = CID.get(query)
+    search = f'priref={priref}'
+    record = adlib.retrieve_record(CID_API, 'collect', search, '1', ['file_type'])[1]
+    print(f"ext_in_file_type(): AdlibV3 record returned:\n{record}")
     try:
-        file_type = result.records[0]['file_type']
+        file_type = adlib.retrieve_field_name(record[0], 'file_type')
+        print(f"ext_in_file_type(): AdlibV3 file type: {file_type}")
     except (IndexError, KeyError):
         file_type = []
 

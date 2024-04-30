@@ -414,11 +414,11 @@ def cid_person_check(credit_id):
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
     try:
         result = adlib.retrieve_record(CID_API, 'people', search, '0')[1]
-        print('-------------------')
-        print(result)
-        print('-------------------')
     except (KeyError, IndexError, TypeError):
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
+        result = None
+    if result is None:
+        return None, None, None
     try:
         name = adlib.retrieve_field_name(result[0], 'name')[0]
         priref = adlib.retrieve_field_name(result[0], 'priref')[0]
@@ -616,18 +616,7 @@ def main():
 
                         # Check person record exists
                         person_priref, person_name, person_act_type = cid_person_check(cast_id)
-                        if len(person_priref) > 0:
-                            LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
-                            for k_, v_ in contributors.items():
-                                if str(cast_type) == k_:
-                                    activity_type = v_[1]
-                                    if str(activity_type) in str(person_act_type):
-                                        LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
-                                    else:
-                                        LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
-                                        append_activity_type(person_priref, person_act_type, activity_type)
-                            LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
-                        else:
+                        if person_priref is None:
                             cast_dct_data = ''
                             # Create data for Person record creation
                             cast_dct_data = make_person_dct(val)
@@ -655,6 +644,17 @@ def main():
                                     else:
                                         LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
                                         print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
+                        if len(person_priref) > 0:
+                            LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
+                            for k_, v_ in contributors.items():
+                                if str(cast_type) == k_:
+                                    activity_type = v_[1]
+                                    if str(activity_type) in str(person_act_type):
+                                        LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
+                                    else:
+                                        LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
+                                        append_activity_type(person_priref, person_act_type, activity_type)
+                            LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
 
                         # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
                         for key_, val_ in contributors.items():
@@ -688,23 +688,7 @@ def main():
 
                         # Check person record exists
                         person_priref, person_name, person_act_type = cid_person_check(cred_id)
-                        if len(person_priref) > 0:
-                            for k_, v_ in production.items():
-                                if str(cred_type) == k_:
-                                    activity_type_cred = v_[1]
-                                    if str(activity_type_cred) in str(person_act_type):
-                                        print(f"Matched activity type {activity_type_cred} : {person_act_type}")
-                                    else:
-                                        print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
-                                        success = append_activity_type(person_priref, person_act_type, activity_type_cred)
-                                        if success is True:
-                                            LOGGER.info("Activity type appended successfully to person: %s", person_priref)
-                                        else:
-                                            LOGGER.warning("Activity type was not appended to person: %s", person_priref)
-                            print(f"** Person record already exists: {person_name} {person_priref}")
-                            LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
-                            LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
-                        else:
+                        if person_priref is None:
                             cred_dct_data = ''
                             # Create data for Person record creation
                             cred_dct_data = make_person_dct(val)
@@ -732,6 +716,23 @@ def main():
                                 else:
                                     LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
                                     print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
+
+                        if len(person_priref) > 0:
+                            for k_, v_ in production.items():
+                                if str(cred_type) == k_:
+                                    activity_type_cred = v_[1]
+                                    if str(activity_type_cred) in str(person_act_type):
+                                        print(f"Matched activity type {activity_type_cred} : {person_act_type}")
+                                    else:
+                                        print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
+                                        success = append_activity_type(person_priref, person_act_type, activity_type_cred)
+                                        if success is True:
+                                            LOGGER.info("Activity type appended successfully to person: %s", person_priref)
+                                        else:
+                                            LOGGER.warning("Activity type was not appended to person: %s", person_priref)
+                            print(f"** Person record already exists: {person_name} {person_priref}")
+                            LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
+                            LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
 
                         # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
                         for key_, val_ in production.items():

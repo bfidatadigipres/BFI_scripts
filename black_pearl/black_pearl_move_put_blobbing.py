@@ -34,6 +34,7 @@ Joanna White
 import os
 import sys
 import csv
+import yaml
 import json
 import glob
 import time
@@ -42,13 +43,12 @@ import hashlib
 import logging
 import subprocess
 from datetime import datetime
-import yaml
 from ds3 import ds3, ds3Helpers
 
 # Local import
 CODE_PATH = os.environ['CODE']
 sys.path.append(CODE_PATH)
-import adlib
+import adlib_v3 as adlib
 
 # Global vars
 CLIENT = ds3.createClientFromEnv()
@@ -62,9 +62,7 @@ DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ['CID_API4']
 TODAY = str(datetime.today())
 
 # Setup logging
@@ -334,24 +332,16 @@ def check_for_media_record(fname):
     '''
 
     search = f"imagen.media.original_filename='{fname}'"
-
-    query = {'database': 'media',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'access_rendition.mp4'}
-
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', ['priref', 'access_rendition.mp4'])[1]
+    if not record:
+        LOGGER.exception('CID check for media record failed')
+        return None, None
     try:
-        result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception('CID check for media record failed: %s', err)
-        result = None
-    try:
-        priref = result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     except (KeyError, IndexError):
         priref = ''
     try:
-        access_mp4 = result.records[0]['access_rendition.mp4'][0]
+        access_mp4 = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
     except (KeyError, IndexError):
         access_mp4 = ''
 
@@ -656,9 +646,8 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
     Media record creation for BP ingested file
     duration, and byte_size waiting for new fields
     '''
-    record_data = []
-    part, whole = get_part_whole(filename)
 
+    part, whole = get_part_whole(filename)
     record_data = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},
                     {'input.time': str(datetime.now())[11:19]},
@@ -670,25 +659,18 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
 
-    media_priref = ""
-
-    try:
-        i = CUR.create_record(database='media',
-                              data=record_data,
-                              output='json',
-                              write=True)
-        if i.records:
-            try:
-                media_priref = i.records[0]['priref'][0]
-                print(f'** CID media record created with Priref {media_priref}')
-                LOGGER.info('CID media record created with priref %s', media_priref)
-            except Exception:
-                LOGGER.exception("CID media record failed to retrieve priref")
-    except Exception:
-        print(f"\nUnable to create CID media record for {ob_num}")
-        LOGGER.exception("Unable to create CID media record!")
-
-    return media_priref
+    record_data_xml = adlib.create_record_data('', record_data)
+    record = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
+    if record:
+        try:
+            media_priref = adlib.retrieve_field_name(record, 'priref'][0]
+            print(f'** CID media record created with Priref {media_priref}')
+            LOGGER.info('CID media record created with priref %s', media_priref)
+            return media_priref
+        except Exception:
+            print(f"\nUnable to create CID media record for {ob_num}")
+            LOGGER.exception("Unable to create CID media record!")
+            return None
 
 
 if __name__ == "__main__":

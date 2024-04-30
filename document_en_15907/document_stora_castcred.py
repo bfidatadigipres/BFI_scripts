@@ -444,7 +444,7 @@ def cid_work_check(search):
     edit_names = []
 
     try:
-        hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', ['input.notes, edit.name'])
+        hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', ['priref', 'input.notes, edit.name'])
     except (KeyError, IndexError):
         LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
     print("--------------------------------------")
@@ -454,9 +454,10 @@ def cid_work_check(search):
     if hits <= 1:
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         input_note = adlib.retrieve_field_name(record[0], 'input.notes')[0]
-        print(priref, input_note)
+        edit_name = adlib.retrieve_field_name(record[num], 'edit.name')[0]
+        print(priref, input_note, edit_name)
         if 'STORA off-air television capture' in str(input_note):
-            return [priref], [input_note]
+            return [priref], [edit_name]
     
     for num in range(0, hits):
         print("Fetch priref and edit_name from record")
@@ -470,6 +471,7 @@ def cid_work_check(search):
             input_note = ''
         try:
             edit_name = adlib.retrieve_field_name(record[num], 'edit.name')[0]
+            print(edit_name)
         except (KeyError, IndexError):
             edit_name = ''
 
@@ -556,17 +558,16 @@ def main():
             # Check in CID for Work title/date match
             search = f"(title='{title}' AND title_date_start='{date}')"
             print(search)
-            work_data = cid_work_check(search)
+            prirefs = cid_work_check(search)[0]
             print("--------------------------------------")
-            print(work_data)
+            print(prirefs)
             print("--------------------------------------")
             work_priref = ''
             time_match = False
 
             # Iterate all potential matches for transmission time match
-            if len(work_data[0]) > 0:
-                for work_prirefs in work_data[0]:
-                    work_priref_check = work_prirefs[0]
+            if len(prirefs) > 0:
+                for work_priref_check in prirefs:
                     LOGGER.info("Priref found that matches date/title: %s", work_priref_check)
                     LOGGER.info("Checking work manifestation to see if broadcast times match...")
 

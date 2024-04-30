@@ -610,6 +610,7 @@ def main():
                         cast_id = v[0]  # EPG ID
                         cast_name = firstname_split(v[1])
                         screen_name = v[11]  # Character name
+                        print(cast_name, cast_id)
 
                         # Check person record exists
                         person_priref, person_name, person_act_type = cid_person_check(cast_id)

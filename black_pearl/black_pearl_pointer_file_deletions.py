@@ -35,6 +35,7 @@ via saved search filtered by DigiOps.
 NOTE: Accompanying 'undelete' script to be written
       for use should an incorrect priref be placed
       into deletions schedule.
+      Updated for Adlib V3
 
 Joanna White
 2023
@@ -46,7 +47,6 @@ import json
 import time
 import logging
 import tenacity
-import requests
 from ds3 import ds3, ds3Helpers
 
 # Private package
@@ -104,12 +104,12 @@ def get_prirefs(pointer):
     try:
         result = adlib.get(CID_API, query)
     except Exception as exc:
-        LOGGER.exception('get_prirefs(): Unable to get pointer file %s', pointer)
+        LOGGER.exception('get_prirefs(): Unable to get pointer file %s\n%s', pointer, exc)
         result = None
 
-    if not result['adlibJSON']['diagnostic']['hitlist']:
+    if not result['adlibJSON']['recordList']['record'][0]['hitlist']:
         return None
-    return result
+    return result['adlibJSON']['recordList']['record'][0]['hitlist']
 
 
 def get_dictionary(priref_list):
@@ -389,13 +389,10 @@ def cid_media_append(priref, data):
     payload_mid = ''.join(data)
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
-
-    post_response = requests.post(
-        CID_API,
-        params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-        data={'data': payload})
-    if "<error><info>" in str(post_response.text):
-        LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", priref, post_response.text)
+  
+    record = adlib.post(CID_API, payload, 'media', 'updaterecord')
+    if not record:
+        LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", priref, payload)
         return False
     LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", priref)
     return True

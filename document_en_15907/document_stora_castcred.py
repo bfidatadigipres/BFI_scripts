@@ -454,7 +454,7 @@ def cid_work_check(search):
     if hits <= 1:
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         input_note = adlib.retrieve_field_name(record[0], 'input.notes')[0]
-        edit_name = adlib.retrieve_field_name(record[num], 'edit.name')[0]
+        edit_name = adlib.retrieve_field_name(record[0], 'edit.name')[0]
         print(priref, input_note, edit_name)
         if 'STORA off-air television capture' in str(input_note):
             return [priref], [edit_name]

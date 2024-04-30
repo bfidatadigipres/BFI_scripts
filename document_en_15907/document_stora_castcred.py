@@ -454,19 +454,20 @@ def cid_work_check(search):
         try:
             priref = adlib.retrieve_field_name(record[num], 'priref')[0]
             input_note = adlib.retrieve_field_name(record[num], 'input.notes')[0]
+            print(priref, input_note)
         except (KeyError, IndexError, TypeError):
             priref = ''
             input_note = ''
         try:
             edit_name = adlib.retrieve_field_name(record[num], 'edit.name')[0]
+            print(edit_name)
         except (KeyError, IndexError):
             edit_name = ''
-
-        if 'STORA off-air television capture - automated bulk documentation' in input_note:
+        if 'STORA off-air television capture' in str(input_note):
             prirefs.append(priref)
             edit_names.append(edit_name)
 
-    return (prirefs, edit_names)
+    return prirefs, edit_names
 
 
 def cid_manifestation_check(priref):

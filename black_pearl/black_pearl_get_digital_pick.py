@@ -86,7 +86,7 @@ def check_control():
     '''
     with open(CONTROL_JSON) as control:
         j = json.load(control)
-        if not j['black_pearl'] or not ['pause_scripts']:
+        if not j['black_pearl'] or not j['pause_scripts']:
             LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
@@ -230,9 +230,9 @@ def bucket_check(bucket, filename):
     Check CID media record that bucket
     matches for all parts
     '''
-    
+
     search = f'reference_number="{filename}"'
-    records = adlib.retrieve_record(CID_API, 'media', search, '1', ['preservation_bucket'])[1] 
+    records = adlib.retrieve_record(CID_API, 'media', search, '1', ['preservation_bucket'])[1]
     if not records:
         LOGGER.exception("get_media_original_filename: Unable to retrieve Media data")
         return None

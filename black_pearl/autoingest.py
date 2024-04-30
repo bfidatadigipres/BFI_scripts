@@ -180,21 +180,26 @@ def check_filename(fname):
     return True
 
 
-def check_mov_prores(fpath):
+def check_accepted_file_type(fpath):
     '''
-    Retrieve codec and ensure file is ProRes
+    Retrieve codec and ensure file is accepted type
+    TAR accepted from DMS / ProRes all other paths
     '''
+    if any(x in fpath for x in ['qnap_access_renditions', 'qnap_10']):
+        if fpath.endswith(('tar', 'TAR')):
+            return True
+
     cmd = [
         'mediainfo',
         '--Output=Video;%Format%',
         fpath
     ]
-
     formt = subprocess.check_output(cmd)
     formt = formt.decode('utf-8')
-
     if 'ProRes' in str(formt):
         return True
+
+    return False
 
 
 def check_mime_type(fpath, log_paths):
@@ -801,8 +806,8 @@ def main():
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
                 if int(size) > 1099511627776:
                     logger.info('%s\tFile is larger than 1TB. Checking file is ProRes', log_paths)
-                    is_prores = check_mov_prores(fpath)
-                    if is_prores is True:
+                    accepted_file_type = check_accepted_file_type(fpath)
+                    if accepted_file_type is True:
                         try:
                             shutil.move(fpath, os.path.join(black_pearl_blobbing, fname))
                             print(f'\t** File moved to {os.path.join(black_pearl_blobbing, fname)}')

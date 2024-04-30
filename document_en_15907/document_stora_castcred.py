@@ -561,12 +561,14 @@ def main():
             search = f"(title='{title}' AND title_date_start='{date}')"
             print(search)
             prirefs = cid_work_check(search)[0]
-            print("--------------------------------------")
-            print(prirefs)
-            print("--------------------------------------")
+            if not prirefs:
+                LOGGER.info("SKIPPING: Likely repeat as no work record data found for %s transmitted on %s", title, date)
+                LOGGER.info("Renaming JSON with _castcred appended\n")
+                rename(root, file, title)
+                continue
+
             work_priref = ''
             time_match = False
-
             # Iterate all potential matches for transmission time match
             if len(prirefs) > 0:
                 for work_priref_check in prirefs:
@@ -586,11 +588,6 @@ def main():
                         time_match = False
                         work_priref = ''
                         continue
-            else:
-                LOGGER.info("SKIPPING: Likely repeat as no work record data found for %s transmitted on %s", title, date)
-                LOGGER.info("Renaming JSON with _castcred appended\n")
-                rename(root, file, title)
-                continue
 
             if len(work_priref) == 0:
                 LOGGER.info("PROBLEM: Prirefs found but no transmission times matched for %s %s", title, date)

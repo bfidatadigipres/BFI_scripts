@@ -450,8 +450,10 @@ def cid_work_check(search):
     print("--------------------------------------")
     print(record)
     print("--------------------------------------")
+    if hits == 0:
+        return None, None
 
-    if hits <= 1:
+    if hits == 1:
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         input_note = adlib.retrieve_field_name(record[0], 'input.notes')[0]
         edit_name = adlib.retrieve_field_name(record[0], 'edit.name')[0]

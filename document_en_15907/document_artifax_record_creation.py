@@ -144,7 +144,7 @@ def get_country(code):
     code = code.lower()
     with open(LANGUAGE_MAP, 'r') as files:
         data = (yaml.load(files, Loader=yaml.FullLoader))
-        for key, val in data.items():
+        for _ in data.items():
             if str(code) in data['languages']:
                 country = data['languages'][f'{code}']
     return country

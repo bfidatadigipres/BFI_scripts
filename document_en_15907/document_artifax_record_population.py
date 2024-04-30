@@ -230,7 +230,7 @@ def move_file(fname):
             shutil.move(fname, file_completed)
             LOGGER.info("Moved %s to completed folder", fname)
         except Exception as err:
-            LOGGER.warning("Unable to move %s to completed folder %s", fname, file_completed, err)
+            LOGGER.warning("Unable to move %s to completed folder %s\n%s", fname, file_completed, err)
 
 
 def cid_retrieve(search):
@@ -303,9 +303,8 @@ def work_season_retrieve(fname, supplied_season_id):
     with open(fname, 'r') as inf:
         dcts = json.load(inf)
         for dct in dcts:
-            if type(dct) is not dict:
+            if not isinstance(dct, dict):
                 return None
-                continue
 
             season_id = ''
             if dct['season_id']:
@@ -713,7 +712,7 @@ def main():
             dcts = json.load(inf)
             for dct in dcts:
                 # Artifax quick check
-                if type(dct) is not dict:
+                if not isinstance(dct, dict):
                     LOGGER.info("SKIPPING: Dictionary missing, only string: %s", dct)
                     continue
                 check_data = work_quick_check(dct)
@@ -812,7 +811,7 @@ def main():
                 # Work found unedited, begin appending/creation of new whole record
                 elif 'datadigipres' not in str(edit_name):
                     if festival_grouping not in groupings[0]:
-                        LOGGER.info("SKIPPING FURTHER STAGES: Festival groupings do not match for this record %s and %s", festival_grouping, grouping)
+                        LOGGER.info("SKIPPING FURTHER STAGES: Festival groupings do not match for this record %s and %s", festival_grouping, groupings[0])
                         continue
                     set_three = True
                 else:
@@ -934,7 +933,7 @@ def main():
                 if append_new_grouping:
                     LOGGER.info("-------------- STAGE FIVE: APPENDING GROUP TO WORK RECORD %s --------------", cid_title)
                     LOGGER.info("Pushing new grouping %s to Work record %s", festival_grouping, priref)
-                    grouping_dct = ({'grouping.lref': festival_grouping})
+                    grouping_dct = {'grouping.lref': festival_grouping}
                     success_group = work_update(priref, grouping_dct)
                     if success_group:
                         LOGGER.info("New Festival grouping appended to CID work %s", priref)
@@ -998,9 +997,9 @@ def make_manifestations(work_copy_fname, current_festival, start_date, priref, m
     # Check if priref's exist for either and return True
     if (len(man_int_priref) > 0 or len(man_fest_priref) > 0):
         return True
-    else:
-        LOGGER.info("Failed to create manifestation: \n%s\n\n%s\n\n%s", manifestation_dct, manifestation_internet_dct, manifestation_festival_dct)
-        return False
+
+    LOGGER.info("Failed to create manifestation: \n%s\n\n%s\n\n%s", manifestation_dct, manifestation_internet_dct, manifestation_festival_dct)
+    return False
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
@@ -1310,4 +1309,3 @@ def push_date_artifax(object_id):
 
 if __name__ == '__main__':
     main()
-

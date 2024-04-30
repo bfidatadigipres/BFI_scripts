@@ -491,13 +491,15 @@ def cid_manifestation_check(priref):
         record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', ['transmission_start_time'])[1]
     except (KeyError, IndexError):
         LOGGER.exception("cid_manifestation_check(): Unable to check for record with priref: %s", priref)
+        record = None
+    if not record:
+        return None
     try:
         start_time = adlib.retrieve_field_name(record[0], 'transmission_start_time')[0]
+        return start_time
     except (KeyError, IndexError):
         LOGGER.info("cid_manifestation_check(): Unable to extract start time for manifestation")
-        start_time = ''
-
-    return start_time
+        return None
 
 
 def main():

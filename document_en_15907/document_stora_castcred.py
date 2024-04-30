@@ -603,6 +603,7 @@ def main():
             person_priref, person_name, person_act_type = '', '', ''
             if len(cast_dct) > 0 and time_match:
                 for key, val in cast_dct.items():
+                    print(val)
                     cast_sort = str(key)
                     cast_sort.zfill(2)  # 50, 55, 60
                     for k, v in val.items():

@@ -489,6 +489,8 @@ def cid_manifestation_check(priref):
     search = f"(part_of_reference.lref='{priref}')"
     try:
         record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', ['transmission_start_time'])[1]
+        print("-------------------")
+        print(record)
     except (KeyError, IndexError):
         LOGGER.exception("cid_manifestation_check(): Unable to check for record with priref: %s", priref)
         record = None
@@ -577,6 +579,8 @@ def main():
 
                     # Check manifestation for matching transmission time
                     transmission_time = cid_manifestation_check(work_priref_check)
+                    if not transmission_time:
+                        continue
                     print(f"If {str(time)} == {str(transmission_time[:8])}:")
                     if str(time) == str(transmission_time)[:8]:
                         LOGGER.info("Programme times match: %s and %s\n", time, transmission_time[0:8])

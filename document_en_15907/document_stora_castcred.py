@@ -414,6 +414,7 @@ def cid_person_check(credit_id):
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
     try:
         result = adlib.retrieve_record(CID_API, 'people', search, '0', ['priref', 'name', 'activity_type'])[1]
+        print(result)
     except (KeyError, IndexError, TypeError):
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
     try:
@@ -447,9 +448,7 @@ def cid_work_check(search):
         hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', ['priref', 'input.notes, edit.name'])
     except (KeyError, IndexError):
         LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
-    print("--------------------------------------")
-    print(record)
-    print("--------------------------------------")
+
     if hits == 0:
         return None, None
 
@@ -457,7 +456,7 @@ def cid_work_check(search):
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         input_note = adlib.retrieve_field_name(record[0], 'input.notes')[0]
         edit_name = adlib.retrieve_field_name(record[0], 'edit.name')[0]
-        print(priref, input_note, edit_name)
+
         if 'STORA off-air television capture' in str(input_note):
             return [priref], [edit_name]
     
@@ -466,14 +465,11 @@ def cid_work_check(search):
         try:
             priref = adlib.retrieve_field_name(record[num], 'priref')[0]
             input_note = adlib.retrieve_field_name(record[num], 'input.notes')[0]
-            print(priref)
-            print(input_note)
         except (KeyError, IndexError, TypeError):
             priref = ''
             input_note = ''
         try:
             edit_name = adlib.retrieve_field_name(record[num], 'edit.name')[0]
-            print(edit_name)
         except (KeyError, IndexError):
             edit_name = ''
 
@@ -1014,7 +1010,7 @@ def write_payload(payload, person_priref):
     '''
     Removed from main to avoid repetition
     '''
-    print('REQUESTS: Sending POST request to people database to lock record')
+    print('Sending POST request to people database to lock record')
     
     try:
         record = adlib.post(CID_API, payload, 'people', 'updaterecord')

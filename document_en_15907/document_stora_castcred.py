@@ -413,7 +413,7 @@ def cid_person_check(credit_id):
     '''
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
     try:
-        result = adlib.retrieve_record(CID_API, 'people', search, '0', ['priref', 'name', 'activity_type'])[1]
+        result = adlib.retrieve_record(CID_API, 'people', search, '0')[1]
         print(result)
     except (KeyError, IndexError, TypeError):
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)

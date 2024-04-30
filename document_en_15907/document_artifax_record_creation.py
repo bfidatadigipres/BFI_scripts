@@ -23,6 +23,8 @@ Fetch metadata from Artifax
    (to be tested with Artifax sandbox)
 4. Delete JSON files in completed/ folder if over 2 days since last modification
 
+NOTE: Updated to Adlib V3
+
 Joanna White
 2021
 '''
@@ -40,9 +42,9 @@ import itertools
 from datetime import timedelta
 
 # Local packages
-sys.path.append(os.environ['CODE'])
-import adlib
 import title_article
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
 
 # Local date vars for script comparison/activation
 TODAY_TIME = str(datetime.datetime.now())
@@ -58,6 +60,7 @@ JSON_DELETE_PATH = os.environ['COMPLETED_PATH']
 LANGUAGE_MAP = os.environ['LANGUAGE_YAML']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
+CID_API = os.environ['CID_API4']
 
 # Setup logging (running from bk-qnap-video)
 logger = logging.getLogger('document_artifax_record_creation')
@@ -74,11 +77,6 @@ CUSTOM_API = os.environ['ARTIFAX_CUSTOM']
 HEADERS = {
     "X-API-KEY": os.environ['ARTIFAX_API_KEY']
 }
-
-# CID URL details
-CID_API = os.environ['CID_API3']
-cid = adlib.Database(CID_API)
-cur = adlib.Cursor(cid)
 
 # Data for CID Festival/Artifax season thesaurus look up
 FESTIVALS = {
@@ -120,12 +118,10 @@ def check_cid():
     Check CID is online
     '''
     try:
-        logger.info('* Initialising CID session... Script will exit if CID off line')
-        cur = adlib.Cursor(cid)
-        logger.info("* CID online, script will proceed")
-    except Exception:
+        adlib.check(CID_API)
+    except KeyError:
         print("* Cannot establish CID session, exiting script")
-        logger.exception('Cannot establish CID session, exiting script')
+        logger.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -534,7 +530,7 @@ def create_work(work_data_dct=None):
     work_values.extend(work_default)
 
     # Create basic work record
-    work_values_xml = cur.create_record_data('', data=work_values)
+    work_values_xml = adlib.create_record_data('', work_values)
     if work_values_xml is None:
         return None
     print("***************************")
@@ -542,49 +538,20 @@ def create_work(work_data_dct=None):
 
     try:
         logger.info("Attempting to create Work record for item %s", title)
-        data = push_record_create(work_values_xml, 'works', 'insertrecord')
-        if data[0]:
-            cid_priref = data[0]
-            cid_object_number = data[1]
+        record = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
+        if record:
+            cid_priref = adlib.retrieve_field_name(record, 'priref')[0]
+            cid_object_number = adlib.retrieve_field_name(record, 'object_number')[0]
             print(f'* Work record created with Priref {cid_priref} Object number {cid_object_number}')
             logger.info('create_work(): Work record created with priref %s', cid_priref)
         else:
             logger.warning("CID priref/object_number is not present after creating CID record")
-            print("Creation of record failed using method Requests: 'works', 'insertrecord'")
+            print("Creation of record failed using adlib.post()")
     except Exception as err:
         print('* Unable to create Work record')
         logger.critical('create_work():Unable to create Work record', err)
 
     return (cid_priref, cid_object_number)
-
-
-def push_record_create(payload, database, method):
-    '''
-    Receive adlib formed XML but use
-    requests to create the CID record
-    '''
-    params = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'json'
-    }
-
-    headers = {'Content-Type': 'text/xml'}
-
-    try:
-        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
-    except Exception as err:
-        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
-        print(err)
-        return None
-    print(f"Record list: {response.text}")
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
-        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
-        return priref, object_number
-    return None
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
@@ -626,9 +593,9 @@ def push_ob_num_artifax(object_id, object_number):
 def remove_json(completed_path):
     '''
     Clear files moved into completed/ folder to prevent congestion
-    When over 48 hours/2 days old
+    When over 48 hours/2 days old. utcnow() depracated Py3.12
     '''
-    for root, dirs, files in os.walk(completed_path):
+    for root, _, files in os.walk(completed_path):
         for file in files:
             filepath = os.path.join(root, file)
             delta = timedelta(seconds=864000)

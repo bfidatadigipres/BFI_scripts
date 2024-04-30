@@ -474,7 +474,7 @@ def cid_manifestation_check(priref):
     '''
     Retrieve Manifestation transmission start time from parent priref
     '''
-    search = f"(part_of_reference->priref='{priref}')"
+    search = f"(part_of_reference.lref='{priref}')"
     try:
         record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', ['transmission_start_time'])[1]
     except (KeyError, IndexError):

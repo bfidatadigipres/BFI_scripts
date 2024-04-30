@@ -25,12 +25,12 @@ Joanna White / Stephen McConnachie
 
 import os
 import sys
+import yaml
 import json
+import pytz
 import shutil
 import logging
 from datetime import datetime
-import pytz
-import yaml
 from ds3 import ds3, ds3Helpers
 
 # Global vars

@@ -27,11 +27,9 @@ Joanna White
 # Global packages
 import os
 import sys
-import json
 import codecs
 import logging
 import datetime
-import requests
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -455,7 +453,7 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                     if len(person_priref) > 5:
                         payload = create_payload(person_priref, cred_known_for, cred_early_life, cred_bio, cred_trivia)
                     if len(payload) > 90:
-                        success = write_payload(person_priref, payload)
+                        success = write_payload(payload, person_priref)
                         if success:
                             LOGGER.info("** Payload data successfully written to Person record %s, %s", person_priref, person_name)
                             print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
@@ -553,7 +551,7 @@ def append_activity_type(person_priref, activity_type, existing_types):
         print(record)
         return True
     except Exception as err:
-        LOGGER.warning("append_activity_type(): Unable to append activity_type to Person record", err)
+        LOGGER.warning("append_activity_type(): Unable to append activity_type to Person record\n%s", err)
         return False
 
 
@@ -664,13 +662,13 @@ def make_person_record(credit_dct=None):
     record = adlib.post(CID_API, credit_xml, 'people', 'insertrecord')
     if not record:
         print(f"*** Unable to create People record: {credit_xml}")
-        LOGGER.critical('make_person_record():Unable to create People record', err)
+        LOGGER.critical('make_person_record():Unable to create People record\n%s', err)
     try:
         credit_priref = adlib.retrieve_field_name(record, 'priref')[0]
         return credit_priref
     except Exception as err:
         print(f"*** Unable to create People record: {err}")
-        LOGGER.critical('make_person_record():Unable to create People record', err)
+        LOGGER.critical('make_person_record():Unable to create People record\n%s', err)
         raise
 
 

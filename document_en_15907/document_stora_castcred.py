@@ -450,19 +450,29 @@ def cid_work_check(search):
     print("--------------------------------------")
     print(record)
     print("--------------------------------------")
-    for num in range(0, int(hits)):
+
+    if hits <= 1:
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        input_note = adlib.retrieve_field_name(record[0], 'input.notes')[0]
+        print(priref, input_note)
+        if 'STORA off-air television capture' in str(input_note):
+            return [priref], [input_note]
+    
+    for num in range(0, hits):
+        print("Fetch priref and edit_name from record")
         try:
             priref = adlib.retrieve_field_name(record[num], 'priref')[0]
             input_note = adlib.retrieve_field_name(record[num], 'input.notes')[0]
-            print(priref, input_note)
+            print(priref)
+            print(input_note)
         except (KeyError, IndexError, TypeError):
             priref = ''
             input_note = ''
         try:
             edit_name = adlib.retrieve_field_name(record[num], 'edit.name')[0]
-            print(edit_name)
         except (KeyError, IndexError):
             edit_name = ''
+
         if 'STORA off-air television capture' in str(input_note):
             prirefs.append(priref)
             edit_names.append(edit_name)

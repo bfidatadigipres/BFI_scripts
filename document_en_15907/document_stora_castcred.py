@@ -414,7 +414,9 @@ def cid_person_check(credit_id):
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
     try:
         result = adlib.retrieve_record(CID_API, 'people', search, '0')[1]
+        print('-------------------')
         print(result)
+        print('-------------------')
     except (KeyError, IndexError, TypeError):
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
     try:
@@ -603,7 +605,6 @@ def main():
             person_priref, person_name, person_act_type = '', '', ''
             if len(cast_dct) > 0 and time_match:
                 for key, val in cast_dct.items():
-                    print(val)
                     cast_sort = str(key)
                     cast_sort.zfill(2)  # 50, 55, 60
                     for k, v in val.items():
@@ -675,6 +676,7 @@ def main():
             # Create credit data records
             if len(cred_dct) > 0 and time_match:
                 for key, val in cred_dct.items():
+                    print(val)
                     cred_sort = str(key)
                     cred_sort.zfill(2)
                     for k, v in val.items():
@@ -682,6 +684,7 @@ def main():
                         cred_type = cred_type.lower()
                         cred_id = v[0]
                         cred_name = firstname_split(v[1])
+                        print(cred_name, cred_id)
 
                         # Check person record exists
                         person_priref, person_name, person_act_type = cid_person_check(cred_id)

@@ -644,7 +644,7 @@ def main():
                                     else:
                                         LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
                                         print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
-                        if len(person_priref) > 0:
+                        elif len(person_priref) > 0:
                             LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
                             for k_, v_ in contributors.items():
                                 print("---------------")
@@ -720,7 +720,7 @@ def main():
                                     LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
                                     print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
 
-                        if len(person_priref) > 0:
+                        elif len(person_priref) > 0:
                             for k_, v_ in production.items():
                                 print("---------------")
                                 print(k_, v_, cred_type)

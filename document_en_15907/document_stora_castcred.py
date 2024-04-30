@@ -647,6 +647,9 @@ def main():
                         if len(person_priref) > 0:
                             LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
                             for k_, v_ in contributors.items():
+                                print("---------------")
+                                print(k_, v_, cast_type)
+                                print("---------------")
                                 if str(cast_type) == k_:
                                     activity_type = v_[1]
                                     if str(activity_type) in str(person_act_type):
@@ -719,6 +722,9 @@ def main():
 
                         if len(person_priref) > 0:
                             for k_, v_ in production.items():
+                                print("---------------")
+                                print(k_, v_, cred_type)
+                                print("---------------")
                                 if str(cred_type) == k_:
                                     activity_type_cred = v_[1]
                                     if str(activity_type_cred) in str(person_act_type):
@@ -814,8 +820,9 @@ def append_activity_type(person_priref, old_act_type, activity_type):
     Append activity type to person record if different
     '''
     act_type = [{'activity_type': activity_type}]
-    for act in old_act_type:
-        act_type.append({'activity_type': act})
+    if old_act_type:
+        for act in old_act_type:
+            act_type.append({'activity_type': act})
 
     # Convert dict to xml using adlib
     xml = adlib.create_record_data(person_priref, act_type)

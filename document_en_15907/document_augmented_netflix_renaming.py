@@ -107,23 +107,28 @@ def cid_check_filename(imp_fname):
     Sends CID request for series_id data
     '''
     search = f'digital.acquired_filename="{imp_fname}"'
+    record = adlib.retrieve_record(CID_API, 'items', search, '1')
+    if not record:
+        print(f"cid_check(): Unable to match IMP with Item record: {imp_fname}")
+        LOGGER.info("Unable to match %s to digital.acquired_filename field", imp_fname)
+        return None
     try:
-        query_result = adlib.retrieve_record(CID_API, 'items', search, '1')
-    except Exception as err:
-        print(f"cid_check(): Unable to match IMP with Item record: {imp_fname} {err}")
-        query_result = None
-    try:
-        priref = adlib.retrieve_field_name(query_result[0], 'priref')[0]
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"cid_check(): Priref: {priref}")
     except (IndexError, KeyError, TypeError):
         priref = ''
+
+    search = f'priref="{priref}"'
+    record = adlib.retrieve_reocrd(CID_API, 'items', search, '1')
+    if not record:
+        return None
     try:
-        ob_num = adlib.retrieve_field_name(query_result[0], 'object_number')[0]
+        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
         print(f"cid_check(): Object number: {ob_num}")
     except (IndexError, KeyError, TypeError):
         ob_num = ''
     try:
-        file_type = adlib.retrieve_field_name(query_result[0]['Acquired_filename'][0], 'digital.acquired_filename.type')[0]
+        file_type = adlib.retrieve_field_name(record[0], 'digital.acquired_filename.type')[0]
         print(f"cid_check(): File type: {file_type}")
     except (IndexError, KeyError, TypeError):
         file_type = ''

@@ -146,9 +146,9 @@ def walk_netflix_folders():
     print(STORAGE)
     rename_folders = []
     for root, dirs, _ in os.walk(STORAGE):
-        for dir in dirs:
-            if 'rename_netflix' == dir:
-                rename_folders.append(os.path.join(root, dir))
+        for directory in dirs:
+            if 'rename_netflix' == directory:
+                rename_folders.append(os.path.join(root, directory))
     print(f"{len(rename_folders)} rename folder(s) found")
     folder_list = []
     for rename_folder in rename_folders:

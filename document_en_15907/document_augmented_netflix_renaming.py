@@ -107,7 +107,7 @@ def cid_check_filename(imp_fname):
     Sends CID request for series_id data
     '''
     search = f'digital.acquired_filename="{imp_fname}"'
-    record = adlib.retrieve_record(CID_API, 'items', search, '1')
+    record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
     print(record)
     if not record:
         print(f"cid_check(): Unable to match IMP with Item record: {imp_fname}")
@@ -120,7 +120,7 @@ def cid_check_filename(imp_fname):
         priref = ''
 
     search = f'priref="{priref}"'
-    record = adlib.retrieve_record(CID_API, 'items', search, '1')
+    record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
     print(record)
     if not record:
         return None

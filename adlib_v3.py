@@ -148,7 +148,7 @@ def group_check(record, fname):
     Get group that contains field key
     '''
     group_check = dict([ (k, v) for k, v in record.items() if f'{fname}' in str(v) ])
-
+    fieldnames = []
     if len(group_check) == 1:
         first_key = next(iter(group_check))
         for entry in group_check[f'{first_key}']:
@@ -156,16 +156,17 @@ def group_check(record, fname):
                 if str(key) == str(fname):
                     if '@lang' in str(val):
                         try:
-                            return val[0]['value'][0]['spans'][0]['text']
+                            fieldnames.append((val[0]['value'][0]['spans'][0]['text'])
                         except (IndexError, KeyError):
-                            print(f"Failed to extract value: {val}")
-                            return None
+                            pass
                     else:
                         try:
-                            return val[0]['spans'][0]['text']
+                            fieldnames.append(*)val[0]['spans'][0]['text'])
                         except (IndexError, KeyError):
-                            print(f"Failed to extract value: {val}")
-                            return None
+                            pass
+        if fieldnames:
+            return fieldnames
+
     elif len(group_check) > 1:
         all_vals = []
         for kname in group_check:

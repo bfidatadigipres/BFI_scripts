@@ -34,7 +34,7 @@ import datetime
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-from adlib_v3 import adlib
+import adlib_v3 as adlib
 
 # Global variables
 LOGS = os.environ.get('LOG_PATH')

@@ -284,7 +284,7 @@ def make_item_record_dict(priref, file, record):
     if 'Title' in str(record):
         imp_title = adlib.retrieve_field_name(record[0], 'title')[0]
         item.append({'title': f"{imp_title} (Timed Text)"})
-        if adlib.retrieve_field_name(record[0], 'title_article')[0]:
+        if 'title_article' in str(record[0]):
             item.append({'title.article': adlib.retrieve_field_name(record[0], 'title_article')[0]})
         item.append({'title.language': 'English'})
         item.append({'title.type': '05_MAIN'})

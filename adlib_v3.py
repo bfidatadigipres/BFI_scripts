@@ -156,12 +156,12 @@ def group_check(record, fname):
                 if str(key) == str(fname):
                     if '@lang' in str(val):
                         try:
-                            fieldnames.append((val[0]['value'][0]['spans'][0]['text'])
+                            fieldnames.append(val[0]['value'][0]['spans'][0]['text'])
                         except (IndexError, KeyError):
                             pass
                     else:
                         try:
-                            fieldnames.append(*)val[0]['spans'][0]['text'])
+                            fieldnames.append(val[0]['spans'][0]['text'])
                         except (IndexError, KeyError):
                             pass
         if fieldnames:

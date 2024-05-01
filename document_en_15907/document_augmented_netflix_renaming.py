@@ -108,6 +108,7 @@ def cid_check_filename(imp_fname):
     '''
     search = f'digital.acquired_filename="{imp_fname}"'
     record = adlib.retrieve_record(CID_API, 'items', search, '1')
+    print(record)
     if not record:
         print(f"cid_check(): Unable to match IMP with Item record: {imp_fname}")
         LOGGER.info("Unable to match %s to digital.acquired_filename field", imp_fname)
@@ -120,6 +121,7 @@ def cid_check_filename(imp_fname):
 
     search = f'priref="{priref}"'
     record = adlib.retrieve_record(CID_API, 'items', search, '1')
+    print(record)
     if not record:
         return None
     try:

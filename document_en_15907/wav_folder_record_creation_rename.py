@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 '''
-wav_folder_record_creation_rename.py
-
 Script functions:
 
 1. Pick up folders (named after their source Item record)
@@ -17,6 +15,8 @@ Script functions:
 7. All actions logged human readable for Mike, and placed in audio ops
    folder, at top level.
 
+NOTE: Updated for Adlib V3
+
 Joanna White
 2023
 '''
@@ -30,11 +30,10 @@ import shutil
 import logging
 import datetime
 import subprocess
-import requests
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global paths/vars
 AUTO_WAV_PATH = os.environ['AUTOMATION_WAV']
@@ -45,9 +44,7 @@ FAILED_PATH = os.path.join(WAV_RENAME_PATH, 'failed_rename/')
 LOCAL_LOG = os.path.join(WAV_RENAME_PATH, 'record_create_folder_rename.log')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ['CID_API4']
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
@@ -77,12 +74,10 @@ def cid_check():
     Tests if CID active before all other operations commence
     '''
     try:
-        LOGGER.info('* Initialising CID session... Script will exit if CID off line')
-        CUR = adlib.Cursor(CID)
-        LOGGER.info("* CID online, script will proceed")
+        adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
-        LOGGER.critical('Cannot establish CID session, exiting script')
+        LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -128,52 +123,54 @@ def cid_query(database, search, object_number):
     '''
     Format CID query for cid_data_retrieval()
     '''
-    query = {'database': database,
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, title, title.article, title.language, object_number, source_item, derived_item, sound_item'}
-    try:
-        query_result = CID.get(query)
-    except Exception:
+    fields = [
+        'priref',
+        'title',
+        'title.article',
+        'title.language',
+        'object_number',
+        'source_item',
+        'derived_item',
+        'sound_item'
+    ]
+    record = adlib.retrieve_record(CID_API, database, search, '0', fields)
+    if not record:
         print(f"cid_query(): Unable to retrieve data for {object_number}")
         LOGGER.exception("cid_query(): Unable to retrieve data for %s", object_number)
-        query_result = None
+        return None
 
-    print(query_result.records)
-
-    try:
-        priref = query_result.records[0]['priref'][0]
-        print(priref)
-    except (KeyError, IndexError):
+    print(record[0])
+    if 'priref' in str(record[0]):
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    else:
         priref = ""
-    try:
-        title = query_result.records[0]['Title'][0]['title'][0]
-    except (KeyError, IndexError):
+    if 'title' in str(record[0]):
+        title = adlib.retrieve_field_name(record[0], 'title')[0]
+    else
         title = ""
-    try:
-        title_article = query_result.records[0]['Title'][0]['title.article'][0]
-    except (KeyError, IndexError):
+    if 'title.article' in str(record[0]):
+        title_article = adlib.retrieve_field_name(record[0], 'title.article')[0]
+    else:
         title_article = ""
-    try:
-        title_language = query_result.records[0]['Title'][0]['title.language'][0]
-    except (KeyError, IndexError):
+    if 'title.language' in str(record[0]):
+        title_language = adlib.retrieve_field_name(record[0], 'title.language')[0]
+    else:
         title_language = ""
-    try:
-        ob_num = query_result.records[0]['object_number'][0]
-    except (KeyError, IndexError):
+    if 'object_number' in str(record[0]):
+        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
+    else:
         ob_num = ""
-    try:
-        source_item = query_result.records[0]['Source_item'][0]['source_item'][0]
-    except (KeyError, IndexError):
+    if 'source_item' in str(record[0]):
+        source_item = adlib.retrieve_field_name(record[0], 'source_item')[0]
+    else:
         source_item = ""
-    try:
-        derived_item = query_result.records[0]['Derived_item'][0]['derived_item'][0]
-    except (KeyError, IndexError):
+    if 'derived_item' in str(record[0]):
+        derived_item = adlib.retrieve_field_name(record[0], 'derived_item')[0]
+    else:
         derived_item = ""
-    try:
-        sound_item = query_result.records[0]['sound_item'][0]['value'][1]
-    except (KeyError, IndexError):
+    if 'sound_item' in str(record[0]):
+        sound_item = adlib.retrieve_field_name(record[0], 'sound_item')[0]
+    else:
         sound_item = ""
 
     new_title = remove_whitespace(title)
@@ -337,7 +334,7 @@ def main():
 
         # Compile list of enclosed files and add to quality comments of new Item record
         qual_comm = f"TAR file contains: {'; '.join(quality_comments)}."
-        append_success = add_quality_comments(wav_priref, qual_comm)
+        append_success = adlib.add_quality_comments(CID_API, wav_priref, qual_comm)
         if not append_success:
             LOGGER.warning("Unable to add QUALITY COMMENTS data to CID Item record <%s>\n<%s>", wav_priref, qual_comm)
 
@@ -385,7 +382,6 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
                         {'record_access.owner': 'Acquisitions Full'}])
 
     item_defaults = ([{'record_type': 'ITEM'},
-                      #{'grouping.lref': ''},
                       {'acquisition.method': 'Created by'},
                       {'acquisition.source': 'BFI National Archive'},
                       {'acquisition.source.lref': '999570701'},
@@ -420,11 +416,15 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
     item_values.append({'title.type': '05_MAIN'})
     print(item_values)
 
-    item_values_xml = CUR.create_record_data('', data=item_values)
+    item_values_xml = adlib.create_record_data('', item_values)
     print(item_values_xml)
 
+    record = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+    if not record:
+        return None
     try:
-        wav_priref, wav_ob_num = push_record_create(item_values_xml, 'items', 'insertrecord')
+        wav_priref = adlib.retrieve_field_name(record, 'priref')[0]
+        wav_ob_num = adlib.retrieve_field_name(record, 'object_number')[0]
         print(f'** WAV Item record created with Priref {wav_priref}')
         print(f'** WAV Item record created with object number {wav_ob_num}')
         LOGGER.info('WAV Item record created with priref %s', wav_priref)
@@ -433,106 +433,6 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
         print(f"\nUnable to create CID WAV item record for {title} {err}")
         LOGGER.exception("Unable to create WAV item record!")
         return None
-
-
-def push_record_create(payload, database, method):
-    '''
-    Receive adlib formed XML and use
-    requests.request post method to make record
-    '''
-    params = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'json'
-    }
-    headers = {'Content-Type': 'text/xml'}
-
-    try:
-        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
-    except Exception as err:
-        LOGGER.critical("push_record_create(): Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
-        print(err)
-        return None
-
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
-        ob_num = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
-        return priref, ob_num
-    return None
-
-
-def add_quality_comments(priref, comments):
-    '''
-    Receive list of wav files in folder
-    and make into XML quality comments
-    and updaterecord with data
-    '''
-
-    p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
-    date_now = str(datetime.datetime.now())[:10]
-    p_comm = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"
-    p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
-    p_writer = "<quality_comments.writer>datadigipres</quality_comments.writer>"
-    p_end = "</quality_comments></record></recordList></adlibXML>"
-    payload = p_start + p_comm + p_date + p_writer + p_end
-    LOGGER.info("Payload for quality comments: %s", payload)
-
-    lock_success = write_lock(priref)
-    if lock_success:
-        response = requests.request(
-            'POST',
-            CID_API,
-            headers={'Content-Type': 'text/xml'},
-            params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data=payload,
-            timeout=1200)
-        if '<error><info>' in str(response.text):
-            LOGGER.warning("add_quality_comments(): Error returned from update of quality comments to record: %s\n%s", priref, payload)
-            print(response.text)
-            unlock_record(priref)
-            return False
-        LOGGER.info("add_quality_comments(): No error returned. Payload written successfully")
-        return True
-    LOGGER.warning("add_quality_comments(): Unable to lock record <%s> and write quality comments", priref)
-    return False
-
-
-def write_lock(priref):
-    '''
-    Lock item record for requests updaterecord
-    '''
-    try:
-        response = requests.request(
-            'POST',
-            CID_API,
-            params={'database': 'items', 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'},
-            timeout=1200)
-        print(f"Write lock response: {response.text}")
-        return True
-    except Exception as err:
-        print(err)
-        LOGGER.warning("write_lock(): Failed to lock item record %s", priref)
-        return False
-
-
-def unlock_record(priref):
-    '''
-    Unlock item record following dailed updaterecord
-    '''
-    try:
-        response = requests.request(
-            'POST',
-            CID_API,
-            params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'},
-            timeout=1200)
-        print(f"Unlock response: {response.text}")
-        return True
-    except Exception as err:
-        print(err)
-        LOGGER.warning("unlock_record(): Failed to unlock item record %s", priref)
-        return False
 
 
 def rename(folder, ob_num):

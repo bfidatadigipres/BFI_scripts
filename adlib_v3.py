@@ -254,11 +254,9 @@ def get_fragments(obj):
 
 def add_quality_comments(api, priref, comments):
     '''
-    Receive list of wav files in folder
-    and make into XML quality comments
+    Receive comments string
+    convert to XML quality comments
     and updaterecord with data
-    If updating quality_comments to an old record
-    please consider implementing lock/unlock features
     '''
 
     p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"

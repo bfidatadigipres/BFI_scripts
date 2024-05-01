@@ -138,7 +138,7 @@ def retrieve_field_name(record, fieldname):
             else:
                 field_list.append(field['spans'][0]['text'])
     except KeyError:
-        field_list.append(group_check(record, fieldname))
+        field_list = group_check(record, fieldname)
 
     return field_list
 

@@ -146,7 +146,7 @@ def cid_query(database, search, object_number):
         priref = ""
     if 'title' in str(record[0]):
         title = adlib.retrieve_field_name(record[0], 'title')[0]
-    else
+    else:
         title = ""
     if 'title.article' in str(record[0]):
         title_article = adlib.retrieve_field_name(record[0], 'title.article')[0]

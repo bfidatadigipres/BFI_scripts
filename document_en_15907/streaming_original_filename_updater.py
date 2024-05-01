@@ -77,7 +77,7 @@ def cid_check_items(grouping, file_type, platform):
     search = f'(grouping.lref="{grouping}" and file_type="{file_type}")'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0', ['object_number', 'digital.acquired_filename'])
     if not record:
-        LOGGER.warning("cid_check_items(): Unable to retrieve any %s groupings from CID item records: %s", platform, err)
+        LOGGER.warning("cid_check_items(): Unable to retrieve any %s groupings from CID item records", platform)
         return None
     LOGGER.info("%s CID item records found: %s", platform, hits)
     return record
@@ -88,35 +88,34 @@ def cid_check_filenames(priref, platform):
     Sends CID request for object number
     checks if filename already populated
     '''
-    query = {'database': 'items',
-             'search': f'priref="{priref}"',
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, digital.acquired_filename, digital.acquired_filename.type, edit.notes, edit.date'}
+    search = f'priref="{priref}"'
+    fields = [
+        'priref',
+        'digital.acquired_filename',
+        'edit.notes',
+        'edit.date'
+    ]
+    record = adlib.retrieve_record(CID_API, 'items', search, '0', fields)[1]
+    if not record:
+        LOGGER.warning("cid_check_filenames(): Unable to find CID digital media record match for platform %s: %s", platform, priref)
+        return None
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.warning("cid_check_filenames(): Unable to find CID digital media record match for platform %s: %s %s", platform, priref, err)
-        query_result = None
-
-    try:
-        file_name_block = query_result.records[0]['Acquired_filename']
+        file_name_block = adlib.retrieve_field_name(record[0], 'digital.acquired_filename')
         LOGGER.info("cid_check_filenames(): Total file names retrieved: %s", len(file_name_block))
     except (IndexError, KeyError, TypeError):
         file_name_block = ''
 
     try:
-        edit = query_result.records[0]['Edit']
+        edit = record[0]['Edit']
     except (IndexError, KeyError, TypeError):
-        edit = ''
+        return file_name_block, ''
 
-    if 'edit.notes' in str(edit):
-        for edits in edit:
-            edit_date = edits['edit.date'][0]
-            edit_note = edits['edit.notes'][0]
-            if f'{platform} automated digital acquired filename' in edit_note:
-                return file_name_block, edit_date
-
+    for edits in edit:
+        try:
+            if f'{platform} automated digital acquired filename' in str(edits['edit.notes'][0]['spans'][0]['text']):
+                return file_name_block, edits['edit.date'][0]['spans'][0]['text']
+        except (KeyError, IndexError):
+            pass
     return file_name_block, ''
 
 
@@ -125,32 +124,26 @@ def cid_check_media(priref, original_filename, ingest_fname):
     Check for CID media record linked to Item priref
     and see if digital.acquired_filename field populated
     '''
-    query = {'database': 'media',
-             'search': f'imagen.media.original_filename="{ingest_fname}"',
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, digital.acquired_filename, digital.acquired_filename.type'}
-    try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.warning("cid_check_media(): Unable to find CID digital media record match: %s %s", priref, err)
-        query_result = None
+    search = f'imagen.media.original_filename="{ingest_fname}"'
+    fields = [
+        'priref',
+        'digital.acquired_filename'
+    ]
+    record = adlib.retrieve_record(CID_API, 'media', search, '1', fields)
+    if not record:
+        LOGGER.warning("cid_check_media(): Unable to find CID digital media record match: %s", priref)
+        return None
 
     try:
-        mpriref = query_result.records[0]['priref'][0]
+        mpriref = adlib.retrieve_field_name(record[0], 'priref')[0]
         LOGGER.info("cid_check_media(): CID media record priref: %s", mpriref)
     except (IndexError, KeyError, TypeError):
         mpriref = None
     try:
-        file_name = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename'][0]
+        file_name = adlib.retrieve_field_name(record[0], 'digital.acquired_filename')[0]
         LOGGER.info("cid_check_media(): File names: %s", file_name)
     except (IndexError, KeyError, TypeError):
         file_name = ''
-    try:
-        file_name_type = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename.type'][0]['value'][0]
-        LOGGER.info("cid_check_media(): File name types: %s", file_name_type)
-    except (IndexError, KeyError, TypeError):
-        file_name_type = ''
 
     if original_filename in str(file_name):
         return mpriref, True
@@ -211,13 +204,10 @@ def main():
                 continue
             LOGGER.info("\n* Record found with edit date in range for processing: %s %s", priref, edit_date)
 
-            if 'File' not in str(digital_filenames):
+            if '- Renamed to:' not in str(digital_filenames):
                 continue
             LOGGER.info("Digital filenames found for %s ingested items:", file_type)
-
-            for filenames in digital_filenames:
-                fname = filenames['digital.acquired_filename'][0]
-                ftype = filenames['digital.acquired_filename.type'][0]['value'][0]
+            for fname in digital_filenames:
                 if ' - Renamed to: ' in fname:
                     original_fname, ingest_name = fname.split(' - Renamed to: ')
                     mpriref, match = cid_check_media(priref, original_fname, ingest_name)
@@ -239,7 +229,7 @@ def main():
                         LOGGER.info("\tSKIPPING: No CID media record created yet for ingesting asset: %s", ingest_name)
                         continue
                 else:
-                    LOGGER.info("\tSKIPPING: Acquired filename, not in scope for update: %s - %s", fname, ftype)
+                    LOGGER.info("\tSKIPPING: Acquired filename, not in scope for update: %s - %s", fname)
 
     LOGGER.info("=== Streaming Platform original filename updates END =====================")
 

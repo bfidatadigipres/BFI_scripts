@@ -15,6 +15,8 @@ map the original filename to the
 digital.acquired_filename field
 in CID digital media record
 
+NOTE: Updated for Adlib V3
+
 Joanna White
 2023
 '''
@@ -29,15 +31,13 @@ import datetime
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global variables
 ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API')
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ.get('CID_API4')
 
 # Specific date work
 FORMAT = '%Y-%m-%d'
@@ -74,23 +74,13 @@ def cid_check_items(grouping, file_type, platform):
     Sends CID request for digital.acquired_filename
     block for iteration
     '''
-    query = {'database': 'items',
-             'search': f'(grouping.lref="{grouping}" and file_type="{file_type}")',
-             'limit': '0',
-             'output': 'json',
-             'fields': 'object_number, digital.acquired_filename'}
-    try:
-        query_result = CID.get(query)
-    except Exception as err:
+    search = f'(grouping.lref="{grouping}" and file_type="{file_type}")'
+    hits, record = adlib.retrieve_record(CID_API, 'items', search, '0', ['object_number', 'digital.acquired_filename'])
+    if not record:
         LOGGER.warning("cid_check_items(): Unable to retrieve any %s groupings from CID item records: %s", platform, err)
-        query_result = None
-    try:
-        return_count = query_result.hits
-        LOGGER.info("%s CID item records found: %s", platform, return_count)
-    except (IndexError, TypeError, KeyError):
-        pass
-
-    return query_result.records
+        return None
+    LOGGER.info("%s CID item records found: %s", platform, hits)
+    return record
 
 
 def cid_check_filenames(priref, platform):

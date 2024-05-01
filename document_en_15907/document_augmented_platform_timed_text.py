@@ -334,7 +334,7 @@ def create_new_item_record(priref, fname, record):
     item_dct = make_item_record_dict(priref, fname, record)
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data('', item_dct)
-    new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord', '')
+    new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

@@ -119,7 +119,7 @@ def cid_check_filename(imp_fname):
         priref = ''
 
     search = f'priref="{priref}"'
-    record = adlib.retrieve_reocrd(CID_API, 'items', search, '1')
+    record = adlib.retrieve_record(CID_API, 'items', search, '1')
     if not record:
         return None
     try:

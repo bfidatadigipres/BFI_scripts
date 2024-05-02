@@ -42,13 +42,12 @@ import shutil
 import logging
 import datetime
 import subprocess
-import requests
 import pytz
 import tenacity
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global paths from environment vars
 MP4_POLICY = os.environ['MP4_POLICY']
@@ -57,22 +56,24 @@ FLLPTH = sys.argv[1].split('/')[:4]
 LOG_PREFIX = '_'.join(FLLPTH)
 LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
+<<<<<<< HEAD
 CID_API = os.environ['CID_API3']
 TRANSCODE = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
+=======
+CID_API = os.environ['CID_API4']
+# TRANSCODE = os.environ['TRANSCODING']
+TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
+>>>>>>> 8100d7cb668286a584789d65c1f346d5138055c4
 HOST = os.uname()[1]
 
 # Setup logging
-logger = logging.getLogger('mp4_transcode_make_jpeg')
+LOGGER = logging.getLogger('mp4_transcode_make_jpeg')
 HDLR = logging.FileHandler(LOG_FILE)
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
-logger.addHandler(HDLR)
-logger.setLevel(logging.INFO)
-
-# CID URL details
-CID = adlib.Database(CID_API)
-CUR = adlib.Cursor(CID)
+LOGGER.addHandler(HDLR)
+LOGGER.setLevel(logging.INFO)
 
 SUPPLIERS = {"East Anglian Film Archive": "eafa",
              "Imperial War Museum": "iwm",
@@ -102,9 +103,10 @@ def check_control():
 def check_cid():
     ''' Test CID online '''
     try:
-        cur = adlib.Cursor(CID)
-    except Exception:
-        logger.exception('%s\tEXCEPTION\tCannot establish CID session, exiting script', local_time())
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -161,8 +163,8 @@ def main():
     completed_pth = os.path.join(os.path.split(filepath)[0], 'completed/', file)
 
     log_build.append(f"{local_time()}\tINFO\t================== START Transcode MP4 make JPEG {file} {HOST} ==================")
-
     print(f"File to be processed: {file}. Completed path: {completed_pth}")
+
     outpath, outpath2 = "", ""
 
     ext = ext.lstrip('.')
@@ -202,16 +204,16 @@ def main():
     if os.path.exists(os.path.join(transcode_pth, f"{fname}.mp4")):
         instance_running = check_ps_runs(fullpath)
         if instance_running is True:
-            logger.info("Script exiting: This file is currently being transcoded.")
+            LOGGER.info("Script exiting: This file is currently being transcoded.")
             log_build.append(f"{local_time()}\tINFO\tFile is already being processed by another transcode script: {fname}.mp4")
             log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
             log_output(log_build)
             sys.exit(f'EXITING: Script already processing this file: {file}')
         else:
-            logger.info("Found MP4 file is from a broken transcode attempt. Deleting file.")
+            LOGGER.info("Found MP4 file is from a broken transcode attempt. Deleting file.")
             os.remove(os.path.join(transcode_pth, f"{fname}.mp4"))
     if os.path.exists(os.path.join(transcode_pth, fname)):
-        logger.info("Script exiting: This file has been transcoded.")
+        LOGGER.info("Script exiting: This file has been transcoded.")
         log_build.append(f"{local_time()}\tINFO\tFile has already being processed by another transcode script: {os.path.join(transcode_pth, fname)}")
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
         log_output(log_build)
@@ -407,7 +409,7 @@ def main():
         media_data.append(f"<access_rendition.mp4>{os.path.split(outpath2)[1]}</access_rendition.mp4>")
         os.chmod(outpath2, 0o777)
     log_build.append(f"{local_time()}\tINFO\tWriting UMID data to CID Media record: {media_priref}")
-    logger.info(media_data)
+    LOGGER.info(media_data)
     success = cid_media_append(file, media_priref, media_data)
     if success:
         log_build.append(f"{local_time()}\tINFO\tJPEG/HLS filename data updated to CID media record")
@@ -427,7 +429,7 @@ def log_output(log_build):
     Collect up log list and output to log in one block
     '''
     for log in log_build:
-        logger.info(log)
+        LOGGER.info(log)
 
 
 def adjust_seconds(duration):
@@ -459,7 +461,7 @@ def get_jpeg(seconds, fullpath, outpath):
         subprocess.call(cmd)
         return True
     except Exception as err:
-        logger.warning("%s\tINFO\tget_jpeg(): failed to extract JPEG\n%s\n%s", local_time(), command, err)
+        LOGGER.warning("%s\tINFO\tget_jpeg(): failed to extract JPEG\n%s\n%s", local_time(), command, err)
         return False
 
 
@@ -480,22 +482,19 @@ def check_item(ob_num, database):
     Use requests to retrieve priref/RNA data for item object number
     '''
     search = f"(object_number='{ob_num}')"
-    query = {'database': database,
-             'search': search,
-             'output': 'json'}
-    results = requests.get(CID_API, params=query)
-    results = results.json()
-
+    record = adlib.retrieve_record(CID_API, database, search, '1')[1]
+    if not record:
+        return None
     try:
-        priref = results['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     except (IndexError, KeyError):
         priref = ''
     try:
-        source = results['adlibJSON']['recordList']['record'][0]['Acquisition_source'][0]['acquisition.source']
+        source = adlib.retrieve_field_name(record[0], 'acquisition.source')[0]
     except (IndexError, KeyError):
         source = ''
     try:
-        groupings = results['adlibJSON']['recordList']['record'][0]['grouping']
+        groupings = adlib.retrieve_field_name(record[0], 'grouping')
     except (IndexError, KeyError):
         groupings = ''
 
@@ -507,24 +506,21 @@ def get_media_priref(fname):
     Retrieve priref from Digital record
     '''
     search = f"(imagen.media.original_filename='{fname}')"
-    query = {'database': 'media',
-             'search': search,
-             'output': 'json'}
-    results = requests.get(CID_API, params=query)
-    results = results.json()
-
+    record = adlib.retrieve_record(CID_API, 'media', search, '1')[1]
+    if not record:
+        return None
     try:
-        priref = results['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     except (IndexError, KeyError):
         priref = ''
     try:
-        input_date = results['adlibJSON']['recordList']['record'][0]['input.date'][0]
+        input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
     except (IndexError, KeyError):
         input_date = ''
     try:
-        largeimage_umid = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.largeimage'][0]
-        thumbnail_umid = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.thumbnail'][0]
-        access_rendition = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.mp4'][0]
+        largeimage_umid = adlib.retrieve_field_name(record[0], 'access_rendition.largeimage')[0]
+        thumbnail_umid = adlib.retrieve_field_name(record[0], 'access_rendition.thumbnail')[0]
+        access_rendition = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
     except (IndexError, KeyError):
         largeimage_umid, thumbnail_umid, access_rendition = '','',''
 
@@ -534,8 +530,6 @@ def get_media_priref(fname):
 def sort_ext(ext):
     '''
     Decide on file type
-    JMW, confirm these from autoingest scripts
-    May be deprecated if using 'file --mime-type -b'
     '''
     mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct'],
@@ -989,7 +983,7 @@ def make_jpg(filepath, arg, transcode_pth, percent):
     try:
         subprocess.call(cmd)
     except Exception as err:
-        logger.error("%s\tERROR\tJPEG creation failed for filepath: %s\n%s", local_time(), filepath, err)
+        LOGGER.error("%s\tERROR\tJPEG creation failed for filepath: %s\n%s", local_time(), filepath, err)
 
     if os.path.exists(outfile):
         return outfile
@@ -1014,7 +1008,7 @@ def conformance_check(file):
         print(success)
     except Exception as err:
         success = ""
-        logger.warning("%s\tWARNING\tMediaconch policy retrieval failure for %s\n%s", local_time(), file, err)
+        LOGGER.warning("%s\tWARNING\tMediaconch policy retrieval failure for %s\n%s", local_time(), file, err)
 
     if 'pass!' in str(success):
         return "PASS!"
@@ -1034,22 +1028,16 @@ def cid_media_append(fname, priref, data):
     payload = payload_head + payload_mid + payload_end
     date_supplied = datetime.datetime.now().strftime('%Y-%m-%d')
 
-    post_response = requests.post(
-        CID_API,
-        params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-        data={'data': payload})
+    rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
+    if not rec:
+        return False
     print("**************************************************************")
-    print(post_response.text)
+    print(rec)
     print("**************************************************************")
 
-    if "<error><info>" in str(post_response.text) or "<error>" in str(post_response.text):
-        logger.warning("cid_media_append(): Post of data failed for file %s: %s - %s", fname, priref, post_response.text)
-        return False
-    if f'"modification":"{date_supplied}' in str(post_response.text):
-        logger.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
+    if f'"modification":"{date_supplied}' in str(rec):
+        LOGGER.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
         return True
-    logger.info("cid_media_append(): Write of access_rendition data appear successful for %s - Priref %s", fname, priref)
-    return True
 
 
 if __name__ == "__main__":

@@ -20,17 +20,16 @@ Refactored Py3 2023
 # Public packages
 import os
 import sys
+import csv
 import json
 import shutil
 import logging
 import datetime
-import requests
-import unicodecsv
 from lxml import etree
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global variables
 STORAGE = os.environ['STORA_PATH']
@@ -39,9 +38,7 @@ CODE_PATH = os.environ['CODE_DDP']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
-CID_API = os.environ['CID_API3']
-cid = adlib.Database(url=CID_API)
-cur = adlib.Cursor(cid)
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 logger = logging.getLogger('document_stora')
@@ -74,16 +71,13 @@ def check_control():
 
 def check_cid():
     '''
-    Run a CID check to ensure online
+    Test if CID API online
     '''
     try:
-        logger.info('* Initialising CID session... Script will exit if CID off line')
-        cid = adlib.Database(url=CID_API)
-        cur = adlib.Cursor(cid)
-        logger.info("* CID online, script will proceed")
-    except Exception as err:
-        print(f"* Cannot establish CID session, exiting script {err}")
-        logger.exception('Cannot establish CID session, exiting script')
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        logger.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -98,8 +92,8 @@ def csv_retrieve(fullpath):
         print("No info.csv file found. Skipping CSV retrieve")
         return None
 
-    with open(fullpath, 'rb') as inf:
-        rows = unicodecsv.reader(inf, encoding='latin1')
+    with open(fullpath, 'r', encoding='utf-8') as inf:
+        rows = csv.reader(inf)
         for row in rows:
             print(row)
             data = {'channel': row[0], 'title': row[1], 'description': row[2], \
@@ -107,13 +101,6 @@ def csv_retrieve(fullpath):
             logger.info('%s\tCSV being processed: %s', fullpath, data['title'])
 
     return data
-
-
-def remove_non_ascii(var):
-    '''
-    Removes non ascii characters from variables
-    '''
-    return ''.join([i if ord(i) < 128 else ' ' for i in var])
 
 
 def generate_variables(data):
@@ -129,22 +116,33 @@ def generate_variables(data):
     title_date_start = data['title_date_start']
     time = data['time']
 
-    broadcast_company = ''
+    broadcast_company = code_type = ''
     if 'BBC' in channel or 'CBeebies' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '454'
     if 'ITV' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '20425'
-    if channel in ('More4', 'Film4', 'Channel 4', 'E4'):
+    if channel == 'More4' or channel == 'Film4' or channel == 'E4':
+        code_type = 'MPEG-2'
+        broadcast_company = '73319'
+    if channel == 'Channel4':
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '73319'
     if '5' in channel or 'Five' in channel:
+        code_type = 'MPEG-2'
         broadcast_company = '24404'
     if 'Al Jazeera' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '125338'
     if 'GB News' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '999831694'
     if 'Sky News' in channel:
+        code_type = 'MPEG-2'
         broadcast_company = '78200'
     if 'Talk TV' in channel:
+        code_type = 'MPEG-4 AVC'
         broadcast_company = '999883795'
 
     duration = data['duration']
@@ -160,10 +158,10 @@ def generate_variables(data):
     actual_duration_total = (actual_duration_hours_integer * 60) + actual_duration_minutes_integer
     actual_duration_seconds_integer = int(actual_duration_seconds)
 
-    return (title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company)
+    return (title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company, code_type)
 
 
-def build_defaults(title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company):
+def build_defaults(title, description, title_date_start, time, duration_total, actual_duration_total, actual_duration_seconds_integer, channel, broadcast_company, code_type):
     '''
     Get detailed information
     and build record_defaults dict
@@ -222,7 +220,7 @@ def build_defaults(title, description, title_date_start, time, duration_total, a
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
              {'file_type': 'MPEG-TS'},
-             {'code_type': 'MPEG-2'},
+             {'code_type': code_type},
              {'source_device': 'STORA'},
              {'acquisition.method': 'Off-Air'}])
 
@@ -266,6 +264,7 @@ def main():
             actual_duration_seconds_integer = var_data[6]
             channel = var_data[7]
             broadcast_company = var_data[8]
+            code_type = var_data[9]
             acquired_filename = os.path.join(root, 'stream.mpeg2.ts')
 
             # Create defaults for all records in hierarchy
@@ -278,7 +277,8 @@ def main():
                                                                      actual_duration_total,
                                                                      actual_duration_seconds_integer,
                                                                      channel,
-                                                                     broadcast_company)
+                                                                     broadcast_company,
+                                                                     code_type)
 
             # create a Work-Manifestation CID record hierarchy
             work_id = create_work(fullpath, title, record, work, work_restricted)
@@ -351,7 +351,7 @@ def create_work(fullpath, title, record_defaults, work_defaults, work_restricted
     work_values.extend(work_defaults)
     work_values.extend(work_restricted_defaults)
 
-    work_values_xml = cur.create_record_data('', data=work_values)
+    work_values_xml = adlib.create_record_data('', work_values)
     if work_values_xml is None:
         return None
     print("***************************")
@@ -359,10 +359,10 @@ def create_work(fullpath, title, record_defaults, work_defaults, work_restricted
 
     try:
         logger.info("Attempting to create Work record for item %s", title)
-        data = push_record_create(work_values_xml, 'works', 'insertrecord')
+        data = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         if data:
-            work_id = data[0]
-            object_number = data[1]
+            work_id = adlib.retrieve_field_name(data, 'priref')[0]
+            object_number = adlib.retrieve_field_name(data, 'object_number')[0]
             print(f'* Work record created with Priref {work_id} Object number {object_number}')
             logger.info('%s\tWork record created with priref %s', fullpath, work_id)
         else:
@@ -389,7 +389,7 @@ def create_manifestation(work_id, fullpath, title, record_defaults, manifestatio
     manifestation_values.extend(manifestation_defaults)
     manifestation_values.append({'part_of_reference.lref': work_id})
 
-    man_values_xml = cur.create_record_data('', data=manifestation_values)
+    man_values_xml = adlib.create_record_data('', manifestation_values)
     if man_values_xml is None:
         return None
     print("***************************")
@@ -397,10 +397,10 @@ def create_manifestation(work_id, fullpath, title, record_defaults, manifestatio
 
     try:
         logger.info("Attempting to create Manifestation record for item %s", title)
-        data = push_record_create(man_values_xml, 'manifestations', 'insertrecord')
+        data = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
         if data:
-            manifestation_id = data[0]
-            object_number = data[1]
+            manifestation_id = adlib.retrieve_field_name(data, 'priref')[0]
+            object_number = adlib.retrieve_field_name(data, 'object_number')[0]
             print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
             logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
 
@@ -414,35 +414,6 @@ def create_manifestation(work_id, fullpath, title, record_defaults, manifestatio
         raise
 
     return manifestation_id
-
-
-def push_record_create(payload, database, method):
-    '''
-    Receive adlib formed XML but use
-    requests to create the CID record
-    '''
-    params = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'json'
-    }
-
-    headers = {'Content-Type': 'text/xml'}
-
-    try:
-        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
-    except Exception as err:
-        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
-        print(err)
-        return None
-    print(f"Record list: {response.text}")
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
-        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
-        return priref, object_number
-    return None
 
 
 def build_webvtt_dct(old_webvtt):
@@ -485,7 +456,7 @@ def create_item(manifestation_id, fullpath, title, acquired_filename, record_def
     item_values.append({'part_of_reference.lref': manifestation_id})
     item_values.append({'digital.acquired_filename': acquired_filename})
 
-    item_values_xml = cur.create_record_data('', data=item_values)
+    item_values_xml = adlib.create_record_data('', item_values)
     if item_values_xml is None:
         return None
     print("***************************")
@@ -493,10 +464,10 @@ def create_item(manifestation_id, fullpath, title, acquired_filename, record_def
 
     try:
         logger.info("Attempting to create CID item record for item %s", title)
-        data = push_record_create(item_values_xml, 'items', 'insertrecord')
+        data = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
         if data:
-            item_id = data[0]
-            item_object_number = data[1]
+            item_id = adlib.retrieve_field_name(data, 'priref')[0]
+            item_object_number = adlib.retrieve_field_name(data, 'object_number')[0]
             print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
             logger.info('%s\tItem record created with priref %s', fullpath, item_id)
 
@@ -519,8 +490,8 @@ def mark_for_deletion(work_id, manifestation_id, fullpath):
     payload = etree.tostring(etree.fromstring(work))
 
     try:
-        r = cur._write('collect', payload)
-        if not r.error:
+        response = adlib.post(CID_API, payload, 'works', 'updaterecord')
+        if response:
             logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
         else:
             logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
@@ -534,8 +505,8 @@ def mark_for_deletion(work_id, manifestation_id, fullpath):
                      '''
     payload = etree.tostring(etree.fromstring(manifestation))
     try:
-        r = cur._write('collect', payload)
-        if not r.error:
+        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
+        if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
         else:
             logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
@@ -558,52 +529,13 @@ def push_payload(item_id, webvtt_payload):
     pay_end = '</record></recordList></adlibXML>'
     payload = pay_head + label_type_addition + label_addition + pay_end
 
-    lock_success = write_lock(item_id)
-    if lock_success:
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-            data = {'data': payload})
-        if '<error><info>' in str(post_response.text):
-            logger.warning('push_payload(): Error returned from requests post: %s %s', item_id, payload)
-            print(post_response.text)
-            unlock_record(item_id)
-            return False
-        else:
-            logger.info('push_payload(): No error warning in requests post return. Payload written.')
+    try:
+        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        if post_resp:
             return True
-    else:
-        logger.warning('push_payload()): Unable to lock item record %s', item_id)
+    except Exception as err:
+        logger.warning('push_payload(): Error returned from requests post: %s %s', item_id, payload)
         return False
-
-
-def write_lock(item_id):
-    '''
-    Lock Item record for requests push of XML data
-    '''
-    try:
-        response = requests.post(
-            CID_API,
-            params={'database': 'items', 'command': 'lockrecord', 'priref': f'{item_id}', 'output': 'json'})
-        print(response.text)
-        return True
-    except Exception as err:
-        logger.warning('write_lock(): Failed to lock Item %s \n%s', item_id, err)
-
-
-def unlock_record(item_id):
-    '''
-    Manage failed Request push
-    Unlock item record again
-    '''
-    try:
-        response = requests.post(
-            CID_API,
-            params={'database': 'items', 'command': 'unlockrecord', 'priref': f'{item_id}', 'output': 'json'})
-        print(response.text)
-        return True
-    except Exception as err:
-        logger.warning('unlock_record(): Failed to unlock Item record %s\n%s', item_id, err)
 
 
 if __name__ == '__main__':

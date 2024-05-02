@@ -2,7 +2,7 @@
 
 '''
 Script to ingest
-Netflix EPG metadata
+Amazon EPG metadata
 based on CSV list of
 required programmes
 
@@ -26,12 +26,11 @@ Steps:
 6. Create CID records
 7. Append contributors where available
 
-NOTES: Dependency for cast create_contributors()
-       will need review when API updates complete
-       Updated for adlib_v3 and new API
+NOTES: Configured for adlib_v3, API will need
+       updating when available.
 
 Joanna White
-2023
+2024
 '''
 
 # Public packages
@@ -50,8 +49,8 @@ import adlib_v3 as adlib
 
 # Global variables
 STORAGE = os.environ.get('QNAP_IMAGEN')
-NETFLIX = os.path.join(STORAGE, 'NETFLIX')
-CAT_ID = os.environ.get('PA_NETFLIX')
+AMAZON = os.path.join(STORAGE, 'AMAZON')
+CAT_ID = os.environ.get('PA_AMAZON')
 ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
@@ -59,7 +58,7 @@ GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API4')
 
-# PATV API details including unique identifiers for Netflix catalogue
+# PATV API details including unique identifiers for Amazon catalogue
 URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
 URL2 = os.path.join(os.environ['PATV_STREAM_URL'], 'asset/')
 HEADERS = {
@@ -68,8 +67,8 @@ HEADERS = {
 }
 
 # Setup logging
-LOGGER = logging.getLogger('document_augmented_netflix')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_netflix.log'))
+LOGGER = logging.getLogger('document_augmented_amazon')
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_amazon.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -89,7 +88,7 @@ def check_control():
 
 def cid_check():
     '''
-    Test if CID API online
+    Tests if CID active before all other operations commence
     '''
     try:
         adlib.check(CID_API)
@@ -147,11 +146,11 @@ def split_title(title_article):
 def get_folder_match(foldername):
     '''
     Get full folder path
-    from Netflix folder excluding
+    from Amazon folder excluding
     any folders that have additional
     title data, eg 'Enola_Holmes_2_'
     '''
-    folder_list = [x for x in os.listdir(NETFLIX) if x.startswith(foldername)]
+    folder_list = [x for x in os.listdir(AMAZON) if x.startswith(foldername)]
     for fr in folder_list:
         id_ = fr.split(foldername)[-1]
         if '_' in id_:
@@ -206,10 +205,10 @@ def get_cat_data(data=None):
         c_data['runtime'] = data['runtime']
     try:
         c_data['production_year'] = data['productionYear']
-    except (IndexError, TypeError, KeyError):
+    except:
         pass
     try:
-        c_data['cert_netflix'] = data['certification']['netflix']
+        c_data['cert_amazon'] = data['certification']['amazon']
     except (IndexError, TypeError, KeyError):
         pass
     try:
@@ -256,7 +255,7 @@ def get_cat_data(data=None):
     try:
         c_data['start_date'] = data['availability']['start']
     except (IndexError, TypeError, KeyError):
-        c_data['start_date'] = ''
+        pass
     if 'deeplink' in data:
         for link in data['deeplink']:
             if link['rel'] == 'url':
@@ -324,7 +323,7 @@ def get_json_data(data=None):
             pass
     if 'certification' in data:
         try:
-            j_data['cert_netflix'] = data['certification']['netflix']
+            j_data['cert_amazon'] = data['certification']['amazon']
         except (IndexError, TypeError, KeyError):
             pass
         try:
@@ -354,7 +353,7 @@ def get_json_data(data=None):
             pass
     if 'vod' in data:
         try:
-            j_data['start_date'] = data['vod']['netflix-uk']['start']
+            j_data['start_date'] = data['vod']['amazon-uk']['start']
         except (IndexError, TypeError, KeyError):
             pass
     return j_data
@@ -364,7 +363,6 @@ def cid_check_works(patv_id):
     '''
     Sends CID request for series_id data
     '''
-
     query = f'alternative_number="{patv_id}"'
     try:
         hits, record = adlib.retrieve_record(CID_API, 'works', query, 0)
@@ -372,7 +370,6 @@ def cid_check_works(patv_id):
         LOGGER.warning("cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s", patv_id, err)
         print("cid_check_works(): Record not found. Series hit count and series priref will return empty strings")
         return None
-
     try:
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"cid_check_works(): Series priref: {priref}")
@@ -386,22 +383,19 @@ def cid_check_works(patv_id):
     try:
         title_art = adlib.retrieve_field_name(record[0], 'title_article')[0]
         print(f"cid_check_works(): Series title: {title_art}")
-        if title_art is None:
-            title_art = ''
     except Exception as err:
         title_art = ''
-
     groupings = []
     for num in range(0, hits):
         try:
             grouping = adlib.retrieve_field_name(record[num], 'grouping.lref')[0]
             print(f"cid_check_works(): Grouping: {grouping}")
             groupings.append(grouping)
-        except (IndexError, TypeError, KeyError):
+        except Exception as err:
             pass
 
     alt_type = []
-    for num in range(0, hits):
+    for num in range(0, query_result.hits):
         try:
             all_priref = adlib.retrieve_field_name(record[num], 'priref')[0]
         except (IndexError, TypeError, KeyError):
@@ -424,7 +418,7 @@ def genre_retrieval(category_code, description, title):
     Retrieve genre data, return as list
     '''
     with open(GENRE_MAP, 'r') as files:
-        data = yaml.load(files, Loader=yaml.FullLoader)
+        data = (yaml.load(files, Loader=yaml.FullLoader))
         print(f"genre_retrieval(): The genre data is being retrieved for: {category_code}")
         for _ in data:
             if category_code in data['genres']:
@@ -441,7 +435,7 @@ def genre_retrieval(category_code, description, title):
                             genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
                         genre_one_priref = ''
                     else:
-                        for val in genre_one.values():
+                        for key, val in genre_one.items():
                             genre_one_priref = val
                         print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
                 except Exception:
@@ -462,7 +456,7 @@ def genre_retrieval(category_code, description, title):
                     genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
 
 
-def make_work_dictionary(episode_no, csv_data, cat_dct, json_dct):
+def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
     '''
     Build up work data into dictionary for Work creation
     '''
@@ -532,22 +526,22 @@ def make_work_dictionary(episode_no, csv_data, cat_dct, json_dct):
 
     try:
         work_dict['patv_id'] = json_dct['work_id']
-    except (IndexError, TypeError, KeyError):
+    except:
         work_dict['patv_id'] = ''
 
     try:
         work_dict['cat_id'] = cat_dct['cat_id']
-    except (IndexError, TypeError, KeyError):
+    except:
         work_dict['cat_id'] = ''
 
     if 'production_year' in json_dct:
         work_dict['production_year'] = json_dct['production_year']
     elif 'production_year' in cat_dct:
         work_dict['production_year'] = cat_dct['production_year']
-    if 'cert_netflix' in json_dct:
-        work_dict['certification_netflix'] = json_dct['cert_netflix']
-    elif 'cert_netflix' in cat_dct:
-        work_dict['certification_netflix'] = cat_dct['cert_netflix']
+    if 'cert_amazon' in json_dct:
+        work_dict['certification_amazon'] = json_dct['cert_amazon']
+    elif 'cert_amazon' in cat_dct:
+        work_dict['certification_amazon'] = cat_dct['cert_amazon']
     if 'cert_bbfc' in json_dct:
         work_dict['certification_bbfc'] = json_dct['cert_bbfc']
     elif 'cert_bbfc' in cat_dct:
@@ -604,12 +598,11 @@ def main():
     matches to episodes, in case of
     repeat runs of CSV and skip.
     Retrieve metadata by title matching
-    to NETFLIX programme folders
+    to AMAZON programme folders
     Where an episodic series, create a
     series work. Link all records as needed.
     '''
     check_control()
-    cid_check()
 
     csv_path = sys.argv[1]
     if not os.path.isfile(csv_path):
@@ -617,7 +610,7 @@ def main():
 
     prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct['title'])
-    LOGGER.info("=== Document augmented Netflix start ===============================")
+    LOGGER.info("=== Document augmented Amazon start ===============================")
     for num in range(0, csv_range):
         # Capture CSV supplied data to vars
         title = prog_dct['title'][num]
@@ -630,25 +623,23 @@ def main():
         platform = prog_dct['platform'][num]
         year_release = prog_dct['year_of_release'][num]
         acquisition_date = prog_dct['acquisition_date'][num]
-        episode = prog_dct['episode'][num]
         print(article, title, nfa, level, season_num, genres, episode_num, platform, year_release, acquisition_date)
-        print(f"Episode only wanted: {episode}")
 
-        if platform != 'Netflix':
+        if platform != 'Amazon':
             continue
-
         LOGGER.info("** Processing item: %s %s", article, title)
 
         # Make season number a list
         csv_data = [year_release, title, article, nfa, level, season_num, genres, episode_num, acquisition_date]
 
-        # Match NETFLIX folder to article/title
+        # Match AMAZON folder to article/title
         foldertitle = get_folder_title(article, title)
+        print(foldertitle)
         matched_folders = get_folder_match(foldertitle)
         if len(matched_folders) > 1:
             print(f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}")
             continue
-        if len(matched_folders) == 0:
+        elif len(matched_folders) == 0:
             print(f"No match found: {article} {title}")
             # At some point initiate 'title' search in PATV data
             continue
@@ -658,19 +649,15 @@ def main():
 
         # Create Work/Manifestation if film/programme
         if 'film' in level.lower() or 'programme' in level.lower():
-            prog_path = os.path.join(NETFLIX, matched_folders[0])
-
             # Check CID work exists / Make work if needed
             hits, priref_work, work_title, work_title_art, groupings, alt_type = cid_check_works(patv_id)
             if int(hits) > 0:
-                if '400947' in str(groupings):
+                if '401361' in str(groupings):
                     print(f"SKIPPING PRIREF FOUND: {priref_work}")
                     LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
                     continue
-                if 'PATV asset id' in str(alt_type):
-                    LOGGER.warning("STORA PATV id found to match work priref for this title: %s", priref_work)
-                if 'PATV Amazon asset id' in str(alt_type):
-                    LOGGER.warning("Amazon PATV id found to match work priref for this title: %s", priref_work)
+
+            prog_path = os.path.join(AMAZON, matched_folders[0])
 
             # Retrieve all available
             mono_cat = [ x for x in os.listdir(prog_path) if x.startswith('mono_catalogue_') ]
@@ -678,41 +665,45 @@ def main():
             try:
                 cat_data = retrieve_json(os.path.join(prog_path, mono_cat[0]))
                 cat_dct = get_cat_data(cat_data)
-            except (IndexError, TypeError, KeyError) as exc:
+            except Exception as exc:
                 print(exc)
                 cat_dct = {}
             try:
                 mono_data = retrieve_json(os.path.join(prog_path, mono[0]))
                 mono_dct = get_json_data(mono_data)
-            except (IndexError, TypeError, KeyError) as exc:
+            except Exception as exc:
                 print(exc)
                 mono_dct = {}
 
             if not cat_dct:
                 print("SKIPPING: Missing data from JSON files.")
                 continue
-
             # Make monographic work here
-            data_dct = make_work_dictionary('', csv_data, cat_dct, mono_dct)
+            data_dct = make_work_dictionary('', '', csv_data, cat_dct, mono_dct)
             print(f"Dictionary for monograph creation: \n{data_dct}")
             print("*************")
             record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
 
+            print(f"Found priref is for monographic work: {priref_work}")
             if priref_work.isnumeric():
-                print(f"Found priref is for monographic work: {priref_work}")
-                print(f"Monograph work already exists for {title}.")
-                LOGGER.info("Monograph work exists that is not Netflix origin. Linking repeat to existing work")
+                if '401361' in str(groupings):
+                    print(f"SKIPPING: Monograph work already exists for {title}.")
+                    continue
+                if 'PATV asset id' in str(alt_type):
+                    LOGGER.warning("Matched Work Asset ID is for STORA created Work record: %s", priref_work)
+                if 'PATV Netflix asset id' in str(alt_type):
+                    LOGGER.warning("Matched Work Asset ID is for Netflix created Work record: %s", priref_work)
             else:
                 priref_work = create_work('', '', '', data_dct, record, work, work_restricted)
                 if len(priref_work) == 0:
                     LOGGER.warning("Monograph work record creation failed, skipping all further record creations")
                     continue
-                print(f"PRIREF MONOGRAPH WORK: {priref_work}")
 
+            print(f"PRIREF MONOGRAPH WORK CREATED: {priref_work}")
             # Create contributors if supplied / or in addition to solo contributors
             if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
                 print('** Contributor data found')
-                success = create_contributors(priref_work, data_dct['nfa_category'], data_dct['contributors'], 'Netflix')
+                success = create_contributors(priref_work, data_dct['nfa_category'], data_dct['contributors'], 'Amazon')
                 if success:
                     LOGGER.info("Contributor data written to Work record: %s", priref_work)
                 else:
@@ -735,18 +726,18 @@ def main():
             print(f"PRIREF FOR ITEM: {priref_item}")
 
         elif 'series' in level.lower():
-            prog_path = os.path.join(NETFLIX, matched_folders[0])
+            prog_path = os.path.join(AMAZON, matched_folders[0])
             json_fpaths = get_json_files(prog_path)
             series_priref = ''
             # Check CID work exists / Make work if needed
-            hits, series_priref, work_title, work_title_art, _, alt_type = cid_check_works(patv_id)
-            print(f"Work title found: {work_title}")
+            hits, series_priref, work_title, work_title_art, groupings, alt_type = cid_check_works(patv_id)
             if series_priref.isnumeric():
-                print(f"Series work already exists for {title}.")
+                if '401361' in str(groupings):
+                    print(f"Series work already exists for {title}.")
                 if 'PATV asset id' in str(alt_type):
-                    LOGGER.warning("Series work found is from STORA off-air recording: %s", series_priref)
-                if 'PATV Amazon asset id' in str(alt_type):
-                    LOGGER.warning("Series work found is from Amazon streaming recording: %s", series_priref)
+                    LOGGER.warning("Series found was created for STORA off-air broadcast series: %s", series_priref)
+                if 'PATV Netflix asset ID' in str(alt_type):
+                    LOGGER.warning("Series found was created for Netflix streaming series: %s", series_priref)
             else:
                 print("Series work does not exist, creating series work now.")
                 series_json = [ x for x in os.listdir(prog_path) if x.startswith('series_') and x.endswith('.json')]
@@ -756,141 +747,106 @@ def main():
                 # Get series ID title and genre
                 series_data = retrieve_json(os.path.join(prog_path, series_json[0]))
                 series_dct = get_json_data(series_data)
-                series_data_dct = make_work_dictionary('', csv_data, None, series_dct)
+                series_data_dct = make_work_dictionary('', '', csv_data, None, series_dct)
                 record, series_work, work, work_restricted, manifestation, item = build_defaults(series_data_dct)
                 work_title, work_title_art = split_title(series_data_dct['title'])
-
 
                 # Make series work here
                 if not series_data_dct:
                     continue
-                series_priref = create_series_work(patv_id, series_data_dct, series_work, work_restricted, record)
+                series_priref = create_series_work(patv_id, series_data_dct, csv_data, series_work, work_restricted, record)
                 if not series_priref:
                     print("Series work creation failure. Skipping episodes...")
                     continue
 
+            # Fetch target season data
             season_fpaths = [x for x in json_fpaths if f'season_{season_num}_' in str(x)]
+            episode_count = 0
+            for num in range(1, episode_num + 1):
+                episode_count += 1
+                episode_fpaths = [x for x in season_fpaths if f'episode_{num}_' in str(x) and x.endswith('.json')]
+                if not episode_fpaths:
+                    continue
 
-            # Fetch just single episodes
-            if episode != 'all':
-                episodes = episode.split(', ')
-                total_eps = len(episodes)
-                count = 0
-                for ep in episodes:
-                    LOGGER.info("Creating one-off episode record for %s episode number %s", title, ep)
-                    success = make_episodes(series_priref, work_title, work_title_art, int(ep), season_fpaths, title, csv_data)
-                    if success is None:
-                        LOGGER.warning("Failed to make records for episode {num}")
+                episode_folder = os.path.basename(os.path.split(episode_fpaths[0])[0])
+                episode_id = episode_folder.split('_')[-1]
+                print(f"** Episode ID: {episode_id} {title}")
+
+                # Check CID work exists / Make work if needed
+                hits, priref_episode, _, _, groupings, alt_type = cid_check_works(episode_id)
+                if int(hits) > 0:
+                    if '401361' in str(groupings):
+                        print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
+                        LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
                         continue
-                    LOGGER.info("Episode %s made successfully: Work %s Manifestation %s Item %s", num, success[0], success[1], success[2])
-                    count += 1
-                if total_eps != count:
-                    LOGGER.warning("Unable to create all requested records for epsides: %s", episode)
-                LOGGER.info("** All records created for %s episodes %s", title, episode)
-
-            # Fetch all episodes in target season
-            if episode == 'all':
-                episode_count = 0
-                for num in range(1, episode_num + 1):
-                    success = make_episodes(series_priref, work_title, work_title_art, num, season_fpaths, title, csv_data)
-                    if success is None:
-                        LOGGER.warning("Failed to make records for episode {num}")
+                    if 'PATV asset id' in str(alt_type):
+                        LOGGER.warning("Skipping: Work record found from STORA with matching PATV asset id: %s", priref_episode)
                         continue
-                    LOGGER.info("Episode %s made successfully: Work %s Manifestation %s Item %s", num, success[0], success[1], success[2])
-                    episode_count += 1
+                    if 'PATV Netflix asset id' in str(alt_type):
+                        LOGGER.warning("Skipping: Work record found from Netflix with matching PATV asset id: %s", priref_episode)
+                        continue
+                print("New episode_id found for Work. Linking to series work")
 
-                if episode_count != int(episode_num):
-                    LOGGER.warning("Not all episodes created for %s - total episodes %s", title, episode_num)
-                    print("============ Episodes found in NETFLIX folder do not match total episodes supplied =============")
+                # Retrieve all available data
+                ep_cat_json = [ x for x in episode_fpaths if 'episode_catalogue_' in str(x) ]
+                ep_json = [ x for x in episode_fpaths if 'episode_' in str(x) and x.endswith(f"{episode_id}.json") ]
+                print(ep_cat_json)
+                print(ep_json)
 
-    LOGGER.info("=== Document augmented Netflix end =================================")
+                try:
+                    ep_cat_data = retrieve_json(ep_cat_json[0])
+                    ep_cat_dct = get_cat_data(ep_cat_data)
+                except Exception as exc:
+                    print(exc)
+                    ep_cat_dct = {}
+                try:
+                    ep_data = retrieve_json(ep_json[0])
+                    ep_dct = get_json_data(ep_data)
+                except Exception as exc:
+                    print(exc)
+                    ep_dct = {}
 
+                # Make episodic work here
+                data_dct = make_work_dictionary(num, episode_id, csv_data, ep_cat_dct, ep_dct)
+                print(f"Dictionary for Work creation:\n{data_dct}")
+                print('**************')
+                record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
+                priref_episode = create_work(series_priref, work_title, work_title_art, data_dct, record, work, work_restricted)
+                if len(priref_episode) == 0:
+                    LOGGER.warning("Episodic Work record creation failed, skipping all further record creations")
+                    continue
+                print(f"Episode work priref: {priref_episode}")
 
-def make_episodes(series_priref, work_title, work_title_art, num, season_fpaths, title, csv_data):
-    '''
-    Receive number for episode (individual or
-    from range count) and build programme records
-    '''
+                # Create contributors if supplied / or in addition to solo contributors
+                if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
+                    print('** Contributor data found')
+                    success = create_contributors(priref_episode, data_dct['nfa_category'], data_dct['contributors'], 'Amazon')
+                    if success:
+                        LOGGER.info("Contributor data written to Work record: %s", priref_episode)
+                    else:
+                        LOGGER.warning("Failure to write contributor data to Work record: %s", priref_episode)
 
-    episode_fpaths = [x for x in season_fpaths if f'episode_{num}_' in str(x) and x.endswith('.json')]
-    if not episode_fpaths:
-        LOGGER.warning("Cannot find any episode number %s in season path: %s", num, season_fpaths)
-        return None
+                # Make episodic manifestation here
+                priref_ep_man = create_manifestation(priref_episode, work_title, work_title_art, data_dct, record, manifestation)
+                if len(priref_ep_man) == 0:
+                    LOGGER.warning("Episodic manifestation record creation failed, skipping all further record creations")
+                    continue
+                print(f"PRIREF EP MANIFESTATION: {priref_ep_man}")
+                # Append URLS if present
+                if 'watch_url' in data_dct:
+                    append_url_data(priref_episode, priref_ep_man, data_dct)
 
-    episode_folder = os.path.basename(os.path.split(episode_fpaths[0])[0])
-    episode_id = episode_folder.split('_')[-1]
-    print(f"** Episode ID: {episode_id} {title}")
+                # Make episodic item record here
+                priref_ep_item = create_item(priref_ep_man, work_title, work_title_art, data_dct, record, item)
+                if len(priref_ep_item) == 0:
+                    LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
+                    continue
+                print(f"PRIREF FOR ITEM: {priref_ep_item}")
 
-    # Check CID work exists / Make work if needed
-    hits, priref_episode, _, _, groupings, alt_type = cid_check_works(episode_id)
-    if int(hits) > 0:
-        if '400947' in str(groupings):
-            print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
-            LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
-            return None
-        if 'PATV asset id' in str(alt_type):
-            LOGGER.warning("Episode work exists from STORA off-air recordings: %s", priref_episode)
-        if 'PATV Amazon asset id' in str(alt_type):
-            LOGGER.warning("Episode work exists from Amazon streaming platform: %s", priref_episode)
-    print("New episode_id found for Work. Linking to series work")
+            if episode_count != int(episode_num):
+                print("============ Episodes found in AMAZON folder do not match total episodes supplied =============")
 
-    # Retrieve all available data
-    ep_cat_json = [ x for x in episode_fpaths if 'episode_catalogue_' in str(x) ]
-    ep_json = [ x for x in episode_fpaths if 'episode_' in str(x) and x.endswith(f"{episode_id}.json") ]
-    print(ep_cat_json)
-    print(ep_json)
-
-    try:
-        ep_cat_data = retrieve_json(ep_cat_json[0])
-        ep_cat_dct = get_cat_data(ep_cat_data)
-    except (IndexError, TypeError, KeyError) as exc:
-        print(exc)
-        ep_cat_dct = {}
-    try:
-        ep_data = retrieve_json(ep_json[0])
-        ep_dct = get_json_data(ep_data)
-    except (IndexError, TypeError, KeyError) as exc:
-        print(exc)
-        ep_dct = {}
-
-    # Make episodic work here
-    data_dct = make_work_dictionary(num, csv_data, ep_cat_dct, ep_dct)
-    print(f"Dictionary for Work creation:\n{data_dct}")
-    print('**************')
-    record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)
-    priref_episode = create_work(series_priref, work_title, work_title_art, data_dct, record, work, work_restricted)
-    if len(priref_episode) == 0:
-        LOGGER.warning("Episodic Work record creation failed, skipping all further record creations")
-        return None
-    print(f"Episode work priref: {priref_episode}")
-
-    # Create contributors if supplied / or in addition to solo contributors
-    if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
-        print('** Contributor data found')
-        success = create_contributors(priref_episode, data_dct['nfa_category'], data_dct['contributors'], 'Netflix')
-        if success:
-            LOGGER.info("Contributor data written to Work record: %s", priref_episode)
-        else:
-            LOGGER.warning("Failure to write contributor data to Work record: %s", priref_episode)
-
-    # Make episodic manifestation here
-    priref_ep_man = create_manifestation(priref_episode, work_title, work_title_art, data_dct, record, manifestation)
-    if len(priref_ep_man) == 0:
-        LOGGER.warning("Episodic manifestation record creation failed, skipping all further record creations")
-        return None
-    print(f"PRIREF EP MANIFESTATION: {priref_ep_man}")
-
-    # Append URLS if present
-    if 'watch_url' in data_dct:
-        append_url_data(priref_episode, priref_ep_man, data_dct)
-
-    # Make episodic item record here
-    priref_ep_item = create_item(priref_ep_man, work_title, work_title_art, data_dct, record, item)
-    if len(priref_ep_item) == 0:
-        LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
-        return None
-    print(f"PRIREF FOR ITEM: {priref_ep_item}")
-    return priref_episode, priref_ep_man, priref_ep_item
+    LOGGER.info("=== Document augmented Amazon end =================================")
 
 
 def firstname_split(person):
@@ -917,19 +873,19 @@ def genre_retrieval_term(category_code, description, title):
     category_data = genre_retrieval(category_code, description, title)
     try:
         genre1 = category_data[0]
-    except (IndexError, TypeError, KeyError):
+    except Exception:
         genre1 = ''
     try:
         genre2 = category_data[1]
-    except (IndexError, TypeError, KeyError):
+    except Exception:
         genre2 = ''
     try:
         subject1 = category_data[2]
-    except (IndexError, TypeError, KeyError):
+    except Exception:
         subject1 = ''
     try:
         subject2 = category_data[3]
-    except (IndexError, TypeError, KeyError):
+    except Exception:
         subject2 = ''
 
     return (genre1, genre2, subject1, subject2)
@@ -943,7 +899,7 @@ def build_defaults(data):
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
-               {'input.notes': 'Netflix metadata integration - automated bulk documentation'},
+               {'input.notes': 'Amazon metadata integration - automated bulk documentation'},
                {'record_access.user': 'BFIiispublic'},
                {'record_access.rights': '0'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
@@ -971,7 +927,7 @@ def build_defaults(data):
                {'record_access.user': '$REST'},
                {'record_access.rights': '1'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'grouping.lref': '400947'},
+               {'grouping.lref': '401361'}, # Amazon
                {'language.lref': '74129'},
                {'language.type': 'DIALORIG'}])
 
@@ -995,16 +951,16 @@ def build_defaults(data):
                         {'application_restriction.duration': 'PERM'},
                         {'application_restriction.review_date': '2030-01-01'},
                         {'application_restriction.authoriser': 'mcconnachies'},
-                        {'application_restriction.notes': 'Netflix UK streaming content - pending discussion'}])
+                        {'application_restriction.notes': 'Amazon UK streaming content - pending discussion'}])
 
     manifestation = ([{'record_type': 'MANIFESTATION'},
                       {'manifestationlevel_type': 'INTERNET'},
                       {'format_high_level': 'Video - Digital'},
-                      {'format_low_level.lref': '400949'},
+                      {'format_low_level.lref': '395150'}, # Apple ProRes 422 HQ
                       {'colour_manifestation': data['colour_manifestation']},
                       {'sound_manifestation': 'SOUN'},
                       {'transmission_date': data['title_date_start']},
-                      {'availability.name.lref': '143463'},
+                      {'availability.name.lref': '999823516'},
                       {'transmission_coverage': 'STR'},
                       {'vod_service_type.lref': '398712'},
                       {'aspect_ratio': '16:9'},
@@ -1015,12 +971,12 @@ def build_defaults(data):
              {'item_type': 'DIGITAL'},
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
-             {'file_type.lref': '401103'}, # IMP
-             {'code_type.lref': '400945'}, # Mixed
+             {'file_type.lref': '114307'}, # MOV
+             {'code_type.lref': '114308'}, # ProRes 422 (HQ)
              {'accession_date': str(datetime.datetime.now())[:10]},
-             {'acquisition.date': data['acquisition_date']}, # Contract date from CSV
-             {'acquisition.method.lref': '132853'}, # Donation - with written agreement ACQMETH
-             {'acquisition.source.lref': '143463'}, # Netflix
+             {'acquisition.date': data['acquisition_date']},
+             {'acquisition.method.lref': '132853'},
+             {'acquisition.source.lref': '999923912'},
              {'acquisition.source.type': 'DONOR'},
              {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                    'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
@@ -1029,7 +985,7 @@ def build_defaults(data):
     return (record, series_work, work, work_restricted, manifestation, item)
 
 
-def create_series_work(patv_id, series_dct, series_work, work_restricted, record):
+def create_series_work(patv_id, series_dct, csv_data, series_work, work_restricted, record):
     '''
     Build data needed to make
     episodic series work to
@@ -1051,7 +1007,7 @@ def create_series_work(patv_id, series_dct, series_work, work_restricted, record
         if series_dct['title_article'] != '-' and series_dct['title_article'] != '':
             series_work_values.append({'title.article': series_dct['title_article']})
     if len('patv_id') > 0:
-        series_work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
+        series_work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
         series_work_values.append({'alternative_number': patv_id})
     if 'd_short' in series_dct:
         series_work_values.append({'label.type': 'EPGSHORT'})
@@ -1076,6 +1032,7 @@ def create_series_work(patv_id, series_dct, series_work, work_restricted, record
 
     # Start creating CID Work Series record
     series_work_xml = adlib.create_record_data('', series_work_values)
+
     try:
         print("Attempting to create CID record")
         work_rec = adlib.post(CID_API, series_work_xml, 'works', 'insertrecord')
@@ -1094,7 +1051,7 @@ def create_series_work(patv_id, series_dct, series_work, work_restricted, record
         print(f'* Unable to create Work record for <{title}> {err}')
         LOGGER.critical('Unable to create Work record for <%s>', title)
         return None
-
+    
     series_genres = []
     if 'genres' in series_dct:
         extracted = series_dct['genres']
@@ -1150,13 +1107,13 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
         work_values.append({'title_date_start': work_dict['title_date_start']})
         work_values.append({'title_date.type': '03_R'})
     if 'patv_id' in work_dict:
-        work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
+        work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
         work_values.append({'alternative_number': work_dict['patv_id']})
     if 'cat_id' in work_dict:
-        work_values.append({'alternative_number.type': 'PATV Netflix catalogue ID'})
+        work_values.append({'alternative_number.type': 'PATV Amazon catalogue ID'})
         work_values.append({'alternative_number': work_dict['cat_id']})
     if 'episode_id' in work_dict:
-        work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
+        work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
         work_values.append({'alternative_number': work_dict['episode_id']})
     if part_of_priref:
         work_values.append({'part_of_reference.lref': part_of_priref})
@@ -1240,6 +1197,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     '''
     manifestation_id = ''
     print(work_dict)
+    title = work_dict['title']
     manifestation_values = []
     manifestation_values.extend(record_defaults)
     manifestation_values.extend(manifestation_defaults)
@@ -1261,16 +1219,16 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     if 'runtime' in work_dict:
         manifestation_values.append({'runtime': int(work_dict['runtime'])})
     if 'episode_id' in work_dict:
-        manifestation_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
+        manifestation_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
         manifestation_values.append({'alternative_number': work_dict['episode_id']})
     if 'attribute' in work_dict:
         if work_dict['attribute']:
             atts = ', '.join(work_dict['attribute'])
-            manifestation_values.append({'utb.fieldname': 'PATV Netflix attributes'})
+            manifestation_values.append({'utb.fieldname': 'PATV Amazon attributes'})
             manifestation_values.append({'utb.content': atts})
-    if 'certification_netflix' in work_dict:
-        manifestation_values.append({'utb.fieldname': 'Netflix certification'})
-        manifestation_values.append({'utb.content': work_dict['certification_netflix']})
+    if 'certification_amazon' in work_dict:
+        manifestation_values.append({'utb.fieldname': 'Amazon certification'})
+        manifestation_values.append({'utb.content': work_dict['certification_amazon']})
     if 'certification_bbfc' in work_dict:
         manifestation_values.append({'utb.fieldname': 'BBFC certification'})
         manifestation_values.append({'utb.content': work_dict['certification_bbfc']})
@@ -1297,7 +1255,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
         LOGGER.critical('** Unable to create Manifestation record for <%s>', work_dict['title'])
         return None
 
-    broadcast_addition = [{'broadcast_company.lref': '143463'}]
+    broadcast_addition = [{'broadcast_company.lref': '999823516'}] # Amazon Prime Video
     broadcast_xml = adlib.create_record_data(manifestation_id, broadcast_addition)
     print("**** Attempting to write work genres to records ****")
 
@@ -1311,10 +1269,15 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
 
 def append_url_data(work_priref, man_priref, data=None):
     '''
-    Receive Netflix URLs and priref and append to records
+    Receive Amazon URLs and priref and append to CID manifestation
     '''
-    url = data['watch_url']
-    payload_mid = f"<URL><![CDATA[{url}]]></URL><URL.description>Netflix viewing URL</URL.description>"
+
+    # Write to manifest
+    if '/?autoplay' in data['watch_url']:
+        url_trim = data['watch_url'].split('/?autoplay')[0]
+    else:
+        url_trim = data['watch_url']
+    payload_mid = f"<URL><![CDATA[{url_trim}]]></URL><URL.description>Amazon viewing URL</URL.description>"
     payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
     payload_end = "</URL></record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end

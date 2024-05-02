@@ -26,6 +26,6 @@ echo " == Shell script creating curatorial_donor_acquisition.txt for parallel la
 find "${curatorial_path}" -mindepth 2 -maxdepth 2 -type d -name 'Workflow_*' >> "${dump_to}curatorial_donor_acquisition.txt"
 
 echo " == Launching GNU parallel to run multiple Python3 scripts for renaming == " >> "${log_path}"
-grep '/mnt/' "${dump_to}curatorial_donor_acquisition.txt" | parallel --jobs 1 "python3 curatorial_donor_acquisition_rename.py {}"
+grep '/mnt/' "${dump_to}curatorial_donor_acquisition.txt" | parallel --jobs 1 "${PYENV311} curatorial_donor_acquisition_rename.py {}"
 
 echo " ========================= SHELL SCRIPT END ========================== $date_FULL" >> "${log_path}"

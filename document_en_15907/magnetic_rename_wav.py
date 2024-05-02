@@ -20,9 +20,7 @@ Script functions:
 5. All actions logged human readable for Mike, and placed in audio ops
    folder, at top level.
 
-NOTE: The script is configured to just let one WAV file pass at a time
-      with sys.exit functions behind each continue/at end of loop.
-      Remove for use against all file sin folder
+NOTE: Updated to work with Adlib V3      
 
 Joanna White
 2023
@@ -33,7 +31,6 @@ import os
 import re
 import sys
 import json
-import time
 import shutil
 import logging
 import datetime
@@ -42,7 +39,7 @@ import subprocess
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global paths/vars
 WAV_ARCHIVE_PATH = os.environ['WAV_ARCHIVE_MAG']
@@ -52,9 +49,7 @@ AUTOINGEST = os.path.join(os.environ['AUDIO_OPS_FIN'], os.environ['AUTOINGEST_AU
 LOCAL_LOG = os.path.join(WAV_ARCHIVE_PATH, 'magnetic_preservation_renaming.log')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('magnetic_rename_wav')
@@ -81,12 +76,10 @@ def cid_check():
     Tests if CID active before all other operations commence
     '''
     try:
-        LOGGER.info('* Initialising CID session... Script will exit if CID off line')
-        CUR = adlib.Cursor(CID)
-        LOGGER.info("* CID online, script will proceed")
+        adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
-        LOGGER.critical('Cannot establish CID session, exiting script')
+        LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -188,63 +181,32 @@ def cid_query(database, search, object_number):
     '''
     Format CID query for cid_data_retrieval()
     '''
-    query = {'database': database,
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, title, title.article, object_number, derived_item, source_item, title.language, sound_system_item'}
-    try:
-        query_result = CID.get(query)
-    except Exception:
+    fields = [
+        'priref',
+        'title',
+        'title.article',
+        'object_number',
+        'derived_item',
+        'source_item',
+        'title.language',
+        'sound_system_item'
+    ]
+    record = adlib.retrieve_record(CID_API, database, search, '0', fields)[1]
+    if not record:
         print(f"cid_query(): Unable to retrieve data for {object_number}")
         LOGGER.exception("cid_query(): Unable to retrieve data for %s", object_number)
-        query_result = None
-    print(query_result.records)
-    try:
-        priref = query_result.records[0]['priref'][0]
-        print(priref)
-    except (KeyError, IndexError) as err:
-        priref = ""
-        print(err)
-    try:
-        ob_num = query_result.records[0]['object_number'][0]
-    except (KeyError, IndexError) as err:
-        ob_num = ""
-        print(err)
-    try:
-        title = query_result.records[0]['Title'][0]['title'][0]
-    except (KeyError, IndexError) as err:
-        title = ""
-        print(err)
-    try:
-        title_article = query_result.records[0]['Title'][0]['title.article'][0]
-    except (KeyError, IndexError) as err:
-        print(err)
-        title_article = ""
-    try:
-        title_language = query_result.records[0]['Title'][0]['title.language'][0]
-    except (KeyError, IndexError) as err:
-        title_language = ""
-        print(err)
-    try:
-        derived_item = query_result.records[0]['Derived_item'][0]['derived_item'][0]
-    except (KeyError, IndexError) as err:
-        derived_item = ""
-        print(err)
-    try:
-        source_item = query_result.records[0]['Source_item'][0]['source_item'][0]
-    except (KeyError, IndexError) as err:
-        source_item = ""
-        print(err)
-    try:
-        sound_system_item = query_result.records[0]['sound_system_item']
-    except (KeyError, IndexError) as err:
-        sound_system_item = ""
-        print(err)
+        return None
+    print(record)
 
-    new_title = remove_whitespace(title)
+    cid_data = {}
+    for fname in fields:
+        key = fname.replace('.', '_')
+        if fname in str(record[0]):
+            cid_data[key] = adlib.retrieve_field_name(record[0], fname)[0]
+        else:
+            cid_data[key] = ""
 
-    return (priref, new_title, title_article, ob_num, derived_item, source_item, title_language, sound_system_item)
+    return cid_data
 
 
 def cid_data_retrieval(ob_num):
@@ -254,33 +216,27 @@ def cid_data_retrieval(ob_num):
     '''
     cid_data = []
     search = f'(object_number="{ob_num}")'
-    priref = cid_query('Items', search, ob_num)[0]
-
+    cid_data = cid_query('Items', search, ob_num)
+    priref = cid_data['priref']
     if priref:
         print("Priref retrieved, checking for title.language...")
-        parent_search = f'(parts_reference->priref="{priref}")'
+        parent_search = f'(parts_reference.lref="{priref}")'
     else:
-        parent_search = f'(parts_reference->object_number="{ob_num}")'
-
+        return None
+    
     LOGGER.info("Retrieving CID data using query: %s", parent_search)
     parent_data = cid_query('Manifestations', parent_search, ob_num)
-
-    try:
-        cid_data.extend(parent_data)
-    except Exception:
-        cid_data.extend('', '', '', '', '', '', '', '')
-        LOGGER.exception("The parent data retrieval was not successful:")
-
+    for _, v in parent_data.items():
+        cid_data.append(v)
+    
     if priref:
         source_search = f'(priref="{priref}")'
     else:
         source_search = f'(object_number="{ob_num}")'
 
     source_data = cid_query('Items', source_search, ob_num)
-    try:
-        cid_data.extend(source_data)
-    except Exception:
-        cid_data.extend('', '', '', '', '', '', '', '')
+    for _, v in source_data.items():
+        cid_data.append(v)
 
     return cid_data
 
@@ -357,6 +313,8 @@ def main():
             # Retrieve source item priref
             if len(source_ob_num) > 0:
                 cid_data = cid_data_retrieval(source_ob_num)
+                if not cid_data:
+                    continue
                 print(cid_data)
                 if cid_data[11] != source_ob_num:
                     LOGGER.warning("Source object number <%s> is not a match to filename converted object_number <%s>", cid_data[11], source_ob_num)
@@ -432,6 +390,8 @@ def main():
             # Retrieve source item priref
             if len(source_ob_num) > 0:
                 cid_data = cid_data_retrieval(source_ob_num)
+                if not cid_data:
+                    continue
                 print(cid_data)
             # Check that source item record is Magnetic
             if not 'Magnetic (sound)' in str(cid_data[15]):
@@ -574,57 +534,25 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_ob
     else:
         item_values.append({'title.language': 'English'})
     item_values.append({'title.type': '05_MAIN'})
-    item_values_xml = CUR.create_record_data('', data=item_values)
+    item_values_xml = adlib.create_record_data('', data=item_values)
     print(item_values_xml)
 
-    try:
-        wav_data = push_record_create(item_values_xml, 'items', 'insertrecord')
-        if wav_data is None:
-            print(f"\nUnable to create CID WAV item record for {title}")
-            LOGGER.exception("Unable to create WAV item record!")
-            return None
-        if wav_data[0] and wav_data[1]:
-            wav_priref = wav_data[0]
-            wav_ob_num = wav_data[1]
-            print(f'** WAV Item record created with Priref {wav_priref}')
-            print(f'** WAV Item record created with object number {wav_ob_num}')
-            LOGGER.info('WAV Item record created with priref %s', wav_priref)
-            return wav_priref, wav_ob_num
-        else:
-            return None
-    except Exception:
+    record = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+    if not record:
         print(f"\nUnable to create CID WAV item record for {title}")
         LOGGER.exception("Unable to create WAV item record!")
         return None
-
-
-def push_record_create(payload, database, method):
-    '''
-    Receive adlib formed XML but use
-    requests to create the CID record
-    '''
-    params = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'json'
-    }
-
-    headers = {'Content-Type': 'text/xml'}
-
-    try:
-        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
-    except Exception as err:
-        logger.critical("Unable to create <%s> record with <%s> and payload:\n%s", database, method, payload)
-        print(err)
+    try:        
+        wav_priref = adlib.retrieve_field_name(record, 'priref')[0]
+        wav_ob_num = adlib.retrieve_field_name(record, 'object_number')[0]
+        print(f'** WAV Item record created with Priref {wav_priref}')
+        print(f'** WAV Item record created with object number {wav_ob_num}')
+        LOGGER.info('WAV Item record created with priref %s', wav_priref)
+        return wav_priref, wav_ob_num
+    except Exception:
+        print(f"\nUnable to retrieve priref/object number from new item record for {title}")
+        LOGGER.exception("Unable to retrieve priref and object number from new item record!")
         return None
-    print(f"Record list: {response.text}")
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        priref = records['adlibJSON']['recordList']['record'][0]['priref'][0]
-        object_number = records['adlibJSON']['recordList']['record'][0]['object_number'][0]
-        return priref, object_number
-    return None
 
 
 def rename(file, ob_num):

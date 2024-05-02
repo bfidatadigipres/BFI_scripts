@@ -51,7 +51,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 # PATV API details including unique identifiers for Netflix catalogue
-URL = os.environ['PATV_NETFLIX_URL']
+URL = os.environ['PATV_STREAM_URL']
 
 HEADERS = {
     "accept": "application/json",

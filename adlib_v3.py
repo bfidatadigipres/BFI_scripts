@@ -9,10 +9,10 @@ Joanna White
 '''
 
 import os
-import sys
 import json
-from lxml import etree, html
 import requests
+import datetime
+from lxml import etree, html
 from dicttoxml import dicttoxml
 
 CID_API = os.environ['CID_API4']
@@ -21,7 +21,20 @@ HEADERS = {
 }
 
 
-def retrieve_record(database, search, limit, fields=None):
+def check(api):
+    '''
+    Check API responds
+    '''
+    query = {
+        'command': 'getversion',
+        'limit': 0,
+        'output': 'jsonv1'
+    }
+
+    return get(api, query)
+
+
+def retrieve_record(api, database, search, limit, fields=None):
     '''
     Retrieve data from CID using new API
     '''
@@ -36,32 +49,43 @@ def retrieve_record(database, search, limit, fields=None):
         field_str = ', '.join(fields)
         query['fields'] = field_str
 
-    record = get(query)
-    if not 'recordList' in str(record):
-        return (record['adlibJSON']['diagnostic']['hits'], None)
+    record = get(api, query)
 
-    hits = len(record['adlibJSON']['recordList']['record'])
-    return (hits, record['adlibJSON']['recordList']['record'])
+    if 'recordList' not in str(record):
+        try:
+            hits = record['adlibJSON']['diagnostic']['hits']
+            if hits == 0:
+                return 0, None
+            else:
+                return hits, record
+        except (IndexError, KeyError, TypeError):
+            return 0, record
+
+    hits = record['adlibJSON']['diagnostic']['hits']
+    return hits, record['adlibJSON']['recordList']['record']
 
 
-def get(query):
+def get(api, query):
     '''
     Send a GET request
     '''
-
     try:
-       req = requests.request('GET', CID_API, headers=HEADERS, params=query)
-       dct = json.loads(req.text)
+        req = requests.request('GET', api, headers=HEADERS, params=query)
+        dct = json.loads(req.text)
+        if 'recordList' in dct:
+            dct = dct['adlibJSON']['recordList']['record']
     except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
-       print(err)
-       dct = {}
+        print(err)
+        dct = {}
 
     return dct
 
 
-def post(self, params=None, payload=False, sync=True):
+def post(api, payload, database, method):
     '''
     Send a POST request
+    If using updaterecord consider if the record
+    would benefit from a lock/unlock functionc
     '''
     params = {
         'command': method,
@@ -69,17 +93,34 @@ def post(self, params=None, payload=False, sync=True):
         'xmltype': 'grouped',
         'output': 'jsonv1'
     }
-
     payload = payload.encode('utf-8')
-    try:
-        response = requests.request('POST', CID_API, headers=headers, params=params, data=payload, timeout=1200)
-    except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
-        print(err)
-        return None
 
-    if 'recordList' in response.text:
-        records = json.loads(response.text)
-        return records['adlibJSON']['recordList']['record'][0]
+    if method == 'insertrecord':
+        try:
+            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+            print(response.text, err)
+            return None
+        print(response.text)
+        if 'recordList' in response.text:
+            records = json.loads(response.text)
+            if isinstance(records['adlibJSON']['recordList']['record'], list):                 
+                return records['adlibJSON']['recordList']['record'][0]
+            else:
+                return records['adlibJSON']['recordList']['record']
+
+    if method == 'updaterecord':
+        try:
+            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
+            print(response.text)
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+            print(err)
+            return None
+
+        if '@attributes' in response.text:
+            records = json.loads(response.text)
+            return records
+
     return None
 
 
@@ -97,8 +138,10 @@ def retrieve_field_name(record, fieldname):
             else:
                 field_list.append(field['spans'][0]['text'])
     except KeyError:
-        field_list.append(group_check(record, fieldname))
+        field_list = group_check(record, fieldname)
 
+    if not isinstance(field_list, list):
+        return [field_list]
     return field_list
 
 
@@ -107,38 +150,39 @@ def group_check(record, fname):
     Get group that contains field key
     '''
     group_check = dict([ (k, v) for k, v in record.items() if f'{fname}' in str(v) ])
-
+    fieldnames = []
     if len(group_check) == 1:
         first_key = next(iter(group_check))
-        for key, val in group_check[f'{first_key}'][0].items():
-            if str(key) == str(fname):
-                if '@lang' in str(val):
-                    try:
-                        return val[0]['value'][0]['spans'][0]['text']
-                    except KeyError:
-                        print(f"Failed to extract value: {val}")
-                        return None
-                else:
-                    try:
-                        return val[0]['spans'][0]['text']
-                    except KeyError:
-                        print(f"Failed to extract value: {val}")
-                        return None
+        for entry in group_check[f'{first_key}']:
+            for key, val in entry.items():
+                if str(key) == str(fname):
+                    if '@lang' in str(val):
+                        try:
+                            fieldnames.append(val[0]['value'][0]['spans'][0]['text'])
+                        except (IndexError, KeyError):
+                            pass
+                    else:
+                        try:
+                            fieldnames.append(val[0]['spans'][0]['text'])
+                        except (IndexError, KeyError):
+                            pass
+        if fieldnames:
+            return fieldnames
+
     elif len(group_check) > 1:
-        all_keys = []
         all_vals = []
         for kname in group_check:
             for key, val in group_check[f'{kname}'][0].items():
                 if key == fname:
-                    dx = {}
-                    dx[fname] = val
-                    all_vals.append(dx)
+                    dictionary = {}
+                    dictionary[fname] = val
+                    all_vals.append(dictionary)
         if len(all_vals) == 1:
             if '@lang' in str(all_vals):
                 try:
                     return all_vals[0][fname][0]['value'][0]['spans'][0]['text']
                 except KeyError:
-                    print(f"Failed to extract value: {all_val}")
+                    print(f"Failed to extract value: {all_vals}")
                     return None
             else:
                 try:
@@ -184,6 +228,7 @@ def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
     fragment from dictionary / list of dictionaries
+    Attribution @ Edward Anderson
     '''
 
     if not isinstance(obj, list):
@@ -204,8 +249,36 @@ def get_fragments(obj):
                 xml = etree.fromstring(etree.tostring(itm))
                 data.append(etree.tostring(xml))
         except Exception as err:
-            raise TypeError(f'Invalid XML:\n{s}') from err
+            raise TypeError(f'Invalid XML:\n{sub_item}') from err
 
     return data
 
+
+def add_quality_comments(api, priref, comments):
+    '''
+    Receive comments string
+    convert to XML quality comments
+    and updaterecord with data
+    '''
+
+    p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
+    date_now = str(datetime.datetime.now())[:10]
+    p_comm = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"
+    p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
+    p_writer = "<quality_comments.writer>datadigipres</quality_comments.writer>"
+    p_end = "</quality_comments></record></recordList></adlibXML>"
+    payload = p_start + p_comm + p_date + p_writer + p_end
+    print(payload)
+
+    response = requests.request(
+        'POST',
+        api,
+        headers={'Content-Type': 'text/xml'},
+        params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
+        data=payload,
+        timeout=1200)
+    if "error" in str(response.text):
+        return False
+    else:
+        return True
 

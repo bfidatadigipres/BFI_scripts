@@ -39,6 +39,8 @@ metadata files.
    where new put scripts ensure file is moved to
    the netflix01 bucket.
 
+Note: Configured for adlib_v3 and will require API update
+
 Joanna White
 2023
 '''
@@ -54,10 +56,10 @@ import xmltodict
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global variables
-STORAGE_PTH = os.environ.get('NETFLIX_INGEST_PTH')
+STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
 NETFLIX_PTH = os.environ.get('NETFLIX_PATH')
 NET_INGEST = os.environ.get('NETFLIX_INGEST')
 AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
@@ -66,17 +68,7 @@ ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API')
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
-
-# Date variables
-TODAY = datetime.date.today()
-TWO_WEEKS = TODAY - datetime.timedelta(days=14)
-START = f"{TWO_WEEKS.strftime('%Y-%m-%d')}T00:00:00"
-END = f"{TODAY.strftime('%Y-%m-%d')}T23:59:00"
-TITLE_DATA = ''
-UPDATE_AFTER = '2022-07-01T00:00:00'
+CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_netflix_renaming')
@@ -98,32 +90,47 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
-def cid_check(imp_fname):
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+
+def cid_check_filename(imp_fname):
     '''
     Sends CID request for series_id data
     '''
-    query = {'database': 'items',
-             'search': f'digital.acquired_filename="{imp_fname}"',
-             'limit': '1',
-             'output': 'json',
-             'fields': 'priref, object_number, digital.acquired_filename.type'}
+    search = f'digital.acquired_filename="{imp_fname}"'
+    record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
+    print(record)
+    if not record:
+        print(f"cid_check(): Unable to match IMP with Item record: {imp_fname}")
+        LOGGER.info("Unable to match %s to digital.acquired_filename field", imp_fname)
+        return None
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        print(f"cid_check(): Unable to match IMP with Item record: {imp_fname} {err}")
-        query_result = None
-    try:
-        priref = query_result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"cid_check(): Priref: {priref}")
     except (IndexError, KeyError, TypeError):
         priref = ''
+
+    search = f'priref="{priref}"'
+    record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
+    print(record)
+    if not record:
+        return None
     try:
-        ob_num = query_result.records[0]['object_number'][0]
+        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
         print(f"cid_check(): Object number: {ob_num}")
     except (IndexError, KeyError, TypeError):
         ob_num = ''
     try:
-        file_type = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename.type'][0]['value'][0]
+        file_type = adlib.retrieve_field_name(record[0], 'digital.acquired_filename.type')[0]
         print(f"cid_check(): File type: {file_type}")
     except (IndexError, KeyError, TypeError):
         file_type = ''
@@ -139,9 +146,9 @@ def walk_netflix_folders():
     print(STORAGE)
     rename_folders = []
     for root, dirs, _ in os.walk(STORAGE):
-        for dir in dirs:
-            if 'rename_netflix' == dir:
-                rename_folders.append(os.path.join(root, dir))
+        for directory in dirs:
+            if 'rename_netflix' == directory:
+                rename_folders.append(os.path.join(root, directory))
     print(f"{len(rename_folders)} rename folder(s) found")
     folder_list = []
     for rename_folder in rename_folders:
@@ -171,6 +178,7 @@ def main():
     and check contents match Asset list.
     '''
     check_control()
+    cid_check()
 
     folder_list = walk_netflix_folders()
     if len(folder_list) == 0:
@@ -181,7 +189,7 @@ def main():
     for fpath in folder_list:
         folder = os.path.split(fpath)[1]
         LOGGER.info("Folder path found: %s", fpath)
-        priref, ob_num, file_type = cid_check(folder.strip())
+        priref, ob_num, file_type = cid_check_filename(folder.strip())
         print(f"CID item record found: {priref} with matching {file_type.title()}")
 
         if not priref:
@@ -394,12 +402,9 @@ def item_append(priref, item_append_dct):
     Items passed in item_dct for amending to CID item record
     '''
 
+    item_xml = adlib.create_record_data(priref, item_append_dct)
     try:
-        result = CUR.update_record(priref=priref,
-                                   database='items',
-                                   data=item_append_dct,
-                                   output='json',
-                                   write=True)
+        result = adlib.post(CID_API, item_xml, 'items', 'updaterecord')
         print("*** CID item record append result:")
         print(result)
         return True

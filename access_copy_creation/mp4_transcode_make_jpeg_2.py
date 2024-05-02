@@ -410,7 +410,7 @@ def main():
         log_build.append(f"{local_time()}\tINFO\tMoving preservation file to completed path: {completed_pth}")
         shutil.move(fullpath, completed_pth)
     else:
-        log_build.append(f"{local_time()}\tCRITICAL\tProblem writing UMID data to CID media record: {priref}")
+        log_build.append(f"{local_time()}\tCRITICAL\tProblem writing UMID data to CID media record: {media_priref}")
         log_build.append(f"{local_time()}\tWARNING\tLeaving files in transcode folder for repeat attempts to process")
 
     log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ====================")
@@ -1030,7 +1030,7 @@ def cid_media_append(fname, priref, data):
     print("**************************************************************")
     
     data = get_media_priref(fname)
-    file = fname.split(.)[0]
+    file = fname.split('.')[0]
     if file == data[4]:
         LOGGER.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
         return True

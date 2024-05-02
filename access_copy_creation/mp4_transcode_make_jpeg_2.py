@@ -1020,16 +1020,18 @@ def cid_media_append(fname, priref, data):
     payload_mid = ''.join(data)
     payload_end = f"</record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
-    date_supplied = datetime.datetime.now().strftime('%Y-%m-%d')
 
     rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
     if not rec:
         return False
+    data = get_media_priref(fname)
     print("**************************************************************")
-    print(rec)
+    print(data)
     print("**************************************************************")
-
-    if f'"modification":"{date_supplied}' in str(rec):
+    
+    data = get_media_priref(fname)
+    file = fname.split(.)[0]
+    if file == data[4]:
         LOGGER.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
         return True
 

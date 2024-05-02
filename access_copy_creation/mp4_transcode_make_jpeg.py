@@ -496,20 +496,18 @@ def check_item(ob_num, database):
     record = adlib.retrieve_record(CID_API, database, search, '1')[1]
     if not record:
         return None
-    try:
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-    except (IndexError, KeyError):
+
+    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    if not priref:
         priref = ''
-    try:
-        source = adlib.retrieve_field_name(record[0], 'acquisition.source')[0]
-    except (IndexError, KeyError):
+    source = adlib.retrieve_field_name(record[0], 'acquisition.source')[0]
+    if not source:
         source = ''
-    try:
-        groupings = adlib.retrieve_field_name(record[0], 'grouping')
-    except (IndexError, KeyError):
+    groupings = adlib.retrieve_field_name(record[0], 'grouping')
+    if not groupings:
         groupings = ''
 
-    return (priref, source, groupings)
+    return priref, source, groupings
 
 
 def get_media_priref(fname):
@@ -520,22 +518,24 @@ def get_media_priref(fname):
     record = adlib.retrieve_record(CID_API, 'media', search, '1')[1]
     if not record:
         return None
-    try:
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-    except (IndexError, KeyError):
-        priref = ''
-    try:
-        input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
-    except (IndexError, KeyError):
-        input_date = ''
-    try:
-        largeimage_umid = adlib.retrieve_field_name(record[0], 'access_rendition.largeimage')[0]
-        thumbnail_umid = adlib.retrieve_field_name(record[0], 'access_rendition.thumbnail')[0]
-        access_rendition = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
-    except (IndexError, KeyError):
-        largeimage_umid, thumbnail_umid, access_rendition = '','',''
 
-    return (priref, input_date, largeimage_umid, thumbnail_umid, access_rendition)
+    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    if not priref:
+        priref = ''
+    input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
+    if not input_date:
+        input_date = ''
+    largeimage_umid = adlib.retrieve_field_name(record[0], 'access_rendition.largeimage')[0]
+    if not largeimage_umid:
+        largeimage_umid = ''
+    thumbnail_umid = adlib.retrieve_field_name(record[0], 'access_rendition.thumbnail')[0]
+    if not thumbnail_umid:
+        thumbnail_umid = ''
+    access_rendition = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
+    if not access_rendition:
+        access_rendition = ''
+
+    return priref, input_date, largeimage_umid, thumbnail_umid, access_rendition
 
 
 def sort_ext(ext):

@@ -59,7 +59,7 @@ from ds3 import ds3, ds3Helpers
 
 # Private imports
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global paths
 QNAP = os.environ['QNAP_REND1']
@@ -70,11 +70,9 @@ INGEST = os.path.join(FILE_PATH, 'for_ingest/')
 PROXY_CREATE = os.path.join(FILE_PATH, 'proxy_create/')
 CSV_PATH = os.path.join(os.environ['ADMIN'], 'legacy_MP4_file_list.csv')
 LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 JSON_END = os.environ['JSON_END_POINT']
@@ -122,32 +120,30 @@ def check_cid_record(priref, file):
     and check MP4 in file_type for
     returned record
     '''
-    search = f"priref='{priref}'"
-    query = {
-        'database': 'items',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-        'fields': 'item_type, file_type, imagen.media.original_filename, reference_number, code_type'
-    }
 
-    try:
-        result = CID.get(query)
-        print(result.records[0])
-    except Exception as err:
-        print(f"Unable to retrieve CID Item record {err}")
+    search = f"priref='{priref}'"
+    fields = [
+        'item_type',
+        'file_type',
+        'imagen.media.original_filename',
+        'reference_number',
+        'code_type'
+    ]
+    record = adlib.retrieve_record(CID_API, 'items', search, '0', fields)
+    if not record:
+        print(f"Unable to retrieve CID Item record {priref}")
 
     item_type = file_type = original_fname = ref_num = code_type = ''
-    if 'item_type' in str(result.records[0]):
-        item_type = result.records[0]['item_type'][0]['value'][0]
-    if 'file_type' in str(result.records[0]):
-        file_type = result.records[0]['file_type'][0]
-    if 'imagen.media.original_filename' in str(result.records[0]):
-        original_fname = file_type = result.records[0]['imagen.media.original_filename'][0]
-    if 'reference_number' in str(result.records[0]):
-        ref_num = result.records[0]['reference_number'][0]
-    if 'code_type' in str(result.records[0]):
-        code_type = result.records[0]['code_type'][0]
+    if 'item_type' in str(record[0]):
+        item_type = adlib.retrieve_field_name(record[0], 'item_type')[0]
+    if 'file_type' in str(record[0]):
+        file_type = adlib.retrieve_field_name(record[0], 'file_type')[0]
+    if 'imagen.media.original_filename' in str(record[0]):
+        original_fname = adlib.retrieve_field_name(record[0], 'imagen.media.original_filename')[0]
+    if 'reference_number' in str(record[0]):
+        ref_num = adlib.retrieve_field_name(record[0], 'reference_number')[0]
+    if 'code_type' in str(record[0]):
+        code_type = adlib.retrieve_field_name(record[0], 'code_type')[0]
 
     return item_type, file_type, original_fname, ref_num, code_type
 
@@ -158,29 +154,24 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-    query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-        'fields': 'imagen.media.hls_umid, access_rendition.mp4, input.date'
-    }
-
-    try:
-        result = CID.get(query)
-        print(result.records[0])
-    except Exception as err:
-        print(f"Unable to retrieve CID Media record {err}")
+    fields = [
+        'imagen.media.hls_umid',
+        'access_rendition.mp4',
+        'input.date'
+    ]
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)
+    if not record: 
+        print(f"Unable to retrieve CID Media record for item {fname}")
 
     priref = media_hls = access_mp4 = input_date = ''
-    if 'priref' in str(result.records[0]):
-        priref = result.records[0]['priref'][0]
-    if 'imagen.media.hls_umid' in str(result.records[0]):
-        media_hls = result.records[0]['imagen.media.hls_umid'][0]
-    if 'access_rendition.mp4' in str(result.records[0]):
-        access_mp4 = result.records[0]['Access_rendition'][0]['access_rendition.mp4'][0]
-    if 'input.date' in str(result.records[0]):
-        input_date = result.records[0]['input.date'][0]
+    if 'priref' in str(record[0]):
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    if 'imagen.media.hls_umid' in str(record[0]):
+        media_hls = adlib.retrieve_field_name(record[0], 'imagen.media.hls_umid')[0]
+    if 'access_rendition.mp4' in str(record[0]):
+        access_mp4 = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
+    if 'input.date' in str(record[0]):
+        input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
 
     return priref, media_hls, access_mp4, input_date
 
@@ -240,24 +231,17 @@ def get_media_ingests(object_number):
     '''
     Use object_number to retrieve all media records
     '''
-
-    dct = {'database': 'media',
-           'search': f'object.object_number="{object_number}"',
-           'fields': 'imagen.media.original_filename',
-           'limit': 0,
-           'output': 'json'}
+    search = f'object.object_number="{object_number}"'
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])
+    if not record:
+        return None
 
     original_filenames = []
-    try:
-        result = CID.get(dct)
-        print(f'\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number')
-        print(result.records)
-        for r in result.records:
-            filename = r['imagen.media.original_filename']
+    for rec in record:
+        if 'imagen.media.original_filename' in str(rec):
+            filename = adlib.retrieve_field_name(rec, 'imagen.media.original_filename')[0]
             print(f"File found with CID record: {filename}")
-            original_filenames.append(filename[0])
-    except Exception as err:
-        print(err)
+            original_filenames.append(filename)
 
     return original_filenames
 
@@ -342,7 +326,7 @@ def main():
     for file in files:
         LOGGER.info("Processing file: %s", file)
         fpath = os.path.join(FILE_PATH, file)
-        fname, ext = file.split('.')
+        fname = file.split('.')[0]
 
         # Find match in CSV
         match_dict = read_csv_match_file(file)
@@ -777,25 +761,21 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
-    print(record_data)
-    print(f"Using CUR create_record: database='media', data, output='json', write=True")
-    media_priref = ""
 
-    try:
-        i = CUR.create_record(database='media',
-                              data=record_data,
-                              output='json',
-                              write=True)
-        if i.records:
-            try:
-                media_priref = i.records[0]['priref'][0]
-                print(f'** CID media record created with Priref {media_priref}')
-                LOGGER.info('CID media record created with priref %s', media_priref)
-            except Exception:
-                LOGGER.exception("CID media record failed to retrieve priref")
-    except Exception:
+    print(f"Using CUR create_record: database='media', data, output='json', write=True")  
+    record_data_xml = adlib.retrieve_record_data('', record_data)
+    record = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
+    if not record:
         print(f"\nUnable to create CID media record for {ob_num}")
         LOGGER.exception("Unable to create CID media record!")
+
+    try:
+        media_priref = adlib.retrieve_field_name(record, 'priref')[0]
+        print(f'** CID media record created with Priref {media_priref}')
+        LOGGER.info('CID media record created with priref %s', media_priref)
+    except Exception:
+        LOGGER.exception("CID media record failed to retrieve priref")
+        media_priref = ""
 
     return media_priref
 
@@ -810,16 +790,11 @@ def cid_media_append(fname, priref, data):
     payload = payload_head + payload_mid + payload_end
     date_supplied = datetime.datetime.now().strftime('%Y-%m-%d')
 
-    post_response = requests.post(
-        CID_API,
-        params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-        data={'data': payload})
-    print(post_response.text)
-
-    if "<error><info>" in str(post_response.text) or "<error>" in str(post_response.text):
+    rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
+    if not rec:
         LOGGER.warning("cid_media_append(): Post of data failed for file %s: %s - %s", fname, priref, post_response.text)
         return False
-    elif f'"modification":"{date_supplied}' in str(post_response.text):
+    elif f'"modification":"{date_supplied}' in str(rec):
         LOGGER.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
         return True
     else:
@@ -829,4 +804,3 @@ def cid_media_append(fname, priref, data):
 
 if __name__ == '__main__':
     main()
-

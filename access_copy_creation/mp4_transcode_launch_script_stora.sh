@@ -28,6 +28,6 @@ for entry in "${transcode_path1}"*; do
 done
 
 echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
-grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" --timeout 86400 "$PYENV $python_script {}"
+grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" --timeout 86400 "$PYENV311 $python_script {}"
 
 echo " ========================= SHELL END - QNAP04 STORA ========================== $date_FULL" >> "${log_path}"

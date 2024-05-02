@@ -56,15 +56,9 @@ FLLPTH = sys.argv[1].split('/')[:4]
 LOG_PREFIX = '_'.join(FLLPTH)
 LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-<<<<<<< HEAD
-CID_API = os.environ['CID_API3']
 TRANSCODE = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
-=======
 CID_API = os.environ['CID_API4']
-# TRANSCODE = os.environ['TRANSCODING']
-TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
->>>>>>> 8100d7cb668286a584789d65c1f346d5138055c4
 HOST = os.uname()[1]
 
 # Setup logging

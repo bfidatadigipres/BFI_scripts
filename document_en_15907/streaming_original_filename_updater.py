@@ -75,7 +75,7 @@ def cid_check_items(grouping, file_type, platform):
     block for iteration
     '''
     search = f'(grouping.lref="{grouping}" and file_type="{file_type}")'
-    hits, record = adlib.retrieve_record(CID_API, 'items', search, '0', ['object_number', 'digital.acquired_filename'])
+    hits, record = adlib.retrieve_record(CID_API, 'items', search, '0', ['priref'])
     if not record:
         LOGGER.warning("cid_check_items(): Unable to retrieve any %s groupings from CID item records", platform)
         return None
@@ -193,7 +193,11 @@ def main():
 
         priref_list = []
         for record in records:
-            priref_list.append(record['priref'][0])
+            try:
+                prf = adlib.retrieve_field_name(record, 'priref')[0]
+                priref_list.append(prf)
+            except (IndexError, KeyError):
+                pass
 
         # Iterate list of prirefs
         for priref in priref_list:

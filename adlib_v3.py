@@ -140,6 +140,8 @@ def retrieve_field_name(record, fieldname):
     except KeyError:
         field_list = group_check(record, fieldname)
 
+    if not isinstance(field_list, list):
+        return [field_list]
     return field_list
 
 

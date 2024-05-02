@@ -322,7 +322,7 @@ def check_for_media_record(fname):
     search = f"imagen.media.original_filename='{fname}'"
 
     try:
-        result = adlib.retrieve_record(CID_API, 'media', search, '0', ['access_rendition.mp4'])[1]
+        result = adlib.retrieve_record(CID_API, 'media', search, '0', ['priref', 'access_rendition.mp4'])[1]
     except Exception as err:
         logger.exception('CID check for media record failed: %s', err)
 

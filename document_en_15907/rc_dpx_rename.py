@@ -20,6 +20,9 @@ RC DPX renaming script
 9. If no match the DPX sequences are not renamed and moved to ‘error_renumbering’ folder
 10. All details of movements are written to Isilon log and human readable log in QNAP-06.
 
+NOTE: Updated for Adlib V3
+      Presently ununsed
+
 Joanna White 2022
 '''
 
@@ -34,9 +37,9 @@ import re
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
-# Global path variables
+# Global variables
 QNAP_PATH = os.environ['QNAP_FILMOPS']
 RENUMBER_PATH = os.path.join(QNAP_PATH, os.environ['SEQ_RENUMBER'])
 DPX_TO_ASSESS = os.path.join(QNAP_PATH, os.environ['DPX_ASSESS'])
@@ -45,6 +48,10 @@ DPX_FOR_REVIEW = os.path.join(QNAP_PATH, os.environ['DPX_REVIEW'])
 LOG_PATH = os.environ['LOG_PATH']
 LOCAL_LOG = os.path.join(RENUMBER_PATH, 'renumbering_log.txt')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
+CID_API = os.environ['CID_API4']
+TODAY = str(datetime.datetime.now())
+TODAY_DATE = TODAY[:10]
+TODAY_TIME = TODAY[11:19]
 
 # Setup logging
 LOGGER = logging.getLogger('rc_dpx_rename')
@@ -53,13 +60,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-# Global variables
-CID = adlib.Database(url=f"{os.environ['CID_API3']}")
-CUR = adlib.Cursor(CID)
-TODAY = str(datetime.datetime.now())
-TODAY_DATE = TODAY[:10]
-TODAY_TIME = TODAY[11:19]
 
 
 def check_control():
@@ -78,10 +78,10 @@ def cid_check():
     Tests if CID active before all other operations commence
     '''
     try:
-        CUR = adlib.Cursor(CID)
+        adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
-        LOGGER.critical('Cannot establish CID session, exiting script')
+        LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -90,22 +90,21 @@ def cid_list_retrieve(database, search):
     Receive search and look in CID manifestations
     for list of object numbers/prirefs for file_type DPX
     '''
-    query = {'database': database,
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, object_number, file_type'}
-    try:
-        query_result = CID.get(query)
-    except Exception:
+
+    hits, records = adlib.retrieve_record(CID_API, database, search, '0', ['priref', 'object_number', 'file_type'])
+    if not records:
         LOGGER.exception("cid_list_retrieve(): Unable to retrieve data: %s", search)
-        query_result = None
+        return None
 
     record_list = []
-    for dct in query_result.records:
-        for k, v in dct.items():
-            if k == 'priref':
-                record_list.append(v)
+    LOGGER.info("CID hits: %s", hits)
+    for record in records:
+        try:
+            priref = adlib.retrieve_field_name(record, 'priref')[0]
+            record_list.append(priref)
+        except (IndexError, TypeError, KeyError):
+            pass
+
     return record_list
 
 

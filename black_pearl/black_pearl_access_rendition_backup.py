@@ -195,7 +195,9 @@ def main():
         replace_list = []
         for folder in folder_list:
             check_control()
-            if folder in ['201605', '201606', '201607', '201611', '201612', '201701', '201702']:
+            if folder.startswith('201'):
+                continue
+            if folder in ['202001', '202002', '202003', '202004', '202005', '202006', '202007', '202008']:
                 continue
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)

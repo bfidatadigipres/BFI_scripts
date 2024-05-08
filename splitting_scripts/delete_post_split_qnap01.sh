@@ -8,7 +8,7 @@
 echo "Start delete_post_split_qnap01.py: $(date)" >> "${LOG_PATH}delete_post_split_qnap01.log"
 
 # use virtualenv python bin
-"${PY3_ENV}" "${CODE}splitting_scripts/delete_post_split_qnap01.py"
+"${PYENV311}" "${CODE}splitting_scripts/delete_post_split_qnap01.py"
 
 # Log script end
 echo "Finish delete_post_split_qnap01.py: $(date)" >> "${LOG_PATH}delete_post_split_qnap01.log"

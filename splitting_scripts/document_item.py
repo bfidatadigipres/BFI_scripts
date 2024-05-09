@@ -125,7 +125,7 @@ def already_exists(source_object_number):
 
     search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref=397987'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
-    
+
     if hits >= 1:
         log_print(f"already_exists(): {record}")
         return hits, record[0]
@@ -141,7 +141,7 @@ def already_exists_grouping(source_object_number, grouping_lref):
 
     search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref={grouping_lref}'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
-    
+
     if hits >= 1:
         log_print(f"already_exists_grouping(): {record}")
         return hits, record[0]
@@ -207,7 +207,7 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
 
     else:
         log_print(f"new_no_segments(): Failed to create record with:\n{rec_xml}")
-        raise Exception('Unable to create record') from exc
+        raise Exception('Unable to create record')
 
 
 @tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
@@ -267,7 +267,7 @@ def new_no_segments(source_object_number, extension, note=None):
 
     else:
         log_print(f"new_no_segments(): Failed to create record with:\n{rec_xml}")
-        raise Exception('Unable to create record') from exc
+        raise Exception('Unable to create record')
 
 
 @tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
@@ -284,11 +284,11 @@ def new(source_object_number, segments, duration, extension, note=None):
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
     try:
         title = adlib.retrieve_field_name(record[0], 'title')[0]
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         title = ''
     try:
         parent_priref = adlib.retrieve_field_name(record[0], 'part_of_reference.lref')[0]
-    except Exception:
+    except (IndexError, TypeError, KeyError):
         parent_priref = ''
 
     # Construct new record
@@ -334,5 +334,4 @@ def new(source_object_number, segments, duration, extension, note=None):
 
     else:
         log_print(f"new_no_segments(): Failed to create record with:\n{rec_xml}")
-        raise Exception('Error creating record') from exc
-
+        raise Exception('Error creating record')

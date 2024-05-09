@@ -170,7 +170,7 @@ def main():
             logger.info('%s\tModified time is %s seconds ago. %s hours', filepath, seconds, hours)
             print(f'{filepath}\tModified time is {seconds} seconds ago')
 
-            if seconds < 36000: # 10 hours
+            if seconds < 36000:
                 logger.info('%s\tFile modified time is too recent, skipping file\t%s', filepath, os.path.basename(filepath))
                 print(f'{filepath}\tFile modified time is too recent, skipping file\t{f}')
                 continue

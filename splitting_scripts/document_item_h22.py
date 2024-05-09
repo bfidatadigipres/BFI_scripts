@@ -74,7 +74,7 @@ def already_exists(source_object_number):
 
     search = f'(grouping.lref=398385 and source_item->(object_number="{source_object_number}"))'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
-    
+
     if hits >= 1:
         log_print(f"already_exists(): {record}")
         return hits, record[0]
@@ -141,4 +141,4 @@ def new(source_object_number, segments, duration, extension, note=None):
             raise Exception('Failed to retrieve new Object Number') from exc
 
     else:
-        raise Exception('Error creating record') from exc
+        raise Exception('Error creating record')

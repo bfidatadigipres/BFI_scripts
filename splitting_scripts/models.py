@@ -226,7 +226,7 @@ class Carrier():
             print(self.identifiers['can_ID'])
             if re.match(r'.*[A-Z][A-Z]$', self.identifiers['can_ID']):
                 # Reads can_ID final two letters, returns numerical value, eg AB = ['1','2']
-                return [ string.ascii_uppercase.index(i) + 1 for i in [s for s in self.identifiers['can_ID'][-2:]] ]
+                return [string.ascii_uppercase.index(i) + 1 for i in [s for s in self.identifiers['can_ID'][-2:]]]
 
     def _find_items(self):
         '''
@@ -320,7 +320,7 @@ class Carrier():
         if (len(self.items) > 1 or self.partwhole[1] > 1):
             for i in self.items:
                 if 'video_part' not in i:
-                    missing.append(adlib.retrieve_field_name(i, 'object_number')[0]) 
+                    missing.append(adlib.retrieve_field_name(i, 'object_number')[0])
             if missing:
                 print(f'* Insufficient video_part data in items: {",".join(missing)}')
                 raise Exception(f"* Insufficient video_part data in items: {','.join(missing)}")
@@ -328,8 +328,8 @@ class Carrier():
         if (len(self.items) > 1 and self.partwhole == [1, 1]):
             print(data)
             # Reworked for Py3 dictionaries, using star function
-            in_sort_segments = sorted(data.items(), key=star(lambda k,v: (v[0][0], k)))
-            out_sort_segments = sorted(data.items(), key=star(lambda k,v: (v[-1][-1], k)))
+            in_sort_segments = sorted(data.items(), key=star(lambda k, v: (v[0][0], k)))
+            out_sort_segments = sorted(data.items(), key=star(lambda k, v: (v[-1][-1], k)))
             print(f"Segments:\n{in_sort_segments}\n{out_sort_segments}")
             if not in_sort_segments == out_sort_segments:
                 raise Exception('Illegal video_part structure')

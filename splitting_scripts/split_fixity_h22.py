@@ -278,7 +278,7 @@ def main():
                     logger.warning("%s\tPart found ingested to DPI: %s.", filepath, check_filename)
                     continue
                 if check_result is None:
-                    print(f"SKIPPING: API hit attempt failed. Leaving for another pass.")
+                    print("SKIPPING: API hit attempt failed. Leaving for another pass.")
                     logger.warning("%s\tAPI attempt returned None. Leaving for another pass: %s.", filepath, check_filename)
                     continue
                 matched = glob.glob(f"{AUTOINGEST}/**/*/{check_filename}", recursive=True)

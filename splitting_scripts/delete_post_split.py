@@ -15,6 +15,8 @@ Note: this script requires the BlackPearl creds loaded as
           python backup.py
 
 Refactored for Python3
+Updated for Adlib V3
+
 Joanna White
 2023
 '''
@@ -183,7 +185,6 @@ def main():
                 else:
                     grouping = '397987'
 
-
                 record = get_results(filepath, grouping, object_number)
                 if not record:
                     logger.warning('%s\tNo CID record found for object_number %s and grouping %s', filepath, object_number, grouping)
@@ -244,7 +245,7 @@ def main():
 
             else:
                 print(f'* Ignoring because not all Items are persisted: {filepath}, {len(preserved_objects)} persisted, {total_objects_expected} expected')
-                logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath,len(preserved_objects), total_objects_expected)
+                logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath, len(preserved_objects), total_objects_expected)
 
 
 def get_results(filepath, grouping, object_number):

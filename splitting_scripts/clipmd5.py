@@ -26,7 +26,7 @@ def framemd5_manifest(cmd):
     command = ' '.join(cmd)
 
     try:
-        p = subprocess.check_output(command,shell=True,stderr=subprocess.STDOUT)
+        p = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
         return p
     except subprocess.CalledProcessError as err:
         raise RuntimeError(f"Command {err.cmd} returned with error (code {err.returncode}): {err.output}") from err
@@ -36,7 +36,7 @@ def segment(cmd):
     ''' Trim a new file from the given source '''
 
     command = ' '.join(cmd)
-    status = subprocess.call(command,shell=True)
+    status = subprocess.call(command, shell=True)
     if status == 0:
         return True
 

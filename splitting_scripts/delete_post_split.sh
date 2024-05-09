@@ -8,7 +8,7 @@
 echo "Start delete_post_split.py: $(date)" >> "${LOG_PATH}delete_post_split.log"
 
 # use virtualenv python bin
-"${PY3_ENV}" "${CODE}splitting_scripts/delete_post_split.py"
+"${PYENV311}" "${CODE}splitting_scripts/delete_post_split.py"
 
 # Log script end
 echo "Finish delete_post_split.py: $(date)" >> "${LOG_PATH}delete_post_split.log"

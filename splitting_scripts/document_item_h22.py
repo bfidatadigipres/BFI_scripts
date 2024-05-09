@@ -53,11 +53,11 @@ def new_or_existing(source_object_number, segments, duration, extension, note=No
 
     hits, record = already_exists(source_object_number)
     if hits == 1:
-        destination_object = adlib.retrieve_field_name(record[0], 'object_number')[0]
+        destination_object = adlib.retrieve_field_name(record, 'object_number')[0]
         log_print(f"new_or_existing(): Found CID item record - {destination_object}")
         return destination_object
     if hits > 1:
-        log_print(f"new_or_existing(): Multiple records found {result.records}")
+        log_print(f"new_or_existing(): Multiple records found {record}")
         return None
         # Append segmentation information
         # Increment total item duration
@@ -77,7 +77,7 @@ def already_exists(source_object_number):
     
     if hits >= 1:
         log_print(f"already_exists(): {record}")
-        return hits, record
+        return hits, record[0]
     else:
         return hits, None
 
@@ -86,15 +86,12 @@ def already_exists(source_object_number):
 def new(source_object_number, segments, duration, extension, note=None):
     ''' Create a new item record '''
 
-    now_date = datetime.datetime.now().isoformat()[:10]
-    now_time = datetime.datetime.now().isoformat()[11:].split('.')[0]
-
     # Fetch source item data
     search = f'object_number="{source_object_number}"'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '1', ['priref', 'title', 'part_of_reference.lref'])
 
     if hits > 0:
-        source_lref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
     try:
         title = adlib.retrieve_field_name(record[0], 'title')[0]
     except Exception:
@@ -112,8 +109,8 @@ def new(source_object_number, segments, duration, extension, note=None):
             {'file_type': extension.upper()},
             {'grouping.lref': '398385'},
             {'input.name': 'datadigipres'},
-            {'input.date': now_date},
-            {'input.time': now_time},
+            {'input.date': datetime.datetime.now().isoformat()[:10]},
+            {'input.time': datetime.datetime.now().isoformat()[11:].split('.')[0]},
             {'source_item.lref': str(source_lref)},
             {'source_item.content': 'IMAGE_SOUND'},
             {'part_of_reference.lref': str(parent_priref)},

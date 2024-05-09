@@ -20,6 +20,7 @@ Process F47 digitisation output:
   $ python split_fixity.py <path_to_folder> multi
 
 Refactored for Python3
+Updated for Adlib V3
 June 2022
 '''
 
@@ -36,7 +37,7 @@ import subprocess
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 import document_item
 import models
 import clipmd5
@@ -51,17 +52,13 @@ except IndexError:
 if not os.path.exists(TARGET):
     sys.exit(f"EXIT: Target path received not valid: {TARGET}")
 
-# Setup CID
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor
-
 # Path to split files destination
 SOURCE, NUM = os.path.split(TARGET)  # Source folder
 OUTPUT = os.path.join(os.path.split(SOURCE)[0], 'segmented')
 MEDIA_TARGET = os.path.split(OUTPUT)[0]  # Processing folder
 AUTOINGEST = os.path.join(os.path.split(MEDIA_TARGET)[0], 'autoingest')
 LOG_PATH = os.environ['SCRIPT_LOG']
+CID_API = os.environ['CID_API4']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger(f'split_fixity_{NUM}')
@@ -132,25 +129,13 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-    query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-    }
+    hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+    print(f"Check media record response: {hits} hits")
 
-    try:
-        result = CID.get(query)
-        print(f"Check media record response: {result.hits} hits")
-        if result.hits == 1:
-            return True
-        elif result.hits == 0:
-            return False
-        else:
-            return None
-    except Exception as err:
-        print(f"Unable to retrieve CID Media record {err}")
-    return None
+    if hits >= 1:
+        return True
+    elif hits == 0:
+        return False
 
 
 def main():
@@ -235,30 +220,30 @@ def main():
         # Process each item on tape
         print("Begin iterating items in Carrier")
         for item in c.items:
-            item_priref = int(item['priref'][0])
-            object_number = item['object_number'][0]
+            item_priref = int(adlib.retrieve_field_name(item, 'priref')[0])
+            object_number = adlib.retrieve_field_name(item, 'object_number')[0]
             logger.info('%s\t* Item priref is %s and object number is %s', filepath, item_priref, object_number)
             print(f"Item to be processed: {item_priref} {object_number}")
 
             # Check whether object_number derivative has been documented already
             print(f"Launching document_item_h22.py to check if CID item record exists: {object_number}")
             try:
-                exists = document_item.already_exists(object_number)
+                hits, exists = document_item.already_exists(object_number)
             except Exception as err:
                 logger.warning('%s\tUnable to determine if derived record already exists for\t%s\n%s', filepath, object_number, err)
                 continue
 
             # Check to prevent progress if more than one CID item record exists
             if exists:
-                print(f"Exists: {exists} Hits: {exists.hits}")
+                print(f"Exists: {exists} Hits: {hits}")
 
                 # Avoid working with any file that has more than one derived item record
-                if exists.hits > 1:
+                if hits > 1:
                     logger.info('%s\t* More than one item record for derived MKV already exists for\t%s. Skipping.', filepath, object_number)
                     print(f"{c.partwhole[0]} is 1 and more than one CID item record exists - this file split will be skipped.")
                     continue
                 try:
-                    existing_ob_num = exists.records[0]['object_number'][0]
+                    existing_ob_num = adlib.retrieve_field_name(exists, 'object_number')[0]
                 except (IndexError, TypeError, KeyError):
                     logger.info("Unable to get object_number for file checks. Skipping")
                     continue

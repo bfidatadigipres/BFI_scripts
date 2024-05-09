@@ -29,14 +29,13 @@ import pytz
 
 # Private imports
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 import document_item
 import models
 
 # Logging
 LOGS = os.environ['SCRIPT_LOG']
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
+CID_API = os.environ['CID_API4']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('split_mopup_segmented')
@@ -52,7 +51,7 @@ TARGETS = [
     '/mnt/qnap_h22/Public/processing/',
     '/mnt/qnap_08/processing/',
     '/mnt/qnap_video/Public/F47/processing/'
-#    '/mnt/isilon/video_operations/processing/'
+    '/mnt/isilon/video_operations/processing/'
 ]
 
 
@@ -71,45 +70,36 @@ def check_control():
             sys.exit('Exit requested by downtime_control.json')
 
 
-def check_for_parts(ob_num):
-    '''
-    Call up CID for hits against
-    part_of_reference for ob_num
-    '''
-
-    search = f'part_of_reference="{ob_num}"'
-    query = {'database': 'carriers',
-             'search': search,
-             'limit': 0,
-             'output': 'json',
-             'fields': 'object_number'}
-
-    try:
-        result = CID.get(query)
-    except Exception as err:
-        logger.exception('CID check for carriers failed: %s', err)
-        result = None
-    print(result.records[0])
-    if len(result.records[0]) == 1:
-        if result.records[0]['object_number'][0]:
-            print(result.records[0]['object_number'][0])
-            return True
-    elif len(result.records[0]) > 1:
-        return "Model carrier check"
-    else:
-        return False
-
-
 def check_cid():
     '''
     Check CID API responsive
     '''
     try:
-        logger.info("Initialising CID session. Script will exit if CID offline")
-        cid = adlib.Cursor(CID)
+        adlib.check(CID_API)
     except KeyError:
-        logger.warning("Cannot establish CID session, exiting script.")
+        print("* Cannot establish CID session, exiting script")
+        logger.critical("* Cannot establish CID session, exiting script")
         sys.exit()
+
+
+def check_for_parts(ob_num):
+    '''
+    Call up CID for hits against
+    part_of_reference for ob_num
+    '''
+    search = f'part_of_reference="{ob_num}"'
+    hits, record = adlib.retrieve_record(CID_API, 'carriers', search, '0', ['object_number'])
+    if not record:
+        logger.exception('CID check for carriers failed: %s', search)
+        return False
+    print(record[0])
+    if hits == 1 and 'object_number' in str(record[0]):
+        print(adlib.retrieve_field_name(record[0], 'object_number')[0])
+        return True
+    elif hits > 1:
+        return "Model carrier check"
+    else:
+        return False
 
 
 def check_media_record(fname):
@@ -118,20 +108,13 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-    query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-    }
+    hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
 
-    try:
-        result = CID.get(query)
-        if result.hits == 1:
-            return True
-    except Exception as err:
-        print(f"Unable to retrieve CID Media record {err}")
-    return False
+    if hits >= 1:
+        return True
+    else:
+        print(f"Unable to retrieve CID Media record with search: {search}")
+        return False
 
 
 def main():
@@ -251,7 +234,7 @@ def main():
 
             # Check if filename already exists in CID/autoingest (don't rename if duplicate)
             check_result = check_media_record(new_f)
-            if check_result:
+            if check_result is True:
                 logger.info("Skipping: Filename found to have persisted to DPI: %s", new_f)
                 print(f"SKIPPING: Filename {new_f} persisted to BP, CID media record found")
                 continue

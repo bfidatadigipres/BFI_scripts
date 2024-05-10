@@ -258,7 +258,7 @@ def get_results(filepath, grouping, object_number):
     and 'collectionssystems' in CID media record
     '''
 
-    search = f"""(object.object_number->((grouping.lref='{grouping}') and (input.name='datadigipres' or input.name='collectionssystems') and (source_item->(object_number='{object_number}'))))"""
+    search = f'(object.object_number->((grouping.lref="{grouping}") and (input.name="datadigipres" or input.name="collectionssystems") and (source_item->(object_number="{object_number}"))))'
     fields = [
         'reference_number',
         'imagen.media.original_filename',

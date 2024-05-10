@@ -250,8 +250,7 @@ def get_results(filepath, grouping, object_number):
     Checks for cross-over period between 'datadigipres'
     and 'collectionssystems' in CID media record
     '''
-
-    search = f"""(object.object_number->((grouping.lref='{grouping}') and (input.name='datadigipres' or input.name='collectionssystems') and (source_item->(object_number='{object_number}'))))"""
+    search = f'(object.object_number->((grouping.lref="{grouping}") and (input.name="datadigipres" or input.name="collectionssystems") and (source_item->(object_number="{object_number}"))))'
     fields = [
         'reference_number',
         'imagen.media.original_filename',
@@ -259,6 +258,7 @@ def get_results(filepath, grouping, object_number):
     ]
     print(f'* Querying for ingest status of CID Item record {object_number}')
     hits, record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)
+    print(f'Hits: {hits}\nRecord: {record}')
     if hits >= 1:
         logger.info('%s\tCID Item record found, with object number %s', filepath, object_number)
         return record

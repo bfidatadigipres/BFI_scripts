@@ -242,7 +242,7 @@ def main():
     print(f"There are *{len(priref_list)}* priref(s) to be processed:\n")
     for key, val in deletion_dictionary.items():
         print(f"Priref '{key}'. File reference number '{val[0]}'.")
-        print(f"{val[4]}: Access MP4 '{val[1]}'. Input date '{val[2]}'. Approval status '{val[3][:15]}'. Bucket location in BP: '{val[5]}'.")
+        print(f"{val[4]}: Access MP4 '{val[1]}'. Input date '{val[2]}'. Approval status '{val[3]}'. Bucket location in BP: '{val[5]}'.")
         print("---------------------------------------------------------------------")
 
     time.sleep(5)

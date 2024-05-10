@@ -158,7 +158,7 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
 
     # Fetch source item data
     search = f'object_number="{source_object_number}"'
-    hits, record = adlib.retrieve_record(CID_API, 'items', search, '1', ['priref', 'title', 'part_of_reference.lref'])
+    hits, record = adlib.retrieve_record(CID_API, 'items', search, '1')
 
     if hits > 0:
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
@@ -167,7 +167,7 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
     if not title:
         return None
     if 'part_of_reference.lref' in str(record):
-        parent_priref = adlib.retrieve_field_name(record[0], 'part_of_reference.lref')[0]
+        parent_priref = adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]
     if not parent_priref:
         return None
 
@@ -220,7 +220,7 @@ def new_no_segments(source_object_number, extension, note=None):
 
     # Fetch source item data
     search = f'object_number="{source_object_number}"'
-    hits, record = adlib.retrieve_record(CID_API, 'items', search, '1', ['priref', 'title', 'part_of_reference.lref'])
+    hits, record = adlib.retrieve_record(CID_API, 'items', search, '1')
 
     if hits > 0:
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
@@ -229,7 +229,7 @@ def new_no_segments(source_object_number, extension, note=None):
     if not title:
         return None
     if 'part_of_reference.lref' in str(record):
-        parent_priref = adlib.retrieve_field_name(record[0], 'part_of_reference.lref')[0]
+        parent_priref = adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]
     if not parent_priref:
         return None
 
@@ -280,7 +280,7 @@ def new(source_object_number, segments, duration, extension, note=None):
 
     # Fetch source item data
     search = f'object_number="{source_object_number}"'
-    hits, record = adlib.retrieve_record(CID_API, 'items', search, '1', ['priref', 'title', 'part_of_reference.lref'])
+    hits, record = adlib.retrieve_record(CID_API, 'items', search, '1')
 
     if hits > 0:
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
@@ -289,7 +289,7 @@ def new(source_object_number, segments, duration, extension, note=None):
     if not title:
         return None
     if 'part_of_reference.lref' in str(record):
-        parent_priref = adlib.retrieve_field_name(record[0], 'part_of_reference.lref')[0]
+        parent_priref = adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]
     if not parent_priref:
         return None
 

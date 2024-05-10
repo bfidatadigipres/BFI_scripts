@@ -88,7 +88,7 @@ def new(source_object_number, segments, duration, extension, note=None):
 
     # Fetch source item data
     search = f'object_number="{source_object_number}"'
-    hits, record = adlib.retrieve_record(CID_API, 'items', search, '1', ['priref', 'title', 'part_of_reference.lref'])
+    hits, record = adlib.retrieve_record(CID_API, 'items', search, '1')
 
     if hits > 0:
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
@@ -97,7 +97,7 @@ def new(source_object_number, segments, duration, extension, note=None):
     except Exception:
         title = ''
     try:
-        parent_priref = adlib.retrieve_field_name(record[0], 'part_of_reference.lref')[0]
+        parent_priref = adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]
     except Exception:
         parent_priref = ''
 

@@ -177,6 +177,7 @@ def main():
 
             # Process each item on tape
             for item in items:
+                print(item)
                 object_number = adlib.retrieve_field_name(item, 'object_number')[0]
 
                 # Check expected number of media records have been created for correct grouping

@@ -218,7 +218,6 @@ def main():
 
         # Process each item on tape
         print("Begin iterating items in Carrier")
-        print(c.items)
         for item in c.items:
             item_priref = int(adlib.retrieve_field_name(item, 'priref')[0])
             object_number = adlib.retrieve_field_name(item, 'object_number')[0]

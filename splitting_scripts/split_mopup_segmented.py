@@ -12,9 +12,10 @@ Fix C- N-prefix files in processing/segmented where CID Item creation has failed
    correct part whole for the file being processed.
 8. Files are renamed and left in folder for aspect.py to pick up
 
+NOTE: Updated for Adlib V3
+
 Stephen McConnachie
 June 2021
-
 Refactored 2023
 '''
 

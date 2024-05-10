@@ -99,7 +99,7 @@ def post(api, payload, database, method):
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
-            print(response.text, err)
+            print(err)
             return None
         if 'recordList' in response.text:
             records = json.loads(response.text)
@@ -111,7 +111,6 @@ def post(api, payload, database, method):
     if method == 'updaterecord':
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
-            print(response.text)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
             return None
@@ -269,7 +268,6 @@ def add_quality_comments(api, priref, comments):
     p_writer = "<quality_comments.writer>datadigipres</quality_comments.writer>"
     p_end = "</quality_comments></record></recordList></adlibXML>"
     payload = p_start + p_comm + p_date + p_writer + p_end
-    print(payload)
 
     response = requests.request(
         'POST',

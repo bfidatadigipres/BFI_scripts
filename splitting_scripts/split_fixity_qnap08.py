@@ -226,7 +226,7 @@ def main():
             print(f"Item to be processed: {item_priref} {object_number}")
 
             # Check whether object_number derivative has been documented already
-            print(f"Launching document_item_h22.py to check if CID item record exists: {object_number}")
+            print(f"Launching document_item.py to check if CID item record exists: {object_number}")
             try:
                 hits, exists = document_item.already_exists(object_number)
             except Exception as err:
@@ -485,7 +485,7 @@ def main():
                 note = 'autocreated (segmented)'
 
             logger.info("LOG CHECK: document_item.new_or_existing(%s, %s, %s, %s, note=%s)", object_number, relative_segments, file_duration, extension, note)
-            print(f"Launching document_item_h22.new({object_number}, {relative_segments}, {file_duration}, {extension}, note={note})")
+            print(f"Launching document_item.new({object_number}, {relative_segments}, {file_duration}, {extension}, note={note})")
 
             # Single-item tape
             if c.partwhole[1] == 1:

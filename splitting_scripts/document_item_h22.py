@@ -92,14 +92,14 @@ def new(source_object_number, segments, duration, extension, note=None):
 
     if hits > 0:
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
-    try:
+    if 'title' in str(record):
         title = adlib.retrieve_field_name(record[0], 'title')[0]
-    except Exception:
-        title = ''
-    try:
+    if not title:
+        return None
+    if 'part_of_reference' in str(record):
         parent_priref = adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]
-    except Exception:
-        parent_priref = ''
+    if not parent_priref:
+        return None
 
     # Construct new record
     rec = ([{'record_type': 'ITEM'},

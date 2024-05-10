@@ -165,6 +165,9 @@ def main():
             except Exception:
                 continue
 
+            if not isinstance(items, list):
+                items = [items]
+
             # Track BlackPearl-preserved objects
             preserved_objects = {}
 
@@ -176,9 +179,6 @@ def main():
                 total_objects_expected = whole
 
             # Process each item on tape
-            if not isinstance(items, list):
-                items = [items]
-
             for item in items:
                 print(item)
                 object_number = adlib.retrieve_field_name(item, 'object_number')[0]
@@ -240,7 +240,7 @@ def main():
                 elif total_objects_expected >= 2:
                     print(f'Moving multi-item tape file to delete folder: {filepath}')
                     try:
-                        shutil.move(filepath, dst)
+                        # shutil.move(filepath, dst)
                         logger.info('%s\tMoved multi-item tape file to delete folder', filepath)
                     except Exception as err:
                         print(f'* Unable to move file to delete folder: {filepath}\t{err}')

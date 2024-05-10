@@ -177,7 +177,7 @@ def main():
 
             # Process each item on tape
             for item in items:
-                object_number = item['object_number'][0]
+                object_number = adlib.retrieve_field_name(item, 'object_number')[0]
 
                 # Check expected number of media records have been created for correct grouping
                 if '/qnap_h22/' in filepath or '/qnap_10/' in filepath:

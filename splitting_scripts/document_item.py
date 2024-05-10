@@ -27,7 +27,7 @@ def log_print(data):
     Temp func to track failures in
     CID item record creation
     '''
-    with open(os.path.join(CODE_PATH, 'splitting_scripts/temp_logs/h22_item_records.log'), 'a') as file:
+    with open(os.path.join(CODE_PATH, 'splitting_scripts/temp_logs/ofcom_item_records.log'), 'a') as file:
         file.write(f"{datetime.datetime.now().isoformat()}\n")
         file.write(f"{data}\n")
         file.write("--------------------------------\n")

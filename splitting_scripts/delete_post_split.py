@@ -176,7 +176,9 @@ def main():
                 total_objects_expected = whole
 
             # Process each item on tape
-            print(items)
+            if not isinstance(items, list):
+                items = [items]
+
             for item in items:
                 print(item)
                 object_number = adlib.retrieve_field_name(item, 'object_number')[0]

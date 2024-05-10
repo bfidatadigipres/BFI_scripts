@@ -149,29 +149,29 @@ def get_media_record_data(priref):
 
     if not record:
         return None
-    try:
+    if 'reference_number' in str(record):
         ref_num = adlib.retrieve_field_name(record[0], 'reference_number')[0]
-    except (TypeError, IndexError, KeyError):
+    if not ref_num:
         ref_num = ''
-    try:
+    if 'access_rendition.mp4' in str(record):
         access_mp4 = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
-    except (TypeError, IndexError, KeyError):
+    if not access_mp4:
         access_mp4 = ''
-    try:
+    if 'input.date' in str(record):
         input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
-    except (TypeError, IndexError, KeyError):
+    if not input_date:
         input_date = ''
-    try:
+    if 'notes' in str(record):
         approved = adlib.retrieve_field_name(record[0], 'notes')[0]
-    except (TypeError, IndexError, KeyError):
+    if not approved:
         approved = ''
-    try:
+    if 'imagen.media.original_filename' in str(record):
         filename = adlib.retrieve_field_name(record[0], 'imagen.media.original_filename')[0]
-    except (TypeError, IndexError, KeyError):
+    if not filename:
         filename = ''
-    try:
+    if 'preservation_bucket' in str(record):
         bucket = adlib.retrieve_field_name(record[0], 'preservation_bucket')[0]
-    except (TypeError, IndexError, KeyError):
+    if not bucket:
         bucket = ''
 
     return [ref_num, access_mp4, input_date, approved, filename, bucket]
@@ -264,8 +264,7 @@ def main():
         LOGGER.info("Assessing %s: Priref %s. Filename %s", ref_num, priref, fname)
 
         confirmation = []
-        for note in approved:
-            confirmation.append(f'<notes>{note}</notes>')
+        confirmation.append(f'<notes>{approved}</notes>')
 
         if 'Confirmed for deletion' in str(approved) and len(ref_num) >= 7:
             print(f"Confirmed for deletion: {key}, {ref_num}, {approved}")

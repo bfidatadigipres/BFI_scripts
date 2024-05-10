@@ -149,29 +149,41 @@ def get_media_record_data(priref):
 
     if not record:
         return None
-    if 'reference_number' in str(record):
+    try:
         ref_num = adlib.retrieve_field_name(record[0], 'reference_number')[0]
-    if not ref_num:
+    except (IndexError, KeyError, TypeError):
         ref_num = ''
-    if 'access_rendition.mp4' in str(record):
+    if ref_num is None:
+        ref_num = ''
+    try:
         access_mp4 = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
-    if not access_mp4:
+    except (IndexError, KeyError, TypeError):
         access_mp4 = ''
-    if 'input.date' in str(record):
+    if access_mp4 is None:
+        access_mp4 = ''
+    try:
         input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
-    if not input_date:
+    except (IndexError, KeyError, TypeError):
         input_date = ''
-    if 'notes' in str(record):
+    if input_date is None:
+        input_date = ''
+    try:
         approved = adlib.retrieve_field_name(record[0], 'notes')[0]
-    if not approved:
+    except (IndexError, KeyError, TypeError):
         approved = ''
-    if 'imagen.media.original_filename' in str(record):
+    if approved is None:
+        approved = ''
+    try:
         filename = adlib.retrieve_field_name(record[0], 'imagen.media.original_filename')[0]
-    if not filename:
+    except (IndexError, KeyError, TypeError):
         filename = ''
-    if 'preservation_bucket' in str(record):
+    if filename is None:
+        filename = ''
+    try:
         bucket = adlib.retrieve_field_name(record[0], 'preservation_bucket')[0]
-    if not bucket:
+    except (IndexError, KeyError, TypeError):
+        bucket = ''
+    if bucket is None:
         bucket = ''
 
     return [ref_num, access_mp4, input_date, approved, filename, bucket]

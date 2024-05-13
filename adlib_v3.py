@@ -50,7 +50,8 @@ def retrieve_record(api, database, search, limit, fields=None):
         query['fields'] = field_str
 
     record = get(api, query)
-
+    print("***************")
+    print(record)
     if 'recordList' not in str(record):
         try:
             hits = record['adlibJSON']['diagnostic']['hits']

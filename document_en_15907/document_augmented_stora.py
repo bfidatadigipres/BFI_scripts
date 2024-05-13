@@ -180,6 +180,7 @@ def find_repeats(asset_id):
     search = f'alternative_number="{asset_id}"'
 
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '0')
+    print(result)
     if not result:
         return None
     if hits == 0:

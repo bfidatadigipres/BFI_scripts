@@ -42,7 +42,8 @@ def retrieve_record(api, database, search, limit, fields=None):
         'database': database,
         'search': search,
         'limit': limit,
-        'output': 'jsonv1'
+        'output': 'jsonv1',
+        'timeout': 1200
     }
 
     if fields:
@@ -50,8 +51,7 @@ def retrieve_record(api, database, search, limit, fields=None):
         query['fields'] = field_str
 
     record = get(api, query)
-    print("***************")
-    print(record)
+
     if 'recordList' not in str(record):
         try:
             hits = record['adlibJSON']['diagnostic']['hits']
@@ -102,9 +102,6 @@ def post(api, payload, database, method):
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
             return None
-        print(response.text)
-        if '@attributes' in response.text:
-            return json.loads(response.text)
 
     if method == 'updaterecord':
         try:
@@ -113,9 +110,8 @@ def post(api, payload, database, method):
             print(err)
             return None
 
-        if '@attributes' in response.text:
-            records = json.loads(response.text)
-            return records
+    if '@attributes' in response.text:
+        return json.loads(response.text)
 
     return None
 

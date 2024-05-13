@@ -102,6 +102,7 @@ def post(api, payload, database, method):
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
             return None
+        print(response.text)
         if "['adlibJSON']['recordList']['record']" in str(response.text):
             records = json.loads(response.text)
             if isinstance(records['adlibJSON']['recordList']['record'], list):                 

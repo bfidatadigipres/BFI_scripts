@@ -103,12 +103,8 @@ def post(api, payload, database, method):
             print(err)
             return None
         print(response.text)
-        if "['adlibJSON']['recordList']['record']" in str(response.text):
-            records = json.loads(response.text)
-            if isinstance(records['adlibJSON']['recordList']['record'], list):                 
-                return records['adlibJSON']['recordList']['record'][0]
-            else:
-                return records['adlibJSON']['recordList']['record']
+        if '@attributes' in response.text:
+            return json.loads(response.text)
 
     if method == 'updaterecord':
         try:

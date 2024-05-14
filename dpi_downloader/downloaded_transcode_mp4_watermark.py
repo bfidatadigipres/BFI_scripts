@@ -20,7 +20,6 @@ import re
 import sys
 import time
 import json
-import getopt
 import logging
 import subprocess
 import magic

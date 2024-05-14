@@ -101,7 +101,9 @@ def post(api, payload, database, method):
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
-
+        print("************** insertrecord ***************")
+        print(response.text)
+        print("*****************************")
         if 'recordList' in response.text:
             record = json.loads(response.text)
             if isinstance(record['adlibJSON']['recordList']['record'], list):
@@ -114,7 +116,9 @@ def post(api, payload, database, method):
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
-
+        print("************** updaterecord ***************")
+        print(response.text)
+        print("*****************************")
         if '@attributes' in response.text:
             record = json.loads(response.text)
             return record

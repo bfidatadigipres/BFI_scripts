@@ -210,6 +210,7 @@ def main():
                         print(f'* Total objects expected = {total_objects_expected}')
 
             deleteable = len(preserved_objects) >= total_objects_expected
+            logger.info('%s\tPreserved objects: %s / Total objects expected: %s', filepath, len(preserved_objects), total_objects_expected)
             print(f'{f}\tDeletable={deleteable}\t{len(preserved_objects)}/{total_objects_expected}')
 
             # Set move destination

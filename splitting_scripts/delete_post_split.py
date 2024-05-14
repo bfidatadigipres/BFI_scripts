@@ -228,7 +228,7 @@ def main():
                 if total_objects_expected == 1:
                     print(f'* Moving single item tape file to delete folder: {filepath}')
                     try:
-                        # shutil.move(filepath, dst)
+                        shutil.move(filepath, dst)
                         logger.info('%s\tMoved single item tape file to delete folder', filepath)
                     except Exception as err:
                         logger.warning('%s\tUnable to move file to delete folder', filepath)
@@ -240,7 +240,7 @@ def main():
                 elif total_objects_expected >= 2:
                     print(f'Moving multi-item tape file to delete folder: {filepath}')
                     try:
-                        # shutil.move(filepath, dst)
+                        shutil.move(filepath, dst)
                         logger.info('%s\tMoved multi-item tape file to delete folder', filepath)
                     except Exception as err:
                         print(f'* Unable to move file to delete folder: {filepath}\t{err}')

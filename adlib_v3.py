@@ -104,7 +104,7 @@ def post(api, payload, database, method):
 
         if 'recordList' in response.text:
             record = json.loads(response.text)
-            if isinstance(['adlibJSON']['recordList']['record'], list):
+            if isinstance(record['adlibJSON']['recordList']['record'], list):
                 return record['adlibJSON']['recordList']['record'][0]
             else:
                 return record['adlibJSON']['recordList']['record']

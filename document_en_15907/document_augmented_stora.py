@@ -1301,12 +1301,12 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     man_values_xml = adlib.create_record_data('', manifestation_values)
     if man_values_xml is None:
         return None
-    print("***************************")
-    print(man_values_xml)
 
     try:
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
+        print("******************************")
+        print(man_rec)
         if man_rec:
             try:
                 manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]

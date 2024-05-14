@@ -165,7 +165,6 @@ def main():
         # Make paths
         date_path = preservation_date.replace('-', '/')
         source_path = os.path.join(STORA_BACKUP, date_path, channel)
-        dest_path = os.path.join(STORA, date_path)
 
         if not os.path.exists(source_path):
             LOGGER.warning("Skipping: Error with source path: %s", source_path)

@@ -101,17 +101,23 @@ def post(api, payload, database, method):
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
-            return None
+
+        if 'recordList' in response.text:
+            record = json.loads(response.text)
+            if isinstance(['adlibJSON']['recordList']['record'], list):
+                return record['adlibJSON']['recordList']['record'][0]
+            else:
+                return record['adlibJSON']['recordList']['record']
 
     if method == 'updaterecord':
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
-            return None
 
-    if '@attributes' in response.text:
-        return json.loads(response.text)
+        if '@attributes' in response.text:
+            record = json.loads(response.text)
+            return record
 
     return None
 

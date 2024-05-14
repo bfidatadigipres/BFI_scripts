@@ -123,6 +123,8 @@ def retrieve_field_name(record, fieldname):
     ['adlibJSON']['recordList']['record'][0]
     '''
     field_list = []
+    print("****")
+    print(record)
     try:
         for field in record[f'{fieldname}']:
             if isinstance(field, str):

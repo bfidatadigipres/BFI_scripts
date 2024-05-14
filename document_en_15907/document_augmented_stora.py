@@ -149,9 +149,6 @@ def cid_series_query(series_id):
     # BBC News (BBC One HD) failed retrieval work around
     if series_id == '6a9ad900-6bc1-5507-a607-4b638e90cb47':
         return 1, '156546009'
-    # This is BBC Three/Four failed retrieval work around
-    if series_id == 'f8ee18fb-0620-5e51-bd6f-ea3ed7b63443':
-        return 1, '157271228'
 
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
@@ -180,6 +177,10 @@ def find_repeats(asset_id):
     Use asset_id to check in CID for duplicate
     PATV showings of a manifestation
     '''
+    # Temp link for 'This is BBC Three'
+    if asset_id == 'f8ee18fb-0620-5e51-bd6f-ea3ed7b63443':
+        return '157271228'
+    
     search = f'alternative_number="{asset_id}"'
 
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '0')

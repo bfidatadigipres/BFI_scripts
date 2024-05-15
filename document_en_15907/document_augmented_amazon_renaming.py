@@ -171,7 +171,7 @@ def retrieve_metadata(fpath, mfile):
         return 'HDR'
     if 'BT.709' in str(colour_prim):
         return 'SDR'
-    if '0|eng' in str(audio_spec):
+    if str(colour_prim) == '' and 'eng' in str(audio_spec):
         return 'Audio Description'
     return None
 

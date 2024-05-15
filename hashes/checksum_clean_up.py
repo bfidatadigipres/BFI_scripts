@@ -206,7 +206,7 @@ def main():
                 sys.exit()
 
             # Format as XML
-            pre_data = f"<adlibJSON><recordList><record priref={priref}>"
+            pre_data = f"<adlibJSON><recordList><record priref='{priref}'>"
             checksum1 = f"<Checksum><checksum.value>{md5}</checksum.value><checksum.type>MD5</checksum.type>"
             checksum2 = f"<checksum.date>{md5_date}</checksum.date><checksum.path>'{md5_path}'</checksum.path></Checksum>"
             checksum3 = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date>"

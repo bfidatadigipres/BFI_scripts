@@ -88,7 +88,7 @@ def main():
     Move folders where conditions allow
     '''
 
-    LOGGER.info('==== Move4ingest script running at %s ===============', str(datetime.datetime.now())[0:19])
+    LOGGER.info('==== Move for ingest script running at %s ===============', str(datetime.datetime.now())[0:19])
     for _, dirs, _ in os.walk(INGEST_PATH):
         for foldername in dirs:
             check_control()
@@ -169,7 +169,7 @@ def main():
                 print(err)
                 continue
 
-    LOGGER.info('==== Move4ingest script completed at %s ===============', str(datetime.datetime.now())[0:19])
+    LOGGER.info('==== Move for ingest script completed at %s ===============', str(datetime.datetime.now())[0:19])
 
 
 if __name__ == '__main__':

@@ -62,13 +62,13 @@ def cid_retrieve(fname):
     '''
     priref = ''
     search = f"imagen.media.original_filename='{fname}'"
-    record = adlib.retrieve_record(CID_API, 'media', search, '0', ['priref'])[1]
+    record = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
     if not record:
-        return None
+        return ''
     if 'priref' in str(record):
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         return priref
-    return None
+    return ''
 
 
 def read_extract(metadata_pth):

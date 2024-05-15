@@ -24,18 +24,16 @@ Python3.8+
 import os
 import sys
 import logging
-import datetime
-import requests
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global variables
 LOG_PATH = os.environ['LOG_PATH']
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
 CSV_PATH = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('metadata_clean_up')
@@ -45,20 +43,16 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-# CID URL details
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
-
 
 def check_cid():
     '''
     Test CID online before script progresses
     '''
     try:
-        CID = adlib.Database(url=CID_API)
-        CUR = adlib.Cursor(CID)
-    except Exception as err:
-        LOGGER.exception('check_cid(): Cannot establish CID session, exiting script', err)
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
 
@@ -68,22 +62,13 @@ def cid_retrieve(fname):
     '''
     priref = ''
     search = f"imagen.media.original_filename='{fname}'"
-    query = {'database': 'media',
-             'search': search,
-             'limit': '0',
-             'output': 'json'
-    }
-    try:
-        query_result = CID.get(query)
-        print(query_result)
-    except Exception as err:
-        print(err)
-        query_result = None
-    try:
-        priref = query_result.records[0]['priref'][0]
-    except (KeyError, IndexError):
-        priref = ""
-    return priref
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', ['priref'])[1]
+    if not record:
+        return None
+    if 'priref' in str(record):
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        return priref
+    return None
 
 
 def read_extract(metadata_pth):
@@ -161,11 +146,7 @@ def main():
 
     payload_data = text + text_full + ebu + pb + xml + json
 
-    # Lock record for clean write of data
-    lock_success = write_lock(priref)
-    if not lock_success:
-        sys.exit("Not able to lock record, abandoning")
-
+    # Write data
     success = write_payload(priref, payload_data)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
@@ -185,10 +166,6 @@ def main():
     else:
         LOGGER.warning("Payload data was not written to CID Media record: %s", priref)
         LOGGER.info("Metadata records being left in place for repeat write attempt")
-        # Unlock record after write failure
-        unlock_success = unlock_record(priref)
-        if not unlock_success:
-            LOGGER.warning("Unable to unlock record: %s", priref)
 
     LOGGER.info("============ METADATA CLEAN UP SCRIPT COMPLETE ================")
 
@@ -200,55 +177,14 @@ def write_payload(priref, payload_data):
     payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_head + payload_data + payload_end
-    try:
-        success = requests_write(payload)
-        if success:
-            return True
-    except Exception as err:
-        print(err)
 
-
-def write_lock(priref):
-    '''
-    Apply writing lock to record
-    '''
-    try:
-        post_resp = requests.post(
-            CID_API,
-            params={'database': 'media', 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'})
-        return True
-    except Exception as err:
-        LOGGER.warning("write_lock(): Lock record wasn't applied to record %s. %s", priref, err)
-
-
-def requests_write(payload):
-    '''
-    Requests alternative to
-    CID writing data
-    '''
-    post_response = requests.post(
-        CID_API,
-        params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-        data={'data': payload}
-    )
-    if '<error><info>' in str(post_response.text):
-        print(str(post_response.text))
+    record = adlib.post(CID_API, payload, 'media', 'updaterecord')
+    if record is None:
+        return False
+    elif 'error' in str(record):
         return False
     else:
         return True
-
-
-def unlock_record(priref):
-    '''
-    Unlock record if write to Media record fails
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'media', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
-        return True
-    except Exception as err:
-        LOGGER.warning("unlock_record(): CID Media record %s was not unlocked following failed write: %s", priref, err)
 
 
 if __name__ == '__main__':

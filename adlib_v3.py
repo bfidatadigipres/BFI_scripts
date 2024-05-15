@@ -101,12 +101,14 @@ def post(api, payload, database, method):
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
+            return None
 
     if method == 'updaterecord':
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
+            return None
 
     if 'recordList' in response.text:
         record = json.loads(response.text)

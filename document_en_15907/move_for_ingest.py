@@ -1,146 +1,173 @@
-# Move folders of donor file tiffs into autoingest scope, sequentially
-# And move ingested folders out, after checking status
+#!/usr/bin/ python3
+
+'''
+Move folders of donor file tiffs into autoingest scope, sequentially
+And move ingested folders out, after checking status
+'''
 
 # Python imports
 import os
-import re
 import sys
+import json
 import shutil
+import logging
 import datetime
-from shutil import copyfile
+import shutil
 
-# Local application imports
+# Local imports
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
+# Global variables
 CID_API = os.environ['CID_API4']
 MOVE_FOLDER = False
 INPUT_PATH = os.path.join(os.environ['IS_MEDIA'], 'donor_files/renamed_ready_for_ingest/')
 INGEST_PATH = os.path.join(os.environ['AUTOINGEST_IS_ING'], 'ingest/proxy/image/')
 OUTPUT_PATH = os.path.join(os.environ['IS_MEDIA'], 'donor_files/partly_ingested/')
-GLOBAL_LOG = os.path.join(os.environ['LOG_PATH'], 'autoingest/global.log')
-
+LOGS = os.environ['LOG_PATH']
+GLOBAL_LOG = os.path.join(LOGS, 'autoingest/global.log')
+CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 NOW = (str(datetime.datetime.now()))[0:19]
 NOW_MINUS_30 = str(datetime.datetime.now() - datetime.timedelta(minutes=30))
 NOW_MINUS_60 = str(datetime.datetime.now() - datetime.timedelta(minutes=60))
-QUERY_30 = now_minus_30[0:16]
-QUERY_60 = now_minus_60[0:16]
+QUERY_30 = NOW_MINUS_30[0:16]
+QUERY_60 = NOW_MINUS_60[0:16]
 
-print '==== Move4ingest script running at {} ==============='.format(now)
+# Setup logging
+LOGGER = logging.getLogger('special_collections_backup')
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_access_edits.log'))
+FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+HDLR.setFormatter(FORMATTER)
+LOGGER.addHandler(HDLR)
+LOGGER.setLevel(logging.INFO)
 
-for root, dirs, files in os.walk(ingest_path):
-    for foldername in dirs:
-        folder_search = '_{}of'.format(foldername)
-        print '* Current folder is {} - searching for {}'.format(foldername, folder_search)
 
-        # Check number of successful ingest jobs from folder
-        file = open(GLOBAL_LOG, 'r')
-        for line in file:
-            global ingest_jobs
-            ingest_jobs = sum([1 for line in file if folder_search in line and 'successfully queued for ingest' in line])
-            print '* Number of successful ingest jobs from folder {}: {}'.format(foldername, ingest_jobs)
+def check_control():
+    '''
+    Check for downtime control
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
+            sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
-        # Check number of successful CID media records created from folder
-        q = '(object.object_number=CA* and imagen.media.original_filename=*{}*)'.format(folder_search)
-        d = {'database': 'media',
-             'search': q,
-             'limit': '-1'}
 
-        result = cid.get(d)
-        # If zero CID records created for folder, exit and wait until next time
-        if int(result.hits) == 0:
-            print '* No CID records created for folder, waiting until next time...'
-            continue
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
 
-        global gap
-        gap = int(ingest_jobs) - int(result.hits)
 
-        print '* Number of successful CID Media records from folder {}: {}'.format(foldername, result.hits)
-        print '* Gap = {}'.format(gap)
+def check_media_records(folder_search, time):
+    '''
+    Check number of successful CID media records created from folder
+    '''
+    if time is None:
+        search = f'(object.object_number=CA* and imagen.media.original_filename=*{folder_search}*)'
+        hits = adlib.retrieve_records(CID_API, 'media', search, '-1')[0]
+        return int(hits)
+    else:
+        search = f'(object.object_number=CA* and imagen.media.original_filename=*{folder_search}*) and (creation>"{time}")'
+        hits = adlib.retrieve_records(CID_API, 'media', search, '-1')[0]
+        return int(hits)
 
-        if gap == 0:
-            # Check whether in-scope CID Media records created in last 30 mins
-            q = '(object.object_number=CA* and imagen.media.original_filename=*{}*) and (creation>"{}")'.format(folder_search, query_30)
-            d = {'database': 'media',
-                 'search': q,
-                 'limit': '-1'}
 
-            result = cid.get(d)
-            print '* Number of CID Media records created from folder {} in last 30 mins: {}'.format(foldername, result.hits)
+def main():
+    '''
+    Move folders where conditions allow
+    '''
+    check_control()
+    cid_check()
 
-            if result.hits == 0:
-                print '* Ready to move - gap is zero and no Media records created for folder {} in last 30 mins'.format(foldername)
-                move_folder = True
-            else:
-                print '* NOT ready to move - gap is zero, but {} Media records created for folder {} in last 30 mins - waiting a while...'.format(result.hits, foldername)
-                move_folder = False
-        else:
-            # Check whether in-scope CID Media records created in last 60 mins
-            q = '(object.object_number=CA* and imagen.media.original_filename=*{}*) and (creation>"{}")'.format(folder_search, query_60)
-            d = {'database': 'media',
-                 'search': q,
-                 'limit': '-1'}
+    LOGGER.info('==== Move4ingest script running at %s ===============', (str(datetime.datetime.now()))[0:19])
 
-            result = cid.get(d)
-            print '* Number of CID Media records created from folder {} in last 60 mins: {}'.format(foldername, result.hits)
+    for _, dirs, _ in os.walk(INGEST_PATH):
+        for foldername in dirs:
+            folder_search = f'_{foldername}of'
+            LOGGER.info('* Current folder is %s - searching for %s', foldername, folder_search)
 
-            if result.hits == 0:
-                if gap < 100:
-                   print '* Ready to move - gap is less than 100 ({}) and no new Media records created from folder {} in last 60 mins'.format(gap, foldername)
-                   move_folder = True
+            # Check number of successful ingest jobs from folder
+            file = open(GLOBAL_LOG, 'r')
+            ingest_jobs = len([x for x in file if folder_search in x and 'Moved ingest-ready file to BlackPearl ingest' in x])
+            LOGGER.info('* Number of successful ingest jobs from folder %s: %s', foldername, ingest_jobs)
 
-                   #print '* Suspending autoingest briefly, using autoingest_control.json'
-                   #copyfile(control_off, control)
-                   #src = '{}{}'.format(ingest_path, foldername)
-                   #dst = '{}{}'.format(output_path, foldername)
-                   #print '* Moving {} to {}'.format(src, dst)
+            hits = check_media_records(folder_search, None)
+            # If zero CID records created for folder, exit and wait until next time
+            if hits == 0:
+                LOGGER.info('* No CID records created for folder, waiting until next time...')
+                continue
 
-                   #try:
-                   #    shutil.move(src, dst)
-                   #    print 'Moved {} to {}'.format(src, dst)
-                   #except Exception as e:
-                   #    print(e)
-                   #    continue
+            gap = ingest_jobs - hits
+            LOGGER.info('* Number of successful CID Media records from folder %s: %s', foldername, hits)
+            LOGGER.info('* Gap = %s', gap)
 
+            if gap == 0:
+                # Check whether in-scope CID Media records created in last 30 mins
+                g_hits = check_media_records(folder_search, QUERY_30)
+                LOGGER.info('* Number of CID Media records created from folder %s in last 30 mins: %s', foldername, g_hits)
+                if g_hits == 0:
+                    LOGGER.info('* Ready to move - gap is zero and no Media records created for folder %s in last 30 mins', foldername)
+                    move_folder = True
                 else:
-                   print '* NOT ready to move - gap is greater than 100 ({}) - investigate gap between ingest jobs and CID Media records'.format(gap)
-                   move_folder = False
-
+                    LOGGER.info('* NOT ready to move - gap is zero, but %s Media records created for folder %s in last 30 mins - waiting a while...', g_hits, foldername)
+                    move_folder = False
             else:
-                print '* NOT ready to move - gap is less than 100 ({}) - but {} Media records created in last hour - waiting a while...'.format(gap, result.hits)
-                move_folder = False
+                # Check whether in-scope CID Media records created in last 60 mins
+                g_hits = check_media_records(folder_search, QUERY_60)
+                LOGGER.info('* Number of CID Media records created from folder %s in last 60 mins: %s', foldername, g_hits)
+                if g_hits == 0:
+                    if gap < 100:
+                        LOGGER.info('* Ready to move - gap is less than 100 (%s) and no new Media records created from folder %s in last 60 mins', gap, foldername)
+                        move_folder = True
+                    else:
+                        LOGGER.info('* NOT ready to move - gap is greater than 100 (%s) - investigate gap between ingest jobs and CID Media records', gap)
+                        move_folder = False
+                else:
+                    LOGGER.info('* NOT ready to move - gap is less than 100 (%s) - but %s Media records created in last hour - waiting a while...', gap, g_hits)
+                    move_folder = False
 
-    if move_folder == True:
-        # Move ingested folder back into donor files folder 
-        src = '{}{}'.format(ingest_path, foldername)
-        dst = '{}{}'.format(output_path, foldername)
-        print '* Moving {} to {}'.format(src, dst)
+        if move_folder == True:
+            # Move ingested folder back into donor files folder 
+            src = os.path.join(INGEST_PATH, foldername)
+            dst = os.path.join(OUTPUT_PATH, foldername)
+            print(f'* Moving {src} to {dst}')
+            LOGGER.info("Moving %s to %s", src, dst)
 
-        try:
-            shutil.move(src, dst)
-            print '** Moved {} to {}'.format(src, dst)
-        except Exception as e:
-            print(e)
-            continue
+            try:
+                shutil.move(src, dst)
+                LOGGER.info('** Moved %s to %s', src, dst)
+            except Exception as err:
+                LOGGER.warning("Failed to move %s to %s", src, dst)
+                print(err)
+                continue
 
-        # Move next folder in sequence into autoingest
-        next_folder_integer = int(foldername) + 1
-        if next_folder_integer < 10:
-            next_folder = '00{}'.format(str(next_folder_integer))
-        if next_folder_integer > 9 and next_folder_integer < 100:
-            next_folder = '0{}'.format(str(next_folder_integer))
-        if next_folder_integer > 99:
-            next_folder = '{}'.format(str(next_folder_integer))
-        src = '{}{}'.format(input_path, next_folder)
-        dst = '{}{}'.format(ingest_path, next_folder)
-        print '* Moving {} to {}'.format(src, dst)
+            # Move next folder in sequence into autoingest
+            next_folder_integer = int(foldername) + 1
+            next_folder = str(next_folder_integer).zfill(3)
 
-        try:
-            shutil.move(src, dst)
-            print '** Moved {} to {}'.format(src, dst)
-        except Exception as e:
-            print(e)
-            continue
+            src = os.path.join(INPUT_PATH, next_folder)
+            dst = os.path.join(INGEST_PATH, next_folder)
+            print(f'* Moving {src} to {dst}')
+            LOGGER.info("Moving next folder %s to %s", src, dst)
 
-now = (str(datetime.datetime.now()))[0:19]
-print '==== Move4ingest script completed at {} ==============='.format(now)
+            try:
+                shutil.move(src, dst)
+                LOGGER.info('** Moved %s to %s', src, dst)
+            except Exception as err:
+                LOGGER.warning("Failed to move %s to %s", src, dst)
+                print(err)
+                continue
+
+    now = (str(datetime.datetime.now()))[0:19]
+    LOGGER.info('==== Move4ingest script completed at %s ===============', now)
+
+
+if __name__ == '__main__':
+    main()

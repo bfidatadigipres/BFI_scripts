@@ -175,7 +175,7 @@ def main():
             LOGGER.info("** CID Item record created: %s - %s", new_priref, new_ob_num)
             print(f"CID Item record created: {new_priref}, {new_ob_num}")
 
-            file_names = build_fname_dct(file_list, new_ob_num)
+            file_names = build_fname_dct(file_list, new_ob_num, platform)
             print(file_names)
 
             filename_dct = []
@@ -183,7 +183,7 @@ def main():
                 new_fname = key
                 old_fname = value
                 if not old_fname.endswith(('.WAV', '.wav')):
-                    LOGGER.warning("File contained in separate5_1 audio folder that is not WAV: %s", old_fname)
+                    LOGGER.warning("File contained in separate audio folder that is not WAV: %s", old_fname)
 
                 new_fpath = os.path.join(fpath, new_fname)
                 LOGGER.info("%s to be renamed %s", old_fname, new_fname)
@@ -232,29 +232,36 @@ def main():
     LOGGER.info("== Document augmented streaming platform separate audio end =====================\n")
 
 
-def build_fname_dct(file_list, ob_num):
+def build_fname_dct(file_list, ob_num, platform):
     '''
     Take file list and build dict of names
     '''
-    fallback_num = 1
-    alt_numbering = False
     file_names = {}
-    for file in file_list:
-        # Build file name/new filename dict
-        channel, ext = file.split('.')[-2:]
-        if alt_numbering:
-            part = str(fallback_num).zfill(2)
-            fallback_num += 1
-        else:
-            for key, val in ORDER.items():
-                if channel == key:
-                    part = val
-        if not part:
-            part = str(fallback_num).zfill(2)
-            fallback_num += 1
-            alt_numbering = True
-        new_fname = f"{ob_num.replace('-', '_')}_{part}of06.{ext}"
-        file_names[new_fname] = file
+    if platform == 'Netflix':
+        fallback_num = 1
+        alt_numbering = False
+        for file in file_list:
+            # Build file name/new filename dict
+            channel, ext = file.split('.')[-2:]
+            if alt_numbering:
+                part = str(fallback_num).zfill(2)
+                fallback_num += 1
+            else:
+                for key, val in ORDER.items():
+                    if channel == key:
+                        part = val
+            if not part:
+                part = str(fallback_num).zfill(2)
+                fallback_num += 1
+                alt_numbering = True
+            new_fname = f"{ob_num.replace('-', '_')}_{part}of06.{ext}"
+            file_names[new_fname] = file
+    
+    if platform == 'Amazon':
+        for file in file_list:
+            ext = file.split('.')[-1]
+            new_fname = f"{ob_num.replace('-', '_')}_01of01.{ext}"
+            file_names[new_fname] = file
 
     return dict(sorted(file_names.items()))
 

@@ -3,6 +3,11 @@
 '''
 Move folders of donor file tiffs into autoingest scope, sequentially
 And move ingested folders out, after checking status
+
+Updated for Adlib_V3 and Python3
+
+Joanna White
+2024
 '''
 
 # Python imports
@@ -12,7 +17,6 @@ import json
 import shutil
 import logging
 import datetime
-import shutil
 
 # Local imports
 sys.path.append(os.environ['CODE'])
@@ -34,8 +38,8 @@ QUERY_30 = NOW_MINUS_30[0:16]
 QUERY_60 = NOW_MINUS_60[0:16]
 
 # Setup logging
-LOGGER = logging.getLogger('special_collections_backup')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_access_edits.log'))
+LOGGER = logging.getLogger('folder_moves')
+HDLR = logging.FileHandler(os.path.join(os.environ['IS_MEDIA'], 'donor_files/test_folder_move.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -71,11 +75,11 @@ def check_media_records(folder_search, time):
     '''
     if time is None:
         search = f'(object.object_number=CA* and imagen.media.original_filename=*{folder_search}*)'
-        hits = adlib.retrieve_records(CID_API, 'media', search, '-1')[0]
+        hits = adlib.retrieve_record(CID_API, 'media', search, '-1')[0]
         return int(hits)
     else:
         search = f'(object.object_number=CA* and imagen.media.original_filename=*{folder_search}*) and (creation>"{time}")'
-        hits = adlib.retrieve_records(CID_API, 'media', search, '-1')[0]
+        hits = adlib.retrieve_record(CID_API, 'media', search, '-1')[0]
         return int(hits)
 
 
@@ -83,13 +87,13 @@ def main():
     '''
     Move folders where conditions allow
     '''
-    check_control()
-    cid_check()
 
-    LOGGER.info('==== Move4ingest script running at %s ===============', (str(datetime.datetime.now()))[0:19])
-
+    LOGGER.info('==== Move4ingest script running at %s ===============', str(datetime.datetime.now())[0:19])
     for _, dirs, _ in os.walk(INGEST_PATH):
         for foldername in dirs:
+            check_control()
+            cid_check()
+            move_folder = False
             folder_search = f'_{foldername}of'
             LOGGER.info('* Current folder is %s - searching for %s', foldername, folder_search)
 
@@ -134,15 +138,15 @@ def main():
                     move_folder = False
 
         if move_folder == True:
-            # Move ingested folder back into donor files folder 
+            # Move ingested folder back into donor files folder
             src = os.path.join(INGEST_PATH, foldername)
             dst = os.path.join(OUTPUT_PATH, foldername)
             print(f'* Moving {src} to {dst}')
             LOGGER.info("Moving %s to %s", src, dst)
 
             try:
-                shutil.move(src, dst)
-                LOGGER.info('** Moved %s to %s', src, dst)
+                # shutil.move(src, dst)
+                LOGGER.info('** PAUSED: Moved %s to %s', src, dst)
             except Exception as err:
                 LOGGER.warning("Failed to move %s to %s", src, dst)
                 print(err)
@@ -151,22 +155,21 @@ def main():
             # Move next folder in sequence into autoingest
             next_folder_integer = int(foldername) + 1
             next_folder = str(next_folder_integer).zfill(3)
-
+            print(next_folder)
             src = os.path.join(INPUT_PATH, next_folder)
             dst = os.path.join(INGEST_PATH, next_folder)
             print(f'* Moving {src} to {dst}')
             LOGGER.info("Moving next folder %s to %s", src, dst)
 
             try:
-                shutil.move(src, dst)
-                LOGGER.info('** Moved %s to %s', src, dst)
+                # shutil.move(src, dst)
+                LOGGER.info('** PAUSED: Moved %s to %s', src, dst)
             except Exception as err:
                 LOGGER.warning("Failed to move %s to %s", src, dst)
                 print(err)
                 continue
 
-    now = (str(datetime.datetime.now()))[0:19]
-    LOGGER.info('==== Move4ingest script completed at %s ===============', now)
+    LOGGER.info('==== Move4ingest script completed at %s ===============', str(datetime.datetime.now())[0:19])
 
 
 if __name__ == '__main__':

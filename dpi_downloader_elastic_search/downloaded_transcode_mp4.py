@@ -115,7 +115,7 @@ def transcode_mp4(fpath):
         for key, val in SUPPLIERS.items():
             if key in str(source):
                 rna_pth = val
-        transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
+                transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
     else:
         transcode_pth = os.path.join(TRANSCODE, 'bfi', date_pth)
 

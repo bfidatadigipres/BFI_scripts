@@ -533,7 +533,7 @@ def transcode_mov(fpath):
         return 'transcode fail'
     toc = time.perf_counter()
     encoding_time = (toc - tic) // 60
-    seconds_time = (toc - tic)
+    seconds_time = toc - tic
     logger_data.append(f"*** Encoding time for {file}: {encoding_time} minutes or as seconds: {seconds_time}")
     logger_data.append("Checking if new Prores file passes Mediaconch policy")
     pass_policy = check_policy(output_fullpath)
@@ -551,4 +551,3 @@ def transcode_mov(fpath):
             logger.info("%s", line)
         logger.info("==================== END DPI download transcode to prores END ====================")
         return 'transcode fail'
-

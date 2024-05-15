@@ -62,7 +62,6 @@ import itertools
 from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError
-import requests
 from ds3 import ds3, ds3Helpers
 
 # Local packages
@@ -133,7 +132,7 @@ def get_media_original_filename(fname):
     ]
     record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
     if record is None:
-        LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s\n%s", fname)
+        LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s", fname)
         return None, None, None
     if 'priref' in str(record):
         media_priref = adlib.retrieve_field_name(record[0], 'priref')[0]
@@ -208,7 +207,7 @@ def get_media_record_data(priref):
 
     hits, records = adlib.retrieve_record(CID_API, 'media', search, '0', fields)
     if records is None:
-        LOGGER.exception("get_media_record_data: Unable to match filename to CID media record: %s\n%s", priref)
+        LOGGER.exception("get_media_record_data: Unable to match filename to CID media record: %s", priref)
         return []
 
     print(hits)

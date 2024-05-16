@@ -256,7 +256,7 @@ def build_fname_dct(file_list, ob_num, platform):
                 alt_numbering = True
             new_fname = f"{ob_num.replace('-', '_')}_{part}of06.{ext}"
             file_names[new_fname] = file
-    
+
     if platform == 'Amazon':
         for file in file_list:
             ext = file.split('.')[-1]

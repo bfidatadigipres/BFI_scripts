@@ -188,42 +188,29 @@ def main():
                 os.remove(filepath) # MD5 file deletion
                 LOGGER.info("===== CHECKSUM CLEAN UP SCRIPT COMPLETE %s =====", fname)
                 sys.exit()
-            '''
-            # Format as XML
-            checksum = ([{
-                'checksum.value': md5,
-                'checksum.type': 'MD5',
-                'checksum.date': md5_date,
-                'checksum.path': md5_path,
-                'edit.name': 'datadigipres',
-                'edit.time': str(datetime.datetime.now())[11:19],
-                'edit.notes': 'Automated bulk checksum documentation.'
-            }])
-            '''
-            pre_data = f'<adlibJSON><recordList><record priref="{priref}">'
+
+            pre_data = f'<adlibXML><recordList><record><priref>{priref}</priref>'
             checksum1 = f'<Checksum><checksum.value>{md5}</checksum.value><checksum.type>MD5</checksum.type>'
             checksum2 = f'<checksum.date>{md5_date}</checksum.date><checksum.path>"{md5_path}"</checksum.path></Checksum>'
             checksum3 = f'<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date>'
             checksum4 = f'<edit.time>{str(datetime.datetime.now())[11:19]}</edit.time>'
             checksum5 = '<edit.notes>Automated bulk checksum documentation.</edit.notes></Edit>'
-            post_data = '</record></recordList></adlibJSON>'
+            post_data = '</record></recordList></adlibXML>'
             checksum = pre_data + checksum1 + checksum2 + checksum3 + checksum4 + checksum5 + post_data
 
             try:
-                # checksum_xml = adlib.create_record_data(checksum, priref)
-                print(checksum)
                 LOGGER.info("%s -- Attempting to write checksum data to Checksum fields", fname)
                 record = adlib.post(CID_API, checksum, 'media', 'updaterecord')
-                print(record)
-                if record is None:
-                    LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, record)
-                if 'error' in str(record):
-                    LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, record)
-                if record:
-                    LOGGER.info("%s -- Successfully written checksum data to Checksum fields! Deleting checksum file", fname)
-                    os.remove(filepath)
             except Exception as err:
                 LOGGER.warning("%s -- Unable to append checksum to media record %s\n%s", fname, priref, err)
+
+            if record is None:
+                LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, record)
+            if md5 in str(record):
+                LOGGER.info("%s -- Successfully written checksum data to Checksum fields! Deleting checksum file", fname)
+                os.remove(filepath)
+            if 'error' in str(record):
+                LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, record)
 
         else:
             LOGGER.info("%s -- No priref retrieved, skipping", fname)
@@ -233,6 +220,7 @@ def main():
         sys.exit("Checksum already exists. Exiting.")
     else:
         LOGGER.info("Failed to match data to a CID Media record. Skipping this file.", fname)
+
     LOGGER.info("===== CHECKSUM CLEAN UP SCRIPT COMPLETE %s =====", fname)
 
 

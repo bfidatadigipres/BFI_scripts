@@ -190,13 +190,13 @@ def main():
                 sys.exit()
 
             # Format as XML
-            checksum = ({
+            checksum = [{
                 'checksum.value': md5,
                 'checksum.date': md5_date,
                 'edit.name': 'datadigipres',
                 'edit.time': str(datetime.datetime.now())[11:19],
                 'edit.notes': 'Automated bulk checksum documentation.'
-            })
+            }]
             '''
             pre_data = f"<adlibJSON><recordList><record priref='{priref}'>"
             checksum1 = f"<Checksum><checksum.value>{md5}</checksum.value><checksum.type>MD5</checksum.type>"
@@ -215,14 +215,14 @@ def main():
                 print(checksum_xml)
                 print(record)
                 if record is None:
-                    LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, status)
+                    LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, record)
                 if 'error' in str(record):
-                    LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, status)
+                    LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, record)
                 if record:
                     LOGGER.info("%s -- Successfully written checksum data to Checksum fields! Deleting checksum file", fname)
                     os.remove(filepath)
-            except Exception as e:
-                LOGGER.warning("%s -- Unable to append checksum to media record %s", fname, priref, e)
+            except Exception as err:
+                LOGGER.warning("%s -- Unable to append checksum to media record %s\n%s", fname, priref, err)
 
         else:
             LOGGER.info("%s -- No priref retrieved, skipping", fname)

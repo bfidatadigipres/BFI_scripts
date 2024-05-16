@@ -171,7 +171,7 @@ def main():
         sys.exit()
     if len(checksum_val) == 0:
         LOGGER.info("%s Media record found for associated checksum. Checksum no longer required.", fname)
-        LOGGER.info("Priref <%s> - Checksum value empty: ''", priref, checksum_val)
+        LOGGER.info("Priref <%s> - Checksum value empty.", priref)
     
         if len(priref) > 0 and priref.isnumeric():
             LOGGER.info("%s -- Priref retrieved: %s. Writing checksum to record", fname, priref)

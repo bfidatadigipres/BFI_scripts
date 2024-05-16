@@ -110,8 +110,10 @@ def post(api, payload, database, method):
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
             return None
-
-    if 'recordList' in response.text:
+    print(response.text)
+    if 'error' in response.text:
+        return None
+    elif 'recordList' in response.text:
         record = json.loads(response.text)
         print(record)
         if isinstance(record['adlibJSON']['recordList']['record'], list):

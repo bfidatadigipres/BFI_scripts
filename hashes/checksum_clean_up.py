@@ -166,7 +166,7 @@ def main():
 
     LOGGER.info("%s -- Processing checksum", fname)
     priref, checksum_val = cid_retrieve(fname)
-    if priref = '':
+    if priref == '':
         LOGGER.info("Failed to match data to a CID Media record. Skipping this file.", fname)
         sys.exit()
     if len(checksum_val) == 0:

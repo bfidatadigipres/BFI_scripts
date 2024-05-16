@@ -206,6 +206,14 @@ def main():
                 sys.exit()
 
             # Format as XML
+            checksum = ({
+                'checksum.value': md5,
+                'checksum.date': md5_date,
+                'edit.name': 'datadigipres',
+                'edit.time': str(datetime.datetime.now())[11:19],
+                'edit.notes': 'Automated bulk checksum documentation.'
+            })
+            '''
             pre_data = f"<adlibJSON><recordList><record priref='{priref}'>"
             checksum1 = f"<Checksum><checksum.value>{md5}</checksum.value><checksum.type>MD5</checksum.type>"
             checksum2 = f"<checksum.date>{md5_date}</checksum.date><checksum.path>'{md5_path}'</checksum.path></Checksum>"
@@ -214,15 +222,19 @@ def main():
             checksum5 = "<edit.notes>Automated bulk checksum documentation.</edit.notes></Edit>"
             post_data = "</record></recordList></adlibJSON>"
             checksum = pre_data + checksum1 + checksum2 + checksum3 + checksum4 + checksum5 + post_data
+            '''
 
             try:
+                checksum_xml = adlib.create_record_data(checksum, priref)
                 LOGGER.info("%s -- Attempting to write checksum data to Checksum fields", fname)
-                status = record_append(priref, checksum, fname)
-                if status:
+                record = adlib.post(CID_API, checksum_xml, 'media', 'updaterecord')
+                if record is None:
+                    LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, status)
+                if 'error' in str(record):
+                    LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, status)
+                if record:
                     LOGGER.info("%s -- Successfully written checksum data to Checksum fields! Deleting checksum file", fname)
                     os.remove(filepath)
-                else:
-                    LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, status)
             except Exception as e:
                 LOGGER.warning("%s -- Unable to append checksum to media record %s", fname, priref, e)
 
@@ -231,20 +243,6 @@ def main():
     else:
         LOGGER.info("File name %s not entered as 'Successfully deleted file' in global.log", fname)
     LOGGER.info("===== CHECKSUM CLEAN UP SCRIPT COMPLETE %s =====", fname)
-
-
-def record_append(priref, checksum_data, fname):
-    '''
-    Receive checksum data and priref and write to CID media record
-    '''
-    record = adlib.post(CID_API, checksum_data, 'media', 'updaterecord')
-    if record is None:
-        return False
-    elif 'error' in str(record):
-        return False
-    else:
-        LOGGER.info("%s -- record_append(): ** Checksum data written to media record %s notes field", fname, priref)
-        return True
 
 
 if __name__ == '__main__':

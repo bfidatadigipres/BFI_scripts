@@ -210,9 +210,9 @@ def main():
 
             try:
                 checksum_xml = adlib.create_record_data(checksum, priref)
+                print(checksum_xml)
                 LOGGER.info("%s -- Attempting to write checksum data to Checksum fields", fname)
                 record = adlib.post(CID_API, checksum_xml, 'media', 'updaterecord')
-                print(checksum_xml)
                 print(record)
                 if record is None:
                     LOGGER.warning("%s -- FAIL: Checksum write to media record! Leaving to attempt again later:\n%s\n%s", fname, checksum, record)

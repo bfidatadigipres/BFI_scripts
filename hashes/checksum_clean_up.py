@@ -32,7 +32,6 @@ import adlib_v3 as adlib
 # Global variables
 LOG_PATH = os.environ['LOG_PATH']
 CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
-CSV_PATH = os.path.join(LOG_PATH, 'autoingest/global.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API4']
 
@@ -109,20 +108,6 @@ def checksum_split(data):
         return (md5, path, date)
 
 
-def find_csv_row(fname):
-    '''
-    Recover checksum filenames from global.log (copy)
-    row where object number matched file/directory name
-    Checks for delete message in whole, returns message if present
-    '''
-
-    with open(CSV_PATH, 'r') as textfile:
-        for row in textfile.readlines():
-            if str(fname) in str(row):
-                if 'Successfully deleted file' in str(row):
-                    return row
-
-
 def cid_retrieve(fname):
     '''
     Retrieve priref for media record from imagen.media.original_filename
@@ -180,15 +165,14 @@ def main():
         sys.exit(f'Supplied file is not a media file {fname}')
 
     LOGGER.info("%s -- Processing checksum", fname)
-    message = find_csv_row(fname)
-    if 'Successfully deleted file' in str(message):
-        LOGGER.info("%s -- Associated file deleted in autoingest. Retrieving priref for CID media record", fname)
-        priref, checksum_val = cid_retrieve(fname)
-        LOGGER.info("Priref <%s> - Checksum value: <%s>", priref, checksum_val)
-        if len(checksum_val) > 20:
-            LOGGER.info("SKIPPING: %s Checksum already present in media record", checksum_val)
-            os.remove(filepath)
-            sys.exit("Checksum already exists. Exiting.")
+    priref, checksum_val = cid_retrieve(fname)
+    if priref = '':
+        LOGGER.info("Failed to match data to a CID Media record. Skipping this file.", fname)
+        sys.exit()
+    if len(checksum_val) == 0:
+        LOGGER.info("%s Media record found for associated checksum. Checksum no longer required.", fname)
+        LOGGER.info("Priref <%s> - Checksum value empty: ''", priref, checksum_val)
+    
         if len(priref) > 0 and priref.isnumeric():
             LOGGER.info("%s -- Priref retrieved: %s. Writing checksum to record", fname, priref)
 
@@ -242,8 +226,12 @@ def main():
 
         else:
             LOGGER.info("%s -- No priref retrieved, skipping", fname)
+    elif len(checksum_val) > 20:
+        LOGGER.info("SKIPPING: %s Checksum already present in media record but md5 document still exists - deleting", checksum_val)
+        os.remove(filepath)
+        sys.exit("Checksum already exists. Exiting.")
     else:
-        LOGGER.info("File name %s not entered as 'Successfully deleted file' in global.log", fname)
+        LOGGER.info("Failed to match data to a CID Media record. Skipping this file.", fname)
     LOGGER.info("===== CHECKSUM CLEAN UP SCRIPT COMPLETE %s =====", fname)
 
 

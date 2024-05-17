@@ -46,7 +46,7 @@ batches_per_iteration = configuration['Batches']['BatchesPerIteration']
 for n in tqdm(range(batches_per_iteration), desc='Submitta', leave=False):
 
     # Load submissions
-    print '* Opening 2inch submissions csv...'
+    print('* Opening 2inch submissions csv...')
     submissions = {}
     with open('2inch_submissions.csv', 'r') as f:
         rows = csv.reader(f)
@@ -57,18 +57,18 @@ for n in tqdm(range(batches_per_iteration), desc='Submitta', leave=False):
             submissions[uid] = r[1:]
 
     # Load selections
-    print '* Opening 2inch selections csv...'
+    print('* Opening 2inch selections csv...')
     df = pd.read_csv('2inch_selections.csv')
 
     # Remove submissions from selections data frame
-    print '* Removing 2inch submissions from 2inch selections...'
+    print('* Removing 2inch submissions from 2inch selections...')
     unsubmitted_df = df[~df['uid'].isin(submissions)]
 
     # Replace NaNs with blank strings
     unsubmitted_df = unsubmitted_df.replace(pd.np.nan, '', regex=True)
 
     # Optimise candidate selections
-    print '* Optimising candidate selections...'
+    print('* Optimising candidate selections...')
     unsubmitted_df.sort_values(by=['location', 'duration', 'item_count', 'content_dates'],
                                ascending=[False, False, False, True],
                                inplace=False)
@@ -80,15 +80,15 @@ for n in tqdm(range(batches_per_iteration), desc='Submitta', leave=False):
     batch_items = []
     batch = unsubmitted_df.head(batch_size)
 
-    print '* Check batch_size...'
+    print('* Check batch_size...')
     if len(batch) != batch_size:
-        print '* Batch size check results: len(batch) != batch_size...'
-        print '* Therefore quitting...'
+        print('* Batch size check results: len(batch) != batch_size...')
+        print('* Therefore quitting...')
         continue
 
     # Create batch
-    print '* Batch size check results: len(batch) = batch_size...'
-    print '* Creating batch...'
+    print('* Batch size check results: len(batch) = batch_size...')
+    print('* Creating batch...')
     for i in tqdm(batch.iterrows(), total=batch_size, desc='Optimising', leave=False):
         index, row = i
 
@@ -102,13 +102,13 @@ for n in tqdm(range(batches_per_iteration), desc='Submitta', leave=False):
         batch_items.extend(prirefs)
 
         # Track submission
-        print '* Writing 2inch submissions to 2inch submissions csv...'
+        print('* Writing 2inch submissions to 2inch submissions csv...')
         with open('2inch_submissions.csv', 'a') as of:
             writer = csv.writer(of)
             writer.writerow(submission)
 
     # Populate topNode fields
-    print '* Creating Workflow topnode metadata...'
+    print('* Creating Workflow topnode metadata...')
     today = datetime.today().strftime('%d-%m-%Y')
     job_metadata = dict(configuration['WorkflowMetadata'])
 
@@ -123,7 +123,7 @@ for n in tqdm(range(batches_per_iteration), desc='Submitta', leave=False):
     job_metadata['negotiatedDeadline'] = deadline
 
     # Create Workflow records
-    print '* Creating Workflow records in CID...'
+    print('* Creating Workflow records in CID...')
     batch = workflow.twoInchBatch(items=batch_items, **job_metadata)
     if not batch.successfully_completed:
         error_row = [str(today), batch.priref, batch.task.job_number, ','.join(batch_items)]

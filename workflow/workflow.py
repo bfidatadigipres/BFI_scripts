@@ -107,7 +107,6 @@ class Task():
                              'transpor.despatch': 'despatch',
                              'transpor.entry': 'entry'}
 
-        #total = (len(self.items) * 4) + 11
         self.make_topnode(**kwargs)
         objectList_priref = self.make_objectList(self.priref)
         self.make_objects(objectList_priref, items=self.items)
@@ -115,7 +114,7 @@ class Task():
     def _date_time(self):
         date = str(datetime.now())[:10]
         time = str(datetime.now())[11:19]
-        return (date, time)
+        return date, time
 
     def build_record(self, data):
         record = records.Record()
@@ -132,14 +131,9 @@ class Task():
 
     def write_record(self, database='workflow', record=None):
         data = record.to_xml(to_string=True)
-        payload = '<adlibXML><recordList>{}</recordList></adlibXML>'.format(data)
-
-        p = {'command': 'insertrecord',
-             'database': database,
-             'xmltype': 'unstructured',
-             'output': 'json'}
-
-        response = cid.post(params=p, payload=payload)
+        payload = f'<adlibXML><recordList>{data}</recordList></adlibXML>'
+        response = adlib.post(CID_API, payload, database, 'insertrecord')
+        print(response)
         return response
 
     def make_topnode(self, **kwargs):
@@ -153,8 +147,8 @@ class Task():
         record = self.build_record(wf)
         response = self.write_record(record=record)
 
-        self.job_number = int(response.records[0]['jobnumber'][0])
-        self.priref = int(response.records[0]['priref'][0])
+        self.job_number = int(adlib.retrieve_field_name(response, 'jobnumber')[0])
+        self.priref = int(adlib.retrieve_field_name(response, 'priref')[0])
         self.last_activity_priref = self.priref
 
     def make_objectList(self, parent):
@@ -164,7 +158,7 @@ class Task():
         record = self.build_record(ol)
         response = self.write_record(record=record)
 
-        priref = int(response.records[0]['priref'][0])
+        priref = int(adlib.retrieve_field_name(response, 'priref')[0])
         return priref
 
     def make_objects(self, objectList_priref, items=None):
@@ -183,11 +177,14 @@ class Task():
                     response = self.write_record(record=record)
                 except Exception:
                     continue
-
-                if not response.hits:
+                # Unsure about this piece, need to get hit response from self.write_record
+                if response['@attributes']:
+                    count += 1
+                else:
                     continue
 
-                count += response.hits
+                # Hits not returned from write_record
+                # count += response.hits
 
             if count == len(items):
                 return True
@@ -204,7 +201,7 @@ class Task():
         db = self.database_map[a['payloadDatabase']]
         p = self.build_record(payload_kwargs)
         response = self.write_record(database=db, record=p)
-        payload_priref = int(response.records[0]['priref'][0])
+        payload_priref = int(adlib.retrieve_field_name(response, 'priref')[0])
 
         # Workflow record
         d = dict(self.profiles['workflow'])
@@ -217,7 +214,7 @@ class Task():
 
         d['parent'] = str(self.last_activity_priref)
         wf = self.write_record(record=self.build_record(d))
-        wf_priref = int(wf.records[0]['priref'][0])
+        wf_priref = int(adlib.retrieve_field_name(wf, 'priref')[0])
         self.last_activity_priref = wf_priref
 
         ol_priref = self.make_objectList(parent=str(self.last_activity_priref))
@@ -522,92 +519,28 @@ class D3Batch():
     def successfully_completed(self):
         return self.batch.successfully_completed
 
-class F47BatchOld():
-    '''
-    THIS IS DEPRECATED. USE F47Batch() instead.
-
-    Create a tree of Workflow activities:
-      - Pick
-      - Encode
-      - Return
-
-    Supply topNode values as **kwargs
-    '''
-
-    def __init__(self, items=None, **kwargs):
-        if not items:
-            raise Exception('Required: list of item prirefs')
-
-        defaults = {'activity.code.lref': '108964',
-                    'purpose': 'Preservation',
-                    'request_type': 'VIDEOCOPY',
-                    'final_destination': 'F47',
-                    'request.details': 'Transfer to preservation and proxy formats',
-                    'assigned_to': 'Television Operations'}
-
-        for k in kwargs:
-            defaults[k] = str(kwargs[k])
-
-        activities = ['Pick items', 'Video Encoding', 'Return items']
-
-        payload_defaults = {'Pick items': {
-                                'destination': 'PBK06B03000000',
-                                },
-                            'Video Encoding': {
-                                'handling.name': 'Television Operations',
-                                },
-                            'Return items': {
-                                }
-                            }
-
-        self.task = Task(items, **defaults)
-
-        overall_status = []
-        for a in activities:
-            status = self.task.add_activity(a, items=items, **payload_defaults[a])
-            overall_status.append(status)
-
-        self.priref = self.task.priref
-        if all(overall_status):
-            self.successfully_completed = True
-        else:
-            self.successfully_completed = False
-
 
 def get_object_number(priref):
-    d = {'database': 'items',
-         'search': 'priref={}'.format(priref),
-         'output': 'json',
-         'fields': 'object_number'}
-
-    result = cid.get(d)
-    object_number = result.records[0]['object_number'][0]
-    return object_number
+    search = f'priref={priref}'
+    record = adlib.retrieve_record(CID_API, 'items', search, '1', ['object_number'])[1]
+    ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
+    return ob_num
 
 
 def get_priref(object_number):
-    d = {'database': 'items',
-         'search': 'object_number="{}"'.format(object_number),
-         'output': 'json',
-         'fields': 'priref'}
-
-    result = cid.get(d)
-    priref = int(result.records[0]['priref'][0])
+    search = f'object_number="{object_number}"'
+    record = adlib.retrieve_record(CID_API, 'items', search, '1', ['priref'])[1]
+    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     return priref
 
 
 def count_jobs_submitted(search):
-    d = {'database': 'workflow',
-         'search': search,
-         'limit': '-1',
-         'output': 'json'}
+    hits = adlib.retrieve_record(CID_API, 'workflow', search, '-1')[0]
+    return hits
 
-    result = cid.get(d)
-    return result.hits
 
 try:
     activity_map = Activities()
 except Exception as exc:
     print(exc)
     raise Exception('Unable to build map of Workflow databases')
-

@@ -4,7 +4,7 @@
 Script called by workflow.py for
 creation of OFCOM workflow records
 
-Updating to Python3
+Updating to Python3.11
 '''
 
 # Public packges
@@ -12,7 +12,7 @@ from lxml import etree
 
 
 class Field():
-
+    # Possibly works okay, needs live test
     def __init__(self, xml=None, name=None, text=None, lang=None, field_type=str):
         super(Field, self).__setattr__('data', {'values': {}, 'field_type': field_type})
 
@@ -91,7 +91,7 @@ class Field():
 
 
 class Group():
-
+    # Possibly works okay, needs live test
     def __init__(self, xml=None, name=None, fields=None):
         self.fields = []
 
@@ -138,7 +138,7 @@ class Group():
 
 
 class Record():
-
+    # Possibly works okay, needs live test
     def __init__(self, xml=None, data=None):
         self.fields = []
         self.xml = xml

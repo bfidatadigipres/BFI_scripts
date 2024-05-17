@@ -14,6 +14,7 @@ import sys
 import csv
 import json
 import logging
+import datetime
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -72,7 +73,8 @@ def load_names():
 
 def retrieve_people_records():
     '''
-    Download all people in scope from 2019-01-01
+    Download 500 people in scope from 2019-01-01
+    and update their implied gender to record
     '''
     search = '(creation>"2019-01-01" and party.class=PERSON and name=* and not (forename.implied_gender=MALE,FEMALE,UNRESOLVED)) and not use=*'
     fields = [
@@ -81,7 +83,7 @@ def retrieve_people_records():
         'used_for'
     ]
 
-    hits, records = adlib.retrieve_record(CID_API, 'people', search, '0', fields)
+    hits, records = adlib.retrieve_record(CID_API, 'people', search, '500', fields)
     if hits == 0:
         return hits, None
     else:
@@ -104,16 +106,10 @@ def main():
         sys.exit()
     gendered_names = load_names()
 
-    count = 0
     # Parse cid people records
     for r in records:
-        if count == 50:
-            LOGGER.info("Processed 500, breaking here")
-            break
-        count += 1
 
         person_priref = adlib.retrieve_field_name(r, 'priref')[0]
-        print(person_priref)
         gender_balance = {'M':0, 'F':0, '?':0}
 
         # Aggregate name variations
@@ -124,12 +120,10 @@ def main():
             LOGGER.warning("Exiting: Unable to append name from record: \n%s", r)
             print(err)
             continue
-
         if 'Used_for' in str(r):
             names.append(adlib.retrieve_field_name(r, 'used_for')[0])
 
         # Extract forenames
-        print(names)
         forenames = []
         for n in names:
             if ',' in n:
@@ -137,17 +131,18 @@ def main():
 
         # Query unique forenames against ONS baby namese
         forenames = set(forenames)
-        print(forenames)
         for fn in forenames:
             query_name = fn.lower()
 
-            if query_name in gendered_names:
-                gender_balance[gendered_names[query_name]] += 1
+            for key, val in gendered_names.items():
+                if key == query_name:
+                    print(f"Match {key} and {query_name}: Value is {val}")
+                    gender_balance[val] += 1
 
         # Weigh gender balance
         female = gender_balance['F']
         male = gender_balance['M']
-
+        print(male, female)
         if female > male:
             gender = 'FEMALE'
             print('Gender likely FEMALE')
@@ -155,17 +150,16 @@ def main():
             gender = 'MALE'
             print('Gender likely MALE')
         else:
-            gender = '?'
+            gender = 'UNRESOLVED'
+            print('Gender is unresolved')
 
         # Write MALE/FEMALE to cid record
-        print(f"Offline for test: Updating record here: {person_priref}")
-        '''
         success = update_implied_gender(person_priref, gender)
-	if 'recordList' in str(success):
+        if 'Automatic gender determination' in str(success):
             LOGGER.info('* updated record [%s] "%s" to %s', person_priref, names[0], gender)
         else:
             LOGGER.warning('* Failed to update record [%s] "%s" to %s', person_priref, names[0], gender)
-        '''
+
     LOGGER.info("------------ Gender script end ---------------------------")
 
 
@@ -190,4 +184,3 @@ def update_implied_gender(priref, gender):
 
 if __name__ == '__main__':
     main()
-

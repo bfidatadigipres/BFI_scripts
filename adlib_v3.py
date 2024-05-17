@@ -149,6 +149,17 @@ def retrieve_field_name(record, fieldname):
     return field_list
 
 
+def retrieve_facet_name(facetlist, fname):
+    '''
+    Retrieve list of facets
+    '''
+    facets = []
+    for value in facetlist:
+        facets.append(value[fname]['spans'][0]['text'])
+    
+    return facets
+
+
 def group_check(record, fname):
     '''
     Get group that contains field key

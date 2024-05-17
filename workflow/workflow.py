@@ -11,8 +11,8 @@ import sys
 from datetime import datetime
 
 # Local packages
-CODE = os.environ['CODE']
-sys.path.append(CODE, os.path.join(CODE, 'workflow'))
+sys.path.append(os.environ['CODE'])
+sys.path.append(os.environ['WORKFLOW'])
 import adlib_v3 as adlib
 import records
 

@@ -3,6 +3,7 @@
 '''
 Aggregate candidate selections into optimised batches and submit Workflow jobs
 for third Multi Machine Environment in F47 (first was DigiBeta, second was 1inch)
+
 Dependencies:
 1. LOGS/2inch_submitta.log
 2. 2inch/submissions.csv
@@ -15,7 +16,6 @@ import csv
 import json
 import yaml
 import pandas as pd
-from tqdm import tqdm
 from datetime import datetime, timedelta
 
 sys.path.append(os.environ['WORKFLOW'])
@@ -43,7 +43,7 @@ batch_size = configuration['Batches']['TapesPerBatch']
 batches_per_iteration = configuration['Batches']['BatchesPerIteration']
 
 # Submit [iterations] x [size] tapes
-for n in tqdm(range(batches_per_iteration), desc='Submitta', leave=False):
+for num in range(0, batches_per_iteration):
 
     # Load submissions
     print('* Opening 2inch submissions csv...')

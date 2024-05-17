@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 
+'''
+Updated for Python3/AdlibV3.
+Needs test
+'''
+
 import os
-from adlib import adlib
+
+sys.path.append(os.environ['CODE'])
+from adlib_v3 import adlib
 
 CID_API = os.environ['CID_API4']
-cid = adlib.Database(url=CID_API)
+
 
 class Tape():
 
     def __init__(self, object_number=None, priref=None):
         if priref:
-            q = {'database': 'items',
-                 'search': 'priref={}'.format(priref),
-                 'fields': 'object_number',
-                 'output': 'json'}
-
+            search = f'priref={priref}'
+            record = adlib.retrieve_record(CID_API, 'items', search, '1', ['object_number'])[1]
             try:
-                object_number = cid.get(q).records[0]['object_number'][0]
+                object_number = adlib.retrieve_field_name(record[0], 'object_number')[0]
             except Exception:
                 raise Exception('Unable to model carrier for item: {}'.format(priref))
 
@@ -32,27 +36,30 @@ class Tape():
 
     def _items(self):
         if self.package_number:
-            query = 'parts_reference->current_location.name->name="{}"'.format(self.package_number)
+            query = f'parts_reference->current_location.name->name="{self.package_number}"'
         elif self.can_id:
             if self.can_id[-1] in ['A','B','C','D','E','F','G','H','I',
                                    'J','K','L','M','N','O','P','Q','R',
                                    'S','T','U','V','W','X','Y','Z']:
-                query = 'can_ID="{}*"'.format(self.can_id)
+                query = f'can_ID="{self.can_id}*"'
             else:
-                query = 'can_ID="{}"'.format(self.can_id)
+                query = f'can_ID="{self.can_id}"'
         else:
             return None
 
-        q = {'database': 'items',
-             'search': 'item_type=Video and {}'.format(query),
-             'fields': 'video_duration,video_format,object_number,priref,copy_status,video_part',
-             'limit': '100',
-             'output': 'json'}
-
-        try:
-            result = cid.get(q)
-            self.items = result.records
-        except Exception:
+        search = f'item_type=Video and {query}'
+        fields = [
+            'video_duration',
+            'video_format',
+            'object_number',
+            'priref',
+            'copy_status',
+            'video_part'
+        ]
+        results = adlib.retrieve_record(CID_API, 'items', search, '100', fields)[1]
+        if results:
+            self.items = results
+        else:
             self.items = None
 
     def _works(self):
@@ -64,23 +71,20 @@ class Tape():
 
         works = []
 
-        item_prirefs = [i['priref'] for i in self.objects]
+        # item_prirefs = [i['priref'] for i in self.objects]
+        item_prirefs = []
+        for rec in self.objects:
+            item_prirefs.append(adlib.retrieve_field_name(rec, 'priref')[0])
+
         for i in item_prirefs:
-            query = 'Df=work and (parts_reference->(parts_reference.lref={}))'.format(i)
-
-            q = {'database': 'works',
-                 'search': query,
-                 'fields': 'object_number,priref',
-                 'limit': '100',
-                 'output': 'json'}
-
-            try:
-                result = cid.get(q)
-                o = result.records[0]['object_number'][0]
-                p = int(result.records[0]['priref'][0])
+            query = f'Df=work and (parts_reference->(parts_reference.lref={i}))'
+            record = adlib.retrieve_record(CID_API, 'works', query, '100', ['object_number', 'priref'])[1]
+            if record:
+                o = adlib.retrieve_field_name(record[0], 'object_number')[0]
+                p = int(adlib.retrieve_field_name(record[0], 'priref')[0])
                 d = {'object_number': o, 'priref': p}
                 works.append(d)
-            except Exception:
+            else:
                 pass
 
         if works:
@@ -96,8 +100,8 @@ class Tape():
 
         for r in self.items:
             try:
-                o = r['object_number'][0]
-                p = int(r['priref'][0])
+                o = adlib.retrieve_field_name(r, 'object_number')[0]
+                p = int(adlib.retrieve_field_name(r, 'priref')[0])
                 d = {'object_number': o, 'priref': p}
                 ids.append(d)
             except Exception:
@@ -106,33 +110,22 @@ class Tape():
         return ids
 
     def get_package_number(self, object_number):
-        query = 'part_of_reference="{}"'.format(object_number)
-
-        q = {'database': 'carriersfull',
-             'search': query,
-             'output': 'json'}
-
-        try:
-            result = cid.get(q)
-            package = result.records[0]['current_location.barcode'][0]
+        search = f'part_of_reference="{object_number}"'
+        record = adlib.retrieve_record(CID_API, 'carriersfull', search, '1', ['current_location.barcode'])[1]
+        if record:
+            package = adlib.retrieve_field_name(record[0], 'current_location.barcode')[0]
             return str(package)
-        except Exception:
+        else:
             return None
 
     def get_can_id(self, object_number):
-        query = 'object_number="{}"'.format(object_number)
-
-        q = {'database': 'items',
-             'search': query,
-             'fields': 'can_ID',
-             'output': 'json'}
-
-        try:
-            result = cid.get(q)
-            item_can_id = result.records[0]['can_ID'][0]
+        search = f'object_number="{object_number}"'
+        record = adlib.retrieve_record(CID_API, 'items', search, '1', ['can_ID'])[1]
+        if record:
+            item_can_id = adlib.retrieve_field_name(record[0], 'can_ID')[0]
             tape_can_id = ''.join(x for x in item_can_id if not x.islower())
             return str(tape_can_id)
-        except Exception:
+        else:
             return None
 
     def duration(self):
@@ -143,7 +136,7 @@ class Tape():
 
         for r in self.items:
             try:
-                item_duration = float(r['video_duration'][0])
+                item_duration = float(adlib.retrieve_field_name(r, 'video_duration')[0])
                 total += item_duration
             except Exception:
                 return None
@@ -161,7 +154,8 @@ class Tape():
 
         for r in self.items:
             try:
-                item_format = r['video_format'][0]['value'][1]
+                # This may not work, could need ['value'][1] to access correct field
+                item_format = adlib.retrieve_field_name(r, 'video_format')[0]
                 formats.add(item_format)
             except Exception:
                 pass
@@ -179,7 +173,8 @@ class Tape():
 
         for r in self.items:
             try:
-                s = r['copy_status'][0]['value'][1]
+                # May not work, could need ['value'][1] to access correct field
+                s = adlib.retrieve_field_name(r, 'copy_status')[0]
                 states.add(s)
             except Exception:
                 pass
@@ -189,8 +184,10 @@ class Tape():
     def segmentation(self):
         if not self.items:
             return None
-
-        return all(['video_part' in i for i in self.items])
+        all = []
+        for rec in self.items():
+            all.append(adlib.retrieve_field_name(rec, 'video_part')[0])
+        return all
 
     def content_dates(self):
         self._works()
@@ -199,22 +196,19 @@ class Tape():
 
         years = set()
 
-        work_prirefs = [i['priref'] for i in self.works]
+        work_prirefs = []
+        for rec in self.works:
+            work_prirefs.append(adlib.retrieve_field_name(rec, 'priref')[0])
+            # work_prirefs = [i['priref'] for i in self.works]
 
         for i in work_prirefs:
-            query = 'priref={} and title_date_start>0'.format(i)
-
-            q = {'database': 'works',
-                 'search': query,
-                 'fields': 'title_date_start',
-                 'output': 'json'}
-
-            try:
-                result = cid.get(q)
-                date = result.records[0]['Title_date'][0]['title_date_start'][0]
+            search = f'priref={i} and title_date_start>0'
+            record = adlib.retrieve_record(CID_API, 'works', search, '1', ['title_date_start'])
+            if record:
+                date = adlib.retrieve_field_name(record[0], 'title_date_start')[0]
                 year = int(date[:4])
                 years.add(year)
-            except Exception:
+            else:
                 return None
 
         if years:
@@ -224,18 +218,13 @@ class Tape():
 
     def location(self):
         if self.package_number:
-            query = 'name="{}"'.format(self.package_number)
-
-            q = {'database': 'locations',
-                 'search': query,
-                 'fields': 'part_of',
-                 'output': 'json'}
-
-            try:
-                r = cid.get(q)
-                location = str(r.records[0]['part_of'][0])
+            search = f'name="{self.package_number}"'
+            record = adlib.retrieve_record(CID_API, 'locations', search, '1', ['part_of'])[1]
+            # part_of could return problems. Need to identify alternative possibly
+            if record:
+                location = str(adlib.retrieve_field_name(record[0], 'part_of')[0])
                 return location
-            except Exception:
+            else:
                 pass
 
     def origin(self):
@@ -285,10 +274,10 @@ class Tape():
         migrate_this = []
 
         for i in self.objects:
-            priref = i['priref']
-
+            priref = adlib.retrieve_field_name(i, 'priref')[0]
+            # priref = i['priref']
             # Item has digital master sibling or is in DPI?
-            q = 'priref={} and (part_of_reference->(parts_reference->(reproduction.reference->imagen.media.original_filename=* or (item_type=Digital and copy_status=Master))))'.format(priref)
+            q = f'priref={priref} and (part_of_reference->(parts_reference->(reproduction.reference->imagen.media.original_filename=* or (item_type=Digital and copy_status=Master))))'   
             digitised = self._check('items', q)
             if digitised is not None:
                 if digitised >= 1:
@@ -296,21 +285,20 @@ class Tape():
                     continue
 
             # Analyse video siblings
-            query = {'database': 'items',
-                     'search': 'copy_status="Master","Status pending" and item_type=Video and (part_of_reference->(parts_reference.lref={0})) and not priref={0}'.format(priref),
-                     'fields': 'video_format,object_number',
-                     'output': 'json'}
+            # JMW should priref sit in these {}, or {0} as per original script?
+            search = f'copy_status="Master","Status pending" and item_type=Video and (part_of_reference->(parts_reference.lref={priref})) and not priref={priref}'
+            hits, recs = adlib.retrieve_record(CID_API, 'items', search, '1', ['video_format', 'object_number'])
 
             # No master siblings, therefore migrateable
-            video_siblings = cid.get(query)
-            if video_siblings.hits == 0:
+            if hits == 0:
                 migrate_this.append(True)
                 break
 
             # Compare format rank of siblings
-            for sib in video_siblings.records:
+            for sib in recs:
                 try:
-                    sib_format = sib['video_format'][0]['value'][1]
+                    # May not work, could need ['value'][1] to access field data
+                    sib_format = adlib.retrieve_field_name(sib, 'video_format')[0]
                 except Exception:
                     migrate_this.append(True)
                     continue
@@ -328,21 +316,17 @@ class Tape():
         return any(migrate_this)
 
     def _check(self, database, query):
-        q = {'database': database,
-             'search': query,
-             'limit': '-1',
-             'output': 'json'}
-
-        try:
-            r = cid.get(q)
-            return r.hits
-        except Exception:
+        hits = adlib.retrieve_record(CID_API, database, query, '-1')[0]
+        if hits > 0:
+            return hits
+        else:
             pass
 
     def _count_manifestations(self, query):
         for i in self.objects:
-            priref = i['priref']
-            search = 'Df=manifestation and parts_reference.lref={} and ({})'.format(priref, query)
+            # priref = i['priref']
+            priref = adlib.retrieve_field_name(i, 'priref')[0]
+            search = f'Df=manifestation and parts_reference.lref={priref} and ({query})'
 
             match = self._check('manifestations', search)
             if match:
@@ -350,8 +334,9 @@ class Tape():
 
     def cousins(self):
         for i in self.objects:
-            priref = i['priref']
-            query = 'part_of_reference->(part_of_reference->(parts_reference->(parts_reference.lref={})))'.format(priref)
+            # priref = i['priref']
+            priref = adlib.retrieve_field_name(i, 'priref')[0]
+            query = f'part_of_reference->(part_of_reference->(parts_reference->(parts_reference.lref={priref})))'
             if self._check('items', query) > 1:
                 return True
 
@@ -359,8 +344,9 @@ class Tape():
 
     def siblings(self):
         for i in self.objects:
-            priref = i['priref']
-            query = 'part_of_reference->parts_reference.lref={}'.format(priref)
+            # priref = i['priref']
+            priref = adlib.retrieve_field_name(i, 'priref')[0]
+            query = f'part_of_reference->parts_reference.lref={priref}'
             if self._check('items', query) > 1:
                 return True
 

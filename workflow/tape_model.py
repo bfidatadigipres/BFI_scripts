@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 from adlib import adlib
 
@@ -30,8 +32,6 @@ class Tape():
 
     def _items(self):
         if self.package_number:
-            # Deprecated - uses the old CD data model, replaced in barcode project January 2020
-            #query = 'collcopy.number->package_number="{}"'.format(self.package_number)
             query = 'parts_reference->current_location.name->name="{}"'.format(self.package_number)
         elif self.can_id:
             if self.can_id[-1] in ['A','B','C','D','E','F','G','H','I',
@@ -106,14 +106,10 @@ class Tape():
         return ids
 
     def get_package_number(self, object_number):
-        #query = 'collcopy.number->object.number->object_number="{}"'.format(object_number)
         query = 'part_of_reference="{}"'.format(object_number)
 
-        #q = {'database': 'packages',
         q = {'database': 'carriersfull',
              'search': query,
-             #'fields': 'package_number',
-             #'fields': 'current_location.barcode',
              'output': 'json'}
 
         try:
@@ -228,14 +224,10 @@ class Tape():
 
     def location(self):
         if self.package_number:
-            # Deprecated - refers to old data model, replaced in January 2020 in barcode project
-            #query = 'package_number="{}"'.format(self.package_number)
             query = 'name="{}"'.format(self.package_number)
 
-            #q = {'database': 'packages',
             q = {'database': 'locations',
                  'search': query,
-                 #'fields': 'current.location',
                  'fields': 'part_of',
                  'output': 'json'}
 

@@ -22,15 +22,13 @@ CID_API = os.environ['CID_API4']
 class Activities():
 
     def __init__(self):
-        # API response being investigated by Stephen
-        # JMW up to this class
         self.payloads = {}
 
-        query = {'command': 'facets',
-                 'database': 'workflow',
+        query = {'database': 'workflow',
                  'search': 'dataType>0',
+                 'limit': '-1',
                  'facet': 'dataType',
-                 'limit': '0',
+                 'facetlimit': '100',
                  'output': 'jsonv1'}
 
         records = adlib.get(CID_API, query)

@@ -1,13 +1,13 @@
-#!/usr/bin/env/ python3
+#!/usr/bin/env python3
 
 '''
 Script called by workflow.py for
 creation of OFCOM workflow records
 
-Updated to Python3
+Updating to Python3
 '''
 
-
+# Public packges
 from lxml import etree
 
 
@@ -46,7 +46,7 @@ class Field():
 
     def __setattr__(self, key, value):
         if key == 'text':
-            if isinstance(value, (str, int, unicode)):
+            if isinstance(value, (str, int)):
                 lang = self._update_language()
                 self.data['values'] = {lang: value}
             else:
@@ -85,7 +85,7 @@ class Field():
                 e.text = self.data['values'][i]
                 root.append(e)
             else:
-                root.text = unicode(self.data['values'][i])
+                root.text = self.data['values'][i]
 
         return root
 

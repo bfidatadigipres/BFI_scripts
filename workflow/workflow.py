@@ -20,27 +20,26 @@ CID_API = os.environ['CID_API4']
 
 
 class Activities():
-
+    # Class updates complete and tested
     def __init__(self):
         self.payloads = {}
 
         query = {'database': 'workflow',
                  'search': 'dataType>0',
-                 'limit': '-1',
-                 'facet': 'dataType',
-                 'facetlimit': '100',
+                 'limit': -1,
+                 'facets': 'dataType',
+                 'facetlimit': 100,
                  'output': 'jsonv1'}
 
         records = adlib.get(CID_API, query)
-        for rec in records:
-            data_type = adlib.retrieve_field_name(rec, 'term')[0]
+        dt_list = adlib.retrieve_facet_list(records, 'term')
 
+        for data_type in dt_list:
             search = f'dataType={data_type} and payloadDatabase>0'
             fields = ['payloadDatabase', 'description']
             hits, record = adlib.retrieve_record(CID_API, 'workflow', search, '1', fields)
             if hits == 0:
                 continue
-            print record[0]
             payload_database = adlib.retrieve_field_name(record[0], 'payloadDatabase')[0]
             label = adlib.retrieve_field_name(record[0], 'description')[0]
 

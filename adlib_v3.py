@@ -149,12 +149,12 @@ def retrieve_field_name(record, fieldname):
     return field_list
 
 
-def retrieve_facet_name(facetlist, fname):
+def retrieve_facet_list(record, fname):
     '''
     Retrieve list of facets
     '''
     facets = []
-    for value in facetlist:
+    for value in record['adlibJSON']['facetList'][0]['values']:
         facets.append(value[fname]['spans'][0]['text'])
     
     return facets

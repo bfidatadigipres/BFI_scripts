@@ -432,6 +432,6 @@ def cid_get(database, search, fields=None):
         hits, recs = adlib.retrieve_record(CID_API, database, search, '0', fields)
 
     if hits > 0:
-        return hits, record
+        return hits, recs
     else:
         return 0, None

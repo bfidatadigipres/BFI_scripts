@@ -5,12 +5,15 @@ Updated for Python3/AdlibV3.
 Needs test
 '''
 
+# Public imports
 import os
 import sys
 
+# Local imports
 sys.path.append(os.environ['CODE'])
 from adlib_v3 import adlib
 
+# Global variables
 CID_API = os.environ['CID_API4']
 
 
@@ -70,13 +73,11 @@ class Tape():
         if self.works:
             return
 
-        works = []
-
-        # item_prirefs = [i['priref'] for i in self.objects]
         item_prirefs = []
         for rec in self.objects:
             item_prirefs.append(adlib.retrieve_field_name(rec, 'priref')[0])
 
+        works = []
         for i in item_prirefs:
             query = f'Df=work and (parts_reference->(parts_reference.lref={i}))'
             record = adlib.retrieve_record(CID_API, 'works', query, '100', ['object_number', 'priref'])[1]
@@ -98,7 +99,6 @@ class Tape():
             return None
 
         ids = []
-
         for r in self.items:
             try:
                 o = adlib.retrieve_field_name(r, 'object_number')[0]
@@ -152,7 +152,6 @@ class Tape():
             return None
 
         formats = set()
-
         for r in self.items:
             try:
                 # This may not work, could need ['value'][1] to access correct field
@@ -171,7 +170,6 @@ class Tape():
             return None
 
         states = set()
-
         for r in self.items:
             try:
                 # May not work, could need ['value'][1] to access correct field
@@ -196,7 +194,6 @@ class Tape():
             return None
 
         years = set()
-
         work_prirefs = []
         for rec in self.works:
             work_prirefs.append(adlib.retrieve_field_name(rec, 'priref')[0])
@@ -273,7 +270,6 @@ class Tape():
                 'High Definition Tape']
 
         migrate_this = []
-
         for i in self.objects:
             priref = adlib.retrieve_field_name(i, 'priref')[0]
             # priref = i['priref']
@@ -285,8 +281,7 @@ class Tape():
                     migrate_this.append(False)
                     continue
 
-            # Analyse video siblings
-            # JMW should priref sit in these {}, or {0} as per original script?
+            # Analyse video siblings JWM {priref} may want changing to {0} in search
             search = f'copy_status="Master","Status pending" and item_type=Video and (part_of_reference->(parts_reference.lref={priref})) and not priref={priref}'
             hits, recs = adlib.retrieve_record(CID_API, 'items', search, '1', ['video_format', 'object_number'])
 
@@ -298,7 +293,7 @@ class Tape():
             # Compare format rank of siblings
             for sib in recs:
                 try:
-                    # May not work, could need ['value'][1] to access field data
+                    # JMW May not work, could need ['value'][1] to access field data
                     sib_format = adlib.retrieve_field_name(sib, 'video_format')[0]
                 except Exception:
                     migrate_this.append(True)
@@ -325,7 +320,6 @@ class Tape():
 
     def _count_manifestations(self, query):
         for i in self.objects:
-            # priref = i['priref']
             priref = adlib.retrieve_field_name(i, 'priref')[0]
             search = f'Df=manifestation and parts_reference.lref={priref} and ({query})'
 
@@ -335,7 +329,6 @@ class Tape():
 
     def cousins(self):
         for i in self.objects:
-            # priref = i['priref']
             priref = adlib.retrieve_field_name(i, 'priref')[0]
             query = f'part_of_reference->(part_of_reference->(parts_reference->(parts_reference.lref={priref})))'
             if self._check('items', query) > 1:
@@ -345,7 +338,6 @@ class Tape():
 
     def siblings(self):
         for i in self.objects:
-            # priref = i['priref']
             priref = adlib.retrieve_field_name(i, 'priref')[0]
             query = f'part_of_reference->parts_reference.lref={priref}'
             if self._check('items', query) > 1:
@@ -367,5 +359,3 @@ class Tape():
         for i in self._count_manifestations('parts_reference->(item_type=Video)'):
             return True
         return False
-
-

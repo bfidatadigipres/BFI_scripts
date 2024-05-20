@@ -197,7 +197,7 @@ class Carrier():
                 wholes_all = []
                 print(hits)
                 for num in range(0, hits):
-                    print(num)
+                    print(recs[num])
                     data = recs[num]
                     print(data)
                     print(f'* Querying CID for multiple part returns / whole data: {q}')

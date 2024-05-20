@@ -192,7 +192,7 @@ class Carrier():
             print('* This is a Container, according to the model, querying CID for part/whole...')
             q_str = self.identifiers['name']
             q = f'current_location.name="{q_str}"'
-            hits, recs = cid_get('carriersfull', q)
+            hits, recs = cid_get('carriersfull', q, [])
             if hits > 1:
                 wholes_all = []
                 for num in range(0, hits):

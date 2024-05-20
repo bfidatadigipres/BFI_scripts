@@ -424,22 +424,14 @@ def cid_get(database, search, fields=None):
     '''
     Simple query wrapper
     '''
-    query = {
-        "database": database,
-        "search": search,
-        "limit": 0,
-        "output": "jsonv1"
-    }
     if not fields:
-        pass
-    elif not isinstance(fields, list):
-        query['fields'] = [fields]
+        hits, recs = adlib.retrieve_record(CID_API, database, search, '0')
     else:
-        query['fields'] = fields
-    
-    record = adlib.get(CID_API, query)
-    hits = record['adlibJSON']['diagnostic']['hits']
+        if not isinstance(fields, list):
+            fields = [fields]
+        hits, recs = adlib.retrieve_record(CID_API, database, search, '0', fields)
+
     if hits > 0:
-        return hits, record[0]
+        return hits, record
     else:
         return 0, None

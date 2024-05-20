@@ -165,6 +165,7 @@ class Carrier():
                     packages.add(str(p))
 
             if len(packages) == 1:
+                print(packages)
                 self.identifiers['name'] = list(packages)[0]
                 self.partwhole = self._partwhole()
 

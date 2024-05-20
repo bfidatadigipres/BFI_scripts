@@ -425,11 +425,22 @@ def cid_get(database, search, fields):
     Simple query wrapper
     '''
     if fields == []:
-        print(f"Print with search and no fields: {search}")
-        hits, record = adlib.retrieve_record(CID_API, database, search, '0')
+        query = {
+            "database": database,
+            "search": search,
+            "limit": 0,
+            "output": "jsonv1"
+        }
     elif not isinstance(fields, list):
         fields = [fields]
-        hits, record = adlib.retrieve_record(CID_API, database, search, '0', fields)
+        query = {
+            "database": database,
+            "search": search,
+            "limit": 0,
+            "output": "jsonv1",
+            "fields": fields
+        }
+    hits, record = adlib.get(CID_API, query)
 
     if hits > 0:
         return hits, record[0]

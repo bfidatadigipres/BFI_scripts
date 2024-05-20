@@ -191,6 +191,7 @@ class Carrier():
             raise Exception('* Both Can_ID and Package detected as identifier type...')
         if 'name' in self.identifiers:
             print('* This is a Container, according to the model, querying CID for part/whole...')
+            print(self.identifiers['name'])
             q_str = self.identifiers['name']
             q = f'current_location.name="{q_str}"'
             hits, recs = cid_get('carriersfull', q, [])

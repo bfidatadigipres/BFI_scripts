@@ -6,6 +6,7 @@ Needs test
 '''
 
 import os
+import sys
 
 sys.path.append(os.environ['CODE'])
 from adlib_v3 import adlib

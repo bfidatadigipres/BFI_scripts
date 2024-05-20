@@ -422,11 +422,12 @@ def cid_get(database, search, fields):
     '''
     Simple query wrapper
     '''
-
-    if not isinstance(fields, list):
+    if fields == []:
+        hits, record = adlib.retrieve_record(CID_API, database, search, '0')
+    elif not isinstance(fields, list):
         fields = [fields]
+        hits, record = adlib.retrieve_record(CID_API, database, search, '0', fields)
 
-    hits, record = adlib.retrieve_record(CID_API, database, search, '0', fields)
     if hits > 0:
         return hits, record[0]
     else:

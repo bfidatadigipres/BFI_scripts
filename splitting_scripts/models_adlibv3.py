@@ -194,7 +194,7 @@ class Carrier():
             print(self.identifiers['name'])
             q_str = self.identifiers['name']
             q = f'current_location.name="{q_str}"'
-            hits, recs = cid_get('carriersfull', q, [])
+            hits, recs = cid_get('carriersfull', q)
             if hits > 1:
                 wholes_all = []
                 print(hits)
@@ -420,28 +420,25 @@ class Carrier():
         return manifest
 
 
-def cid_get(database, search, fields):
+def cid_get(database, search, fields=None):
     '''
     Simple query wrapper
     '''
-    if fields == []:
-        query = {
-            "database": database,
-            "search": search,
-            "limit": 0,
-            "output": "jsonv1"
-        }
+    query = {
+        "database": database,
+        "search": search,
+        "limit": 0,
+        "output": "jsonv1"
+    }
+    if not fields:
+        pass
     elif not isinstance(fields, list):
-        fields = [fields]
-        query = {
-            "database": database,
-            "search": search,
-            "limit": 0,
-            "output": "jsonv1",
-            "fields": fields
-        }
-    hits, record = adlib.get(CID_API, query)
-
+        query['fields'] = [fields]
+    else:
+        query['fields'] = fields
+    
+    record = adlib.get(CID_API, query)
+    hits = record['adlibJSON']['diagnostic']['hits']
     if hits > 0:
         return hits, record[0]
     else:

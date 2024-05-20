@@ -197,12 +197,8 @@ class Carrier():
             hits, recs = cid_get('carriersfull', q)
             if hits > 1:
                 wholes_all = []
-                print(hits)
-                print(recs)
                 for num in range(0, hits):
-                    print(recs[num])
                     data = recs[num]
-                    print(data)
                     print(f'* Querying CID for multiple part returns / whole data: {q}')
                     try:
                         part = int(adlib.retrieve_field_name(data, 'carrier_part.number')[0])
@@ -215,7 +211,7 @@ class Carrier():
                 if wholes_all.count(wholes_all[0]) != len(wholes_all):
                     raise Exception(f'* Whole numbers do not match for all returned partWholes: {wholes_all}')
 
-            data = recs
+            data = recs[0]
             print(f'* Querying CID for part / whole data: {q}')
 
             try:

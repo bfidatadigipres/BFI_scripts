@@ -192,12 +192,12 @@ class Carrier():
             print('* This is a Container, according to the model, querying CID for part/whole...')
             q_str = self.identifiers['name']
             q = f'current_location.name="{q_str}"'
-            hits, recs = cid_get('carriersfull', q, ['carrier_part.number', 'carrier_part.total_numbers'])
-            print(hits, recs)
+            hits, recs = cid_get('carriersfull', q)
             if hits > 1:
                 wholes_all = []
                 for num in range(0, hits):
                     data = recs[num]
+                    print(data)
                     print(f'* Querying CID for multiple part returns / whole data: {q}')
                     try:
                         part = int(adlib.retrieve_field_name(data, 'carrier_part.number')[0])

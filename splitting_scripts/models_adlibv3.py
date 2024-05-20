@@ -196,6 +196,7 @@ class Carrier():
             if hits > 1:
                 wholes_all = []
                 print(hits)
+                print(recs)
                 for num in range(0, hits):
                     print(recs[num])
                     data = recs[num]

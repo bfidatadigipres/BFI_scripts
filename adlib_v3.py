@@ -137,7 +137,7 @@ def retrieve_field_name(record, fieldname):
         for field in record[f'{fieldname}']:
             if isinstance(field, str):
                 field_list.append(field)
-            elif '@lang' in str(field) or 'lang' in str(field):
+            elif "'@lang'" in str(field):
                 field_list.append(field['value'][0]['spans'][0]['text'])
             else:
                 field_list.append(field['spans'][0]['text'])

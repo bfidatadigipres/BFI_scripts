@@ -153,14 +153,12 @@ class Carrier():
             packages = set()
             for rec in self.items:
                 try:
-                    # BROKEN Cannot call carrier info in Parts with new API
-                    carriers = rec[0]['Parts'][0]
+                    carriers = rec['Parts']
                 except KeyError as exc:
                     str_except = adlib.retrieve_field_name(rec, 'object_number')[0]
                     raise Exception(f'Unable to determine partWhole from can_ID - could not use package instead because item {str_except} not linked to a package') from exc
 
                 for c in carriers:
-                    # BROKEN, THIS IS NOT RETRIEVED IN NEW API
                     p = c['parts_reference'][0]['current_location.name'][0]['name'][0]
                     packages.add(str(p))
 
@@ -256,7 +254,8 @@ class Carrier():
         '''
         if self._items is None:
             q = f'{self._find_items()} sort can_ID,priref ascending'
-            rec = cid_get('items', q, '')[1]
+            print(f"Query for item record retrieval: {q}")
+            rec = cid_get('items', q)[1]
             self._items = rec
 
         return self._items

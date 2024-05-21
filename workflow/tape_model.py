@@ -72,11 +72,6 @@ class Tape():
 
         if self.works:
             return
-        print(self.items)
-        print("-----------------")
-        print(self.works)
-        print("-----------------")
-        print(self.objects)
 
         works = []
         for pr in self.objects:
@@ -194,7 +189,7 @@ class Tape():
         self._works()
         if not self.works:
             return None
-        print(self.works)
+
         years = set()
         work_prirefs = []
         work_prirefs = [i['priref'] for i in self.works]
@@ -202,7 +197,7 @@ class Tape():
         for i in work_prirefs:
             search = f'priref={i} and title_date_start>0'
             record = adlib.retrieve_record(CID_API, 'works', search, '1', ['title_date_start'])[1]
-            print(record)
+
             if record:
                 date = adlib.retrieve_field_name(record[0], 'title_date_start')[0]
                 year = int(date[:4])
@@ -216,9 +211,11 @@ class Tape():
             return None
 
     def location(self):
+        print(self.package_number)
         if self.package_number:
             search = f'name="{self.package_number}"'
-            record = adlib.retrieve_record(CID_API, 'locations', search, '1', ['part_of'])[1]
+            record = adlib.retrieve_record(CID_API, 'locations', search, '1')[1]
+            print(record)
             # part_of could return problems. Need to identify alternative possibly
             if record:
                 location = str(adlib.retrieve_field_name(record[0], 'part_of')[0])

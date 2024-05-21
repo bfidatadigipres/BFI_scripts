@@ -126,6 +126,9 @@ def main():
         # Extract forenames
         forenames = []
         for n in names:
+            if n is None:
+                LOGGER.warning("No names found fpr person priref: %s\n%s", person_priref, r)
+                continue
             if ',' in n:
                 forenames.extend(n.split(',')[-1].strip().split(' '))
 

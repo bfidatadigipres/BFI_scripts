@@ -31,11 +31,11 @@ for i in "${targets[@]}"; do
     echo "$i"
     # Search for validated MOVs (should be whitespace-safe) - move them into documeneted, for transcoding
     find "$i" -maxdepth 1 -type f -name "*.mov" -not -name "*partial*" | sort | while IFS= read -r filename; do
-        "${PYENV311}" "${CODE}document_h22/document_h22.py" "$filename" --destination "${GRACK_H22}/processing/documented/"
+        "${PYENV311}" "${CODE}document_en_15907/document_h22.py" "$filename" --destination "${GRACK_H22}/processing/documented/"
     done
     # Search for validated MKVs (should be whitespace-safe) - move them into rna_mkv, for aspect ratio triage to place in correct autoingest path
     find "$i" -maxdepth 1 -type f -name "*.mkv" -not -name "*partial*" | sort | while IFS= read -r filename; do
-        "${PYENV311}" "${CODE}document_h22/document_h22.py" "$filename" --destination "${GRACK_H22}/processing/rna_mkv/"
+        "${PYENV311}" "${CODE}document_en_15907/document_h22.py" "$filename" --destination "${GRACK_H22}/processing/rna_mkv/"
         # echo "${DATE_NOW} : ${i} has been moved into rna_mkv to be moved into autoingest" >> "${H22_POLICIES}rna_mkv_move.txt"
     done
 done

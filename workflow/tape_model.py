@@ -11,7 +11,7 @@ import sys
 
 # Local imports
 sys.path.append(os.environ['CODE'])
-from adlib_v3 import adlib
+import adlib_v3 as adlib
 
 # Global variables
 CID_API = os.environ['CID_API4']

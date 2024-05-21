@@ -142,7 +142,7 @@ def main():
         job_metadata['completion.date'] = deadline
         job_metadata['negotiatedDeadline'] = deadline
 
-        # Create Workflow records
+        # Create Workflow records (will need testing when running records)
         print('* Creating Workflow records in CID...')
         batch = workflow.twoInchBatch(items=batch_items, **job_metadata)
         if not batch.successfully_completed:

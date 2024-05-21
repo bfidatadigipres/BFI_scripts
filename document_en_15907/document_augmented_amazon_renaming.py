@@ -44,7 +44,6 @@ import sys
 import json
 import shutil
 import logging
-import requests
 import datetime
 import subprocess
 
@@ -116,7 +115,7 @@ def walk_folders():
     Collect list of folderpaths
     for files named rename_amazon
     '''
-    print(STORAGE)
+
     rename_folders = []
     for root, dirs, _ in os.walk(STORAGE):
         for dir in dirs:

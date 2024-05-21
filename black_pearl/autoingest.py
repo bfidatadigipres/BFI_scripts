@@ -649,9 +649,10 @@ def main():
                 black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_NETFLIX']}")
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             elif 'ingest/amazon' in str(fpath):
-                logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
-                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
-                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+                continue
+                # logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
+                # black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
+                # black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             else:
                 black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST']}")
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"

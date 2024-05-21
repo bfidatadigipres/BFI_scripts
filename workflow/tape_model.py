@@ -285,7 +285,7 @@ class Tape():
             # No master siblings, therefore migrateable
             if hits == 0:
                 migrate_this.append(True)
-                break
+                # break
 
             # Compare format rank of siblings
             for sib in recs:

@@ -26,7 +26,7 @@ import tape_model
 import selections
 
 LOGS = os.environ['LOG_PATH']
-TWOINCH = os.path.join(os.environ['WORKFLOW'], '2inch/')
+TWOINCH = os.path.join(os.environ['WORKFLOW'], 'twoinch/')
 CID_API = os.environ['CID_API4']
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
@@ -64,10 +64,9 @@ def get_candidates():
          'number': 364,
          'output': 'jsonv1'}
 
-    candidates = []
     try:
         result = adlib.get(CID_API, q)
-        candidates.append(result['adlibJSON']['diagnostic']['hits'])
+        candidates = result['adlibJSON']['recordList']['record'][0]['hitlist']
     except Exception:
         print(result['adlibJSON']['diagnostic'])
         raise Exception('Cannot getpointerfile')

@@ -75,7 +75,8 @@ class Tape():
 
         item_prirefs = []
         for rec in self.objects:
-            item_prirefs.append(adlib.retrieve_field_name(rec, 'priref')[0])
+            item_prirefs.append(adlib.retrieve_field_name(rec[0], 'priref')[0])
+        print(item_prirefs)
 
         works = []
         for i in item_prirefs:

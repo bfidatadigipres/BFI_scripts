@@ -76,6 +76,18 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+
 def default_record():
     '''
     Default values for an item record
@@ -168,6 +180,7 @@ def main(filepath, frame_work, destination=None):
     Create a new item record and rename source file
     '''
     check_control()
+    cid_check()
 
     # Parse filename string
     in_file = os.path.basename(filepath)

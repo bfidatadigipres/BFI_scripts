@@ -88,7 +88,7 @@ def cid_check():
     Test if CID API online
     '''
     try:
-        test = adlib.check(CID_API)
+        adlib.check(CID_API)
     except KeyError:
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical("* Cannot establish CID session, exiting script")

@@ -202,6 +202,7 @@ class Tape():
         for i in work_prirefs:
             search = f'priref={i} and title_date_start>0'
             record = adlib.retrieve_record(CID_API, 'works', search, '1', ['title_date_start'])
+            print(record)
             if record:
                 date = adlib.retrieve_field_name(record[0], 'title_date_start')[0]
                 year = int(date[:4])

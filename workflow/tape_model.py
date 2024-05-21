@@ -225,7 +225,6 @@ class Tape():
     def origin(self):
         # Is carrier a preferred migration source?
         this_format = self.format()
-        print(this_format)
         if not this_format:
             return None
 
@@ -274,6 +273,7 @@ class Tape():
             # Item has digital master sibling or is in DPI?
             q = f'priref={priref} and (part_of_reference->(parts_reference->(reproduction.reference->imagen.media.original_filename=* or (item_type=Digital and copy_status=Master))))'   
             digitised = self._check('items', q)
+            print(digitised)
             if digitised is not None:
                 if digitised >= 1:
                     migrate_this.append(False)
@@ -290,6 +290,7 @@ class Tape():
 
             # Compare format rank of siblings
             for sib in recs:
+                print(f"Sib: {sib}")
                 try:
                     # JMW May not work, could need ['value'][1] to access field data
                     sib_format = adlib.retrieve_field_name(sib, 'video_format')[0]

@@ -134,6 +134,7 @@ class Tape():
 
         for r in self.items:
             try:
+                print(adlib.retrieve_field_name(r, 'video_duration'))
                 item_duration = float(adlib.retrieve_field_name(r, 'video_duration')[0])
                 total += item_duration
             except Exception:
@@ -211,12 +212,10 @@ class Tape():
             return None
 
     def location(self):
-        print(self.package_number)
         if self.package_number:
             search = f'name="{self.package_number}"'
             record = adlib.retrieve_record(CID_API, 'locations', search, '1')[1]
-            print(record)
-            # part_of could return problems. Need to identify alternative possibly
+
             if record:
                 location = str(adlib.retrieve_field_name(record[0], 'part_of')[0])
                 return location

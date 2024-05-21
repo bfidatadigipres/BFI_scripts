@@ -5,13 +5,13 @@
 # scope records in a pointerfile
 
 # Log script start
-echo "Start Selecta: $(date)" >> "${CODE}workflow/d3/selecta.log"
+echo "Start Selecta: $(date)" >> "${LOG_PATH}d3_selecta.log"
 
 # Collect selections from pointer file
-"$PYENV311" "${CODE}workflow/d3/selecta.py"
+"$PYENV311" "${CODE}workflow/dthree/selecta.py"
 
 # Create Workflow jobs
-"$PYENV311" "${CODE}workflow/d3/submitta.py"
+"$PYENV311" "${CODE}workflow/dthree/submitta.py"
 
 # Log script end
-echo "Finish Selecta: $(date)" >> "${CODE}workflow/d3/selecta.log"
+echo "Finish Selecta: $(date)" >> "${LOG_PATH}d3_selecta.log"

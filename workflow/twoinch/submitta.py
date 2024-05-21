@@ -8,8 +8,6 @@ Dependencies:
 1. LOGS/2inch_submitta.log
 2. twoinch/submissions.csv
 3. twoinch/errors.csv
-
-NOTES: Panda configs need testing to see if still supported in 3.11
 '''
 
 # Public imports
@@ -146,6 +144,7 @@ def main():
         print('* Creating Workflow records in CID...')
         batch = workflow.twoInchBatch(items=batch_items, **job_metadata)
         if not batch.successfully_completed:
+            print(batch_items, batch)
             error_row = [str(today), batch.priref, batch.task.job_number, ','.join(batch_items)]
 
             with open(os.path.join(TWOINCH, 'errors.csv'), 'a') as of:

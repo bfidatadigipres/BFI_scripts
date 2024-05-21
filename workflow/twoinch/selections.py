@@ -7,6 +7,7 @@ of sumbitta.py
 
 import csv
 
+
 class Selections():
 
     def __init__(self, input_file):
@@ -71,4 +72,3 @@ class Selections():
             items.extend(data)
 
         return items
-

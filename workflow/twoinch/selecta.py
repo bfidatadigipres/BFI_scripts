@@ -130,7 +130,8 @@ def main():
         write_to_log('This tape will be added to twoinch/selections.csv:\n')
         write_to_log(f'{str(d)}\n')
 
-        # Add tape to f47_selections.csv if unique
+        # Add tape to twoinch/selections.csv if unique
+        # selections.add can only be test during first run - tail csv
         print(f'add: {str(d)}')
         selections.add(**d)
 

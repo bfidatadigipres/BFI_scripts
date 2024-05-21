@@ -6,8 +6,8 @@ for third Multi Machine Environment in F47 (first was DigiBeta, second was 1inch
 
 Dependencies:
 1. LOGS/2inch_submitta.log
-2. 2inch/submissions.csv
-3. 2inch/errors.csv
+2. twoinch/submissions.csv
+3. twoinch/errors.csv
 
 NOTES: Panda configs need testing to see if still supported in 3.11
 '''
@@ -18,6 +18,7 @@ import sys
 import csv
 import json
 import yaml
+import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -27,7 +28,7 @@ import workflow
 
 # Global variables
 LOGS = os.environ['LOG_PATH']
-TWOINCH = os.path.join(os.environ['WORKFLOW'], '2inch/')
+TWOINCH = os.path.join(os.environ['WORKFLOW'], 'twoinch/')
 NOW = datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 
@@ -47,11 +48,15 @@ def get_csv(csv_path):
     '''
     Open and return data
     '''
+    submissions = {}
     with open(csv_path, 'r') as file:
         rows = csv.reader(file)
+        for r in rows:
+            uid = r[0]
+            submissions[uid] = r[1:]
         file.close()
 
-    return rows
+    return submissions
 
 
 def main():
@@ -70,23 +75,19 @@ def main():
     for _ in range(0, batches_per_iteration):
 
         # Load submissions
-        print('* Opening 2inch submissions csv...')
-        submissions = {}
-        rows = get_csv(os.path.join(TWOINCH, 'submissions.csv'))
-        for r in rows:
-            uid = r[0]
-            submissions[uid] = r[1:]
+        print('* Opening twoinch/submissions csv...')
+        submissions = get_csv(os.path.join(TWOINCH, 'submissions.csv'))
 
         # Load selections
-        print('* Opening 2inch selections csv...')
-        df = pd.read_csv('2inch_selections.csv')
+        print('* Opening twoinch/selections csv...')
+        df = pd.read_csv(os.path.join(TWOINCH, 'selections.csv'))
 
         # Remove submissions from selections data frame
         print('* Removing 2inch submissions from 2inch selections...')
         unsubmitted_df = df[~df['uid'].isin(submissions)]
 
         # Replace NaNs with blank strings
-        unsubmitted_df = unsubmitted_df.replace(pd.np.nan, '', regex=True)
+        unsubmitted_df = unsubmitted_df.replace(np.nan, '', regex=True)
 
         # Optimise candidate selections
         print('* Optimising candidate selections...')
@@ -121,7 +122,7 @@ def main():
             batch_items.extend(prirefs)
 
             # Track submission
-            print('* Writing 2inch submissions to 2inch/submissions.csv...')
+            print('* Writing 2inch submissions to twoinch/submissions.csv...')
             with open(os.path.join(TWOINCH, 'submissions.csv'), 'a') as of:
                 writer = csv.writer(of)
                 writer.writerow(submission)

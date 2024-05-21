@@ -197,8 +197,7 @@ class Tape():
         print(self.works)
         years = set()
         work_prirefs = []
-        for rec in self.works:
-            work_prirefs = [i['priref'] for i in self.works]
+        work_prirefs = [i['priref'] for i in self.works]
 
         for i in work_prirefs:
             search = f'priref={i} and title_date_start>0'

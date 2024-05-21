@@ -91,7 +91,7 @@ def main():
 
     write_to_log(f'=== Processing Items in 2inch Pointer File === {DT_STR}\n')
     
-    twoinch_select_csv = os.path.join(os.environ['WORKFLOW'], '2inch/selections.csv')
+    twoinch_select_csv = os.path.join(os.environ['WORKFLOW'], 'twoinch/selections.csv')
     selects = selections.Selections(input_file=twoinch_select_csv)
     selected_items = selects.list_items()
     candidates = get_candidates()
@@ -102,7 +102,7 @@ def main():
 
         # Ignore already selected items
         if obj in selected_items:
-            write_to_log(f'* Item already in 2inch_selections.csv: {priref}\n')
+            write_to_log(f'* Item already in twoinch/selections.csv: {priref}\n')
             continue
 
         # Model tape carrier
@@ -127,7 +127,7 @@ def main():
         d['location'] = t.location()
         d['uid'] = uuid.uuid4()
 
-        write_to_log('This tape will be added to 2inch_selections.csv:\n')
+        write_to_log('This tape will be added to twoinch/selections.csv:\n')
         write_to_log(f'{str(d)}\n')
 
         # Add tape to f47_selections.csv if unique

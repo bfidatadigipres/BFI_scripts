@@ -268,7 +268,6 @@ class Tape():
 
         migrate_this = []
         for i in self.objects:
-            print(i)
             priref = i['priref']
             # Item has digital master sibling or is in DPI?
             q = f'priref={priref} and (part_of_reference->(parts_reference->(reproduction.reference->imagen.media.original_filename=* or (item_type=Digital and copy_status=Master))))'   
@@ -292,8 +291,8 @@ class Tape():
             for sib in recs:
                 print(f"Sib: {sib}")
                 try:
-                    # JMW May not work, could need ['value'][1] to access field data
-                    sib_format = adlib.retrieve_field_name(sib, 'video_format')[0]
+                    sib_format = sib['video_format'][0]['value'][1]['spans'][0]['text']
+                    # sib_format = adlib.retrieve_field_name(sib, 'video_format')[0]
                 except Exception:
                     migrate_this.append(True)
                     continue
@@ -319,7 +318,7 @@ class Tape():
 
     def _count_manifestations(self, query):
         for i in self.objects:
-            priref = adlib.retrieve_field_name(i, 'priref')[0]
+            priref = i['priref']
             search = f'Df=manifestation and parts_reference.lref={priref} and ({query})'
 
             match = self._check('manifestations', search)
@@ -328,7 +327,7 @@ class Tape():
 
     def cousins(self):
         for i in self.objects:
-            priref = adlib.retrieve_field_name(i, 'priref')[0]
+            priref = i['priref']
             query = f'part_of_reference->(part_of_reference->(parts_reference->(parts_reference.lref={priref})))'
             if self._check('items', query) > 1:
                 return True
@@ -337,7 +336,7 @@ class Tape():
 
     def siblings(self):
         for i in self.objects:
-            priref = adlib.retrieve_field_name(i, 'priref')[0]
+            priref = i['priref']
             query = f'part_of_reference->parts_reference.lref={priref}'
             if self._check('items', query) > 1:
                 return True

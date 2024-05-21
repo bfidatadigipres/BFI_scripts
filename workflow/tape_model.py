@@ -134,7 +134,6 @@ class Tape():
 
         for r in self.items:
             try:
-                print(adlib.retrieve_field_name(r, 'video_duration'))
                 item_duration = float(adlib.retrieve_field_name(r, 'video_duration')[0])
                 total += item_duration
             except Exception:
@@ -153,6 +152,7 @@ class Tape():
         for r in self.items:
             try:
                 # This may not work, could need ['value'][1] to access correct field
+                print(r)
                 item_format = adlib.retrieve_field_name(r, 'video_format')[0]
                 formats.add(item_format)
             except Exception:

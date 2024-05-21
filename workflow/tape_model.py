@@ -77,13 +77,10 @@ class Tape():
         print(self.works)
         print("-----------------")
         print(self.objects)
-        item_prirefs = []
-        for rec in self.objects:
-            item_prirefs.append(adlib.retrieve_field_name(rec[0], 'priref')[0])
-        print(item_prirefs)
 
         works = []
-        for i in item_prirefs:
+        for pr in self.objects:
+            i = pr['priref']
             query = f'Df=work and (parts_reference->(parts_reference.lref={i}))'
             record = adlib.retrieve_record(CID_API, 'works', query, '100', ['object_number', 'priref'])[1]
             if record:

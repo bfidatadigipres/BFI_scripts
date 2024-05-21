@@ -151,9 +151,7 @@ class Tape():
         formats = set()
         for r in self.items:
             try:
-                # This may not work, could need ['value'][1] to access correct field
-                print(r)
-                item_format = adlib.retrieve_field_name(r, 'video_format')[0]
+                item_format = r['video_format'][0]['value'][1]['spans'][0]['text']
                 formats.add(item_format)
             except Exception:
                 pass
@@ -170,8 +168,7 @@ class Tape():
         states = set()
         for r in self.items:
             try:
-                # May not work, could need ['value'][1] to access correct field
-                s = adlib.retrieve_field_name(r, 'copy_status')[0]
+                s = r['copy_status'][0]['value'][1]['spans'][0]['text']
                 states.add(s)
             except Exception:
                 pass
@@ -181,9 +178,12 @@ class Tape():
     def segmentation(self):
         if not self.items:
             return None
+
         all = []
-        for rec in self.items():
-            all.append(adlib.retrieve_field_name(rec, 'video_part')[0])
+        for rec in self.items:
+            vps = adlib.retrieve_field_name(rec, 'video_part')
+            for v in vps:
+                all.append(v)
         return all
 
     def content_dates(self):

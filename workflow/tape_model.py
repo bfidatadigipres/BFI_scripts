@@ -285,14 +285,15 @@ class Tape():
             # No master siblings, therefore migrateable
             if hits == 0:
                 migrate_this.append(True)
-                # break
+                break
 
             # Compare format rank of siblings
             for sib in recs:
-                print(f"Sib: {sib}")
+                print(f"** Sib: {sib}")
                 try:
+                    # Untested until siblings appear
                     sib_format = sib['video_format'][0]['value'][1]['spans'][0]['text']
-                    # sib_format = adlib.retrieve_field_name(sib, 'video_format')[0]
+                    print(sib_format)
                 except Exception:
                     migrate_this.append(True)
                     continue

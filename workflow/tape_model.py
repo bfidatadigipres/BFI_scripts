@@ -2,7 +2,7 @@
 
 '''
 Updated for Python3/AdlibV3.
-Needs test
+Tested for selecta.py
 '''
 
 # Public imports

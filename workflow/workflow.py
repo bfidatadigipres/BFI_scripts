@@ -535,6 +535,7 @@ def get_priref(object_number):
 
 
 def count_jobs_submitted(search):
+    print(search)
     hits = adlib.retrieve_record(CID_API, 'workflow', search, '-1')[0]
     return hits
 

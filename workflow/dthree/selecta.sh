@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # Launcher for Selecta python script
 # for booking Workflow jobs for in-

@@ -20,7 +20,7 @@ import datetime
 
 # Local imports
 sys.path.append(os.environ['CODE'])
-from adlib_v3 import adlib
+import adlib_v3 as adlib
 sys.path.append(os.environ['WORKFLOW'])
 import tape_model
 import selections
@@ -81,7 +81,7 @@ def get_object_number(priref):
     search = f'priref={priref}'
     record = adlib.retrieve_record(CID_API, 'items', search, '1', ['object_number'])[1]
     if record:
-        object_number = adlib.retrieve_field_name(record, 'object_number')[0]
+        object_number = adlib.retrieve_field_name(record[0], 'object_number')[0]
     return object_number
 
 
@@ -90,7 +90,7 @@ def main():
     cid_check()
 
     write_to_log(f'=== Processing Items in D3 Pointer File === {DT_STR}\n')
-    
+    write_to_log('Fetching csv data, building selected items list and fetching candidates.')
     d3_select_csv = os.path.join(os.environ['WORKFLOW'], 'dthree/selections.csv')
     selects = selections.Selections(input_file=d3_select_csv)
     selected_items = selects.list_items()
@@ -102,10 +102,11 @@ def main():
 
         # Ignore already selected items
         if obj in selected_items:
-            write_to_log(f'* Item already in dthree/selections.csv: {priref}\n')
+            write_to_log(f'* Item already in dthree/selections.csv: {priref} {obj}\n')
             continue
 
         # Model tape carrier
+        write_to_log(f'Modelling tape carrier')
         try:
             t = tape_model.Tape(obj)
         except Exception:
@@ -130,7 +131,8 @@ def main():
         write_to_log('This tape will be added to dthree/selections.csv:\n')
         write_to_log(f'{str(d)}\n')
 
-        # Add tape to f47_selections.csv if unique
+        # Add tape to dthree/selections.csv if unique
+        # selections.add can only be test during first run - tail csv
         print(f'add: {str(d)}')
         selections.add(**d)
 
@@ -141,7 +143,7 @@ def write_to_log(message):
     '''
     Write to 2inch selecta log
     '''
-    with open(os.path.join(LOGS, 'd3_selecta.log'), 'w') as file:
+    with open(os.path.join(LOGS, 'd3_selecta.log'), 'a') as file:
         file.write(message)
         file.close()
 

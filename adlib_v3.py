@@ -52,13 +52,12 @@ def retrieve_record(api, database, search, limit, fields=None):
 
     record = get(api, query)
 
-    if 'recordList' not in str(record):
+    if record['adlibJSON']['diagnostic']['hits'] == 0:
+        return 0, None
+    elif 'recordList' not in str(record):
         try:
             hits = record['adlibJSON']['diagnostic']['hits']
-            if hits == 0:
-                return 0, None
-            else:
-                return hits, record
+            return hits, record
         except (IndexError, KeyError, TypeError):
             return 0, record
 

@@ -64,7 +64,7 @@ def main():
     write_to_log(f'=== Processing Items in D3 selections.csv === {DT_STR}\n')
 
     # Load configuration variables
-    configuration = yaml.load(open(os.path.join(DTHREE, 'config.yaml'), 'r'))
+    configuration = yaml.safe_load(open(os.path.join(DTHREE, 'config.yaml'), 'r'))
     batch_size = configuration['Batches']['TapesPerBatch']
     batches_per_iteration = configuration['Batches']['BatchesPerIteration']
 
@@ -133,7 +133,9 @@ def main():
         # Append date and batch number to title
         q = 'topNode="x" and description="*D3 / Ofcom*" and input.name="collectionssystems"'
         lifetime_batches = workflow.count_jobs_submitted(q) + 1
-        job_metadata['description'] = '{} / {} / {}'.format(job_metadata['description'],
+        # job_metadata['description'] = '{} / {} / {}'.format(job_metadata['description'],
+        #                                                     today, lifetime_batches)
+        job_metadata['description'] = 'SCRIPT TESTS {} / {} / {}'.format(job_metadata['description'],
                                                             today, lifetime_batches)
         # Calculate deadline
         deadline = (datetime.today() + timedelta(days=10)).strftime('%Y-%m-%d')
@@ -159,7 +161,7 @@ def write_to_log(message):
     '''
     Write to 2inch submitta log
     '''
-    with open(os.path.join(LOGS, 'd3_submitta.log'), 'w') as file:
+    with open(os.path.join(LOGS, 'd3_submitta.log'), 'a') as file:
         file.write(message)
         file.close()
 

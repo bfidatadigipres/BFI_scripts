@@ -319,7 +319,7 @@ def make_item_record_dict(priref, file, record, arg):
     else:
         LOGGER.warning("No title data retrieved. Aborting record creation")
         return None
-    if 'part_of_reference' in str(record):
+    if 'part_of_reference.lref' in str(record):
         item.append({'part_of_reference.lref': adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]})
     else:
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")

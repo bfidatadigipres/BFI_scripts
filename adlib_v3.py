@@ -108,13 +108,19 @@ def post(api, payload, database, method):
         except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
             print(err)
             return None
-
+    print("-------------------------------------")
+    print(response.text)
+    print(json.loads(response.text))
+    print("-------------------------------------")
     if 'recordList' in response.text:
         record = json.loads(response.text)
-        if isinstance(record['adlibJSON']['recordList']['record'], list):
-            return record['adlibJSON']['recordList']['record'][0]
-        else:
-            return record['adlibJSON']['recordList']['record']
+        try:
+            if isinstance(record['adlibJSON']['recordList']['record'], list):
+                return record['adlibJSON']['recordList']['record'][0]
+            else:
+                return record['adlibJSON']['recordList']['record']
+        except (KeyError, IndexError, TypeError):
+            return record
     elif '@attributes' in response.text:
         record = json.loads(response.text)
         return record

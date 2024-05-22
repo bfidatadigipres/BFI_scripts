@@ -100,7 +100,7 @@ def cid_check_fname(object_number):
     Looks up object_number and retrieves title
     and other data for new timed text record
     '''
-    search = f'object_number="{object_number}"'
+    search = f"object_number='{object_number}'"
     try:
         record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
     except Exception as err:
@@ -196,7 +196,7 @@ def main():
     LOGGER.info("== Document augmented Amazon renaming start =================")
     for fpath in folder_list:
         folder = os.path.split(fpath)[1].strip()
-        LOGGER.info("Folder path found: %s", fpath)
+        LOGGER.info("Folder path found: <%s>", fpath)
         record = cid_check_fname(folder)
         if record is None:
             LOGGER.warning("Skipping: Record could not be matched with object_number")

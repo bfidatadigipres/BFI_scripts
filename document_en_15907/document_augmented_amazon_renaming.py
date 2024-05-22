@@ -256,7 +256,7 @@ def main():
                 continue
 
             # Make new item record
-            new_record = adlib.post(CID_API, item_xml, 'items', 'instertrecord')
+            new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
             if new_record is None:
                 LOGGER.warning("Creation of new CID item record failed with XML: \n%s", item_xml)
                 continue

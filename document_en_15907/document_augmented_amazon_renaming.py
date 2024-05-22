@@ -310,17 +310,17 @@ def make_item_record_dict(priref, file, record, arg):
     item.append({'accession_date': str(datetime.datetime.now())[:10]})
 
     if 'Title' in str(record):
-        mov_title = adlib.retrieve_field_name(record, 'title')[0]
+        mov_title = adlib.retrieve_field_name(record[0], 'title')[0]
         item.append({'title': f"{mov_title} ({arg})"})
         if 'title.article' in str(record):
-            item.append({'title.article': adlib.retrieve_field_name(record, 'title.article')[0]})
+            item.append({'title.article': adlib.retrieve_field_name(record[0], 'title.article')[0]})
         item.append({'title.language': 'English'})
         item.append({'title.type': '05_MAIN'})
     else:
         LOGGER.warning("No title data retrieved. Aborting record creation")
         return None
     if 'part_of_reference' in str(record):
-        item.append({'part_of_reference.lref': adlib.retrieve_field_name(record['Part_of'][0]['part_of_reference'][0], 'priref')[0]})
+        item.append({'part_of_reference.lref': adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]})
     else:
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
         return None
@@ -331,20 +331,20 @@ def make_item_record_dict(priref, file, record, arg):
     elif 'Audio Description' in arg:
         item.append({'file_type.lref': '114307'})
     if 'acquisition.date' in str(record):
-        item.append({'acquisition.date': adlib.retrieve_field_name(record, 'acquisition.date')[0]})
+        item.append({'acquisition.date': adlib.retrieve_field_name(record[0], 'acquisition.date')[0]})
     if 'acquisition.method' in str(record):
-        item.append({'acquisition.method.lref': adlib.retrieve_field_name(record, 'acquisition.method.lref')[0]})
+        item.append({'acquisition.method.lref': adlib.retrieve_field_name(record[0], 'acquisition.method.lref')[0]})
     if 'Acquisition_source' in str(record):
-        item.append({'acquisition.source.lref': adlib.retrieve_field_name(record, 'acquisition.source.lref')[0]})
-        item.append({'acquisition.source.type': adlib.retrieve_field_name(record, 'acquisition.source.type')[0]})
+        item.append({'acquisition.source.lref': adlib.retrieve_field_name(record[0], 'acquisition.source.lref')[0]})
+        item.append({'acquisition.source.type': adlib.retrieve_field_name(record[0], 'acquisition.source.type')[0]})
     item.append({'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                       'Please raise a request via the Collections Systems Service Desk, describing your specific use.'})
     item.append({'access_conditions.date': str(datetime.datetime.now())[:10]})
     if 'grouping' in str(record):
-        item.append({'grouping': adlib.retrieve_field_name(record, 'grouping')[0]})
+        item.append({'grouping': adlib.retrieve_field_name(record[0], 'grouping')[0]})
     if 'language' in str(record):
-        item.append({'language': adlib.retrieve_field_name(record, 'language')[0]})
-        item.append({'language.type': adlib.retrieve_field_name(record, 'language.type')[0]})
+        item.append({'language': adlib.retrieve_field_name(record[0], 'language')[0]})
+        item.append({'language.type': adlib.retrieve_field_name(record[0], 'language.type')[0]})
     if len(file) > 1:
         item.append({'digital.acquired_filename': file})
 

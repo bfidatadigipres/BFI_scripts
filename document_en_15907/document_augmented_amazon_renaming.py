@@ -103,6 +103,7 @@ def cid_check_fname(object_number):
     search = f"object_number='{object_number}'"
     try:
         record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
+        print(record)
     except Exception as err:
         print(f"cid_check_fname(): Unable to match CID record to folder: {object_number} {err}")
         record = None

@@ -205,8 +205,9 @@ def main():
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
 
-        LOGGER.info("Folder matched to CID Item record: %s | %s | %s", folder, priref, ob_num)
+        LOGGER.info("Folder matched to CID Item record: %s | %s ", folder, priref)
         mov_list = [x for x in os.listdir(fpath) if x.endswith(('.mov', '.MOV'))]
+        print(mov_list)
         all_items = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
         if len(mov_list) != len(all_items):
             LOGGER.warning("Folder contains files that are not MOV: %s", fpath)
@@ -216,7 +217,7 @@ def main():
         for mov_file in mov_list:
             ext = mov_file.split('.')[1]
             item_xml = ''
-            if ext.lower != 'mov':
+            if ext.lower() != 'mov':
                 LOGGER.warning("Extension of file found that is not MOV. Skipping: %s", mov_file)
                 continue
             metadata = retrieve_metadata(fpath, mov_file)

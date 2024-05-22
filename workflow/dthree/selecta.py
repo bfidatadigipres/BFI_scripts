@@ -50,7 +50,7 @@ def cid_check():
     try:
         adlib.check(CID_API)
     except KeyError:
-        write_to_log("* Cannot establish CID session, exiting script")
+        write_to_log("* Cannot establish CID session, exiting script\n")
         print("* Cannot establish CID session, exiting script")
         sys.exit()
 
@@ -90,7 +90,7 @@ def main():
     cid_check()
 
     write_to_log(f'=== Processing Items in D3 Pointer File === {DT_STR}\n')
-    write_to_log('Fetching csv data, building selected items list and fetching candidates.')
+    write_to_log('Fetching csv data, building selected items list and fetching candidates.\n')
     d3_select_csv = os.path.join(os.environ['WORKFLOW'], 'dthree/selections.csv')
     selects = selections.Selections(input_file=d3_select_csv)
     selected_items = selects.list_items()
@@ -106,7 +106,7 @@ def main():
             continue
 
         # Model tape carrier
-        write_to_log(f'Modelling tape carrier')
+        write_to_log(f'Modelling tape carrier\n')
         try:
             t = tape_model.Tape(obj)
         except Exception:

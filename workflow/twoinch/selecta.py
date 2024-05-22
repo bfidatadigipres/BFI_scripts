@@ -50,7 +50,7 @@ def cid_check():
     try:
         adlib.check(CID_API)
     except KeyError:
-        write_to_log("* Cannot establish CID session, exiting script")
+        write_to_log("* Cannot establish CID session, exiting script\n")
         print("* Cannot establish CID session, exiting script")
         sys.exit()
 
@@ -90,7 +90,7 @@ def main():
     cid_check()
 
     write_to_log(f'=== Processing Items in 2inch Pointer File === {DT_STR}\n')
-    write_to_log('Fetching csv data, building selected items list and fetching candidates.')
+    write_to_log('Fetching csv data, building selected items list and fetching candidates.\n')
     twoinch_select_csv = os.path.join(os.environ['WORKFLOW'], 'twoinch/selections.csv')
     selects = selections.Selections(input_file=twoinch_select_csv)
     selected_items = selects.list_items()
@@ -99,14 +99,14 @@ def main():
     # Process candidate selections in pointer
     for priref in candidates:
         obj = get_object_number(priref)
-        write_to_log(f'Processing job: {priref} {obj}')
+
         # Ignore already selected items
         if obj in selected_items:
-            write_to_log(f'* Item already in twoinch/selections.csv: {priref}\n')
+            write_to_log(f'* Item already in twoinch/selections.csv: {priref} {obj}\n')
             continue
 
         # Model tape carrier
-        write_to_log(f'Modelling tape carrier')
+        write_to_log(f'Modelling tape carrier\n')
         try:
             t = tape_model.Tape(obj)
         except Exception:

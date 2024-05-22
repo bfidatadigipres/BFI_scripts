@@ -285,7 +285,7 @@ def main():
         # Check folder is empty and delete
         contents = list(os.listdir(fpath))
         if len(contents) == 0:
-            os.rmdir(fpath)
+            # os.rmdir(fpath)
             LOGGER.info("Amazon folder empty, deleting %s", fpath)
         else:
             LOGGER.warning("Amazon folder not empty, leaving in place for checks: %s", fpath)

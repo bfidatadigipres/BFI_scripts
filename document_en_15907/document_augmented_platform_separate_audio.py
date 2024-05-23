@@ -98,6 +98,8 @@ def cid_check_ob_num(object_number):
     '''
     search = f"object_number='{object_number}'"
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
+    if hits is None:
+        raise Exception(f"CID API was unreachable for Items search: {search}")
     if hits == 0:
         return None
     return record

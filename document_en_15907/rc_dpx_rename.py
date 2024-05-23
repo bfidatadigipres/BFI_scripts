@@ -92,6 +92,8 @@ def cid_list_retrieve(database, search):
     '''
 
     hits, records = adlib.retrieve_record(CID_API, database, search, '0', ['priref', 'object_number', 'file_type'])
+    if hits is None:
+        raise Exception(f'CID API could not be reached with {database} search:\n{search}')
     if not records:
         LOGGER.exception("cid_list_retrieve(): Unable to retrieve data: %s", search)
         return None

@@ -180,10 +180,12 @@ def find_repeats(asset_id):
     # Temp link for 'This is BBC Three'
     if asset_id == 'f8ee18fb-0620-5e51-bd6f-ea3ed7b63443':
         return '157271228'
-    
+
     search = f'alternative_number="{asset_id}"'
 
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '0')
+    if not hits:
+        raise Exception('CID API could not be reached for Manifestations search: {search}')
     print(result)
     if not result:
         return None

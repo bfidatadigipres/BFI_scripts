@@ -84,6 +84,8 @@ def retrieve_people_records():
     ]
 
     hits, records = adlib.retrieve_record(CID_API, 'people', search, '500', fields)
+    if hits is None:
+        raise Exception(f'CID API could not be reached with People search:\n{search}')
     if hits == 0:
         return hits, None
     else:

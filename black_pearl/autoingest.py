@@ -355,6 +355,9 @@ def check_media_record(fname):
 
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+        if hits is None:
+            logger.exception('"CID API was unreachable for Media search: %s', search)
+            raise Exception(f"CID API was unreachable for Media search: {search}")
         print(f"check_media_record(): AdlibV3 record for hits:\n{hits}")
         num = int(hits)
         if num >= 1:
@@ -475,9 +478,12 @@ def get_media_ingests(object_number):
     '''
     Use object_number to retrieve all media records
     '''
-    
+
     search = f'object.object_number="{object_number}"'
     hits, record = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])
+    if hits is None:
+        logger.exception('"CID API was unreachable for Media search: %s', search)
+        raise Exception(f"CID API was unreachable for Media search: {search}")
     print(f"get_media_ingests(): AdlibV3 record returned:\n{record}")
 
     original_filenames = []

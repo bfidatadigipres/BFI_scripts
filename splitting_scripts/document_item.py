@@ -42,7 +42,8 @@ def fetch_existing_object_number(source_object_number):
 
     search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref=397987'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '1', ['object_number'])
-
+    if hits is None:
+        raise Exception('Unable to retrieve data from Item record')
     if hits > 0:
         derived_object_number = adlib.retrieve_field_name(record[0], 'object_number')[0]
         return derived_object_number
@@ -125,7 +126,8 @@ def already_exists(source_object_number):
 
     search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref=397987'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
-
+    if hits is None:
+        raise Exception('Unable to retrieve data from Item record')
     if hits >= 1:
         log_print(f"already_exists(): {record}")
         return hits, record[0]
@@ -141,7 +143,8 @@ def already_exists_grouping(source_object_number, grouping_lref):
 
     search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref={grouping_lref}'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
-
+    if hits is None:
+        raise Exception('Unable to retrieve data from Item record')
     if hits >= 1:
         log_print(f"already_exists_grouping(): {record}")
         return hits, record[0]
@@ -159,7 +162,8 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
     # Fetch source item data
     search = f'object_number="{source_object_number}"'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '1')
-
+    if hits is None:
+        raise Exception('Unable to retrieve data from Item record')
     if hits > 0:
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
     if 'title' in str(record):
@@ -221,7 +225,8 @@ def new_no_segments(source_object_number, extension, note=None):
     # Fetch source item data
     search = f'object_number="{source_object_number}"'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '1')
-
+    if hits is None:
+        raise Exception('Unable to retrieve data from Item record')
     if hits > 0:
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
     if 'title' in str(record):
@@ -281,6 +286,8 @@ def new(source_object_number, segments, duration, extension, note=None):
     # Fetch source item data
     search = f'object_number="{source_object_number}"'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '1')
+    if hits is None:
+        raise Exception('Unable to retrieve data from Item record')
     print(record)
     if hits > 0:
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])

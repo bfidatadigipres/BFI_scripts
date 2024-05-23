@@ -129,7 +129,7 @@ def check_cid_record(priref, file):
         'reference_number',
         'code_type'
     ]
-    record = adlib.retrieve_record(CID_API, 'items', search, '0', fields)
+    record = adlib.retrieve_record(CID_API, 'items', search, '0', fields)[1]
     if not record:
         print(f"Unable to retrieve CID Item record {priref}")
 
@@ -159,7 +159,7 @@ def check_media_record(fname):
         'access_rendition.mp4',
         'input.date'
     ]
-    record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
     if not record: 
         print(f"Unable to retrieve CID Media record for item {fname}")
 
@@ -232,7 +232,7 @@ def get_media_ingests(object_number):
     Use object_number to retrieve all media records
     '''
     search = f'object.object_number="{object_number}"'
-    record = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])[1]
     if not record:
         return None
 
@@ -762,7 +762,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
 
-    print(f"Using CUR create_record: database='media', data, output='json', write=True")  
+    print(f"Using CUR create_record: database='media', data, output='json', write=True")
     record_data_xml = adlib.retrieve_record_data('', record_data)
     record = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
     if not record:

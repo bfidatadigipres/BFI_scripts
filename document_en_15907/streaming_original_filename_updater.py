@@ -129,7 +129,7 @@ def cid_check_media(priref, original_filename, ingest_fname):
         'priref',
         'digital.acquired_filename'
     ]
-    record = adlib.retrieve_record(CID_API, 'media', search, '1', fields)
+    record = adlib.retrieve_record(CID_API, 'media', search, '1', fields)[1]
     if not record:
         LOGGER.warning("cid_check_media(): Unable to find CID digital media record match: %s", priref)
         return None

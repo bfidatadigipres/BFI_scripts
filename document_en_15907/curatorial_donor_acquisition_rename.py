@@ -92,7 +92,7 @@ def cid_retrieve(itemname, search):
     Return object number to main
     '''
     try:
-        query_result = adlib.retrieve_record(CID_API, 'items', search, 0)
+        query_result = adlib.retrieve_record(CID_API, 'items', search, 0)[1]
     except Exception:
         print(f"cid_retrieve(): Unable to retrieve data for {itemname}")
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", itemname)

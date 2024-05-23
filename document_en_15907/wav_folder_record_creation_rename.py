@@ -133,7 +133,7 @@ def cid_query(database, search, object_number):
         'derived_item',
         'sound_item'
     ]
-    record = adlib.retrieve_record(CID_API, database, search, '0', fields)
+    record = adlib.retrieve_record(CID_API, database, search, '0', fields)[1]
     if not record:
         print(f"cid_query(): Unable to retrieve data for {object_number}")
         LOGGER.exception("cid_query(): Unable to retrieve data for %s", object_number)

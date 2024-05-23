@@ -244,7 +244,7 @@ def cid_person_check(credit_id):
     Retrieve if Person record with priref already exist for credit_entity_id
     '''
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
-    record = adlib.retrieve_record(CID_API, 'people', search, '0', ['priref', 'name', 'activity_type'])
+    record = adlib.retrieve_record(CID_API, 'people', search, '0', ['priref', 'name', 'activity_type'])[1]
     if not record:
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
         return None
@@ -301,7 +301,7 @@ def cid_manifestation_check(priref):
     Retrieve Manifestation transmission start time from parent priref
     '''
     search = f"(part_of_reference.lref='{priref}')"
-    record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', ['transmission_start_time'])
+    record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', ['transmission_start_time'])[1]
     if not record:
         LOGGER.exception("cid_manifestation_check(): Unable to check for record with priref: %s", priref)
         return ''

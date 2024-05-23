@@ -130,7 +130,8 @@ def check_media_record(fname):
     search = f"imagen.media.original_filename='{fname}'"
     hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
     print(f"Check media record response: {hits} hits")
-
+    if hits is None:
+        raise SystemExit(f'Could not retrieve data from API with search: {search}')
     if hits >= 1:
         return True
     elif hits == 0:

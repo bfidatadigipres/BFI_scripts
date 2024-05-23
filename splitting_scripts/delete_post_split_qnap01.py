@@ -259,13 +259,13 @@ def get_results(filepath, grouping, object_number):
     print(f'* Querying for ingest status of CID Item record {object_number}')
     hits, record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)
     print(f'Hits: {hits}\nRecord: {record}')
+    if hits is None or hits == 0:
+        print(f'* CID query failed to obtain result using search:\n{search}')
+        logger.warning('%s\tCID query failed to obtain result', filepath)
+        return None
     if hits >= 1:
         logger.info('%s\tCID Item record found, with object number %s', filepath, object_number)
         return record
-    else:
-        print(f'* CID query failed to obtain result using source_item->(object_number) {object_number}')
-        logger.warning('%s\tCID query failed to obtain result with input.name datadigipres', filepath)
-        return None
 
 
 if __name__ == '__main__':

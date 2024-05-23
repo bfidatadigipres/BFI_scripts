@@ -76,11 +76,12 @@ def check_media_records(folder_search, time):
     if time is None:
         search = f'(object.object_number=CA* and imagen.media.original_filename=*{folder_search}*)'
         hits = adlib.retrieve_record(CID_API, 'media', search, '-1')[0]
-        return int(hits)
     else:
         search = f'(object.object_number=CA* and imagen.media.original_filename=*{folder_search}*) and (creation>"{time}")'
         hits = adlib.retrieve_record(CID_API, 'media', search, '-1')[0]
-        return int(hits)
+    if hits is None:
+        raise Exception(f"CID API could not be reached with Media search:\n{search}")
+    return int(hits)
 
 
 def main():

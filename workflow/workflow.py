@@ -39,6 +39,8 @@ class Activities():
             search = f'dataType={data_type} and payloadDatabase>0'
             fields = ['payloadDatabase', 'description']
             hits, record = adlib.retrieve_record(CID_API, 'workflow', search, '1', fields)
+            if hits is None:
+                continue
             if hits == 0:
                 continue
             payload_database = adlib.retrieve_field_name(record[0], 'payloadDatabase')[0]
@@ -537,6 +539,8 @@ def get_priref(object_number):
 def count_jobs_submitted(search):
     print(search)
     hits = adlib.retrieve_record(CID_API, 'workflow', search, '-1')[0]
+    if hits is None:
+        raise Exception(f'Workflow search failed to access API: {search}')
     return hits
 
 

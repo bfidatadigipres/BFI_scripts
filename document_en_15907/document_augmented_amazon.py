@@ -370,6 +370,9 @@ def cid_check_works(patv_id):
         LOGGER.warning("cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s", patv_id, err)
         print("cid_check_works(): Record not found. Series hit count and series priref will return empty strings")
         return None
+    if hits is None:
+        LOGGER.exception('"CID API was unreachable for Works search: %s', query)
+        raise Exception(f"CID API was unreachable for Works search: {query}")
     try:
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"cid_check_works(): Series priref: {priref}")
@@ -395,7 +398,7 @@ def cid_check_works(patv_id):
             pass
 
     alt_type = []
-    for num in range(0, query_result.hits):
+    for num in range(0, hits):
         try:
             all_priref = adlib.retrieve_field_name(record[num], 'priref')[0]
         except (IndexError, TypeError, KeyError):
@@ -403,6 +406,9 @@ def cid_check_works(patv_id):
 
         type_query = f'priref="{all_priref}"'
         hits, type_record = adlib.retrieve_record(CID_API, 'works', type_query, 1)
+        if hits is None:
+            LOGGER.exception('"CID API was unreachable for Works search: %s', type_query)
+            raise Exception(f"CID API was unreachable for Works search: {type_query}")
         try:
             alt_num_type = adlib.retrieve_field_name(type_record[0]['Alternative_number'][0], 'alternative_number.type')[0]
             print(f"cid_check_works(): Alternative number type {alt_num_type}")

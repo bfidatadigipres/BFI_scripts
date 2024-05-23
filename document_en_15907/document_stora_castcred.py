@@ -450,7 +450,8 @@ def cid_work_check(search):
         hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', ['priref', 'input.notes, edit.name'])
     except (KeyError, IndexError):
         LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
-
+    if not hits:
+        raise Exception(f"CID API was unreachable for Works search: {search}")
     if hits == 0:
         return None, None
 
@@ -461,7 +462,7 @@ def cid_work_check(search):
 
         if 'STORA off-air television capture' in str(input_note):
             return [priref], [edit_name]
-    
+
     for num in range(0, hits):
         print("Fetch priref and edit_name from record")
         try:

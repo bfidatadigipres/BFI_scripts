@@ -71,6 +71,8 @@ def get_source_record(file):
     source_ob_num = file.split('EDIT_')[1].split('.')[0]
     search = f"object_number='{source_ob_num}'"
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
+    if hits is None:
+        raise Exception(f"CID API was unreachable for Items search: {search}")
     if hits == 0:
         return None
     return record

@@ -111,6 +111,9 @@ def fetch_workflow_jobs():
     todayd, endd = get_date_range()
     search = f"request.details='*{SEARCH_TERM}*' and completion.date>'{todayd}' and completion.date<'{endd}' and status=InProgress sort completion.date ascending"
     hits, records = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['priref', 'jobnumber', 'contact_person', 'request.details', 'request.from.name'])
+    if hits is None:
+        LOGGER.exception('"CID API was unreachable for Workflow search:\n%s', search)
+        raise Exception(f"CID API was unreachable for Workflow search:\n{search}")
     if not records:
         LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data")
         records = None

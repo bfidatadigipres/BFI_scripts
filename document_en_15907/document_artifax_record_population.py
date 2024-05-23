@@ -237,7 +237,7 @@ def cid_retrieve(search):
     '''
     Retrieve grouping data abd title using priref of work dictionary
     '''
-    record = adlib.retrieve_record(CID_API, 'works', search, '0', ['grouping.lref', 'title', 'edit.name'])
+    record = adlib.retrieve_record(CID_API, 'works', search, '0', ['grouping.lref', 'title', 'edit.name'])[1]
     LOGGER.info("cid_retrieve(): Making CID query request with:\n %s", search)
     if not record:
         LOGGER.exception("cid_retrieve(): Unable to retrieve data")

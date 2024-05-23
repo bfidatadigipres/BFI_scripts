@@ -88,7 +88,7 @@ def cid_retrieve(filename, search):
         'part_of_reference.lref'
     ]
 
-    record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', fields)
+    record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', fields)[1]
     if not record:
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", filename)
         return None

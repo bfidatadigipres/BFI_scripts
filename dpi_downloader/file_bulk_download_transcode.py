@@ -190,6 +190,9 @@ def get_media_record_data(priref):
     ]
 
     hits, records = adlib.retrieve_record(CID_API, 'media', search, '0', fields)
+    if hits is None:
+        LOGGER.exception("get_media_record_data: Error with API request with search: %s", search)
+        return []
     if records is None:
         LOGGER.exception("get_media_record_data: Unable to match filename to CID media record: %s\n%s", priref)
         return []

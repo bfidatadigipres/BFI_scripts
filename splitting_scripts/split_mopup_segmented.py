@@ -90,7 +90,7 @@ def check_for_parts(ob_num):
     '''
     search = f'part_of_reference="{ob_num}"'
     hits, record = adlib.retrieve_record(CID_API, 'carriers', search, '0', ['object_number'])
-    if not record:
+    if not record or not hits:
         logger.exception('CID check for carriers failed: %s', search)
         return False
     print(record[0])
@@ -110,7 +110,8 @@ def check_media_record(fname):
     '''
     search = f"imagen.media.original_filename='{fname}'"
     hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
-
+    if hits is None:
+        raise SystemExit(f'CID API cannot be reached using search: {search}')
     if hits >= 1:
         return True
     else:

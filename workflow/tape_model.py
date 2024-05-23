@@ -281,7 +281,8 @@ class Tape():
             # Analyse video siblings JWM {priref} may want changing to {0} in search
             search = f'copy_status="Master","Status pending" and item_type=Video and (part_of_reference->(parts_reference.lref={priref})) and not priref={priref}'
             hits, recs = adlib.retrieve_record(CID_API, 'items', search, '1', ['video_format', 'object_number'])
-
+            if hits is None:
+                raise Exception("CID API could not be reached with Items search:\n{seach}")
             # No master siblings, therefore migrateable
             if hits == 0:
                 migrate_this.append(True)
@@ -312,6 +313,8 @@ class Tape():
 
     def _check(self, database, query):
         hits = adlib.retrieve_record(CID_API, database, query, '-1')[0]
+        if hits is None:
+            raise Exception(f'CID API could not be reached with {database} search:\n{search}')
         if hits > 0:
             return hits
         else:

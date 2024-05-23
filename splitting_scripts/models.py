@@ -442,7 +442,8 @@ def cid_get(database, search, fields=None):
         if not isinstance(fields, list):
             fields = [fields]
         hits, recs = adlib.retrieve_record(CID_API, database, search, '0', fields)
-
+    if hits is None:
+        raise Exception(f"Failed to retrieve CID data from API database %s using search %s", database, search)
     if hits > 0:
         return hits, recs
     else:

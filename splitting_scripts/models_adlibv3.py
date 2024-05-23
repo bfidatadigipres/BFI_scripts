@@ -282,9 +282,23 @@ class Carrier():
     def duration(self):
         '''
         Sum all known durations of carried items
+        Expanded to handle video_durations formatted HH:MM:SS
         '''
+        values = self._field_value('video_duration')
+        float_values = []
+        for v in values:
+            if ':' in v:
+                hh,mm,ss = v.split(':')
+                float_values.append(float(hh) * 60 + float(mm) + float(ss) / 60)
+        if len(float_values) == len(values):
+            try:
+                total = sum(float(i) for i in float_values)
+                return round(total, 2)
+            except Exception as exc:
+                print(exc)
+
         try:
-            total = sum(float(i) for i in self._field_value('video_duration'))
+            total = sum(float(i) for i in values)
             return round(total, 2)
         except Exception as exc:
             print(exc)

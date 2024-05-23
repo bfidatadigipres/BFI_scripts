@@ -10,6 +10,7 @@ Joanna White
 
 import os
 import json
+import tenacity
 import requests
 import datetime
 from lxml import etree, html
@@ -65,6 +66,7 @@ def retrieve_record(api, database, search, limit, fields=None):
     return hits, record['adlibJSON']['recordList']['record']
 
 
+@tenacity.retry(retry=tenacity.retry_if_exception_type(TimeoutError))
 def get(api, query):
     '''
     Send a GET request
@@ -74,18 +76,21 @@ def get(api, query):
         dct = json.loads(req.text)
         if 'recordList' in dct:
             dct = dct['adlibJSON']['recordList']['record']
-    except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+    except requests.exceptions.Timeout as err:
         print(err)
-        dct = {}
+        raise Exception
+    except requests.exceptions.ConnectionError as err:
+        raise SystemExit(err)
+    except requests.exceptions.HTTPError as err:
+        raise SystemExit(err)
 
     return dct
 
 
+@tenacity.retry(retry=tenacity.retry_if_exception_type(TimeoutError))
 def post(api, payload, database, method):
     '''
     Send a POST request
-    If using updaterecord consider if the record
-    would benefit from a lock/unlock functionc
     '''
     params = {
         'command': method,
@@ -98,16 +103,25 @@ def post(api, payload, database, method):
     if method == 'insertrecord':
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
-        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+        except requests.exceptions.Timeout as err:
             print(err)
-            return None
+            raise Exception
+        except requests.exceptions.ConnectionError as err:
+            raise SystemExit(err)
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(err)
 
     if method == 'updaterecord':
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
-        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as err:
+        except requests.exceptions.Timeout as err:
             print(err)
-            return None
+            raise Exception
+        except requests.exceptions.ConnectionError as err:
+            raise SystemExit(err)
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(err)
+
     print("-------------------------------------")
     print(response.text)
     print(json.loads(response.text))

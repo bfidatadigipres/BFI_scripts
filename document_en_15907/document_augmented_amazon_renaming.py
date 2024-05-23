@@ -61,7 +61,7 @@ ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API4')
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_amazon_renaming')
@@ -103,7 +103,6 @@ def cid_check_fname(object_number):
     search = f"object_number='{object_number}'"
     try:
         record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
-        print(record)
     except Exception as err:
         print(f"cid_check_fname(): Unable to match CID record to folder: {object_number} {err}")
         record = None
@@ -165,13 +164,12 @@ def retrieve_metadata(fpath, mfile):
     colour_prim = colour_prim.decode('utf-8')
     audio_spec = subprocess.check_output(cmd2)
     audio_spec = audio_spec.decode('utf-8')
-    print(colour_prim, audio_spec)
 
     if 'BT.2020' in str(colour_prim):
         return 'HDR'
     if 'BT.709' in str(colour_prim):
         return 'SDR'
-    if str(colour_prim) == '' and 'eng' in str(audio_spec):
+    if 'eng' in str(audio_spec):
         return 'Audio Description'
     return None
 
@@ -186,7 +184,7 @@ def main():
     then create additional CID item records for
     remaining video/audio files (wrapped .mov)
     '''
-    check_control()
+    #check_control()
     cid_check()
 
     folder_list = walk_folders()
@@ -236,23 +234,27 @@ def main():
                 os.rename(os.path.join(fpath, mov_file), new_fpath)
                 if os.path.exists(new_fpath):
                     LOGGER.info("File renamed successfully. Moving to autoingest/ingest/amazon")
-                    shutil.move(os.path.join(fpath, mov_file), os.path.join(AUTOINGEST, new_filename))
+                    shutil.move(new_fpath, os.path.join(AUTOINGEST, new_filename))
                     continue
                 else:
                     LOGGER.warning("Failed to rename file. Leaving in folder for manual intervention.")
                     continue
-            if 'SDR' in metadata:
+            elif 'SDR' in metadata:
                 LOGGER.info("UHD SDR file found: %s", mov_file)
                 # Build dictionary from CID item record
                 item_data = make_item_record_dict(priref, mov_file, record, 'UHD SDR version')
+                if item_data is None:
+                    LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
+                    continue
                 item_xml = adlib.create_record_data('', item_data)
-                print(item_xml)
             elif 'Audio Description' in metadata:
                 LOGGER.info("Audio Description file found: %s", mov_file)
                 # Build dictionary from CID item record
                 item_data = make_item_record_dict(priref, mov_file, record, 'Audio Description')
+                if item_data is None:
+                    LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
+                    continue
                 item_xml = adlib.create_record_data('', item_data)
-                print(item_xml)
             else:
                 LOGGER.warning("File found with metadata not recognised. Skipping this item.")
                 continue
@@ -278,7 +280,7 @@ def main():
             os.rename(os.path.join(fpath, mov_file), new_fpath)
             if os.path.exists(new_fpath):
                 LOGGER.info("File renamed successfully. Moving to autoingest/ingest/amazon")
-                shutil.move(os.path.join(fpath, mov_file), os.path.join(AUTOINGEST, new_filename))
+                shutil.move(new_fpath, os.path.join(AUTOINGEST, new_filename))
                 continue
             else:
                 LOGGER.warning("Failed to rename file. Leaving in folder for manual intervention.")
@@ -287,7 +289,7 @@ def main():
         # Check folder is empty and delete
         contents = list(os.listdir(fpath))
         if len(contents) == 0:
-            # os.rmdir(fpath)
+            os.rmdir(fpath)
             LOGGER.info("Amazon folder empty, deleting %s", fpath)
         else:
             LOGGER.warning("Amazon folder not empty, leaving in place for checks: %s", fpath)
@@ -319,8 +321,8 @@ def make_item_record_dict(priref, file, record, arg):
     else:
         LOGGER.warning("No title data retrieved. Aborting record creation")
         return None
-    if 'part_of_reference.lref' in str(record):
-        item.append({'part_of_reference.lref': adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]})
+    if 'part_of_reference' in str(record):
+        item.append({'part_of_reference.lref': record[0]['Part_of'][0]['part_of_reference'][0]['priref'][0]['spans'][0]['text']})
     else:
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
         return None
@@ -351,7 +353,7 @@ def make_item_record_dict(priref, file, record, arg):
     return item
 
 
-def create_digital_original_filenames(priref, digital_note):
+def create_digital_original_filenames(priref, folder, digital_note):
     '''
     Create entries for digital.acquired_filename
     and append to the CID item record.
@@ -367,15 +369,15 @@ def create_digital_original_filenames(priref, digital_note):
                        {'edit.notes': 'Amazon automated digital acquired filename update'}])
 
     item_append_dct.extend(item_edit_data)
-    LOGGER.info("** Appending data to work record now...")
+    LOGGER.info("** Appending data to work record now")
 
     result = item_append(priref, item_append_dct)
     if result:
         print(f"Item appended successful! {priref}")
-        LOGGER.info("Successfully appended MOV digital.acquired_filenames to Item record %s", priref)
+        LOGGER.info("Successfully appended MOV digital.acquired_filenames to Item record %s %s", priref, folder)
         return True
     else:
-        LOGGER.warning("Failed to append MOV digital.acquired_filenames to Item record %s", priref)
+        LOGGER.warning("Failed to append MOV digital.acquired_filenames to Item record %s %s", priref, folder)
         print(f"CID item record append FAILED!! {priref}")
         return False
 

@@ -6,13 +6,11 @@ retrieve carrier information inc
 siblings, cousins, partWholes,
 package, can data, segments etc.
 
-Note:
-Content class is out of use in
-post-Imagen DPI workflows
-
 Refactored for Python3
+Updated to Adlib V3
+
 Joanna White
-June 2022
+2022
 '''
 
 # Public packages
@@ -22,19 +20,15 @@ import sys
 import string
 import logging
 import datetime
-import requests
-from PIL import Image
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global variables
 LOGS = os.environ['LOG_PATH']
 LOG_PATH = os.path.join(LOGS, 'splitting_models.log')
-DPI_PATH = os.environ['DPI_API']
-CID_API = os.environ['CID_API']
-CID = adlib.Database(url=CID_API)
+CID_API = os.environ['CID_API4']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('split_qnap_test')
@@ -51,80 +45,62 @@ def star(f):
 
 
 class Item():
-    ''' Useful interactions with an item record '''
+    '''
+    Useful interactions with an item record
+    '''
 
     def __init__(self, priref):
         self.priref = priref
         self.object_number = self._object_number()
-        self.containers = Containers(priref)
-        self.reels = max(len(i) for i in self.containers.identifiers.values() if i)
 
     def _object_number(self):
-        ''' Resolve <object_number> id '''
-        r = cid_get('items', f'priref={self.priref}', 'object_number')
-        logger.info("Object number: %s", r.records)
-        return r.records[0]['object_number'][0]
+        '''
+        Resolve <object_number> id
+        '''
+        rec = cid_get('items', f'priref={self.priref}', 'object_number')[1]
+        object_number = adlib.retrieve_field_name(rec, 'object_number')[0]
+        logger.info("Object number: %s", object_number)
+        return object_number
 
     def data(self):
-        ''' Fetch the complete record '''
-        r = cid_get('items', f'priref={self.priref}', '')
-        logger.info("data: %s", r.records)
-        return r.records[0]
+        '''
+        Fetch the complete record
+        '''
+        rec = cid_get('items', f'priref={self.priref}', '')[1]
+        logger.info("data: %s", rec)
+        return rec
 
     def siblings(self):
-        ''' Fetch identifiers of items in same manifestation '''
+        '''
+        Fetch identifiers of items in same manifestation
+        '''
+        siblings_priref = []
         q = f'(part_of_reference->(parts_reference.lref={self.priref}))'
-        r = cid_get('items', q, 'priref')
-        siblings_priref = [int(i['priref'][0]) for i in r.records if i]
+        recs = cid_get('items', q, 'priref')[1]
+        for rec in recs:
+            siblings_priref.append(int(adlib.retrieve_field_name(rec, 'priref')[0]))
         logger.info("Siblings: %s", siblings_priref)
         return siblings_priref
 
     def cousins(self):
-        ''' Fetch identifiers of items in any other manifestation in same work '''
+        '''
+        Fetch identifiers of items in any other manifestation in same work
+        '''
+        cousins_priref = []
         q = f'(part_of_reference->(part_of_reference->(parts_reference->(parts_reference.lref={self.priref}))))'
-        r = cid_get('items', q, 'priref')
-        cousins_priref = [int(i['priref'][0]) for i in r.records if int(i['priref'][0]) not in self.siblings()]
+        recs = cid_get('items', q, 'priref')[1]
+        for rec in recs:
+            priref = int(adlib.retrieve_field_name(rec, 'priref')[0])
+            if priref not in self.siblings():
+                cousins_priref.append(priref)
         logger.info("Cousins: %s", cousins_priref)
         return cousins_priref
 
 
-class Containers():
-    ''' Fetch and wrangle physical label identifiers for the given item priref '''
-
-    def __init__(self, priref):
-        self.packages = self._packages(priref)
-        self.cans = self._cans(priref)
-        self.identifiers = {'packages': self.packages, 'cans': self.cans}
-
-    def _packages(self, priref):
-        ''' Obtain <package_number> identifiers '''
-        q = f'collcopy.number->object.number.lref={priref}'
-        r = cid_get('packages', q, 'package_number')
-        return [str(i['package_number'][0]) for i in r.records if i]
-
-    def _cans(self, priref):
-        ''' Wrangle <can_ID> identifier '''
-        q = f'priref={priref} and can_ID=*'
-        r = cid_get('items', q, 'can_ID')
-        logger.info("Cans: %s", r.records[0]['can_ID'][0])
-        if r.hits == 0:
-            return []
-
-        can_id = str(r.records[0]['can_ID'][0])
-
-        # N-item, eg 5074964Aa becomes 5074964AA
-        if (can_id[-2] == 'A' and can_id[-1].islower()):
-            return [f'{can_id[:-1]}A']
-        # N-reel, eg 5074964A becomes 5074964AA
-        if (can_id[:-1].isnumeric() and can_id[-1].isupper()):
-            whole = string.ascii_uppercase.index(can_id[-1]) + 1
-            return [ f"{can_id[:-1]}{i}{can_id[-1]}" for i in string.ascii_uppercase[:whole] ]
-        # No partWhole, all other instances returned as is
-        return [can_id]
-
-
 class PhysicalIdentifier():
-    ''' Determine class of label - package number or can ID '''
+    '''
+    Determine class of label - package number or can ID
+    '''
 
     def __init__(self, identifier):
         self.label = identifier
@@ -136,8 +112,8 @@ class PhysicalIdentifier():
         for db in d:
             print(db)
             q = f'{d[db]}="{identifier}"'
-            r = cid_get(db, q, 'priref')
-            if r.records:
+            rec = cid_get(db, q, 'priref')[1]
+            if rec:
                 self._types.add(d[db])
                 print(f'* Self_types = {self._types}')
 
@@ -158,12 +134,14 @@ class PhysicalIdentifier():
         if i > 1:
             # Forces type can_ID over package_number
             return 'can_ID'
-        else:
-            raise Exception('Unable to determine identifier type from CID')
+
+        raise Exception('Unable to determine identifier type from CID')
 
 
 class Carrier():
-    ''' Model data for a carrier from its physical <package_number> or <can_ID> label '''
+    '''
+    Model data for a carrier from its physical <package_number> or <can_ID> label
+    '''
 
     def __init__(self, **identifiers):
         self.identifiers = identifiers
@@ -173,11 +151,11 @@ class Carrier():
         # Resolve can_ID as package if insufficient data
         if self.partwhole is None and 'can_ID' in self.identifiers:
             packages = set()
-            for r in self.items:
+            for rec in self.items:
                 try:
-                    carriers = r['Parts']
+                    carriers = rec['Parts']
                 except KeyError as exc:
-                    str_except = r['object_number'][0]
+                    str_except = adlib.retrieve_field_name(rec, 'object_number')[0]
                     raise Exception(f'Unable to determine partWhole from can_ID - could not use package instead because item {str_except} not linked to a package') from exc
 
                 for c in carriers:
@@ -185,13 +163,16 @@ class Carrier():
                     packages.add(str(p))
 
             if len(packages) == 1:
+                print(packages)
                 self.identifiers['name'] = list(packages)[0]
                 self.partwhole = self._partwhole()
 
         self._validate()
 
     def _validate(self):
-        ''' Check the data and the model '''
+        '''
+        Check the data and the model
+        '''
 
         if not self.items:
             raise Exception('Carrier has no documented items')
@@ -199,25 +180,27 @@ class Carrier():
             raise Exception('Multi-item carrier should not have multiple reels')
 
     def _partwhole(self):
-        ''' Determine partwhole from identifier '''
+        '''
+        Determine partwhole from identifier
+        '''
 
         if 'name' in self.identifiers and 'can_ID' in self.identifiers:
             print('* Both Can_ID and Package detected as identifier type...')
             raise Exception('* Both Can_ID and Package detected as identifier type...')
         if 'name' in self.identifiers:
             print('* This is a Container, according to the model, querying CID for part/whole...')
+            print(self.identifiers['name'])
             q_str = self.identifiers['name']
             q = f'current_location.name="{q_str}"'
-            r = cid_get('carriersfull', q, 'carrier_part.number,carrier_part.total_numbers')
-            if len(r.records) > 1:
-                total_recs = len(r.records)
+            hits, recs = cid_get('carriersfull', q)
+            if hits > 1:
                 wholes_all = []
-                for num in range(0, total_recs):
-                    data = r.records[num]
+                for num in range(0, hits):
+                    data = recs[num]
                     print(f'* Querying CID for multiple part returns / whole data: {q}')
                     try:
-                        part = int(data['carrier_part.number'][0])
-                        whole = int(data['carrier_part.total_numbers'][0])
+                        part = int(adlib.retrieve_field_name(data, 'carrier_part.number')[0])
+                        whole = int(adlib.retrieve_field_name(data, 'carrier_part.total_numbers')[0])
                         wholes_all.append(whole)
                         print(f'* Part {part} of {whole}')
                     except Exception as exc:
@@ -226,27 +209,29 @@ class Carrier():
                 if wholes_all.count(wholes_all[0]) != len(wholes_all):
                     raise Exception(f'* Whole numbers do not match for all returned partWholes: {wholes_all}')
 
-            data = r.records[0]
+            data = recs[0]
             print(f'* Querying CID for part / whole data: {q}')
 
             try:
-                part = int(data['carrier_part.number'][0])
-                whole = int(data['carrier_part.total_numbers'][0])
+                part = int(adlib.retrieve_field_name(data, 'carrier_part.number')[0])
+                whole = int(adlib.retrieve_field_name(data, 'carrier_part.total_numbers')[0])
                 print(f'* Part {part} of {whole}')
             except Exception as exc:
                 print('* Insufficient reel data in package record')
                 raise Exception('* Insufficient reel data in package record') from exc
             return [part, whole]
 
-        elif 'can_ID' in self.identifiers:
+        if 'can_ID' in self.identifiers:
             print('* This is a Can ID, according to the model, converting can_ID letters to numerical value...')
             print(self.identifiers['can_ID'])
             if re.match(r'.*[A-Z][A-Z]$', self.identifiers['can_ID']):
                 # Reads can_ID final two letters, returns numerical value, eg AB = ['1','2']
-                return [ string.ascii_uppercase.index(i) + 1 for i in [s for s in self.identifiers['can_ID'][-2:]] ]
+                return [string.ascii_uppercase.index(i) + 1 for i in [s for s in self.identifiers['can_ID'][-2:]]]
 
     def _find_items(self):
-        ''' Make query string required to find items '''
+        '''
+        Make query string required to find items
+        '''
         if 'name' in self.identifiers:
             return f"(parts_reference->(current_location.name={self.identifiers['name']}))"
 
@@ -264,25 +249,30 @@ class Carrier():
 
     @property
     def items(self):
-        ''' Fetch all item data '''
+        '''
+        Fetch all item data
+        '''
         if self._items is None:
             q = f'{self._find_items()} sort can_ID,priref ascending'
-            r = cid_get('items', q, '')
-            self._items = r.records
+            print(f"Query for item record retrieval: {q}")
+            rec = cid_get('items', q)[1]
+            self._items = rec
 
         return self._items
 
     def _field_value(self, field, value_instance=None):
-        ''' Helper function for extracting field values from records '''
+        '''
+        Helper function for extracting field values from records
+        '''
         values = []
 
-        for r in self.items.records:
+        for r in self.items:
             try:
                 if field in r:
                     if value_instance:
-                        values.append(r[field][0]['value'][value_instance])
+                        values.append(r[field][0]['value'][value_instance]['spans'][0]['text'])
                     else:
-                        values.append(r[field][0])
+                        values.append(adlib.retrieve_field_name(r, field)[0])
             except KeyError:
                 pass
 
@@ -290,16 +280,37 @@ class Carrier():
 
     @property
     def duration(self):
-        ''' Sum all known durations of carried items'''
+        '''
+        Sum all known durations of carried items
+        Expanded to handle video_durations formatted HH:MM:SS
+        '''
+        values = self._field_value('video_duration')
+        if len(values) != len(self.items):
+            raise Exception (f'Insufficient video_duration data {len(values)} returned for {len(self.items)} items')
+
+        float_values = []
+        for v in values:
+            if ':' in v:
+                hh,mm,ss = v.split(':')
+                float_values.append(float(hh) * 60 + float(mm) + float(ss) / 60)
+        if len(float_values) == len(values):
+            try:
+                total = sum(float(i) for i in float_values)
+                return round(total, 2)
+            except Exception as exc:
+                print(exc)
+
         try:
-            total = sum(float(i) for i in self._field_value('video_duration'))
+            total = sum(float(i) for i in values)
             return round(total, 2)
         except Exception as exc:
             print(exc)
 
     @property
     def video_format(self):
-        ''' Return list of video formats '''
+        '''
+        Return list of video formats
+        '''
         try:
             return list(set(self._field_value('video_format', value_instance=1)))
         except IndexError:
@@ -307,7 +318,9 @@ class Carrier():
 
     @property
     def status(self):
-        ''' Return list of copy statuses '''
+        '''
+        Return list of copy statuses
+        '''
         try:
             return list(set(self._field_value('copy_status', value_instance=1)))
         except Exception as exc:
@@ -315,21 +328,26 @@ class Carrier():
 
     @property
     def segments(self):
-        ''' Return dict of priref/segments '''
+        '''
+        Return dict of priref/segments
+        '''
         data = self._segmentation()
 
         # Validate segmentation
+        missing = []
         if (len(self.items) > 1 or self.partwhole[1] > 1):
-            missing = [i['object_number'][0] for i in self.items if 'video_part' not in i]
+            for i in self.items:
+                if 'video_part' not in i:
+                    missing.append(adlib.retrieve_field_name(i, 'object_number')[0])
             if missing:
                 print(f'* Insufficient video_part data in items: {",".join(missing)}')
-                raise Exception(f"* Insufficient video_part data in items: {','.join(missing)}")
+                raise Exception(f'* Insufficient video_part data in items: {",".join(missing)}')
 
         if (len(self.items) > 1 and self.partwhole == [1, 1]):
             print(data)
-            # JMW - reworked for Py3 dictionaries, using star function
-            in_sort_segments = sorted(data.items(), key=star(lambda k,v: (v[0][0], k)))
-            out_sort_segments = sorted(data.items(), key=star(lambda k,v: (v[-1][-1], k)))
+            # Reworked for Py3 dictionaries, using star function
+            in_sort_segments = sorted(data.items(), key=star(lambda k, v: (v[0][0], k)))
+            out_sort_segments = sorted(data.items(), key=star(lambda k, v: (v[-1][-1], k)))
             print(f"Segments:\n{in_sort_segments}\n{out_sort_segments}")
             if not in_sort_segments == out_sort_segments:
                 raise Exception('Illegal video_part structure')
@@ -340,19 +358,23 @@ class Carrier():
             try:
                 # Select tape's timecode parts
                 me = self.partwhole[0]
-                p = int(self.items[0]['priref'][0])
+                p = int(adlib.retrieve_field_name(self.items[0], 'priref')[0])
                 data = {p: [data[p][me-1]]}
             except Exception as exc:
-                obj = self.items[0]['object_number'][0]
+                obj = adlib.retrieve_field_name(self.items[0], 'object_number')[0]
                 raise Exception(f'Insufficient video_part data for reel {me} in item {obj}') from exc
         print(data)
         return data
 
     def _segmentation(self):
-        ''' Wrangle segmentation information in seconds for items carried '''
+        '''
+        Wrangle segmentation information in seconds for items carried
+        '''
 
         def seconds(time_str):
-            ''' Total seconds from mm.ss string '''
+            '''
+            Total seconds from mm.ss string
+            '''
             if time_str.count('.') == 1:
                 m, s = [int(i) for i in time_str.split('.')]
             elif time_str.count(':') == 2:
@@ -365,8 +387,8 @@ class Carrier():
         manifest = {}
 
         for i in self.items:
-            item_priref = int(i['priref'][0])
-            item_obj = i['object_number'][0]
+            item_priref = int(adlib.retrieve_field_name(i, 'priref')[0])
+            item_obj = adlib.retrieve_field_name(i, 'object_number')[0]
 
             if 'video_part' not in i:
                 continue
@@ -374,7 +396,7 @@ class Carrier():
             parts = []
             sections = []
 
-            video_parts = i['video_part']
+            video_parts = adlib.retrieve_field_name(i, 'video_part')
             for p in video_parts:
                 if p.count('-') != 1:
                     raise Exception(f'Invalid video_part format in item {item_obj}')
@@ -410,47 +432,18 @@ class Carrier():
         return manifest
 
 
-class Content():
-    ''' Wrappers for obtaining a/v content from <collect> priref identifiers '''
+def cid_get(database, search, fields=None):
+    '''
+    Simple query wrapper
+    '''
+    if not fields:
+        hits, recs = adlib.retrieve_record(CID_API, database, search, '0')
+    else:
+        if not isinstance(fields, list):
+            fields = [fields]
+        hits, recs = adlib.retrieve_record(CID_API, database, search, '0', fields)
 
-    def __init__(self, priref):
-        self.priref = priref
-        self.imagen_record = self._record()
-        self.media = self._media()
-        self.umids = [{i: r[i][0] for i in r if i.endswith('_umid')}
-                      for r in self.media]
-
-        self.image_urls = [f"{DPI_PATH}{i['imagen.media.largeimage_umid']}" for i in self.umids]
-
-        self.images = [Image.open(requests.get(i, stream=True, verify=False).raw)
-                       for i in self.image_urls]
-
-    def _record(self):
-        q = f'priref={self.priref}'
-        f = 'imagen.record_identifier'
-        r = cid_get('internalobject', q, f)
-        id_ = str(r.records[0]['Imagen'][0][f][0])
-        return id_
-
-    def _media(self):
-        q = f'imagen.media.identifier={self.imagen_record}'
-        r = cid_get('media', q, '')
-        return r.records
-
-
-def cid_get(database, search, fields):
-    ''' Simple query wrapper '''
-
-    d = {'database': database,
-         'search': search,
-         'fields': fields,
-         'output': 'json',
-         'limit': '0'}
-
-    try:
-        result = CID.get(d)
-        print(result)
-    except Exception as exc:
-        raise Exception from exc
-
-    return result
+    if hits > 0:
+        return hits, recs
+    else:
+        return 0, None

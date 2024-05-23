@@ -52,8 +52,11 @@ def retrieve_record(api, database, search, limit, fields=None):
         query['fields'] = field_str
 
     record = get(api, query)
-
-    if record['adlibJSON']['diagnostic']['hits'] == 0:
+    if record is None:
+        return None, None
+    elif record['adlibJSON']['diagnostic']['error']:
+        return None, None
+    elif record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
     elif 'recordList' not in str(record):
         try:
@@ -76,6 +79,7 @@ def get(api, query):
         dct = json.loads(req.text)
         if 'recordList' in dct:
             dct = dct['adlibJSON']['recordList']['record']
+        return dct
     except requests.exceptions.Timeout as err:
         print(err)
         raise Exception
@@ -83,8 +87,6 @@ def get(api, query):
         raise SystemExit(err)
     except requests.exceptions.HTTPError as err:
         raise SystemExit(err)
-
-    return dct
 
 
 @tenacity.retry(retry=tenacity.retry_if_exception_type(TimeoutError))

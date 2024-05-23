@@ -285,6 +285,9 @@ class Carrier():
         Expanded to handle video_durations formatted HH:MM:SS
         '''
         values = self._field_value('video_duration')
+        if len(values) != len(self.items):
+            raise Exception (f'Insufficient video_duration data {len(values)} returned for {len(self.items)} items')
+
         float_values = []
         for v in values:
             if ':' in v:
@@ -338,7 +341,7 @@ class Carrier():
                     missing.append(adlib.retrieve_field_name(i, 'object_number')[0])
             if missing:
                 print(f'* Insufficient video_part data in items: {",".join(missing)}')
-                raise Exception(f"* Insufficient video_part data in items: {','.join(missing)}")
+                raise Exception(f'* Insufficient video_part data in items: {",".join(missing)}')
 
         if (len(self.items) > 1 and self.partwhole == [1, 1]):
             print(data)

@@ -10,140 +10,161 @@ Dependencies:
 3. f47/errors.csv
 '''
 
+# Public imports
 import os
 import sys
 import csv
 import json
 import yaml
+import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from datetime import datetime, timedelta
 
+# Local imports
 sys.path.append(os.environ['WORKFLOW'])
 import workflow
 
+# Global variables
 LOGS = os.environ['LOG_PATH']
-now = datetime.now()
-dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-
-f = open(os.path.join(LOGS, 'f47_submitta.log'), 'w' )
-f.write( '=== Processing Items in F47 selections.csv === ' + dt_string + '\n' )
-f.close()
+F47 = os.path.join(os.environ['WORKFLOW'], 'f47/')
+NOW = datetime.now()
+DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 
 
 def check_control():
     '''
-    Check control json for downtime requests
+    Check downtime control and stop script of False
     '''
     with open(os.path.join(LOGS, 'downtime_control.json')) as control:
         j = json.load(control)
         if not j['pause_scripts']:
-            f = open(os.path.join(LOGS, 'f47_submitta.log'), 'w' )
-            f.write('Script run prevented by downtime_control.json. Script exiting.' + dt_string + '\n' )
-            f.close()
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+            write_to_log(f'Script run prevented by downtime_control.json. Script exiting. {DT_STR}\n')
+            sys.exit('Exit requested by downtime_control.json')
 
 
-# Check control json
-check_control()
-
-# Load configuration variables
-configuration = yaml.load(open('config.yaml', 'r'))
-batch_size = configuration['Batches']['TapesPerBatch']
-batches_per_iteration = configuration['Batches']['BatchesPerIteration']
-
-# Submit [iterations] x [size] tapes
-for n in tqdm(range(batches_per_iteration), desc='Submitta', leave=False):
-
-    # Load submissions
-    print '* Opening submissions csv...'
+def get_csv(csv_path):
+    '''
+    Open and return data
+    '''
     submissions = {}
-    with open('submissions.csv', 'r') as f:
-        rows = csv.reader(f)
-        headers = next(rows)
-
+    with open(csv_path, 'r') as file:
+        rows = csv.reader(file)
         for r in rows:
             uid = r[0]
             submissions[uid] = r[1:]
+        file.close()
 
-    # Load selections
-    print '* Opening selections csv...'
-    df = pd.read_csv('f47_selections.csv')
+    return submissions
 
-    # Remove submissions from selections data frame
-    print '* Removing submissions from selections...'
-    unsubmitted_df = df[~df['uid'].isin(submissions)]
 
-    # Replace NaNs with blank strings
-    unsubmitted_df = unsubmitted_df.replace(pd.np.nan, '', regex=True)
+def main():
+    '''
+    Process all items found in CSV
+    '''
+    check_control()
+    write_to_log(f'=== Processing Items in F47 selections.csv === {DT_STR}\n')
 
-    # Optimise candidate selections
-    print '* Optimising candidate selections...'
-    unsubmitted_df.sort_values(by=['location', 'duration', 'item_count', 'content_dates'],
-                               ascending=[False, False, False, True],
-                               inplace=False)
+    # Load configuration variables
+    configuration = yaml.safe_load(open(os.path.join(F47, 'config.yaml'), 'r'))
+    batch_size = configuration['Batches']['TapesPerBatch']
+    batches_per_iteration = configuration['Batches']['BatchesPerIteration']
 
-    f = open(os.path.join(LOGS, 'f47_submitta.log'), 'a' )
-    f.write( str(unsubmitted_df) + '\n' )
-    f.close()
+    # Submit [iterations] x [size] tapes
+    for _ in range(0, batches_per_iteration):
 
-    batch_items = []
-    batch = unsubmitted_df.head(batch_size)
+        # Load submissions
+        print('* Opening f47/submissions csv...')
+        submissions = {}
+        submissions = get_csv(os.path.join(F47, 'submissions.csv'))
 
-    print '* Check batch_size...'
-    if len(batch) != batch_size:
-        print '* Batch size check results: len(batch) != batch_size...'
-        print '* Therefore quitting...'
-        continue
+        # Load selections
+        print('* Opening f47/selections csv...')
+        df = pd.read_csv(os.path.join(F47, 'selections.csv'))
 
-    # Create batch
-    print '* Batch size check results: len(batch) = batch_size...'
-    print '* Creating batch...'
-    for i in tqdm(batch.iterrows(), total=batch_size, desc='Optimising', leave=False):
-        index, row = i
+        # Remove submissions from selections data frame
+        print('* Removing F47 submissions from F47 selections...')
+        unsubmitted_df = df[~df['uid'].isin(submissions)]
 
-        # Wrangle data for output
-        data = row.tolist()
-        submission = [data[2]] + data[0:1] + data[3:]
+        # Replace NaNs with blank strings
+        unsubmitted_df = unsubmitted_df.replace(np.nan, '', regex=True)
 
-        # Get item identifiers
-        items = submission[-1].split(',')
-        prirefs = [workflow.get_priref(i) for i in items]
-        batch_items.extend(prirefs)
+        # Optimise candidate selections
+        print('* Optimising candidate selections...')
+        unsubmitted_df.sort_values(by=['location', 'duration', 'item_count', 'content_dates'],
+                                ascending=[False, False, False, True],
+                                inplace=False)
 
-        # Track submission
-        print '* Writing submissions to submissions csv...'
-        with open('f47_submissions.csv', 'a') as of:
-            writer = csv.writer(of)
-            writer.writerow(submission)
+        write_to_log(f'{str(unsubmitted_df)}\n')
 
-    # Populate topNode fields
-    print '* Creating Workflow topnode metadata...'
-    today = datetime.today().strftime('%d-%m-%Y')
-    job_metadata = dict(configuration['WorkflowMetadata'])
+        batch_items = []
+        batch = unsubmitted_df.head(batch_size)
 
-    # Append date and batch number to title
-    q = 'topNode="x" and description="*F47 / Ofcom*" and input.name="collectionssystems"'
-    lifetime_batches = workflow.count_jobs_submitted(q) + 1
-    job_metadata['description'] = '{} / {} / {}'.format(job_metadata['description'],
-                                                        today, lifetime_batches)
-    # Calculate deadline
-    deadline = (datetime.today() + timedelta(days=10)).strftime('%Y-%m-%d')
-    job_metadata['completion.date'] = deadline
-    job_metadata['negotiatedDeadline'] = deadline
+        print('* Check batch_size...')
+        if len(batch) != batch_size:
+            print(f'* Batch size check results: {len(batch)} != {batch_size}...')
+            print('* Therefore quitting...')
+            continue
 
-    # Create Workflow records
-    print '* Creating Workflow records in CID...'
-    batch = workflow.F47Batch(items=batch_items, **job_metadata)
-    if not batch.successfully_completed:
-        error_row = [str(today), batch.priref, batch.task.job_number, ','.join(batch_items)]
+        # Create batch
+        print('* Batch size check results: len(batch) = batch_size...')
+        print('* Creating batch...')
+        for i in batch.iterrows():
+            row = i[1]
 
-        with open('errors.csv', 'a') as of:
-            writer = csv.writer(of)
-            writer.writerow(error_row)
+            # Wrangle data for output
+            data = row.tolist()
+            submission = [data[2]] + data[0:1] + data[3:]
 
-        f = open(os.path.join(LOGS, 'f47_submitta.log'), 'a' )
-        f.write( str(error_row) + '\n' )
-        f.close()
+            # Get item identifiers
+            items = submission[-1].split(',')
+            prirefs = [workflow.get_priref(i) for i in items]
+            batch_items.extend(prirefs)
 
-        print('Error creating F47 Workflow job: {}'.format(batch.priref))
+            # Track submission
+            print('* Writing F47 submissions to f47/submissions.csv...')
+            with open(os.path.join(F47, 'submissions.csv'), 'a') as of:
+                writer = csv.writer(of)
+                writer.writerow(submission)
+
+        # Populate topNode fields
+        print('* Creating Workflow topnode metadata...')
+        today = datetime.today().strftime('%d-%m-%Y')
+        job_metadata = dict(configuration['WorkflowMetadata'])
+
+        # Append date and batch number to title
+        q = 'topNode="x" and description="*F47 / Ofcom*" and input.name="collectionssystems"'
+        lifetime_batches = workflow.count_jobs_submitted(q) + 1
+        job_metadata['description'] = '{} / {} / {}'.format(job_metadata['description'],
+                                                            today, lifetime_batches)
+
+        # Calculate deadline
+        deadline = (datetime.today() + timedelta(days=10)).strftime('%Y-%m-%d')
+        job_metadata['completion.date'] = deadline
+        job_metadata['negotiatedDeadline'] = deadline
+
+        # Create Workflow records
+        print('* Creating Workflow records in CID...')
+        batch = workflow.F47Batch(items=batch_items, **job_metadata)
+        if not batch.successfully_completed:
+            print(batch_items, batch)
+            error_row = [str(today), batch.priref, batch.task.job_number, ','.join(batch_items)]
+
+            with open(os.path.join(F47, 'errors.csv'), 'a') as of:
+                writer = csv.writer(of)
+                writer.writerow(error_row)
+
+            write_to_log(f'{str(error_row)}\n')
+            print(f'Error creating F47 Workflow job: {batch.priref}')
+
+
+def write_to_log(message):
+    '''
+    Write to f47 submitta log
+    '''
+    with open(os.path.join(LOGS, 'f47_submitta.log'), 'a') as file:
+        file.write(message)
+        file.close()
+
+
+if __name__ == '__main__':
+    main()

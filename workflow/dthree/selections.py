@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 '''
-Class necessary for functionality
-of sumbitta.py
+Class necessary for selecta.py
+script functionality
 '''
 
 import csv

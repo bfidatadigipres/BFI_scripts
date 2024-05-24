@@ -26,7 +26,6 @@ import tape_model
 import selections
 
 LOGS = os.environ['LOG_PATH']
-TWOINCH = os.path.join(os.environ['WORKFLOW'], 'twoinch/')
 CID_API = os.environ['CID_API4']
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
@@ -132,7 +131,6 @@ def main():
         write_to_log(f'{str(d)}\n')
 
         # Add tape to twoinch/selections.csv if unique
-        # selections.add can only be test during first run - tail csv
         print(f'add: {str(d)}')
         selections.add(**d)
 

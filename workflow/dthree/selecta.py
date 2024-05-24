@@ -26,7 +26,6 @@ import tape_model
 import selections
 
 LOGS = os.environ['LOG_PATH']
-DTHREE = os.path.join(os.environ['WORKFLOW'], 'dthree/')
 CID_API = os.environ['CID_API4']
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
@@ -57,7 +56,7 @@ def cid_check():
 
 def get_candidates():
     '''
-    Retrieve items from pointer file 364
+    Retrieve items from pointer file 454
     '''
     q = {'command': 'getpointerfile',
          'database': 'items',
@@ -132,7 +131,6 @@ def main():
         write_to_log(f'{str(d)}\n')
 
         # Add tape to dthree/selections.csv if unique
-        # selections.add can only be test during first run - tail csv
         print(f'add: {str(d)}')
         selections.add(**d)
 
@@ -141,7 +139,7 @@ def main():
 
 def write_to_log(message):
     '''
-    Write to 2inch selecta log
+    Write to d3 selecta log
     '''
     with open(os.path.join(LOGS, 'd3_selecta.log'), 'a') as file:
         file.write(message)

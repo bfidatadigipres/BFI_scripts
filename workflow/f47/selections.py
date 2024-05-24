@@ -8,7 +8,7 @@ script functionality
 import csv
 
 
-class Selections(object):
+class Selections():
 
     def __init__(self, input_file):
         self.input_file = input_file

@@ -74,6 +74,7 @@ def main():
 
         # Load submissions
         print('* Opening twoinch/submissions csv...')
+        submissions = {}
         submissions = get_csv(os.path.join(TWOINCH, 'submissions.csv'))
 
         # Load selections
@@ -133,10 +134,9 @@ def main():
         # Append date and batch number to title
         q = 'topNode="x" and description="*2inch TVP / Ofcom*" and input.name="collectionssystems"'
         lifetime_batches = workflow.count_jobs_submitted(q) + 1
-        # job_metadata['description'] = '{} / {} / {}'.format(job_metadata['description'],
-        #                                                     today, lifetime_batches)
-        job_metadata['description'] = 'SCRIPT TEST - {} / {} / {}'.format(job_metadata['description'],
+        job_metadata['description'] = '{} / {} / {}'.format(job_metadata['description'],
                                                             today, lifetime_batches)
+
         # Calculate deadline
         deadline = (datetime.today() + timedelta(days=10)).strftime('%Y-%m-%d')
         job_metadata['completion.date'] = deadline

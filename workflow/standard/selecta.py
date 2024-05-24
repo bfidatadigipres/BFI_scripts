@@ -2,9 +2,13 @@
 
 '''
 Take feed from nominated CID pointer file and process into Workflow jobs
-'pointer 242' was the F47 HLF DigiBetas selection pointer file
-then 'pointer 616' was next. As of Jan 2023 the new Off-Air DigiBetas
-selection pointer file is 'pointer 1208'
+As of Jan 2023 the new Off-Air DigiBetas selection pointer file is 'pointer 1208'
+
+Dependencies:
+1. Pointer file number 1208 where Items are added for processing
+2. LOGS/f47_selecta.log
+3. f47/selections.csv
+4. f47/submitta.py
 '''
 
 import os

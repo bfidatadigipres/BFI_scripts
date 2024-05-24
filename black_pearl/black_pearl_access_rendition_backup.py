@@ -113,9 +113,10 @@ def check_bp_status(fname):
     query = ds3.HeadObjectRequest(BUCKET, fname)
     result = CLIENT.head_object(query)
 
-    # Only return false if DOESNTEXIST is missing, eg file found
+    # DOESNTEXIST means file not found
     if 'DOESNTEXIST' in str(result.result):
         return False
+    # File found
     return True
 
 
@@ -132,9 +133,7 @@ def move_to_ingest_folder(new_path, file_list):
     max_fill_size = UPLOAD_MAX - folder_size
 
     for fname in file_list:
-        file = os.path.split(new_path)[-1]
         fpath = os.path.join(STORAGE, fname)
-
         if not max_fill_size >= 0:
             LOGGER.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
             break
@@ -195,9 +194,9 @@ def main():
         replace_list = []
         for folder in folder_list:
             check_control()
-            if folder.startswith('201'):
+            if folder.startswith(('201', '2020', '2021')):
                 continue
-            if folder in ['202001', '202002', '202003', '202004', '202005', '202006', '202007', '202008']:
+            if folder in ['202202', '202201']:
                 continue
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
@@ -208,12 +207,13 @@ def main():
             LOGGER.info("Starting batch ingest of target files in date folder - modified within last %s days", MOD_MAX)
             for file in files:
                 old_fpath = os.path.join(access_path, folder, file)
-                if not check_mod_time(old_fpath):
+                if check_mod_time(old_fpath) is False:
                      LOGGER.info("File %s mod time outside of maximum days allowed for upload: %s", file, MOD_MAX)
                      continue
-                if not check_bp_status(f"{key}/{folder}/{file}"):
+                if check_bp_status(f"{key}/{folder}/{file}") is False:
                     file_list.append(f"{key}/{folder}/{file}")
-                # JMW to activate when only backing up new items
+
+                # JMW to replace/update check bp status when only backing up new items
                 # else:
                 #    file_list.append(f"{key}/{folder}/{file}")
                 #    replace_list.append(f"{key}/{folder}/{file}")

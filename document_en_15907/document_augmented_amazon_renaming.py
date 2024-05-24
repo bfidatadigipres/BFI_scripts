@@ -242,11 +242,12 @@ def main():
             elif 'SDR' in metadata:
                 LOGGER.info("UHD SDR file found: %s", mov_file)
                 # Build dictionary from CID item record
-                item_data = make_item_record_dict(priref, mov_file, record, 'UHD SDR version')
+                item_data = make_item_record_dict(priref, mov_file, record, '')
                 if item_data is None:
                     LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
                     continue
                 item_xml = adlib.create_record_data('', item_data)
+                qcomm = 'UHD SDR version'
             elif 'Audio Description' in metadata:
                 LOGGER.info("Audio Description file found: %s", mov_file)
                 # Build dictionary from CID item record
@@ -255,6 +256,7 @@ def main():
                     LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
                     continue
                 item_xml = adlib.create_record_data('', item_data)
+                qcomm = 'Audio Description'
             else:
                 LOGGER.warning("File found with metadata not recognised. Skipping this item.")
                 continue
@@ -277,6 +279,10 @@ def main():
                 continue
             LOGGER.info("CID item record <%s> filenames appended to digital.acquired_filenamed field", new_priref)
             LOGGER.info("Renaming file %s to %s", mov_file, new_filename)
+            LOGGER.info('Appending quality comments "%s" to CID item record: %s', qcomm, new_priref)
+            qc_success = adlib.add_quality_comments(CID_API, new_priref, qcomm)
+            if not qc_success:
+                LOGGER.warning("Quality Comment 'UHD SDR' write failed to CID item record: %s", new_priref)
             os.rename(os.path.join(fpath, mov_file), new_fpath)
             if os.path.exists(new_fpath):
                 LOGGER.info("File renamed successfully. Moving to autoingest/ingest/amazon")
@@ -313,7 +319,10 @@ def make_item_record_dict(priref, file, record, arg):
 
     if 'Title' in str(record):
         mov_title = adlib.retrieve_field_name(record[0], 'title')[0]
-        item.append({'title': f"{mov_title} ({arg})"})
+        if 'Audio Description' in arg:
+            item.append({'title': f"{mov_title} ({arg})"})
+        else:
+            item.append({'title': mov_title})
         if 'title.article' in str(record):
             item.append({'title.article': adlib.retrieve_field_name(record[0], 'title.article')[0]})
         item.append({'title.language': 'English'})
@@ -361,7 +370,7 @@ def create_digital_original_filenames(priref, folder, digital_note):
 
     item_append_dct = []
     item_append_dct.append({'digital.acquired_filename': digital_note})
-    item_append_dct.append({'digital.acquired_filename.type': 'File'})
+    item_append_dct.append({'digital.acquired_filename.type': 'FILE'})
 
     item_edit_data = ([{'edit.name': 'datadigipres'},
                        {'edit.date': str(datetime.datetime.now())[:10]},

@@ -237,13 +237,17 @@ def main():
             # Check if filename already exists in CID/autoingest (don't rename if duplicate)
             check_result = check_media_record(new_f)
             if check_result is True:
-                logger.info("Skipping: Filename found to have persisted to DPI: %s", new_f)
-                print(f"SKIPPING: Filename {new_f} persisted to BP, CID media record found")
+                logger.info("* Filename found to have persisted to DPI: %s", new_f)
+                logger.info("Deleting duplicate split file %s from folder: %s", f, fpath)
+                print(f"DELETING: Filename {new_f} persisted to BP, CID media record found")
+                os.remove(filepath)
                 continue
             match = glob.glob(f"{autoingest}/**/*/{new_f}", recursive=True)
             if new_f in str(match):
-                logger.info("Skipping - CID item record exists and file found in autoingest: %s", match[0])
-                print(f"SKIPPING: CID item record exists and file found in autoingest: {match[0]}")
+                logger.info("* CID item record exists and file found in autoingest: %s", match[0])
+                logger.info("Deleting duplicate split file %s from folder: %s", f, fpath)
+                print(f"DELETING: CID item record exists and file found in autoingest: {match[0]}")
+                os.remove(filepath)
                 continue
 
             logger.info("**** %s\tFile to be renamed %s -> %s", filepath, f, new_f)

@@ -184,7 +184,7 @@ def main():
     then create additional CID item records for
     remaining video/audio files (wrapped .mov)
     '''
-    # check_control()
+    check_control()
     cid_check()
 
     folder_list = walk_folders()
@@ -234,7 +234,7 @@ def main():
                 os.rename(os.path.join(fpath, mov_file), new_fpath)
                 if os.path.exists(new_fpath):
                     LOGGER.info("File renamed successfully. Moving to autoingest/ingest/amazon")
-                    # shutil.move(new_fpath, os.path.join(AUTOINGEST, new_filename))
+                    shutil.move(new_fpath, os.path.join(AUTOINGEST, new_filename))
                     continue
                 else:
                     LOGGER.warning("Failed to rename file. Leaving in folder for manual intervention.")
@@ -286,7 +286,7 @@ def main():
             os.rename(os.path.join(fpath, mov_file), new_fpath)
             if os.path.exists(new_fpath):
                 LOGGER.info("File renamed successfully. Moving to autoingest/ingest/amazon")
-                # shutil.move(new_fpath, os.path.join(AUTOINGEST, new_filename))
+                shutil.move(new_fpath, os.path.join(AUTOINGEST, new_filename))
                 continue
             else:
                 LOGGER.warning("Failed to rename file. Leaving in folder for manual intervention.")
@@ -295,7 +295,7 @@ def main():
         # Check folder is empty and delete
         contents = list(os.listdir(fpath))
         if len(contents) == 0:
-            # os.rmdir(fpath)
+            os.rmdir(fpath)
             LOGGER.info("Amazon folder empty, deleting %s", fpath)
         else:
             LOGGER.warning("Amazon folder not empty, leaving in place for checks: %s", fpath)

@@ -101,7 +101,10 @@ def new_or_existing_no_segments_mopup(source_object_number, extension, grouping,
     ''' Create a new item record for multi-reeler if one doesn't already exist,
         otherwise return the ID of the existing record '''
 
-    hits, record = already_exists(source_object_number, grouping)
+    hits, record = already_exists_grouping(source_object_number, grouping)
+    print(hits, record)
+    if hits is None:
+        raise Exception('Unable to retrieve data from Item record')
     if hits == 1:
         destination_object = adlib.retrieve_field_name(record, 'object_number')[0]
         log_print(f"new_or_existing(): Found CID item record - {destination_object}")

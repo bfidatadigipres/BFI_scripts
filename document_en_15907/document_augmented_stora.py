@@ -185,7 +185,7 @@ def find_repeats(asset_id):
 
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '0')
     if not hits:
-        raise Exception('CID API could not be reached for Manifestations search: {search}')
+        raise Exception(f'CID API could not be reached for Manifestations search: {search}')
     print(result)
     if not result:
         return None

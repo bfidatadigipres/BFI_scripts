@@ -112,23 +112,6 @@ def main():
             print(f'Could not model tape from object: {obj}')
             continue
 
-    # Process candidate selections in pointer
-    for priref in candidates:
-        obj = get_object_number(priref)
-
-        # Ignore already selected items
-        if obj in selected_items:
-            write_to_log(f'* Item already in f47/selections.csv: {priref} {obj}\n')
-            continue
-
-        # Model tape carrier
-        write_to_log(f'Modelling tape carrier\n')
-        try:
-            t = tape_model.Tape(obj)
-        except Exception:
-            print(f'Could not model tape from object: {obj}')
-            continue
-
         # Get data
         fmt = t.format()
         # Process only Digibetas

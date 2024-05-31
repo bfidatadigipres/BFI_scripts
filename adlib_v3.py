@@ -43,8 +43,7 @@ def retrieve_record(api, database, search, limit, fields=None):
         'database': database,
         'search': search,
         'limit': limit,
-        'output': 'jsonv1',
-        'timeout': 1200
+        'output': 'jsonv1'
     }
 
     if fields:

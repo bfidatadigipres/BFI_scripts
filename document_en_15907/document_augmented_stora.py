@@ -154,7 +154,7 @@ def cid_series_query(series_id):
     search = f'alternative_number="{series_id}"'
 
     hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
-    print(f"cid_series_query(): Hit counts returned for series: {hit_count}")
+    print(f"cid_series_query(): {hit_count}\n{series_query_result}")
     if hit_count is None or hit_count == 0:
         print(f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id}")
         print("cid_series_query(): Series hit count and series priref will return empty strings")
@@ -181,13 +181,12 @@ def find_repeats(asset_id):
         return '157271228'
 
     search = f'alternative_number="{asset_id}"'
-
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '0')
+    print(f"find_repeats(): {hits}\n{result}")
     if hits is None or hits == 0:
         print(f'CID API could not be reached for Manifestations search: {search}')
         return None
 
-    print(hits, result)
     for num in range(0, hits):
         try:
             priref = adlib.retrieve_field_name(result[num], 'priref')[0]
@@ -363,7 +362,6 @@ def csv_retrieve(fullpath):
     with open(fullpath, 'r', encoding='utf-8') as inf:
         rows = csv.reader(inf)
         for row in rows:
-            print(row)
             data = {'channel': row[0], 'title': row[1], 'description': row[2], \
                     'title_date_start': row[3], 'time': row[4], 'duration': row[5], 'actual_duration': row[6]}
             logger.info('%s\tCSV being processed: %s', fullpath, data['title'])
@@ -726,7 +724,6 @@ def main():
             # CSV data gather
             csv_data = csv_retrieve(os.path.join(root, 'info.csv'))
             if csv_data:
-                print(f"{csv_data}")
                 try:
                     csv_description = csv_data[0]
                     print(f"** CSV DESCRIPTION: {csv_description}")
@@ -1022,12 +1019,11 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
     series_values_xml = adlib.create_record_data('', series_work_values)
     if series_values_xml is None:
         return None
-    print("***************************")
-    print(series_values_xml)
 
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
+        print(f"create_series(): {work_rec}")
         if work_rec:
             try:
                 series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
@@ -1245,12 +1241,11 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
     work_values_xml = adlib.create_record_data('', work_values)
     if work_values_xml is None:
         return None
-    print("***************************")
-    print(work_values_xml)
 
     try:
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
+        print(f"create_work(): {work_rec}")
         if work_rec:
             try:
                 print("Populating work_id and object_number variables")
@@ -1299,12 +1294,10 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     man_values_xml = adlib.create_record_data('', manifestation_values)
     if man_values_xml is None:
         return None
-    print(man_values_xml)
     try:
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
-        print("******************************")
-        print(man_rec)
+        print(f"create_manifestation(): {man_rec}")
         if man_rec:
             try:
                 manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
@@ -1342,12 +1335,11 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     item_values_xml = adlib.create_record_data('', item_values)
     if item_values_xml is None:
         return None
-    print("***************************")
-    print(item_values_xml)
 
     try:
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+        print(f"create_cid_item_record(): {item_rec}")
         if item_rec:
             try:
                 item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]

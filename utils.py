@@ -1,6 +1,18 @@
+'''
+Consolidate all repeat modules
+to one utils.py document
+
+Joanna White
+2024
+'''
+
 import re
 import os
+import csv
 import json
+import yaml
+import hashlib
+import logging
 import subprocess
 import adlib_v3 as adlib
 
@@ -42,6 +54,7 @@ ACCEPTED_EXT = [
     'dxfp'
 ]
 
+
 def check_control(arg):
     '''
     Check control json for downtime requests
@@ -69,6 +82,26 @@ def cid_check(cid_api):
         return True
 
 
+def read_yaml(file):
+    '''
+    Safe open yaml and return as dict
+    '''
+    with open(file) as config_file:
+        d = yaml.safe_load(config_file)
+        return d
+
+
+def read_csv(csv_path):
+    '''
+    Check CSV for evidence that fname already
+    downloaded. Extract download date and return
+    otherwise return None.
+    '''
+    with open(csv_path, 'r') as csvread:
+        readme = csv.DictReader(csvread)
+        return readme
+
+
 def check_filename(fname):
     '''
     Run series of checks against BFI filenames
@@ -93,6 +126,26 @@ def check_filename(fname):
             return False
 
     return True
+
+
+def check_part_whole(fname):
+    '''
+    Check part whole well formed
+    '''
+    match = re.search(r'(?:_)(\d{2,4}of\d{2,4})(?:\.)', fname)
+    if not match:
+        print('* Part-whole has illegal charcters...')
+        return None, None
+    part, whole = [int(i) for i in match.group(1).split('of')]
+    len_check = fname.split('_')
+    len_check = len_check[-1].split('.')[0]
+    str_part, str_whole = len_check.split('of')
+    if len(str_part) != len(str_whole):
+        return None, None
+    if part > whole:
+        print('* Part is larger than whole...')
+        return None, None
+    return (part, whole)
 
 
 def get_object_number(fname):
@@ -147,3 +200,56 @@ def get_mediaconch(dpath, policy):
     return False, meta
 
 
+def logging(log_path, level, message):
+    '''
+    Configure and handle logging
+    of file events
+    '''
+    log = os.path.basename(log_path).split('.')[-1]
+    LOGGER = logging.getLogger(log)
+    HDLR = logging.FileHandler(log_path)
+    FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+    HDLR.setFormatter(FORMATTER)
+    LOGGER.addHandler(HDLR)
+    LOGGER.setLevel(logging.INFO)
+
+    if level == 'info':
+        LOGGER.info(message)
+    elif level == 'warning':
+        LOGGER.warning(message)
+    elif level == 'critical':
+        LOGGER.critical(message)
+    elif level == 'error':
+        LOGGER.error(message)
+
+
+def get_folder_size(fpath):
+    '''
+    Check the size of given folder path
+    return size in kb
+    '''
+    if os.path.isfile(fpath):
+        return os.path.getsize(fpath)
+
+    try:
+        byte_size = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
+        return byte_size
+    except OSError as err:
+        print(f"get_size(): Cannot reach folderpath for size check: {fpath}\n{err}")
+        return None
+
+
+def create_md5_65536(fpath):
+    '''
+    Hashlib md5 generation, return as 32 character hexdigest
+    '''
+    try:
+        hash_md5 = hashlib.md5()
+        with open(fpath, "rb") as fname:
+            for chunk in iter(lambda: fname.read(65536), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    except Exception:
+        print(f"{fpath} - Unable to generate MD5 checksum")
+        return None

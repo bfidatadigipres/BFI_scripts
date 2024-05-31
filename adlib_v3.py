@@ -122,8 +122,7 @@ def post(api, payload, database, method):
             raise SystemExit(err)
 
     print("-------------------------------------")
-    print(response.text)
-    print(json.loads(response.text))
+    print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
     if 'recordList' in response.text:
         record = json.loads(response.text)

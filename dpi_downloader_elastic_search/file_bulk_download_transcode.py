@@ -196,8 +196,7 @@ def get_media_record_data(priref):
     '''
     Get CID media record details
     '''
-    priref = priref.strip()
-    print("Launching get_media_record_data()")
+    print(f"** Launching get_media_record_data() with priref: {priref}")
     search = f'object.object_number.lref="{priref}"'
     fields = [
         'imagen.media.original_filename',

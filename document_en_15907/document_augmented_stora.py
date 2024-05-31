@@ -153,20 +153,19 @@ def cid_series_query(series_id):
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
 
-    try:
-        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
-        print(f"cid_series_query(): Hit counts returned for series: {hit_count}")
-    except (IndexError, KeyError, TypeError) as err:
-        print(f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id} {err}")
+    hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
+    print(f"cid_series_query(): Hit counts returned for series: {hit_count}")
+    if hit_count is None or hit_count == 0:
+        print(f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id}")
         print("cid_series_query(): Series hit count and series priref will return empty strings")
-        hit_count = ''
-        raise
-    try:
+        return hit_count, ''
+
+    if 'priref' in str(series_query_result):
         series_priref = adlib.retrieve_field_name(series_query_result[0], 'priref')[0]
         print(f"cid_series_query(): Series priref: {series_priref}")
-    except (IndexError, TypeError, KeyError) as err:
-        print(f"cid_series_query(): Unable to access series_priref: {err}")
-        series_priref = ''
+    else:
+        print(f"cid_series_query(): Unable to access series_priref")
+        return hit_count, ''
 
     return hit_count, series_priref
 
@@ -177,19 +176,18 @@ def find_repeats(asset_id):
     Use asset_id to check in CID for duplicate
     PATV showings of a manifestation
     '''
-    # Temp link for 'This is BBC Three'
+    # Temp link for 'This is BBC ...'
     if asset_id == 'f8ee18fb-0620-5e51-bd6f-ea3ed7b63443':
         return '157271228'
 
     search = f'alternative_number="{asset_id}"'
 
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '0')
-    if hits is None:
-        raise Exception(f'CID API could not be reached for Manifestations search: {search}')
-    print(result)
-    if hits == 0:
+    if hits is None or hits == 0:
+        print(f'CID API could not be reached for Manifestations search: {search}')
         return None
 
+    print(hits, result)
     for num in range(0, hits):
         try:
             priref = adlib.retrieve_field_name(result[num], 'priref')[0]
@@ -759,15 +757,14 @@ def main():
                 if 'series_id' in epg_dict:
                     print("Series ID exists, trying to retrieve series data from CID")
                     # Check if series already in CID and/or series_cache, if not generate series_cache json
-                    try:
-                        series_return = cid_series_query(epg_dict['series_id'])
-                        hit_count = series_return[0]
-                        series_work_id = series_return[1]
-                    except (IndexError, TypeError, KeyError):
+                    series_return = cid_series_query(epg_dict['series_id'])
+                    if series_return[0] is None:
                         print(f"CID Series data not retrieved: {epg_dict['series_id']}")
-                        series_work_id = ''
-                        hit_count = ''
-
+                        logger.warning("Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s", epg_dict['series_id'])
+                        continue
+                    
+                    hit_count = series_return[0]
+                    series_work_id = series_return[1]
                     if hit_count == 0:
                         print("This Series does not exist yet in CID - attempting creation now")
                         # Launch create series function

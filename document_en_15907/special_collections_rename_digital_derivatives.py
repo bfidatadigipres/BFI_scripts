@@ -13,60 +13,27 @@ Joanna White
 # Public packages
 import os
 import sys
-import json
 import shutil
-import logging
 import datetime
-import subprocess
+
 
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+from utils import logger, check_control, cid_check, get_metadata
 
 # Global path variables
 SCPATH = os.environ['SPECIAL_COLLECTIONS']
 STORAGE = os.path.join(SCPATH, 'Uncatalogued_stills_digital_derivative/')
 AUTOINGEST = os.path.join(SCPATH, os.environ['INGEST_SC'])
-LOG_PATH = os.environ['LOG_PATH']
-CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
+LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_rename_digital_derivatives.log')
 CID_API = os.environ['CID_API4']
-
-# Setup logging
-LOGGER = logging.getLogger('special_collections_rename_digital_derivatives')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'special_collections_rename_digital_derivatives.log'))
-FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
-HDLR.setFormatter(FORMATTER)
-LOGGER.addHandler(HDLR)
-LOGGER.setLevel(logging.INFO)
 
 # Global variables
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
 DATE_TIME = (f"{TODAY_DATE} = {TODAY_TIME}")
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def cid_retrieve(fname):
@@ -85,10 +52,10 @@ def cid_retrieve(fname):
     ]
 
     record = adlib.retrieve_record(CID_API, 'works', search, '0', fields)[1]
-    LOGGER.info("cid_retrieve(): Making CID query request with:\n %s", search)
+    logger(LOG, 'info', f"cid_retrieve(): Making CID query request with:\n {search}")
     if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {fname}")
-        LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", fname)
+        logger(LOG, 'exception', f"cid_retrieve(): Unable to retrieve data for {fname}")
         return None
 
     if 'priref' in str(record):
@@ -143,17 +110,19 @@ def main():
     Update local log for YACF monitoring
     Move file to autoingest path
     '''
-    LOGGER.info("=========== SC rename digital derivatives script start ==========")
-    check_control()
-    cid_check()
+    if check_control('pause_scripts'):
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if cid_check(CID_API):
+        sys.exit("* Cannot establish CID session, exiting script")
 
+    logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives START ============")
     work_directories = [ x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x)) ]
     for work in work_directories:
         wpath = os.path.join(STORAGE, work)
-        LOGGER.info("Work folder found: %s", work)
+        logger(LOG, 'info', f"Work folder found: {work}")
         work_data = cid_retrieve(work.strip())
         if work_data is None:
-            LOGGER.warning(f"Please check folder name <%s> as no CID match found", work)
+            logger(LOG, 'warning', f"Please check folder name {work} as no CID match found")
             continue
 
         # Build file list of wpath contents
@@ -161,39 +130,41 @@ def main():
         sorted_images = sorted(images)
         for image in sorted_images:
             if not image.endswith(('.tiff', '.tif', '.TIFF', '.TIF', '.jpeg', '.jpg', '.JPEG', '.JPG')):
-                LOGGER.warning("Skipping: File found in folder <%s> that is not image file: %s", work, image)
+                logger(LOG, 'warning', f"Skipping: File found in folder {work} that is not image file: {image}")
                 continue
-            LOGGER.info("Processing image file: %s", image)
+            logger(LOG, 'info', f"Processing image file: {image}")
             ipath = os.path.join(wpath, image)
 
             # Analogue and Digital Derivative records to be made
             record_analogue = build_defaults(work_data, ipath, image, 'Analogue')
             analogue_priref, analogue_obj = create_new_image_record(record_analogue)
-            LOGGER.info("* New Item record created for image <%s> Analogue %s", image, analogue_priref)
+            logger(LOG, 'info', f"* New Item record created for image {image} Analogue {analogue_priref}")
 
             record_digital = build_defaults(work, ipath, image, 'Digital', analogue_obj)
             digi_priref, digi_obj = create_new_image_record(record_digital)
-            LOGGER.info("* New Item record created for image <%s> Digital Derivative %s", image, digi_priref)
+            logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
 
             if len(digi_obj) > 0:
-                LOGGER.info("** Renumbering file %s with object number %s", image, digi_obj)
+                logger(LOG, 'info', f"** Renumbering file {image} with object number {digi_obj}")
                 new_filepath, new_file = rename(ipath, digi_obj)
                 if os.path.exists(new_filepath):
-                    LOGGER.info(f"New filename generated: {new_file}")
-                    LOGGER.info(f"File renumbered and filepath updated to: {new_filepath}")
+                    logger(LOG, 'info', f"New filename generated: {new_file}")
+                    logger(LOG, 'info', f"File renumbered and filepath updated to: {new_filepath}")
                     success = move(new_filepath, 'ingest')
                     if success:
-                        LOGGER.info("File %s relocated to Autoingest %s", new_file, DATE_TIME)
+                        logger(LOG, 'info', f"File {new_file} relocated to Autoingest {DATE_TIME}")
                     else:
-                        LOGGER.warning("FILE %s DID NOT MOVE SUCCESSFULLY TO AUTOINGEST", new_file)
+                        logger(LOG, 'warning', f"FILE {new_file} DID NOT MOVE SUCCESSFULLY TO AUTOINGEST")
                 else:
-                    LOGGER.warning("Problem creating new number for %s", image)
+                    logger(LOG, 'warning', f"Problem creating new number for {image}")
             else:
-                LOGGER.warning("Object number was not returned following creation of CID Item record for digital derivative.")
-                LOGGER.warning("File was not renamed and will be left for manual intervention")
+                logger(LOG, 'warning', "Object number was not returned following creation of CID Item record for digital derivative.")
+                logger(LOG, 'warning', "File was not renamed and will be left for manual intervention")
                 continue
 
         # UP TO HERE JO
+
+    logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives END ==============")
 
 
 def build_defaults(work_data, ipath, image, arg, obj=None):
@@ -210,12 +181,12 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
     if len(work_data[1]) > 0:
         records.extend({'related_object.reference': work_data[1]})
     else:
-        LOGGER.warning("No parent object number retrieved. Script exiting.")
+        logger(LOG, 'warning', "No parent object number retrieved. Script exiting.")
         return None
     if len(work_data[2]) > 0:
         records.extend({'title': work_data[2]})
     else:
-        LOGGER.warning("No title data retrieved. Script exiting.")
+        logger(LOG, 'warning', "No title data retrieved. Script exiting.")
         return None
     if len(work_data[3]) > 0:
         records.extend({'title.article': work_data[3]})
@@ -233,27 +204,11 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         ext = image.split('.')[-1]
         if len(ext) > 0:
             records.extend({'file_type': ext.upper()})
-        bitdepth = get_bitdepth(ipath)
+        bitdepth = get_metadata('Image', 'BitDepth', ipath)
         if len(bitdepth) > 0:
             records.extend({'bit_depth': bitdepth})
 
     return records
-
-
-def get_bitdepth(ipath):
-    '''
-    Use MediaInfo to retrieve bitdepth of image
-    '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw',
-        '--Output=Image;%BitDepth%',
-        ipath
-    ]
-
-    bitdepth = subprocess.check_output(cmd)
-    bitdepth = bitdepth.decode('utf-8')
-    return bitdepth
 
 
 def create_new_image_record(record_json):
@@ -265,7 +220,7 @@ def create_new_image_record(record_json):
     print(record_xml)
     record = adlib.post(CID_API, record_xml, 'items', 'insertrecord')
     if not record:
-        LOGGER.warning("Adlib POST failed to create CID item record for data:\n%s", record_xml)
+        logger(LOG, 'warning', f"Adlib POST failed to create CID item record for data:\n{record_xml}")
         return None
     
     priref = adlib.retrieve_field_name(record, 'priref')[0]
@@ -289,7 +244,7 @@ def rename(filepath, ob_num):
     try:
         os.rename(filepath, new_filepath)
     except OSError:
-        LOGGER.warning("There was an error renaming %s to %s", filename, new_filename)
+        logger(LOG, 'warning', f"There was an error renaming {filename} to {new_filename}")
 
     return (new_filepath, new_filename)
 
@@ -304,7 +259,7 @@ def move(filepath, arg):
             shutil.move(filepath, YACF_NO_CID)
             return True
         except Exception as err:
-            LOGGER.warning("Error trying to move file %s to %s. Error: %s", filepath, YACF_NO_CID, err)
+            logger(LOG, 'warning', f"Error trying to move file {filepath} to {YACF_NO_CID}. Error: {err}")
             return False
     elif os.path.exists(filepath) and 'ingest' in arg:
         print(f"move(): Moving {filepath} to {AUTOINGEST}")
@@ -312,7 +267,7 @@ def move(filepath, arg):
             shutil.move(filepath, AUTOINGEST)
             return True
         except Exception:
-            LOGGER.warning("Error trying to move file %s to %s", filepath, AUTOINGEST)
+            logger(LOG, 'warning', f"Error trying to move file {filepath} to {AUTOINGEST}")
             return False
     else:
         return False

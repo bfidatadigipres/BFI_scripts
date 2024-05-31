@@ -66,7 +66,6 @@ def check_control(arg):
     with open(CONTROL_JSON) as control:
         j = json.load(control)
         if not j[arg]:
-            print('Script run prevented by downtime_control.json. Script exiting.')
             return True
 
 
@@ -78,7 +77,6 @@ def cid_check(cid_api):
     try:
         adlib.check(cid_api)
     except KeyError:
-        print("* Cannot establish CID session, exiting script")
         return True
 
 
@@ -200,7 +198,7 @@ def get_mediaconch(dpath, policy):
     return False, meta
 
 
-def logging(log_path, level, message):
+def logger(log_path, level, message):
     '''
     Configure and handle logging
     of file events
@@ -221,6 +219,8 @@ def logging(log_path, level, message):
         LOGGER.critical(message)
     elif level == 'error':
         LOGGER.error(message)
+    elif level == 'exception':
+        LOGGER.exception(message)
 
 
 def get_folder_size(fpath):

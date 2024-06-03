@@ -1011,7 +1011,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
             series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
         except (IndexError, TypeError, KeyError):
             print("Series description long will not be added to series_work_values")
-    
+
     if new_series_list is True:
         if len(series_description) > 0:
             try:
@@ -1055,7 +1055,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
         print(f"create_series(): {work_rec}")
-        if work_rec:
+        if 'recordList' in str(work_rec):
             try:
                 series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
                 object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
@@ -1066,10 +1066,11 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
                 print(f'* Unable to create Series Work record for <{series_title_full}>\n{err}')
                 logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
                 return None
+
     except Exception as err:
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
         logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
-        return None
+        raise
 
     return series_work_id
 
@@ -1277,7 +1278,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         print(f"create_work(): {work_rec}")
-        if work_rec:
+        if 'recordList' in str(work_rec):
             try:
                 print("Populating work_id and object_number variables")
                 work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
@@ -1292,7 +1293,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         print(err)
         logger.critical('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
         logger.critical(err)
-        return None
+        raise
 
     return work_id
 
@@ -1329,7 +1330,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
         print(f"create_manifestation(): {man_rec}")
-        if man_rec:
+        if 'recordList' in str(man_rec):
             try:
                 manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
                 object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
@@ -1371,7 +1372,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
         print(f"create_cid_item_record(): {item_rec}")
-        if item_rec:
+        if 'recordList' in str(item_rec):
             try:
                 item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
                 item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
@@ -1383,7 +1384,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     except Exception as err:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
-        item_rec = None
+        item_record = None
 
     if item_rec is None:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)

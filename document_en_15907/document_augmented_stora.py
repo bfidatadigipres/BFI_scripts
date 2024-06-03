@@ -47,6 +47,7 @@ AUTOINGEST_PATH = os.environ['STORA_AUTOINGEST']
 SERIES_CACHE_PATH = os.path.join(STORAGE, 'series_cache')
 CODE_PATH = os.environ['CODE']
 GENRE_MAP = os.path.join(CODE_PATH, 'document_en_15907/EPG_genre_mapping.yaml')
+SERIES_LIST = os.path.join(CODE_PATH, 'document_en_15907/series_list.json')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH']
@@ -138,17 +139,22 @@ def split_title(title_article):
     return title_article, ''
 
 
+def look_up_series_list(alternative_num):
+    '''
+    Check if series requires annual series creation
+    '''
+    with open(SERIES_LIST, 'r') as file:
+        slist = json.load(file)
+        if alternative_num in slist:
+            return slist[alternative_num]
+    return False
+
+
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
 def cid_series_query(series_id):
     '''
     Sends CID request for series_id data
     '''
-    # BBC News (BBC News HD) failed retrieval work around
-    if series_id == '2af14f77-ef15-517c-a463-04dc0a7c81ad':
-        return 1, '156538079'
-    # BBC News (BBC One HD) failed retrieval work around
-    if series_id == '6a9ad900-6bc1-5507-a607-4b638e90cb47':
-        return 1, '156546009'
 
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
@@ -754,7 +760,14 @@ def main():
                 if 'series_id' in epg_dict:
                     print("Series ID exists, trying to retrieve series data from CID")
                     # Check if series already in CID and/or series_cache, if not generate series_cache json
-                    series_return = cid_series_query(epg_dict['series_id'])
+                    series_check = look_up_series_list(epg_dict['series_id'])
+                    if series_check is False:
+                        series_id = epg_dict['series_id']
+                    else:
+                        series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
+                        logger.info(f"Series found for annual refresh: {series_check}")
+
+                    series_return = cid_series_query(series_id)
                     if series_return[0] is None:
                         print(f"CID Series data not retrieved: {epg_dict['series_id']}")
                         logger.warning("Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s", epg_dict['series_id'])
@@ -765,7 +778,7 @@ def main():
                     if hit_count == 0:
                         print("This Series does not exist yet in CID - attempting creation now")
                         # Launch create series function
-                        series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict)
+                        series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict, series_id)
                         if not series_work_id:
                             logger.warning("Skipping further actions: Creation of series failed as no series_work_id found: \n%s", epg_dict['series_id'])
                             continue
@@ -865,11 +878,14 @@ def main():
     logger.info('========== STORA documentation script END ===================================================\n')
 
 
-def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict):
+def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id):
     '''
     Call function series_check(series_id) and build all data needed
     to make new series. Return boole for success/fail
     '''
+    new_series_list = False
+    if series_id.startswith(YEAR_PATH):
+        new_series_list = True
 
     series_work_id = ''
     series_data = series_check(epg_dict['series_id'])
@@ -901,6 +917,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
         series_title = series_title_full
         series_title_article = ''
         print(f"** Series title: {series_title}")
+
     series_category_data = []
     try:
         series_category_data = genre_retrieval(series_category_code, series_description, series_title)
@@ -957,6 +974,8 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
     series_work_values.extend(work_restricted_def)
 
     # Add series title and article
+    if new_series_list is True:
+        series_title = f"{series_title} ({YEAR_PATH})"
     series_work_values.append({'title': series_title})
     series_work_values.append({'nfa_category': nfa_category})
     try:
@@ -965,7 +984,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
         print("There is no series title article")
     try:
         series_work_values.append({'alternative_number.type': 'EBS augmented EPG supply'})
-        series_work_values.append({'alternative_number': epg_dict['series_id']})
+        series_work_values.append({'alternative_number': series_id})
     except (IndexError, TypeError, KeyError):
         print("series_id will not be added to series_work_values")
     if len(series_short) > 0:
@@ -992,13 +1011,25 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict)
             series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
         except (IndexError, TypeError, KeyError):
             print("Series description long will not be added to series_work_values")
-    if len(series_description) > 0:
-        try:
-            series_work_values.append({'description': series_description})
-            series_work_values.append({'description.type': 'Synopsis'})
-            series_work_values.append({'description.date': str(datetime.datetime.now())[:10]})
-        except (IndexError, TypeError, KeyError):
-            print("Series description LONGEST will not be added to series_work_values")
+    
+    if new_series_list is True:
+        if len(series_description) > 0:
+            try:
+                series_work_values.append({'description': f"Specific serieal work created for {YEAR_PATH}. {series_description}"})
+                series_work_values.append({'description.type': 'Synopsis'})
+                series_work_values.append({'description.date': str(datetime.datetime.now())[:10]})
+                series_work_values.append({'production.notes': 'This is a series record created for one year of this programme.'})
+            except (IndexError, TypeError, KeyError):
+                print("Series description LONGEST will not be added to series_work_values")
+    else:
+        if len(series_description) > 0:
+            try:
+                series_work_values.append({'description': series_description})
+                series_work_values.append({'description.type': 'Synopsis'})
+                series_work_values.append({'description.date': str(datetime.datetime.now())[:10]})
+            except (IndexError, TypeError, KeyError):
+                print("Series description LONGEST will not be added to series_work_values")
+
 
     series_work_genres = []
     if len(str(series_genre_one)) > 0:

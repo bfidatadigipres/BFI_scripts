@@ -1055,7 +1055,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
         print(f"create_series(): {work_rec}")
-        if 'recordList' in str(work_rec):
+        if 'priref' in str(work_rec):
             try:
                 series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
                 object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
@@ -1278,7 +1278,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         print(f"create_work(): {work_rec}")
-        if 'recordList' in str(work_rec):
+        if 'priref' in str(work_rec):
             try:
                 print("Populating work_id and object_number variables")
                 work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
@@ -1330,7 +1330,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
         print(f"create_manifestation(): {man_rec}")
-        if 'recordList' in str(man_rec):
+        if 'priref' in str(man_rec):
             try:
                 manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
                 object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
@@ -1372,7 +1372,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
         print(f"create_cid_item_record(): {item_rec}")
-        if 'recordList' in str(item_rec):
+        if 'priref' in str(item_rec):
             try:
                 item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
                 item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
@@ -1384,7 +1384,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     except Exception as err:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
-        item_record = None
+        item_id = None
 
     if item_rec is None:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
@@ -1427,7 +1427,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
 
         try:
             response = adlib.post(CID_API, payload, 'works', 'updaterecord')
-            if response:
+            if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
             else:
                 logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)

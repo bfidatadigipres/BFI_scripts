@@ -8,7 +8,7 @@ Create CID record hierarchies for Work-Manifestation-Item
 using STORA created csv metadata source and traversing filesystem paths to files
     1. Create work-manifestation-item for each csv in the path
     2. Add the WebVTT subtitles to the Item record using requests (to avoid escape
-       characters being introduced in Python3 adlib.py
+       characters being introduced in Python3 adlib.py [Deprecated feature]
     3. Rename the MPEG transport stream file with the Item object number, into autoingest
     4. Rename the subtitles.vtt file with the Item object number, move to Isilon folder
     5. Identify the folder as completed by renaming the csv with .documented suffix
@@ -37,8 +37,8 @@ AUTOINGEST_PATH = os.environ['STORA_AUTOINGEST']
 CODE_PATH = os.environ['CODE_DDP']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-SUBS_PTH = os.environ['SUBS_PATH']
-CID_API = os.environ['CID_API4']
+SUBS_PTH = os.environ['SUBS_PATH2']
+CID_API = os.environ['CID_API3']
 
 # Setup logging
 logger = logging.getLogger('document_stora')
@@ -293,13 +293,13 @@ def main():
                 print('* Item record failed to create. Marking Work and Manifestation with DELETE warning')
                 mark_for_deletion(work_id, man_id, fullpath)
                 continue
-
-            # Build webvtt payload
+            '''
+            # Build webvtt payload [Deprecated]
             if webvtt_payload:
                 success = push_payload(item_id, webvtt_payload)
                 if not success:
                     logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
-
+            '''
             # Rename csv with .documented
             documented = f'{fullpath}.documented'
             print(f'* Renaming {fullpath} to {documented}')

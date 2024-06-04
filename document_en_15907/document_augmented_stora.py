@@ -11,7 +11,7 @@ using augmented metadata supply (JSON via API) and traversing filesystem paths t
        If new series (if episodic and series data present) create new series from downloaded
        EPG series data, then link work-manifestion-item to it.
     2. Add the WebVTT subtitles to the Item record (utb and label.text) using requests library
-       push to avoid problems with escape characters through adlib.py method.
+       push to avoid problems with escape characters through adlib.py method. [Deprecated feature]
     3. Rename the MPEG transport stream file with the Item object number, into autoingest
     4. Rename the subtitles.vtt file with Item object number and move to Isilon folder
     5. Identify the folder as completed by renaming the JSON with .documented suffix
@@ -50,7 +50,7 @@ GENRE_MAP = os.path.join(CODE_PATH, 'document_en_15907/EPG_genre_mapping.yaml')
 SERIES_LIST = os.path.join(CODE_PATH, 'document_en_15907/series_list.json')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-SUBS_PTH = os.environ['SUBS_PATH']
+SUBS_PTH = os.environ['SUBS_PATH2']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
 CID_API = os.environ['CID_API4']
 
@@ -814,7 +814,7 @@ def main():
                     print(f"*** Manual clean up needed for Work {work_priref}")
                 continue
 
-            # Check if subtitles exist and build dct
+            # Check if subtitles are populated
             old_webvtt = os.path.join(root, "subtitles.vtt")
             webvtt_payload = build_webvtt_dct(old_webvtt)
 
@@ -834,13 +834,13 @@ def main():
                 else:
                     print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
                     continue
-
-            # Build webvtt payload
+            '''
+            # Build webvtt payload [deprecated]
             if webvtt_payload:
                 success = push_payload(item_data[1], webvtt_payload)
                 if not success:
                     logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
-
+            '''
             # Rename JSON with .documented
             documented = f'{fullpath}.documented'
             print(f'* Renaming {fullpath} to {documented}')
@@ -863,7 +863,7 @@ def main():
                 logger.warning('%s\tCould not rename & move %s to %s. Error: %s', fullpath, acquired_filename, destination, err)
 
             # Rename .vtt subtitle file with Item object number and move to Isilon for use later in MTQ workflow
-            if webvtt_payload and item_data[1]:
+            if webvtt_payload is not None:
                 old_vtt = os.path.join(root, "subtitles.vtt")
                 new_vtt_name = f'{item_object_number_underscore}_01of01.vtt'
                 new_vtt = f'{SUBS_PTH}{new_vtt_name}'

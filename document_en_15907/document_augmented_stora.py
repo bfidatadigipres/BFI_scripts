@@ -1015,7 +1015,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     if new_series_list is True:
         if len(series_description) > 0:
             try:
-                series_work_values.append({'description': f"Specific serieal work created for {YEAR_PATH}. {series_description}"})
+                series_work_values.append({'description': f"Specific serial work created for {YEAR_PATH}. {series_description}"})
                 series_work_values.append({'description.type': 'Synopsis'})
                 series_work_values.append({'description.date': str(datetime.datetime.now())[:10]})
                 series_work_values.append({'production.notes': 'This is a series record created for one year of this programme.'})

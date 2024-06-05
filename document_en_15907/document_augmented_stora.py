@@ -195,7 +195,7 @@ def find_repeats(asset_id):
     except (IndexError, TypeError, KeyError):
         return None
 
-    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '0', ['alternative_number.type'])[1]
+    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '0', ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
     try:
@@ -204,20 +204,18 @@ def find_repeats(asset_id):
     except (IndexError, TypeError, KeyError):
         alt_num_type = ''
 
+    try:
+        ppriref = adlib.retrieve_field_name(full_result[0]['Alternative_number'][0], 'part_of_reference.lref')[0]
+    except (IndexError, TypeError, KeyError):
+        ppriref = ''
+    
     print(f"********** Alternative number types: {alt_num_type} ************")
     if 'Amazon' in alt_num_type:
         logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
     if 'Netflix' in alt_num_type:
         logger.warning("Matching episode work found to be a Netflix work record: %s", priref)
 
-    print(f"Priref with matching asset_id in CID: {priref}")
-    search = f'(parts_reference.lref="{priref}")'
-    presult = adlib.retrieve_record(CID_API, 'manifestations', search, '0')[1]
-    try:
-        ppriref =  adlib.retrieve_field_name(presult[0], 'priref')[0]
-    except (IndexError, TypeError, KeyError):
-        ppriref = ''
-
+    print(f"Priref with matching asset_id in CID: {priref} / Parent Work: {ppriref}")
     if len(ppriref) > 1:
         return ppriref
 

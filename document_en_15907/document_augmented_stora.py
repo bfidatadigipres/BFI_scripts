@@ -182,50 +182,46 @@ def find_repeats(asset_id):
     Use asset_id to check in CID for duplicate
     PATV showings of a manifestation
     '''
-    # Temp link for 'This is BBC ...'
-    if asset_id == 'f8ee18fb-0620-5e51-bd6f-ea3ed7b63443':
-        return '157271228'
 
     search = f'alternative_number="{asset_id}"'
-    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '0')
+    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1')
     print(f"find_repeats(): {hits}\n{result}")
     if hits is None or hits == 0:
         print(f'CID API could not be reached for Manifestations search: {search}')
         return None
 
-    for num in range(0, hits):
-        try:
-            priref = adlib.retrieve_field_name(result[num], 'priref')[0]
-        except (IndexError, TypeError, KeyError):
-            return None
+    try:
+        priref = adlib.retrieve_field_name(result[num], 'priref')[0]
+    except (IndexError, TypeError, KeyError):
+        return None
 
-        full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '0', ['alternative_number.type'])[1]
-        if not full_result:
-            return None
-        try:
-            print(full_result[0])
-            alt_num_type = adlib.retrieve_field_name(full_result[0]['Alternative_number'][0], 'alternative_number.type')[0]
-        except (IndexError, TypeError, KeyError):
-            alt_num_type = ''
+    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '0', ['alternative_number.type'])[1]
+    if not full_result:
+        return None
+    try:
+        print(full_result[0])
+        alt_num_type = adlib.retrieve_field_name(full_result[0]['Alternative_number'][0], 'alternative_number.type')[0]
+    except (IndexError, TypeError, KeyError):
+        alt_num_type = ''
 
-        print(f"********** Alternative number types: {alt_num_type} ************")
-        if alt_num_type != 'PATV asset id':
-            if 'Amazon' in alt_num_type:
-                logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
-            if 'Netflix' in alt_num_type:
-                logger.warning("Matching episode work found to be an Netflix work record: %s", priref)
-            continue
+    print(f"********** Alternative number types: {alt_num_type} ************")
+    if alt_num_type != 'PATV asset id':
+        if 'Amazon' in alt_num_type:
+            logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
+        if 'Netflix' in alt_num_type:
+            logger.warning("Matching episode work found to be an Netflix work record: %s", priref)
+        continue
 
-        print(f"Priref with matching asset_id in CID: {priref}")
-        search = f'(parts_reference.lref="{priref}")'
-        presult = adlib.retrieve_record(CID_API, 'manifestations', search, '0')[1]
-        try:
-            ppriref =  adlib.retrieve_field_name(presult[0], 'priref')[0]
-        except (IndexError, TypeError, KeyError):
-            ppriref = ''
+    print(f"Priref with matching asset_id in CID: {priref}")
+    search = f'(parts_reference.lref="{priref}")'
+    presult = adlib.retrieve_record(CID_API, 'manifestations', search, '0')[1]
+    try:
+        ppriref =  adlib.retrieve_field_name(presult[0], 'priref')[0]
+    except (IndexError, TypeError, KeyError):
+        ppriref = ''
 
-        if len(ppriref) > 1:
-            return ppriref
+    if len(ppriref) > 1:
+        return ppriref
 
     return None
 

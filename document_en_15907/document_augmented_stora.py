@@ -184,8 +184,8 @@ def find_repeats(asset_id):
     '''
 
     search = f'alternative_number="{asset_id}"'
-    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1')
-    print(f"find_repeats(): {hits}\n{result}")
+    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', ['priref', 'alternative_number.type', 'part_of_reference.lref'])
+    print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None or hits == 0:
         print(f'CID API could not be reached for Manifestations search: {search}')
         return None
@@ -195,17 +195,17 @@ def find_repeats(asset_id):
     except (IndexError, TypeError, KeyError):
         return None
 
-    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '0', ['alternative_number.type', 'part_of_reference.lref'])[1]
+    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '1', ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
     try:
         print(full_result[0])
-        alt_num_type = adlib.retrieve_field_name(full_result[0]['Alternative_number'][0], 'alternative_number.type')[0]
+        alt_num_type = adlib.retrieve_field_name(full_result[0], 'alternative_number.type')[0]
     except (IndexError, TypeError, KeyError):
         alt_num_type = ''
 
     try:
-        ppriref = adlib.retrieve_field_name(full_result[0]['Alternative_number'][0], 'part_of_reference.lref')[0]
+        ppriref = adlib.retrieve_field_name(full_result[0], 'part_of_reference.lref')[0]
     except (IndexError, TypeError, KeyError):
         ppriref = ''
     

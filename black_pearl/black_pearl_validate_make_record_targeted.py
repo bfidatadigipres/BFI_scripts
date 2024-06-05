@@ -401,13 +401,12 @@ def main():
         else:
             bucket, bucket_list = get_buckets('bfi')
 
-        logger.info("======== START Black Pearl validate/CID Media record START ========")
-        logger.info("Looking for folders in Autoingest path: %s", autoingest)
-
         folders = [x for x in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, x))]
         if not folders:
-            logger.info("No folders available to check.")
             continue
+
+        logger.info("======== START Black Pearl validate/CID Media record START ========")
+        logger.info("Folders found in Autoingest path: %s", autoingest)
 
         for folder in folders:
             check_control()

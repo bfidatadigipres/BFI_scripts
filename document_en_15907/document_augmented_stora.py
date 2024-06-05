@@ -191,7 +191,7 @@ def find_repeats(asset_id):
         return None
 
     try:
-        priref = adlib.retrieve_field_name(result[num], 'priref')[0]
+        priref = adlib.retrieve_field_name(result[0], 'priref')[0]
     except (IndexError, TypeError, KeyError):
         return None
 
@@ -205,12 +205,10 @@ def find_repeats(asset_id):
         alt_num_type = ''
 
     print(f"********** Alternative number types: {alt_num_type} ************")
-    if alt_num_type != 'PATV asset id':
-        if 'Amazon' in alt_num_type:
-            logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
-        if 'Netflix' in alt_num_type:
-            logger.warning("Matching episode work found to be an Netflix work record: %s", priref)
-        continue
+    if 'Amazon' in alt_num_type:
+        logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
+    if 'Netflix' in alt_num_type:
+        logger.warning("Matching episode work found to be a Netflix work record: %s", priref)
 
     print(f"Priref with matching asset_id in CID: {priref}")
     search = f'(parts_reference.lref="{priref}")'

@@ -14,6 +14,7 @@ Dependencies:
 # Public imports
 import os
 import sys
+import csv
 import uuid
 import json
 import datetime
@@ -29,6 +30,7 @@ LOGS = os.environ['LOG_PATH']
 CID_API = os.environ['CID_API4']
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
+SELECTIONS = os.path.join(os.environ['WORKFLOW'], 'twoinch/selections.csv')
 
 
 def check_control():
@@ -132,9 +134,66 @@ def main():
 
         # Add tape to twoinch/selections.csv if unique
         print(f'add: {str(d)}')
-        selections.Selections.add(**d)
+
+        # selections.add(**d)
+        result = selections_add(d)
+        if result is None:
+            write_to_log("Failed to write data to selections.csv")
 
     write_to_log(f'=== Items in 2inch Pointer File completed === {DT_STR}\n')
+
+
+def selections_add(data):
+    '''
+    Write list to new row in CSV
+    Replacing broken selection.add()
+    Temporary, for refactoring
+    '''
+    data_list = []
+    if not isinstance(data, dict):
+        return None
+
+    if not 'can_ID' in data:
+        data_list.append('')
+    else:
+        data_list.append(data['can_ID'])
+    if not 'package_number' in data:
+        data_list.append('')
+    else:
+        data_list.append(data['package_list'])
+    if not 'uid' in data:
+        data_list.append('')
+    else:
+        data_list.append(data['uid'])
+    if not 'location' in data:
+        data_list.append('')
+    else:
+        data_list.append(data['location'])
+    if not 'duration' in data:
+        data_list.append('')
+    else:
+        data_list.append(data['duration'])
+    if not 'format' in data:
+        data_list.append('')
+    else:
+        data_list.append(data['format'])
+    if not 'item_count' in data:
+        data_list.append('')
+    else:
+        data_list.append(data['item_count'])
+    if not 'content_dates' in data:
+        data_list.append('')
+    else:
+        data_list.append(data['content_dates'])
+    if not 'items' in data:
+        data_list.append('')
+    else:
+        data_list.append(data['items'])
+
+    print(f'Adding amended data list: {data_list}')
+    with open(SELECTIONS, 'a') as file:
+        writer = csv.writer(file)
+        writer.writerow(data_list)
 
 
 def write_to_log(message):

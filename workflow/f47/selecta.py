@@ -129,7 +129,7 @@ def main():
         d['items'] = ','.join(item_ids)
         d['item_count'] = len(item_ids)
         d['location'] = t.location()
-        d['uid'] = uuid.uuid4()
+        d['uid'] = str(uuid.uuid4())
 
         write_to_log('This tape will be added to f47/selections.csv:\n')
         write_to_log(f'{str(d)}\n')
@@ -162,7 +162,7 @@ def selections_add(data):
     if not 'package_number' in data:
         data_list.append('')
     else:
-        data_list.append(data['package_list'])
+        data_list.append(data['package_number'])
     if not 'uid' in data:
         data_list.append('')
     else:

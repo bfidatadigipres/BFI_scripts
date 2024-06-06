@@ -132,7 +132,7 @@ def main():
 
         # Add tape to vtten/selections.csv if unique
         print(f'add: {str(d)}')
-        selections.add(**d)
+        selections.Selections.add(**d)
 
     write_to_log(f'=== Items in VT10 Pointer File completed === {DT_STR}\n')
 

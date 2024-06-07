@@ -214,12 +214,11 @@ def find_repeats(asset_id):
         logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
     if 'Netflix' in alt_num_type:
         logger.warning("Matching episode work found to be a Netflix work record: %s", priref)
-
+    if ppriref is None:
+        return None
     print(f"Priref with matching asset_id in CID: {priref} / Parent Work: {ppriref}")
     if len(ppriref) > 1:
         return ppriref
-
-    return None
 
 
 def series_check(series_id):

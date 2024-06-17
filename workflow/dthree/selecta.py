@@ -134,8 +134,7 @@ def main():
 
         # Add tape to dthree/selections.csv if unique
         print(f'add: {str(d)}')
-
-        # selections.Selections.add(**d)
+        # selections.add(**d)
         result = selections_add(d)
         if result is None:
             write_to_log("Write to selections CSV failed")
@@ -154,13 +153,17 @@ def selections_add(data):
         return None
 
     if not 'can_ID' in data:
+        can_id = ''
         data_list.append('')
     else:
-        data_list.append(data['can_ID'])
+        can_id = data['can_ID']
+        data_list.append(can_id)
     if not 'package_number' in data:
+        pack_num = ''
         data_list.append('')
     else:
-        data_list.append(data['package_number'])
+        pack_num = data['package_number']
+        data_list.append(pack_num)
     if not 'uid' in data:
         data_list.append('')
     else:
@@ -190,11 +193,20 @@ def selections_add(data):
     else:
         data_list.append(data['items'])
 
-    print(f'Adding amended data list: {data_list}')
-    with open(SELECTIONS, 'a') as file:
-        writer = csv.writer(file)
-        writer.writerow(data_list)
-        return True
+    written = False
+    # Check if list is unique
+    with open(SELECTIONS, 'r') as doc:
+        readme = csv.reader(doc)
+        for row in readme:
+            if can_id == str(row[0]) or pack_num == str(row[1]):
+                written = True
+
+    if not written:
+        print(f'Adding amended data list: {data_list}')
+        with open(SELECTIONS, 'a') as file:
+            writer = csv.writer(file)
+            writer.writerow(data_list)
+            return True
 
 
 def write_to_log(message):

@@ -495,6 +495,8 @@ def check_item(ob_num, database):
     search = f"(object_number='{ob_num}')"
     record = adlib.retrieve_record(CID_API, database, search, '1')[1]
     if not record:
+        record = adlib.retrieve_record(CID_API, 'collect', search, '1')[1]
+    if not record:
         return None
 
     priref = adlib.retrieve_field_name(record[0], 'priref')[0]

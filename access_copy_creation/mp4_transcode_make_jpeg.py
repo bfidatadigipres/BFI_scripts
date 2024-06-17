@@ -145,7 +145,7 @@ def main():
     print(file, fname, ext)
     # Check CID for Item record and extract transcode path
     object_number = make_object_number(fname)
-    if object_number.startswith('CA_'):
+    if object_number.startswith('CA-'):
         priref, source, groupings = check_item(object_number, 'collectionsassets')
     else:
         priref, source, groupings = check_item(object_number, 'items')

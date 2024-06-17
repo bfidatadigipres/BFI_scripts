@@ -91,7 +91,7 @@ def transcode_mp4(fpath):
     print(file, fname, ext)
     # Check CID for Item record and extract transcode path
     object_number = make_object_number(fname)
-    if object_number.startswith('CA_'):
+    if object_number.startswith('CA-'):
         priref, source, groupings = check_item(object_number, 'collectionsassets')
     else:
         priref, source, groupings = check_item(object_number, 'items')
@@ -422,29 +422,21 @@ def check_item(ob_num, database):
     Use adlib to retrieve priref/RNA data for item object number
     '''
     search = f"(object_number='{ob_num}')"
-    fields = [
-        'priref',
-        'acquisition.source',
-        'grouping'
-    ]
-    record = adlib.retrieve_record(CID_API, database, search, '0', fields)[1]
+    record = adlib.retrieve_record(CID_API, database, search, '1')[1]
     if not record:
         return None
 
-    if 'priref' in str(record):
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-    else:
+    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    if not priref:
         priref = ''
-    if 'acquisition.source' in str(record):
-        source = adlib.retrieve_field_name(record[0], 'acquisition.source')[0]
-    else:
+    source = adlib.retrieve_field_name(record[0], 'acquisition.source')[0]
+    if not source:
         source = ''
-    if 'groupings' in str(record):
-        groupings = adlib.retrieve_field_name(record[0], 'grouping')[0]
-    else:
+    groupings = adlib.retrieve_field_name(record[0], 'grouping')
+    if not groupings:
         groupings = ''
 
-    return (priref, source, groupings)
+    return priref, source, groupings
 
 
 def get_media_priref(fname):

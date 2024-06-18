@@ -121,6 +121,8 @@ class Tape():
         record = adlib.retrieve_record(CID_API, 'items', search, '1', ['can_ID'])[1]
         if record:
             item_can_id = adlib.retrieve_field_name(record[0], 'can_ID')[0]
+            if item_can_id is None:
+                return None
             tape_can_id = ''.join(x for x in item_can_id if not x.islower())
             return str(tape_can_id)
         else:

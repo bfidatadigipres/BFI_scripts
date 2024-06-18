@@ -18,6 +18,7 @@ import csv
 import json
 import uuid
 import datetime
+from tenacity import retry, stop_after_attempt
 
 # Local imports
 sys.path.append(os.environ['CODE'])
@@ -31,6 +32,7 @@ CID_API = os.environ['CID_API4']
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 SELECTIONS = os.path.join(os.environ['WORKFLOW'], 'f47/selections.csv')
+
 
 def check_control():
     '''
@@ -71,17 +73,20 @@ def get_candidates():
         print(result['adlibJSON']['diagnostic'])
         raise Exception('Cannot getpointerfile')
 
+    write_to_log("Total candidates: {len(candidates)}")
     return candidates
 
 
+@retry(stop=stop_after_attempt(10))
 def get_object_number(priref):
     '''
     Retrieve object number using priref
     '''
     search = f'priref={priref}'
     record = adlib.retrieve_record(CID_API, 'items', search, '1', ['object_number'])[1]
-    if record:
-        object_number = adlib.retrieve_field_name(record[0], 'object_number')[0]
+    if record is None:
+        raise Exception
+    object_number = adlib.retrieve_field_name(record[0], 'object_number')[0]
     return object_number
 
 
@@ -97,20 +102,27 @@ def main():
     candidates = get_candidates()
 
     # Process candidate selections in pointer
+    dupe_check = []
     for priref in candidates:
+        write_to_log(f"Candidate number: {candidates.index(priref)} ")
         obj = get_object_number(priref)
 
         # Ignore already selected items
-        if obj in selected_items:
-            write_to_log(f'* Item already in f47/selections.csv: {priref} {obj}\n')
+        matched = False
+        for sel in selected_items:
+            if obj == sel:
+                write_to_log(f'* Item already in f47/selections.csv: {priref} {obj} - Matched to {sel}\n')
+                matched = True
+                break
+        if matched is True:
             continue
 
         # Model tape carrier
-        write_to_log(f'Modelling tape carrier\n')
+        write_to_log(f'Modelling tape carrier for item {priref} {obj}\n')
         try:
             t = tape_model.Tape(obj)
         except Exception:
-            print(f'Could not model tape from object: {obj}')
+            print(f'Could not model tape from object: {priref} {obj}')
             continue
 
         # Get data
@@ -136,8 +148,11 @@ def main():
 
         # Add tape to f47/selections.csv if unique
         print(f'add: {str(d)}')
-
-        # selections.add(**d)
+        if str(d) in dupe_check:
+            write_to_log(f"Skipping write to CSV, exact match already written to CSV: {str(d)}")
+            continue
+        dupe_check.append(str(d))
+        # selections.add(**d) DEPRECATED
         result = selections_add(d)
         if result is None:
             write_to_log("Failed to write data to selections.csv")

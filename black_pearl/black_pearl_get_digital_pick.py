@@ -52,7 +52,7 @@ sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
 # API VARIABLES
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 

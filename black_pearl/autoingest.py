@@ -97,7 +97,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 CLIENT = ds3.createClientFromEnv()
 
 PREFIX = [

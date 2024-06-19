@@ -76,7 +76,7 @@ from ds3 import ds3
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global paths
 LOGS = os.environ['LOG_PATH']
@@ -98,8 +98,6 @@ logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
 CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor
 CLIENT = ds3.createClientFromEnv()
 
 PREFIX = [
@@ -182,6 +180,28 @@ def check_filename(fname):
     return True
 
 
+def check_accepted_file_type(fpath):
+    '''
+    Retrieve codec and ensure file is accepted type
+    TAR accepted from DMS / ProRes all other paths
+    '''
+    if any(x in fpath for x in ['qnap_access_renditions', 'qnap_10']):
+        if fpath.endswith(('tar', 'TAR')):
+            return True
+
+    cmd = [
+        'mediainfo',
+        '--Output=Video;%Format%',
+        fpath
+    ]
+    formt = subprocess.check_output(cmd)
+    formt = formt.decode('utf-8')
+    if 'ProRes' in str(formt):
+        return True
+
+    return False
+
+
 def check_mime_type(fpath, log_paths):
     '''
     Checks the mime type of the file
@@ -189,7 +209,7 @@ def check_mime_type(fpath, log_paths):
     '''
     if fpath.endswith(('.mxf', '.ts', '.mpg')):
         mime = 'video'
-    elif fpath.endswith(('.srt', '.scc', '.xml', '.scc', '.itt', '.stl', '.cap', '.dxfp')):
+    elif fpath.endswith(('.srt', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml')):
         mime = 'application'
     else:
         mime = magic.from_file(fpath, mime=True)
@@ -314,18 +334,15 @@ def get_item_priref(ob_num):
     Retrieve item priref, title from CID
     '''
     ob_num = ob_num.strip()
-
-    data = {'database': 'collect',
-            'search': f"object_number='{ob_num}'",
-            'fields': 'priref',
-            'output': 'json'}
-
-    result = CID.get(data)
+    search = f"object_number='{ob_num}'"
+    record = adlib.retrieve_record(CID_API, 'collect', search, '1')[1]
+    print(f"get_item_priref(): AdlibV3 record for priref:\n{record}")
     try:
-        priref = int(result.records[0]['priref'][0])
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        print(f"get_item_priref(): AdlibV3 priref: {priref}")
     except Exception:
         priref = ''
-        pass
+
     return priref
 
 
@@ -335,16 +352,15 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-    query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-    }
 
     try:
-        result = CID.get(query)
-        if result.hits:
+        hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+        if hits is None:
+            logger.exception('"CID API was unreachable for Media search: %s', search)
+            raise Exception(f"CID API was unreachable for Media search: {search}")
+        print(f"check_media_record(): AdlibV3 record for hits:\n{hits}")
+        num = int(hits)
+        if num >= 1:
             return True
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
@@ -360,16 +376,13 @@ def get_buckets(bucket_collection):
 
     with open(DPI_BUCKETS) as data:
         bucket_data = json.load(data)
-    if bucket_collection == 'netflix':
+    if bucket_collection == 'netflix' or bucket_collection == 'amazon':
         for key, _ in bucket_data.items():
             if bucket_collection in key:
                 bucket_list.append(key)
     elif bucket_collection == 'bfi':
         for key, _ in bucket_data.items():
             if 'preservation' in key.lower():
-                bucket_list.append(key)
-            # Imagen path read only now
-            if 'imagen' in key:
                 bucket_list.append(key)
 
     return bucket_list
@@ -421,7 +434,7 @@ def ext_in_file_type(ext, priref, log_paths):
            'itt': 'itt',
            'stl': 'stl',
            'cap': 'cap',
-           'dxfp': 'dxfp'}
+           'dfxp': 'dfxp'}
 
     try:
         ftype = dct[ext]
@@ -432,17 +445,18 @@ def ext_in_file_type(ext, priref, log_paths):
         return False
 
     print(ftype)
-    query = {'database': 'collect',
-             'search': f'priref={priref}',
-             'limit': 1,
-             'output': 'json',
-             'fields': 'file_type'}
+    search = f'priref={priref}'
+    record = adlib.retrieve_record(CID_API, 'collect', search, '1', ['file_type'])[1]
+    if record is None:
+        return False
 
-    result = CID.get(query)
+    print(f"ext_in_file_type(): AdlibV3 record returned:\n{record}")
     try:
-        file_type = result.records[0]['file_type']
+        file_type = adlib.retrieve_field_name(record[0], 'file_type')
+        print(f"ext_in_file_type(): AdlibV3 file type: {file_type}")
     except (IndexError, KeyError):
-        file_type = []
+        logger.warning('%s\tInvalid <file_type> in Collect record', log_paths)
+        return False
 
     if len(file_type) == 1:
         for ft in ftype:
@@ -469,21 +483,21 @@ def get_media_ingests(object_number):
     Use object_number to retrieve all media records
     '''
 
-    dct = {'database': 'media',
-           'search': f'object.object_number="{object_number}"',
-           'fields': 'imagen.media.original_filename',
-           'limit': 0,
-           'output': 'json'}
+    search = f'object.object_number="{object_number}"'
+    hits, record = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])
+    if hits is None:
+        logger.exception('"CID API was unreachable for Media search: %s', search)
+        raise Exception(f"CID API was unreachable for Media search: {search}")
+    print(f"get_media_ingests(): AdlibV3 record returned:\n{record}")
 
     original_filenames = []
     try:
-        result = CID.get(dct)
-        print(f'\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number')
-        print(result.records)
-        for r in result.records:
-            filename = r['imagen.media.original_filename']
+        print(f'\t* MEDIA_RECORDS test - {hits} media records returned with matching object_number')
+        for r in record:
+            filename = adlib.retrieve_field_name(r, 'imagen.media.original_filename')[0]
+            print(f"get_media_ingests(): AdlibV3 original file name found: {filename}")
             print(f"File found with CID record: {filename}")
-            original_filenames.append(filename[0])
+            original_filenames.append(filename)
     except Exception as err:
         print(err)
 
@@ -575,39 +589,6 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
         return 'False'
 
 
-def sequence_is_next(fpath, fname, object_number, ext, log_paths):
-    '''
-    For ingest image sequences that do not have complete reels
-    as MKV or TAR
-    '''
-    if not fname.endswith('.mkv') or fname.endswith('.tar'):
-        print(f"* Incorrect sequence file type received: {fname} with extension {ext}")
-        logger.warning('%s\tIncorrect film sequence file type in folder incomplete_sequences', log_paths)
-        return False
-
-    filepath = os.path.split(fpath)[0]
-    filename = fname.split('_')
-    filename = '_'.join(filename[:2])
-
-    # Check if fname already ingested or if only item in incomplete_scans/ folder
-    ingest_fnames = get_media_ingests(object_number)
-    if fname in ingest_fnames:
-        return 'Ingested already'
-    file_list = [ x for x in os.listdir(filepath) if filename in x ]
-    if len(file_list) == 1:
-        print('* Suitable for ingest')
-        return True
-
-    # Check if fname is first in line for ingest from file_list
-    sorted_list = file_list.sort()
-    if fname == sorted_list[0]:
-        print('* Suitable for ingest')
-        return True
-    else:
-        print('* Currently unsuitable for ingest')
-        return False
-
-
 def load_yaml(file):
     '''
     Safe open yaml and return as dict
@@ -672,11 +653,19 @@ def main():
             fname = os.path.split(fpath)[-1]
 
             # Allow path changes for black_pearl_ingest Netflix
-            if 'ingest/netflix' in fpath:
+            print(fpath)
+            if 'ingest/netflix' in str(fpath):
                 logger.info('%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder')
-                black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_netflix_ingest')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_NETFLIX']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+            elif 'ingest/amazon' in str(fpath):
+                continue
+                # logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
+                # black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
+                # black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             else:
-                black_pearl_folder = os.path.join(linux_host, 'autoingest/black_pearl_ingest')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
 
             if '.DS_Store' in fname:
                 continue
@@ -760,6 +749,8 @@ def main():
             bucket_list = []
             if 'ingest/netflix' in fpath:
                 bucket_list = get_buckets('netflix')
+            elif 'ingest/amazon' in fpath:
+                bucket_list = get_buckets('amazon')
             else:
                 bucket_list = get_buckets('bfi')
 
@@ -776,19 +767,8 @@ def main():
 
             # Move first part of incomplete scans
             if '/incomplete_scans/' in fpath:
-                print('\n*** File is an incomplete scan. Checking if next for ingest ======')
-                confirm = sequence_is_next(fpath, fname, object_number, ext, log_paths)
-                if confirm is True:
-                    print(f"Ingest approved for file {fname}")
-                    do_ingest = True
-                elif 'Ingested already' in confirm:
-                    print('\t\t* Already ingested! Not to be reingested')
-                    logger.warning('%s\tThis file name has already been ingested and has CID Media record', log_paths)
-                    continue
-                else:
-                    print('\t\t*Skipping object as previous part has not yet been ingested')
-                    logger.info("%s\tSkip object as previous part not yet ingested or queued for ingest", log_paths)
-                    continue
+                print('\n*** File is an incomplete scan. Moving for ingest ======')
+                do_ingest = True
             else:
                 # Move items for ingest if they are single parts, first parts, or next in queue
                 print('\n*** TEST for ASSET_MULTIPART ======')
@@ -834,10 +814,21 @@ def main():
             # Perform ingest if under 1TB
             if do_ingest:
                 size = get_size(fpath)
-                if int(size) > 1099511627776:
-                    logger.warning('%s\tFile is larger than 1TB. Leaving in ingest folder', log_paths)
-                    continue
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
+                if int(size) > 1099511627776:
+                    logger.info('%s\tFile is larger than 1TB. Checking file is ProRes', log_paths)
+                    accepted_file_type = check_accepted_file_type(fpath)
+                    if accepted_file_type is True:
+                        try:
+                            shutil.move(fpath, os.path.join(black_pearl_blobbing, fname))
+                            print(f'\t** File moved to {os.path.join(black_pearl_blobbing, fname)}')
+                            logger.info('%s\tMoved ingest-ready file to BlackPearl ingest blobbing folder', log_paths)
+                        except Exception as err:
+                            print(f'Failed to move file to blobbing folder: {black_pearl_blobbing} {err}')
+                            logger.warning('%s\tFailed to move ingest-ready file to blobbing folder', log_paths)
+                    else:
+                        logger.warning('%s\tFile is larger than 1TB and not ProRes. Leaving in ingest folder', log_paths)
+                    continue
                 try:
                     shutil.move(fpath, os.path.join(black_pearl_folder, fname))
                     print(f'\t** File moved to {os.path.join(black_pearl_folder, fname)}')

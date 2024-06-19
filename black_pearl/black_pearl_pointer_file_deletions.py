@@ -35,6 +35,7 @@ via saved search filtered by DigiOps.
 NOTE: Accompanying 'undelete' script to be written
       for use should an incorrect priref be placed
       into deletions schedule.
+      Updated for Adlib V3
 
 Joanna White
 2023
@@ -46,12 +47,11 @@ import json
 import time
 import logging
 import tenacity
-import requests
 from ds3 import ds3, ds3Helpers
 
 # Private package
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global links / set up ds3 and adlib
 CLIENT = ds3.createClientFromEnv()
@@ -61,8 +61,6 @@ MP4_ACCESS1 = os.environ['MP4_ACCESS_REDIRECT']
 MP4_ACCESS2 = os.environ['MP4_ACCESS2']
 LOGS = os.environ['LOG_PATH']
 CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor
 
 # Logging config
 LOGGER = logging.getLogger('bp_pointer_file_deletions')
@@ -85,10 +83,11 @@ def check_control():
 def check_cid():
     ''' Confirm CID running '''
     try:
-        CUR = adlib.Cursor(CID)
+        adlib.check(CID_API)
     except KeyError:
-        LOGGER.warning("Cannot establish CID session, exiting script.")
-        sys.exit('Sorry, unable to connect to the CID API. Script exiting.')
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(15))
@@ -100,17 +99,17 @@ def get_prirefs(pointer):
     query = {'command': 'getpointerfile',
              'database': 'media',
              'number': f'{pointer}',
-             'output': 'json'}
+             'output': 'jsonv1'}
 
     try:
-        result = CID.get(query)
-        return result.records[0]['hit']
+        result = adlib.get(CID_API, query)
     except Exception as exc:
-        LOGGER.exception('get_prirefs(): Unable to get pointer file %s', pointer)
-        raise Exception from exc
+        LOGGER.exception('get_prirefs(): Unable to get pointer file %s\n%s', pointer, exc)
+        result = None
 
-    if not result.records[0]['hit']:
+    if not result['adlibJSON']['recordList']['record'][0]['hitlist']:
         return None
+    return result['adlibJSON']['recordList']['record'][0]['hitlist']
 
 
 def get_dictionary(priref_list):
@@ -132,43 +131,59 @@ def get_media_record_data(priref):
     '''
     Get CID media record details
     '''
-    query = {'database': 'media',
-             'search': f'priref="{priref}"',
-             'fields': 'imagen.media.original_filename, access_rendition.mp4, reference_number, input.date, notes, preservation_bucket',
-             'limit': '1',
-             'output': 'json'}
+    search = f'priref="{priref}"'
+    fields = [
+        'imagen.media.original_filename',
+        'access_rendition.mp4',
+        'reference_number',
+        'input.date',
+        'notes',
+        'preservation_bucket'
+    ]
 
     try:
-        result = CID.get(query)
+        record = adlib.retrieve_record(CID_API, 'media', search, '1', fields)[1]
     except Exception as exc:
         LOGGER.exception('get_media_record_data(): Unable to access Media data for %s', priref)
         raise Exception from exc
 
-    if not result.records[0]:
+    if not record:
         return None
     try:
-        ref_num = result.records[0]['reference_number'][0]
-    except (TypeError, IndexError, KeyError):
+        ref_num = adlib.retrieve_field_name(record[0], 'reference_number')[0]
+    except (IndexError, KeyError, TypeError):
+        ref_num = ''
+    if ref_num is None:
         ref_num = ''
     try:
-        access_mp4 = result.records[0]['Access_rendition'][0]['access_rendition.mp4'][0]
-    except (TypeError, IndexError, KeyError):
+        access_mp4 = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
+    except (IndexError, KeyError, TypeError):
+        access_mp4 = ''
+    if access_mp4 is None:
         access_mp4 = ''
     try:
-        input_date = result.records[0]['input.date'][0]
-    except (TypeError, IndexError, KeyError):
+        input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
+    except (IndexError, KeyError, TypeError):
+        input_date = ''
+    if input_date is None:
         input_date = ''
     try:
-        approved = result.records[0]['notes']
-    except (TypeError, IndexError, KeyError):
+        approved = adlib.retrieve_field_name(record[0], 'notes')[0]
+    except (IndexError, KeyError, TypeError):
+        approved = ''
+    if approved is None:
         approved = ''
     try:
-        filename = result.records[0]['imagen.media.original_filename'][0]
-    except (TypeError, IndexError, KeyError):
+        filename = adlib.retrieve_field_name(record[0], 'imagen.media.original_filename')[0]
+    except (IndexError, KeyError, TypeError):
+        filename = ''
+    if filename is None:
         filename = ''
     try:
-        bucket = result.records[0]['preservation_bucket'][0]
-    except (TypeError, IndexError, KeyError):
+        bucket = adlib.retrieve_field_name(record[0], 'preservation_bucket')[0]
+    except (IndexError, KeyError, TypeError):
+        bucket = ''
+    if bucket is None:
         bucket = ''
 
     return [ref_num, access_mp4, input_date, approved, filename, bucket]
@@ -239,7 +254,7 @@ def main():
     print(f"There are *{len(priref_list)}* priref(s) to be processed:\n")
     for key, val in deletion_dictionary.items():
         print(f"Priref '{key}'. File reference number '{val[0]}'.")
-        print(f"{val[4]}: Access MP4 '{val[1]}'. Input date '{val[2]}'. Approval status '{val[3][:15]}'. Bucket location in BP: '{val[5]}'.")
+        print(f"{val[4]}: Access MP4 '{val[1]}'. Input date '{val[2]}'. Approval status '{val[3]}'. Bucket location in BP: '{val[5]}'.")
         print("---------------------------------------------------------------------")
 
     time.sleep(5)
@@ -261,8 +276,7 @@ def main():
         LOGGER.info("Assessing %s: Priref %s. Filename %s", ref_num, priref, fname)
 
         confirmation = []
-        for note in approved:
-            confirmation.append(f'<notes>{note}</notes>')
+        confirmation.append(f'<notes>{approved}</notes>')
 
         if 'Confirmed for deletion' in str(approved) and len(ref_num) >= 7:
             print(f"Confirmed for deletion: {key}, {ref_num}, {approved}")
@@ -386,13 +400,10 @@ def cid_media_append(priref, data):
     payload_mid = ''.join(data)
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
-
-    post_response = requests.post(
-        CID_API,
-        params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-        data={'data': payload})
-    if "<error><info>" in str(post_response.text):
-        LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", priref, post_response.text)
+  
+    record = adlib.post(CID_API, payload, 'media', 'updaterecord')
+    if not record:
+        LOGGER.warning("cid_media_append(): Post of data failed: %s - %s", priref, payload)
         return False
     LOGGER.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", priref)
     return True

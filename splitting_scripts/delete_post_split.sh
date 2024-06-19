@@ -8,28 +8,29 @@
 echo "Start delete_post_split.py: $(date)" >> "${LOG_PATH}delete_post_split.log"
 
 # use virtualenv python bin
-"${PY3_ENV}" "${CODE}splitting_scripts/delete_post_split.py"
+"${PYENV311}" "${CODE}splitting_scripts/delete_post_split.py"
 
 # Log script end
 echo "Finish delete_post_split.py: $(date)" >> "${LOG_PATH}delete_post_split.log"
 
 # Action deletion of H22 files in QNAP processing/delete folder
 echo "Actioning deletion of H22 files identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-rm -r "${QNAP_H22}/processing/delete/*"
+sudo rm "${QNAP_H22}/processing/delete/*"
 
 # Action deletion of F47 Ofcom files in Isilon processing/delete folder
 echo "Actioning deletion of F47 Ofcom files identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-rm -r "${ISILON_VID}/processing/delete/*"
+sudo rm "${ISILON_VID}/processing/delete/*"
 
 # Action deletion of F47 Ofcom files in QNAP Video processing/delete folder
 echo "Actioning deletion of F47 Ofcom files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-rm -r "${QNAP_08}/processing/delete/*"
+sudo rm "${QNAP_08}/processing/delete/*"
 
 # Action deletion of H22 files in QNAP-10 processing/delete folder
 echo "Actioning deletion of H22 files in QNAP-10 identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-rm -r "${QNAP_10}/processing/delete/*"
+sudo rm "${QNAP_10}/processing/delete/*"
 
 echo "Completed deletion of H22 files identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 echo "Completed deletion of F47 Ofcom files (Isilon video) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 echo "Completed deletion of F47 Ofcom files (QNAP Video) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 echo "Completed deletion of F47 Ofcom files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
+

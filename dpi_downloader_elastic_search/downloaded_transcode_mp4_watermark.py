@@ -20,7 +20,6 @@ import re
 import sys
 import time
 import json
-import getopt
 import logging
 import subprocess
 import magic
@@ -684,7 +683,7 @@ def transcode_mp4_access(fpath, arg):
         return 'transcode fail'
     toc = time.perf_counter()
     encoding_time = (toc - tic) // 60
-    seconds_time = (toc - tic)
+    seconds_time = toc - tic
     logger_data.append(f"*** Encoding time for {file}: {encoding_time} minutes or as seconds: {seconds_time}")
     logger_data.append("Checking if new MP4 access file passes Mediaconch policy")
     pass_policy = check_policy(output_fullpath)
@@ -712,7 +711,7 @@ def transcode_mp4_access(fpath, arg):
             subprocess.call(ffmpeg_call)
             logger_data.append("Subprocess call for FFmpeg watermark command successful")
         except Exception as err:
-            logger_data.append("WARNING: FFmpeg watermark command failed")
+            logger_data.append(f"WARNING: FFmpeg watermark command failed: {err}")
             log_clean = list(dict.fromkeys(logger_data))
             for line in log_clean:
                 if 'WARNING' in str(line):
@@ -722,7 +721,7 @@ def transcode_mp4_access(fpath, arg):
             return 'transcode fail'
         toc = time.perf_counter()
         encoding_time = (toc - tic) // 60
-        seconds_time = (toc - tic)
+        seconds_time = toc - tic
         os.remove(output_fullpath)
         logger_data.append(f"*** Encoding time for {file}: {encoding_time} minutes or as seconds: {seconds_time}")
 

@@ -18,7 +18,7 @@ python_script="${CODE}access_copy_creation/mp4_transcode_make_jpeg.py"
 # replace list to ensure clean data
 echo "" > "${dump_to}"
 
-echo " ========================= SHELL LAUNCH - QNAP10 ========================== $date_FULL" >> "${log_path}"
+echo " ========================= SHELL LAUNCH - $path_insert ========================== $date_FULL" >> "${log_path}"
 echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_path}"
 echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
 
@@ -26,6 +26,6 @@ echo " == Shell script creating dump_text.txt output for parallel launch of Pyth
 find "${transcode_path1}" -maxdepth 1 -mindepth 1 -type f -mmin +30 >> "${dump_to}"
 
 echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
-grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" "$PYENV $python_script {}"
+grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" --timeout 86400 "$PYENV311 $python_script {}"
 
-echo " ========================= SHELL END - QNAP10 ========================== $date_FULL" >> "${log_path}"
+echo " ========================= SHELL END - $path_insert ========================== $date_FULL" >> "${log_path}"

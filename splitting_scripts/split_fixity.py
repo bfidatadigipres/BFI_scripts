@@ -36,7 +36,7 @@ import subprocess
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 import document_item
 import models
 import clipmd5
@@ -51,22 +51,18 @@ except IndexError:
 if not os.path.exists(TARGET):
     sys.exit(f"EXIT: Target path received not valid: {TARGET}")
 
-# Setup CID
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor
-
 # Path to split files destination
 SOURCE, NUM = os.path.split(TARGET)  # Source folder
 OUTPUT = os.path.join(os.path.split(SOURCE)[0], 'segmented')
 MEDIA_TARGET = os.path.split(OUTPUT)[0]  # Processing folder
 AUTOINGEST = os.path.join(os.path.split(MEDIA_TARGET)[0], 'autoingest')
 LOG_PATH = os.environ['SCRIPT_LOG']
+CID_API = os.environ['CID_API3']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger(f'split_fixity_{NUM}')
 hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'))
-# hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'), mode='w')
+# hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'), mode=w)
 formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -132,20 +128,14 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-    query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-    }
-
-    try:
-        result = CID.get(query)
-        if result.hits:
-            return True
-    except Exception as err:
-        print(f"Unable to retrieve CID Media record {err}")
-    return False
+    hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+    print(f"Check media record response: {hits} hits")
+    if hits is None:
+        raise SystemExit(f'Could not retrieve data from API: {search}')
+    if hits >= 1:
+        return True
+    elif hits == 0:
+        return False
 
 
 def main():
@@ -230,30 +220,30 @@ def main():
         # Process each item on tape
         print("Begin iterating items in Carrier")
         for item in c.items:
-            item_priref = int(item['priref'][0])
-            object_number = item['object_number'][0]
+            item_priref = int(adlib.retrieve_field_name(item, 'priref')[0])
+            object_number = adlib.retrieve_field_name(item, 'object_number')[0]
             logger.info('%s\t* Item priref is %s and object number is %s', filepath, item_priref, object_number)
             print(f"Item to be processed: {item_priref} {object_number}")
 
             # Check whether object_number derivative has been documented already
-            print(f"Launching document_item_h22.py to check if CID item record exists: {object_number}")
+            print(f"Launching document_item.py to check if CID item record exists: {object_number}")
             try:
-                exists = document_item.already_exists(object_number)
+                hits, exists = document_item.already_exists(object_number)
             except Exception as err:
                 logger.warning('%s\tUnable to determine if derived record already exists for\t%s\n%s', filepath, object_number, err)
                 continue
 
             # Check to prevent progress if more than one CID item record exists
             if exists:
-                print(f"Exists: {exists} Hits: {exists.hits}")
+                print(f"Exists: {exists} Hits: {hits}")
 
                 # Avoid working with any file that has more than one derived item record
-                if exists.hits > 1:
+                if hits > 1:
                     logger.info('%s\t* More than one item record for derived MKV already exists for\t%s. Skipping.', filepath, object_number)
                     print(f"{c.partwhole[0]} is 1 and more than one CID item record exists - this file split will be skipped.")
                     continue
                 try:
-                    existing_ob_num = exists.records[0]['object_number'][0]
+                    existing_ob_num = adlib.retrieve_field_name(exists, 'object_number')[0]
                 except (IndexError, TypeError, KeyError):
                     logger.info("Unable to get object_number for file checks. Skipping")
                     continue
@@ -267,10 +257,13 @@ def main():
                     print(f"Checking if first part has already been created or has persisted to DPI: {firstpart_check}")
                     check_result = check_media_record(firstpart_check)
                     firstpart = False
-                    if check_result:
+                    if check_result is True:
                         print(f"First part {firstpart_check} exists in CID, proceeding to check for {check_filename}")
                         firstpart = True
-                    print(f"**** AUTOINEGST: {AUTOINGEST}")
+                    if check_result is None:
+                        logger.warning("Skipping: Unable to retrieve CID Media hit information, try again next pass")
+                        continue
+                    print(f"**** AUTOINGEST: {AUTOINGEST}")
                     match_path = glob.glob(f"{AUTOINGEST}/**/*/{firstpart_check}", recursive=True)
                     print(f"****** MATCH PATH {match_path}")
                     if firstpart_check in str(match_path):
@@ -281,9 +274,13 @@ def main():
                     logger.info("%s\tPart 01of* in group found %s. Checking if part also ingested...", filepath, firstpart_check, check_filename)
 
                 check_result = check_media_record(check_filename)
-                if check_result:
+                if check_result is True:
                     print(f"SKIPPING: Filename {check_filename} matched with persisted CID media record")
                     logger.warning("%s\tPart found ingested to DPI: %s.", filepath, check_filename)
+                    continue
+                if check_result is None:
+                    print("SKIPPING: API hit attempt failed. Leaving for another pass.")
+                    logger.warning("%s\tAPI attempt returned None. Leaving for another pass: %s.", filepath, check_filename)
                     continue
                 matched = glob.glob(f"{AUTOINGEST}/**/*/{check_filename}", recursive=True)
                 if check_filename in str(matched):
@@ -316,6 +313,7 @@ def main():
             # Get duration of file
             print("Get file duration")
             item_duration = get_duration(filepath)
+            print(f"*********** {item_duration} ***********")
             if not item_duration:
                 print("No duration retrieved")
                 logger.warning("%s\t* Item has no duration, skipping this file.", filepath)
@@ -485,7 +483,7 @@ def main():
                 note = 'autocreated (segmented)'
 
             logger.info("LOG CHECK: document_item.new_or_existing(%s, %s, %s, %s, note=%s)", object_number, relative_segments, file_duration, extension, note)
-            print(f"Launching document_item_h22.new({object_number}, {relative_segments}, {file_duration}, {extension}, note={note})")
+            print(f"Launching document_item.new({object_number}, {relative_segments}, {file_duration}, {extension}, note={note})")
 
             # Single-item tape
             if c.partwhole[1] == 1:

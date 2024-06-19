@@ -18,26 +18,25 @@ Joanna White
 import os
 import re
 import sys
-import json
 import time
 import shutil
 import logging
 import datetime
 import subprocess
-import requests
 import pytz
 import tenacity
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 
 # Global paths from environment vars
 MP4_POLICY = os.environ['MP4_POLICY']
 LOG_PATH = os.environ['LOG_PATH']
 LOG_FILE = os.path.join(LOG_PATH, 'scheduled_elasticsearch_downloader_transcode.log')
-CID_API = os.environ['CID_API']
+CID_API = os.environ['CID_API3']
 TRANSCODE = os.environ['TRANSCODING']
+# TRANSCODE = os.path.join(os.environ['QNAP_REND1'], 'mp4_transcoding_backup/')
 
 # Setup logging
 logger = logging.getLogger('bp_downloader_mp4_transcode')
@@ -46,10 +45,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 logger.addHandler(HDLR)
 logger.setLevel(logging.INFO)
-
-# CID URL details
-CID = adlib.Database(CID_API)
-CUR = adlib.Cursor(CID)
 
 SUPPLIERS = {"East Anglian Film Archive": "eafa",
              "Imperial War Museum": "iwm",
@@ -96,7 +91,7 @@ def transcode_mp4(fpath):
     print(file, fname, ext)
     # Check CID for Item record and extract transcode path
     object_number = make_object_number(fname)
-    if object_number.startswith('CA_'):
+    if object_number.startswith('CA-'):
         priref, source, groupings = check_item(object_number, 'collectionsassets')
     else:
         priref, source, groupings = check_item(object_number, 'items')
@@ -120,7 +115,7 @@ def transcode_mp4(fpath):
         for key, val in SUPPLIERS.items():
             if key in str(source):
                 rna_pth = val
-        transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
+                transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
     else:
         transcode_pth = os.path.join(TRANSCODE, 'bfi', date_pth)
 
@@ -424,29 +419,26 @@ def make_object_number(fname):
 
 def check_item(ob_num, database):
     '''
-    Use requests to retrieve priref/RNA data for item object number
+    Use adlib to retrieve priref/RNA data for item object number
     '''
     search = f"(object_number='{ob_num}')"
-    query = {'database': database,
-             'search': search,
-             'output': 'json'}
-    results = requests.get(CID_API, params=query)
-    results = results.json()
+    record = adlib.retrieve_record(CID_API, database, search, '1')[1]
+    if not record:
+        record = adlib.retrieve_record(CID_API, 'collect', search, '1')[1]
+    if not record:
+        return None
 
-    try:
-        priref = results['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
-    except (IndexError, KeyError):
+    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    if not priref:
         priref = ''
-    try:
-        source = results['adlibJSON']['recordList']['record'][0]['Acquisition_source'][0]['acquisition.source']
-    except (IndexError, KeyError):
+    source = adlib.retrieve_field_name(record[0], 'acquisition.source')[0]
+    if not source:
         source = ''
-    try:
-        groupings = results['adlibJSON']['recordList']['record'][0]['grouping']
-    except (IndexError, KeyError):
+    groupings = adlib.retrieve_field_name(record[0], 'grouping')
+    if not groupings:
         groupings = ''
 
-    return (priref, source, groupings)
+    return priref, source, groupings
 
 
 def get_media_priref(fname):
@@ -454,26 +446,37 @@ def get_media_priref(fname):
     Retrieve priref from Digital record
     '''
     search = f"(imagen.media.original_filename='{fname}')"
-    query = {'database': 'media',
-             'search': search,
-             'output': 'json'}
-    results = requests.get(CID_API, params=query)
-    results = results.json()
+    fields = [
+        'priref',
+        'input.date',
+        'access_rendition.largeimage',
+        'access_rendition.thumbnail',
+        'access_rendition.mp4'
+    ]
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
+    if not record:
+        return None
 
-    try:
-        priref = results['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
-    except (IndexError, KeyError):
+    if 'priref' in str(record):
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    else:
         priref = ''
-    try:
-        input_date = results['adlibJSON']['recordList']['record'][0]['input.date'][0]
-    except (IndexError, KeyError):
+    if 'input.date' in str(record):
+        input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
+    else:
         input_date = ''
-    try:
-        largeimage_umid = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.largeimage'][0]
-        thumbnail_umid = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.thumbnail'][0]
-        access_rendition = results['adlibJSON']['recordList']['record'][0]['Access_rendition'][0]['access_rendition.mp4'][0]
-    except (IndexError, KeyError):
-        largeimage_umid, thumbnail_umid, access_rendition = '','',''
+    if 'access_rendition.largeimage' in str(record):
+        largeimage_umid = adlib.retrieve_field_name(record[0], 'access_rendition.largeimage')[0]
+    else:
+        largeimage_umid = ''
+    if 'access_rendition.thumbail' in str(record):
+        thumbnail_umid = adlib.retrieve_field_name(record[0], 'access_rendition.thumbnail')[0]
+    else:
+        thumbnail_umid = ''
+    if 'access_rendition.mp4' in str(record):
+        access_rendition = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
+    else:
+        access_rendition = ''
 
     return (priref, input_date, largeimage_umid, thumbnail_umid, access_rendition)
 
@@ -1014,14 +1017,10 @@ def cid_media_append(priref, data):
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
 
-    post_response = requests.post(
-        CID_API,
-        params={'database': 'media', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-        data={'data': payload})
-    if "<error><info>" in str(post_response.text):
-        logger.warning("cid_media_append(): Post of data failed: %s - %s", priref, post_response.text)
+    rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
+    if rec is None:
+        logger.warning("cid_media_append(): Post of data failed: %s - %s", priref, rec)
         return False
     else:
         logger.info("cid_media_append(): Write of access_rendition data appear successful for Priref %s", priref)
         return True
-

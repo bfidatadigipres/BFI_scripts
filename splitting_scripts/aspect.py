@@ -195,7 +195,7 @@ def main():
                 continue
 
             # Require partWhole
-            if not 'of' in fn:
+            if 'of' not in fn:
                 print(f'{f}\tFilename does not contain _of_')
                 LOGGER.warning('%s\tFilename does not contain _of_', f)
                 continue
@@ -284,7 +284,7 @@ def main():
 
                 try:
                     shutil.move(f, target)
-                    LOGGER.info('%s\tSuccessfully moved to target: %s\t', f,target)
+                    LOGGER.info('%s\tSuccessfully moved to target: %s\t', f, target)
                 except Exception:
                     LOGGER.warning('%s\tCould not move to target: %s\t', f, target)
                     raise

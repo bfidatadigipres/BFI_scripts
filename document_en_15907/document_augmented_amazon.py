@@ -1,0 +1,1355 @@
+#!/usr/bin/ python3
+
+'''
+Script to ingest
+Amazon EPG metadata
+based on CSV list of
+required programmes
+
+Receives CSV input as
+sys.argv[1] and iterates
+contents to make records
+
+Steps:
+1. Read all CSV lines into dictionary
+   Each programme seasons must have a
+   separate entry with total episodes
+2. Iterate looking for folder matches
+   with CSV data {article}_{title}
+3. Check if eposidic/monographic
+   Check for existing CID records that
+   match the ID for programme, skip if found.
+4. Access JSONs data needed for:
+   Monographic work/manifestation/item
+   Episodic Series work/work/manifestation/item
+5. Build CID records
+6. Create CID records
+7. Append contributors where available
+
+NOTES: Configured for adlib_v3, API will need
+       updating when available.
+
+Joanna White
+2024
+'''
+
+# Public packages
+import os
+import sys
+import json
+import logging
+import datetime
+import pandas
+import yaml
+
+# Local packages
+from document_augmented_streaming_cast import create_contributors
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
+
+# Global variables
+STORAGE = os.environ.get('QNAP_IMAGEN')
+AMAZON = os.path.join(STORAGE, 'AMAZON')
+CAT_ID = os.environ.get('PA_AMAZON')
+ADMIN = os.environ.get('ADMIN')
+LOGS = os.path.join(ADMIN, 'Logs')
+CODE = os.environ.get('CODE_PATH')
+GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
+CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
+CID_API = os.environ.get('CID_API3')
+
+# PATV API details including unique identifiers for Amazon catalogue
+URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
+URL2 = os.path.join(os.environ['PATV_STREAM_URL'], 'asset/')
+HEADERS = {
+    "accept": "application/json",
+    "apikey": os.environ['PATV_KEY']
+}
+
+# Setup logging
+LOGGER = logging.getLogger('document_augmented_amazon')
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_amazon.log'))
+FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+HDLR.setFormatter(FORMATTER)
+LOGGER.addHandler(HDLR)
+LOGGER.setLevel(logging.INFO)
+
+
+def check_control():
+    '''
+    Check for downtime control
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
+            sys.exit("Script run prevented by downtime_control.json. Script exiting")
+
+
+def cid_check():
+    '''
+    Tests if CID active before all other operations commence
+    '''
+    try:
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+
+def read_csv_to_dict(csv_path):
+    '''
+    Make set of all entries
+    with title as key, and value
+    to contain all other entries
+    as a list (use pandas)
+    '''
+
+    data = pandas.read_csv(csv_path)
+    data_dct = data.to_dict(orient='list')
+    print(data)
+    return data_dct
+
+
+def get_folder_title(article, title):
+    '''
+    Match title to folder naming
+    '''
+
+    title = title.replace("/","").replace("'","").replace("&", "and").replace("(","").replace(")","").replace("!", "").replace("’", "")
+    if article != '-':
+        title = f'{article}_{title.replace(" ", "_")}_'
+    else:
+        title = f'{title.replace(" ", "_")}_'
+    return title
+
+
+def split_title(title_article):
+    '''
+    An exception needs adding for "Die " as German language content
+    This list is not comprehensive.
+    '''
+    if title_article.startswith(("A ", "An ", "Am ", "Al-", "As ", "Az ", "Bir ", "Das ", "De ", "Dei ", "Den ",
+                                 "Der ", "Det ", "Di ", "Dos ", "Een ", "Eene", "Ei ", "Ein ", "Eine", "Eit ",
+                                 "El ", "el-", "En ", "Et ", "Ett ", "Het ", "Il ", "Na ", "A'", "L'", "La ",
+                                 "Le ", "Les ", "Los ", "The ", "Un ", "Une ", "Uno ", "Y ", "Yr ")):
+        title_split = title_article.split()
+        ttl = title_split[1:]
+        title = ' '.join(ttl)
+        title_art = title_split[0]
+        return title, title_art
+    else:
+        return title_article, '-'
+
+
+def get_folder_match(foldername):
+    '''
+    Get full folder path
+    from Amazon folder excluding
+    any folders that have additional
+    title data, eg 'Enola_Holmes_2_'
+    '''
+    folder_list = [x for x in os.listdir(AMAZON) if x.startswith(foldername)]
+    for fr in folder_list:
+        id_ = fr.split(foldername)[-1]
+        if '_' in id_:
+            print(f"SKIPPING: Title match has additional title items: {fr}")
+            folder_list.remove(fr)
+    return folder_list
+
+
+def get_json_files(fpath):
+    '''
+    Fetch JSON files in folder
+    '''
+    json_files = []
+
+    for root, _, files in os.walk(fpath):
+        for file in files:
+            if file.endswith('.json'):
+                json_files.append(os.path.join(root, file))
+
+    return json_files
+
+
+def retrieve_json(json_pth):
+    '''
+    One at a time, retrieve metadata for
+    a given programme title, and check
+    series number match and enough episodes
+    present for supplied episode_num
+    '''
+    with open(json_pth, 'r') as file:
+        data = json.load(file)
+
+    return data
+
+
+def get_cat_data(data=None):
+    '''
+    Get catalogue data and return as dct
+    '''
+    if data is None:
+        data = {}
+
+    c_data = {}
+    if 'id' in data:
+        c_data['cat_id'] = data['id']
+    if 'title' in data:
+        title_full = data['title']
+        title, article = split_title(title_full)
+        c_data['title'] = title
+        c_data['title_article'] = article
+    if 'runtime' in data:
+        c_data['runtime'] = data['runtime']
+    try:
+        c_data['production_year'] = data['productionYear']
+    except:
+        pass
+    try:
+        c_data['cert_amazon'] = data['certification']['amazon']
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        c_data['cert_bbfc'] = data['certification']['bbfc']
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        c_data['writers'] = data['meta']['writers']
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        cast_all = data['meta']['cast']
+        c_data['cast'] = cast_all.split(',')
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        c_data['directors'] = data['meta']['directors']
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        genres_all = data['meta']['genres']
+        c_data['genres'] = genres_all.split(',')
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        c_data['attribute'] = data['attribute']
+    except (IndexError, TypeError, KeyError):
+        c_data['attribute'] = ''
+    try:
+        short_desc = data['summary']['short'].replace("\'", "'")
+        c_data['d_short'] = short_desc
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        med_desc = data['summary']['medium'].replace("\'", "'")
+        c_data['d_medium'] = med_desc
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        long_desc = data['summary']['long'].replace("\'", "'")
+        c_data['d_long'] = long_desc
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        c_data['start_date'] = data['availability']['start']
+    except (IndexError, TypeError, KeyError):
+        pass
+    if 'deeplink' in data:
+        for link in data['deeplink']:
+            if link['rel'] == 'url':
+                c_data['browse_url'] = link['href']
+            if link['rel'] == 'watch-url':
+                c_data['watch_url'] = link['href']
+    try:
+        c_data['episode_number'] = data['number']
+    except (IndexError, TypeError, KeyError):
+        pass
+    try:
+        c_data['contributors'] = data['contributor']
+    except (IndexError, TypeError, KeyError):
+        pass
+
+    return c_data
+
+
+def get_json_data(data=None):
+    '''
+    Retrieve data from a PATV JSONs
+    and return as dictionary
+    '''
+    if data is None:
+        data = {}
+
+    j_data = {}
+    if 'id' in data:
+        j_data['work_id'] = data['id']
+    if 'type' in data:
+        j_data['type'] = data['type']
+    if 'title' in data:
+        title_full = data['title']
+        title, article = split_title(title_full)
+        j_data['title'] = title
+        j_data['title_article'] = article
+    if 'productionYear' in data:
+        j_data['production_year'] = data['productionYear']
+    try:
+        j_data['runtime'] = data['runtime']
+    except (IndexError, KeyError, TypeError):
+        pass
+    try:
+        j_data['episode_number'] = data['number']
+    except (IndexError, KeyError, TypeError):
+        pass
+    try:
+        j_data['episode_total'] = data['total']
+    except (IndexError, KeyError, TypeError):
+        pass
+    if 'category' in data:
+        genres = []
+        for item in data['category']:
+            genres.append(item['code'])
+        if genres:
+            j_data['genres'] = genres
+    if 'meta' in data:
+        try:
+            j_data['episode_number'] = data['meta']['episode']
+        except (IndexError, TypeError, KeyError):
+            pass
+        try:
+            j_data['episode_total'] = data['meta']['episodeTotal']
+        except (IndexError, TypeError, KeyError):
+            pass
+    if 'certification' in data:
+        try:
+            j_data['cert_amazon'] = data['certification']['amazon']
+        except (IndexError, TypeError, KeyError):
+            pass
+        try:
+            j_data['cert_bbfc'] = data['certification']['bbfc']
+        except (IndexError, TypeError, KeyError):
+            pass
+    if 'summary' in data:
+        try:
+            short_desc = data['summary']['short'].replace("\'", "'")
+            j_data['d_short'] = short_desc
+        except (IndexError, TypeError, KeyError):
+            pass
+        try:
+            med_desc = data['summary']['medium'].replace("\'", "'")
+            j_data['d_medium'] = med_desc
+        except (IndexError, TypeError, KeyError):
+            pass
+        try:
+            long_desc = data['summary']['long'].replace("\'", "'")
+            j_data['d_long'] = long_desc
+        except (IndexError, TypeError, KeyError):
+            pass
+    if 'contributor' in data:
+        try:
+            j_data['contributors'] = data['contributor']
+        except (IndexError, TypeError, KeyError):
+            pass
+    if 'vod' in data:
+        try:
+            j_data['start_date'] = data['vod']['amazon-uk']['start']
+        except (IndexError, TypeError, KeyError):
+            pass
+    return j_data
+
+
+def cid_check_works(patv_id):
+    '''
+    Sends CID request for series_id data
+    '''
+    query = f'alternative_number="{patv_id}"'
+    try:
+        hits, record = adlib.retrieve_record(CID_API, 'works', query, 0)
+    except Exception as err:
+        LOGGER.warning("cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s", patv_id, err)
+        print("cid_check_works(): Record not found. Series hit count and series priref will return empty strings")
+        return None
+    if hits is None:
+        LOGGER.exception('"CID API was unreachable for Works search: %s', query)
+        raise Exception(f"CID API was unreachable for Works search: {query}")
+    try:
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        print(f"cid_check_works(): Series priref: {priref}")
+    except Exception as err:
+        priref = ''
+    try:
+        title = adlib.retrieve_field_name(record[0], 'title')[0]
+        print(f"cid_check_works(): Series title: {title}")
+    except Exception as err:
+        title = ''
+    try:
+        title_art = adlib.retrieve_field_name(record[0], 'title_article')[0]
+        print(f"cid_check_works(): Series title: {title_art}")
+    except Exception as err:
+        title_art = ''
+    groupings = []
+    for num in range(0, hits):
+        try:
+            grouping = adlib.retrieve_field_name(record[num], 'grouping.lref')[0]
+            print(f"cid_check_works(): Grouping: {grouping}")
+            groupings.append(grouping)
+        except Exception as err:
+            pass
+
+    alt_type = []
+    for num in range(0, hits):
+        try:
+            all_priref = adlib.retrieve_field_name(record[num], 'priref')[0]
+        except (IndexError, TypeError, KeyError):
+            return None
+
+        type_query = f'priref="{all_priref}"'
+        hits, type_record = adlib.retrieve_record(CID_API, 'works', type_query, 1)
+        if hits is None:
+            LOGGER.exception('"CID API was unreachable for Works search: %s', type_query)
+            raise Exception(f"CID API was unreachable for Works search: {type_query}")
+        try:
+            alt_num_type = adlib.retrieve_field_name(type_record[0]['Alternative_number'][0], 'alternative_number.type')[0]
+            print(f"cid_check_works(): Alternative number type {alt_num_type}")
+            alt_type.append(alt_num_type)
+        except (IndexError, TypeError, KeyError):
+            pass
+
+    return hits, priref, title, title_art, groupings, alt_type
+
+
+def genre_retrieval(category_code, description, title):
+    '''
+    Retrieve genre data, return as list
+    '''
+    with open(GENRE_MAP, 'r') as files:
+        data = (yaml.load(files, Loader=yaml.FullLoader))
+        print(f"genre_retrieval(): The genre data is being retrieved for: {category_code}")
+        for _ in data:
+            if category_code in data['genres']:
+                genre_one = []
+                genre_two = []
+                try:
+                    genre_one = data['genres'][category_code.strip('u')]['Genre']
+                    print(f"genre_retrieval(): Genre one: {genre_one}")
+                    if "Undefined" in genre_one:
+                        print(f"genre_retrieval(): Undefined category_code discovered: {category_code}")
+                        with open(os.path.join(ADMIN, 'off_air_tv/redux_undefined_genres.txt'), 'a') as genre_log:
+                            print("genre_retrieval(): Writing Undefined category details to genre log")
+                            genre_log.write("\n")
+                            genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
+                        genre_one_priref = ''
+                    else:
+                        for key, val in genre_one.items():
+                            genre_one_priref = val
+                        print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
+                except Exception:
+                    genre_one_priref = ''
+                try:
+                    genre_two = data['genres'][category_code.strip('u')]['Genre2']
+                    for key, val in genre_two.items():
+                        genre_two_priref = val
+                    print(f"genre_retrieval(): Key value for genre_two_priref: {genre_two_priref}")
+                except Exception:
+                    genre_two_priref = ''
+                return [genre_one_priref, genre_two_priref]
+            else:
+                LOGGER.warning("%s -- New category not in EPG_genre_map.yaml: %s", category_code, title)
+                with open(os.path.join(ADMIN, 'off_air_tv/redux_undefined_genres.txt'), 'a') as genre_log:
+                    print("genre_retrieval(): Writing Undefined category details to genre log")
+                    genre_log.write("\n")
+                    genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
+
+
+def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
+    '''
+    Build up work data into dictionary for Work creation
+    '''
+    if not cat_dct:
+        cat_dct = {}
+    if not json_dct:
+        json_dct = {}
+
+    work_dict = {}
+    if 'title' in cat_dct:
+        work_dict['title'] = cat_dct['title']
+    elif 'title' in json_dct:
+        work_dict['title'] = json_dct['title']
+    if 'title_article' in cat_dct:
+        work_dict['title_article'] = cat_dct['title_article']
+    elif 'title_article' in json_dct:
+        work_dict['title_article'] = json_dct['title_article']
+    if int(csv_data[5]) > 0:
+        work_dict['series_num'] = csv_data[5]
+        work_dict['episode_total'] = csv_data[7]
+
+    # Film, programme or series
+    if 'series' in csv_data[4].lower():
+        work_dict['work_type'] = 'T'
+    else:
+        work_dict['work_type'] = 'F'
+    if 'non-fiction' in csv_data[3].lower():
+        work_dict['nfa_category'] = 'D'
+    else:
+        work_dict['nfa_category'] = 'F'
+    if episode_no and int(episode_no) > 0:
+        work_dict['episode_num'] = episode_no
+
+    if 'runtime' in cat_dct:
+        work_dict['runtime'] = cat_dct['runtime']
+    elif 'runtime' in json_dct:
+        work_dict['runtime'] = json_dct['runtime']
+    desc_list = []
+    if 'd_short' in cat_dct:
+        work_dict['d_short'] = cat_dct['d_short']
+        desc_list.append(cat_dct['d_short'])
+    elif 'd_short' in json_dct:
+        work_dict['d_short'] = json_dct['d_short']
+        desc_list.append(json_dct['d_short'])
+    else:
+        desc_list.append('')
+    if 'd_medium' in cat_dct:
+        work_dict['d_medium'] = cat_dct['d_medium']
+        desc_list.append(cat_dct['d_medium'])
+    elif 'd_medium' in json_dct:
+        work_dict['d_medium'] = json_dct['d_medium']
+        desc_list.append(json_dct['d_medium'])
+    else:
+        desc_list.append('')
+    if 'd_long' in cat_dct:
+        work_dict['d_long'] = cat_dct['d_long']
+        desc_list.append(cat_dct['d_long'])
+    elif 'd_long' in json_dct:
+        work_dict['d_long'] = json_dct['d_long']
+        desc_list.append(json_dct['d_long'])
+    else:
+        desc_list.append('')
+    desc_list.sort(key=len, reverse=True)
+    description = desc_list[0]
+    if len(description) > 0:
+        work_dict['description'] = description
+
+    try:
+        work_dict['patv_id'] = json_dct['work_id']
+    except:
+        work_dict['patv_id'] = ''
+
+    try:
+        work_dict['cat_id'] = cat_dct['cat_id']
+    except:
+        work_dict['cat_id'] = ''
+
+    if 'production_year' in json_dct:
+        work_dict['production_year'] = json_dct['production_year']
+    elif 'production_year' in cat_dct:
+        work_dict['production_year'] = cat_dct['production_year']
+    if 'cert_amazon' in json_dct:
+        work_dict['certification_amazon'] = json_dct['cert_amazon']
+    elif 'cert_amazon' in cat_dct:
+        work_dict['certification_amazon'] = cat_dct['cert_amazon']
+    if 'cert_bbfc' in json_dct:
+        work_dict['certification_bbfc'] = json_dct['cert_bbfc']
+    elif 'cert_bbfc' in cat_dct:
+        work_dict['certification_bbfc'] = cat_dct['cert_bbfc']
+    if csv_data[8]:
+        work_dict['acquisition_date'] = csv_data[8]
+
+    if 'genres' in json_dct:
+        genres = json_dct['genres']
+        all_genre = []
+        all_subject = []
+        for gen in genres:
+            gen1, gen2, sub1, sub2 = genre_retrieval_term(gen, description, csv_data[1])
+            if gen1:
+                all_genre.append(str(gen1))
+            if gen2:
+                all_genre.append(str(gen2))
+            if sub1:
+                all_subject.append(str(sub1))
+            if sub2:
+                all_subject.append(str(sub2))
+        if len(all_genre) > 0:
+            work_dict['genres'] = all_genre
+        if len(all_subject) > 0:
+            work_dict['subjects'] = all_subject
+    if 'start_date' in json_dct:
+        work_dict['title_date_start'] = json_dct['start_date'][:10]
+    elif 'start_date' in cat_dct:
+        work_dict['title_date_start'] = cat_dct['start_date'][:10]
+    else:
+        work_dict['title_date_start'] = ''
+
+    if 'black-and-white' in str(cat_dct):
+        work_dict['colour_manifestation'] = 'B'
+    else:
+        work_dict['colour_manifestation'] = 'C'
+    if 'attribute' in cat_dct:
+        work_dict['attribute'] = cat_dct['attribute']
+    if 'browse_url' in cat_dct:
+        work_dict['browse_url'] = cat_dct['browse_url']
+    if 'watch_url' in cat_dct:
+        work_dict['watch_url'] = cat_dct['watch_url']
+    if 'contributors' in json_dct:
+        work_dict['contributors'] = json_dct['contributors']
+    return work_dict
+
+
+def main():
+    '''
+    Retrieve CSV path from sys.argv[1]
+    Load into Python dictionary to iterate
+    and create CID work/man/item records.
+    Check in CID for alternative_number
+    matches to episodes, in case of
+    repeat runs of CSV and skip.
+    Retrieve metadata by title matching
+    to AMAZON programme folders
+    Where an episodic series, create a
+    series work. Link all records as needed.
+    '''
+    check_control()
+
+    csv_path = sys.argv[1]
+    if not os.path.isfile(csv_path):
+        sys.exit(f"Problem with supplied CSV path {csv_path}")
+
+    prog_dct = read_csv_to_dict(csv_path)
+    csv_range = len(prog_dct['title'])
+    LOGGER.info("=== Document augmented Amazon start ===============================")
+    for num in range(0, csv_range):
+        # Capture CSV supplied data to vars
+        title = prog_dct['title'][num]
+        article = prog_dct['article'][num]
+        nfa = prog_dct['nfa'][num]
+        level = prog_dct['level'][num]
+        season_num = int(prog_dct['series_number'][num])
+        genres = prog_dct['genre'][num]
+        episode_num = int(prog_dct['episode_number'][num])
+        platform = prog_dct['platform'][num]
+        year_release = prog_dct['year_of_release'][num]
+        acquisition_date = prog_dct['acquisition_date'][num]
+        print(article, title, nfa, level, season_num, genres, episode_num, platform, year_release, acquisition_date)
+
+        if platform != 'Amazon':
+            continue
+        LOGGER.info("** Processing item: %s %s", article, title)
+
+        # Make season number a list
+        csv_data = [year_release, title, article, nfa, level, season_num, genres, episode_num, acquisition_date]
+
+        # Match AMAZON folder to article/title
+        foldertitle = get_folder_title(article, title)
+        print(foldertitle)
+        matched_folders = get_folder_match(foldertitle)
+        if len(matched_folders) > 1:
+            print(f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}")
+            continue
+        elif len(matched_folders) == 0:
+            print(f"No match found: {article} {title}")
+            # At some point initiate 'title' search in PATV data
+            continue
+
+        print(f"TITLE MATCH: {article} {title} -- {matched_folders[0]}")
+        patv_id = matched_folders[0].split('_')[-1]
+
+        # Create Work/Manifestation if film/programme
+        if 'film' in level.lower() or 'programme' in level.lower():
+            # Check CID work exists / Make work if needed
+            hits, priref_work, work_title, work_title_art, groupings, alt_type = cid_check_works(patv_id)
+            if int(hits) > 0:
+                if '401361' in str(groupings):
+                    print(f"SKIPPING PRIREF FOUND: {priref_work}")
+                    LOGGER.info("Skipping this item, likely already has CID record: %s", priref_work)
+                    continue
+
+            prog_path = os.path.join(AMAZON, matched_folders[0])
+
+            # Retrieve all available
+            mono_cat = [ x for x in os.listdir(prog_path) if x.startswith('mono_catalogue_') ]
+            mono = [ x for x in os.listdir(prog_path) if x.startswith('monographic_') ]
+            try:
+                cat_data = retrieve_json(os.path.join(prog_path, mono_cat[0]))
+                cat_dct = get_cat_data(cat_data)
+            except Exception as exc:
+                print(exc)
+                cat_dct = {}
+            try:
+                mono_data = retrieve_json(os.path.join(prog_path, mono[0]))
+                mono_dct = get_json_data(mono_data)
+            except Exception as exc:
+                print(exc)
+                mono_dct = {}
+
+            if not cat_dct:
+                print("SKIPPING: Missing data from JSON files.")
+                continue
+            # Make monographic work here
+            data_dct = make_work_dictionary('', '', csv_data, cat_dct, mono_dct)
+            print(f"Dictionary for monograph creation: \n{data_dct}")
+            print("*************")
+            record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
+
+            print(f"Found priref is for monographic work: {priref_work}")
+            if priref_work.isnumeric():
+                if '401361' in str(groupings):
+                    print(f"SKIPPING: Monograph work already exists for {title}.")
+                    continue
+                if 'PATV asset id' in str(alt_type):
+                    LOGGER.warning("Matched Work Asset ID is for STORA created Work record: %s", priref_work)
+                if 'PATV Netflix asset id' in str(alt_type):
+                    LOGGER.warning("Matched Work Asset ID is for Netflix created Work record: %s", priref_work)
+            else:
+                priref_work = create_work('', '', '', data_dct, record, work, work_restricted)
+                if len(priref_work) == 0:
+                    LOGGER.warning("Monograph work record creation failed, skipping all further record creations")
+                    continue
+
+            print(f"PRIREF MONOGRAPH WORK CREATED: {priref_work}")
+            # Create contributors if supplied / or in addition to solo contributors
+            if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
+                print('** Contributor data found')
+                success = create_contributors(priref_work, data_dct['nfa_category'], data_dct['contributors'], 'Amazon')
+                if success:
+                    LOGGER.info("Contributor data written to Work record: %s", priref_work)
+                else:
+                    LOGGER.warning("Failure to write contributor data to Work record: %s", priref_work)
+
+            # Make monographic manifestation here
+            priref_man = create_manifestation(priref_work, work_title, work_title_art, data_dct, record, manifestation)
+            if len(priref_man) == 0:
+                LOGGER.warning("Monograph manifestation record creation failed, skipping all further record creations")
+                continue
+            print(f"PRIREF FOR MANIFESTATION: {priref_man}")
+            # Append URLS if present
+            if 'watch_url' in data_dct:
+                append_url_data(priref_work, priref_man, data_dct)
+            # Make monographic item record here
+            priref_item = create_item(priref_man, work_title, work_title_art, data_dct, record, item)
+            if len(priref_item) == 0:
+                LOGGER.warning("Monograph item record creation failed, skipping all further stages")
+                continue
+            print(f"PRIREF FOR ITEM: {priref_item}")
+
+        elif 'series' in level.lower():
+            prog_path = os.path.join(AMAZON, matched_folders[0])
+            json_fpaths = get_json_files(prog_path)
+            series_priref = ''
+            # Check CID work exists / Make work if needed
+            hits, series_priref, work_title, work_title_art, groupings, alt_type = cid_check_works(patv_id)
+            if series_priref.isnumeric():
+                if '401361' in str(groupings):
+                    print(f"Series work already exists for {title}.")
+                if 'PATV asset id' in str(alt_type):
+                    LOGGER.warning("Series found was created for STORA off-air broadcast series: %s", series_priref)
+                if 'PATV Netflix asset ID' in str(alt_type):
+                    LOGGER.warning("Series found was created for Netflix streaming series: %s", series_priref)
+            else:
+                print("Series work does not exist, creating series work now.")
+                series_json = [ x for x in os.listdir(prog_path) if x.startswith('series_') and x.endswith('.json')]
+                if not len(series_json) == 1:
+                    continue
+
+                # Get series ID title and genre
+                series_data = retrieve_json(os.path.join(prog_path, series_json[0]))
+                series_dct = get_json_data(series_data)
+                series_data_dct = make_work_dictionary('', '', csv_data, None, series_dct)
+                record, series_work, work, work_restricted, manifestation, item = build_defaults(series_data_dct)
+                work_title, work_title_art = split_title(series_data_dct['title'])
+
+                # Make series work here
+                if not series_data_dct:
+                    continue
+                series_priref = create_series_work(patv_id, series_data_dct, csv_data, series_work, work_restricted, record)
+                if not series_priref:
+                    print("Series work creation failure. Skipping episodes...")
+                    continue
+
+            # Fetch target season data
+            season_fpaths = [x for x in json_fpaths if f'season_{season_num}_' in str(x)]
+            episode_count = 0
+            for num in range(1, episode_num + 1):
+                episode_count += 1
+                episode_fpaths = [x for x in season_fpaths if f'episode_{num}_' in str(x) and x.endswith('.json')]
+                if not episode_fpaths:
+                    continue
+
+                episode_folder = os.path.basename(os.path.split(episode_fpaths[0])[0])
+                episode_id = episode_folder.split('_')[-1]
+                print(f"** Episode ID: {episode_id} {title}")
+
+                # Check CID work exists / Make work if needed
+                hits, priref_episode, _, _, groupings, alt_type = cid_check_works(episode_id)
+                if int(hits) > 0:
+                    if '401361' in str(groupings):
+                        print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
+                        LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
+                        continue
+                    if 'PATV asset id' in str(alt_type):
+                        LOGGER.warning("Skipping: Work record found from STORA with matching PATV asset id: %s", priref_episode)
+                        continue
+                    if 'PATV Netflix asset id' in str(alt_type):
+                        LOGGER.warning("Skipping: Work record found from Netflix with matching PATV asset id: %s", priref_episode)
+                        continue
+                print("New episode_id found for Work. Linking to series work")
+
+                # Retrieve all available data
+                ep_cat_json = [ x for x in episode_fpaths if 'episode_catalogue_' in str(x) ]
+                ep_json = [ x for x in episode_fpaths if 'episode_' in str(x) and x.endswith(f"{episode_id}.json") ]
+                print(ep_cat_json)
+                print(ep_json)
+
+                try:
+                    ep_cat_data = retrieve_json(ep_cat_json[0])
+                    ep_cat_dct = get_cat_data(ep_cat_data)
+                except Exception as exc:
+                    print(exc)
+                    ep_cat_dct = {}
+                try:
+                    ep_data = retrieve_json(ep_json[0])
+                    ep_dct = get_json_data(ep_data)
+                except Exception as exc:
+                    print(exc)
+                    ep_dct = {}
+
+                # Make episodic work here
+                data_dct = make_work_dictionary(num, episode_id, csv_data, ep_cat_dct, ep_dct)
+                print(f"Dictionary for Work creation:\n{data_dct}")
+                print('**************')
+                record, series_work, work, work_restricted, manifestation, item = build_defaults(data_dct)
+                priref_episode = create_work(series_priref, work_title, work_title_art, data_dct, record, work, work_restricted)
+                if len(priref_episode) == 0:
+                    LOGGER.warning("Episodic Work record creation failed, skipping all further record creations")
+                    continue
+                print(f"Episode work priref: {priref_episode}")
+
+                # Create contributors if supplied / or in addition to solo contributors
+                if 'contributors' in data_dct and len(data_dct['contributors']) >= 1:
+                    print('** Contributor data found')
+                    success = create_contributors(priref_episode, data_dct['nfa_category'], data_dct['contributors'], 'Amazon')
+                    if success:
+                        LOGGER.info("Contributor data written to Work record: %s", priref_episode)
+                    else:
+                        LOGGER.warning("Failure to write contributor data to Work record: %s", priref_episode)
+
+                # Make episodic manifestation here
+                priref_ep_man = create_manifestation(priref_episode, work_title, work_title_art, data_dct, record, manifestation)
+                if len(priref_ep_man) == 0:
+                    LOGGER.warning("Episodic manifestation record creation failed, skipping all further record creations")
+                    continue
+                print(f"PRIREF EP MANIFESTATION: {priref_ep_man}")
+                # Append URLS if present
+                if 'watch_url' in data_dct:
+                    append_url_data(priref_episode, priref_ep_man, data_dct)
+
+                # Make episodic item record here
+                priref_ep_item = create_item(priref_ep_man, work_title, work_title_art, data_dct, record, item)
+                if len(priref_ep_item) == 0:
+                    LOGGER.warning("Episodic item record creation failed, skipping onto next stage")
+                    continue
+                print(f"PRIREF FOR ITEM: {priref_ep_item}")
+
+            if episode_count != int(episode_num):
+                print("============ Episodes found in AMAZON folder do not match total episodes supplied =============")
+
+    LOGGER.info("=== Document augmented Amazon end =================================")
+
+
+def firstname_split(person):
+    '''
+    Splits 'firstname surname' and returns 'surname, firstname'
+    '''
+    name_list = person.split()
+    count = len(person.split())
+    if count > 2:
+        firstname, *rest, surname = name_list
+        rest = ' '.join(rest)
+        return surname + ", " + firstname + " " + rest
+    elif count > 1:
+        firstname, surname = name_list
+        return surname + ", " + firstname
+    else:
+        return person
+
+
+def genre_retrieval_term(category_code, description, title):
+    '''
+    Check genre yaml to retrieve genre prirefs
+    '''
+    category_data = genre_retrieval(category_code, description, title)
+    try:
+        genre1 = category_data[0]
+    except Exception:
+        genre1 = ''
+    try:
+        genre2 = category_data[1]
+    except Exception:
+        genre2 = ''
+    try:
+        subject1 = category_data[2]
+    except Exception:
+        subject1 = ''
+    try:
+        subject2 = category_data[3]
+    except Exception:
+        subject2 = ''
+
+    return (genre1, genre2, subject1, subject2)
+
+
+def build_defaults(data):
+    '''
+    Get detailed information
+    and build record_defaults dict
+    '''
+    record = ([{'input.name': 'datadigipres'},
+               {'input.date': str(datetime.datetime.now())[:10]},
+               {'input.time': str(datetime.datetime.now())[11:19]},
+               {'input.notes': 'Amazon metadata integration - automated bulk documentation'},
+               {'record_access.user': 'BFIiispublic'},
+               {'record_access.rights': '0'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'System Management'},
+               {'record_access.rights': '3'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Information Specialist'},
+               {'record_access.rights': '3'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Digital Operations'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Documentation'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Curator'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Special Collections'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': 'Librarian'},
+               {'record_access.rights': '2'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'record_access.user': '$REST'},
+               {'record_access.rights': '1'},
+               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               {'grouping.lref': '401361'}, # Amazon
+               {'language.lref': '74129'},
+               {'language.type': 'DIALORIG'}])
+
+    series_work = ([{'record_type': 'WORK'},
+                    {'worklevel_type': 'SERIAL'},
+                    {'work_type': "T"},
+                    {'description.type.lref': '100298'},
+                    {'production_country.lref': '73938'},
+                    {'nfa_category': data['nfa_category']}])
+
+    work = ([{'record_type': 'WORK'},
+             {'worklevel_type': 'MONOGRAPHIC'},
+             {'work_type': data['work_type']},
+             {'description.type.lref': '100298'},
+             {'production_country.lref': '73938'},
+             {'nfa_category': data['nfa_category']}])
+
+    work_restricted = ([{'application_restriction': 'MEDIATHEQUE'},
+                        {'application_restriction.date': str(datetime.datetime.now())[:10]},
+                        {'application_restriction.reason': 'STRATEGIC'},
+                        {'application_restriction.duration': 'PERM'},
+                        {'application_restriction.review_date': '2030-01-01'},
+                        {'application_restriction.authoriser': 'mcconnachies'},
+                        {'application_restriction.notes': 'Amazon UK streaming content - pending discussion'}])
+
+    manifestation = ([{'record_type': 'MANIFESTATION'},
+                      {'manifestationlevel_type': 'INTERNET'},
+                      {'format_high_level': 'Video - Digital'},
+                      {'format_low_level.lref': '395150'}, # Apple ProRes 422 HQ
+                      {'colour_manifestation': data['colour_manifestation']},
+                      {'sound_manifestation': 'SOUN'},
+                      {'transmission_date': data['title_date_start']},
+                      {'availability.name.lref': '999823516'},
+                      {'transmission_coverage': 'STR'},
+                      {'vod_service_type.lref': '398712'},
+                      {'aspect_ratio': '16:9'},
+                      {'country_manifestation': 'United Kingdom'},
+                      {'notes': 'Manifestation representing the UK streaming platform release of the Work.'}])
+
+    item = ([{'record_type': 'ITEM'},
+             {'item_type': 'DIGITAL'},
+             {'copy_status': 'M'},
+             {'copy_usage.lref': '131560'},
+             {'file_type.lref': '114307'}, # MOV
+             {'code_type.lref': '114308'}, # ProRes 422 (HQ)
+             {'accession_date': str(datetime.datetime.now())[:10]},
+             {'acquisition.date': data['acquisition_date']},
+             {'acquisition.method.lref': '132853'},
+             {'acquisition.source.lref': '999923912'},
+             {'acquisition.source.type': 'DONOR'},
+             {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
+                                   'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
+             {'access_conditions.date': str(datetime.datetime.now())[:10]}])
+
+    return (record, series_work, work, work_restricted, manifestation, item)
+
+
+def create_series_work(patv_id, series_dct, csv_data, series_work, work_restricted, record):
+    '''
+    Build data needed to make
+    episodic series work to
+    link all episodes to
+    [year_release, title, article, nfa, level, season_num, genres, episode_num]
+    '''
+    series_work_id = None
+    series_work_values = []
+    series_work_values.extend(record)
+    series_work_values.extend(series_work)
+    series_work_values.extend(work_restricted)
+
+    if 'title' in series_dct:
+        title = series_dct['title']
+        series_work_values.append({'title': title})
+        series_work_values.append({'title.language': 'English'})
+        series_work_values.append({'title.type': '05_MAIN'})
+    if 'title_article' in series_dct:
+        if series_dct['title_article'] != '-' and series_dct['title_article'] != '':
+            series_work_values.append({'title.article': series_dct['title_article']})
+    if len('patv_id') > 0:
+        series_work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
+        series_work_values.append({'alternative_number': patv_id})
+    if 'd_short' in series_dct:
+        series_work_values.append({'label.type': 'EPGSHORT'})
+        series_work_values.append({'label.text': series_dct['d_short']})
+        series_work_values.append({'label.source': 'EBS augmented EPG supply'})
+        series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
+    if 'd_medium' in series_dct:
+        series_work_values.append({'label.type': 'EPGMEDIUM'})
+        series_work_values.append({'label.text': series_dct['d_medium']})
+        series_work_values.append({'label.source': 'EBS augmented EPG supply'})
+        series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
+    if 'd_long' in series_dct:
+        series_work_values.append({'label.type': 'EPGLONG'})
+        series_work_values.append({'label.text': series_dct['d_long']})
+        series_work_values.append({'label.source': 'EBS augmented EPG supply'})
+        series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
+    if 'description' in series_dct:
+        series_work_values.append({'description': series_dct['description']})
+        series_work_values.append({'description.type': 'Synopsis'})
+        series_work_values.append({'description.date': str(datetime.datetime.now())[:10]})
+    print(f"Series work values:\n{series_work_values}")
+
+    # Start creating CID Work Series record
+    series_work_xml = adlib.create_record_data('', series_work_values)
+
+    try:
+        print("Attempting to create CID record")
+        work_rec = adlib.post(CID_API, series_work_xml, 'works', 'insertrecord')
+        if work_rec:
+            try:
+                print("Populating series_work_id and object_number variables")
+                series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+                print(f'* Series record created with Priref {series_work_id}')
+                print(f'* Series record created with Object number {object_number}')
+                LOGGER.info('Work record created with priref %s', series_work_id)
+            except (IndexError, TypeError, KeyError) as err:
+                print("Unable to create series record", err)
+                return None
+    except Exception as err:
+        print(f'* Unable to create Work record for <{title}> {err}')
+        LOGGER.critical('Unable to create Work record for <%s>', title)
+        return None
+    
+    series_genres = []
+    if 'genres' in series_dct:
+        extracted = series_dct['genres']
+        for genr in extracted:
+            series_genres.append({'content.genre.lref': genr})
+    if 'subjects' in series_dct:
+        subs = series_dct['subjects']
+        for sub in subs:
+            series_genres.append({'content.subject.lref': sub})
+    series_genres_filter = [i for n, i in enumerate(series_genres) if i not in series_genres[n + 1:]]
+    if series_genres_filter:
+        print(series_genres, series_genres_filter)
+        print("**** Attempting to write work genres to records ****")
+        series_genres_xml = adlib.create_record_data(series_work_id, series_genres_filter)
+        success = adlib.post(CID_API, series_genres_xml, 'works', 'updaterecord')
+        if success is None:
+            LOGGER.info("Failed to update genres to Series Work record: %s", series_work_id)
+        LOGGER.info("Series genres updated to work: %s", series_work_id)
+
+    return series_work_id
+
+
+def create_work(part_of_priref, work_title, work_title_art, work_dict, record_def, work_def, work_restricted):
+    '''
+    Build all data needed to make new work.
+    work_def from work/series_work defaults
+    Hand in series or episode, part_of_priref
+    populated as needed.
+    '''
+    work_id = ''
+    work_genres = []
+    work_values = []
+    work_values.extend(record_def)
+    work_values.extend(work_def)
+    work_values.extend(work_restricted)
+
+    # Add specifics for series/episode or monograph works
+    if 'title' in work_dict:
+        title_check = work_dict['title']
+        if title_check.startswith('Episode ') and len(title_check) < 11:
+            work_values.append({'title': f"{work_title} {work_dict['title']}"})
+            if work_title_art != '-' and work_title_art != '':
+                work_values.append({'title.article': work_title_art})
+        else:
+            work_values.append({'title': work_dict['title']})
+            if 'title_article' in work_dict:
+                if work_dict['title_article'] != '-' and work_dict['title_article'] != '':
+                    work_values.append({'title.article': work_dict['title_article']})
+        work_values.append({'title.language': 'English'})
+        work_values.append({'title.type': '05_MAIN'})
+
+    if len(work_dict['title_date_start']) > 0:
+        work_values.append({'title_date_start': work_dict['title_date_start']})
+        work_values.append({'title_date.type': '03_R'})
+    if 'patv_id' in work_dict:
+        work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
+        work_values.append({'alternative_number': work_dict['patv_id']})
+    if 'cat_id' in work_dict:
+        work_values.append({'alternative_number.type': 'PATV Amazon catalogue ID'})
+        work_values.append({'alternative_number': work_dict['cat_id']})
+    if 'episode_id' in work_dict:
+        work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
+        work_values.append({'alternative_number': work_dict['episode_id']})
+    if part_of_priref:
+        work_values.append({'part_of_reference.lref': part_of_priref})
+    if 'episode_num' in work_dict:
+        work_values.append({'part_unit': 'EPISODE'})
+        work_values.append({'part_unit.value': work_dict['episode_num']})
+        work_values.append({'part_unit.valuetotal': work_dict['episode_total']})
+    if 'series_num' in work_dict:
+        work_values.append({'part_unit': 'SERIES'})
+        work_values.append({'part_unit.value': work_dict['series_num']})
+    if 'production_year' in work_dict:
+        work_values.append({'title_date_start': work_dict['production_year']})
+        work_values.append({'title_date.type': '02_P'})
+    if 'd_short' in work_dict:
+        work_values.append({'label.type': 'EPGSHORT'})
+        work_values.append({'label.text': work_dict['d_short']})
+        work_values.append({'label.source': 'EBS augmented EPG supply'})
+        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
+    if 'd_medium' in work_dict:
+        work_values.append({'label.type': 'EPGMEDIUM'})
+        work_values.append({'label.text': work_dict['d_medium']})
+        work_values.append({'label.source': 'EBS augmented EPG supply'})
+        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
+    if 'd_long' in work_dict:
+        work_values.append({'label.type': 'EPGLONG'})
+        work_values.append({'label.text': work_dict['d_long']})
+        work_values.append({'label.source': 'EBS augmented EPG supply'})
+        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
+    if 'description' in work_dict:
+        work_values.append({'description': work_dict['description']})
+        work_values.append({'description.type': 'Synopsis'})
+        work_values.append({'description.date': str(datetime.datetime.now())[:10]})
+    print(f"Work values:\n{work_values}")
+
+    # Start creating CID Work Series record
+    work_xml = adlib.create_record_data('', work_values)
+    try:
+        print("Attempting to create CID record")
+        work_rec = adlib.post(CID_API, work_xml, 'works', 'insertrecord')
+        if work_rec:
+            try:
+                print("Populating work_id and object_number variables")
+                work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+                print(f'* Work record created with Priref {work_id}')
+                print(f'* Work record created with Object number {object_number}')
+                LOGGER.info('Work record created with priref %s', work_id)
+            except (IndexError, TypeError, KeyError) as err:
+                print("Unable to create work record", err)
+                return None
+    except Exception as err:
+        print(f"* Unable to create Work record for <{work_dict['title']}> {err}")
+        LOGGER.critical('** Unable to create Work record for <%s>', work_dict['title'])
+        return None
+
+    work_genres = []
+    if 'genres' in work_dict:
+        extracted = work_dict['genres']
+        for genr in extracted:
+            work_genres.append({'content.genre.lref': genr})
+    if 'subjects' in work_dict:
+        subs = work_dict['subjects']
+        for sub in subs:
+            work_genres.append({'content.subject.lref': sub})
+    work_genres_filter = [i for n, i in enumerate(work_genres) if i not in work_genres[n + 1:]]
+    if work_genres_filter:
+        print(f"**** Attempting to write work genres to records {work_genres_filter} ****")
+        work_genres_xml = adlib.create_record_data(work_id, work_genres_filter)
+        success = adlib.post(CID_API, work_genres_xml, 'works', 'updaterecord')
+        if success is None:
+            LOGGER.info("Failed to update genres to Series Work record: %s", work_id)
+        LOGGER.info("Series genres updated to work: %s", work_id)
+
+    return work_id
+
+
+def create_manifestation(work_priref, work_title, work_title_art, work_dict, record_defaults, manifestation_defaults):
+    '''
+    Create a manifestation record,
+    linked to work_priref
+    '''
+    manifestation_id = ''
+    print(work_dict)
+    title = work_dict['title']
+    manifestation_values = []
+    manifestation_values.extend(record_defaults)
+    manifestation_values.extend(manifestation_defaults)
+
+    if 'title' in work_dict:
+        title_check = work_dict['title']
+        if title_check.startswith('Episode ') and len(title_check) < 11:
+            manifestation_values.append({'title': f"{work_title} {work_dict['title']}"})
+            if len(work_title_art) > 1:
+                manifestation_values.append({'title.article': work_title_art})
+        else:
+            manifestation_values.append({'title': work_dict['title']})
+            if 'title_article' in work_dict:
+                if work_dict['title_article'] != '-' and work_dict['title_article'] != '':
+                    manifestation_values.append({'title.article': work_dict['title_article']})
+        manifestation_values.append({'title.language': 'English'})
+        manifestation_values.append({'title.type': '05_MAIN'})
+    manifestation_values.append({'part_of_reference.lref': work_priref})
+    if 'runtime' in work_dict:
+        manifestation_values.append({'runtime': int(work_dict['runtime'])})
+    if 'episode_id' in work_dict:
+        manifestation_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
+        manifestation_values.append({'alternative_number': work_dict['episode_id']})
+    if 'attribute' in work_dict:
+        if work_dict['attribute']:
+            atts = ', '.join(work_dict['attribute'])
+            manifestation_values.append({'utb.fieldname': 'PATV Amazon attributes'})
+            manifestation_values.append({'utb.content': atts})
+    if 'certification_amazon' in work_dict:
+        manifestation_values.append({'utb.fieldname': 'Amazon certification'})
+        manifestation_values.append({'utb.content': work_dict['certification_amazon']})
+    if 'certification_bbfc' in work_dict:
+        manifestation_values.append({'utb.fieldname': 'BBFC certification'})
+        manifestation_values.append({'utb.content': work_dict['certification_bbfc']})
+    print(f"Manifestation values:\n{manifestation_values}")
+
+    broadcast_addition = []
+    manifestation_xml = adlib.create_record_data('', manifestation_values)
+    try:
+        print("Attempting to create CID record")
+        man_rec = adlib.post(CID_API, manifestation_xml, 'manifestations', 'insertrecord')
+        if man_rec:
+            try:
+                print("Populating manifestation_id and object_number variables")
+                manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
+                object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
+                print(f'* Manifestation record created with Priref {manifestation_id}')
+                print(f'* Manifestation record created with Object number {object_number}')
+                LOGGER.info('Manifestation record created with priref %s', manifestation_id)
+            except Exception as err:
+                print("Unable to create Manifestation record", err)
+                return None
+    except Exception as err:
+        print(f"* Unable to create Manifestation record for <{work_dict['title']}> {err}")
+        LOGGER.critical('** Unable to create Manifestation record for <%s>', work_dict['title'])
+        return None
+
+    broadcast_addition = [{'broadcast_company.lref': '999823516'}] # Amazon Prime Video
+    broadcast_xml = adlib.create_record_data(manifestation_id, broadcast_addition)
+    print("**** Attempting to write work genres to records ****")
+
+    success = adlib.post(CID_API, broadcast_xml, 'manifestations', 'updaterecord')
+    if success is None:
+        LOGGER.info("Failed to update Broadcast Company data to Manifestation record: %s", manifestation_id)
+    LOGGER.info("Broadcast Company data updated to work: %s", manifestation_id)
+
+    return manifestation_id
+
+
+def append_url_data(work_priref, man_priref, data=None):
+    '''
+    Receive Amazon URLs and priref and append to CID manifestation
+    '''
+
+    # Write to manifest
+    if '/?autoplay' in data['watch_url']:
+        url_trim = data['watch_url'].split('/?autoplay')[0]
+    else:
+        url_trim = data['watch_url']
+    payload_mid = f"<URL><![CDATA[{url_trim}]]></URL><URL.description>Amazon viewing URL</URL.description>"
+    payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
+    payload_end = "</URL></record></recordList></adlibXML>"
+    payload = payload_head + payload_mid + payload_end
+
+    success = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
+    if success is None:
+        LOGGER.info("append_url_data(): Failed to update Watch URL data to Manifestation record: %s", man_priref)
+    LOGGER.info("append_url_data(): Watch URL data updated to Manifestation: %s", man_priref)
+
+    payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
+    payload = payload_head + payload_mid + payload_end
+
+    success = adlib.post(CID_API, payload, 'works', 'updaterecord')
+    if success is None:
+        LOGGER.info("append_url_data(): Failed to update Watch URL data to Work record: %s", work_priref)
+    LOGGER.info("append_url_data(): Watch URL data updated to work: %s", work_priref)
+
+
+def create_item(man_priref, work_title, work_title_art, work_dict, record_defaults, item_default):
+    '''
+    Create item record,
+    link to manifestation
+    '''
+    item_id = ''
+    item_object_number = ''
+    item_values = []
+    item_values.extend(record_defaults)
+    item_values.extend(item_default)
+    item_values.append({'part_of_reference.lref': man_priref})
+    if 'title' in work_dict:
+        title_check = work_dict['title']
+        if title_check.startswith('Episode ') and len(title_check) < 11:
+            item_values.append({'title': f"{work_title} {work_dict['title']}"})
+            if len(work_title_art) > 1:
+                item_values.append({'title.article': work_title_art})
+        else:
+            item_values.append({'title': work_dict['title']})
+            if 'title_article' in work_dict:
+                if work_dict['title_article'] != '-' and work_dict['title_article'] != '':
+                    item_values.append({'title.article': work_dict['title_article']})
+        item_values.append({'title.language': 'English'})
+        item_values.append({'title.type': '05_MAIN'})
+
+    print(item_values)
+    item_xml = adlib.create_record_data('', item_values)
+    try:
+        print("Attempting to create CID Item record")
+        item_rec = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
+        if item_rec:
+            try:
+                print("Populating item_id and object_number variables")
+                item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
+                item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
+                print(f'* Item record created with Priref {item_id}')
+                print(f'* Item record created with Object number {item_object_number}')
+                LOGGER.info('Item record created with priref %s', item_id)
+            except Exception as err:
+                print("Unable to create Item record", err)
+                return None
+    except Exception as err:
+        print(f"* Unable to create Item record for <{work_dict['title']}> {err}")
+        LOGGER.critical('** Unable to create Item record for <%s>', work_dict['title'])
+        return None
+
+    return item_object_number, item_id
+
+
+if __name__ == '__main__':
+    main()

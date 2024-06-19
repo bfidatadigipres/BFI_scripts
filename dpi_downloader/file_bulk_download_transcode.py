@@ -45,6 +45,8 @@ Single:
 9. Sends notification email to user who requested download
    with unique transcode message when complete.
 
+Blocks download from 'netflix' or 'amazon' buckets.
+
 Joanna White
 2023
 '''
@@ -58,20 +60,17 @@ import hashlib
 import logging
 import itertools
 from datetime import datetime
-import requests
 from ds3 import ds3, ds3Helpers
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
 from downloaded_transcode_prores import transcode_mov
 from downloaded_transcode_mp4 import transcode_mp4
 from downloaded_transcode_mp4_watermark import transcode_mp4_access
 
 # GLOBAL VARIABLES
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor
+CID_API = os.environ['CID_API4']
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 LOG_PATH = os.environ['LOG_PATH']
@@ -109,31 +108,30 @@ def get_media_original_filename(fname):
     '''
     Retrieve the reference_number from CID media record
     '''
-    query = {
-        'database': 'media',
-        'search': f'reference_number="{fname}"',
-        'output': 'json'}
-
-    try:
-        query_result = requests.get(CID_API, params=query)
-        results = query_result.json()
-    except Exception as err:
-        LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s\n%s", fname, err)
+    search = f'reference_number="{fname}"'
+    fields = [
+        'priref',
+        'imagen.media.original_filename',
+        'preservation_bucket'
+    ]
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
+    if record is None:
+        LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s\n%s", fname)
         return None, None, None
-    try:
-        media_priref = results['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
-    except (IndexError, TypeError, KeyError) as exc:
-        print(exc)
+    if 'priref' in str(record):
+        media_priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    else:
+        print(record)
         media_priref = ''
-    try:
-        orig_fname = results['adlibJSON']['recordList']['record'][0]['imagen.media.original_filename'][0]
-    except (IndexError, TypeError, KeyError) as exc:
-        print(exc)
+    if 'imagen.media.original_filename' in str(record):
+        orig_fname = adlib.retrieve_field_name(record[0], 'imagen.media.original_filename')[0]
+    else:
+        print(record)
         orig_fname = ''
-    try:
-        bucket = results['adlibJSON']['recordList']['record'][0]['preservation_bucket'][0]
-    except (IndexError, TypeError, KeyError) as exc:
-        print(exc)
+    if 'preservation_bucket' in str(record):
+        bucket = adlib.retrieve_field_name(record[0], 'preservation_bucket')[0]
+    else:
+        print(record)
         bucket = ''
     if bucket == '':
         bucket = 'imagen'
@@ -149,18 +147,19 @@ def get_prirefs(pointer):
     query = {'command': 'getpointerfile',
              'database': 'items',
              'number': pointer,
-             'output': 'json'}
+             'output': 'jsonv1'}
 
     try:
-        result = CID.get(query)
-        data = result.records[0]
-        print(f"********** {data}")
-        prirefs = data['hit']
-        LOGGER.info("Prirefs retrieved: %s", prirefs)
-        return prirefs
+        result = adlib.get(CID_API, query)
     except Exception as exc:
-        LOGGER.exception('get_prirefs(): Unable to get pointer file %s', pointer)
-        raise Exception from exc
+        LOGGER.exception('get_prirefs(): Unable to get pointer file %s\n%s', pointer, exc)
+        result = None
+
+    if not result['adlibJSON']['recordList']['record'][0]['hitlist']:
+        return None
+    prirefs = result['adlibJSON']['recordList']['record'][0]['hitlist']
+    LOGGER.info("Prirefs retrieved: %s", prirefs)
+    return prirefs
 
 
 def get_dictionary(priref_list):
@@ -171,8 +170,8 @@ def get_dictionary(priref_list):
     print("Launching get_dictionary()")
     data_dict = {}
     for priref in priref_list:
-        data = get_media_record_data(priref)
-        data_dict[priref] = data
+        data = get_media_record_data(str(priref))
+        data_dict[str(priref)] = data
     print(data_dict)
     return data_dict
 
@@ -183,43 +182,41 @@ def get_media_record_data(priref):
     '''
     priref = priref.strip()
     print("Launching get_media_record_data()")
-    query = {'database': 'media',
-             'search': f'object.object_number.lref="{priref}"',
-             'fields': 'imagen.media.original_filename, reference_number, preservation_bucket',
-             'limit': '0',
-             'output': 'json'}
-    try:
-        query_result = requests.get(CID_API, params=query)
-        results = query_result.json()
-    except Exception as err:
-        LOGGER.exception("get_media_record_data: Unable to match filename to CID media record: %s\n%s", priref, err)
-        results = []
-        print(err)
+    search = f'object.object_number.lref="{priref}"'
+    fields = [
+        'imagen.media.original_filename',
+        'reference_number',
+        'preservation_bucket'
+    ]
 
-    if 'recordList' not in str(results):
+    hits, records = adlib.retrieve_record(CID_API, 'media', search, '0', fields)
+    if hits is None:
+        LOGGER.exception("get_media_record_data: Error with API request with search: %s", search)
+        return []
+    if records is None:
+        LOGGER.exception("get_media_record_data: Unable to match filename to CID media record: %s\n%s", priref)
         return []
 
-    total_returns = len(results['adlibJSON']['recordList']['record'])
-    print(total_returns)
+    print(hits)
     all_files = []
-    for num in range(0, total_returns):
-        try:
-            ref_num = results['adlibJSON']['recordList']['record'][num]['reference_number'][0]
+    for num in range(0, hits):
+        if 'reference_number' in str(records[num]):
+            ref_num = adlib.retrieve_field_name(records[num], 'reference_number')[0]
             print(ref_num)
-        except (IndexError, TypeError, KeyError) as exc:
-            print(exc)
+        else:
+            print(records[num])
             ref_num = ''
-        try:
-            orig_fname = results['adlibJSON']['recordList']['record'][num]['imagen.media.original_filename'][0]
+        if 'imagen.media.original_filename' in str(records[num]):
+            orig_fname = adlib.retrieve_field_name(records[num], 'imagen.media.original_filename')[0]
             print(orig_fname)
-        except (IndexError, TypeError, KeyError) as exc:
-            print(exc)
+        else:
+            print(records[num])
             orig_fname = ''
-        try:
-            bucket = results['adlibJSON']['recordList']['record'][num]['preservation_bucket'][0]
+        if 'preservation_bucket' in str(records[num]):
+            bucket = adlib.retrieve_field_name(records[num], 'preservation_bucket')[0]
             print(orig_fname)
-        except (IndexError, TypeError, KeyError) as exc:
-            print(exc)
+        else:
+            print(records[num])
             bucket = ''
         if bucket == '':
             bucket = 'imagen'
@@ -396,8 +393,8 @@ def main():
                 LOGGER.warning("Filename is not recognised, no matching CID Media record")
                 update_table(fname, transcode, 'Filename not in CID')
                 continue
-            if 'netflix' in bucket:
-                LOGGER.warning("Filename is a Netflix item and will not be downloaded")
+            if 'netflix' in str(bucket) or 'amazon' in str(bucket):
+                LOGGER.warning("Filename is a Netflix/Amazon item and will not be downloaded")
                 update_table(fname, transcode, 'Filename not accessible')
                 continue
             LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)
@@ -483,8 +480,8 @@ def main():
                         if not len(filename) > 0:
                             LOGGER.warning("Filename is not recognised, no matching CID Media record")
                             continue
-                        if 'Netflix' in bucket:
-                            LOGGER.warning("Filename is a Netflix item and will not be downloaded")
+                        if 'netflix' in str(bucket) or 'amazon' in str(bucket):
+                            LOGGER.warning("Filename is a Netflix/Amazon item and will not be downloaded")
                             update_table(fname, transcode, 'Filename not accessible')
                             continue
                         LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)

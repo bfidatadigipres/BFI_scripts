@@ -48,7 +48,7 @@ FLLPTH = sys.argv[1].split('/')[:4]
 LOG_PREFIX = '_'.join(FLLPTH)
 LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode_make_jpeg_legacy.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 TRANSCODE = os.environ['TRANSCODING']
 HOST = os.uname()[1]
 

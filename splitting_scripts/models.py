@@ -28,7 +28,7 @@ import adlib_v3 as adlib
 # Global variables
 LOGS = os.environ['LOG_PATH']
 LOG_PATH = os.path.join(LOGS, 'splitting_models.log')
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('split_qnap_test')

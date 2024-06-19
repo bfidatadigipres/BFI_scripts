@@ -62,7 +62,7 @@ DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 TODAY = str(datetime.today())
 
 # Setup logging

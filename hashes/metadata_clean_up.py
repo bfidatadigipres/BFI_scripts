@@ -33,7 +33,7 @@ import adlib_v3 as adlib
 LOG_PATH = os.environ['LOG_PATH']
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
 CSV_PATH = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 
 # Setup logging
 LOGGER = logging.getLogger('metadata_clean_up')

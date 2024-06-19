@@ -23,7 +23,7 @@ sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
 # Global variables
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 MOVE_FOLDER = False
 INPUT_PATH = os.path.join(os.environ['IS_MEDIA'], 'donor_files/renamed_ready_for_ingest/')
 INGEST_PATH = os.path.join(os.environ['AUTOINGEST_IS_ING'], 'ingest/proxy/image/')

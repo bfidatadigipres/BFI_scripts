@@ -16,7 +16,7 @@ import datetime
 from lxml import etree, html
 from dicttoxml import dicttoxml
 
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 HEADERS = {
     'Content-Type': 'text/xml'
 }

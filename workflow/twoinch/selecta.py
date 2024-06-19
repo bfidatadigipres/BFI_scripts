@@ -28,7 +28,7 @@ import tape_model
 import selections
 
 LOGS = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 SELECTIONS = os.path.join(os.environ['WORKFLOW'], 'twoinch/selections.csv')

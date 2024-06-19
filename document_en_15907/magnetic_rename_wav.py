@@ -49,7 +49,7 @@ AUTOINGEST = os.path.join(os.environ['AUDIO_OPS_FIN'], os.environ['AUTOINGEST_AU
 LOCAL_LOG = os.path.join(WAV_ARCHIVE_PATH, 'magnetic_preservation_renaming.log')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 
 # Setup logging
 LOGGER = logging.getLogger('magnetic_rename_wav')

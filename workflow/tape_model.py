@@ -14,7 +14,7 @@ sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
 # Global variables
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 
 
 class Tape():

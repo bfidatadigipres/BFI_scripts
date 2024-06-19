@@ -10,9 +10,6 @@ run with an open modification time but
 later to be set to a given amount of
 days that matches script run frequency.
 
-NOTE: Assuming one bucket will suffice
-      initially, to be expanded if needed.
-
 Joanna White
 2024
 '''
@@ -194,9 +191,7 @@ def main():
         replace_list = []
         for folder in folder_list:
             check_control()
-            if folder.startswith(('201', '2020', '2021')):
-                continue
-            if folder in ['202202', '202201']:
+            if folder != '202406':
                 continue
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)

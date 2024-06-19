@@ -343,6 +343,7 @@ def main():
         shutil.move(fullpath, deletion_path)
         # Add deletion here
         try:
+            os.chmod(deletion_path, 0o777)
             os.rmdir(deletion_path)
             LOGGER.info("File deleted: %s", deletion_path)
         except Exception as err:

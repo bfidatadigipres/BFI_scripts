@@ -69,9 +69,9 @@ def get_candidates():
     try:
         result = adlib.get(CID_API, q)
         candidates = result['adlibJSON']['recordList']['record'][0]['hitlist']
-    except Exception:
+    except Exception as exc:
         print(result['adlibJSON']['diagnostic'])
-        raise Exception('Cannot getpointerfile')
+        raise Exception('Cannot getpointerfile') from exc
 
     write_to_log(f"Total candidates: {len(candidates)}")
     return candidates

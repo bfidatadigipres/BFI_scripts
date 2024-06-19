@@ -18,6 +18,7 @@ import csv
 import json
 import uuid
 import datetime
+from tenacity import retry, stop_after_attempt
 
 # Local imports
 sys.path.append(os.environ['CODE'])
@@ -72,17 +73,20 @@ def get_candidates():
         print(result['adlibJSON']['diagnostic'])
         raise Exception('Cannot getpointerfile')
 
+    write_to_log(f"Total candidates: {len(candidates)}")
     return candidates
 
 
+@retry(stop=stop_after_attempt(10))
 def get_object_number(priref):
     '''
     Retrieve object number using priref
     '''
     search = f'priref={priref}'
     record = adlib.retrieve_record(CID_API, 'items', search, '1', ['object_number'])[1]
-    if record:
-        object_number = adlib.retrieve_field_name(record[0], 'object_number')[0]
+    if record is None:
+        raise Exception
+    object_number = adlib.retrieve_field_name(record[0], 'object_number')[0]
     return object_number
 
 
@@ -98,20 +102,27 @@ def main():
     candidates = get_candidates()
 
     # Process candidate selections in pointer
+    dupe_check = []
     for priref in candidates:
+        write_to_log(f"Candidate number: {candidates.index(priref)} ")
         obj = get_object_number(priref)
 
         # Ignore already selected items
-        if obj in selected_items:
-            write_to_log(f'* Item already in dthree/selections.csv: {priref} {obj}\n')
+        matched = False
+        for sel in selected_items:
+            if obj == sel:
+                write_to_log(f'* Item already in dthree/selections.csv: {priref} {obj} - Matched to {sel}\n')
+                matched = True
+                break
+        if matched is True:
             continue
 
         # Model tape carrier
-        write_to_log(f'Modelling tape carrier\n')
+        write_to_log(f'Modelling tape carrier for item {priref} {obj}\n')
         try:
             t = tape_model.Tape(obj)
         except Exception:
-            print(f'Could not model tape from object: {obj}')
+            write_to_log(f'Could not model tape from object: {obj}')
             continue
 
         # Get data
@@ -134,10 +145,15 @@ def main():
 
         # Add tape to dthree/selections.csv if unique
         print(f'add: {str(d)}')
-        # selections.add(**d)
+        if str(d) in dupe_check:
+            write_to_log(f"Skipping write to CSV, exact match already written to CSV: {str(d)}")
+            continue
+        dupe_check.append(str(d))
+        # selections.add(**d) DEPRECATED
         result = selections_add(d)
         if result is None:
-            write_to_log("Write to selections CSV failed")
+            write_to_log("Failed to write data to selections.csv")
+            sys.exit("Failed to write data to selections.csv")
 
     write_to_log(f'=== Items in D3 Pointer File completed === {DT_STR}\n')
 
@@ -153,17 +169,13 @@ def selections_add(data):
         return None
 
     if not 'can_ID' in data:
-        can_id = ''
         data_list.append('')
     else:
-        can_id = data['can_ID']
-        data_list.append(can_id)
+        data_list.append(data['can_ID'])
     if not 'package_number' in data:
-        pack_num = ''
         data_list.append('')
     else:
-        pack_num = data['package_number']
-        data_list.append(pack_num)
+        data_list.append(data['package_number'])
     if not 'uid' in data:
         data_list.append('')
     else:
@@ -193,20 +205,15 @@ def selections_add(data):
     else:
         data_list.append(data['items'])
 
-    written = False
-    # Check if list is unique
-    with open(SELECTIONS, 'r') as doc:
-        readme = csv.reader(doc)
-        for row in readme:
-            if can_id == str(row[0]) or pack_num == str(row[1]):
-                written = True
-
-    if not written:
+    try:
         print(f'Adding amended data list: {data_list}')
         with open(SELECTIONS, 'a') as file:
             writer = csv.writer(file)
             writer.writerow(data_list)
             return True
+    except Exception:
+        write_to_log("Failed to write data to selections.csv")
+        return None
 
 
 def write_to_log(message):

@@ -73,7 +73,7 @@ def get_candidates():
         print(result['adlibJSON']['diagnostic'])
         raise Exception('Cannot getpointerfile')
 
-    write_to_log("Total candidates: {len(candidates)}")
+    write_to_log(f"Total candidates: {len(candidates)}")
     return candidates
 
 
@@ -122,7 +122,7 @@ def main():
         try:
             t = tape_model.Tape(obj)
         except Exception:
-            print(f'Could not model tape from object: {priref} {obj}')
+            write_to_log(f'Could not model tape from object: {priref} {obj}')
             continue
 
         # Get data
@@ -156,6 +156,7 @@ def main():
         result = selections_add(d)
         if result is None:
             write_to_log("Failed to write data to selections.csv")
+            sys.exit("Failed to write data to selections.csv")
 
     write_to_log(f'=== Items in F47 Pointer File completed === {DT_STR}\n')
 
@@ -207,10 +208,15 @@ def selections_add(data):
     else:
         data_list.append(data['items'])
 
-    print(f'Adding amended data list: {data_list}')
-    with open(SELECTIONS, 'a') as file:
-        writer = csv.writer(file)
-        writer.writerow(data_list)
+    try:
+        print(f'Adding amended data list: {data_list}')
+        with open(SELECTIONS, 'a') as file:
+            writer = csv.writer(file)
+            writer.writerow(data_list)
+            return True
+    except Exception:
+        write_to_log("Failed to write data to selections.csv")
+        return None
 
 
 def write_to_log(message):

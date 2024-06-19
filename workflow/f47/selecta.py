@@ -148,10 +148,11 @@ def main():
 
         # Add tape to f47/selections.csv if unique
         print(f'add: {str(d)}')
-        if str(d) in dupe_check:
-            write_to_log(f"Skipping write to CSV, exact match already written to CSV: {str(d)}")
+        str_check = str(d).split('uid')[0]
+        if str_check in dupe_check:
+            write_to_log(f"Skipping write to CSV, exact match already written to CSV: {str_check}")
             continue
-        dupe_check.append(str(d))
+        dupe_check.append(str_check)
         # selections.add(**d) DEPRECATED
         result = selections_add(d)
         if result is None:

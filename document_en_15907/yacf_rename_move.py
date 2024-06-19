@@ -37,7 +37,7 @@ AUTOINGEST = os.environ['AUTOINGEST_YACF']
 LOG_PATH = os.environ['LOG_PATH']
 LOCAL_LOG = os.path.join(YACF_PATH, 'YACF_renumbering.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 
 # Setup logging
 LOGGER = logging.getLogger('YACF_rename_move.log')

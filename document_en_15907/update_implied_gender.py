@@ -23,7 +23,7 @@ import adlib_v3 as adlib
 # Global variables
 LOGS = os.environ['LOG_PATH']
 CSV = os.path.join(LOGS, 'gendered_names.csv')
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 
 # Setup logging

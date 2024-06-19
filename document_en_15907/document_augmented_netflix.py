@@ -57,7 +57,7 @@ LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API4')
+CID_API = os.environ.get('CID_API3')
 
 # PATV API details including unique identifiers for Netflix catalogue
 URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')

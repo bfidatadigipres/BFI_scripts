@@ -27,7 +27,7 @@ SCPATH = os.environ['SPECIAL_COLLECTIONS']
 STORAGE = os.path.join(SCPATH, 'Uncatalogued_stills_digital_derivative/')
 AUTOINGEST = os.path.join(SCPATH, os.environ['INGEST_SC'])
 LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_rename_digital_derivatives.log')
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 
 # Global variables
 TODAY = str(datetime.datetime.now())

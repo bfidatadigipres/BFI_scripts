@@ -54,7 +54,7 @@ MONTH = YEST[5:7]
 COMPLETE = os.environ['STORA_COMPLETED']
 ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 CODEPTH = os.environ['CODE']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 

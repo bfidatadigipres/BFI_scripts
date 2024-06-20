@@ -751,6 +751,7 @@ def main():
                 work_priref = find_repeats(epg_dict['asset_id'])
             if work_priref is None:
                 print("Cannot access dB via API. Skipping")
+                logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
                 continue
             elif work_priref == 0:
                 # Create the Work record here, and populate work_priref

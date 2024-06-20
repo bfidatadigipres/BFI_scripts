@@ -869,16 +869,15 @@ def main():
 
         # Rename .vtt subtitle file with Item object number and move to Isilon for use later in MTQ workflow
         if webvtt_payload is not None:
-            old_vtt = os.path.join(root, "subtitles.vtt")
             new_vtt_name = f'{item_object_number_underscore}_01of01.vtt'
             new_vtt = f'{SUBS_PTH}{new_vtt_name}'
-            print(f'* Renaming {old_vtt} to {new_vtt}')
+            print(f'* Renaming {old_webvtt} to {new_vtt}')
             try:
-                shutil.move(old_vtt, new_vtt)
-                logger.info('%s\tRenamed %s to %s', fullpath, old_vtt, new_vtt)
+                shutil.move(old_webvtt, new_vtt)
+                logger.info('%s\tRenamed %s to %s', fullpath, old_webvtt, new_vtt)
             except Exception as err:
-                print(f'** PROBLEM: Could not rename {old_vtt} to {new_vtt}')
-                logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_vtt, new_vtt, err)
+                print(f'** PROBLEM: Could not rename {old_webvtt} to {new_vtt}')
+                logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_webvtt, new_vtt, err)
 
     logger.info('========== STORA documentation script END ===================================================\n')
 

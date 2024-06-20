@@ -52,7 +52,7 @@ def retrieve_record(api, database, search, limit, fields=None):
         query['fields'] = field_str
 
     record = get(api, query)
-    if record is None:
+    if not record:
         return None, None
     elif record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None

@@ -29,6 +29,7 @@ import os
 import sys
 import csv
 import json
+import glob
 import shutil
 import logging
 import datetime
@@ -68,7 +69,7 @@ YESTERDAY = TODAY - datetime.timedelta(days=1)
 YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
 YEAR_PATH = YESTERDAY_CLEAN[:4]
 # YEAR_PATH = '2023'
-STORAGE_PATH = STORAGE + YEAR_PATH + "/"
+STORAGE_PATH = STORAGE + YEAR_PATH
 
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],
             'bbctwohd': ["BBC Two HD", "This is BBC Two", "Highlights of programmes BBC Two. [HD]"],
@@ -695,185 +696,189 @@ def main():
     if no - make series/work/manifestation and item record
     '''
     logger.info('========== STORA documentation script STARTED ===============================================')
-    for root, _, files in os.walk(STORAGE_PATH):
-        for file in files:
-            # Check if control json prevents run
-            check_control()
 
-            if not file.endswith('.json') or not file.startswith('info_'):
-                continue
-            new_work = False
-            fullpath = os.path.join(root, file)
-            print(f"\nFullpath for file being handled: {fullpath}")
-            with open(fullpath, 'r', encoding='utf8') as inf:
-                lines = json.load(inf)
+    file_list = glob.glob(f"{STORAGE_PATH}/**/*.json", recursive=True)
+    file_list.sort()
+    print(f"Found JSON file total: {len(file_list)}")
 
-            # Retrieve all data needed from JSON
-            if lines:
-                epg_dict = fetch_lines(fullpath, lines)
-            else:
-                print("No EPG dictionary found. Skipping!")
-                continue
-            title = epg_dict['title']
-            print(f"Title: {title}")
-            description = epg_dict['description']
-            print(f"Longest Description: {description}")
-            broadcast_channel = ''
-            if 'channel' in epg_dict and 'broadcast_channel' in epg_dict:
-                channel = epg_dict['channel']
-                broadcast_channel = epg_dict['broadcast_channel']
-                print(f"Broadcaster {broadcast_channel} and Channel {channel}")
-                print(f"Colour manifestation = {epg_dict['colour_manifestation']}")
+    for fullpath in file_list:
+        check_control()
 
-            # CSV data gather
-            csv_data = csv_retrieve(os.path.join(root, 'info.csv'))
-            if csv_data:
-                try:
-                    csv_description = csv_data[0]
-                    print(f"** CSV DESCRIPTION: {csv_description}")
-                    csv_dump = csv_data[1]
-                    print(f"** CSV DATA FOR UTB: {csv_dump}")
-                except (IndexError, TypeError, KeyError):
-                    csv_data = []
-                    csv_description = ""
-                    csv_dump = ""
+        root, file = os.path.split(fullpath)
+        if not file.endswith('.json') or not file.startswith('info_'):
+            continue
+        new_work = False
 
-            acquired_filename = os.path.join(root, "stream.mpeg2.ts")
-            print(f"Path for programme stream content: {acquired_filename}")
+        print(f"\nFullpath for file being handled: {fullpath}")
+        with open(fullpath, 'r', encoding='utf8') as inf:
+            lines = json.load(inf)
 
-            # Get defaults as lists of dictionary pairs
-            rec_def, ser_def, work_def, work_res_def, man_def, item_def = build_defaults(epg_dict)
+        # Retrieve all data needed from JSON
+        if lines:
+            epg_dict = fetch_lines(fullpath, lines)
+        else:
+            print("No EPG dictionary found. Skipping!")
+            continue
+        title = epg_dict['title']
+        print(f"Title: {title}")
+        description = epg_dict['description']
+        print(f"Longest Description: {description}")
+        broadcast_channel = ''
+        if 'channel' in epg_dict and 'broadcast_channel' in epg_dict:
+            channel = epg_dict['channel']
+            broadcast_channel = epg_dict['broadcast_channel']
+            print(f"Broadcaster {broadcast_channel} and Channel {channel}")
+            print(f"Colour manifestation = {epg_dict['colour_manifestation']}")
 
-            # Asset id check here
-            work_priref = ''
-            if 'asset_id' in epg_dict:
-                print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
-                work_priref = find_repeats(epg_dict['asset_id'])
-            if work_priref is None:
-                print("Cannot access dB via API. Skipping")
-                logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
-                continue
-            elif work_priref == 0:
-                # Create the Work record here, and populate work_priref
-                print("JSON file does not have repeated asset_id. Creating new work record...")
-                series_return = []
-                series_work_id = ''
-                if 'series_id' in epg_dict:
-                    print("Series ID exists, trying to retrieve series data from CID")
-                    # Check if series already in CID and/or series_cache, if not generate series_cache json
-                    series_check = look_up_series_list(epg_dict['series_id'])
-                    if series_check is False:
-                        series_id = epg_dict['series_id']
-                    else:
-                        series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
-                        logger.info(f"Series found for annual refresh: {series_check}")
+        # CSV data gather
+        csv_data = csv_retrieve(os.path.join(root, 'info.csv'))
+        if csv_data:
+            try:
+                csv_description = csv_data[0]
+                print(f"** CSV DESCRIPTION: {csv_description}")
+                csv_dump = csv_data[1]
+                print(f"** CSV DATA FOR UTB: {csv_dump}")
+            except (IndexError, TypeError, KeyError):
+                csv_data = []
+                csv_description = ""
+                csv_dump = ""
 
-                    series_return = cid_series_query(series_id)
-                    if series_return[0] is None:
-                        print(f"CID Series data not retrieved: {epg_dict['series_id']}")
-                        logger.warning("Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s", epg_dict['series_id'])
-                        continue
-                    
-                    hit_count = series_return[0]
-                    series_work_id = series_return[1]
-                    if hit_count == 0:
-                        print("This Series does not exist yet in CID - attempting creation now")
-                        # Launch create series function
-                        series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict, series_id)
-                        if not series_work_id:
-                            logger.warning("Skipping further actions: Creation of series failed as no series_work_id found: \n%s", epg_dict['series_id'])
-                            continue
+        acquired_filename = os.path.join(root, "stream.mpeg2.ts")
+        print(f"Path for programme stream content: {acquired_filename}")
 
-                # Create Work
-                new_work = True
-                work_values = []
-                work_values.extend(rec_def)
-                work_values.extend(work_def)
-                work_values.extend(work_res_def)
-                work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict)
-            elif len(work_priref) > 4:
-                print(f"**** JSON file found to have repeated Asset ID, previous work: {work_priref}")
-                logger.info("** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s", work_priref)
+        # Get defaults as lists of dictionary pairs
+        rec_def, ser_def, work_def, work_res_def, man_def, item_def = build_defaults(epg_dict)
 
-            if not work_priref:
-                print(f"Work error, priref not numeric from new file creation: {work_priref}")
-                continue
-            if not work_priref.isnumeric() and new_work is True:
-                print(f"Work error, priref not numeric from new file creation: {work_priref}")
-                continue
-
-            # Create CID manifestation record
-            manifestation_values = []
-            manifestation_values.extend(rec_def)
-            manifestation_values.extend(man_def)
-            manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict)
-
-            if not manifestation_priref:
-                print(f"CID Manifestation priref not retrieved for manifestation: {manifestation_priref}")
-                if new_work:
-                    print(f"*** Manual clean up needed for Work {work_priref}")
-                continue
-
-            # Check if subtitles are populated
-            old_webvtt = os.path.join(root, "subtitles.vtt")
-            webvtt_payload = build_webvtt_dct(old_webvtt)
-
-            # Create CID item record
-            item_values = []
-            item_values.extend(rec_def)
-            item_values.extend(item_def)
-
-            item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict)
-            print(f"item_object_number: {item_data}")
-
-            if item_data is None or item_data[1] == '':
-                print(f"CID Item object number not retrieved for manifestation: {manifestation_priref}")
-                if new_work:
-                    print(f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}")
-                    continue
+        # Asset id check here
+        work_priref = ''
+        if 'asset_id' in epg_dict:
+            print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
+            work_priref = find_repeats(epg_dict['asset_id'])
+        if work_priref is None:
+            print("Cannot access dB via API. Skipping")
+            logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
+            continue
+        elif work_priref == 0:
+            # Create the Work record here, and populate work_priref
+            print("JSON file does not have repeated asset_id. Creating new work record...")
+            series_return = []
+            series_work_id = ''
+            if 'series_id' in epg_dict:
+                print("Series ID exists, trying to retrieve series data from CID")
+                # Check if series already in CID and/or series_cache, if not generate series_cache json
+                series_check = look_up_series_list(epg_dict['series_id'])
+                if series_check is False:
+                    series_id = epg_dict['series_id']
                 else:
-                    print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
+                    series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
+                    logger.info(f"Series found for annual refresh: {series_check}")
+
+                series_return = cid_series_query(series_id)
+                if series_return[0] is None:
+                    print(f"CID Series data not retrieved: {epg_dict['series_id']}")
+                    logger.warning("Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s", epg_dict['series_id'])
                     continue
-            '''
-            # Build webvtt payload [deprecated]
-            if webvtt_payload:
-                success = push_payload(item_data[1], webvtt_payload)
-                if not success:
-                    logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
-            '''
-            # Rename JSON with .documented
-            documented = f'{fullpath}.documented'
-            print(f'* Renaming {fullpath} to {documented}')
-            try:
-                os.rename(fullpath, f"{fullpath}.documented")
-            except Exception as err:
-                print(f'** PROBLEM: Could not rename {fullpath} to {documented}')
-                logger.warning('%s\tCould not rename to %s. Error: %s', fullpath, documented, err)
+                
+                hit_count = series_return[0]
+                series_work_id = series_return[1]
+                if hit_count == 0:
+                    print("This Series does not exist yet in CID - attempting creation now")
+                    # Launch create series function
+                    series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict, series_id)
+                    if not series_work_id:
+                        logger.warning("Skipping further actions: Creation of series failed as no series_work_id found: \n%s", epg_dict['series_id'])
+                        continue
 
-            # Rename transport stream file with Item object number and move to autoingest
-            item_object_number_underscore = item_data[0].replace('-', '_')
-            new_filename = f'{item_object_number_underscore}_01of01.ts'
-            destination = f'{AUTOINGEST_PATH}{new_filename}'
-            print(f'* Renaming {acquired_filename} to {destination}')
-            try:
-                shutil.move(acquired_filename, destination)
-                logger.info('%s\tRenamed %s to %s', fullpath, acquired_filename, destination)
-            except Exception as err:
-                print(f'** PROBLEM: Could not rename & move {acquired_filename} to {destination}')
-                logger.warning('%s\tCould not rename & move %s to %s. Error: %s', fullpath, acquired_filename, destination, err)
+            # Create Work
+            new_work = True
+            work_values = []
+            work_values.extend(rec_def)
+            work_values.extend(work_def)
+            work_values.extend(work_res_def)
+            work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict)
+        elif len(work_priref) > 4:
+            print(f"**** JSON file found to have repeated Asset ID, previous work: {work_priref}")
+            logger.info("** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s", work_priref)
 
-            # Rename .vtt subtitle file with Item object number and move to Isilon for use later in MTQ workflow
-            if webvtt_payload is not None:
-                old_vtt = os.path.join(root, "subtitles.vtt")
-                new_vtt_name = f'{item_object_number_underscore}_01of01.vtt'
-                new_vtt = f'{SUBS_PTH}{new_vtt_name}'
-                print(f'* Renaming {old_vtt} to {new_vtt}')
-                try:
-                    shutil.move(old_vtt, new_vtt)
-                    logger.info('%s\tRenamed %s to %s', fullpath, old_vtt, new_vtt)
-                except Exception as err:
-                    print(f'** PROBLEM: Could not rename {old_vtt} to {new_vtt}')
-                    logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_vtt, new_vtt, err)
+        if not work_priref:
+            print(f"Work error, priref not numeric from new file creation: {work_priref}")
+            continue
+        if not work_priref.isnumeric() and new_work is True:
+            print(f"Work error, priref not numeric from new file creation: {work_priref}")
+            continue
+
+        # Create CID manifestation record
+        manifestation_values = []
+        manifestation_values.extend(rec_def)
+        manifestation_values.extend(man_def)
+        manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict)
+
+        if not manifestation_priref:
+            print(f"CID Manifestation priref not retrieved for manifestation: {manifestation_priref}")
+            if new_work:
+                print(f"*** Manual clean up needed for Work {work_priref}")
+            continue
+
+        # Check if subtitles are populated
+        old_webvtt = os.path.join(root, "subtitles.vtt")
+        webvtt_payload = build_webvtt_dct(old_webvtt)
+
+        # Create CID item record
+        item_values = []
+        item_values.extend(rec_def)
+        item_values.extend(item_def)
+
+        item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict)
+        print(f"item_object_number: {item_data}")
+
+        if item_data is None or item_data[1] == '':
+            print(f"CID Item object number not retrieved for manifestation: {manifestation_priref}")
+            if new_work:
+                print(f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}")
+                continue
+            else:
+                print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
+                continue
+        '''
+        # Build webvtt payload [deprecated]
+        if webvtt_payload:
+            success = push_payload(item_data[1], webvtt_payload)
+            if not success:
+                logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
+        '''
+        # Rename JSON with .documented
+        documented = f'{fullpath}.documented'
+        print(f'* Renaming {fullpath} to {documented}')
+        try:
+            os.rename(fullpath, f"{fullpath}.documented")
+        except Exception as err:
+            print(f'** PROBLEM: Could not rename {fullpath} to {documented}')
+            logger.warning('%s\tCould not rename to %s. Error: %s', fullpath, documented, err)
+
+        # Rename transport stream file with Item object number and move to autoingest
+        item_object_number_underscore = item_data[0].replace('-', '_')
+        new_filename = f'{item_object_number_underscore}_01of01.ts'
+        destination = f'{AUTOINGEST_PATH}{new_filename}'
+        print(f'* Renaming {acquired_filename} to {destination}')
+        try:
+            shutil.move(acquired_filename, destination)
+            logger.info('%s\tRenamed %s to %s', fullpath, acquired_filename, destination)
+        except Exception as err:
+            print(f'** PROBLEM: Could not rename & move {acquired_filename} to {destination}')
+            logger.warning('%s\tCould not rename & move %s to %s. Error: %s', fullpath, acquired_filename, destination, err)
+
+        # Rename .vtt subtitle file with Item object number and move to Isilon for use later in MTQ workflow
+        if webvtt_payload is not None:
+            old_vtt = os.path.join(root, "subtitles.vtt")
+            new_vtt_name = f'{item_object_number_underscore}_01of01.vtt'
+            new_vtt = f'{SUBS_PTH}{new_vtt_name}'
+            print(f'* Renaming {old_vtt} to {new_vtt}')
+            try:
+                shutil.move(old_vtt, new_vtt)
+                logger.info('%s\tRenamed %s to %s', fullpath, old_vtt, new_vtt)
+            except Exception as err:
+                print(f'** PROBLEM: Could not rename {old_vtt} to {new_vtt}')
+                logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_vtt, new_vtt, err)
 
     logger.info('========== STORA documentation script END ===================================================\n')
 

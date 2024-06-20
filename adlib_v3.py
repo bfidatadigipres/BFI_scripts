@@ -80,7 +80,7 @@ def get(api, query):
             raise Exception
         dct = json.loads(req.text)
         print(dct)
-        if 'recordList' in dct:
+        if 'recordList' in str(dct):
             dct = dct['adlibJSON']['recordList']['record']
             return dct
     except requests.exceptions.Timeout as err:

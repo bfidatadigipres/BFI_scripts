@@ -77,6 +77,7 @@ def get(api, query):
         if req.status_code != 200:
             raise Exception
         dct = json.loads(req.text)
+        print(dct)
         if 'recordList' in dct:
             dct = dct['adlibJSON']['recordList']['record']
             return dct

@@ -56,7 +56,7 @@ def retrieve_record(api, database, search, limit, fields=None):
     print(record)
     if record is None:
         return None, None
-    if record['adlibJSON']['diagnostic']['hits'] == 0:
+    elif record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
     elif 'recordList' not in str(record):
         try:
@@ -79,9 +79,9 @@ def get(api, query):
         if req.status_code != 200:
             raise Exception
         dct = json.loads(req.text)
-        print(dct)
         if 'recordList' in str(dct):
-            return dct
+            dct = dct['adlibJSON']['recordList']['record']
+        return dct
     except requests.exceptions.Timeout as err:
         print(err)
         raise Exception

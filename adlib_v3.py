@@ -10,11 +10,12 @@ Joanna White
 
 import os
 import json
-import tenacity
 import requests
 import datetime
 from lxml import etree, html
 from dicttoxml import dicttoxml
+from tenacity import retry, stop_after_attempt, retry_if_exception_type
+
 
 CID_API = os.environ['CID_API3']
 HEADERS = {
@@ -66,17 +67,13 @@ def retrieve_record(api, database, search, limit, fields=None):
     return hits, record['adlibJSON']['recordList']['record']
 
 
-@tenacity.retry(retry=tenacity.retry_if_exception_type(TimeoutError))
+@retry(stop=stop_after_attempt(10))
 def get(api, query):
     '''
     Send a GET request
     '''
     try:
         req = requests.request('GET', api, headers=HEADERS, params=query)
-        dct = json.loads(req.text)
-        if 'recordList' in dct:
-            dct = dct['adlibJSON']['recordList']['record']
-        return dct
     except requests.exceptions.Timeout as err:
         print(err)
         raise Exception
@@ -84,9 +81,16 @@ def get(api, query):
         raise SystemExit(err)
     except requests.exceptions.HTTPError as err:
         raise SystemExit(err)
+    if req.status_code != 200:
+        raise Exception
+
+    dct = json.loads(req.text)
+    if 'recordList' in dct:
+        dct = dct['adlibJSON']['recordList']['record']
+        return dct
 
 
-@tenacity.retry(retry=tenacity.retry_if_exception_type(TimeoutError))
+@retry(retry=retry_if_exception_type(TimeoutError))
 def post(api, payload, database, method):
     '''
     Send a POST request

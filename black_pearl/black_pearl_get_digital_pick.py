@@ -46,6 +46,7 @@ import logging
 from xml.sax.saxutils import escape
 from datetime import datetime, timedelta
 from ds3 import ds3, ds3Helpers
+from tenacity import retry, stop_after_attempt
 
 # Local package
 sys.path.append(os.environ['CODE'])
@@ -114,9 +115,12 @@ def fetch_workflow_jobs():
     if hits is None:
         LOGGER.exception('"CID API was unreachable for Workflow search:\n%s', search)
         raise Exception(f"CID API was unreachable for Workflow search:\n{search}")
+    if hits == 0:
+        LOGGER.info("fetch_workflow_jobs: No matching InProgress jobs found.")
+        return None
     if not records:
-        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data")
-        records = None
+        LOGGER.exception("fetch_workflow_jobs: No workflow data found")
+        return None
 
     workflow_jobs = {}
     for num in range(0, hits):
@@ -198,6 +202,7 @@ def get_child_ob_num(priref):
         return None
 
 
+@retry(stop=stop_after_attempt(10))
 def get_media_original_filename(search):
     '''
     Retrieve the first returned media record
@@ -207,7 +212,7 @@ def get_media_original_filename(search):
     records = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename', 'reference_number', 'preservation_bucket'])[1]
     if not records:
         LOGGER.exception("get_media_original_filename: Unable to retrieve Media data")
-        return None
+        raise Exception
 
     try:
         orig_fname = adlib.retrieve_field_name(records[0], 'imagen.media.original_filename')[0]
@@ -237,7 +242,7 @@ def bucket_check(bucket, filename):
     search = f'reference_number="{filename}"'
     records = adlib.retrieve_record(CID_API, 'media', search, '1', ['preservation_bucket'])[1]
     if not records:
-        LOGGER.exception("get_media_original_filename: Unable to retrieve Media data")
+        LOGGER.exception("bucket_check(): Unable to retrieve Media data")
         return None
     try:
         download_bucket = adlib.retrieve_field_name(records[0], 'preservation_bucket')[0]

@@ -60,7 +60,8 @@ def retrieve_record(api, database, search, limit, fields=None):
         try:
             hits = record['adlibJSON']['diagnostic']['hits']
             return hits, record
-        except (IndexError, KeyError, TypeError):
+        except (IndexError, KeyError, TypeError) as err:
+            print(err)
             return 0, record
 
     hits = record['adlibJSON']['diagnostic']['hits']
@@ -82,12 +83,14 @@ def get(api, query):
         print(err)
         raise Exception
     except requests.exceptions.ConnectionError as err:
-        raise SystemExit(err)
+        print(err)
+        raise Exception
     except requests.exceptions.HTTPError as err:
-        raise SystemExit(err)
+        print(err)
+        raise Exception
 
 
-@retry(retry=retry_if_exception_type(TimeoutError))
+@retry(stop=stop_after_attempt(10))
 def post(api, payload, database, method):
     '''
     Send a POST request
@@ -107,9 +110,11 @@ def post(api, payload, database, method):
             print(err)
             raise Exception
         except requests.exceptions.ConnectionError as err:
-            raise SystemExit(err)
+            print(err)
+            raise Exception
         except requests.exceptions.HTTPError as err:
-            raise SystemExit(err)
+            print(err)
+            raise Exception
 
     if method == 'updaterecord':
         try:
@@ -118,9 +123,11 @@ def post(api, payload, database, method):
             print(err)
             raise Exception
         except requests.exceptions.ConnectionError as err:
-            raise SystemExit(err)
+            print(err)
+            raise Exception
         except requests.exceptions.HTTPError as err:
-            raise SystemExit(err)
+            print(err)
+            raise Exception
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")

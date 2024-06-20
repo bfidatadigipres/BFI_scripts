@@ -159,7 +159,12 @@ def cid_series_query(series_id):
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
 
-    hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
+    try:
+        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
+    except Exception as err:
+        print(err)
+        raise Exception
+
     print(f"cid_series_query(): {hit_count}\n{series_query_result}")
     if hit_count is None or hit_count == 0:
         print(f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id}")

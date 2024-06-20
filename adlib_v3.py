@@ -74,6 +74,12 @@ def get(api, query):
     '''
     try:
         req = requests.request('GET', api, headers=HEADERS, params=query)
+        if req.status_code != 200:
+            raise Exception
+        dct = json.loads(req.text)
+        if 'recordList' in dct:
+            dct = dct['adlibJSON']['recordList']['record']
+            return dct
     except requests.exceptions.Timeout as err:
         print(err)
         raise Exception
@@ -81,13 +87,6 @@ def get(api, query):
         raise SystemExit(err)
     except requests.exceptions.HTTPError as err:
         raise SystemExit(err)
-    if req.status_code != 200:
-        raise Exception
-
-    dct = json.loads(req.text)
-    if 'recordList' in dct:
-        dct = dct['adlibJSON']['recordList']['record']
-        return dct
 
 
 @retry(retry=retry_if_exception_type(TimeoutError))

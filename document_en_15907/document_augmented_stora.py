@@ -186,9 +186,11 @@ def find_repeats(asset_id):
     search = f'alternative_number="{asset_id}"'
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', ['priref', 'alternative_number.type', 'part_of_reference.lref'])
     print(f"*** find_repeats(): {hits}\n{result}")
-    if hits is None or hits == 0:
+    if hits is None:
         print(f'CID API could not be reached for Manifestations search: {search}')
         return None
+    if hits == 0:
+        return 0
 
     try:
         priref = adlib.retrieve_field_name(result[0], 'priref')[0]
@@ -742,8 +744,10 @@ def main():
             if 'asset_id' in epg_dict:
                 print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
                 work_priref = find_repeats(epg_dict['asset_id'])
-
-            if not work_priref:
+            if work_priref is None:
+                print("Cannot access dB via API. Skipping")
+                continue
+            elif work_priref == 0:
                 # Create the Work record here, and populate work_priref
                 print("JSON file does not have repeated asset_id. Creating new work record...")
                 series_return = []
@@ -781,8 +785,7 @@ def main():
                 work_values.extend(work_def)
                 work_values.extend(work_res_def)
                 work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict)
-
-            else:
+            elif len(work_priref) > 4:
                 print(f"**** JSON file found to have repeated Asset ID, previous work: {work_priref}")
                 logger.info("** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s", work_priref)
 

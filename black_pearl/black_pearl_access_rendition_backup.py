@@ -154,13 +154,14 @@ def main():
             for file in files:
                 old_fpath = os.path.join(access_path, folder, file)
                 if check_mod_time(old_fpath) is False:
-                     LOGGER.info("File %s mod time outside of maximum days allowed for upload: %s", file, MOD_MAX)
                      continue
                 if bp_utils.check_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is False:
+                    LOGGER.info("New item to write to BP: %s/%s/%s", key, folder, file)
                     print(f"New item to write to BP: {key}/{folder}/{file}")
                     file_list.append(f"{key}/{folder}/{file}")
                 else:
                     print(f"Existing item to overwrite: {key}/{folder}/{file}")
+                    LOGGER.info("Existing item to delete and write to BP: %s/%s/%s", key, folder, file)
                     replace_list.append(f"{key}/{folder}/{file}")
 
             # Checking for matching MD5 within replace list

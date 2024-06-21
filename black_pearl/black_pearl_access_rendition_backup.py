@@ -157,8 +157,10 @@ def main():
                      LOGGER.info("File %s mod time outside of maximum days allowed for upload: %s", file, MOD_MAX)
                      continue
                 if bp_utils.check_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is False:
+                    print(f"New item to write to BP: {key}/{folder}/{file}")
                     file_list.append(f"{key}/{folder}/{file}")
                 else:
+                    print(f"Existing item to overwrite: {key}/{folder}/{file}")
                     replace_list.append(f"{key}/{folder}/{file}")
 
             # Checking for matching MD5 within replace list
@@ -166,14 +168,15 @@ def main():
             if replace_list:
                 for item in replace_list:
                     fname = os.path.split(item)[-1]
-                    local_md5 = utils.create_md5_65536(item)
+                    local_md5 = utils.create_md5_65536(os.path.join(STORAGE, item))
                     bp_md5 = bp_utils.get_bp_md5(fname, BUCKET)
                     if local_md5 == bp_md5:
                         print(f"Removing from list MD5 match: {item}")
                         LOGGER.info("Skipping backup of %s - Local and remote MD5 match.", item)
                         LOGGER.info("Local MD5 %s - Remote %s", local_md5, bp_md5)
                         replace_list.remove(item)
-                    print(f"Queued for deletion: {item}")
+                    else:
+                        print(f"MD5 do not match - queued for deletion: {item}")
 
                 # Delete existing versions if being replaced
                 LOGGER.info("** Replacement files needed, original proxy files for deletion:\n%s", replace_list)

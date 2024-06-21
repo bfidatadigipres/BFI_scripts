@@ -139,7 +139,7 @@ def put_directory(directory_pth, bucket):
     except Exception as err:
         print('Exception: %s', err)
         return None
-    print("PUT COMPLETE - JOB ID retrieved: {put_job_ids}")
+    print(f"PUT COMPLETE - JOB ID retrieved: {put_job_ids}")
     job_list = []
     for job_id in put_job_ids:
         job_list.append(job_id)

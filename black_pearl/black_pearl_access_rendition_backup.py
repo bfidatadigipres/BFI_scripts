@@ -151,8 +151,10 @@ def main():
             files = os.listdir(os.path.join(access_path, folder))
             for file in files:
                 old_fpath = os.path.join(access_path, folder, file)
+                if file.endswith(('.mp4', '.MP4')):
+                    continue
                 if check_mod_time(old_fpath) is False:
-                     continue
+                    continue
                 if bp_utils.check_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is False:
                     LOGGER.info("New item to write to BP: %s/%s/%s", key, folder, file)
                     print(f"New item to write to BP: {key}/{folder}/{file}")

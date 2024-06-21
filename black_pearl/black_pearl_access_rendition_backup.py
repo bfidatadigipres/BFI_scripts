@@ -163,7 +163,7 @@ def main():
                     replace_list.append(f"{key}/{folder}/{file}")
 
             # Checking for matching MD5 within replace list
-            print(replace_list)
+            print(len(replace_list))
             if replace_list:
                 for item in replace_list:
                     local_md5 = utils.create_md5_65536(os.path.join(STORAGE, item))
@@ -172,7 +172,7 @@ def main():
                     print(f"Remote {bp_md5} - {item}")
                     if local_md5 == bp_md5:
                         print(f"Removing from list MD5 match: {item}")
-                        LOGGER.info("Skipping this item as MD5 files match:\n%s - Local MD5\n%s - Remote MD5", local_md5, bp_md5)
+                        LOGGER.info("Skipping item %s as MD5 files match:\n%s - Local MD5\n%s - Remote MD5", item, local_md5, bp_md5)
                         replace_list.remove(item)
                     else:
                         LOGGER.info("MD5s do not match, queue for deletion:\n%s - Local MD4\n%s - Remote MD5", local_md5, bp_md5)
@@ -180,7 +180,7 @@ def main():
 
                 # Delete existing versions if being replaced
                 LOGGER.info("** Replacement files needed, original proxy files for deletion:\n%s", replace_list)
-                print(replace_list)
+                print(len(replace_list))
                 success_list = delete_existing_proxy(replace_list)
                 if len(success_list) == 0:
                     LOGGER.info("All repeated files successfully deleted before replacement.")
@@ -190,7 +190,8 @@ def main():
                         replace_list.remove(fail_item)
 
             # While files remaining in list, move to ingest folder, PUT, and remove again
-            file_list = file_list + replace_list
+            for rep_item in replace_list:
+                file_list.append(rep_item)
             while file_list:
                 utils.check_control('black_pearl')
                 empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]

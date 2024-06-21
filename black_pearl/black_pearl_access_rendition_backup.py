@@ -5,87 +5,52 @@ Script to frequently back up
 MP4 and JPG proxy files created as part
 of autoingest to DPI.
 
-Initially this script is to be
-run with an open modification time but
-later to be set to a given amount of
-days that matches script run frequency.
+Targeting bfi/ subfolders only at this time:
+- Checks for modifications in last MOD_MAX days
+- Checks if file already in BP bucket
+- If yes compares local/remote MD5
+- If don't match pushes through to BP bucket along iwth
+  items not found there already (new items)
+- Deletes out of date duplicates (replace_list)
+- Pushes all replacement/new items to BP bucket
 
 Joanna White
 2024
 '''
 
+# Global imports
 import os
 import sys
-import json
 import shutil
 import logging
 from datetime import datetime
 from time import sleep
-from ds3 import ds3, ds3Helpers
+
+# Local imports
+import bp_utils
+sys.path.extend(os.environ['CODE'])
+import utils
 
 # Global vars
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 STORAGE = os.environ['TRANSCODING']
 INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest/')
-MOD_MAX = 2000 # Modification time restriction
-UPLOAD_MAX = 1099511627776 # 1TB max
+MOD_MAX = 90
+UPLOAD_MAX = 1099511627776
 BUCKET = 'Access_Renditions_backup'
 
 # Setup logging
-LOGGER = logging.getLogger('black_pearl_access_rendition_backup')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'black_pearl_access_rendition_backup.log'))
+LOGGER = logging.getLogger('black_pearl_access_rendition_modified_backup')
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'black_pearl_access_rendition_modified_backup.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 START_FOLDERS = {
-#    'bfi': '201605'
-    'eafa': '201605',
-    'iwm': '201605',
-    'lsa': '201605',
-    'mace': '201605',
-    'nefa': '201605',
-    'nis': '201605',
-    'nls': '201605',
-    'nssaw': '201605',
-    'nwfa': '201605',
-    'sase': '201605',
-    'thebox': '201605',
-    'wfsa': '201605',
-    'yfa': '201605'
+    'bfi': '201605'
 }
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def get_size(fpath):
-    '''
-    Check the size of given folder path
-    return size in kb
-    '''
-    if os.path.isfile(fpath):
-        return os.path.getsize(fpath)
-
-    try:
-        byte_size = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
-    except OSError as err:
-        LOGGER.warning("get_size(): Cannot reach folderpath for size check: %s\n%s", fpath, err)
-        byte_size = None
-
-    return byte_size
 
 
 def check_mod_time(fpath):
@@ -101,22 +66,6 @@ def check_mod_time(fpath):
     return True
 
 
-def check_bp_status(fname):
-    '''
-    Look up filename in BP buckets
-    to avoid multiple ingest of files
-    '''
-
-    query = ds3.HeadObjectRequest(BUCKET, fname)
-    result = CLIENT.head_object(query)
-
-    # DOESNTEXIST means file not found
-    if 'DOESNTEXIST' in str(result.result):
-        return False
-    # File found
-    return True
-
-
 def move_to_ingest_folder(new_path, file_list):
     '''
     File list to be formatted structured:
@@ -126,7 +75,7 @@ def move_to_ingest_folder(new_path, file_list):
     ingest_list = []
     LOGGER.info("move_to_ingest_folder(): %s", INGEST_POINT)
 
-    folder_size = get_size(INGEST_POINT)
+    folder_size = utils.get_size(INGEST_POINT)
     max_fill_size = UPLOAD_MAX - folder_size
 
     for fname in file_list:
@@ -135,7 +84,7 @@ def move_to_ingest_folder(new_path, file_list):
             LOGGER.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
             break
 
-        file_size = get_size(fpath)
+        file_size = utils.get_size(fpath)
         max_fill_size -= file_size
         print(f"Moving file {fname} to {new_path}")
         shutil.move(fpath, new_path)
@@ -154,15 +103,18 @@ def delete_existing_proxy(file_list):
         LOGGER.info("No files being replaced at this time")
         return []
     for file in file_list:
-        request = ds3.DeleteObjectRequest(BUCKET, file)
-        CLIENT.delete_object(request)
-        sleep(10)
-        success = check_bp_status(file)
-        if success is False:
-            LOGGER.info("File %s deleted successfully", file)
-            file_list.remove(file)
-        if success is True:
-            LOGGER.warning("Failed to delete file - %s", file)
+        confirmed = bp_utils.delete_black_pearl_object(file, None, BUCKET)
+        if confirmed:
+            sleep(10)
+            success = bp_utils.check_bp_status(file, [BUCKET])
+            if success is False:
+                LOGGER.info("File %s deleted successfully", file)
+                file_list.remove(file)
+            if success is True:
+                LOGGER.warning("Failed to delete file - %s", file)
+        else:
+            LOGGER.warning("Failed to delete asset: %s", file)
+
     return file_list
 
 
@@ -190,7 +142,7 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-            check_control()
+            utils.check_control('black_pearl')
 
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
@@ -204,26 +156,40 @@ def main():
                 if check_mod_time(old_fpath) is False:
                      LOGGER.info("File %s mod time outside of maximum days allowed for upload: %s", file, MOD_MAX)
                      continue
-                if check_bp_status(f"{key}/{folder}/{file}") is False:
+                if bp_utils.check_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is False:
                     file_list.append(f"{key}/{folder}/{file}")
+                else:
+                    replace_list.append(f"{key}/{folder}/{file}")
 
-                # JMW to replace/update check bp status when only backing up new items
-                # else:
-                #    file_list.append(f"{key}/{folder}/{file}")
-                #    replace_list.append(f"{key}/{folder}/{file}")
-
-            # Delete existing versions if being replaced
+            # Checking for matching MD5 within replace list
+            print(replace_list)
             if replace_list:
-                LOGGER.info("Replacement files found, original proxy files for deletion:\n%s", replace_list)
+                for item in replace_list:
+                    fname = os.path.split(item)[-1]
+                    local_md5 = utils.create_md5_65536(item)
+                    bp_md5 = bp_utils.get_bp_md5(fname, BUCKET)
+                    if local_md5 == bp_md5:
+                        print(f"Removing from list MD5 match: {item}")
+                        LOGGER.info("Skipping backup of %s - Local and remote MD5 match.", item)
+                        LOGGER.info("Local MD5 %s - Remote %s", local_md5, bp_md5)
+                        replace_list.remove(item)
+                    print(f"Queued for deletion: {item}")
+
+                # Delete existing versions if being replaced
+                LOGGER.info("** Replacement files needed, original proxy files for deletion:\n%s", replace_list)
+                print(replace_list)
                 success_list = delete_existing_proxy(replace_list)
-                if success_list == []:
+                if len(success_list) == 0:
                     LOGGER.info("All repeated files successfully deleted before replacement.")
                 else:
-                    LOGGER.warning("Duplicate files remaining in Black Pearl: %s", success_list)
+                    LOGGER.warning("Duplicate files remaining in Black Pearl - removing from replace_list to avoid duplicate writes: %s", success_list)
+                    for fail_item in success_list:
+                        replace_list.remove(fail_item)
 
             # While files remaining in list, move to ingest folder, PUT, and remove again
+            file_list = file_list + replace_list
             while file_list:
-                check_control()
+                utils.check_control('black_pearl')
                 empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
                 if len(empty_check) != 0:
                     LOGGER.warning("Exiting: Files found that weren't moved from ingest point previous run: %s", INGEST_POINT)
@@ -234,14 +200,13 @@ def main():
                 ingest_list = move_to_ingest_folder(new_path, file_list)
                 LOGGER.info("** Moving new set of PUT items:\n%s", ingest_list)
 
-                job_list = put_dir(INGEST_POINT)
-                if job_list:
-                    LOGGER.info("** PUT folder confirmation: %s", job_list)
-                    LOGGER.info("Moving files back to original qnap_access_renditions folders: %s", ingest_list)
-                    success = move_items_back(ingest_list)
-                else:
+                job_list = bp_utils.put_directory(INGEST_POINT, BUCKET)
+                if not job_list:
                     LOGGER.warning("Exiting: Failed to PUT data to Black Pearl. Clean up work needed")
                     sys.exit("Failed to PUT data to BP. See logs")
+                LOGGER.info("** PUT folder confirmation: %s", job_list)
+                LOGGER.info("Moving files back to original qnap_access_renditions folders: %s", ingest_list)
+                success = move_items_back(ingest_list)
                 if success:
                     new_file_list = []
                     set_ingest_list = set(ingest_list)
@@ -258,30 +223,8 @@ def main():
                     LOGGER.warning("Files that are stuck in folder:\n%s", files_stuck)
                     sys.exit(f"Please manually move files back to QNAP-11:\n{files_stuck}")
 
-                # Sleep between 1TB PUTs
-                LOGGER.info("Sleep 2hrs")
-                sleep(7200)
 
     LOGGER.info("====== BP Access Renditions back up script end ====================")
-
-
-def put_dir(directory_pth):
-    '''
-    Add the directory to black pearl using helper (no MD5)
-    Retrieve job number and launch json notification
-    JMW - Need to understand how to PUT so folder structures
-    are maintained, eg bfi/202402/<file>
-    '''
-    try:
-        put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=BUCKET, objects_per_bp_job=5000, max_threads=3)
-    except Exception as err:
-        LOGGER.error('Exception: %s', err)
-        print('Exception: %s', err)
-    LOGGER.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_ids)
-    job_list = []
-    for job_id in put_job_ids:
-        job_list.append(job_id)
-    return job_list
 
 
 def move_items_back(ingest_list):
@@ -312,4 +255,3 @@ def move_items_back(ingest_list):
 
 if __name__ == "__main__":
     main()
-

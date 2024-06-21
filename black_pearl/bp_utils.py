@@ -138,6 +138,7 @@ def put_directory(directory_pth, bucket):
         put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=bucket, objects_per_bp_job=5000, max_threads=3)
     except Exception as err:
         print('Exception: %s', err)
+        return None
     print("PUT COMPLETE - JOB ID retrieved: {put_job_ids}")
     job_list = []
     for job_id in put_job_ids:
@@ -220,7 +221,7 @@ def delete_black_pearl_object(ref_num, version, bucket):
     except Exception as exc:
         print(exc)
         return None
-    
+
 
 def etag_deletion_confirmation(ref_num, bucket):
     '''

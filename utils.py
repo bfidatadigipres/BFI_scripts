@@ -223,7 +223,7 @@ def logger(log_path, level, message):
         LOGGER.exception(message)
 
 
-def get_folder_size(fpath):
+def get_size(fpath):
     '''
     Check the size of given folder path
     return size in kb

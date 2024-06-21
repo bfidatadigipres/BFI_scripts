@@ -164,6 +164,7 @@ def main():
 
             # Checking for matching MD5 within replace list
             print(len(replace_list))
+            remove_list = []
             if replace_list:
                 for item in replace_list:
                     local_md5 = utils.create_md5_65536(os.path.join(STORAGE, item))
@@ -173,11 +174,15 @@ def main():
                     if local_md5 == bp_md5:
                         print(f"Removing from list MD5 match: {item}")
                         LOGGER.info("Skipping item %s as MD5 files match:\n%s - Local MD5\n%s - Remote MD5", item, local_md5, bp_md5)
-                        replace_list.remove(item)
+                        remove_list.append(item)
                     else:
                         LOGGER.info("MD5s do not match, queue for deletion:\n%s - Local MD4\n%s - Remote MD5", local_md5, bp_md5)
                         print(f"MD5 do not match - queued for deletion: {item}")
+            
+            for item in remove_list:
+                replace_list.remove(item)
 
+            if len(replace_list) > 0:
                 # Delete existing versions if being replaced
                 LOGGER.info("** Replacement files needed, original proxy files for deletion:\n%s", replace_list)
                 print(len(replace_list))

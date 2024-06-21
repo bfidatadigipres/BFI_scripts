@@ -147,10 +147,8 @@ def main():
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
             os.makedirs(new_path, mode=0o777, exist_ok=True)
-            LOGGER.info("Created new ingest path: %s", new_path)
 
             files = os.listdir(os.path.join(access_path, folder))
-            LOGGER.info("Starting batch ingest of target files in date folder - modified within last %s days", MOD_MAX)
             for file in files:
                 old_fpath = os.path.join(access_path, folder, file)
                 if check_mod_time(old_fpath) is False:

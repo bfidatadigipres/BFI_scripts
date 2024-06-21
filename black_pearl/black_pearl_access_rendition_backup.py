@@ -28,7 +28,7 @@ from time import sleep
 
 # Local imports
 import bp_utils
-sys.path.extend(os.environ['CODE'])
+sys.path.append(os.environ['CODE'])
 import utils
 
 # Global vars

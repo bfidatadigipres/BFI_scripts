@@ -168,9 +168,8 @@ def main():
             print(replace_list)
             if replace_list:
                 for item in replace_list:
-                    fname = os.path.split(item)[-1]
                     local_md5 = utils.create_md5_65536(os.path.join(STORAGE, item))
-                    bp_md5 = bp_utils.get_bp_md5(fname, BUCKET)
+                    bp_md5 = bp_utils.get_bp_md5(item, BUCKET)
                     print(f"Local {local_md5} - {item}")
                     print(f"Remote {bp_md5} - {item}")
                     if local_md5 == bp_md5:

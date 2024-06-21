@@ -259,8 +259,8 @@ def main():
                     sys.exit(f"Please manually move files back to QNAP-11:\n{files_stuck}")
 
                 # Sleep between 1TB PUTs
-                LOGGER.info("Sleep 2hrs")
-                sleep(7200)
+                LOGGER.info("Sleep 4hrs")
+                sleep(14400)
 
     LOGGER.info("====== BP Access Renditions back up script end ====================")
 

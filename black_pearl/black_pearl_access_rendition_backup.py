@@ -171,12 +171,14 @@ def main():
                     fname = os.path.split(item)[-1]
                     local_md5 = utils.create_md5_65536(os.path.join(STORAGE, item))
                     bp_md5 = bp_utils.get_bp_md5(fname, BUCKET)
+                    print(f"Local {local_md5} - {item}")
+                    print(f"Remote {bp_md5} - {item}")
                     if local_md5 == bp_md5:
                         print(f"Removing from list MD5 match: {item}")
-                        LOGGER.info("Skipping backup of %s - Local and remote MD5 match.", item)
-                        LOGGER.info("Local MD5 %s - Remote %s", local_md5, bp_md5)
+                        LOGGER.info("Skipping this item as MD5 files match:\n%s - Local MD5\n%s - Remote MD5", local_md5, bp_md5)
                         replace_list.remove(item)
                     else:
+                        LOGGER.info("MD5s do not match, queue for deletion:\n%s - Local MD4\n%s - Remote MD5", local_md5, bp_md5)
                         print(f"MD5 do not match - queued for deletion: {item}")
 
                 # Delete existing versions if being replaced

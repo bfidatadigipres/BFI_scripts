@@ -1033,7 +1033,7 @@ def cid_media_append(fname, priref, data):
     
     data = get_media_priref(fname)
     file = fname.split('.')[0]
-    if file == data[4]:
+    if file == data[4] or file in str(data[2]):
         LOGGER.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
         return True
 

@@ -213,12 +213,13 @@ def main():
                 if check_bp_status(f"{key}/{folder}/{file}") is False:
                     file_list.append(f"{key}/{folder}/{file}")
                 else:
+                    print(f"Already in Black Pearl: {file}")
                     local_md5 = utils.create_md5_65536(os.path.join(access_path, folder, file))
                     bp_md5 = bp_utils.get_bp_md5(f"{key}/{folder}/{file}", BUCKET)
-                    print(f"Local {local_md5} - {file}")
-                    print(f"Remote {bp_md5} - {file}")
                     if local_md5 != bp_md5:
                         print(f"MD5 mismatch between local and BP: {file}")
+                        print(f"Local {local_md5} - {file}")
+                        print(f"Remote {bp_md5} - {file}")
                         LOGGER.info("Overwriting item %s as MD5 files don't match:\n%s - Local MD5\n%s - Remote MD5", file, local_md5, bp_md5)
                         file_list.append(f"{key}/{folder}/{file}")
                         replace_list.append(f"{key}/{folder}/{file}")

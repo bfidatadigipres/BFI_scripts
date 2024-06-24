@@ -119,7 +119,7 @@ def dpi_move():
     return render_template("dpi_requests.html", data=data)
 
 
-@app.route('/dpi_download', methods=['GET', 'POST'])
+@app.route('/dpi_download_request', methods=['GET', 'POST'])
 def dpi_download_request():
     '''
     Handle incoming path containing video

@@ -119,50 +119,6 @@ def dpi_move():
     return render_template("dpi_requests.html", data=data)
 
 
-@app.route('/dpi_download_request', methods=['GET', 'POST'])
-def dpi_download_request():
-    '''
-    Handle incoming path containing video
-    reference_number as last element
-    '''
-
-    if request.method == 'GET':
-        fname = request.args.get("file")
-        transcode = request.args.get("option")
-        if fname and transcode:
-            return render_template('initiate2_transcode.html', file=fname, trans_option=transcode)
-
-    if request.method == 'POST':
-        name = request.form['name'].strip()
-        email = request.form['email'].strip()
-        download_type = request.form['download_type'].strip()
-        fname = request.form['fname'].strip()
-        download_path = request.form['download_path'].strip()
-        fpath = request.form['fpath'].strip()
-        transcode = request.form['transcode'].strip()
-        # Filter out non alphanumeric / underscores from fname
-        fpath = re.sub('\W+', '', fpath)
-        status = 'Requested'
-        date_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        # Check for non-BFI email and reject
-        if 'bfi.org.uk' not in email:
-            return render_template('email_error_transcode.html')
-        ES.index(index='dpi_downloads', document={
-            "name": name,
-            "email": email,
-            "download_type": download_type,
-            "fname": fname,
-            "download_path": download_path,
-            "fpath": fpath,
-            "transcode": transcode,
-            "status": status,
-            "date": date_stamp
-        })
-        return render_template('index_transcode.html')
-    else:
-        return render_template('initiate_transcode.html')
-
-
 @app.route('/dpi_download')
 def dpi_download():
     '''

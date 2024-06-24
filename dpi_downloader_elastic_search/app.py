@@ -24,7 +24,7 @@ app = Flask(__name__)
 @app.route('/')
 @app.route('/home')
 def index():
-    return render_template('index_transcode.html')
+    return render_template('index.html')
 
 ES_SEARCH = os.environ.get('ES_SEARCH_PATH')
 ES = Elasticsearch([ES_SEARCH])

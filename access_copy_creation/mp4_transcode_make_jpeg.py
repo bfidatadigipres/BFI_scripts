@@ -1093,7 +1093,7 @@ def cid_media_append(fname, priref, data):
     payload = payload_head + payload_mid + payload_end
 
     rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
-    if not rec:
+    if rec is None:
         return False
 
     data = get_media_priref(fname)
@@ -1103,7 +1103,7 @@ def cid_media_append(fname, priref, data):
     
     data = get_media_priref(fname)
     file = fname.split('.')[0]
-    if file == data[4]:
+    if file == data[4] or file in str(data[2]):
         LOGGER.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
         return True
 

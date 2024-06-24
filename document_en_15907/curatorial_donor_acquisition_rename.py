@@ -32,13 +32,14 @@ Python 3.6+
 import subprocess
 import datetime
 import logging
-import json
+import shutil
 import sys
 import os
 
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global path variables
 CURATORIAL_PATH = os.environ['IS_CURATORIAL']
@@ -61,29 +62,6 @@ LOGGER.setLevel(logging.INFO)
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical('Cannot establish CID session, exiting script')
-        sys.exit()
 
 
 def cid_retrieve(itemname, search):
@@ -126,6 +104,21 @@ def cid_retrieve(itemname, search):
     return (priref, ob_num, title, acquired1)
 
 
+def sort_ext(ext):
+    '''
+    Decide on file type
+    '''
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg', 'mpg'],
+                 'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
+                 'audio': ['wav', 'flac', 'mp3'],
+                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}
+
+    ext = ext.lower()
+    for key, val in mime_type.items():
+        if str(ext) in str(val):
+            return key
+
+
 def main():
     '''
     Retrieve file items only, excepting those with unwanted extensions
@@ -134,8 +127,8 @@ def main():
     Rename and move to successful_rename/ folder
     '''
     LOGGER.info("=========== START Curatorial Donor Acquisition rename script START ==========")
-    check_control()
-    cid_check()
+    utils.check_control('pause_scripts')
+    utils.cid_check(CID_API)
     if len(sys.argv) < 2:
         LOGGER.warning("SCRIPT EXITING: Error with shell script input:\n%s\n", sys.argv)
         sys.exit()
@@ -196,6 +189,17 @@ def main():
         print(f"Item path found to process: {itempath}")
         LOGGER.info("** File okay to process: %s", item)
         LOGGER.info("Looking in CID item records for filename match...")
+
+        # Check if item is video file, then check for truncation
+        ext = os.path.splitext(itempath)[1]
+        ftype = sort_ext(ext)
+        if ftype == 'video':
+            duration = utils.get_metadata('General', 'Duration', itempath)
+            if len(duration) == 0:
+                LOGGER.warning("Skipping: General duration missing from video file %s - moving to fail_trucated/ folder", item)
+                os.makedirs(os.path.join(fullpath, 'fail_truncated'), mode=0o777, exist_ok=True)
+                shutil.move(itempath, os.path.join(fullpath, 'fail_truncated/', item))
+                continue
 
         # Retrieve CID data
         search = f'digital.acquired_filename="{item}"'

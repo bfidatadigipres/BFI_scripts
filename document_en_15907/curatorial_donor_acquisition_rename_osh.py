@@ -42,17 +42,16 @@ import adlib_v3 as adlib
 import utils
 
 # Global path variables
-CURATORIAL_PATH = os.environ['IS_CURATORIAL']
+CURATORIAL_PATH = os.environ['QNAP_09_OSH']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-DIGIOPS_PATH = os.path.join(os.environ['QNAP_11_DIGIOPS'], 'Acquisitions/Curatorial/')
-# DIGIOPS_PATH = os.path.join(os.environ['QNAP_09'], 'Acquisitions/Curatorial/')
+DIGIOPS_PATH = os.environ['QNAP_08_OSH']
 RSYNC_LOG = os.path.join(DIGIOPS_PATH, 'transfer_logs')
 CID_API = os.environ['CID_API3']
 
 # Setup logging
-LOGGER = logging.getLogger('curatorial_donor_acquisition_rename.log')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'curatorial_donor_acquisition_rename.log'))
+LOGGER = logging.getLogger('curatorial_donor_acquisition_rename_osh.log')
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'curatorial_donor_acquisition_rename_osh.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -126,7 +125,7 @@ def main():
     Retrieve object number and use to build new filename
     Rename and move to successful_rename/ folder
     '''
-    LOGGER.info("=========== START Curatorial Donor Acquisition rename script START ==========")
+    LOGGER.info("=========== START Curatorial Donor Acquisition rename OSH script START ==========")
     utils.check_control('pause_scripts')
     utils.cid_check(CID_API)
     if len(sys.argv) < 2:
@@ -145,7 +144,7 @@ def main():
     if not dirs and not files:
         LOGGER.info("SKIPPING: Folder path empty of files and directories: %s", fullpath)
         local_logger(f"Skipping as path is empty {fullpath}", fullpath)
-        LOGGER.info("============= END Curatorial Donor Acquisition rename script END ============")
+        LOGGER.info("============= END Curatorial Donor Acquisition rename OSH script END ============")
         sys.exit()
 
     if dirs:
@@ -161,7 +160,7 @@ def main():
     if not files:
         LOGGER.info("SKIPPING: Folder path empty of files: %s", fullpath)
         local_logger(f"Skipping as path is empty of files {fullpath}", fullpath)
-        LOGGER.info("============= END Curatorial Donor Acquisition rename script END ============")
+        LOGGER.info("============= END Curatorial Donor Acquisition rename OSH script END ============")
         sys.exit()
 
     # Make new success folder for file moves
@@ -174,7 +173,7 @@ def main():
     except FileExistsError as err:
         LOGGER.warning("Folder already exists... %s", err)
         local_logger(f"Skipping as path is empty {fullpath}", fullpath)
-        LOGGER.info("============= END Curatorial Donor Acquisition rename script END ============")
+        LOGGER.info("============= END Curatorial Donor Acquisition rename OSH script END ============")
         sys.exit()
 
     # Begin processing files
@@ -254,7 +253,7 @@ def main():
         LOGGER.info("Success folder empty, no files renamed. Deleting folder: %s", spath)
         local_logger(f"Folder {new_workflow_folder} is empty. Likely no files successfully renamed. Deleting folder now.", fullpath)
         os.rmdir(spath)
-        LOGGER.info("============= END Curatorial Donor Acquisition rename script END ============")
+        LOGGER.info("============= END Curatorial Donor Acquisition rename OSH script END ============")
         sys.exit()
 
     # Rsync completed folder over
@@ -267,7 +266,7 @@ def main():
     print("Rsync finished")
     local_logger("RSYNC complete.", fullpath)
 
-    LOGGER.info("============= END Curatorial Donor Acquisition rename script END ============")
+    LOGGER.info("============= END Curatorial Donor Acquisition rename OSH script END ============")
 
 
 def check_path(root, spath):

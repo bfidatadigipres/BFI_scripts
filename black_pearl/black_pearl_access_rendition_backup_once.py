@@ -14,6 +14,7 @@ Joanna White
 2024
 '''
 
+# Public imports
 import os
 import sys
 import json
@@ -22,6 +23,11 @@ import logging
 from datetime import datetime
 from time import sleep
 from ds3 import ds3, ds3Helpers
+
+# Local imports
+import bp_utils
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Global vars
 CLIENT = ds3.createClientFromEnv()
@@ -206,20 +212,29 @@ def main():
                      continue
                 if check_bp_status(f"{key}/{folder}/{file}") is False:
                     file_list.append(f"{key}/{folder}/{file}")
-
-                # JMW to replace/update check bp status when only backing up new items
-                # else:
-                #    file_list.append(f"{key}/{folder}/{file}")
-                #    replace_list.append(f"{key}/{folder}/{file}")
+                else:
+                    local_md5 = utils.create_md5_65536(os.path.join(access_path, folder, file))
+                    bp_md5 = bp_utils.get_bp_md5(f"{key}/{folder}/{file}", BUCKET)
+                    print(f"Local {local_md5} - {file}")
+                    print(f"Remote {bp_md5} - {file}")
+                    if local_md5 != bp_md5:
+                        print(f"MD5 mismatch between local and BP: {file}")
+                        LOGGER.info("Overwriting item %s as MD5 files don't match:\n%s - Local MD5\n%s - Remote MD5", file, local_md5, bp_md5)
+                        file_list.append(f"{key}/{folder}/{file}")
+                        replace_list.append(f"{key}/{folder}/{file}")
 
             # Delete existing versions if being replaced
-            if replace_list:
-                LOGGER.info("Replacement files found, original proxy files for deletion:\n%s", replace_list)
+            if len(replace_list) > 0:
+                # Delete existing versions if being replaced
+                LOGGER.info("** Replacement files needed, original proxy files for deletion:\n%s", replace_list)
+                print(len(replace_list))
                 success_list = delete_existing_proxy(replace_list)
-                if success_list == []:
+                if len(success_list) == 0:
                     LOGGER.info("All repeated files successfully deleted before replacement.")
                 else:
-                    LOGGER.warning("Duplicate files remaining in Black Pearl: %s", success_list)
+                    LOGGER.warning("Duplicate files remaining in Black Pearl - removing from replace_list to avoid duplicate writes: %s", success_list)
+                    for fail_item in success_list:
+                        replace_list.remove(fail_item)
 
             # While files remaining in list, move to ingest folder, PUT, and remove again
             while file_list:

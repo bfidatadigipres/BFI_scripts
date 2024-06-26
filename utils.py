@@ -163,6 +163,21 @@ def get_object_number(fname):
     return object_number
 
 
+def sort_ext(ext):
+    '''
+    Decide on file type
+    '''
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg'],
+                 'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
+                 'audio': ['wav', 'flac', 'mp3'],
+                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}
+
+    ext = ext.lower()
+    for key, val in mime_type.items():
+        if str(ext) in str(val):
+            return key
+
+
 def get_metadata(stream, arg, dpath):
     '''
     Retrieve metadata with subprocess
@@ -177,7 +192,7 @@ def get_metadata(stream, arg, dpath):
     ]
     
     meta = subprocess.check_output(cmd)
-    return meta.decode('utf-8')
+    return meta.decode('utf-8').rstrip('\n')
 
 
 def get_mediaconch(dpath, policy):

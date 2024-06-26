@@ -36,7 +36,6 @@ Python 3.6+
 import os
 import re
 import sys
-import json
 import time
 import shutil
 import logging
@@ -48,6 +47,7 @@ import tenacity
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global paths from environment vars
 MP4_POLICY = os.environ['MP4_POLICY']
@@ -55,7 +55,6 @@ LOG_PATH = os.environ['LOG_PATH']
 FLLPTH = sys.argv[1].split('/')[:4]
 LOG_PREFIX = '_'.join(FLLPTH)
 LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
-CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 TRANSCODE = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
 CID_API = os.environ['CID_API3']
@@ -82,26 +81,6 @@ SUPPLIERS = {"East Anglian Film Archive": "eafa",
              "Box, The": "thebox",
              "Wessex Film and Sound Archive": "wfsa",
              "Yorkshire Film Archive": "yfa"}
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['mp4_transcode']:
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def check_cid():
-    ''' Test CID online '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def local_time():
@@ -148,9 +127,13 @@ def main():
         sys.exit(f"Incorrect filepath received: {LOG_PREFIX}")
 
     # Multiple instances of script so collecting logs for one burst output
+    if not utils.check_control('mp4_transcode'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
     log_build = []
-    check_control()
-    check_cid()
 
     filepath, file = os.path.split(fullpath)
     fname, ext = os.path.splitext(file)
@@ -164,7 +147,7 @@ def main():
     ext = ext.lstrip('.')
     print(file, fname, ext)
     # Check CID for Item record and extract transcode path
-    object_number = make_object_number(fname)
+    object_number = utils.get_object_number(fname)
     if object_number.startswith('CA_'):
         priref, source, groupings = check_item(object_number, 'collectionsassets')
     else:
@@ -228,7 +211,7 @@ def main():
             log_build.append(f"{local_time()}\tWARNING\tCID UMIDs exist but no transcoding. Allowing files to proceed.")
 
     # Get file type, video or audio etc.
-    ftype = sort_ext(ext)
+    ftype = utils.sort_ext(ext)
     if ftype == 'audio':
         log_build.append(f"{local_time()}\tINFO\tItem is an audio file. No actions required at this time.")
         log_build.append(f"{local_time()}\tINFO\tMoving {file} to Autoingest completed folder: {completed_pth}")
@@ -459,18 +442,6 @@ def get_jpeg(seconds, fullpath, outpath):
         return False
 
 
-def make_object_number(fname):
-    '''
-    Convert file or directory to CID object_number
-    '''
-    name_split = fname.split('_')
-    if len(name_split) == 3:
-        return "-".join(name_split[:2])
-    if len(name_split) == 4:
-        return "-".join(name_split[:3])
-    return None
-
-
 def check_item(ob_num, database):
     '''
     Use requests to retrieve priref/RNA data for item object number
@@ -523,36 +494,12 @@ def get_media_priref(fname):
     return priref, input_date, largeimage_umid, thumbnail_umid, access_rendition
 
 
-def sort_ext(ext):
-    '''
-    Decide on file type
-    '''
-    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg'],
-                 'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct'],
-                 'audio': ['wav', 'flac', 'mp3'],
-                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml']}
-
-    ext = ext.lower()
-    for key, val in mime_type.items():
-        if str(ext) in str(val):
-            return key
-
-
 def get_dar(fullpath):
     '''
     Retrieves metadata DAR info and returns as string
     '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%DisplayAspectRatio/String%"',
-        fullpath
-    ]
 
-    cmd[3] = cmd[3].replace('"', '')
-    dar_setting = subprocess.check_output(cmd)
-    dar_setting = dar_setting.decode('utf-8')
-
+    dar_setting = utils.get_metadata('Video', 'DisplayAspectRatio/String', fullpath)
     if '4:3' in dar_setting:
         return '4:3'
     if '16:9' in dar_setting:
@@ -566,16 +513,7 @@ def get_par(fullpath):
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
     '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%PixelAspectRatio%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    par_setting = subprocess.check_output(cmd)
-    par_setting = par_setting.decode('utf-8')
+    par_setting = utils.get_metadata('Video', 'PixelAspectRatio', fullpath)
     par_full = str(par_setting).rstrip('\n')
 
     if len(par_full) <= 5:
@@ -588,27 +526,9 @@ def get_height(fullpath):
     Retrieves height information via mediainfo
     '''
 
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Sampled_Height%"',
-        fullpath
-    ]
+    sampled_height = utils.get_metadata('Video', 'Sampled_Height', fullpath)
+    reg_height = utils.get_metadata('Video', 'Height', fullpath)
 
-    cmd[3] = cmd[3].replace('"', '')
-    sampled_height = subprocess.check_output(cmd)
-    sampled_height = sampled_height.decode('utf-8').rstrip('\n')
-
-    cmd2 = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Height%"',
-        fullpath
-    ]
-
-    cmd2[3] = cmd2[3].replace('"', '')
-    reg_height = subprocess.check_output(cmd2)
-    reg_height = reg_height.decode('utf-8').rstrip('\n')
     try:
         int(sampled_height)
     except ValueError:
@@ -641,16 +561,7 @@ def get_width(fullpath):
     '''
     Retrieves height information via ffprobe
     '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Width/String%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    width = subprocess.check_output(cmd)
-    width = width.decode('utf-8')
+    width = utils.get_metadata('Video', 'Width/String', fullpath)
 
     if '720' == width:
         return '720'
@@ -674,18 +585,10 @@ def get_duration(fullpath):
     for update to ffmpeg map command
     '''
 
-    cmd = [
-        'mediainfo', '--Language=raw',
-        '--Full', '--Inform="Video;%Duration%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    duration = subprocess.check_output(cmd)
+    duration = utils.get_metadata('Video', 'Duration', fullpath)
     if not duration:
         return ('', '')
 
-    duration = duration.decode('utf-8').rstrip('\n')
     print(f"Mediainfo seconds: {duration}")
 
     if '.' in duration:
@@ -991,26 +894,11 @@ def conformance_check(file):
     Looks for essential items to ensure that
     the transcode was successful
     '''
-
-    mediaconch_cmd = [
-        'mediaconch', '--force',
-        '-p', MP4_POLICY,
-        file
-    ]
-
-    try:
-        success = subprocess.check_output(mediaconch_cmd)
-        success = str(success)
-        print(success)
-    except Exception as err:
-        success = ""
-        LOGGER.warning("%s\tWARNING\tMediaconch policy retrieval failure for %s\n%s", local_time(), file, err)
-
-    if 'pass!' in str(success):
+    success = utils.get_mediaconch(file, MP4_POLICY)
+    if success[0] is True:
         return "PASS!"
-    if success.startswith('fail!'):
-        return f"FAIL! This policy has failed {success}"
-    return "FAIL!"
+    else:
+        return f"FAIL! This policy has failed {success[1]}"
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))

@@ -46,15 +46,16 @@ import glob
 import json
 import shutil
 import logging
-import subprocess
 from datetime import datetime
 import yaml
 from ds3 import ds3
 
 # Local import
+import bp_utils as bp
 CODE_PATH = os.environ['CODE']
 sys.path.append(CODE_PATH)
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 BPINGEST = os.environ['BP_INGEST']
@@ -67,7 +68,6 @@ CID_API = os.environ['CID_API3']
 INGEST_CONFIG = os.path.join(CODE_PATH, 'black_pearl/dpi_ingests.yaml')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
-GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 CLIENT = ds3.createClientFromEnv()
 DPI_BUCKETS = os.environ['DPI_BUCKET']
 
@@ -237,54 +237,6 @@ def get_part_whole(fname):
     return (part, whole)
 
 
-def get_ms(filepath):
-    '''
-    Retrieve duration as milliseconds if possible
-    '''
-    duration = ''
-    cmd = [
-        'ffprobe',
-        '-v', 'error',
-        '-show_entries', 'format=duration',
-        '-of', 'default=noprint_wrappers=1:nokey=1',
-        filepath
-    ]
-
-    try:
-        duration = subprocess.check_output(cmd)
-        duration = duration.decode('utf-8')
-    except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
-    if duration:
-        return duration.rstrip('\n')
-    else:
-        return None
-
-
-def get_duration(filepath):
-    '''
-    Retrieve duration field if possible
-    '''
-    duration = ''
-    cmd = [
-        'ffprobe',
-        '-v', 'error',
-        '-show_entries', 'format=duration',
-        '-of', 'default=noprint_wrappers=1:nokey=1',
-        '-sexagesimal',
-        filepath
-    ]
-    try:
-        duration = subprocess.check_output(cmd)
-        duration = duration.decode('utf-8')
-    except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
-    if duration:
-        return duration.rstrip('\n')
-    else:
-        return None
-
-
 def get_md5(filename):
     '''
     Retrieve the local_md5 from checksum_md5 folder
@@ -337,32 +289,6 @@ def check_for_media_record(fname):
             pass
 
     return priref, access_mp4
-
-
-def check_global_log(fname):
-    '''
-    Read global log lines and look for a
-    confirmation of deletion from autoingest
-    '''
-    with open(GLOBAL_LOG, 'r') as data:
-        rows = csv.reader(data, delimiter='\t')
-        for row in rows:
-            if fname in str(row) and 'Successfully deleted file' in str(row):
-                print(row)
-                return row
-
-
-def check_global_log_again(fname):
-    '''
-    Read global log lines and look for a
-    confirmation of reingest of file
-    '''
-    with open(GLOBAL_LOG, 'r') as data:
-        rows = csv.reader(data, delimiter='\t')
-        for row in rows:
-            if fname in str(row) and 'Renewed ingest of file will be attempted' in str(row):
-                print(row)
-                return row
 
 
 def main():
@@ -537,8 +463,8 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         logger.info("*** %s - processing file", fpath)
         byte_size = get_file_size(fpath)
         object_number = make_object_num(file)
-        duration = get_duration(fpath)
-        duration_ms = get_ms(fpath)
+        duration = utils.get_duration(fpath)
+        duration_ms = utils.get_ms(fpath)
         if duration or duration_ms:
             logger.info("Duration: %s MS: %s", duration, duration_ms)
 
@@ -618,8 +544,8 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         if media_priref:
             logger.info("Media record %s already exists for file: %s", media_priref, fpath)
             # Check for previous 'deleted' message in global.log
-            deletion_confirm = check_global_log(file)
-            reingest_confirm = check_global_log_again(file)
+            deletion_confirm = utils.check_global_log(file, 'Successfully deleted file')
+            reingest_confirm = utils.check_global_log(file, 'Renewed ingest of file will be attempted')
             if deletion_confirm:
                 logger.info("DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s", deletion_confirm)
                 try:

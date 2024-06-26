@@ -43,20 +43,17 @@ Joanna White
 
 import os
 import sys
-import json
 import time
 import logging
 import tenacity
-from ds3 import ds3, ds3Helpers
 
 # Private package
+import utils
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import bp_utils as bp
 
 # Global links / set up ds3 and adlib
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
-CONTROL_JSON = os.environ['CONTROL_JSON']
 MP4_ACCESS1 = os.environ['MP4_ACCESS_REDIRECT']
 MP4_ACCESS2 = os.environ['MP4_ACCESS2']
 LOGS = os.environ['LOG_PATH']
@@ -69,25 +66,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    ''' Check control json for restrictions '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            LOGGER.info('Script run prevented by downtime_control.json')
-            sys.exit('Sorry, but script prevented from running by downtime_control.json')
-
-
-def check_cid():
-    ''' Confirm CID running '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(15))
@@ -189,40 +167,6 @@ def get_media_record_data(priref):
     return [ref_num, access_mp4, input_date, approved, filename, bucket]
 
 
-def get_version_id(ref_num):
-    '''
-    Call up Black Pearl ObjectList for each item
-    using reference_number, and retrieve version_id
-    ['ObjectList'][0]['Blobs']['ObjectList'][0]['VersionId']
-    '''
-    resp = ds3.GetObjectsWithFullDetailsSpectraS3Request(name=ref_num, include_physical_placement=True)
-    result = CLIENT.get_objects_with_full_details_spectra_s3(resp)
-    obj = result.result
-
-    if not obj:
-        return None
-    if not len(obj) == 1:
-        return None
-
-    try:
-        version_id = obj['ObjectList'][0]['Blobs']['ObjectList'][0]['VersionId']
-    except (IndexError, TypeError, KeyError):
-        version_id = None
-    return version_id
-
-
-def get_etag(ref_num, bucket):
-    '''
-    Get confirmation of deletion
-    '''
-    resp = ds3.HeadObjectRequest(bucket, ref_num)
-    result = CLIENT.head_object(resp)
-    etag = result.response.msg['ETag']
-    if etag is None:
-        return 'Deleted'
-    return etag
-
-
 def main():
     '''
     Load pointer file, obtain all prirefs
@@ -231,9 +175,13 @@ def main():
     if not sys.argv[1]:
         LOGGER.warning("Exiting. No pointer file supplied at script launch.")
         sys.exit('No pointer file supplied at script launch. Please try launching again.')
+    if not utils.check_control('black_pearl'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_cid(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
-    check_control()
-    check_cid()
     LOGGER.info("----------- Black Pearl pointer file deletions script START ------------")
     priref_list = []
     pointer = sys.argv[1]
@@ -282,7 +230,7 @@ def main():
             print(f"Confirmed for deletion: {key}, {ref_num}, {approved}")
             LOGGER.info("Confirmed for deletion: %s - %s. Priref %s", ref_num, fname, priref)
             LOGGER.info("Fetching version_id using reference number")
-            version_id = get_version_id(ref_num)
+            version_id = bp.get_version_id(ref_num)
             if not version_id:
                 LOGGER.warning("Deletion of file %s not possible, unable to retreive version_id", ref_num)
                 print(f"WARNING: Deletion impossible, version_id not found for file {ref_num}")
@@ -293,7 +241,7 @@ def main():
                 continue
             print(f"Version id retrieved from Black Pearl: {version_id}")
 
-            success = delete_black_pearl_object(ref_num, version_id, bucket)
+            success = bp.delete_black_pearl_object(ref_num, version_id, bucket)
             if not success:
                 LOGGER.warning("Deletion of asset failed: %s. Priref %s. Version id %s", ref_num, priref, version_id)
                 print(f"WARNING: Deletion of asset failed: {ref_num}.\n")
@@ -304,7 +252,7 @@ def main():
                 continue
 
             # Check for head object of deleted asset for confirmation
-            delete_check = get_etag(ref_num, bucket)
+            delete_check = bp.etag_deletion_confirmation(ref_num, bucket)
             if delete_check == 'Deleted':
                 print(f"** DELETED FROM BLACK PEARL: {ref_num} - from bucket {bucket}")
                 LOGGER.info("** DELETED FROM BLACK PEARL: %s - from bucket %s", ref_num, bucket)
@@ -365,20 +313,6 @@ def main():
 
     print("\nScript completed and exiting. See you next time!\n")
     LOGGER.info("----------- Black Pearl pointer file deletions script END --------------\n")
-
-
-def delete_black_pearl_object(ref_num, version, bucket):
-    '''
-    Receive reference number and initiate
-    deletion of object
-    '''
-    try:
-        request = ds3.DeleteObjectRequest(bucket, ref_num, version_id=version)
-        job_deletion = CLIENT.delete_object(request)
-        return job_deletion
-    except Exception as exc:
-        print(exc)
-        return None
 
 
 def get_mp4_paths(input_date, access_mp4):

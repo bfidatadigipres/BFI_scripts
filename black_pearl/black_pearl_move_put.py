@@ -25,22 +25,20 @@ Joanna White / Stephen McConnachie
 
 import os
 import sys
-import yaml
-import json
 import pytz
 import shutil
 import logging
 from datetime import datetime
-from ds3 import ds3, ds3Helpers
+
+# Local import
+import bp_utils as bp
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Global vars
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 INGEST_CONFIG = os.environ['INGEST_SIZE']
-JSON_END = os.environ['JSON_END_POINT']
-DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 
 # Setup logging
 log_name = sys.argv[1].replace("/", '_')
@@ -52,87 +50,6 @@ logger.addHandler(HDLR)
 logger.setLevel(logging.INFO)
 
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def load_yaml(file):
-    ''' Open yaml with safe_load '''
-    with open(file) as config_file:
-        return yaml.safe_load(config_file)
-
-
-def get_buckets(bucket_collection):
-    '''
-    Read JSON list return
-    key_value and list of others
-    '''
-    bucket_list = []
-    key_bucket = ''
-
-    with open(DPI_BUCKETS) as data:
-        bucket_data = json.load(data)
-    if bucket_collection == 'bfi':
-        for key, value in bucket_data.items():
-            if 'preservationbucket' in str(key):
-                pass
-            elif 'preservation0' in str(key):
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-            elif 'imagen' in str(key):
-                bucket_list.append(key)
-    else:
-        for key, value in bucket_data.items():
-            if f"{bucket_collection}0" in str(key):
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-
-    return key_bucket, bucket_list
-
-
-def get_size(fpath):
-    '''
-    Check the size of given folder path
-    return size in kb
-    '''
-    if os.path.isfile(fpath):
-        return os.path.getsize(fpath)
-
-    try:
-        byte_size = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
-    except OSError as err:
-        logger.warning("get_size(): Cannot reach folderpath for size check: %s\n%s", fpath, err)
-        byte_size = None
-
-    return byte_size
-
-
-def check_bp_status(fname, bucket_list):
-    '''
-    Look up filename in BP buckets
-    to avoid multiple ingest of files
-    '''
-
-    for bucket in bucket_list:
-        query = ds3.HeadObjectRequest(bucket, fname)
-        result = CLIENT.head_object(query)
-        # Only return false if DOESNTEXIST is missing, eg file found
-        if 'DOESNTEXIST' not in str(result.result):
-            logger.info("File %s found in Black Pearl bucket %s", fname, bucket)
-            return False
-
-    return True
-
-
 def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_list):
     '''
     Runs while loop and moves upto 2TB folder size
@@ -142,18 +59,18 @@ def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_
     print("Move to ingest folder found....")
     logger.info("move_to_ingest_folder(): Moving files to %s", folderpth)
 
-    folder_size = get_size(folderpth)
+    folder_size = utils.get_size(folderpth)
     max_fill_size = upload_size - folder_size
     for file in file_list:
         if not max_fill_size >= 0:
             logger.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
             break
-        status = check_bp_status(file, bucket_list)
+        status = bp.check_bp_status(file, bucket_list)
         if not status:
             logger.warning("move_to_ingest_folder(): Skipping. File already found in Black Pearl: %s", file)
             continue
         fpath = os.path.join(autoingest, file)
-        file_size = get_size(fpath)
+        file_size = utils.get_size(fpath)
         max_fill_size -= file_size
         shutil.move(fpath, os.path.join(folderpth, file))
         logger.info("move_to_ingest_folder(): Moved file into new Ingest folder: %s", file)
@@ -194,7 +111,7 @@ def format_dt():
 def check_folder_age(fname):
     '''
     Retrieve date time stamp from folder
-    Return number of days old
+    Returns days in integer using timedelta days
     '''
     fmt = "%Y-%m-%d %H:%M:%S.%f"
     dt_str = fname[7:].split('_')
@@ -204,7 +121,7 @@ def check_folder_age(fname):
     now = datetime.strptime(str(datetime.now()), fmt)
     difference = now - date_time
 
-    return difference.days  # Returns days in integer using timedelta days
+    return difference.days
 
 
 def main():
@@ -230,7 +147,7 @@ def main():
         bucket_collection = 'amazon'
     else:
         # Retrieve an upload size limit in bytes
-        data_sizes = load_yaml(INGEST_CONFIG)
+        data_sizes = utils.read_yaml(INGEST_CONFIG)
         hosts = data_sizes['Host_size']
         for host in hosts:
             for key, val in host.items():
@@ -251,7 +168,7 @@ def main():
         sys.exit()
 
     # Get current bucket name for bucket_collection type
-    bucket, bucket_list = get_buckets(bucket_collection)
+    bucket, bucket_list = bp.get_buckets(bucket_collection)
     logger.info("Key bucket selected %s, bucket list %s", bucket, bucket_list)
     if 'blobbing' in str(bucket):
         logger.warning("Blobbing bucket selected. Aborting PUT")
@@ -269,7 +186,9 @@ def main():
     # If no files, check for part filled folder first then exit
     if not files:
         for folder in folders:
-            check_control()
+            if not utils.check_control('black_pearl'):
+                logger.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
             folderpth = os.path.join(autoingest, folder)
             if not folder.startswith('ingest_'):
                 continue
@@ -298,7 +217,9 @@ def main():
         sys.exit()
 
     while files:
-        check_control()
+        if not utils.check_control('black_pearl'):
+            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         folderpth = ''
         # Autoingest check for ingest_ path under 2TB
         folders = [d for d in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, d)) and d.startswith("ingest_")]
@@ -307,7 +228,7 @@ def main():
             for folder in folders:
                 folder_check_pth = os.path.join(autoingest, folder)
                 logger.info("** Ingest folder found (and files present): %s", folder_check_pth)
-                fsize = get_size(folder_check_pth)
+                fsize = utils.get_size(folder_check_pth)
                 if fsize < upload_size:
                     logger.info("Folder will have more files added to reach maximum upload size.")
                     folderpth = folder_check_pth
@@ -328,7 +249,7 @@ def main():
             continue
 
         job_list = []
-        fsize = get_size(folderpth)
+        fsize = utils.get_size(folderpth)
         print(f"Folder identified is {fsize} bytes, and upload size limit is {upload_size} bytes")
         if len(os.listdir(folderpth)) == 0:
             logger.info("Script exiting: Folderpath still remains empty after move_to_ingest function: %s", folderpth)
@@ -375,18 +296,15 @@ def put_dir(directory_pth, bucket_choice):
     Retrieve job number and launch json notification
     '''
     try:
-        put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=bucket_choice, objects_per_bp_job=5000, max_threads=3)
+        job_list = bp.put_directory(directory_pth, bucket_choice)
     except Exception as err:
         logger.error('Exception: %s', err)
         print('Exception: %s', err)
-    logger.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_ids)
-    job_list = []
-    for job_id in put_job_ids:
-        # Should always be one, but leaving incase of variation
-        job_completed_registration = CLIENT.put_job_completed_notification_registration_spectra_s3(
-                ds3.PutJobCompletedNotificationRegistrationSpectraS3Request(notification_end_point=JSON_END, format='JSON', job_id=job_id))
-        logger.info('Job %s registered for completion notification at %s', job_id, job_completed_registration.result['NotificationEndPoint'])
-        job_list.append(job_id)
+    logger.info("PUT COMPLETE - JOB ID retrieved: %s", job_list)
+
+    for job_id in job_list:
+        confirmation = bp.put_notification(job_id)
+        logger.info('Job %s registered for completion notification at %s', job_id, confirmation)
 
     return job_list
 

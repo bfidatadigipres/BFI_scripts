@@ -186,8 +186,7 @@ def retrieve_seasons(json_path):
         dcts = json.load(inf)
         season_list = []
         for dct in dcts:
-            #extract = dct['end_date']
-            extract = '2024-06-27'
+            extract = dct['end_date']
             if THIS_YEAR in extract or NEXT_YEAR in extract:
                 period = []
                 period = itertools.islice(date_gen(extract), 90)
@@ -260,7 +259,7 @@ def main():
                 season_list = []
                 season_json = os.path.basename(val)
                 logger.info("Opening and extracting data from: %s", season_json)
-                sys.exit()
+
                 # split season_json name to usable variables:
                 season_data = season_json.split('_')
                 season_code = season_data[0]

@@ -955,7 +955,7 @@ def main():
 
         # When all extraction completed, move json to completed folder for next script interaction
         inf.close()
-        move_file(filepath)
+        #move_file(filepath)
 
     LOGGER.info("================ Script completed ===================================\n")
 

@@ -13,6 +13,7 @@ from ds3 import ds3, ds3Helpers
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 DPI_BUCKETS = os.environ['DPI_BUCKET']
+JSON_END = os.environ['JSON_END_POINT']
 
 
 def get_buckets(bucket_collection):
@@ -27,9 +28,9 @@ def get_buckets(bucket_collection):
         bucket_data = json.load(data)
     if bucket_collection == 'bfi':
         for key, value in bucket_data.items():
-            if 'preservationbucket' in str(key):
-                pass
-            elif 'preservation0' in str(key):
+            if 'preservationbucket' in str(key.lower()):
+                continue
+            elif 'preservation0' in str(key.lower()):
                 if value is True:
                     key_bucket = key
                 bucket_list.append(key)
@@ -37,7 +38,9 @@ def get_buckets(bucket_collection):
                 bucket_list.append(key)
     else:
         for key, value in bucket_data.items():
-            if f"{bucket_collection}0" in str(key):
+            if f"{bucket_collection.strip()}bucket" in key:
+                continue
+            elif f"{bucket_collection.strip()}0" in key:
                 if value is True:
                     key_bucket = key
                 bucket_list.append(key)
@@ -54,14 +57,12 @@ def check_bp_status(fname, bucket_list):
     for bucket in bucket_list:
         query = ds3.HeadObjectRequest(bucket, fname)
         result = CLIENT.head_object(query)
+        # Only return false if DOESNTEXIST is missing, eg file found
+        if 'DOESNTEXIST' not in str(result.result):
+            print(f"File {fname} found in Black Pearl bucket {bucket}")
+            return False
 
-    if 'DOESNTEXIST' in str(result.result):
-        return False
-    else:
-        md5 = result.response.msg['ETag']
-        length = result.response.msg['Content-Length']
-        if int(length) > 1 and len(md5) > 30:
-            return True
+    return True
 
 
 def get_job_status(job_id):
@@ -109,10 +110,11 @@ def get_object_list(fname):
         result = CLIENT.get_objects_with_full_details_spectra_s3(request)
         data = result.result
     except Exception as err:
+        print(err)
         return None
 
     if not data['ObjectList']:
-        return None, None, None
+        return 'No object list', None, None
     if "'TapeList': [{'AssignedToStorageDomain': 'true'" in str(data):
         confirmed = True
     elif "'TapeList': [{'AssignedToStorageDomain': 'false'" in str(data):
@@ -144,6 +146,16 @@ def put_directory(directory_pth, bucket):
     for job_id in put_job_ids:
         job_list.append(job_id)
     return job_list
+
+
+def put_notification(job_id):
+    '''
+    Ensure job notification is sent to Isilon
+    '''
+    job_completed_registration = CLIENT.put_job_completed_notification_registration_spectra_s3(
+            ds3.PutJobCompletedNotificationRegistrationSpectraS3Request(notification_end_point=JSON_END, format='JSON', job_id=job_id))
+
+    return job_completed_registration.result['NotificationEndPoint']
 
 
 def download_bp_object(fname, outpath, bucket):
@@ -193,7 +205,7 @@ def get_buckets_blob(bucket_collection):
     return key_bucket
 
 
-def put_single_file(fpath, ref_num, bucket_name):
+def put_single_file(fpath, ref_num, bucket_name, check=False):
     '''
     Add the file to black pearl using helper
     Fine for < or > 1TB
@@ -201,7 +213,7 @@ def put_single_file(fpath, ref_num, bucket_name):
     file_size = os.path.getsize(fpath)
     put_obj = [ds3Helpers.HelperPutObject(object_name=ref_num, file_path=fpath, size=file_size)]
     try:
-        put_job_id = HELPER.put_objects(put_objects=put_obj, bucket=bucket_name)
+        put_job_id = HELPER.put_objects(put_objects=put_obj, bucket=bucket_name, calculate_checksum=bool(check))
         print(f"PUT COMPLETE - JOB ID retrieved: {put_job_id}")
         return put_job_id
     except Exception as err:
@@ -233,3 +245,26 @@ def etag_deletion_confirmation(ref_num, bucket):
     if etag is None:
         return 'Deleted'
     return etag
+
+
+def get_version_id(ref_num):
+    '''
+    Call up Black Pearl ObjectList for each item
+    using reference_number, and retrieve version_id
+    ['ObjectList'][0]['Blobs']['ObjectList'][0]['VersionId']
+    '''
+    resp = ds3.GetObjectsWithFullDetailsSpectraS3Request(name=ref_num, include_physical_placement=True)
+    result = CLIENT.get_objects_with_full_details_spectra_s3(resp)
+    obj = result.result
+
+    if not obj:
+        return None
+    if not len(obj) == 1:
+        return None
+
+    try:
+        version_id = obj['ObjectList'][0]['Blobs']['ObjectList'][0]['VersionId']
+    except (IndexError, TypeError, KeyError):
+        version_id = None
+    return version_id
+

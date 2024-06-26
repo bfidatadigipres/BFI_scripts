@@ -13,11 +13,12 @@ import json
 import yaml
 import hashlib
 import logging
-import datetime
 import subprocess
 import adlib_v3 as adlib
 
+LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
+GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 
 PREFIX = [
     'N',
@@ -118,7 +119,7 @@ def check_filename(fname):
         return False
 
     if '.' in fname:
-        if len(fname.split('.')) > 2:
+        if len(fname.split('.')) != 2:
             return False
         ext = fname.split('.')[-1]
         if ext.lower() not in (ACCEPTED_EXT):
@@ -144,7 +145,7 @@ def check_part_whole(fname):
     if part > whole:
         print('* Part is larger than whole...')
         return None, None
-    return (part, whole)
+    return part, whole
 
 
 def get_object_number(fname):
@@ -197,6 +198,54 @@ def get_mediaconch(dpath, policy):
         return True, meta
     
     return False, meta
+
+
+def get_ms(filepath):
+    '''
+    Retrieve duration as milliseconds if possible
+    '''
+    duration = ''
+    cmd = [
+        'ffprobe',
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        filepath
+    ]
+
+    try:
+        duration = subprocess.check_output(cmd)
+        duration = duration.decode('utf-8')
+    except Exception as err:
+        logger.info("Unable to extract duration: %s", err)
+    if duration:
+        return duration.rstrip('\n')
+    else:
+        return None
+
+
+def get_duration(filepath):
+    '''
+    Retrieve duration field if possible
+    '''
+    duration = ''
+    cmd = [
+        'ffprobe',
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        '-sexagesimal',
+        filepath
+    ]
+    try:
+        duration = subprocess.check_output(cmd)
+        duration = duration.decode('utf-8')
+    except Exception as err:
+        logger.info("Unable to extract duration: %s", err)
+    if duration:
+        return duration.rstrip('\n')
+    else:
+        return None
 
 
 def logger(log_path, level, message):
@@ -254,3 +303,17 @@ def create_md5_65536(fpath):
     except Exception:
         print(f"{fpath} - Unable to generate MD5 checksum")
         return None
+
+
+def check_global_log(fname, check_str):
+    '''
+    Read global log lines and look for a
+    confirmation of deletion from autoingest
+    '''
+
+    with open(GLOBAL_LOG, 'r') as data:
+        rows = csv.reader(data, delimiter='\t')
+        for row in rows:
+            if fname in str(row) and check_str in str(row):
+                print(row)
+                return row

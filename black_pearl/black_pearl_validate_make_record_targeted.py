@@ -49,11 +49,11 @@ import logging
 from datetime import datetime
 
 # Local import
+import bp_utils as bp
 CODE_PATH = os.environ['CODE']
-import utils
 sys.path.append(CODE_PATH)
 import adlib_v3 as adlib
-import bp_utils as bp
+import utils
 
 # Global variables
 BPINGEST = os.environ['BP_INGEST']
@@ -378,6 +378,10 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         if confirmed is None:
             logger.warning('Problem retrieving Black Pearl ObjectList. Skipping')
             continue
+        if confirmed is False:
+            logger.warning("Assigned to storage domain is FALSE: %s", fpath)
+            persistence_log_message("BlackPearl has not persisted file to data tape but ObjectList exists", fpath, wpath, file)
+            continue
         logger.info("Retrieved BP data: Confirmed %s BP MD5: %s Length: %s", confirmed, remote_md5, length)
         if 'No object list' in confirmed:
             logger.warning("ObjectList could not be extracted from BP for file: %s", fpath)
@@ -392,11 +396,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
                 adjusted_list.remove(file)
             except Exception as err:
                 logger.warning("Unable to move failed ingest to black_pearl_ingest: %s\n%s", fpath, err)
-            continue
-
-        if confirmed is False:
-            logger.warning("Assigned to storage domain is FALSE: %s", fpath)
-            persistence_log_message("BlackPearl has not persisted file to data tape but ObjectList exists", fpath, wpath, file)
             continue
 
         local_md5 = get_md5(file)
@@ -543,6 +542,8 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
     '''
     record_data = []
     part, whole = utils.check_part_whole(filename)
+    if not part:
+        return None
 
     record_data = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},

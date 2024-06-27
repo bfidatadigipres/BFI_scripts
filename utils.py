@@ -77,9 +77,11 @@ def cid_check(cid_api):
     all other operations commence
     '''
     try:
-        adlib.check(cid_api)
+        dct = adlib.check(cid_api)
+        if isinstance(dct, dict):
+            return True
     except KeyError:
-        return True
+        return False
 
 
 def read_yaml(file):

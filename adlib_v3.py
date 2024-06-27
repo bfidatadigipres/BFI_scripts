@@ -14,7 +14,7 @@ import requests
 import datetime
 from lxml import etree, html
 from dicttoxml import dicttoxml
-from tenacity import retry, stop_after_attempt, retry_if_exception_type
+from tenacity import retry, stop_after_attempt
 
 
 CID_API = os.environ['CID_API3']

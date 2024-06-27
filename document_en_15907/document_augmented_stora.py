@@ -831,8 +831,16 @@ def main():
         item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict)
         print(f"item_object_number: {item_data}")
 
-        if item_data is None or item_data[1] == '':
+        if item_data is None:
             print(f"CID Item object number not retrieved for manifestation: {manifestation_priref}")
+            if new_work:
+                print(f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}")
+                continue
+            else:
+                print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
+                continue
+        if len(item_data[0]) == 0 or len(item_data[1]) == 0:
+            print(f"Error retrieving Item record priref and object number. Skipping completion of this programme, manual clean up of records needed.")
             if new_work:
                 print(f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}")
                 continue

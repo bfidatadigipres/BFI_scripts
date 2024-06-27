@@ -650,9 +650,9 @@ def main():
                 bucket_list = get_buckets('bfi')
 
             # BP ingest check
-            ingest_check = bp.check_bp_status(fname, bucket_list)
-            print(f"bp.check_status: {ingest_check}")
-            if ingest_check is True:
+            status = bp.check_bp_status(fname, bucket_list)
+            print(f"bp.check_status: {status}")
+            if status is False:
                 print(f'* Filename {fname} has already been ingested to DPI. Manual clean up needed.')
                 logger.warning('%s\tFilename has aleady been ingested to DPI: %s', log_paths, fname)
                 continue

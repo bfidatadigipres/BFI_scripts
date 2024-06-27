@@ -23,6 +23,7 @@ Python3.8+
 # Global packages
 import os
 import sys
+import json
 import logging
 
 # Local packages
@@ -33,6 +34,7 @@ import adlib_v3 as adlib
 LOG_PATH = os.environ['LOG_PATH']
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
 CSV_PATH = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
+CONTROL_JSON = os.environ['CONTROL_JSON']
 CID_API = os.environ['CID_API3']
 
 # Setup logging
@@ -42,6 +44,17 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
+
+
+def check_control():
+    '''
+    Check control json for downtime requests
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
 
 def check_cid():
@@ -86,7 +99,7 @@ def main():
     and also mediainfo reports, writing text file dumps to media record in CID
     '''
     check_cid()
-
+    check_control()
     if len(sys.argv) < 2:
         sys.exit()
 

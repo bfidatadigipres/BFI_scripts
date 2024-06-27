@@ -259,6 +259,7 @@ def main():
                 season_list = []
                 season_json = os.path.basename(val)
                 logger.info("Opening and extracting data from: %s", season_json)
+
                 # split season_json name to usable variables:
                 season_data = season_json.split('_')
                 season_code = season_data[0]
@@ -398,7 +399,7 @@ def main():
                         else:
                             logger.warning("Artifax push confirmation not received for %s", cid_object_number)
 
-    remove_json(JSON_DELETE_PATH)
+    #remove_json(JSON_DELETE_PATH)
     logger.info('========== Python3 end - script completed =========\n')
 
 

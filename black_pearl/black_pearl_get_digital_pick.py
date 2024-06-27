@@ -45,17 +45,13 @@ import hashlib
 import logging
 from xml.sax.saxutils import escape
 from datetime import datetime, timedelta
-from ds3 import ds3, ds3Helpers
 from tenacity import retry, stop_after_attempt
 
 # Local package
+import bp_utils as bp
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-
-# API VARIABLES
-CID_API = os.environ['CID_API3']
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
+import utils
 
 # GLOBAL VARIABLES
 PICK_FOLDER = os.environ['DIGITAL_PICK']
@@ -71,6 +67,7 @@ FORMAT = "%Y-%m-%d %H:%M:%S"
 TODAY = datetime.strftime(datetime.now(), FORMAT)
 CONTROL_JSON = os.environ['CONTROL_JSON']
 HEADERS = {'Content-Type': 'text/xml'}
+CID_API = os.environ['CID_API3']
 
 # Set up logging
 LOGGER = logging.getLogger('bp_get_digital_pick')
@@ -79,29 +76,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl'] or not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Test if CID API online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def fetch_workflow_jobs():
@@ -294,22 +268,6 @@ def get_missing_part_names(filename):
     return fname_list
 
 
-def get_bp_md5(fname, bucket):
-    '''
-    Fetch BP checksum to compare
-    to new local MD5
-    '''
-    md5 = ''
-    query = ds3.HeadObjectRequest(bucket, fname)
-    result = CLIENT.head_object(query)
-    try:
-        md5 = result.response.msg['ETag']
-    except Exception as err:
-        print(err)
-    if md5:
-        return md5.replace('"', '')
-
-
 def make_check_md5(fpath, fname, bucket):
     '''
     Generate MD5 for fpath
@@ -327,7 +285,7 @@ def make_check_md5(fpath, fname, bucket):
     except Exception as err:
         print(err)
 
-    local_checksum = get_bp_md5(fname, bucket)
+    local_checksum = bp.get_bp_md5(fname, bucket)
     print(f"Created from download: {download_checksum} | Retrieved from BP: {local_checksum}")
     return str(download_checksum), str(local_checksum)
 
@@ -363,8 +321,12 @@ def main():
     of files for download from DPI. Map in digital_pick.csv
     to avoid repeating unecessary DPI downloads
     '''
-    check_control()
-    cid_check()
+    if not utils.check_control('black_pearl') or not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     workflow_jobs = fetch_workflow_jobs()
     if not workflow_jobs:
@@ -448,7 +410,7 @@ def main():
 
             # Call up BP and get the file object
             if filename not in downloaded_fnames:
-                download_job_id = download_bp_object(download_fname, outpath, bucket)
+                download_job_id = bp.download_bp_object(download_fname, outpath, bucket)
                 if os.path.exists(os.path.join(outpath, download_fname)):
                     # Write successful download to CSV
                     if umid:
@@ -484,7 +446,7 @@ def main():
                     else:
                         dpart_fname = part_umid
                     # check bucket for all parts, can't assume they match
-                    d_job_id = download_bp_object(dpart_fname, outpath, download_bucket)
+                    d_job_id = bp.download_bp_object(dpart_fname, outpath, download_bucket)
                     if os.path.exists(os.path.join(outpath, dpart_fname)):
                         # Write successful download to CSV
                         if part_fname != dpart_fname:
@@ -523,26 +485,6 @@ def main():
             LOGGER.info("Workflow %s - DPI download complete and request.details field updated", priref)
 
     LOGGER.info("=========== Digital Pick script end =============\n")
-
-
-def download_bp_object(fname, outpath, bucket):
-    '''
-    Download the BP object from SpectraLogic
-    tape library and save to outpath
-    '''
-    if bucket == '':
-        bucket = 'imagen'
-
-    file_path = os.path.join(outpath, fname)
-    get_objects = [ds3Helpers.HelperGetObject(fname, file_path)]
-    try:
-        get_job_id = HELPER.get_objects(get_objects, bucket)
-        print(f"BP get job ID: {get_job_id}")
-    except Exception as err:
-        LOGGER.warning("Unable to retrieve file %s from Black Pearl", fname)
-        get_job_id = None
-
-    return get_job_id
 
 
 def build_payload(priref, data, today):

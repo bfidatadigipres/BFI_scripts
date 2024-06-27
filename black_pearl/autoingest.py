@@ -71,16 +71,15 @@ import logging
 import datetime
 import subprocess
 import magic
-import yaml
-from ds3 import ds3
 
 # Private packages
+import bp_utils as bp
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global paths
 LOGS = os.environ['LOG_PATH']
-CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOGS, 'autoingest/global.log')
 PERS_LOG = os.path.join(LOGS, 'persistence_confirmation.log')
 PERS_QUEUE = os.path.join(LOGS, 'autoingest/persistence_queue.csv')
@@ -98,7 +97,6 @@ logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
 CID_API = os.environ['CID_API3']
-CLIENT = ds3.createClientFromEnv()
 
 PREFIX = [
     'N',
@@ -111,17 +109,6 @@ PREFIX = [
     'SCR',
     'CA'
 ]
-
-
-def check_control():
-    '''
-    Check control_json isn't False
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['autoingest']:
-            print('* Exit requested by downtime_control.json. Script exiting')
-            sys.exit('Exit requested by downtime_control.json. Script exiting')
 
 
 def log_delete_message(pth, message, file):
@@ -161,25 +148,6 @@ def get_persistence_messages():
     return messages
 
 
-def check_filename(fname):
-    '''
-    Run series of checks against filename to see
-    that it's well formatted
-    '''
-    if not any(fname.startswith(px) for px in PREFIX):
-        return False
-    if not re.search("^[A-Za-z0-9_.]*$", fname):
-        return False
-    if len(fname.split('.')) > 2:
-        return False
-    sname = fname.split('_')
-    if len(sname) > 4 or len(sname) < 3:
-        return False
-    if len(sname) == 4 and len(sname[2]) != 1:
-        return False
-    return True
-
-
 def check_accepted_file_type(fpath):
     '''
     Retrieve codec and ensure file is accepted type
@@ -189,16 +157,9 @@ def check_accepted_file_type(fpath):
         if fpath.endswith(('tar', 'TAR')):
             return True
 
-    cmd = [
-        'mediainfo',
-        '--Output=Video;%Format%',
-        fpath
-    ]
-    formt = subprocess.check_output(cmd)
-    formt = formt.decode('utf-8')
+    formt = utils.get_metadata('Video', 'Format', fpath)
     if 'ProRes' in str(formt):
         return True
-
     return False
 
 
@@ -238,47 +199,6 @@ def check_mime_type(fpath, log_paths):
             print(err)
             return False
     return True
-
-
-def get_object_number(fname):
-    '''
-    Extract object number and check CID for item record
-    '''
-    if not any(fname.startswith(px) for px in PREFIX):
-        return False
-    try:
-        splits = fname.split('_')
-        object_number = '-'.join(splits[:-1])
-    except Exception:
-        object_number = None
-    return object_number
-
-
-def check_part_whole(fname):
-    '''
-    Check part whole well formed
-    '''
-    match = re.search(r'(?:_)(\d{2,4}of\d{2,4})(?:\.)', fname)
-    if not match:
-        print('* Part-whole has illegal charcters...')
-        return None, None
-    part, whole = [int(i) for i in match.group(1).split('of')]
-    len_check = fname.split('_')
-    len_check = len_check[-1].split('.')[0]
-    str_part, str_whole = len_check.split('of')
-    if len(str_part) != len(str_whole):
-        return None, None
-    if part > whole:
-        print('* Part is larger than whole...')
-        return None, None
-    return (part, whole)
-
-
-def get_size(fpath):
-    '''
-    Retrieve size of ingest file in bytes
-    '''
-    return os.path.getsize(fpath)
 
 
 def process_image_archive(fname, log_paths):
@@ -322,11 +242,11 @@ def process_image_archive(fname, log_paths):
             logger.warning('%s\tCannot parse partWhole from filename', log_paths)
             return None, None, None, None
     except Exception as err:
-        print('* Cannot parse partWhole from filename...')
-        logger.warning('%s\tCannot parse partWhole from filename', log_paths)
+        print(f'* Cannot parse partWhole from filename... {err}')
+        logger.warning('%s\tCannot parse partWhole from filename %s', log_paths, err)
         return None, None, None, None
 
-    return (object_number, int(part), int(whole), ext)
+    return object_number, int(part), int(whole), ext
 
 
 def get_item_priref(ob_num):
@@ -386,28 +306,6 @@ def get_buckets(bucket_collection):
                 bucket_list.append(key)
 
     return bucket_list
-
-
-def check_bp_status(fname, bucket_list):
-    '''
-    Look up filename in BP to avoid
-    multiple ingests of files
-    '''
-
-    for bucket in bucket_list:
-        query = ds3.HeadObjectRequest(bucket, fname)
-        result = CLIENT.head_object(query)
-
-        if 'DOESNTEXIST' in str(result.result):
-            continue
-
-        try:
-            md5 = result.response.msg['ETag']
-            length = result.response.msg['Content-Length']
-            if int(length) > 1 and len(md5) > 30:
-                return True
-        except (IndexError, TypeError, KeyError) as err:
-            print(err)
 
 
 def ext_in_file_type(ext, priref, log_paths):
@@ -589,15 +487,6 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
         return 'False'
 
 
-def load_yaml(file):
-    '''
-    Safe open yaml and return as dict
-    '''
-    with open(file) as config_file:
-        d = yaml.safe_load(config_file)
-        return d
-
-
 def get_mappings(pth, mappings):
     '''
     Get files within config.yaml mappings
@@ -637,7 +526,7 @@ def main():
     print('* Finished collecting persistence_queue messages...')
 
     print('* Collecting ingest sources from config.yaml...')
-    config_dict = load_yaml(CONFIG)
+    config_dict = utils.read_yaml(CONFIG)
 
     for host in config_dict['Hosts']:
         print(host)
@@ -648,7 +537,9 @@ def main():
         files = get_mappings(tree, config_dict['Mappings'])
         print(files)
         for pth in files:
-            check_control()
+            if not utils.check_control('autoingest'):
+                logger.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
             fpath = os.path.abspath(pth)
             fname = os.path.split(fpath)[-1]
 
@@ -704,17 +595,17 @@ def main():
 
             else:
                 # NAME/PART WHOLE VALIDATIONS
-                if not check_filename(fname):
+                if not utils.check_filename(fname):
                     print(f'* Filename formatted incorrectly {fname}')
                     logger.warning("%s\tFilename formatted incorrectly", log_paths)
                     continue
-                part, whole = check_part_whole(fname)
+                part, whole = utils.check_part_whole(fname)
                 if not part or not whole:
                     print('* Cannot parse partWhole from filename')
                     logger.warning('%s\tCannot parse partWhole from filename', log_paths)
                     continue
                 # Get object_number
-                object_number = get_object_number(fname)
+                object_number = utils.get_object_number(fname)
                 if not object_number:
                     print('* Cannot parse <object_number> from filename')
                     logger.warning('%s\tCannot parse <object_number> from filename', log_paths)
@@ -755,7 +646,7 @@ def main():
                 bucket_list = get_buckets('bfi')
 
             # BP ingest check
-            ingest_check = check_bp_status(fname, bucket_list)
+            ingest_check = bp.check_bp_status(fname, bucket_list)
             if ingest_check is True:
                 print(f'* Filename {fname} has already been ingested to DPI. Manual clean up needed.')
                 logger.warning('%s\tFilename has aleady been ingested to DPI: %s', log_paths, fname)
@@ -813,7 +704,7 @@ def main():
 
             # Perform ingest if under 1TB
             if do_ingest:
-                size = get_size(fpath)
+                size = utils.get_size(fpath)
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
                 if int(size) > 1099511627776:
                     logger.info('%s\tFile is larger than 1TB. Checking file is ProRes', log_paths)

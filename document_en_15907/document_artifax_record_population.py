@@ -718,6 +718,8 @@ def main():
                 check_data = work_quick_check(dct)
                 work_id = check_data[0]
                 priref = check_data[1]
+                if priref != '158354053':
+                    continue
                 cid_import = check_data[2]
                 art_form = check_data[3]
                 print(f"Work ID: {work_id}, Priref: {priref}, CID Import: {cid_import}, Art form: {art_form}")
@@ -742,7 +744,8 @@ def main():
                 advanced_confirm = str(check_work_season[0])
                 qanda_confirm = str(check_work_season[1])
                 qanda_date = str(check_work_season[2])
-                cid_import_date = str(check_work_season[3])
+                # cid_import_date = str(check_work_season[3])
+                cid_import_date = ''
                 nfa_category = str(check_work_season[4])
                 start_date = str(check_work_season[5])
                 work_season_id = str(check_work_season[6])
@@ -955,7 +958,7 @@ def main():
 
         # When all extraction completed, move json to completed folder for next script interaction
         inf.close()
-        move_file(filepath)
+        #move_file(filepath)
 
     LOGGER.info("================ Script completed ===================================\n")
 
@@ -995,7 +998,7 @@ def make_manifestations(work_copy_fname, current_festival, start_date, priref, m
         print("No Festival manifestation at the this time, skipping")
 
     # Check if priref's exist for either and return True
-    if (len(man_int_priref) > 0 or len(man_fest_priref) > 0):
+    if (len(man_int_priref) > 5 or len(man_fest_priref) > 5):
         return True
 
     LOGGER.info("Failed to create manifestation: \n%s\n\n%s\n\n%s", manifestation_dct, manifestation_internet_dct, manifestation_festival_dct)
@@ -1186,8 +1189,12 @@ def manifestation_create(start_date, event_type, priref, manifestation_dct=None,
     man_priref = ''
     # Create CID record for Manifestation
     man_values_xml = adlib.create_record_data('', manifestation_values)
+    print("---------------------------")
+    print(man_values_xml)
+    print("---------------------------")
     try:
         record = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
+        print(record)
         if record:
             try:
                 man_priref = adlib.retrieve_field_name(record, 'priref')[0]

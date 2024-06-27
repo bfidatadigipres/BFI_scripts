@@ -22,7 +22,7 @@ echo " == Start curatorial donor acquisition renaming in $curatorial_path == " >
 echo " == Shell script creating curatorial_donor_acquisition.txt for parallel launch of Python scripts == " >> "${log_path}"
 
 # Return full list of paths depth 2 to dump_text
-find "${curatorial_path}" -mindepth 2 -maxdepth 2 -type d -name 'Workflow_*' >> "${dump_to}curatorial_donor_acquisition_osh.txt"
+find "${curatorial_path}" -mindepth 1 -maxdepth 1 -type d -name 'Workflow_*' >> "${dump_to}curatorial_donor_acquisition_osh.txt"
 
 echo " == Launching GNU parallel to run multiple Python3 scripts for renaming == " >> "${log_path}"
 grep '/mnt/' "${dump_to}curatorial_donor_acquisition_osh.txt" | parallel --jobs 1 "${PYENV311} curatorial_donor_acquisition_rename_osh.py {}"

@@ -46,15 +46,14 @@ import glob
 import json
 import shutil
 import logging
-import subprocess
 from datetime import datetime
-import yaml
-from ds3 import ds3
 
 # Local import
+import bp_utils as bp
 CODE_PATH = os.environ['CODE']
 sys.path.append(CODE_PATH)
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 BPINGEST = os.environ['BP_INGEST']
@@ -62,14 +61,10 @@ BPINGEST_NETFLIX = os.environ['BP_INGEST_NETFLIX']
 BPINGEST_AMAZON = os.environ['BP_INGEST_AMAZON']
 LOG_PATH = os.environ['LOG_PATH']
 JSON_PATH = os.path.join(LOG_PATH, 'black_pearl')
-CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API3']
 INGEST_CONFIG = os.path.join(CODE_PATH, 'black_pearl/dpi_ingests.yaml')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
-GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
-CLIENT = ds3.createClientFromEnv()
-DPI_BUCKETS = os.environ['DPI_BUCKET']
 
 # Setup logging
 logger = logging.getLogger('black_pearl_validate_make_record_targeted')
@@ -101,70 +96,6 @@ LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
 }
 
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        test = adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        logger.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
-
-
-def load_yaml(file):
-    '''
-    Load yaml and return safe_load()
-    '''
-    with open(file) as config_file:
-        return yaml.safe_load(config_file)
-
-
-def get_buckets(bucket_collection):
-    '''
-    Read JSON list return
-    key_value and list of others
-    '''
-    bucket_list = []
-    key_bucket = ''
-
-    with open(DPI_BUCKETS) as data:
-        bucket_data = json.load(data)
-    if bucket_collection == 'bfi':
-        for key, value in bucket_data.items():
-            if 'preservationbucket' in key.lower():
-                continue
-            elif 'preservation0' in key.lower():
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-            # Imagen path read only now
-            elif 'imagen' in key:
-                bucket_list.append(key)
-    else:
-        for key, value in bucket_data.items():
-            if f"{bucket_collection.strip()}bucket" in key:
-                continue
-            elif f"{bucket_collection.strip()}0" in key:
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-
-    return key_bucket, bucket_list
-
-
 def retrieve_json_data(foldername):
     '''
     Look for matching JSON file
@@ -188,101 +119,6 @@ def json_check(json_pth):
                         for key, val in vl.items():
                             if key == 'ObjectsNotPersisted':
                                 return val
-
-
-def get_file_size(filepath):
-    '''
-    Retrieve size of path item in bytes
-    '''
-    return os.path.getsize(filepath)
-
-
-def make_object_num(fname):
-    '''
-    Receive a filename remove ext,
-    find part whole and return as object number
-    '''
-    name = os.path.splitext(fname)[0]
-    name_split = name.split('_')
-
-    if len(name_split) == 3:
-        return f"{name_split[0]}-{name_split[1]}"
-    elif len(name_split) == 4:
-        return f"{name_split[0]}-{name_split[1]}-{name_split[2]}"
-    else:
-        return None
-
-
-def get_part_whole(fname):
-    '''
-    Receive a filename extract part whole from end
-    Return items split up
-    '''
-    name = os.path.splitext(fname)[0]
-    name_split = name.split('_')
-    if len(name_split) == 3:
-        part_whole = name_split[2]
-    elif len(name_split) == 4:
-        part_whole = name_split[3]
-    else:
-        part_whole = ''
-        return None
-
-    part, whole = part_whole.split('of')
-    if part[0] == '0':
-        part = part[1]
-    if whole[0] == '0':
-        whole = whole[1]
-
-    return (part, whole)
-
-
-def get_ms(filepath):
-    '''
-    Retrieve duration as milliseconds if possible
-    '''
-    duration = ''
-    cmd = [
-        'ffprobe',
-        '-v', 'error',
-        '-show_entries', 'format=duration',
-        '-of', 'default=noprint_wrappers=1:nokey=1',
-        filepath
-    ]
-
-    try:
-        duration = subprocess.check_output(cmd)
-        duration = duration.decode('utf-8')
-    except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
-    if duration:
-        return duration.rstrip('\n')
-    else:
-        return None
-
-
-def get_duration(filepath):
-    '''
-    Retrieve duration field if possible
-    '''
-    duration = ''
-    cmd = [
-        'ffprobe',
-        '-v', 'error',
-        '-show_entries', 'format=duration',
-        '-of', 'default=noprint_wrappers=1:nokey=1',
-        '-sexagesimal',
-        filepath
-    ]
-    try:
-        duration = subprocess.check_output(cmd)
-        duration = duration.decode('utf-8')
-    except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
-    if duration:
-        return duration.rstrip('\n')
-    else:
-        return None
 
 
 def get_md5(filename):
@@ -339,32 +175,6 @@ def check_for_media_record(fname):
     return priref, access_mp4
 
 
-def check_global_log(fname):
-    '''
-    Read global log lines and look for a
-    confirmation of deletion from autoingest
-    '''
-    with open(GLOBAL_LOG, 'r') as data:
-        rows = csv.reader(data, delimiter='\t')
-        for row in rows:
-            if fname in str(row) and 'Successfully deleted file' in str(row):
-                print(row)
-                return row
-
-
-def check_global_log_again(fname):
-    '''
-    Read global log lines and look for a
-    confirmation of reingest of file
-    '''
-    with open(GLOBAL_LOG, 'r') as data:
-        rows = csv.reader(data, delimiter='\t')
-        for row in rows:
-            if fname in str(row) and 'Renewed ingest of file will be attempted' in str(row):
-                print(row)
-                return row
-
-
 def main():
     '''
     Load dpi_ingest.yaml
@@ -372,8 +182,13 @@ def main():
     not starting with 'ingest_'. When found, check in json path for
     matching folder names to json filename
     '''
-    cid_check()
-    ingest_data = load_yaml(INGEST_CONFIG)
+    if not utils.check_control('black_pearl'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_cid(CID_API):
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
+    ingest_data = utils.read_yaml(INGEST_CONFIG)
     hosts = ingest_data['Host_size']
 
     autoingest_list = []
@@ -395,11 +210,11 @@ def main():
             continue
 
         if 'black_pearl_netflix_ingest' in autoingest:
-            bucket, bucket_list = get_buckets('netflix')
+            bucket, bucket_list = bp.get_buckets('netflix')
         elif 'black_pearl_amazon_ingest' in autoingest:
-            bucket, bucket_list = get_buckets('amazon')
+            bucket, bucket_list = bp.get_buckets('amazon')
         else:
-            bucket, bucket_list = get_buckets('bfi')
+            bucket, bucket_list = bp.get_buckets('bfi')
 
         folders = [x for x in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, x))]
         if not folders:
@@ -409,7 +224,9 @@ def main():
         logger.info("Folders found in Autoingest path: %s", autoingest)
 
         for folder in folders:
-            check_control()
+            if not utils.check_control('black_pearl'):
+                logger.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
             if folder.startswith(('ingest_', 'error_', 'blob')):
                 continue
 
@@ -524,7 +341,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
 
     if arg == 'check':
         # Get status
-        status, cached = get_job_status(job_id)
+        status, cached = bp.get_job_status(job_id)
         if status != 'COMPLETED':
             logger.info("%s - Job ID has not completed: %s", job_id, status)
         cached_size = int(cached)
@@ -536,10 +353,10 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         file = file.strip()
         fpath = os.path.join(autoingest, job_id, file)
         logger.info("*** %s - processing file", fpath)
-        byte_size = get_file_size(fpath)
-        object_number = make_object_num(file)
-        duration = get_duration(fpath)
-        duration_ms = get_ms(fpath)
+        byte_size = utils.get_size(fpath)
+        object_number = utils.get_object_number(file)
+        duration = utils.get_duration(fpath)
+        duration_ms = utils.get_ms(fpath)
         if duration or duration_ms:
             logger.info("Duration: %s MS: %s", duration, duration_ms)
 
@@ -557,9 +374,13 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         duration_size_log(file, object_number, duration, byte_size, duration_ms)
 
         # Run series of BP checks here - any failures no CID media record made
-        confirmed, remote_md5, length = get_object_list(file, bucket_list)
+        confirmed, remote_md5, length = bp.get_object_list(file, bucket_list)
         if confirmed is None:
             logger.warning('Problem retrieving Black Pearl ObjectList. Skipping')
+            continue
+        if confirmed is False:
+            logger.warning("Assigned to storage domain is FALSE: %s", fpath)
+            persistence_log_message("BlackPearl has not persisted file to data tape but ObjectList exists", fpath, wpath, file)
             continue
         logger.info("Retrieved BP data: Confirmed %s BP MD5: %s Length: %s", confirmed, remote_md5, length)
         if 'No object list' in confirmed:
@@ -575,11 +396,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
                 adjusted_list.remove(file)
             except Exception as err:
                 logger.warning("Unable to move failed ingest to black_pearl_ingest: %s\n%s", fpath, err)
-            continue
-
-        if 'False' in confirmed:
-            logger.warning("Assigned to storage domain is FALSE: %s", fpath)
-            persistence_log_message("BlackPearl has not persisted file to data tape but ObjectList exists", fpath, wpath, file)
             continue
 
         local_md5 = get_md5(file)
@@ -619,8 +435,8 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         if media_priref:
             logger.info("Media record %s already exists for file: %s", media_priref, fpath)
             # Check for previous 'deleted' message in global.log
-            deletion_confirm = check_global_log(file)
-            reingest_confirm = check_global_log_again(file)
+            deletion_confirm = utils.check_global_log(file, 'Successfully deleted file')
+            reingest_confirm = utils.check_global_log(file, 'Renewed ingest of file will be attempted')
             if deletion_confirm:
                 logger.info("DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s", deletion_confirm)
                 try:
@@ -686,57 +502,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
     return list(set_diff)
 
 
-def get_job_status(job_id):
-    '''
-    Fetch job status for specific ID
-    '''
-    cached = status = ''
-
-    job_status = CLIENT.get_job_spectra_s3(
-                   ds3.GetJobSpectraS3Request(job_id.strip()))
-
-    if job_status.result['CachedSizeInBytes']:
-        cached = job_status.result['CachedSizeInBytes']
-    if job_status.result['Status']:
-        status = job_status.result['Status']
-    print(f"Status for JOB ID: {job_id}")
-    print(f"{status}, {cached}")
-
-    return status, cached
-
-
-def get_object_list(fname, bucket_list):
-    '''
-    Get all details to check file persisted
-    '''
-
-    print(f"Bucket list here in case needed: {bucket_list}")
-    confirmed, md5, length = '', '', ''
-    request = ds3.GetObjectsWithFullDetailsSpectraS3Request(name=f"{fname}", include_physical_placement=True)
-    try:
-        result = CLIENT.get_objects_with_full_details_spectra_s3(request)
-        data = result.result
-    except Exception as err:
-        return None
-
-    if not data['ObjectList']:
-        return 'No object list', None, None
-    if "'TapeList': [{'AssignedToStorageDomain': 'true'" in str(data):
-        confirmed = 'True'
-    elif "'TapeList': [{'AssignedToStorageDomain': 'false'" in str(data):
-        confirmed = 'False'
-    try:
-        md5 = data['ObjectList'][0]['ETag']
-    except (TypeError, IndexError):
-        pass
-    try:
-        length = data['ObjectList'][0]['Blobs']['ObjectList'][0]['Length']
-    except (TypeError, IndexError):
-        pass
-
-    return confirmed, md5, length
-
-
 def persistence_log_message(message, path, wpath, file):
     '''
     Output confirmation to persistence_queue.csv
@@ -776,7 +541,9 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
     Media record creation for BP ingested file
     '''
     record_data = []
-    part, whole = get_part_whole(filename)
+    part, whole = utils.check_part_whole(filename)
+    if not part:
+        return None
 
     record_data = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},

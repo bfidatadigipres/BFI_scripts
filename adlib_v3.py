@@ -90,7 +90,6 @@ def get(api, query):
         raise Exception
 
 
-@retry(stop=stop_after_attempt(10))
 def post(api, payload, database, method):
     '''
     Send a POST request

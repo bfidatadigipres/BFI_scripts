@@ -158,6 +158,7 @@ def check_accepted_file_type(fpath):
             return True
 
     formt = utils.get_metadata('Video', 'Format', fpath)
+    print(f"utils.get_metadata: {formt}")
     if 'ProRes' in str(formt):
         return True
     return False
@@ -527,6 +528,7 @@ def main():
 
     print('* Collecting ingest sources from config.yaml...')
     config_dict = utils.read_yaml(CONFIG)
+    print(f"utils.read_yaml: {config_dict}")
 
     for host in config_dict['Hosts']:
         print(host)
@@ -600,12 +602,14 @@ def main():
                     logger.warning("%s\tFilename formatted incorrectly", log_paths)
                     continue
                 part, whole = utils.check_part_whole(fname)
+                print(f"utils.check_part_whole: {part} {whole}")
                 if not part or not whole:
                     print('* Cannot parse partWhole from filename')
                     logger.warning('%s\tCannot parse partWhole from filename', log_paths)
                     continue
                 # Get object_number
                 object_number = utils.get_object_number(fname)
+                print(f"utils.get_object_number: {object_number}")
                 if not object_number:
                     print('* Cannot parse <object_number> from filename')
                     logger.warning('%s\tCannot parse <object_number> from filename', log_paths)
@@ -647,6 +651,7 @@ def main():
 
             # BP ingest check
             ingest_check = bp.check_bp_status(fname, bucket_list)
+            print(f"bp.check_status: {ingest_check}")
             if ingest_check is True:
                 print(f'* Filename {fname} has already been ingested to DPI. Manual clean up needed.')
                 logger.warning('%s\tFilename has aleady been ingested to DPI: %s', log_paths, fname)
@@ -705,6 +710,7 @@ def main():
             # Perform ingest if under 1TB
             if do_ingest:
                 size = utils.get_size(fpath)
+                print(f"utils.get_size: {size}")
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
                 if int(size) > 1099511627776:
                     logger.info('%s\tFile is larger than 1TB. Checking file is ProRes', log_paths)

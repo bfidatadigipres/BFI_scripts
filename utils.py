@@ -67,8 +67,10 @@ def check_control(arg):
 
     with open(CONTROL_JSON) as control:
         j = json.load(control)
-        if not j[arg]:
+        if j[arg]:
             return True
+        else:
+            return False
 
 
 def cid_check(cid_api):

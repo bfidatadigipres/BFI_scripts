@@ -10,10 +10,12 @@ Joanna White
 
 # Python library imports
 import os
+import sys
 import csv
 import json
 import shutil
 import datetime
+csv.field_size_limit(10000000)
 
 # Date variable for use in ordering error outputs
 TODAY = datetime.date.today()

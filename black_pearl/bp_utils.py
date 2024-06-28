@@ -48,7 +48,7 @@ def get_buckets(bucket_collection):
     return key_bucket, bucket_list
 
 
-def check_bp_status(fname, bucket_list):
+def check_no_bp_status(fname, bucket_list):
     '''
     Look up filename in BP to avoid
     multiple ingests of files
@@ -58,11 +58,11 @@ def check_bp_status(fname, bucket_list):
         query = ds3.HeadObjectRequest(bucket, fname)
         result = CLIENT.head_object(query)
         # Only return false if DOESNTEXIST is missing, eg file found
-        if 'DOESNTEXIST' not in str(result.result):
+        if 'DOESNTEXIST' in str(result.result):
             print(f"File {fname} found in Black Pearl bucket {bucket}")
-            return False
+            return True
 
-    return True
+    return False
 
 
 def get_job_status(job_id):

@@ -59,7 +59,7 @@ def check_no_bp_status(fname, bucket_list):
         result = CLIENT.head_object(query)
         # Only return false if DOESNTEXIST is missing, eg file found
         if 'DOESNTEXIST' in str(result.result):
-            print(f"File {fname} found in Black Pearl bucket {bucket}")
+            print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
             return True
 
     return False

@@ -707,6 +707,9 @@ def main():
             # Perform ingest if under 1TB
             if do_ingest:
                 size = utils.get_size(fpath)
+                if size is None:
+                    print("Unable to retrieve file size. Skipping for repeat try later.")
+                    continue
                 print(f"utils.get_size: {size}")
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
                 if int(size) > 1099511627776:

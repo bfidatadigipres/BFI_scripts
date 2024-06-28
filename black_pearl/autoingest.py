@@ -96,7 +96,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 PREFIX = [
     'N',
@@ -276,10 +276,11 @@ def check_media_record(fname):
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+        print(f"** HITS: {hits}")
         if hits is None:
             logger.exception('"CID API was unreachable for Media search: %s', search)
             raise Exception(f"CID API was unreachable for Media search: {search}")
-        print(f"check_media_record(): AdlibV3 record for hits:\n{hits}")
+        print(f"check_media_record(): AdlibV3 record for hits: {hits}")
         num = int(hits)
         if num >= 1:
             return True

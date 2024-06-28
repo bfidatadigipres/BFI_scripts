@@ -61,6 +61,7 @@ def create_current_errors_logs():
 
         for row in rows:
             # Temp addition to reduce current_errors.csv
+            print(row)
             if 'MD5 checksum does not yet exist for this file.' in str(row):
                 continue
             try:

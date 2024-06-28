@@ -282,8 +282,10 @@ def check_media_record(fname):
             raise Exception(f"CID API was unreachable for Media search: {search}")
         print(f"check_media_record(): AdlibV3 record for hits: {hits}")
         num = int(hits)
-        if num >= 1:
+        if num == 1:
             return True
+        if num > 1:
+            return f'Hits exceed 1: {num}'
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
     return False
@@ -637,6 +639,10 @@ def main():
             if media_check is True:
                 print(f'* Filename {fname} already has a CID Media record. Manual clean up needed.')
                 logger.warning('%s\tFilename already has a CID Media record: %s', log_paths, fname)
+                continue
+            elif 'Hits exceed 1' in media_check:
+                print(f'* Filename {fname} has more than one CID Media record. Manual attention needed.')
+                logger.warning('%s\tFilename has more than one CID Media record: %s', log_paths, fname)
                 continue
             print(f'* File {fname} has no CID Media record.')
 

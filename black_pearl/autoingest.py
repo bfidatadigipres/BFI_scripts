@@ -273,7 +273,7 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-
+    print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
         if hits is None:
@@ -734,7 +734,6 @@ def main():
                     print(f'Failed to move file to black_pearl_ingest: {err}')
                     logger.warning('%s\tFailed to move ingest-ready file to BlackPearl ingest folder', log_paths)
                 continue
-            sys.exit("One run per pass")
 
 
 def check_for_deletions(fpath, fname, log_paths, messages):

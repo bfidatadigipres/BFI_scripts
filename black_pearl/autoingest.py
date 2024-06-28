@@ -650,7 +650,7 @@ def main():
                 bucket_list = get_buckets('bfi')
 
             # BP ingest check
-            status = bp.check_bp_status(fname, bucket_list)
+            status = bp.check_no_bp_status(fname, bucket_list)
             print(f"bp.check_status: {status}")
             if status is False:
                 print(f'* Filename {fname} has already been ingested to DPI. Manual clean up needed.')
@@ -697,15 +697,13 @@ def main():
                     print('\t\t* multi-part file, suitable for ingest...')
                     do_ingest = True
 
-            # Check if path / no ingests to take place [PROBABLY CAN BE DEPRECATED]
-            with open(CONTROL_JSON) as control_pth:
-                cp = json.load(control_pth)
-                if not cp['do_ingest']:
-                    print('* do_ingest set to false in control json, skipping')
-                    do_ingest = False
-                if not cp[tree]:
-                    print('* Path set to false in control json, turning ingest off')
-                    do_ingest = False
+            # Check if path / no ingests to take place
+            if not utils.check_control('do_ingest'):
+                print('* do_ingest set to false in control json, skipping')
+                do_ingest = False
+            if not utils.check_control(tree):
+                print('* Path set to false in control json, turning ingest off')
+                do_ingest = False
 
             # Perform ingest if under 1TB
             if do_ingest:
@@ -734,6 +732,7 @@ def main():
                     print(f'Failed to move file to black_pearl_ingest: {err}')
                     logger.warning('%s\tFailed to move ingest-ready file to BlackPearl ingest folder', log_paths)
                 continue
+            sys.exit("One run per pass")
 
 
 def check_for_deletions(fpath, fname, log_paths, messages):

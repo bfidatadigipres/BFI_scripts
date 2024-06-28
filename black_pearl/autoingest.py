@@ -363,6 +363,8 @@ def ext_in_file_type(ext, priref, log_paths):
     if len(file_type) == 1:
         for ft in ftype:
             ft = ft.strip()
+            if file_type[0] is None:
+                return False
             if ft == file_type[0].lower():
                 print(f'* extension matches <file_type> in record... {file_type}')
                 return True

@@ -28,7 +28,7 @@ def get_buckets(bucket_collection):
         bucket_data = json.load(data)
     if bucket_collection == 'bfi':
         for key, value in bucket_data.items():
-            if 'preservationbucket' in str(key.lower()):
+            if 'preservationblobbing' in str(key.lower()):
                 continue
             elif 'preservation0' in str(key.lower()):
                 if value is True:
@@ -38,7 +38,7 @@ def get_buckets(bucket_collection):
                 bucket_list.append(key)
     else:
         for key, value in bucket_data.items():
-            if f"{bucket_collection.strip()}bucket" in key:
+            if f"{bucket_collection.strip()}blobbing" in key:
                 continue
             elif f"{bucket_collection.strip()}0" in key:
                 if value is True:

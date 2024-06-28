@@ -374,7 +374,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         duration_size_log(file, object_number, duration, byte_size, duration_ms)
 
         # Run series of BP checks here - any failures no CID media record made
-        confirmed, remote_md5, length = bp.get_object_list(file, bucket_list)
+        confirmed, remote_md5, length = bp.get_object_list(file)
         if confirmed is None:
             logger.warning('Problem retrieving Black Pearl ObjectList. Skipping')
             continue

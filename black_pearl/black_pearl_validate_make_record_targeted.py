@@ -378,12 +378,13 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         if confirmed is None:
             logger.warning('Problem retrieving Black Pearl ObjectList. Skipping')
             continue
-        if confirmed is False:
+        elif confirmed is False:
             logger.warning("Assigned to storage domain is FALSE: %s", fpath)
             persistence_log_message("BlackPearl has not persisted file to data tape but ObjectList exists", fpath, wpath, file)
             continue
-        logger.info("Retrieved BP data: Confirmed %s BP MD5: %s Length: %s", confirmed, remote_md5, length)
-        if 'No object list' in confirmed:
+        elif confirmed is True:
+            logger.info("Retrieved BP data: Confirmed %s BP MD5: %s Length: %s", confirmed, remote_md5, length)
+        elif 'No object list' in confirmed:
             logger.warning("ObjectList could not be extracted from BP for file: %s", fpath)
             persistence_log_message("No BlackPearl ObjectList returned from BlackPearl API query", fpath, wpath, file)
             # Move file back to black_pearl_ingest folder

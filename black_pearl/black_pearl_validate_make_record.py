@@ -185,7 +185,7 @@ def main():
     if not utils.check_control('black_pearl'):
         logger.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-    if not utils.check_cid(CID_API):
+    if not utils.cid_check(CID_API):
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
     ingest_data = utils.read_yaml(INGEST_CONFIG)

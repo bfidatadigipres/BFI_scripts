@@ -640,11 +640,12 @@ def main():
                 print(f'* Filename {fname} already has a CID Media record. Manual clean up needed.')
                 logger.warning('%s\tFilename already has a CID Media record: %s', log_paths, fname)
                 continue
+            elif media_check is False:
+                print(f'* File {fname} has no CID Media record.')
             elif 'Hits exceed 1' in media_check:
                 print(f'* Filename {fname} has more than one CID Media record. Manual attention needed.')
                 logger.warning('%s\tFilename has more than one CID Media record: %s', log_paths, fname)
                 continue
-            print(f'* File {fname} has no CID Media record.')
 
             # Get BP buckets
             bucket_list = []

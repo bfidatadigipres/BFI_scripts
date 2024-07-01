@@ -57,7 +57,7 @@ LANGUAGE_MAP = os.environ['LANGUAGE_YAML']
 JSON_COMPLETED = os.environ['COMPLETED_PATH']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging (running from bk-qnap-video)
 LOGGER = logging.getLogger('document_artifax_record_population')
@@ -622,8 +622,9 @@ def work_extraction(season_id, dct=None):
     country_dct = []
     country_dct = country_check(dct['countries'])
     work_append_dct.extend(country_dct)
-
-    return (qna_title_dct, manifestation_dct, work_append_dct)
+    print("----------- work extraction manifestation_dct -------------")
+    print(manifestation_dct)
+    return qna_title_dct, manifestation_dct, work_append_dct
 
 
 def country_check(dct=None):
@@ -718,8 +719,6 @@ def main():
                 check_data = work_quick_check(dct)
                 work_id = check_data[0]
                 priref = check_data[1]
-                if priref != '158354053':
-                    continue
                 cid_import = check_data[2]
                 art_form = check_data[3]
                 print(f"Work ID: {work_id}, Priref: {priref}, CID Import: {cid_import}, Art form: {art_form}")
@@ -778,9 +777,6 @@ def main():
                     edit_name = ''
                 # Extract work metadata lists from work_id
                 work_data = []
-                qna_title_dct = []
-                manifestation_dct = []
-                work_append_dct = []
                 work_data = work_extraction(season_id, dct)
                 if not work_data:
                     LOGGER.warning("Work extraction failed, exiting")
@@ -905,6 +901,7 @@ def main():
                     work_copy_fname = fetch_work_copy(work_id)
                     print(f"******* {work_copy_fname} ********")
                     if len(work_copy_fname) > 0:
+                        print(f"make_manifestations({work_copy_fname}, {current_festival}, {start_date}, {priref}, {manifestation_dct})")
                         success_man = make_manifestations(work_copy_fname, current_festival, start_date, priref, manifestation_dct)
                         if success_man == 'No results':
                             LOGGER.critical("Error creating manifestation for %s using work copy: %s", priref, work_copy_fname)
@@ -958,7 +955,7 @@ def main():
 
         # When all extraction completed, move json to completed folder for next script interaction
         inf.close()
-        #move_file(filepath)
+        move_file(filepath)
 
     LOGGER.info("================ Script completed ===================================\n")
 
@@ -971,8 +968,12 @@ def make_manifestations(work_copy_fname, current_festival, start_date, priref, m
     man_int_priref = ''
     man_fest_priref = ''
     if manifestation_dct is None:
+        print("*** WORK COPY DATA NONE ***")
         manifestation_dct = {}
     work_copy_data = work_copy_extraction(work_copy_fname, current_festival)
+    print("--------------- Work copy data ------------------")
+    print(work_copy_data)
+
     if work_copy_data == 'No results':
         return 'No results'
     try:
@@ -1137,12 +1138,12 @@ def manifestation_create(start_date, event_type, priref, manifestation_dct=None,
                              {'record_access.date': TODAY},
                              {'record_access.duration': 'TEMP'},
                              {'record_access.review_date': application_restriction_date},
-                             {'record_access.user': '$REST'},
-                             {'record_access.rights': '1'},
-                             {'record_access.reason': 'SENSITIVE_LEGAL'},
-                             {'record_access.date': TODAY},
-                             {'record_access.duration': 'TEMP'},
-                             {'record_access.review_date': application_restriction_date},
+                             #{'record_access.user': '$REST'},
+                             #{'record_access.rights': '1'},
+                             #{'record_access.reason': 'SENSITIVE_LEGAL'},
+                             #{'record_access.date': TODAY},
+                             #{'record_access.duration': 'TEMP'},
+                             #{'record_access.review_date': application_restriction_date},
                              {'record_access.user': 'vickr'},
                              {'record_access.rights': '2'},
                              {'record_access.owner': 'Festivals'},
@@ -1189,7 +1190,7 @@ def manifestation_create(start_date, event_type, priref, manifestation_dct=None,
     man_priref = ''
     # Create CID record for Manifestation
     man_values_xml = adlib.create_record_data('', manifestation_values)
-    print("---------------------------")
+    print("----- manifestation values XML ----------------------")
     print(man_values_xml)
     print("---------------------------")
     try:

@@ -72,7 +72,7 @@ from downloaded_transcode_mp4 import transcode_mp4
 from downloaded_transcode_mp4_watermark import transcode_mp4_access
 
 # GLOBAL VARIABLES
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
 LOG_PATH = os.environ['LOG_PATH']

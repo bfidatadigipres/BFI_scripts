@@ -65,8 +65,9 @@ def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_
         if not max_fill_size >= 0:
             logger.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
             break
-        status = bp.check_bp_status(file, bucket_list)
-        if not status:
+        status = bp.check_no_bp_status(file, bucket_list)
+        print(f"bp.check_no_bp_status: {status}")
+        if status is False:
             logger.warning("move_to_ingest_folder(): Skipping. File already found in Black Pearl: %s", file)
             continue
         fpath = os.path.join(autoingest, file)
@@ -169,6 +170,7 @@ def main():
 
     # Get current bucket name for bucket_collection type
     bucket, bucket_list = bp.get_buckets(bucket_collection)
+    print(f"bp.get_buckets: {bucket} {bucket_list}")
     logger.info("Key bucket selected %s, bucket list %s", bucket, bucket_list)
     if 'blobbing' in str(bucket):
         logger.warning("Blobbing bucket selected. Aborting PUT")
@@ -297,6 +299,7 @@ def put_dir(directory_pth, bucket_choice):
     '''
     try:
         job_list = bp.put_directory(directory_pth, bucket_choice)
+        print(f"bp.put_directory: {job_list}")
     except Exception as err:
         logger.error('Exception: %s', err)
         print('Exception: %s', err)
@@ -304,6 +307,7 @@ def put_dir(directory_pth, bucket_choice):
 
     for job_id in job_list:
         confirmation = bp.put_notification(job_id)
+        print(f"bp.put_notification: {confirmation}")
         logger.info('Job %s registered for completion notification at %s', job_id, confirmation)
 
     return job_list

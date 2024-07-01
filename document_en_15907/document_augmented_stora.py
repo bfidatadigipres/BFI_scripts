@@ -53,7 +53,7 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH2']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 logger = logging.getLogger('document_augmented_stora')
@@ -216,7 +216,7 @@ def find_repeats(asset_id):
         ppriref = adlib.retrieve_field_name(full_result[0], 'part_of_reference.lref')[0]
     except (IndexError, TypeError, KeyError):
         ppriref = ''
-    
+
     print(f"********** Alternative number types: {alt_num_type} ************")
     if 'Amazon' in alt_num_type:
         logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
@@ -766,19 +766,19 @@ def main():
             if 'series_id' in epg_dict:
                 print("Series ID exists, trying to retrieve series data from CID")
                 # Check if series already in CID and/or series_cache, if not generate series_cache json
-                series_check = look_up_series_list(epg_dict['series_id'])
-                if series_check is False:
+                series_chck = look_up_series_list(epg_dict['series_id'])
+                if series_chck is False:
                     series_id = epg_dict['series_id']
                 else:
                     series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
-                    logger.info(f"Series found for annual refresh: {series_check}")
+                    logger.info("Series found for annual refresh: %s", series_chck)
 
                 series_return = cid_series_query(series_id)
                 if series_return[0] is None:
                     print(f"CID Series data not retrieved: {epg_dict['series_id']}")
                     logger.warning("Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s", epg_dict['series_id'])
                     continue
-                
+
                 hit_count = series_return[0]
                 series_work_id = series_return[1]
                 if hit_count == 0:
@@ -831,8 +831,16 @@ def main():
         item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict)
         print(f"item_object_number: {item_data}")
 
-        if item_data is None or item_data[1] == '':
+        if item_data is None:
             print(f"CID Item object number not retrieved for manifestation: {manifestation_priref}")
+            if new_work:
+                print(f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}")
+                continue
+            else:
+                print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
+                continue
+        if len(item_data[0]) == 0 or len(item_data[1]) == 0:
+            print(f"Error retrieving Item record priref and object number. Skipping completion of this programme, manual clean up of records needed.")
             if new_work:
                 print(f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}")
                 continue
@@ -1463,7 +1471,7 @@ def push_payload(item_id, webvtt_payload):
     pay_head = f'<adlibXML><recordList><record priref="{item_id}">'
     label_type_addition = f'<label.type>{label_type}</label.type>'
     label_addition = f'<label.source>{label_source}</label.source><label.text><![CDATA[{webvtt_payload}]]></label.text>'
-    pay_end = f'</record></recordList></adlibXML>'
+    pay_end = '</record></recordList></adlibXML>'
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     try:

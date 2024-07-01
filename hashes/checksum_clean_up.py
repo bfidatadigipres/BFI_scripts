@@ -33,7 +33,7 @@ import adlib_v3 as adlib
 LOG_PATH = os.environ['LOG_PATH']
 CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('checksum_clean_up')

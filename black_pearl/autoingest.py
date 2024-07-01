@@ -96,7 +96,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 PREFIX = [
     'N',
@@ -140,7 +140,7 @@ def get_persistence_messages():
             continue
         p_path = i[0]
         p_message = i[1]
-        print(f'{p_path}:\t{p_message}')
+        # print(f'{p_path}:\t{p_message}')
         # Keep latest message in dictionary
         if p_path and p_message:
             messages[p_path] = p_message
@@ -158,6 +158,7 @@ def check_accepted_file_type(fpath):
             return True
 
     formt = utils.get_metadata('Video', 'Format', fpath)
+    print(f"utils.get_metadata: {formt}")
     if 'ProRes' in str(formt):
         return True
     return False
@@ -272,16 +273,19 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-
+    print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+        print(f"** HITS: {hits}")
         if hits is None:
             logger.exception('"CID API was unreachable for Media search: %s', search)
             raise Exception(f"CID API was unreachable for Media search: {search}")
-        print(f"check_media_record(): AdlibV3 record for hits:\n{hits}")
+        print(f"check_media_record(): AdlibV3 record for hits: {hits}")
         num = int(hits)
-        if num >= 1:
+        if num == 1:
             return True
+        if num > 1:
+            return f'Hits exceed 1: {num}'
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
     return False
@@ -359,6 +363,8 @@ def ext_in_file_type(ext, priref, log_paths):
     if len(file_type) == 1:
         for ft in ftype:
             ft = ft.strip()
+            if file_type[0] is None:
+                return False
             if ft == file_type[0].lower():
                 print(f'* extension matches <file_type> in record... {file_type}')
                 return True
@@ -527,6 +533,7 @@ def main():
 
     print('* Collecting ingest sources from config.yaml...')
     config_dict = utils.read_yaml(CONFIG)
+    print(f"utils.read_yaml: {config_dict}")
 
     for host in config_dict['Hosts']:
         print(host)
@@ -544,7 +551,6 @@ def main():
             fname = os.path.split(fpath)[-1]
 
             # Allow path changes for black_pearl_ingest Netflix
-            print(fpath)
             if 'ingest/netflix' in str(fpath):
                 logger.info('%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder')
                 black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_NETFLIX']}")
@@ -600,12 +606,14 @@ def main():
                     logger.warning("%s\tFilename formatted incorrectly", log_paths)
                     continue
                 part, whole = utils.check_part_whole(fname)
+                print(f"utils.check_part_whole: {part} {whole}")
                 if not part or not whole:
                     print('* Cannot parse partWhole from filename')
                     logger.warning('%s\tCannot parse partWhole from filename', log_paths)
                     continue
                 # Get object_number
                 object_number = utils.get_object_number(fname)
+                print(f"utils.get_object_number: {object_number}")
                 if not object_number:
                     print('* Cannot parse <object_number> from filename')
                     logger.warning('%s\tCannot parse <object_number> from filename', log_paths)
@@ -634,7 +642,12 @@ def main():
                 print(f'* Filename {fname} already has a CID Media record. Manual clean up needed.')
                 logger.warning('%s\tFilename already has a CID Media record: %s', log_paths, fname)
                 continue
-            print(f'* File {fname} has no CID Media record.')
+            elif media_check is False:
+                print(f'* File {fname} has no CID Media record.')
+            elif 'Hits exceed 1' in media_check:
+                print(f'* Filename {fname} has more than one CID Media record. Manual attention needed.')
+                logger.warning('%s\tFilename has more than one CID Media record: %s', log_paths, fname)
+                continue
 
             # Get BP buckets
             bucket_list = []
@@ -646,8 +659,9 @@ def main():
                 bucket_list = get_buckets('bfi')
 
             # BP ingest check
-            ingest_check = bp.check_bp_status(fname, bucket_list)
-            if ingest_check is True:
+            status = bp.check_no_bp_status(fname, bucket_list)
+            print(f"bp.check_no_bp_status: {status}")
+            if status is False:
                 print(f'* Filename {fname} has already been ingested to DPI. Manual clean up needed.')
                 logger.warning('%s\tFilename has aleady been ingested to DPI: %s', log_paths, fname)
                 continue
@@ -692,19 +706,21 @@ def main():
                     print('\t\t* multi-part file, suitable for ingest...')
                     do_ingest = True
 
-            # Check if path / no ingests to take place [PROBABLY CAN BE DEPRECATED]
-            with open(CONTROL_JSON) as control_pth:
-                cp = json.load(control_pth)
-                if not cp['do_ingest']:
-                    print('* do_ingest set to false in control json, skipping')
-                    do_ingest = False
-                if not cp[tree]:
-                    print('* Path set to false in control json, turning ingest off')
-                    do_ingest = False
+            # Check if path / no ingests to take place
+            if not utils.check_control('do_ingest'):
+                print('* do_ingest set to false in control json, skipping')
+                do_ingest = False
+            if not utils.check_control(tree):
+                print('* Path set to false in control json, turning ingest off')
+                do_ingest = False
 
             # Perform ingest if under 1TB
             if do_ingest:
                 size = utils.get_size(fpath)
+                if size is None:
+                    print("Unable to retrieve file size. Skipping for repeat try later.")
+                    continue
+                print(f"utils.get_size: {size}")
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
                 if int(size) > 1099511627776:
                     logger.info('%s\tFile is larger than 1TB. Checking file is ProRes', log_paths)

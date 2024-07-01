@@ -10,10 +10,12 @@ Joanna White
 
 # Python library imports
 import os
+import sys
 import csv
 import json
 import shutil
 import datetime
+csv.field_size_limit(10000000)
 
 # Date variable for use in ordering error outputs
 TODAY = datetime.date.today()
@@ -70,7 +72,7 @@ def create_current_errors_logs():
                 message = row[5]
             except (IndexError, KeyError):
                 continue
-
+            print(timedate, status, local_p, remote_p, file_, message)
             if '.tmp' in file_ or '.ini' in file_ or '.DS_Store' in file_:
                 continue
 

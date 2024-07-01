@@ -57,7 +57,7 @@ LOG_PREFIX = '_'.join(FLLPTH)
 LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
 TRANSCODE = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 HOST = os.uname()[1]
 
 # Setup logging
@@ -103,9 +103,10 @@ def check_ps_runs(fpath):
 
     proc_num = subprocess.check_output(cmd, shell=True)
     proc_num = int(proc_num.decode('utf-8'))
-    if proc_num == 1:
+    print(proc_num)
+    if proc_num <= 3:
         return False
-    if proc_num >= 2:
+    if proc_num > 3:
         return True
 
 
@@ -178,7 +179,8 @@ def main():
         transcode_pth = os.path.join(TRANSCODE, 'bfi', date_pth)
 
     # Check to ensure that the file isn't already being processed
-    if os.path.exists(os.path.join(transcode_pth, f"{fname}.mp4")):
+    check_name = os.path.join(transcode_pth, fname)
+    if os.path.exists(f"{check_name}.mp4"):
         instance_running = check_ps_runs(fullpath)
         if instance_running is True:
             LOGGER.info("Script exiting: This file is currently being transcoded.")
@@ -189,12 +191,6 @@ def main():
         else:
             LOGGER.info("Found MP4 file is from a broken transcode attempt. Deleting file.")
             os.remove(os.path.join(transcode_pth, f"{fname}.mp4"))
-    if os.path.exists(os.path.join(transcode_pth, fname)):
-        LOGGER.info("Script exiting: This file has been transcoded.")
-        log_build.append(f"{local_time()}\tINFO\tFile has already being processed by another transcode script: {os.path.join(transcode_pth, fname)}")
-        log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-        log_output(log_build)
-        sys.exit(f'EXITING: Script already processed this file: {file}')
 
     # Check if transcode already completed
     if fname in access and thumbnail and largeimage:
@@ -304,15 +300,20 @@ def main():
         seconds = adjust_seconds(duration)
         log_build.append(f"{local_time()}\tINFO\tSeconds for JPEG cut: {seconds}")
         success = get_jpeg(seconds, outpath, jpeg_location)
-        if not success:
-            log_build.append(f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file")
-            log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-            log_output(log_build)
-            sys.exit("Exiting: JPEG not created from MP4 file")
+        if not os.path.isfile(outpath):
+            dif_secs = seconds // 2
+            log_build.append(f"{local_time()}\tINFO\tSeconds for JPEG cut retry: {dif_secs}")
+            success = get_jpeg(dif_secs, outpath, jpeg_location)
+            if not success:
+                log_build.append(f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file")
+                log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
+                log_output(log_build)
+                sys.exit("Exiting: JPEG not created from MP4 file")
 
         # Generate Full size 600x600, thumbnail 300x300
         full_jpeg = make_jpg(jpeg_location, 'full', None, None)
         thumb_jpeg = make_jpg(jpeg_location, 'thumb', None, None)
+        print(full_jpeg, thumb_jpeg)
         log_build.append(f"{local_time()}\tINFO\tNew images created at {seconds} seconds into video:\n - {full_jpeg}\n - {thumb_jpeg}")
         if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
             os.remove(jpeg_location)
@@ -884,6 +885,7 @@ def make_jpg(filepath, arg, transcode_pth, percent):
     except Exception as err:
         LOGGER.error("%s\tERROR\tJPEG creation failed for filepath: %s\n%s", local_time(), filepath, err)
 
+    print(outfile)
     if os.path.exists(outfile):
         return outfile
 

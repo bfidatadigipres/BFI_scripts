@@ -25,7 +25,7 @@ DOWNTIME_CONTROL = os.environ['CONTROL_JSON']
 TS_DAY = time.strftime("%Y-%m-%d")
 TS_TIME = time.strftime("%H:%M:%S")
 DUPE_ERRORS = os.path.join(os.environ['GRACK_H22'], 'duplicates/')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 logger = logging.getLogger('rna_document')

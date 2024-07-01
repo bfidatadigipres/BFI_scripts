@@ -1,4 +1,4 @@
-#!/usr/bin/ python3
+#!/usr/bin/ python3c
 
 '''
 Script to frequently back up
@@ -142,6 +142,8 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
+            if folder.startswith(('201', '2020', '2021', '2022', '2023', '202401', '202402')):
+                continue
             utils.check_control('black_pearl')
 
             LOGGER.info("** Working with access path date folder: %s", folder)
@@ -180,7 +182,7 @@ def main():
                     else:
                         LOGGER.info("MD5s do not match, queue for deletion:\n%s - Local MD4\n%s - Remote MD5", local_md5, bp_md5)
                         print(f"MD5 do not match - queued for deletion: {item}")
-            
+
             for item in remove_list:
                 replace_list.remove(item)
 

@@ -39,7 +39,6 @@ import glob
 import time
 import shutil
 import logging
-import subprocess
 from datetime import datetime
 
 # Local import
@@ -57,7 +56,7 @@ JSON_END = os.environ['JSON_END_POINT']
 DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 TODAY = str(datetime.today())
 
 # Setup logging

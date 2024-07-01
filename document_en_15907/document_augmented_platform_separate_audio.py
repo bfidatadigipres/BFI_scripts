@@ -44,7 +44,7 @@ import adlib_v3 as adlib
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 PLATFORM_STORAGE = os.environ.get('PLATFORM_INGEST_PTH')
-CID_API = os.environ.get('CID_API3')
+CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_platform_separate_51_audio')
@@ -299,10 +299,10 @@ def build_record_defaults(platform):
                {'record_access.reason': 'SENSITIVE_LEGAL'},
                {'record_access.user': 'Librarian'},
                {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': '$REST'},
-               {'record_access.rights': '1'},
                {'record_access.reason': 'SENSITIVE_LEGAL'}])
+               #{'record_access.user': '$REST'},
+               #{'record_access.rights': '1'},
+               #{'record_access.reason': 'SENSITIVE_LEGAL'}])
 
     return record
 

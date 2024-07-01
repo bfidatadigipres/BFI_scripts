@@ -28,7 +28,7 @@ def get_buckets(bucket_collection):
         bucket_data = json.load(data)
     if bucket_collection == 'bfi':
         for key, value in bucket_data.items():
-            if 'preservationbucket' in str(key.lower()):
+            if 'preservationblobbing' in str(key.lower()):
                 continue
             elif 'preservation0' in str(key.lower()):
                 if value is True:
@@ -38,7 +38,7 @@ def get_buckets(bucket_collection):
                 bucket_list.append(key)
     else:
         for key, value in bucket_data.items():
-            if f"{bucket_collection.strip()}bucket" in key:
+            if f"{bucket_collection.strip()}blobbing" in key:
                 continue
             elif f"{bucket_collection.strip()}0" in key:
                 if value is True:
@@ -48,7 +48,7 @@ def get_buckets(bucket_collection):
     return key_bucket, bucket_list
 
 
-def check_bp_status(fname, bucket_list):
+def check_no_bp_status(fname, bucket_list):
     '''
     Look up filename in BP to avoid
     multiple ingests of files
@@ -58,11 +58,11 @@ def check_bp_status(fname, bucket_list):
         query = ds3.HeadObjectRequest(bucket, fname)
         result = CLIENT.head_object(query)
         # Only return false if DOESNTEXIST is missing, eg file found
-        if 'DOESNTEXIST' not in str(result.result):
-            print(f"File {fname} found in Black Pearl bucket {bucket}")
-            return False
+        if 'DOESNTEXIST' in str(result.result):
+            print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+            return True
 
-    return True
+    return False
 
 
 def get_job_status(job_id):

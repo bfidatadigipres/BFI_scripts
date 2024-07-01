@@ -61,7 +61,7 @@ BPINGEST_NETFLIX = os.environ['BP_INGEST_NETFLIX']
 BPINGEST_AMAZON = os.environ['BP_INGEST_AMAZON']
 LOG_PATH = os.environ['LOG_PATH']
 JSON_PATH = os.path.join(LOG_PATH, 'black_pearl')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 INGEST_CONFIG = os.path.join(CODE_PATH, 'black_pearl/dpi_ingests.yaml')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
@@ -185,7 +185,7 @@ def main():
     if not utils.check_control('black_pearl'):
         logger.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-    if not utils.check_cid(CID_API):
+    if not utils.cid_check(CID_API):
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
     ingest_data = utils.read_yaml(INGEST_CONFIG)
@@ -374,16 +374,17 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
         duration_size_log(file, object_number, duration, byte_size, duration_ms)
 
         # Run series of BP checks here - any failures no CID media record made
-        confirmed, remote_md5, length = bp.get_object_list(file, bucket_list)
+        confirmed, remote_md5, length = bp.get_object_list(file)
         if confirmed is None:
             logger.warning('Problem retrieving Black Pearl ObjectList. Skipping')
             continue
-        if confirmed is False:
+        elif confirmed is False:
             logger.warning("Assigned to storage domain is FALSE: %s", fpath)
             persistence_log_message("BlackPearl has not persisted file to data tape but ObjectList exists", fpath, wpath, file)
             continue
-        logger.info("Retrieved BP data: Confirmed %s BP MD5: %s Length: %s", confirmed, remote_md5, length)
-        if 'No object list' in confirmed:
+        elif confirmed is True:
+            logger.info("Retrieved BP data: Confirmed %s BP MD5: %s Length: %s", confirmed, remote_md5, length)
+        elif 'No object list' in confirmed:
             logger.warning("ObjectList could not be extracted from BP for file: %s", fpath)
             persistence_log_message("No BlackPearl ObjectList returned from BlackPearl API query", fpath, wpath, file)
             # Move file back to black_pearl_ingest folder

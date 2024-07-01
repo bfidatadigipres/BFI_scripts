@@ -35,7 +35,7 @@ LOG_PATH = os.environ['LOG_PATH']
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
 CSV_PATH = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
 CONTROL_JSON = os.environ['CONTROL_JSON']
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('metadata_clean_up')

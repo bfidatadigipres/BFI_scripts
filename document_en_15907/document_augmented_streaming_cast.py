@@ -37,7 +37,7 @@ import adlib_v3 as adlib
 
 # Global vars
 LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('document_streaming_castcred')

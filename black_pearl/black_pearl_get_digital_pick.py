@@ -67,7 +67,7 @@ FORMAT = "%Y-%m-%d %H:%M:%S"
 TODAY = datetime.strftime(datetime.now(), FORMAT)
 CONTROL_JSON = os.environ['CONTROL_JSON']
 HEADERS = {'Content-Type': 'text/xml'}
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Set up logging
 LOGGER = logging.getLogger('bp_get_digital_pick')

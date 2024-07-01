@@ -34,7 +34,7 @@ import adlib_v3 as adlib
 MP4_POLICY = os.environ['MP4_POLICY']
 LOG_PATH = os.environ['LOG_PATH']
 LOG_FILE = os.path.join(LOG_PATH, 'scheduled_elasticsearch_downloader_transcode.log')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 TRANSCODE = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_REND1'], 'mp4_transcoding_backup/')
 

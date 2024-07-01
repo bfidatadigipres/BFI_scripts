@@ -17,7 +17,7 @@ import adlib_v3 as adlib
 import records
 
 # Global variable
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 
 class Activities():

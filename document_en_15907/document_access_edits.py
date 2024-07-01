@@ -29,7 +29,7 @@ LOCAL_LOG = os.path.join(STORAGE, 'access_edits_renamed.log')
 AUTOINGEST = os.path.join(INGEST, 'ingest/autodetect')
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API3')
+CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_access_edits')

@@ -19,7 +19,6 @@ import os
 import time
 import json
 import logging
-import datetime
 import requests
 
 # Global variables

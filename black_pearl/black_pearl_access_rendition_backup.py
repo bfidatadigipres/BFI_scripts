@@ -144,7 +144,9 @@ def main():
         for folder in folder_list:
             if folder.startswith(('201', '2020', '2021', '2022', '2023', '202401', '202402')):
                 continue
-            utils.check_control('black_pearl')
+            if not utils.check_control('black_pearl'):
+                LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
@@ -202,7 +204,9 @@ def main():
             for rep_item in replace_list:
                 file_list.append(rep_item)
             while file_list:
-                utils.check_control('black_pearl')
+                if utils.check_control('black_pearl'):
+                    LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                    sys.exit('Script run prevented by downtime_control.json. Script exiting.')
                 empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
                 if len(empty_check) != 0:
                     LOGGER.warning("Exiting: Files found that weren't moved from ingest point previous run: %s", INGEST_POINT)

@@ -300,11 +300,15 @@ def main():
         seconds = adjust_seconds(duration)
         log_build.append(f"{local_time()}\tINFO\tSeconds for JPEG cut: {seconds}")
         success = get_jpeg(seconds, outpath, jpeg_location)
-        if not success:
-            log_build.append(f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file")
-            log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-            log_output(log_build)
-            sys.exit("Exiting: JPEG not created from MP4 file")
+        if not os.path.isfile(outpath):
+            dif_secs = seconds // 2
+            log_build.append(f"{local_time()}\tINFO\tSeconds for JPEG cut retry: {dif_secs}")
+            success = get_jpeg(dif_secs, outpath, jpeg_location)
+            if not success:
+                log_build.append(f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file")
+                log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
+                log_output(log_build)
+                sys.exit("Exiting: JPEG not created from MP4 file")
 
         # Generate Full size 600x600, thumbnail 300x300
         full_jpeg = make_jpg(jpeg_location, 'full', None, None)

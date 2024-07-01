@@ -106,7 +106,7 @@ def delete_existing_proxy(file_list):
         confirmed = bp_utils.delete_black_pearl_object(file, None, BUCKET)
         if confirmed:
             sleep(10)
-            success = bp_utils.check_bp_status(file, [BUCKET])
+            success = bp_utils.check_no_bp_status(file, [BUCKET])
             if success is False:
                 LOGGER.info("File %s deleted successfully", file)
                 file_list.remove(file)
@@ -157,7 +157,7 @@ def main():
                     continue
                 if check_mod_time(old_fpath) is False:
                     continue
-                if bp_utils.check_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is False:
+                if bp_utils.check_no_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is False:
                     LOGGER.info("New item to write to BP: %s/%s/%s", key, folder, file)
                     print(f"New item to write to BP: {key}/{folder}/{file}")
                     file_list.append(f"{key}/{folder}/{file}")

@@ -61,7 +61,7 @@ ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_amazon_renaming')
@@ -439,9 +439,9 @@ def defaults():
                {'record_access.user': 'Librarian'},
                {'record_access.rights': '2'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': '$REST'},
-               {'record_access.rights': '1'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               #{'record_access.user': '$REST'},
+               #{'record_access.rights': '1'},
+               #{'record_access.reason': 'SENSITIVE_LEGAL'},
                {'grouping.lref': '401361'},
                {'language.lref': '74129'},
                {'language.type': 'DIALORIG'},

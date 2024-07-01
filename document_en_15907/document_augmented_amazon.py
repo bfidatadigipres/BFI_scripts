@@ -56,7 +56,7 @@ LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API3')
+CID_API = os.environ.get('CID_API4')
 
 # PATV API details including unique identifiers for Amazon catalogue
 URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
@@ -930,9 +930,9 @@ def build_defaults(data):
                {'record_access.user': 'Librarian'},
                {'record_access.rights': '2'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': '$REST'},
-               {'record_access.rights': '1'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
+               #{'record_access.user': '$REST'},
+               #{'record_access.rights': '1'},
+               #{'record_access.reason': 'SENSITIVE_LEGAL'},
                {'grouping.lref': '401361'}, # Amazon
                {'language.lref': '74129'},
                {'language.type': 'DIALORIG'}])

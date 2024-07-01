@@ -224,10 +224,10 @@ def build_record_defaults(platform):
                {'record_access.reason': 'SENSITIVE_LEGAL'},
                {'record_access.user': 'Librarian'},
                {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': '$REST'},
-               {'record_access.rights': '1'},
                {'record_access.reason': 'SENSITIVE_LEGAL'}])
+               #{'record_access.user': '$REST'},
+               #{'record_access.rights': '1'},
+               #{'record_access.reason': 'SENSITIVE_LEGAL'}])
 
     return record
 

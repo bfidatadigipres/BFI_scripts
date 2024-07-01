@@ -204,7 +204,7 @@ def main():
             for rep_item in replace_list:
                 file_list.append(rep_item)
             while file_list:
-                if utils.check_control('black_pearl'):
+                if not utils.check_control('black_pearl'):
                     LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
                     sys.exit('Script run prevented by downtime_control.json. Script exiting.')
                 empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]

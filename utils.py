@@ -332,9 +332,9 @@ def check_global_log(fname, check_str):
     '''
 
     with open(GLOBAL_LOG, 'r') as data:
-        rows = csv.reader(data, 'r')
+        rows = csv.reader(data, delimiter='\n')
         for row in rows:
-            print(row)
+            row = row[0].split('\t')
             if fname in str(row) and check_str in str(row):
                 print(row)
                 return row

@@ -140,7 +140,7 @@ def get_persistence_messages():
             continue
         p_path = i[0]
         p_message = i[1]
-        # print(f'{p_path}:\t{p_message}')
+        print(f'{p_path}:\t{p_message}')
         # Keep latest message in dictionary
         if p_path and p_message:
             messages[p_path] = p_message

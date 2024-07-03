@@ -527,6 +527,7 @@ def duration_size_log(filename, ob_num, duration, size, ms):
     with open(MEDIA_REC_CSV, 'r') as doc:
         readme = csv.reader(doc)
         for row in readme:
+            print(row)
             if filename in str(row):
                 written = True
 

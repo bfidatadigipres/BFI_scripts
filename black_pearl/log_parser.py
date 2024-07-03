@@ -57,9 +57,10 @@ def create_current_errors_logs():
     '''
     data = {}
     with open(GLOBAL_LOG, 'r') as file:
-        rows = csv.reader(file, delimiter='\t')
-
+        rows = csv.reader(file, delimiter='\n')
         for row in rows:
+            row = row[0].split('\t')
+            print(row)
             # Temp addition to reduce current_errors.csv
             if 'MD5 checksum does not yet exist for this file.' in str(row):
                 continue

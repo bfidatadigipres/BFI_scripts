@@ -19,7 +19,7 @@ import adlib_v3 as adlib
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
-csv.field_size_limit(10000000)
+csv.field_size_limit(10000000000)
 
 PREFIX = [
     'N',

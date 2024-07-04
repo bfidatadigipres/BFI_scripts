@@ -741,11 +741,12 @@ def main():
         description = epg_dict['description']
         print(f"Longest Description: {description}")
         broadcast_channel = ''
-        if 'channel' in epg_dict and 'broadcast_channel' in epg_dict:
+        if 'channel' in epg_dict:
             channel = epg_dict['channel']
+            print(f"Channel selected: {channel}")
+        if 'broadcast_channel' in epg_dict:
             broadcast_channel = epg_dict['broadcast_channel']
-            print(f"Broadcaster {broadcast_channel} and Channel {channel}")
-            print(f"Colour manifestation = {epg_dict['colour_manifestation']}")
+            print(f"Broadcaster: {broadcast_channel}")
 
         # CSV data gather
         csv_data = csv_retrieve(os.path.join(root, 'info.csv'))

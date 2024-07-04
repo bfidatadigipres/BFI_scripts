@@ -407,6 +407,7 @@ def fetch_lines(fullpath, lines):
 
         # This block is for correct title formatting, and flagging 'Generic'
         if title_whole.title().startswith("Generic"):
+            print(title_whole)
             title_for_split = title_new
             generic = True
         elif title_whole == "":
@@ -727,7 +728,7 @@ def main():
             print("No EPG dictionary found. Skipping!")
             continue
         if generic is True:
-            print("Generic found - new programme: {epg_dict}")
+            print(f"Generic found - new programme: {epg_dict['title']}")
         title = epg_dict['title']
         print(f"Title: {title}")
         description = epg_dict['description']
@@ -767,7 +768,7 @@ def main():
             print("Cannot access dB via API. Skipping")
             logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
             continue
-        elif len(work_priref) == 0:
+        elif work_priref == 0:
             new_work = True
         elif len(work_priref) > 4:
             print(f"**** JSON file found to have repeated Asset ID, previous work: {work_priref}")

@@ -73,6 +73,13 @@ YEAR_PATH = YESTERDAY_CLEAN[:4]
 # YEAR_PATH = '2023'
 STORAGE_PATH = STORAGE + YEAR_PATH
 
+NEWS_CHANNELS = [
+    'Al Jazeera',
+    'BBC NEWS HD',
+    'Sky News',
+    'GB News'
+]
+
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],
             'bbctwohd': ["BBC Two HD", "This is BBC Two", "Highlights of programmes BBC Two. [HD]"],
             'bbcthree': ["BBC Three HD", "This is BBC Three", "Programmes start at 7:00pm. [HD]"],
@@ -776,6 +783,10 @@ def main():
                 new_work = True
             else:
                 logger.info("** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s", work_priref)
+
+        # Make news channels new works for all live programming
+        if channel in NEWS_CHANNELS:
+            new_work = True
 
         if new_work is True:
             # Create the Work record here, and populate work_priref

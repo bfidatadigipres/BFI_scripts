@@ -734,7 +734,7 @@ def main():
             print("No EPG dictionary found. Skipping!")
             continue
         if generic is True:
-            print("Generic found - new programme: {epg_dict}")
+            print("Generic episode title found")
         title = epg_dict['title']
         print(f"Title: {title}")
         description = epg_dict['description']

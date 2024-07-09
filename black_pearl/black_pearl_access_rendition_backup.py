@@ -12,6 +12,7 @@ Targeting bfi/ subfolders only at this time:
 - If don't match pushes through to BP bucket along iwth
   items not found there already (new items)
 - Deletes out of date duplicates (replace_list)
+  Sleep for 30 mins before PUT of same files
 - Pushes all replacement/new items to BP bucket
 
 Joanna White
@@ -35,8 +36,8 @@ import utils
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 STORAGE = os.environ['TRANSCODING']
-INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest/')
-MOD_MAX = 21
+INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest_bfi/')
+MOD_MAX = 14
 UPLOAD_MAX = 1099511627776
 BUCKET = 'Access_Renditions_backup'
 
@@ -134,6 +135,7 @@ def main():
         LOGGER.info("** Access path selected: %s", access_path)
         folder_list = os.listdir(access_path)
         folder_list.sort()
+        print(folder_list)
         if folder_list[0] != value:
             LOGGER.warning('SKIPPING: First retrieved folder is not %s:\n%s', value, folder_list[0])
             continue
@@ -197,6 +199,7 @@ def main():
                     LOGGER.warning("Duplicate files remaining in Black Pearl - removing from replace_list to avoid duplicate writes: %s", success_list)
                     for fail_item in success_list:
                         replace_list.remove(fail_item)
+                sleep(1800)
 
             # While files remaining in list, move to ingest folder, PUT, and remove again
             for rep_item in replace_list:

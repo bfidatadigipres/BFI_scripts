@@ -449,7 +449,6 @@ def defaults():
                {'item_type': 'DIGITAL'},
                {'copy_status': 'M'},
                {'copy_usage.lref': '131560'},
-               {'file_type.lref': '114307'},
                {'accession_date': str(datetime.datetime.now())[:10]}])
 
     return record

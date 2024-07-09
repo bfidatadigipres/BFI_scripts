@@ -300,15 +300,14 @@ def get_buckets(bucket_collection):
 
     with open(DPI_BUCKETS) as data:
         bucket_data = json.load(data)
-    if bucket_collection == 'netflix' or bucket_collection == 'amazon':
-        for key, _ in bucket_data.items():
-            if bucket_collection in key:
-                bucket_list.append(key)
-    elif bucket_collection == 'bfi':
+    if bucket_collection == 'bfi':
         for key, _ in bucket_data.items():
             if 'preservation' in key.lower():
                 bucket_list.append(key)
-
+    else:
+        for key, _ in bucket_data.items():
+            if bucket_collection in key:
+                bucket_list.append(key)
     return bucket_list
 
 
@@ -556,10 +555,9 @@ def main():
                 black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_NETFLIX']}")
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             elif 'ingest/amazon' in str(fpath):
-                continue
-                # logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
-                # black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
-                # black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+                logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             else:
                 black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST']}")
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"

@@ -36,7 +36,7 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 STORAGE = os.environ['TRANSCODING']
 INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest/')
-MOD_MAX = 90
+MOD_MAX = 21
 UPLOAD_MAX = 1099511627776
 BUCKET = 'Access_Renditions_backup'
 
@@ -142,8 +142,6 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-            if folder.startswith(('201', '2020', '2021', '2022', '2023', '202401', '202402')):
-                continue
             if not utils.check_control('black_pearl'):
                 LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
                 sys.exit('Script run prevented by downtime_control.json. Script exiting.')

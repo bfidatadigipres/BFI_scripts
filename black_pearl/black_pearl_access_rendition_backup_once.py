@@ -200,15 +200,29 @@ def main():
 
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
-            if 'eafa/20220' in new_path:
-                continue
-            elif 'eafa/2021' in new_path:
+            if 'eafa/201' in new_path:
                 continue
             elif 'eafa/2020' in new_path:
                 continue
-            elif 'eafa/201' in new_path:
+            elif 'eafa/2021' in new_path:
                 continue
-            elif 'eafa/202210' in new_path:
+            elif 'eafa/2022' in new_path:
+                continue
+            elif 'eafa/202301' in new_path:
+                continue
+            elif 'eafa/202302' in new_path:
+                continue
+            elif 'eafa/202303' in new_path:
+                continue
+            elif 'eafa/202304' in new_path:
+                continue
+            elif 'eafa/202305' in new_path:
+                continue
+            elif 'eafa/202306' in new_path:
+                continue
+            elif 'eafa/202307' in new_path:
+                continue
+            elif 'eafa/202308' in new_path:
                 continue
 
             os.makedirs(new_path, mode=0o777, exist_ok=True)

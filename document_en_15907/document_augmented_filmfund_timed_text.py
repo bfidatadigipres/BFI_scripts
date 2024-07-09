@@ -41,7 +41,7 @@ import utils
 LOGS = os.environ.get('LOG_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 STORAGE = os.path.join(os.environ.get('QNAP_11'), 'timed_text')
-AUTOINGEST = os.environ.get('AUTOINEGST_QNAP11')
+AUTOINGEST = os.path.join(os.environ.get('AUTOINEGST_QNAP11'), 'ingest/autodetect/')
 CID_API = os.environ.get('CID_API4')
 
 # Setup logging

@@ -66,6 +66,7 @@ def accepted_file_type(ext):
              'tar': 'dpx, dcp, dcdm, wav',
              'mxf': 'mxf, 50i, imp',
              'mpg': 'mpeg-1, mpeg-ps',
+             'mpeg': 'mpeg-1, mpeg-ps',
              'mp4': 'mp4',
              'mov': 'mov, prores',
              'mkv': 'mkv, dpx',

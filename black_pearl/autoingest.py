@@ -315,36 +315,14 @@ def ext_in_file_type(ext, priref, log_paths):
     '''
     Check if ext matches file_type
     '''
-    ext = ext.lower()
-    dct = {'imp': 'mxf, xml',
-           'tar': 'dpx, dcp, dcdm, wav',
-           'mxf': 'mxf, 50i, imp',
-           'mpg': 'mpeg-1, mpeg-2',
-           'mp4': 'mp4',
-           'mov': 'mov, prores',
-           'mkv': 'mkv, dpx',
-           'wav': 'wav',
-           'tif': 'tif, tiff',
-           'tiff': 'tif, tiff',
-           'jpg': 'jpg, jpeg',
-           'jpeg': 'jpg, jpeg',
-           'ts': 'mpeg-ts',
-           'srt': 'srt',
-           'xml': 'xml, imp',
-           'scc': 'scc',
-           'itt': 'itt',
-           'stl': 'stl',
-           'cap': 'cap',
-           'dfxp': 'dfxp'}
 
-    try:
-        ftype = dct[ext]
-        ftype = ftype.split(', ')
-    except Exception:
+    ftype = utils.accepted_file_type(ext)
+    if not ftype:
         print(f"Filetype not matched in dictionary: {ext}")
         logger.warning('%s\tFile type is not recognised in autoingest', log_paths)
         return False
 
+    ftype = ftype.split(', ')
     print(ftype)
     search = f'priref={priref}'
     record = adlib.retrieve_record(CID_API, 'collect', search, '1', ['file_type'])[1]

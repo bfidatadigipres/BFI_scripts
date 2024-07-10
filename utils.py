@@ -19,7 +19,6 @@ import adlib_v3 as adlib
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
-csv.field_size_limit(10000000000)
 
 PREFIX = [
     'N',
@@ -56,6 +55,39 @@ ACCEPTED_EXT = [
     'dfxp',
     'dxfp'
 ]
+
+
+def accepted_file_type(ext):
+    '''
+    Receive extension and return
+    matching accepted file_type
+    '''
+    ftype = {'imp': 'mxf, xml',
+             'tar': 'dpx, dcp, dcdm, wav',
+             'mxf': 'mxf, 50i, imp',
+             'mpg': 'mpeg-1, mpeg-ps',
+             'mp4': 'mp4',
+             'mov': 'mov, prores',
+             'mkv': 'mkv, dpx',
+             'wav': 'wav',
+             'tif': 'tif, tiff',
+             'tiff': 'tif, tiff',
+             'jpg': 'jpg, jpeg',
+             'jpeg': 'jpg, jpeg',
+             'ts': 'mpeg-ts',
+             'srt': 'srt',
+             'xml': 'xml, imp',
+             'scc': 'scc',
+             'itt': 'itt',
+             'stl': 'stl',
+             'cap': 'cap',
+             'dfxp': 'dfxp'}
+    ext = ext.lower()
+    for key, val in ftype.items():
+        if key == ext:
+            return val
+
+    return None
 
 
 def check_control(arg):

@@ -16,11 +16,10 @@ import sys
 import shutil
 import datetime
 
-
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib_v3 as adlib
-from utils import logger, check_control, cid_check, get_metadata
+import adlib_v3_sess as adlib
+import utils
 
 # Global path variables
 SCPATH = os.environ['SPECIAL_COLLECTIONS']
@@ -36,7 +35,7 @@ TODAY_TIME = TODAY[11:19]
 DATE_TIME = (f"{TODAY_DATE} = {TODAY_TIME}")
 
 
-def cid_retrieve(fname):
+def cid_retrieve(fname, session):
     '''
     Receive filename and search in CID items
     Return object number to main
@@ -51,11 +50,11 @@ def cid_retrieve(fname):
         'title.article'
     ]
 
-    record = adlib.retrieve_record(CID_API, 'works', search, '0', fields)[1]
-    logger(LOG, 'info', f"cid_retrieve(): Making CID query request with:\n {search}")
+    record = adlib.retrieve_record(CID_API, 'works', search, '0', session, fields)[1]
+    utils.logger(LOG, 'info', f"cid_retrieve(): Making CID query request with:\n {search}")
     if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {fname}")
-        logger(LOG, 'exception', f"cid_retrieve(): Unable to retrieve data for {fname}")
+        utils.logger(LOG, 'exception', f"cid_retrieve(): Unable to retrieve data for {fname}")
         return None
 
     if 'priref' in str(record):
@@ -110,19 +109,20 @@ def main():
     Update local log for YACF monitoring
     Move file to autoingest path
     '''
-    if check_control('pause_scripts'):
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if cid_check(CID_API):
+    if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
 
-    logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives START ============")
+    utils.logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives START ============")
     work_directories = [ x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x)) ]
+    session = adlib.create_session()
     for work in work_directories:
+        if not utils.check_control('pause_scripts'):
+            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         wpath = os.path.join(STORAGE, work)
-        logger(LOG, 'info', f"Work folder found: {work}")
-        work_data = cid_retrieve(work.strip())
+        utils.logger(LOG, 'info', f"Work folder found: {work}")
+        work_data = cid_retrieve(work.strip(), session)
         if work_data is None:
-            logger(LOG, 'warning', f"Please check folder name {work} as no CID match found")
+            utils.logger(LOG, 'warning', f"Please check folder name {work} as no CID match found")
             continue
 
         # Build file list of wpath contents
@@ -130,41 +130,53 @@ def main():
         sorted_images = sorted(images)
         for image in sorted_images:
             if not image.endswith(('.tiff', '.tif', '.TIFF', '.TIF', '.jpeg', '.jpg', '.JPEG', '.JPG')):
-                logger(LOG, 'warning', f"Skipping: File found in folder {work} that is not image file: {image}")
+                utils.logger(LOG, 'warning', f"Skipping: File found in folder {work} that is not image file: {image}")
                 continue
-            logger(LOG, 'info', f"Processing image file: {image}")
+            utils.logger(LOG, 'info', f"Processing image file: {image}")
             ipath = os.path.join(wpath, image)
 
             # Analogue and Digital Derivative records to be made
             record_analogue = build_defaults(work_data, ipath, image, 'Analogue')
-            analogue_priref, analogue_obj = create_new_image_record(record_analogue)
-            logger(LOG, 'info', f"* New Item record created for image {image} Analogue {analogue_priref}")
+            analogue_priref, analogue_obj = create_new_image_record(record_analogue, session)
+            utils.logger(LOG, 'info', f"* New Item record created for image {image} Analogue {analogue_priref}")
 
             record_digital = build_defaults(work, ipath, image, 'Digital', analogue_obj)
-            digi_priref, digi_obj = create_new_image_record(record_digital)
-            logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
+            digi_priref, digi_obj = create_new_image_record(record_digital, session)
+            utils.logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
 
-            if len(digi_obj) > 0:
-                logger(LOG, 'info', f"** Renumbering file {image} with object number {digi_obj}")
-                new_filepath, new_file = rename(ipath, digi_obj)
-                if os.path.exists(new_filepath):
-                    logger(LOG, 'info', f"New filename generated: {new_file}")
-                    logger(LOG, 'info', f"File renumbered and filepath updated to: {new_filepath}")
-                    success = move(new_filepath, 'ingest')
-                    if success:
-                        logger(LOG, 'info', f"File {new_file} relocated to Autoingest {DATE_TIME}")
-                    else:
-                        logger(LOG, 'warning', f"FILE {new_file} DID NOT MOVE SUCCESSFULLY TO AUTOINGEST")
-                else:
-                    logger(LOG, 'warning', f"Problem creating new number for {image}")
-            else:
-                logger(LOG, 'warning', "Object number was not returned following creation of CID Item record for digital derivative.")
-                logger(LOG, 'warning', "File was not renamed and will be left for manual intervention")
+            if len(analogue_priref) == 0 or len(digi_priref) == 0:
+                utils.logger(LOG, 'warning', f"Missing priref following record creation for {image}. Analogue priref {analogue_priref} / Digital priref {digi_priref}")
+                utils.logger(LOG, 'warning', f"Moving file to failure folder. Manual clean up of records required.")
+                move(ipath, 'fail')
                 continue
 
-        # UP TO HERE JO
+            if len(digi_obj) > 0:
+                utils.logger(LOG, 'info', f"** Renumbering file {image} with object number {digi_obj}")
+                new_filepath, new_file = rename(ipath, digi_obj)
+                if os.path.exists(new_filepath):
+                    utils.logger(LOG, 'info', f"New filename generated: {new_file}")
+                    utils.logger(LOG, 'info', f"File renumbered and filepath updated to: {new_filepath}")
+                    success = move(new_filepath, 'ingest')
+                    if success:
+                        utils.logger(LOG, 'info', f"File {new_file} relocated to Autoingest {DATE_TIME}")
+                    else:
+                        utils.logger(LOG, 'warning', f"FILE {new_file} DID NOT MOVE SUCCESSFULLY TO AUTOINGEST")
+                else:
+                    utils.logger(LOG, 'warning', f"Problem creating new number for {image}")
+            else:
+                utils.logger(LOG, 'warning', "Object number was not returned following creation of CID Item record for digital derivative.")
+                continue
 
-    logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives END ==============")
+        # Checking all processed and delete empty folder
+        folder_empty = os.listdir(wpath)
+        if len(folder_empty) == 0:
+            utils.logger(LOG, 'info', f"All files in folder processed. Deleting folder: {work}")
+            os.rmdir(wpath)
+        else:
+            utils.logger(LOG, 'warning', f"Not all items in folder processed, leaving folder in place for repeat attempt.")
+            continue
+
+    utils.logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives END ==============")
 
 
 def build_defaults(work_data, ipath, image, arg, obj=None):
@@ -181,12 +193,12 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
     if len(work_data[1]) > 0:
         records.extend({'related_object.reference': work_data[1]})
     else:
-        logger(LOG, 'warning', "No parent object number retrieved. Script exiting.")
+        utils.logger(LOG, 'warning', "No parent object number retrieved. Script exiting.")
         return None
     if len(work_data[2]) > 0:
         records.extend({'title': work_data[2]})
     else:
-        logger(LOG, 'warning', "No title data retrieved. Script exiting.")
+        utils.logger(LOG, 'warning', "No title data retrieved. Script exiting.")
         return None
     if len(work_data[3]) > 0:
         records.extend({'title.article': work_data[3]})
@@ -204,23 +216,23 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         ext = image.split('.')[-1]
         if len(ext) > 0:
             records.extend({'file_type': ext.upper()})
-        bitdepth = get_metadata('Image', 'BitDepth', ipath)
+        bitdepth = utils.get_metadata('Image', 'BitDepth', ipath)
         if len(bitdepth) > 0:
             records.extend({'bit_depth': bitdepth})
 
     return records
 
 
-def create_new_image_record(record_json):
+def create_new_image_record(record_json, session):
     '''
     Function for creation of new CID records
     both Analogue and Digital, returning priref/obj
     '''
     record_xml = adlib.create_record_data('', record_json)
     print(record_xml)
-    record = adlib.post(CID_API, record_xml, 'items', 'insertrecord')
+    record = adlib.post(CID_API, record_xml, 'internalobject', 'insertrecord', session)
     if not record:
-        logger(LOG, 'warning', f"Adlib POST failed to create CID item record for data:\n{record_xml}")
+        utils.logger(LOG, 'warning', f"Adlib POST failed to create CID item record for data:\n{record_xml}")
         return None
     
     priref = adlib.retrieve_field_name(record, 'priref')[0]
@@ -244,7 +256,7 @@ def rename(filepath, ob_num):
     try:
         os.rename(filepath, new_filepath)
     except OSError:
-        logger(LOG, 'warning', f"There was an error renaming {filename} to {new_filename}")
+        utils.logger(LOG, 'warning', f"There was an error renaming {filename} to {new_filename}")
 
     return (new_filepath, new_filename)
 
@@ -254,12 +266,15 @@ def move(filepath, arg):
     Move existing filepaths to Autoingest
     '''
     if os.path.exists(filepath) and 'fail' in arg:
-        print(f"move(): Moving {filepath} to {YACF_NO_CID}")
+        pth = os.path.split(filepath)[0]
+        failures = os.path.join(pth, 'failures/')
+        os.makedirs(failures, mode=0o777, exist_ok=True)
+        print(f"move(): Moving {filepath} to {failures}")
         try:
-            shutil.move(filepath, YACF_NO_CID)
+            shutil.move(filepath, failures)
             return True
         except Exception as err:
-            logger(LOG, 'warning', f"Error trying to move file {filepath} to {YACF_NO_CID}. Error: {err}")
+            utils.logger(LOG, 'warning', f"Error trying to move file {filepath} to {failures}. Error: {err}")
             return False
     elif os.path.exists(filepath) and 'ingest' in arg:
         print(f"move(): Moving {filepath} to {AUTOINGEST}")
@@ -267,7 +282,7 @@ def move(filepath, arg):
             shutil.move(filepath, AUTOINGEST)
             return True
         except Exception:
-            logger(LOG, 'warning', f"Error trying to move file {filepath} to {AUTOINGEST}")
+            utils.logger(LOG, 'warning', f"Error trying to move file {filepath} to {AUTOINGEST}")
             return False
     else:
         return False

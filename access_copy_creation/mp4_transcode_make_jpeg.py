@@ -887,18 +887,18 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
             "-ac", "2", "-c:a:0", "aac", "-ab:1", "320k", "-ar:1", "48000", "-ac:1", "2", "-disposition:a:0", "default",
             "-c:a:1", "aac", "-ab:2", "210k", "-ar:2", "48000", "-ac:2", "1", "-disposition:a:1", "0", "-strict", "2", "-async", "1", "-dn"
         ]
+    elif fl_fr is True:
+        map_audio = [
+            "-map", "0:a?",
+            "-ac", "2", "-dn"
+        ] 
     elif default and audio:
         print(f"Default {default}, Audio {audio}")
         map_audio = [
             "-map", "0:a?",
             f"-disposition:a:{default}",
             "default", "-dn"
-        ]
-    elif fl_fr is True:
-        map_audio = [
-            "-map", "0:a?",
-            "-ac", "2", "-dn"
-        ]        
+        ]       
     else:
         map_audio = [
             "-map", "0:a?",

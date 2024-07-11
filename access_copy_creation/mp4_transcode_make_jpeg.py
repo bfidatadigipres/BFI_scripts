@@ -590,7 +590,10 @@ def get_width(fullpath):
     '''
 
     width = utils.get_metadata('Video', 'Width/String', fullpath)
+    clap_width = utils.get_metadatA('Video', 'Width_CleanAperture/String', fullpath)
 
+    if '720' == width and clap_width == '703':
+        return '703'
     if '720' == width:
         return '720'
     if '768' == width:
@@ -773,6 +776,11 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
     ]
 
+    crop_sd_4x3_clap = [
+        "-vf",
+        "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
     crop_sd_15x11 = [
         "-vf",
         "yadif,crop=704:572,scale=768:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
@@ -861,6 +869,8 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = crop_ntsc_486
     elif height <= 486 and width == 640:
         cmd_mid = crop_ntsc_640x480
+    elif height <= 576 and width == '703' and dar == '4:3':
+        cmd_mid = crop_sd_4x3_clap
     elif height <= 576 and dar == '16:9':
         cmd_mid = crop_sd_16x9
     elif height <= 576 and width == 768:

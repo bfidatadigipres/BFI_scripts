@@ -212,9 +212,12 @@ def main():
             mixed_dict = check_for_mixed_audio(fullpath)
         else:
             mixed_dict = None
+        
+        # Check if FL FR present
+        fl_fr = check_for_fl_fr(fullpath)
 
         # Build FFmpeg command based on dar/height
-        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, mixed_dict)
+        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, mixed_dict, fl_fr)
         if not ffmpeg_cmd:
             log_build.append(f"{local_time()}\tWARNING\tFailed to build FFmpeg command with data: {fullpath}\nHeight {height} Width {width} DAR {dar}")
             log_output(log_build)
@@ -632,11 +635,36 @@ def check_for_mixed_audio(fpath):
                 audio_downmix['DL'] = num
             if '(DR)' in audio_channels[num]:
                 audio_downmix['DR'] = num
-
         if len(audio_downmix) == 2:
             return audio_downmix
 
     return None
+
+
+def check_for_fl_fr(fpath):
+    '''
+    For use where audio is '1 channels (FL) or (FR)
+    which is unsupported by FFmpeg, add -ac 2 to command
+    '''
+    cmd = [
+        'ffprobe', '-v', 'error',
+        '-show_entries', 'stream=channel_layout',
+        '-of', 'csv=p=0', fpath
+    ]
+    audio = subprocess.check_output(cmd)
+    audio = audio.decode('utf-8').lstrip('\n').rstrip('\n')
+    audio_channels = audio.split('\n')
+    if len(audio_channels) > 1:
+        audio_downmix = {}
+        for num in range(0, len(audio_channels)):
+            if '1 channels (FL)' in audio_channels[num]:
+                audio_downmix['FL'] = num
+            if '1 channels (FR)' in audio_channels[num]:
+                audio_downmix['FR'] = num
+        if len(audio_downmix) == 2:
+            return True
+
+    return False
 
 
 def get_duration(fullpath):
@@ -733,7 +761,7 @@ def check_audio(fullpath):
         return ('Audio', None, streams)
 
 
-def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs, mixed_dict):
+def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs, mixed_dict, fl_fr):
     '''
     Builds FFmpeg command based on height/dar input
     '''
@@ -866,6 +894,11 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
             f"-disposition:a:{default}",
             "default", "-dn"
         ]
+    elif fl_fr is True:
+        map_audio = [
+            "-map", "0:a?",
+            "-ac", "2", "-dn"
+        ]        
     else:
         map_audio = [
             "-map", "0:a?",

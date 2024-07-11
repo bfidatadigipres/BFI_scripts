@@ -39,6 +39,7 @@ ACCEPTED_EXT = [
     'dpx',
     'wav',
     'mpg',
+    'mpeg',
     'mp4',
     'mov',
     'mkv',

@@ -781,7 +781,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
     ]
 
-    scale_sd_4x3 = [
+    scale_sd_16x9 = [
         "-vf",
         "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
     ]

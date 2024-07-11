@@ -598,7 +598,7 @@ def get_width(fullpath):
         return '720'
     if width.startswith('768 '):
         return '768'
-    if width.startswith('1024 ') or width.startswith('1 024'):
+    if width.startswith('1024 ') or width.startswith('1 024 '):
         return '1024'
     if width.startswith('1280 ') or width.startswith('1 280 '):
         return '1280'

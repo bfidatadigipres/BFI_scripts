@@ -591,7 +591,7 @@ def get_width(fullpath):
 
     width = utils.get_metadata('Video', 'Width/String', fullpath)
     clap_width = utils.get_metadata('Video', 'Width_CleanAperture/String', fullpath)
-
+    print(width, clap_width)
     if '720' == width and clap_width == '703':
         return '703'
     if '720' == width:

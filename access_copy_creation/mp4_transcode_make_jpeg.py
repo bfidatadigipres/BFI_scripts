@@ -567,17 +567,17 @@ def get_height(fullpath):
     else:
         height = str(reg_height)
 
-    if '480' == height:
+    if height.startswith('480 '):
         return '480'
-    if '486' == height:
+    if height.startswith('486 '):
         return '486'
-    if '576' == height:
+    if height.startswith('576 '):
         return '576'
-    if '608' == height:
+    if height.startswith('608 '):
         return '608'
-    if '720' == height:
+    if height.startswith('720 '):
         return '720'
-    if '1080' == height or '1 080' == height:
+    if height.startswith('1080 ') or height.startswith('1 080 '):
         return '1080'
 
     height = height.split(' pixel', maxsplit=1)[0]
@@ -596,13 +596,13 @@ def get_width(fullpath):
         return '703'
     if width.startswith('720 '):
         return '720'
-    if width.startwith('768 '):
+    if width.startswith('768 '):
         return '768'
-    if width.startwith('1024 ') or width.startwith('1 024'):
+    if width.startswith('1024 ') or width.startwith('1 024'):
         return '1024'
-    if width.startwith('1280 ') or width.startwith('1 280 '):
+    if width.startswith('1280 ') or width.startwith('1 280 '):
         return '1280'
-    if width.startwith('1920 ') or width.startwith('1 920 '):
+    if width.startswith('1920 ') or width.startwith('1 920 '):
         return '1920'
     if width.isdigit():
         return str(width)

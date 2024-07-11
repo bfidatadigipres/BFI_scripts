@@ -832,7 +832,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     if mixed_dict:
         print(f"Mixed DL DR audio found: {mixed_dict}")
         map_audio = [
-            f"-map 0:a:{mixed_dict['DL']}", f"-map 0:a:{mixed_dict['DR']}",
+            "-map", f"0:a:{mixed_dict['DL']}", "-map", f"0:a:{mixed_dict['DR']}",
             "-ac", "2", "-c:a:0", "aac", "-ab:1", "320k", "-ar:1", "48000", "-ac:1", "2", "-disposition:a:0", "default",
             "-c:a:1", "aac", "-ab:2", "210k", "-ar:2", "48000", "-ac:2", "1", "-disposition:a:1", "0", "-strict", "2", "-async", "1", "-dn"
         ]

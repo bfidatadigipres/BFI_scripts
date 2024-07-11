@@ -592,17 +592,17 @@ def get_width(fullpath):
     width = utils.get_metadata('Video', 'Width/String', fullpath)
     clap_width = utils.get_metadata('Video', 'Width_CleanAperture/String', fullpath)
     print(width, clap_width)
-    if '720' == width and clap_width == '703':
+    if width.startswith('720 ') and clap_width.startswith('703 '):
         return '703'
-    if '720' == width:
+    if width.startswith('720 '):
         return '720'
-    if '768' == width:
+    if width.startwith('768 '):
         return '768'
-    if '1024' == width or '1 024' == width:
+    if width.startwith('1024 ') or width.startwith('1 024'):
         return '1024'
-    if '1280' == width or '1 280' == width:
+    if width.startwith('1280 ') or width.startwith('1 280 '):
         return '1280'
-    if '1920' == width or '1 920' == width:
+    if width.startwith('1920 ') or width.startwith('1 920 '):
         return '1920'
     if width.isdigit():
         return str(width)

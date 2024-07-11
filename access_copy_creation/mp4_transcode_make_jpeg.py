@@ -776,7 +776,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
     ]
 
-    crop_sd_4x3_clap = [
+    scale_sd_4x3 = [
         "-vf",
         "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
     ]
@@ -869,8 +869,10 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = crop_ntsc_486
     elif height <= 486 and width == 640:
         cmd_mid = crop_ntsc_640x480
+    elif height < 576 and width == '720' and dar == '4:3':
+        cmd_mid = scale_sd_4x3
     elif height <= 576 and width == '703' and dar == '4:3':
-        cmd_mid = crop_sd_4x3_clap
+        cmd_mid = scale_sd_4x3
     elif height <= 576 and dar == '16:9':
         cmd_mid = crop_sd_16x9
     elif height <= 576 and width == 768:

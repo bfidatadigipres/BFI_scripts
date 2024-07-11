@@ -806,6 +806,16 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
     ]
 
+    sd_downscale_16x9 = [
+        "-vf",
+        "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
+    sd_downscale_4x3 = [
+        "-vf",
+        "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
     hd_16x9 = [
         "-vf",
         "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1,blackdetect=d=0.05:pix_th=0.10"
@@ -887,7 +897,11 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = crop_sd_608
     elif height == 576 and dar == '1.85:1':
         cmd_mid = crop_sd_16x9
-    elif height <= 720 and dar == '16:9':
+    elif height < 720 and dar == '16:9':
+        cmd_mid = sd_downscale_16x9
+    elif height < 720 and dar == '4:3':
+        cmd_mid = sd_downscale_4x3
+    elif height == 720 and dar == '16:9':
         cmd_mid = hd_16x9
     elif width == 1920 and aspect >= 1.778:
         cmd_mid = fhd_letters

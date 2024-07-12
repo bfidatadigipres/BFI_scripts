@@ -322,8 +322,6 @@ def main():
 
     else:
         log_build.append(f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}")
-        error_path = os.path.join(filepath, 'error/', file)
-        shutil.move(fullpath, error_path)
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
         log_output(log_build)
         sys.exit("Exiting as script does not recognised file type")

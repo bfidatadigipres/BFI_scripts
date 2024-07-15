@@ -1364,6 +1364,9 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
 
 
     man_values_xml = adlib.create_record_data('', manifestation_values)
+    print("=================================")
+    print(man_values_xml)
+    print("=================================")
     if man_values_xml is None:
         return None
     try:

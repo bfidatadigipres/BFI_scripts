@@ -265,7 +265,7 @@ def make_item_record_dict(priref, file, record):
         item.append({'grouping': adlib.retrieve_field_name(record[0], 'grouping')[0]})
     if 'language' in str(record):
         item.append({'language': adlib.retrieve_field_name(record[0], 'language')[0]})
-        item.append({'language.type': adlib.retrieve_field_name(record[0], 'language.type')[0]})
+        item.append({'language.type': 'TIMTEXT'})
     if len(file) > 1:
         item.append({'digital.acquired_filename': file})
         item.append({'digital.acquired_filename.type': 'FILE'})

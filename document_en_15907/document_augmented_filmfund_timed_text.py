@@ -27,7 +27,6 @@ Joanna White
 # Public packages
 import os
 import sys
-import json
 import shutil
 import logging
 import datetime
@@ -50,7 +49,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
 
 
 def cid_check_ob_num(object_number, session):
@@ -263,9 +261,8 @@ def make_item_record_dict(priref, file, record):
     item.append({'access_conditions.date': str(datetime.datetime.now())[:10]})
     if 'grouping' in str(record):
         item.append({'grouping': adlib.retrieve_field_name(record[0], 'grouping')[0]})
-    if 'language' in str(record):
-        item.append({'language': adlib.retrieve_field_name(record[0], 'language')[0]})
-        item.append({'language.type': 'TIMTEXT'})
+    item.append({'language': 'English'})
+    item.append({'language.type': 'TIMTEXT'})
     if len(file) > 1:
         item.append({'digital.acquired_filename': file})
         item.append({'digital.acquired_filename.type': 'FILE'})

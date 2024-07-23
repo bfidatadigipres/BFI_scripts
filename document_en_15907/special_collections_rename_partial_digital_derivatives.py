@@ -237,7 +237,47 @@ def build_defaults(data, ipath, image):
     if len(bitdepth) > 0:
         records.extend({'bit_depth': bitdepth})
 
+    metadata_rec = get_exifdata(ipath)
+    if metadata_rec:
+        records.append(metadata_rec)
+
     return records
+
+
+def get_exifdata(dpath):
+    '''
+    Attempt to get metadata for record build
+    Example dict below, waiting for confirmation
+    '''
+    born_digital_fields = {
+        'File Size': '',
+        'File Type': '',
+        'MIME Type': '',
+        'Image Width': 'dimension.type',
+        'Image Height': 'dimension.type',
+        'Bits Per Sample': '',
+        'Compression': '',
+        'Photometric Interpretation': '',
+        'Strip Offsets': '',
+        'Samples Per Pixel': '',
+        'Rows Per Strip': '',
+        'Strip Byte Counts': '',
+        'Planar Configuration': '',
+        'Software': '',
+        'Modify Date': '',
+        'Extra Samples': '',
+    }
+    metadata = {}
+
+    for key, value in born_digital_fields.items():
+        field = utils.exif_data(key, dpath)
+        if field is None:
+            continue
+        metadata[value] = field
+
+    if len(metadata) > 0:
+        return metadata
+    return None
 
 
 def create_new_image_record(record_json, session):

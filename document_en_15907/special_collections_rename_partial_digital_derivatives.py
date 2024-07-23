@@ -2,9 +2,27 @@
 
 '''
 Special Collections Digital Derivative script
-Creation of Analogue and Digital Item records
+Creation of Digital Item records only linked
+to existing Analogue Items.
 
-WIP 
+Script stages:
+1. Searches STORAGE folder collecting list of 'analogue' item folders
+2. Iterates these folders completing following steps:
+    a. Extracts work/item data from folder name
+    b. Gets list of image files within folder
+    c. Iterates image files, skips if not accepted image extension
+    d. Uses CID analogue object number to create CID Digital item record,
+       linked to analogue record via source_item, and to work via related_object.reference
+    e. Uses CID Digital item record object number to rename the image file
+    f. Moves renamed file to local autoingest path
+    g. If any CID record creation fails the file is skipped and left in place
+3. Checks if the 'works' folder is empty, and if so deletes empty folder
+4. Continues iteration until all 'works' have been processed.
+
+Notes:  
+Waiting for metadata updates from SC teams for digital files.
+Uses requests.Sessions() for creation of works
+within on session. Trial of sessions().
 
 Joanna White
 2024
@@ -109,10 +127,8 @@ def sort_date_types(title_date_start, title_date_type):
 
 def main():
     '''
-    search in CID Item for digital.acquired_filename
-    Retrieve object number and use to build new filename for YACF file
-    Update local log for YACF monitoring
-    Move file to autoingest path
+    Iterate folders in STORAGE, find image files in folders
+    named after analogue record
     '''
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
@@ -141,7 +157,7 @@ def main():
             ipath = os.path.join(rpath, image)
 
             # Digital Derivative record to be made
-            record_digital = build_defaults(rec, ipath, image, 'Digital')
+            record_digital = build_defaults(record_data, ipath, image, 'Digital')
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
             utils.logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
 

@@ -4,7 +4,26 @@
 Special Collections Digital Derivative script
 Creation of Analogue and Digital Item records
 
-WIP 
+Script stages:
+1. Searches STORAGE folder collecting list of 'works' folders
+2. Iterates these works folders completing following steps:
+    a. Extracts work data from folder name
+    b. Gets list of image files within 'works' folder
+    c. Iterates image files, skips if not accepted image extension
+    d. For every image creates a CID Analogue image record,
+       extracts priref/object number and links to work via related_object.reference
+    e. Uses CID analogue object number to create CID Digital item record,
+       linked to analogue record via source_item, and to work via related_object.reference
+    f. Uses CID Digital item record object_number to rename the image file
+    g. Moves renamed file to local autoingest path
+    h. If any CID record creation fails the file is skipped and left in place
+3. Checks if the 'works' folder is empty, and if so deletes empty folder
+4. Continues iteration until all 'works' have been processed.
+
+Notes: 
+Waiting for metadata updates from SC teams for digital files
+Uses requests.Sessions() for creation of works
+within on session. Trial of sessions().
 
 Joanna White
 2024
@@ -104,10 +123,9 @@ def sort_date_types(title_date_start, title_date_type):
 
 def main():
     '''
-    search in CID Item for digital.acquired_filename
-    Retrieve object number and use to build new filename for YACF file
-    Update local log for YACF monitoring
-    Move file to autoingest path
+    Iterate folders in STORAGE, find image files in folders
+    named after work and create analogue/digital item records
+    for every photo. Clean up empty folders.
     '''
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")

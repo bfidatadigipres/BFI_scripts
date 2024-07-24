@@ -154,11 +154,11 @@ def main():
             ipath = os.path.join(wpath, image)
 
             # Analogue and Digital Derivative records to be made
-            record_analogue = build_defaults(work_data, ipath, image, 'Analogue')
+            record_analogue = build_defaults(work_data, ipath, image, 'Analogue')[0]
             analogue_priref, analogue_obj = create_new_image_record(record_analogue, session)
             utils.logger(LOG, 'info', f"* New Item record created for image {image} Analogue {analogue_priref}")
 
-            record_digital = build_defaults(work, ipath, image, 'Digital', analogue_obj)
+            record_digital, metadata = build_defaults(work, ipath, image, 'Digital', analogue_obj)
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
             utils.logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
 
@@ -169,6 +169,13 @@ def main():
                 continue
 
             if len(digi_obj) > 0:
+                # Append metadata to header tags
+                if len(metadata) > 0:
+                    header = f"<Header_tags><header_tags.parser>Exiftool</header_tags.parser><header_tags><![CDATA[{metadata}]]></header_tags></Header_tags>"
+                    success = write_payload(digi_priref, header, session)
+                    if not success:
+                        utils.logger(LOG, 'warning', "Payload data was not written to CID record: {priref}\n{metadata}")
+
                 utils.logger(LOG, 'info', f"** Renumbering file {image} with object number {digi_obj}")
                 new_filepath, new_file = rename(ipath, digi_obj)
                 if os.path.exists(new_filepath):
@@ -201,6 +208,7 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
     '''
     Build up item record defaults
     '''
+    metadata = None
     records = [{
         'institution.name.lref': '999570701',
         'object_type': 'Single object',
@@ -238,18 +246,18 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         if len(bitdepth) > 0:
             records.extend({'bit_depth': bitdepth})
 
-        metadata_rec = get_exifdata(ipath)
+        metadata_rec, metadata = get_exifdata(ipath)
         if metadata_rec:
             records.append(metadata_rec)
 
-    return records
+    return records, metadata
 
 
 def get_exifdata(dpath):
     '''
     Attempt to get metadata for record build
     Example dict below, waiting for confirmation
-    '''
+
     born_digital_fields = {
         'File Size': '',
         'File Type': '',
@@ -268,17 +276,22 @@ def get_exifdata(dpath):
         'Modify Date': '',
         'Extra Samples': '',
     }
-    metadata = {}
 
+    data_list = data.split('\n')
+
+    metadata = {}
     for key, value in born_digital_fields.items():
-        field = utils.exif_data(key, dpath)
-        if field is None:
-            continue
-        metadata[value] = field
+        for row in data_list:
+            if row.startswith(key):
+                field = row.split(': ', 1)[1]
+                metadata[value] = field
 
     if len(metadata) > 0:
-        return metadata
-    return None
+        return metadata, data
+    return None, data
+    '''
+    data = utils.exif_data(dpath)
+    return None, data
 
 
 def create_new_image_record(record_json, session):
@@ -297,6 +310,23 @@ def create_new_image_record(record_json, session):
     obj = adlib.retrieve_field_name(record, 'object_number')[0]
     return priref, obj
                 
+
+def write_payload(priref, payload_header, session):
+    '''
+    Payload formatting per mediainfo output
+    '''
+    payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload_head + payload_header + payload_end
+
+    record = adlib.post(CID_API, payload, 'internalobject', 'updaterecord', session)
+    if record is None:
+        return False
+    elif 'error' in str(record):
+        return False
+    else:
+        return True
+
 
 def rename(filepath, ob_num):
     '''

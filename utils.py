@@ -217,24 +217,20 @@ def sort_ext(ext):
             return key
 
 
-def exif_data(arg, dpath):
+def exif_data(dpath):
     '''
     Retrieve exiftool data
     return match to field if available
     '''
-    result = None
+
     cmd = [
         'exiftool',
         dpath
     ]
     data = subprocess.check_output(cmd)
     data = data.decode('utf-8')
-    fdata = data.split('\n')
-    for field in fdata:
-        if field.startswith(arg):
-            result = field.split(': ', 1)[1]
 
-    return result
+    return data
 
 
 def get_metadata(stream, arg, dpath):

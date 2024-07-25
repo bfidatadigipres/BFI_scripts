@@ -91,7 +91,7 @@ def csv_retrieve(fullpath):
         logger.warning("No info.csv file found. Skipping CSV retrieve")
         print("No info.csv file found. Skipping CSV retrieve")
         return None
-
+    print("*** Check CSV data reading well ***")
     with open(fullpath, 'r', encoding='utf-8') as inf:
         rows = csv.reader(inf)
         for row in rows:

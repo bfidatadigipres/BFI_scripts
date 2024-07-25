@@ -48,10 +48,11 @@ import logging
 import tenacity
 
 # Private package
-import utils
+import bp_utils as bp
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-import bp_utils as bp
+import utils
+
 
 # Global links / set up ds3 and adlib
 MP4_ACCESS1 = os.environ['MP4_ACCESS_REDIRECT']
@@ -178,7 +179,7 @@ def main():
     if not utils.check_control('black_pearl'):
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-    if not utils.check_cid(CID_API):
+    if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
 

@@ -63,10 +63,10 @@ def load_names():
     Load ONS dataset to memory
     '''
     gendered_names = {}
-    csv_file = open(CSV)
-    rows = csv.reader(csv_file)
-    for row in rows:
-        gendered_names[row[0].lower()] = row[1]
+    with open(CSV, 'r') as csv_file:
+        rows = csv.reader(csv_file)
+        for row in rows:
+            gendered_names[row[0].lower()] = row[1]
 
     return gendered_names
 

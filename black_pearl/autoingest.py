@@ -140,7 +140,7 @@ def get_persistence_messages():
             continue
         p_path = i[0]
         p_message = i[1]
-        # print(f'{p_path}:\t{p_message}')
+        print(f'{p_path}:\t{p_message}')
         # Keep latest message in dictionary
         if p_path and p_message:
             messages[p_path] = p_message
@@ -300,15 +300,14 @@ def get_buckets(bucket_collection):
 
     with open(DPI_BUCKETS) as data:
         bucket_data = json.load(data)
-    if bucket_collection == 'netflix' or bucket_collection == 'amazon':
-        for key, _ in bucket_data.items():
-            if bucket_collection in key:
-                bucket_list.append(key)
-    elif bucket_collection == 'bfi':
+    if bucket_collection == 'bfi':
         for key, _ in bucket_data.items():
             if 'preservation' in key.lower():
                 bucket_list.append(key)
-
+    else:
+        for key, _ in bucket_data.items():
+            if bucket_collection in key:
+                bucket_list.append(key)
     return bucket_list
 
 
@@ -316,36 +315,14 @@ def ext_in_file_type(ext, priref, log_paths):
     '''
     Check if ext matches file_type
     '''
-    ext = ext.lower()
-    dct = {'imp': 'mxf, xml',
-           'tar': 'dpx, dcp, dcdm, wav',
-           'mxf': 'mxf, 50i, imp',
-           'mpg': 'mpeg-1, mpeg-2',
-           'mp4': 'mp4',
-           'mov': 'mov, prores',
-           'mkv': 'mkv, dpx',
-           'wav': 'wav',
-           'tif': 'tif, tiff',
-           'tiff': 'tif, tiff',
-           'jpg': 'jpg, jpeg',
-           'jpeg': 'jpg, jpeg',
-           'ts': 'mpeg-ts',
-           'srt': 'srt',
-           'xml': 'xml, imp',
-           'scc': 'scc',
-           'itt': 'itt',
-           'stl': 'stl',
-           'cap': 'cap',
-           'dfxp': 'dfxp'}
 
-    try:
-        ftype = dct[ext]
-        ftype = ftype.split(', ')
-    except Exception:
+    ftype = utils.accepted_file_type(ext)
+    if not ftype:
         print(f"Filetype not matched in dictionary: {ext}")
         logger.warning('%s\tFile type is not recognised in autoingest', log_paths)
         return False
 
+    ftype = ftype.split(', ')
     print(ftype)
     search = f'priref={priref}'
     record = adlib.retrieve_record(CID_API, 'collect', search, '1', ['file_type'])[1]
@@ -556,10 +533,9 @@ def main():
                 black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_NETFLIX']}")
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             elif 'ingest/amazon' in str(fpath):
-                continue
-                # logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
-                # black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
-                # black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+                logger.info('%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder')
+                black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST_AMAZON']}")
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             else:
                 black_pearl_folder = os.path.join(linux_host, f"{os.environ['BP_INGEST']}")
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"

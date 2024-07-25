@@ -11,7 +11,6 @@ June 2022
 import os
 import sys
 import datetime
-import tenacity
 
 # Public packages
 sys.path.append(os.environ['CODE'])
@@ -33,7 +32,6 @@ def log_print(data):
         file.write("--------------------------------\n")
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def fetch_existing_object_number(source_object_number):
     '''
     Retrieve the Object Number for an existing MKV record, for use in renaming
@@ -121,7 +119,6 @@ def new_or_existing_no_segments_mopup(source_object_number, extension, grouping,
         return destination_object
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def already_exists(source_object_number):
     '''
     Has an F47 record already been created for source?
@@ -138,7 +135,6 @@ def already_exists(source_object_number):
         return hits, None
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def already_exists_grouping(source_object_number, grouping_lref):
     '''
     Has an F47 record already been created for source?
@@ -155,7 +151,6 @@ def already_exists_grouping(source_object_number, grouping_lref):
         return hits, None
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
     '''
     Create a new item record
@@ -218,7 +213,6 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
         raise Exception('Unable to create record')
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new_no_segments(source_object_number, extension, note=None):
     '''
     Create a new item record
@@ -280,7 +274,6 @@ def new_no_segments(source_object_number, extension, note=None):
         raise Exception('Unable to create record')
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new(source_object_number, segments, duration, extension, note=None):
     '''
     Create a new item record

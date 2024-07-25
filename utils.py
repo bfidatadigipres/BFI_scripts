@@ -314,12 +314,13 @@ def get_duration(filepath):
     try:
         duration = subprocess.check_output(cmd)
         duration = duration.decode('utf-8')
-    except Exception as err:
+    except subprocess.CalledProcessError as err:
         logger.info("Unable to extract duration: %s", err)
+        return None
+
     if duration:
         return duration.rstrip('\n')
-    else:
-        return None
+    return None
 
 
 def logger(log_path, level, message):

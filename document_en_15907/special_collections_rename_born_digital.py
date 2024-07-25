@@ -43,6 +43,7 @@ SCPATH = os.environ['SPECIAL_COLLECTIONS']
 STORAGE = os.path.join(SCPATH, 'Uncatalogued_stills_born_digital/')
 AUTOINGEST = os.path.join(SCPATH, os.environ['INGEST_SC'])
 LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_born_digital.log')
+MEDIAINFO_PATH = os.path.join(os.environ['LOG_PATH'], 'cid_mediainfo/')
 CID_API = os.environ['CID_API4']
 
 # Global variables
@@ -182,6 +183,9 @@ def main():
                         utils.logger(LOG, 'warning', f"FILE {new_file} DID NOT MOVE SUCCESSFULLY TO AUTOINGEST")
                 else:
                     utils.logger(LOG, 'warning', f"Problem creating new number for {image}")
+                success = write_exif_to_file(image, metadata)
+                if not success:
+                    utils.logger(LOG, 'warning', f"Unable to create EXIF metadata file for image: {image}\n{metadata}")
             else:
                 utils.logger(LOG, 'warning', "Object number was not returned following creation of CID Item record for digital derivative.")
                 continue
@@ -278,8 +282,25 @@ def get_exifdata(dpath):
         return metadata, data
     return None, data
     '''
+
     data = utils.exif_data(dpath)
     return None, data
+
+
+def write_exif_to_file(image, metadata):
+    '''
+    Create newline output to text file
+    '''
+
+    meta_dump = os.path.join(MEDIAINFO_PATH, f"{image}_EXIF.txt")
+
+    with open(meta_dump, 'a+') as file:
+        file.write(metadata)
+        file.close()
+    
+    if os.path.isfile(meta_dump):
+        return meta_dump
+    return None
 
 
 def create_new_image_record(record_json, session):

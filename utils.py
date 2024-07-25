@@ -291,7 +291,7 @@ def get_ms(filepath):
         duration = subprocess.check_output(cmd)
         duration = duration.decode('utf-8')
     except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
+        print(f"Unable to extract duration: {err}")
     if duration:
         return duration.rstrip('\n')
     else:
@@ -315,7 +315,7 @@ def get_duration(filepath):
         duration = subprocess.check_output(cmd)
         duration = duration.decode('utf-8')
     except subprocess.CalledProcessError as err:
-        logger.info("Unable to extract duration: %s", err)
+        print(f"Unable to extract duration: {err}")
         return None
 
     if duration:

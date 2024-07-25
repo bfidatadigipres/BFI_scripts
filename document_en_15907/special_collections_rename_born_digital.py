@@ -233,7 +233,8 @@ def build_defaults(work_data, ipath, image):
     records.extend({'digital.acquired_filename': image})
     ext = image.split('.')[-1]
     if len(ext) > 0:
-        records.extend({'file_type': ext.upper()})
+        ftype = utils.accepted_file_type(ext.lower())
+        records.extend({'file_type': ftype})
     bitdepth = utils.get_metadata('Image', 'BitDepth', ipath)
     if len(bitdepth) > 0:
         records.extend({'bit_depth': bitdepth})
@@ -252,7 +253,6 @@ def get_exifdata(dpath):
     '''
     born_digital_fields = {
         'File Access Date/Time': 'entry.entry_date',
-        'File Type': 'file_type',
         'Image Width': 'dimension.value',
         'Image Height': 'dimension.value',
         'Creator': 'creator',

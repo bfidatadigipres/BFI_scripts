@@ -259,40 +259,42 @@ def get_exifdata(dpath):
     '''
     Attempt to get metadata for record build
     Example dict below, waiting for confirmation
-
+    '''
     born_digital_fields = {
-        'File Size': '',
-        'File Type': '',
-        'MIME Type': '',
-        'Image Width': 'dimension.type',
-        'Image Height': 'dimension.type',
-        'Bits Per Sample': '',
-        'Compression': '',
-        'Photometric Interpretation': '',
-        'Strip Offsets': '',
-        'Samples Per Pixel': '',
-        'Rows Per Strip': '',
-        'Strip Byte Counts': '',
-        'Planar Configuration': '',
-        'Software': '',
-        'Modify Date': '',
-        'Extra Samples': '',
+        'File Access Date/Time': 'entry.entry_date',
+        'File Type': 'file_type',
+        'Image Width': 'dimension.value',
+        'Image Height': 'dimension.value',
+        'Creator': 'creator',
+        'Density': 'dimension.free',
+        'Bit Depth': 'bit_depth',
+        'Compression': 'code_type',
+        'Color Space Data': 'colour_space',
+        'Camera Model Name': 'source_device',
+        'Title': 'title',
+        'Copyright': 'rights.holder',
+        'Date Created': 'production.date.start'
     }
 
+    data = utils.exif_data(dpath)
     data_list = data.split('\n')
-
     metadata = {}
     for key, value in born_digital_fields.items():
         for row in data_list:
             if row.startswith(key):
                 field = row.split(': ', 1)[1]
+                if 'Image Height' in key:
+                    metadata['dimension.type'] = 'Height'
+                    metadata[value] = field
+                    metadata['dimension.unit'] = 'Pixels'
+                elif 'Image Width' in key:
+                    metadata['dimension.type'] = 'Width'
+                    metadata[value] = field
+                    metadata['dimension.unit'] = 'Pixels'
                 metadata[value] = field
 
     if len(metadata) > 0:
         return metadata, data
-    return None, data
-    '''
-    data = utils.exif_data(dpath)
     return None, data
 
 

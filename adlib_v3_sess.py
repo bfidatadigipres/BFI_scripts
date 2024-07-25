@@ -35,7 +35,7 @@ def check(api):
 
 def create_session():
     '''
-    Start a requests session and return 's'
+    Start a requests session and return
     '''
     session = Session()
     return session

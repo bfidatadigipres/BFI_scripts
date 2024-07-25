@@ -1,30 +1,25 @@
 #!/usr/bin/env python3
 
 '''
-** THIS SCRIPT MUST RUN FROM SHELL LAUNCH SCRIPT RUNNING PARALLEL MULTIPLE JOBS **
 Script to clean up Mediainfo files that belong to filepaths deleted by autoingest,
 writes mediainfo data to CID media record priref before deleting files.
 
-1. Receive filepath of '*_TEXT.txt' file from sys.argv
-2. Extract filename, and create paths for all metadata possibilities
+1. Receive filepath of '*_EXIF.txt' file from sys.argv
+2. Extract filename, and create path for new file
 3. Check CID Media record exists with imagen.media.original_filename matching filename
-   There is no danger deleting before asset in autoingest, as validation occurs
-   before CID media record creation now.
 4. Capture priref of CID Media record
-5. Extract each metadata file and write in XML block to CID media record
-   in header_tags and header_parser fields,
+5. Extract Exiftool metadata file and write in XML block to CID media record
+   in header_tag and header_parser field,
 7. Where data written successfully delete mediainfo file
 8. Where there's no match leave file and may be needed later
 
-Joanna White 2023
-Python3.8+
+Joanna White
+2024
 '''
 
 # Global packages
 import os
 import sys
-import json
-import logging
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -34,26 +29,17 @@ import utils
 # Global variables
 LOG_PATH = os.environ['LOG_PATH']
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
-CSV_PATH = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
-CONTROL_JSON = os.environ['CONTROL_JSON']
 CID_API = os.environ['CID_API4']
-
-# Setup logging
-LOGGER = logging.getLogger('metadata_clean_up')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'metadata_clean_up.log'))
-FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
-HDLR.setFormatter(FORMATTER)
-LOGGER.addHandler(HDLR)
-LOGGER.setLevel(logging.INFO)
+LOG = os.path.join(LOG_PATH, 'exifdata_clean_up.log')
 
 
-def cid_retrieve(fname):
+def cid_retrieve(fname, session):
     '''
     Retrieve priref for media record from imagen.media.original_filename
     '''
     priref = ''
     search = f"imagen.media.original_filename='{fname}'"
-    record = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', session)[1]
     if not record:
         return ''
     if 'priref' in str(record):
@@ -77,95 +63,58 @@ def main():
     and also mediainfo reports, writing text file dumps to media record in CID
     '''
     if not utils.cid_check(CID_API):
-        LOGGER.critical("* Cannot establish CID session, exiting script")
+        utils.logger(LOG, 'critical', "* Cannot establish CID session, exiting script")
         sys.exit()
     if not utils.check_control('pause_scripts'):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        utils.logger(LOG, 'info', 'Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     if len(sys.argv) < 2:
         sys.exit()
 
-    text_path = sys.argv[1]
-    text_file = os.path.basename(text_path)
-    filename = text_file.split("_TEXT.txt")[0]
-    # Make all possible paths
-    text_full_path = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
-    ebu_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.txt")
-    pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.txt")
-    xml_path = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
-    json_path = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
+    exif_list = [ x for x in os.listdir(MEDIAINFO_PATH) if '_EXIF.txt' in str(x) ]
+    if not exif_list:
+        sys.exit()
 
-    if len(filename) > 0 and filename.endswith((".ini", ".DS_Store", ".mhl", ".json")):
-        sys.exit('Incorrect media file detected.')
+    utils.logger(LOG, 'info' "============ EXIFDATA CLEAN UP SCRIPT START ===================")
+    session = utils.create_session()
 
-    # Checking for existence of Digital Media record
-    print(text_path, filename)
-    priref = cid_retrieve(filename)
-    if len(priref) == 0:
-        sys.exit('Script exiting. Priref could not be retrieved.')
+    for item in exif_list:
+        filename = item.split("_EXIF.txt")[0]
+        exif_path = os.path.join(MEDIAINFO_PATH, item)
+        if len(filename) > 0 and filename.endswith((".ini", ".DS_Store", ".mhl", ".json")):
+            continue
 
-    LOGGER.info("============ METADATA CLEAN UP SCRIPT START ===================")
-    print(f"Priref retrieved: {priref}. Writing metadata to record")
-    print(text_path)
+        # Checking for existence of Digital Media record
+        utils.logger(LOG, 'info', f'Checking in CID for match to found filename: {filename}')
+        priref = cid_retrieve(filename, session)
+        if len(priref) == 0:
+            utils.logger(LOG, 'warning', 'Skipping item. Priref could not be retrieved.')
+            continue
 
-    text = text_full = ebu = pb = xml = json = ''
-    # Processing metadata output for text path
-    if os.path.exists(text_path):
-        text_dump = read_extract(text_path)
-        text = f"<Header_tags><header_tags.parser>MediaInfo text 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+        # Processing metadata output for exif path
+        if os.path.exists(exif_path):
+            metadata = read_extract(exif_path)
+            payload_data = f"<Header_tags><header_tags.parser>Exiftool</header_tags.parser><header_tags><![CDATA[{metadata}]]></header_tags></Header_tags>"
 
-    # Processing metadata output for text full path
-    if os.path.exists(text_full_path):
-        text_dump = read_extract(text_full_path)
-        text_full = f"<Header_tags><header_tags.parser>MediaInfo text 0 full</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+        if not payload_data:
+            utils.logger(LOG, 'warning', f"Skipping: Unable to retrieve metadata from file: {exif_path}")
+            continue
 
-    # Processing metadata output for ebucore path
-    if os.path.exists(ebu_path):
-        text_dump = read_extract(ebu_path)
-        ebu = f"<Header_tags><header_tags.parser>MediaInfo ebucore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+        # Write data
+        success = write_payload(priref, payload_data, session)
+        if success:
+            utils.logger(LOG, 'info', f"Payload data successfully written to CID Media record: {priref}")
+            utils.logger(LOG, 'info', "Deleting all path data")
+            if os.path.exists(exif_path):
+                os.remove(exif_path)
+        else:
+            utils.logger(LOG, 'warning', f"Payload data was not written to CID Media record: {priref}")
+            utils.logger(LOG, 'info', "Metadata records being left in place for repeat write attempt")
 
-    # Processing metadata output for pbcore path
-    if os.path.exists(pb_path):
-        text_dump = read_extract(pb_path)
-        pb = f"<Header_tags><header_tags.parser>MediaInfo pbcore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-
-    # Processing metadata output for pbcore path
-    if os.path.exists(xml_path):
-        text_dump = read_extract(xml_path)
-        xml = f"<Header_tags><header_tags.parser>MediaInfo xml 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-
-    # Processing metadata output for json path
-    if os.path.exists(json_path):
-        text_dump = read_extract(json_path)
-        json = f"<Header_tags><header_tags.parser>MediaInfo json 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-
-    payload_data = text + text_full + ebu + pb + xml + json
-
-    # Write data
-    success = write_payload(priref, payload_data)
-    if success:
-        LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
-        LOGGER.info("Deleting all path data")
-        if os.path.exists(text_path):
-            os.remove(text_path)
-        if os.path.exists(text_full_path):
-            os.remove(text_full_path)
-        if os.path.exists(ebu_path):
-            os.remove(ebu_path)
-        if os.path.exists(pb_path):
-            os.remove(pb_path)
-        if os.path.exists(xml_path):
-            os.remove(xml_path)
-        if os.path.exists(json_path):
-            os.remove(json_path)
-    else:
-        LOGGER.warning("Payload data was not written to CID Media record: %s", priref)
-        LOGGER.info("Metadata records being left in place for repeat write attempt")
-
-    LOGGER.info("============ METADATA CLEAN UP SCRIPT COMPLETE ================")
+    utils.logger(LOG, 'info', "============ METADATA CLEAN UP SCRIPT COMPLETE ================")
 
 
-def write_payload(priref, payload_data):
+def write_payload(priref, payload_data, session):
     '''
     Payload formatting per mediainfo output
     '''
@@ -173,7 +122,7 @@ def write_payload(priref, payload_data):
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_head + payload_data + payload_end
 
-    record = adlib.post(CID_API, payload, 'media', 'updaterecord')
+    record = adlib.post(CID_API, payload, 'media', 'updaterecord', session)
     if record is None:
         return False
     elif 'error' in str(record):

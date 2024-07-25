@@ -96,6 +96,8 @@ def check_control(arg):
     '''
     Check control json for downtime requests
     based on passed argument
+    if not utils.check_control['arg']:
+        sys.exit(message)
     '''
     if not isinstance(arg, str):
         arg = str(arg)
@@ -112,6 +114,8 @@ def cid_check(cid_api):
     '''
     Tests if CID API operational before
     all other operations commence
+    if not utils.cid_check[API]:
+        sys.exit(message)
     '''
     try:
         dct = adlib.check(cid_api)

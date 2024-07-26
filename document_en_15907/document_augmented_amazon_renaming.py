@@ -242,7 +242,7 @@ def main():
             elif 'SDR' in metadata:
                 LOGGER.info("UHD SDR file found: %s", mov_file)
                 # Build dictionary from CID item record
-                item_data = make_item_record_dict(priref, mov_file, record, '')
+                item_data = make_item_record_dict(priref, mov_file, record, 'SDR')
                 if item_data is None:
                     LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
                     continue

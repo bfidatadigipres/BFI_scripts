@@ -261,37 +261,54 @@ def get_exifdata(dpath):
     Attempt to get metadata for record build
     Example dict below, waiting for confirmation
     '''
-    born_digital_fields = {
-        'File Access Date/Time': 'entry.entry_date',
-        'Image Width': 'dimension.value',
-        'Image Height': 'dimension.value',
-        'Creator': 'creator',
-        'Density': 'dimension.free',
-        'Bit Depth': 'bit_depth',
-        'Compression': 'code_type',
-        'Color Space Data': 'colour_space',
-        'Camera Model Name': 'source_device',
-        'Title': 'title',
-        'Copyright': 'rights.holder',
-        'Date Created': 'production.date.start'
-    }
-
-    data = utils.exif_data(dpath)
-    data_list = data.split('\n')
     metadata = {}
-    for key, value in born_digital_fields.items():
-        for row in data_list:
-            if row.startswith(key):
-                field = row.split(': ', 1)[1]
-                if 'Image Height' in key:
-                    metadata['dimension.type'] = 'Height'
-                    metadata[value] = field
-                    metadata['dimension.unit'] = 'Pixels'
-                elif 'Image Width' in key:
-                    metadata['dimension.type'] = 'Width'
-                    metadata[value] = field
-                    metadata['dimension.unit'] = 'Pixels'
-                metadata[value] = field
+    creator_data = rights_data = ''
+    data = utils.exif_data(dpath)
+    if not data:
+        return None, None
+    data_list = data.split('\n')
+    for d in data_list:
+        if d.startswith('File Size '):
+            val = d.split(': ', 1)[-1]
+            metadata.append['filesize'] = val.split(' ')[0]
+            metadata.append['filesize.unit'] = val.split(' ')[-1]
+        if d.startswith('Image Height '):
+            metadata['dimension.type'] = 'Height'
+            metadata['dimension.value'] = d.split(': ', 1)[-1]
+            metadata['dimension.unit'] = 'Pixels'
+        if d.startswith('Image Width '):
+            metadata['dimension.type'] = 'Width'
+            metadata['dimension.value'] = d.split(': ', 1)[-1]
+            metadata['dimension.unit'] = 'Pixels'
+        if d.startswith('Bits Per Sample '):
+            metadata['bit_depth'] = d.split(': ', 1)[-1].split(' ')[0]
+        if d.startswith('Compression '):
+            metadata['code_type'] = d.split(': ', 1)[-1]
+        if d.startswith('Color Space Data '):
+            metadata['colour_space'] = d.split(': ', 1)[-1]
+        if d.startswith('Camera Model Name '):
+            metadata['colour_space'] = d.split(': ', 1)[-1]
+        if d.startswith('Date Created '):
+            metadata['production.date.start'] = d.split(': ', 1)[-1]
+        if d.startswith('Artist '):
+            creator_data = d.split(': ', 1)[-1]
+        elif d.startswith('Creator '):
+            creator_data = d.split(': ', 1)[-1]
+        elif d.startswith('By-line '):
+            creator_data = d.split(': ', 1)[-1]
+        if d.startwith('Rights '):
+            rights_data = d.split(': ', 1)[-1]
+        elif d.startwith('Copyright Notice '):
+            rights_data = d.split(': ', 1)[-1]
+        elif d.startwith('Copyright '):
+            rights_data = d.split(': ', 1)[-1]
+
+    if len(creator_data) > 0 and len(rights_data) > 0:
+        metadata['production.notes'] = f"{creator_data}, {rights_data}"
+    elif len(creator_data) > 0:
+         metadata['production.notes'] = creator_data
+    elif len(rights_data) > 0:
+         metadata['production.notes'] = rights_data
 
     if len(metadata) > 0:
         return metadata, data

@@ -37,7 +37,7 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 STORAGE = os.environ['TRANSCODING']
 INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest_bfi/')
-MOD_MAX = 14
+MOD_MAX = 21
 UPLOAD_MAX = 1099511627776
 BUCKET = 'Access_Renditions_backup'
 

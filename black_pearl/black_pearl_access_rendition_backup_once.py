@@ -50,11 +50,11 @@ LOGGER.setLevel(logging.INFO)
 
 START_FOLDERS = {
 #    'bfi': '201605'
-    'eafa': '201605',
-    'iwm': '201605',
-    'lsa': '201605',
-    'mace': '201605',
-    'nefa': '201605',
+#    'eafa': '201605',
+#    'iwm': '201605',
+#    'lsa': '201605',
+#    'mace': '201605',
+#    'nefa': '201605',
     'nis': '201605',
     'nls': '201605',
     'nssaw': '201605',
@@ -200,29 +200,7 @@ def main():
 
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
-            if 'eafa/201' in new_path:
-                continue
-            elif 'eafa/2020' in new_path:
-                continue
-            elif 'eafa/2021' in new_path:
-                continue
-            elif 'eafa/2022' in new_path:
-                continue
-            elif 'eafa/202301' in new_path:
-                continue
-            elif 'eafa/202302' in new_path:
-                continue
-            elif 'eafa/202303' in new_path:
-                continue
-            elif 'eafa/202304' in new_path:
-                continue
-            elif 'eafa/202305' in new_path:
-                continue
-            elif 'eafa/202306' in new_path:
-                continue
-            elif 'eafa/202307' in new_path:
-                continue
-            elif 'eafa/202308' in new_path:
+            if 'nis/201' in new_path:
                 continue
 
             os.makedirs(new_path, mode=0o777, exist_ok=True)
@@ -300,8 +278,8 @@ def main():
                     sys.exit(f"Please manually move files back to QNAP-11:\n{files_stuck}")
 
                 # Sleep between 1TB PUTs
-                LOGGER.info("Sleep 4hrs")
-                sleep(14400)
+                LOGGER.info("Sleep 2hrs")
+                sleep(7200)
 
     LOGGER.info("====== BP Access Renditions back up script end ====================")
 

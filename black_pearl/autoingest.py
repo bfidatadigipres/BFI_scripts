@@ -436,8 +436,8 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
     range_whole = whole + 1
     filename_range = []
 
-    # Netflix extensions vary within IMP so shouldn't be included in range check
-    if 'netflix_ingest' in black_pearl_folder:
+    # Netflix extensions/DPX encodings can vary within filename range so shouldn't be included in range check
+    if 'netflix_ingest' in black_pearl_folder or ext.lower() in ['mkv', 'tar']:
         fname_check = fname.split('.')[0]
         for num in range(1, range_whole):
             filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}")

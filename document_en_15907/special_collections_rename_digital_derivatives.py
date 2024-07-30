@@ -301,16 +301,18 @@ def get_exifdata(dpath):
             metadata['dimension.type'] = 'Width'
             metadata['dimension.value'] = d.split(': ', 1)[-1]
             metadata['dimension.unit'] = 'Pixels'
-        #if d.startswith('Bits Per Sample '):
-        #    metadata['bit_depth'] = d.split(': ', 1)[-1].split(' ')[0]
         if d.startswith('Compression '):
             metadata['code_type'] = d.split(': ', 1)[-1]
         if d.startswith('Color Space Data '):
             metadata['colour_space'] = d.split(': ', 1)[-1]
         if d.startswith('Camera Model Name '):
             metadata['colour_space'] = d.split(': ', 1)[-1]
-        if d.startswith('Date Created '):
-            metadata['production.date.start'] = d.split(': ', 1)[-1]
+        if d.startswith('Create Date '):
+            try:
+                val = d.split(': ', 1)[-1].split(' ', 1)[0].replace(':', '-')
+                metadata['production.date.start'] = val
+            except (KeyError, IndexError):
+                pass
         if d.startswith('Creator '):
             creator_data = d.split(': ', 1)[-1]
         elif d.startswith('Artist '):

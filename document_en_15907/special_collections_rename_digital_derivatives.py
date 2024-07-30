@@ -233,7 +233,7 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
     }]
     print(work_data)
     if work_data[1]:
-        records.extend({'related_object.reference': work_data[1]})
+        records.extend({'related_object.reference.lref': work_data[0]})
     else:
         utils.logger(LOG, 'warning', "No parent object number retrieved. Script exiting.")
         return None

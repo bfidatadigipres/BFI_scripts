@@ -256,13 +256,12 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         if obj:
             records.append({'source_item': obj})
         ext = image.split('.')[-1]
-        if len(ext) > 0:
-            ftype = utils.accepted_file_type(ext.lower())
-            if ftype:
-                records.append({'file_type': ext.upper()})
-            else:
-                utils.logger(LOG, 'warning', f"Filetype was not matched in CID: {ext}")
+        if ext.lower() in ['jpeg', 'jpg']:
+            records.append({'file_type.lref': '396310'})
+        elif ext.lower() in ['tif', 'tiff']:
+            records.append({'file_type.lref': '395395'})
         bitdepth = utils.get_metadata('Image', 'BitDepth', ipath)
+        print(f"Bit Depth: {bitdepth}")
         if len(bitdepth) > 0:
             records.append({'bit_depth': bitdepth})
 

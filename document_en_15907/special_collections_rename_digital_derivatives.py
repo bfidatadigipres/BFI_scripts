@@ -20,8 +20,7 @@ Script stages:
 3. Checks if the 'works' folder is empty, and if so deletes empty folder
 4. Continues iteration until all 'works' have been processed.
 
-Notes: 
-Waiting for metadata updates from SC teams for digital files
+Notes:
 Uses requests.Sessions() for creation of works
 within on session. Trial of sessions().
 
@@ -132,6 +131,8 @@ def main():
         sys.exit("* Cannot establish CID session, exiting script")
 
     utils.logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives START ============")
+    print(STORAGE)
+    sys.exit()
     work_directories = [ x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x)) ]
     session = adlib.create_session()
     for work in work_directories:

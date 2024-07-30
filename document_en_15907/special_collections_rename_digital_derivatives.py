@@ -165,11 +165,11 @@ def main():
                 continue
 
             # Analogue and Digital Derivative records to be made
-            record_analogue = build_defaults(work_data, ipath, image, 'Analogue')[0]
+            record_analogue = build_defaults(work_data, ipath, image, 'analogue')[0]
             analogue_priref, analogue_obj = create_new_image_record(record_analogue, session)
             utils.logger(LOG, 'info', f"* New Item record created for image {image} Analogue {analogue_priref}")
 
-            record_digital, metadata = build_defaults(work_data, ipath, image, 'Digital', analogue_obj)
+            record_digital, metadata = build_defaults(work_data, ipath, image, 'digital', analogue_obj)
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
             utils.logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
 

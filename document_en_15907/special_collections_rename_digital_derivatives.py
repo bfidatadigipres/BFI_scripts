@@ -259,7 +259,7 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         if len(ext) > 0:
             ftype = utils.accepted_file_type(ext.lower())
             if ftype:
-                records.append({'file_type': ext})
+                records.append({'file_type': ext.upper()})
             else:
                 utils.logger(LOG, 'warning', f"Filetype was not matched in CID: {ext}")
         bitdepth = utils.get_metadata('Image', 'BitDepth', ipath)

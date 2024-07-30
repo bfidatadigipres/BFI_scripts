@@ -255,6 +255,11 @@ def build_defaults(work_data, ipath, image):
     if metadata_rec:
         records.append(metadata_rec)
 
+    records.extend({'input.name': 'datadigipres'})
+    records.extend({'input.date': str(datetime.datetime.now())[:10]})
+    records.extend({'input.time': str(datetime.datetime.now())[11:19]})
+    records.extend({'input.notes': 'Automated record creation for Special Collections, to facilitate ingest to DPI'})
+
     return records, metadata
 
 

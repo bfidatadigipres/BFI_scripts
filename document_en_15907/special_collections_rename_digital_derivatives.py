@@ -225,12 +225,12 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
     Build up item record defaults
     '''
     metadata = None
-    records = [{
-        'institution.name.lref': '999570701',
-        'object_type': 'OBJECT',
-        'description_level_object': 'STILLS',
-        'object_category': 'Photograph: Production',
-    }]
+    records = ([
+        {'institution.name.lref': '999570701'},
+        {'object_type': 'OBJECT'},
+        {'description_level_object': 'STILLS'},
+        {'object_category': 'Photograph: Production'}
+    ])
     print(work_data)
     if work_data[1]:
         records.append({'related_object.reference.lref': work_data[0]})
@@ -258,7 +258,10 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         ext = image.split('.')[-1]
         if len(ext) > 0:
             ftype = utils.accepted_file_type(ext.lower())
-            records.append({'file_type': ftype})
+            if ftype:
+                records.append({'file_type': ext})
+            else:
+                utils.logger(LOG, 'warning', f"Filetype was not matched in CID: {ext}")
         bitdepth = utils.get_metadata('Image', 'BitDepth', ipath)
         if len(bitdepth) > 0:
             records.append({'bit_depth': bitdepth})
@@ -281,7 +284,7 @@ def get_exifdata(dpath):
     Attempt to get metadata for record build
     Example dict below, waiting for confirmation
     '''
-    metadata = {}
+    metadata = ([])
     creator_data = rights_data = ''
     data = utils.exif_data(dpath)
     print(data)
@@ -291,26 +294,26 @@ def get_exifdata(dpath):
     for d in data_list:
         if d.startswith('File Size '):
             val = d.split(': ', 1)[-1]
-            metadata['filesize'] = val.split(' ')[0]
-            metadata['filesize.unit'] = val.split(' ')[-1]
-        if d.startswith('Image Height '):
-            metadata['dimension.type'] = 'Height'
-            metadata['dimension.value'] = d.split(': ', 1)[-1]
-            metadata['dimension.unit'] = 'Pixels'
-        if d.startswith('Image Width '):
-            metadata['dimension.type'] = 'Width'
-            metadata['dimension.value'] = d.split(': ', 1)[-1]
-            metadata['dimension.unit'] = 'Pixels'
-        if d.startswith('Compression '):
-            metadata['code_type'] = d.split(': ', 1)[-1]
-        if d.startswith('Color Space Data '):
-            metadata['colour_space'] = d.split(': ', 1)[-1]
-        if d.startswith('Camera Model Name '):
-            metadata['colour_space'] = d.split(': ', 1)[-1]
-        if d.startswith('Create Date '):
+            metadata.append({'filesize': val.split(' ')[0]})
+            metadata.append({'filesize.unit': val.split(' ')[-1]})
+        elif d.startswith('Image Height '):
+            metadata.append({'dimension.type': 'Height'})
+            metadata.append({'dimension.value': d.split(': ', 1)[-1]})
+            metadata.append({'dimension.unit': 'Pixels'})
+        elif d.startswith('Image Width '):
+            metadata.append({'dimension.type': 'Width'})
+            metadata.append({'dimension.value': d.split(': ', 1)[-1]})
+            metadata.append({'dimension.unit': 'Pixels'})
+        elif d.startswith('Compression '):
+            metadata.append({'code_type': d.split(': ', 1)[-1]})
+        elif d.startswith('Color Space Data '):
+            metadata.append({'colour_space': d.split(': ', 1)[-1]})
+        elif d.startswith('Camera Model Name '):
+            metadata.append({'colour_space': d.split(': ', 1)[-1]})
+        elif d.startswith('Create Date '):
             try:
                 val = d.split(': ', 1)[-1].split(' ', 1)[0].replace(':', '-')
-                metadata['production.date.start'] = val
+                metadata.append({'production.date.start': val})
             except (KeyError, IndexError):
                 pass
         if d.startswith('Creator '):
@@ -327,11 +330,11 @@ def get_exifdata(dpath):
             rights_data = d.split(': ', 1)[-1]
 
     if len(creator_data) > 0 and len(rights_data) > 0:
-        metadata['production.notes'] = f"Photographer: {creator_data}, Rights: {rights_data}"
+        metadata.append({'production.notes': f"Photographer: {creator_data}, Rights: {rights_data}"})
     elif len(creator_data) > 0:
-         metadata['production.notes'] = f"Photographer: {creator_data}"
+         metadata.append({'production.notes': f"Photographer: {creator_data}"})
     elif len(rights_data) > 0:
-         metadata['production.notes'] = f"Rights: {rights_data}"
+         metadata.append({'production.notes': f"Rights: {rights_data}"})
 
     if len(metadata) > 0:
         return metadata, data

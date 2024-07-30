@@ -232,19 +232,19 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         'object_category': 'Photograph: Production',
     }]
 
-    if len(work_data[1]) > 0:
+    if work_data[1]:
         records.extend({'related_object.reference': work_data[1]})
     else:
         utils.logger(LOG, 'warning', "No parent object number retrieved. Script exiting.")
         return None
-    if len(work_data[2]) > 0:
+    if work_data[2]:
         records.extend({'title': work_data[2]})
     else:
         utils.logger(LOG, 'warning', "No title data retrieved. Script exiting.")
         return None
-    if len(work_data[3]) > 0:
+    if work_data[3]:
         records.extend({'title.article': work_data[3]})
-    if len(work_data[4]) > 0:
+    if work_data[4]:
         records.extend({'production.date.start': work_data[4]})
 
     if arg == 'analogue':

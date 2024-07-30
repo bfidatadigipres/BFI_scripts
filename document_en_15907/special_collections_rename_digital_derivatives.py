@@ -307,8 +307,8 @@ def get_exifdata(dpath):
             metadata.append({'code_type': d.split(': ', 1)[-1]})
         elif d.startswith('Color Space Data '):
             metadata.append({'colour_space': d.split(': ', 1)[-1]})
-        elif d.startswith('Camera Model Name '):
-            metadata.append({'source_device': d.split(': ', 1)[-1]})
+#        elif d.startswith('Camera Model Name '):
+#            metadata.append({'source_device': d.split(': ', 1)[-1]})
         elif d.startswith('Create Date '):
             try:
                 val = d.split(': ', 1)[-1].split(' ', 1)[0].replace(':', '-')

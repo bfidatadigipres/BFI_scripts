@@ -157,7 +157,7 @@ def main():
                 ob_num = utils.get_object_number(image)
                 if not ob_num:
                     continue
-                rec = adlib.retrieve_record(CID_API, 'internalobject', f'object_number="{ob_num}"', '1', session, ['digital.born_or_derived'])
+                rec = adlib.retrieve_record(CID_API, 'internalobject', f'object_number="{ob_num}"', '1', session)[1]
                 check = adlib.retrieve_field_name(rec[0], 'digital.born_or_derived')[0]
                 if 'DIGITAL_DERIVATIVE_PRES' in check:
                     utils.logger(LOG, 'info', f'Moving to autoingest. File renumbered to matching Digital record: {ob_num}')

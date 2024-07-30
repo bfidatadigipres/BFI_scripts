@@ -175,6 +175,8 @@ def main():
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
             utils.logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
 
+            sys.exit()
+
             if len(analogue_priref) == 0 or len(digi_priref) == 0:
                 utils.logger(LOG, 'warning', f"Missing priref following record creation for {image}. Analogue priref {analogue_priref} / Digital priref {digi_priref}")
                 utils.logger(LOG, 'warning', f"Moving file to failure folder. Manual clean up of records required.")
@@ -356,6 +358,7 @@ def create_new_image_record(record_json, session):
     both Analogue and Digital, returning priref/obj
     '''
     record_xml = adlib.create_record_data('', record_json)
+    print(record_json)
     print(record_xml)
     record = adlib.post(CID_API, record_xml, 'internalobject', 'insertrecord', session)
     if not record:

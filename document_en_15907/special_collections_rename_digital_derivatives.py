@@ -63,7 +63,7 @@ def cid_retrieve(fname, session):
         'title.article'
     ]
 
-    record = adlib.retrieve_record(CID_API, 'internalobject', search, '0', session, fields)[1]
+    record = adlib.retrieve_record(CID_API, 'works', search, '1', session, fields)[1]
     utils.logger(LOG, 'info', f"cid_retrieve(): Making CID query request with:\n {search}")
     if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {fname}")
@@ -135,7 +135,7 @@ def main():
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         wpath = os.path.join(STORAGE, work)
         utils.logger(LOG, 'info', f"Work folder found: {work}")
-        work_data = cid_retrieve(work.strip(), session)
+        work_data = cid_retrieve(work, session)
         if work_data is None:
             utils.logger(LOG, 'warning', f"Please check folder name {work} as no CID match found")
             continue

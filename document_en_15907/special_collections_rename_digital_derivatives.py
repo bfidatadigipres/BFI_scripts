@@ -231,7 +231,7 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         'description_level_object': 'STILLS',
         'object_category': 'Photograph: Production',
     }]
-
+    print(work_data)
     if work_data[1]:
         records.extend({'related_object.reference': work_data[1]})
     else:

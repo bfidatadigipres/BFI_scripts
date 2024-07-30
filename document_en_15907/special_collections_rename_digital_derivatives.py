@@ -357,8 +357,8 @@ def create_new_image_record(record_json, session):
     Function for creation of new CID records
     both Analogue and Digital, returning priref/obj
     '''
-    record_xml = adlib.create_record_data('', record_json)
     print(record_json)
+    record_xml = adlib.create_record_data('', record_json)
     print(record_xml)
     record = adlib.post(CID_API, record_xml, 'internalobject', 'insertrecord', session)
     if not record:

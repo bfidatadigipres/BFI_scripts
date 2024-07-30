@@ -142,9 +142,9 @@ def main():
         print(work_data)
         # Build file list of wpath contents
         images = [ x for x in os.listdir(wpath) if os.path.isfile(os.path.join(wpath, x)) ]
-        print(len(images))
-        sorted_images = sorted(images)
-        print(len(sorted_images))
+
+#        sorted_images = sorted(images)
+
         for image in sorted_images:
             if not image.endswith(('.tiff', '.tif', '.TIFF', '.TIF', '.jpeg', '.jpg', '.JPEG', '.JPG')):
                 utils.logger(LOG, 'warning', f"Skipping: File found in folder {work} that is not image file: {image}")
@@ -260,10 +260,6 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
             records.append({'file_type.lref': '396310'})
         elif ext.lower() in ['tif', 'tiff']:
             records.append({'file_type.lref': '395395'})
-        bitdepth = utils.get_metadata('Image', 'BitDepth', ipath)
-        print(f"Bit Depth: {bitdepth}")
-        if len(bitdepth) > 0:
-            records.append({'bit_depth': bitdepth})
 
         metadata_rec, metadata = get_exifdata(ipath)
         if metadata_rec:
@@ -309,6 +305,11 @@ def get_exifdata(dpath):
             metadata.append({'colour_space': d.split(': ', 1)[-1]})
 #        elif d.startswith('Camera Model Name '):
 #            metadata.append({'source_device': d.split(': ', 1)[-1]})
+        elif d.startswith('Bits Per Sample '):
+            metadata.append({'bit_depth': d.split(': ', 1)[-1].split(' ')[0]})
+        elif d.startwith('Description '):
+            metadata.append({'description': d.split(': ', 1)[-1]})
+            metadata.append({'description.name': 'Digital file metadata'})
         elif d.startswith('Create Date '):
             try:
                 val = d.split(': ', 1)[-1].split(' ', 1)[0].replace(':', '-')

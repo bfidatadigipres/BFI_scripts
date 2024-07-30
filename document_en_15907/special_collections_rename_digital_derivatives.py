@@ -47,6 +47,14 @@ LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_rename_digital_d
 MEDIAINFO_PATH = os.path.join(os.environ['LOG_PATH'], 'cid_mediainfo/')
 CID_API = os.environ['CID_API4']
 
+BIT_DEPTHS = {
+    '10': '99796',
+    '12': '392421',
+    '16': '99797',
+    '24': '395618',
+    '32': '99838',
+    '48': '95709'
+}
 
 def cid_retrieve(fname, session):
     '''
@@ -260,7 +268,11 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
             records.append({'file_type.lref': '396310'})
         elif ext.lower() in ['tif', 'tiff']:
             records.append({'file_type.lref': '395395'})
-
+        bitdepth = utils.get_metadata('Image', 'BitDepth', ipath)
+        if bitdepth:
+            for key, val in BIT_DEPTHS.items():
+                if bitdepth == key:
+                    records.append({'bit_depth.lref': val})
         metadata_rec, metadata = get_exifdata(ipath)
         if metadata_rec:
             print(metadata_rec)
@@ -305,8 +317,6 @@ def get_exifdata(dpath):
             metadata.append({'colour_space': d.split(': ', 1)[-1]})
 #        elif d.startswith('Camera Model Name '):
 #            metadata.append({'source_device': d.split(': ', 1)[-1]})
-        elif d.startswith('Bits Per Sample '):
-            metadata.append({'bit_depth': d.split(': ', 1)[-1].split(' ')[0]})
         elif d.startswith('Description '):
             metadata.append({'description': d.split(': ', 1)[-1]})
             metadata.append({'description.name': 'Digital file metadata'})

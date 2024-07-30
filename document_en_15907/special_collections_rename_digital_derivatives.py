@@ -154,6 +154,16 @@ def main():
             utils.logger(LOG, 'info', f"Processing image file: {image}")
             ipath = os.path.join(wpath, image)
 
+            if bool(utils.check_filename(image)):
+                utils.logger(LOG, 'warning', f"Skipping: File passed filename checks and likely already renumbered: {image}")
+                ob_num = utils.get_object_number(image)
+                rec = adlib.retrieve_record(CID_API, 'internalobjects', f'object_number="{ob_num}"', '1', session, ['digital.born_or_derived'])
+                check = adlib.retrieve_field_name(rec[0], 'digital.born_or_derived')[0]
+                if 'Digital derivative: Preservation' in check:
+                    utils.logger(LOG, 'info', f'Moving to autoingest. File renumbered to matching Digital record: {ob_num}')
+                    move(ipath, 'ingest')
+                continue
+
             # Analogue and Digital Derivative records to be made
             record_analogue = build_defaults(work_data, ipath, image, 'Analogue')[0]
             analogue_priref, analogue_obj = create_new_image_record(record_analogue, session)

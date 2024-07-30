@@ -208,8 +208,8 @@ def build_defaults(work_data, ipath, image):
     '''
     records = [{
         'institution.name.lref': '999570701',
-        'object_type': 'Single object',
-        'description_level_object': 'Stills',
+        'object_type': 'OBJECT',
+        'description_level_object': 'STILLS',
         'object_category': 'Photograph: Publicity',
     }]
 
@@ -228,8 +228,8 @@ def build_defaults(work_data, ipath, image):
     if work_data[4] is not None:
         records.extend({'production.date.start': work_data[4]})
 
-    records.extend({'analogue_or_digital': 'Digital'})
-    records.extend({'digital.born_or_derived': 'Born Digital'})
+    records.extend({'analogue_or_digital': 'DIGITAL'})
+    records.extend({'digital.born_or_derived': 'BORN_DIGITAL'})
     records.extend({'digital.acquired_filename': image})
     ext = image.split('.')[-1]
     if len(ext) > 0:
@@ -270,8 +270,8 @@ def get_exifdata(dpath):
             metadata['dimension.type'] = 'Width'
             metadata['dimension.value'] = d.split(': ', 1)[-1]
             metadata['dimension.unit'] = 'Pixels'
-        if d.startswith('Bits Per Sample '):
-            metadata['bit_depth'] = d.split(': ', 1)[-1].split(' ')[0]
+        #if d.startswith('Bits Per Sample '):
+        #    metadata['bit_depth'] = d.split(': ', 1)[-1].split(' ')[0]
         if d.startswith('Compression '):
             metadata['code_type'] = d.split(': ', 1)[-1]
         if d.startswith('Color Space Data '):

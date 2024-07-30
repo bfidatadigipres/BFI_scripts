@@ -215,8 +215,8 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
     metadata = None
     records = [{
         'institution.name.lref': '999570701',
-        'object_type': 'Single object',
-        'description_level_object': 'Stills',
+        'object_type': 'OBJECT',
+        'description_level_object': 'STILLS',
         'object_category': 'Photograph: Production',
     }]
 
@@ -236,10 +236,10 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         records.extend({'production.date.start': work_data[4]})
 
     if arg == 'analogue':
-        records.extend({'analogue_or_digital': 'Analogue'})
+        records.extend({'analogue_or_digital': 'ANALOGUE'})
     elif arg == 'digital':
-        records.extend({'analogue_or_digital': 'Digital'})
-        records.extend({'digital.born_or_derived': 'Digital derivative: Preservation'})
+        records.extend({'analogue_or_digital': 'DIGITAL'})
+        records.extend({'digital.born_or_derived': 'DIGITAL_DERIVATIVE_PRES'})
         records.extend({'digital.acquired_filename': image})
         if obj:
             records.extend({'source_item': obj})
@@ -282,8 +282,8 @@ def get_exifdata(dpath):
             metadata['dimension.type'] = 'Width'
             metadata['dimension.value'] = d.split(': ', 1)[-1]
             metadata['dimension.unit'] = 'Pixels'
-        if d.startswith('Bits Per Sample '):
-            metadata['bit_depth'] = d.split(': ', 1)[-1].split(' ')[0]
+        #if d.startswith('Bits Per Sample '):
+        #    metadata['bit_depth'] = d.split(': ', 1)[-1].split(' ')[0]
         if d.startswith('Compression '):
             metadata['code_type'] = d.split(': ', 1)[-1]
         if d.startswith('Color Space Data '):

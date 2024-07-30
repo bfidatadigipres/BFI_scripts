@@ -157,9 +157,11 @@ def main():
             if bool(utils.check_filename(image)):
                 utils.logger(LOG, 'warning', f"Skipping: File passed filename checks and likely already renumbered: {image}")
                 ob_num = utils.get_object_number(image)
-                rec = adlib.retrieve_record(CID_API, 'internalobjects', f'object_number="{ob_num}"', '1', session, ['digital.born_or_derived'])
+                if not ob_num:
+                    continue
+                rec = adlib.retrieve_record(CID_API, 'internalobject', f'object_number="{ob_num}"', '1', session, ['digital.born_or_derived'])
                 check = adlib.retrieve_field_name(rec[0], 'digital.born_or_derived')[0]
-                if 'Digital derivative: Preservation' in check:
+                if 'DIGITAL_DERIVATIVE_PRES' in check:
                     utils.logger(LOG, 'info', f'Moving to autoingest. File renumbered to matching Digital record: {ob_num}')
                     move(ipath, 'ingest')
                 continue

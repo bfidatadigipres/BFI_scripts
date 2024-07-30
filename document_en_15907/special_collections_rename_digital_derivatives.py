@@ -284,6 +284,7 @@ def get_exifdata(dpath):
     metadata = {}
     creator_data = rights_data = ''
     data = utils.exif_data(dpath)
+    print(data)
     if not data:
         return None, None
     data_list = data.split('\n')
@@ -318,11 +319,11 @@ def get_exifdata(dpath):
             creator_data = d.split(': ', 1)[-1]
         elif d.startswith('By-line '):
             creator_data = d.split(': ', 1)[-1]
-        if d.startwith('Rights '):
+        if d.startswith('Rights '):
             rights_data = d.split(': ', 1)[-1]
-        elif d.startwith('Copyright Notice '):
+        elif d.startswith('Copyright Notice '):
             rights_data = d.split(': ', 1)[-1]
-        elif d.startwith('Copyright '):
+        elif d.startswith('Copyright '):
             rights_data = d.split(': ', 1)[-1]
 
     if len(creator_data) > 0 and len(rights_data) > 0:

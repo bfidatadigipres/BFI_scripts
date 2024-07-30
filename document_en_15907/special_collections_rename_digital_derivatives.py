@@ -126,9 +126,10 @@ def main():
 
     utils.logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives START ============")
     print(STORAGE)
-    sys.exit()
+
     work_directories = [ x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x)) ]
     session = adlib.create_session()
+    print(work_directories)
     for work in work_directories:
         if not utils.check_control('pause_scripts'):
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -138,10 +139,12 @@ def main():
         if work_data is None:
             utils.logger(LOG, 'warning', f"Please check folder name {work} as no CID match found")
             continue
-
+        print(work_data)
         # Build file list of wpath contents
         images = [ x for x in os.listdir(wpath) if os.path.isfile(os.path.join(wpath, x)) ]
+        len(images)
         sorted_images = sorted(images)
+        len(sorted_images)
         for image in sorted_images:
             if not image.endswith(('.tiff', '.tif', '.TIFF', '.TIF', '.jpeg', '.jpg', '.JPEG', '.JPG')):
                 utils.logger(LOG, 'warning', f"Skipping: File found in folder {work} that is not image file: {image}")
@@ -158,7 +161,7 @@ def main():
                 check = adlib.retrieve_field_name(rec[0], 'digital.born_or_derived')[0]
                 if 'DIGITAL_DERIVATIVE_PRES' in check:
                     utils.logger(LOG, 'info', f'Moving to autoingest. File renumbered to matching Digital record: {ob_num}')
-                    move(ipath, 'ingest')
+                    print(f"move({ipath}, 'ingest')")
                 continue
 
             # Analogue and Digital Derivative records to be made

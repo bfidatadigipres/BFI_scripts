@@ -42,16 +42,10 @@ import utils
 # Global path variables
 SCPATH = os.environ['SPECIAL_COLLECTIONS']
 STORAGE = os.path.join(SCPATH, 'Uncatalogued_stills_digital_derivative/')
-AUTOINGEST = os.path.join(SCPATH, os.environ['INGEST_SC'])
+AUTOINGEST = os.path.join(os.environ['AUTOINGEST_IS_SPEC'], 'ingest/proxy/image/')
 LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_rename_digital_derivatives.log')
 MEDIAINFO_PATH = os.path.join(os.environ['LOG_PATH'], 'cid_mediainfo/')
 CID_API = os.environ['CID_API4']
-
-# Global variables
-TODAY = str(datetime.datetime.now())
-TODAY_DATE = TODAY[:10]
-TODAY_TIME = TODAY[11:19]
-DATE_TIME = (f"{TODAY_DATE} = {TODAY_TIME}")
 
 
 def cid_retrieve(fname, session):
@@ -199,7 +193,7 @@ def main():
                     utils.logger(LOG, 'info', f"File renumbered and filepath updated to: {new_filepath}")
                     success = move(new_filepath, 'ingest')
                     if success:
-                        utils.logger(LOG, 'info', f"File {new_file} relocated to Autoingest {DATE_TIME}")
+                        utils.logger(LOG, 'info', f"File {new_file} relocated to Autoingest {str(datetime.datetime.now())[:19]}")
                     else:
                         utils.logger(LOG, 'warning', f"FILE {new_file} DID NOT MOVE SUCCESSFULLY TO AUTOINGEST")
                 else:

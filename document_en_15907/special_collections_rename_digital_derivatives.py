@@ -63,7 +63,7 @@ def cid_retrieve(fname, session):
         'title.article'
     ]
 
-    record = adlib.retrieve_record(CID_API, 'works', search, '0', session, fields)[1]
+    record = adlib.retrieve_record(CID_API, 'internalobject', search, '0', session, fields)[1]
     utils.logger(LOG, 'info', f"cid_retrieve(): Making CID query request with:\n {search}")
     if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {fname}")
@@ -142,9 +142,9 @@ def main():
         print(work_data)
         # Build file list of wpath contents
         images = [ x for x in os.listdir(wpath) if os.path.isfile(os.path.join(wpath, x)) ]
-        len(images)
+        print(len(images))
         sorted_images = sorted(images)
-        len(sorted_images)
+        print(len(sorted_images))
         for image in sorted_images:
             if not image.endswith(('.tiff', '.tif', '.TIFF', '.TIF', '.jpeg', '.jpg', '.JPEG', '.JPG')):
                 utils.logger(LOG, 'warning', f"Skipping: File found in folder {work} that is not image file: {image}")

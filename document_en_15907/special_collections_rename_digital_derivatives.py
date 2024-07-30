@@ -291,8 +291,8 @@ def get_exifdata(dpath):
     for d in data_list:
         if d.startswith('File Size '):
             val = d.split(': ', 1)[-1]
-            metadata.append['filesize'] = val.split(' ')[0]
-            metadata.append['filesize.unit'] = val.split(' ')[-1]
+            metadata['filesize'] = val.split(' ')[0]
+            metadata['filesize.unit'] = val.split(' ')[-1]
         if d.startswith('Image Height '):
             metadata['dimension.type'] = 'Height'
             metadata['dimension.value'] = d.split(': ', 1)[-1]

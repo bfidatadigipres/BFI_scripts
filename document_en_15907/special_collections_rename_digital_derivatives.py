@@ -254,7 +254,7 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
         records.append({'digital.born_or_derived': 'DIGITAL_DERIVATIVE_PRES'})
         records.append({'digital.acquired_filename': image})
         if obj:
-            records.extend({'source_item': obj})
+            records.append({'source_item': obj})
         ext = image.split('.')[-1]
         if len(ext) > 0:
             ftype = utils.accepted_file_type(ext.lower())
@@ -309,7 +309,7 @@ def get_exifdata(dpath):
         elif d.startswith('Color Space Data '):
             metadata.append({'colour_space': d.split(': ', 1)[-1]})
         elif d.startswith('Camera Model Name '):
-            metadata.append({'colour_space': d.split(': ', 1)[-1]})
+            metadata.append({'source_device': d.split(': ', 1)[-1]})
         elif d.startswith('Create Date '):
             try:
                 val = d.split(': ', 1)[-1].split(' ', 1)[0].replace(':', '-')

@@ -145,7 +145,7 @@ def main():
 
 #        sorted_images = sorted(images)
 
-        for image in sorted_images:
+        for image in images:
             if not image.endswith(('.tiff', '.tif', '.TIFF', '.TIF', '.jpeg', '.jpg', '.JPEG', '.JPG')):
                 utils.logger(LOG, 'warning', f"Skipping: File found in folder {work} that is not image file: {image}")
                 continue

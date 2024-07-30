@@ -307,7 +307,7 @@ def get_exifdata(dpath):
 #            metadata.append({'source_device': d.split(': ', 1)[-1]})
         elif d.startswith('Bits Per Sample '):
             metadata.append({'bit_depth': d.split(': ', 1)[-1].split(' ')[0]})
-        elif d.startwith('Description '):
+        elif d.startswith('Description '):
             metadata.append({'description': d.split(': ', 1)[-1]})
             metadata.append({'description.name': 'Digital file metadata'})
         elif d.startswith('Create Date '):

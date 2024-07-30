@@ -292,9 +292,9 @@ def get_exifdata(dpath):
             metadata['colour_space'] = d.split(': ', 1)[-1]
         if d.startswith('Date Created '):
             metadata['production.date.start'] = d.split(': ', 1)[-1]
-        if d.startswith('Artist '):
+        if d.startswith('Creator '):
             creator_data = d.split(': ', 1)[-1]
-        elif d.startswith('Creator '):
+        elif d.startswith('Artist '):
             creator_data = d.split(': ', 1)[-1]
         elif d.startswith('By-line '):
             creator_data = d.split(': ', 1)[-1]
@@ -306,11 +306,11 @@ def get_exifdata(dpath):
             rights_data = d.split(': ', 1)[-1]
 
     if len(creator_data) > 0 and len(rights_data) > 0:
-        metadata['production.notes'] = f"{creator_data}, {rights_data}"
+        metadata['production.notes'] = f"Photographer: {creator_data}, Rights: {rights_data}"
     elif len(creator_data) > 0:
-         metadata['production.notes'] = creator_data
+         metadata['production.notes'] = f"Photographer: {creator_data}"
     elif len(rights_data) > 0:
-         metadata['production.notes'] = rights_data
+         metadata['production.notes'] = f"Rights: {rights_data}"
 
     if len(metadata) > 0:
         return metadata, data

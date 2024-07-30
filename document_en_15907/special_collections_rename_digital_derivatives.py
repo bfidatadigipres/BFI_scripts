@@ -233,44 +233,44 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
     }]
     print(work_data)
     if work_data[1]:
-        records.extend({'related_object.reference.lref': work_data[0]})
+        records.append({'related_object.reference.lref': work_data[0]})
     else:
         utils.logger(LOG, 'warning', "No parent object number retrieved. Script exiting.")
         return None
     if work_data[2]:
-        records.extend({'title': work_data[2]})
+        records.append({'title': work_data[2]})
     else:
         utils.logger(LOG, 'warning', "No title data retrieved. Script exiting.")
         return None
     if work_data[3]:
-        records.extend({'title.article': work_data[3]})
+        records.append({'title.article': work_data[3]})
     if work_data[4]:
-        records.extend({'production.date.start': work_data[4]})
+        records.append({'production.date.start': work_data[4]})
 
     if arg == 'analogue':
-        records.extend({'analogue_or_digital': 'ANALOGUE'})
+        records.append({'analogue_or_digital': 'ANALOGUE'})
     elif arg == 'digital':
-        records.extend({'analogue_or_digital': 'DIGITAL'})
-        records.extend({'digital.born_or_derived': 'DIGITAL_DERIVATIVE_PRES'})
-        records.extend({'digital.acquired_filename': image})
+        records.append({'analogue_or_digital': 'DIGITAL'})
+        records.append({'digital.born_or_derived': 'DIGITAL_DERIVATIVE_PRES'})
+        records.append({'digital.acquired_filename': image})
         if obj:
             records.extend({'source_item': obj})
         ext = image.split('.')[-1]
         if len(ext) > 0:
             ftype = utils.accepted_file_type(ext.lower())
-            records.extend({'file_type': ftype})
+            records.append({'file_type': ftype})
         bitdepth = utils.get_metadata('Image', 'BitDepth', ipath)
         if len(bitdepth) > 0:
-            records.extend({'bit_depth': bitdepth})
+            records.append({'bit_depth': bitdepth})
 
         metadata_rec, metadata = get_exifdata(ipath)
         if metadata_rec:
-            records.append(metadata_rec)
+            records.extend(metadata_rec)
 
-    records.extend({'input.name': 'datadigipres'})
-    records.extend({'input.date': str(datetime.datetime.now())[:10]})
-    records.extend({'input.time': str(datetime.datetime.now())[11:19]})
-    records.extend({'input.notes': 'Automated record creation for Special Collections, to facilitate ingest to DPI'})
+    records.append({'input.name': 'datadigipres'})
+    records.append({'input.date': str(datetime.datetime.now())[:10]})
+    records.append({'input.time': str(datetime.datetime.now())[11:19]})
+    records.append({'input.notes': 'Automated record creation for Special Collections, to facilitate ingest to DPI'})
 
     return records, metadata
 

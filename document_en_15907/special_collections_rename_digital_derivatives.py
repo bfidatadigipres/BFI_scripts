@@ -169,7 +169,7 @@ def main():
             analogue_priref, analogue_obj = create_new_image_record(record_analogue, session)
             utils.logger(LOG, 'info', f"* New Item record created for image {image} Analogue {analogue_priref}")
 
-            record_digital, metadata = build_defaults(work, ipath, image, 'Digital', analogue_obj)
+            record_digital, metadata = build_defaults(work_data, ipath, image, 'Digital', analogue_obj)
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
             utils.logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
 
@@ -265,13 +265,14 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
 
         metadata_rec, metadata = get_exifdata(ipath)
         if metadata_rec:
+            print(metadata_rec)
             records.extend(metadata_rec)
 
     records.append({'input.name': 'datadigipres'})
     records.append({'input.date': str(datetime.datetime.now())[:10]})
     records.append({'input.time': str(datetime.datetime.now())[11:19]})
     records.append({'input.notes': 'Automated record creation for Special Collections, to facilitate ingest to DPI'})
-
+    print(records)
     return records, metadata
 
 

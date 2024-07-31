@@ -52,7 +52,7 @@ from datetime import datetime
 import bp_utils as bp
 CODE_PATH = os.environ['CODE']
 sys.path.append(CODE_PATH)
-import adlib_v3 as adlib
+import adlib_v3_sess as adlib
 import utils
 
 # Global variables
@@ -149,7 +149,7 @@ def get_md5(filename):
         return local_md5
 
 
-def check_for_media_record(fname):
+def check_for_media_record(fname, session):
     '''
     Check if media record already exists
     In which case the file may be a duplicate
@@ -158,7 +158,7 @@ def check_for_media_record(fname):
     search = f"imagen.media.original_filename='{fname}'"
 
     try:
-        result = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
+        result = adlib.retrieve_record(CID_API, 'media', search, '0', session)[1]
     except Exception as err:
         logger.exception('CID check for media record failed: %s', err)
 
@@ -190,6 +190,7 @@ def main():
         sys.exit("* Cannot establish CID session, exiting script")
     ingest_data = utils.read_yaml(INGEST_CONFIG)
     hosts = ingest_data['Host_size']
+    sess = adlib.create_session()
 
     autoingest_list = []
     for host in hosts:
@@ -271,7 +272,7 @@ def main():
                 else:
                     logger.info("No files failed transfer to BP data tape")
 
-            success = process_files(autoingest, folder, '', bucket, bucket_list)
+            success = process_files(autoingest, folder, '', bucket, bucket_list, sess)
             if not success:
                 continue
 
@@ -323,7 +324,7 @@ def main():
     logger.info("======== END Black Pearl validate/CID media record END ========")
 
 
-def process_files(autoingest, job_id, arg, bucket, bucket_list):
+def process_files(autoingest, job_id, arg, bucket, bucket_list, session):
     '''
     Receive ingest fpath and argument 'check' or empty argument.
     If empty arg then JSON has confirmed files ingested to tape
@@ -432,7 +433,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
 
         # New section here to check for Media Record first and clean up file if found
         logger.info("Checking if Media record already exists for file: %s", file)
-        media_priref, access_mp4 = check_for_media_record(file)
+        media_priref, access_mp4 = check_for_media_record(file, session)
         if media_priref:
             logger.info("Media record %s already exists for file: %s", media_priref, fpath)
             # Check for previous 'deleted' message in global.log
@@ -474,7 +475,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list):
             continue
         logger.info("No Media record found for file: %s", file)
         logger.info("Creating media record and linking via object_number: %s", object_number)
-        media_priref = create_media_record(object_number, duration, byte_size, file, bucket)
+        media_priref = create_media_record(object_number, duration, byte_size, file, bucket, session)
         print(media_priref)
 
         if media_priref:
@@ -537,7 +538,7 @@ def duration_size_log(filename, ob_num, duration, size, ms):
             writer.writerow([filename, ob_num, str(duration), str(size), datestamp, str(ms)])
 
 
-def create_media_record(ob_num, duration, byte_size, filename, bucket):
+def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
     '''
     Media record creation for BP ingested file
     '''
@@ -561,7 +562,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
     print(record_data_xml)
 
     try:
-        item_rec = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
+        item_rec = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord', session)
         if item_rec:
             try:
                 media_priref = adlib.retrieve_field_name(item_rec, 'priref')[0]

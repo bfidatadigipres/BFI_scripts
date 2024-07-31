@@ -156,7 +156,9 @@ def check_accepted_file_type(fpath):
     if any(x in fpath for x in ['qnap_access_renditions', 'qnap_10']):
         if fpath.endswith(('tar', 'TAR')):
             return True
-
+    if any(x in fpath for x in ['qnap_06', 'film_operations', 'qnap_film']):
+        if fpath.endswith(('mkv', 'MKV')):
+            return True
     formt = utils.get_metadata('Video', 'Format', fpath)
     print(f"utils.get_metadata: {formt}")
     if 'ProRes' in str(formt):

@@ -75,7 +75,7 @@ import magic
 # Private packages
 import bp_utils as bp
 sys.path.append(os.environ['CODE'])
-import adlib_v3 as adlib
+import adlib_v3_sess as adlib
 import utils
 
 # Global paths
@@ -252,13 +252,13 @@ def process_image_archive(fname, log_paths):
     return object_number, int(part), int(whole), ext
 
 
-def get_item_priref(ob_num):
+def get_item_priref(ob_num, session):
     '''
     Retrieve item priref, title from CID
     '''
     ob_num = ob_num.strip()
     search = f"object_number='{ob_num}'"
-    record = adlib.retrieve_record(CID_API, 'collect', search, '1')[1]
+    record = adlib.retrieve_record(CID_API, 'collect', search, '1', session)[1]
     print(f"get_item_priref(): AdlibV3 record for priref:\n{record}")
     try:
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
@@ -269,7 +269,7 @@ def get_item_priref(ob_num):
     return priref
 
 
-def check_media_record(fname):
+def check_media_record(fname, session):
     '''
     Check if CID media record
     already created for filename
@@ -277,7 +277,7 @@ def check_media_record(fname):
     search = f"imagen.media.original_filename='{fname}'"
     print(f"Search used against CID Media dB: {search}")
     try:
-        hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+        hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
         print(f"** HITS: {hits}")
         if hits is None:
             logger.exception('"CID API was unreachable for Media search: %s', search)
@@ -313,7 +313,7 @@ def get_buckets(bucket_collection):
     return bucket_list
 
 
-def ext_in_file_type(ext, priref, log_paths):
+def ext_in_file_type(ext, priref, log_paths, session):
     '''
     Check if ext matches file_type
     '''
@@ -327,7 +327,7 @@ def ext_in_file_type(ext, priref, log_paths):
     ftype = ftype.split(', ')
     print(ftype)
     search = f'priref={priref}'
-    record = adlib.retrieve_record(CID_API, 'collect', search, '1', ['file_type'])[1]
+    record = adlib.retrieve_record(CID_API, 'collect', search, '1', session, ['file_type'])[1]
     if record is None:
         return False
 
@@ -361,13 +361,13 @@ def ext_in_file_type(ext, priref, log_paths):
         return False
 
 
-def get_media_ingests(object_number):
+def get_media_ingests(object_number, session):
     '''
     Use object_number to retrieve all media records
     '''
 
     search = f'object.object_number="{object_number}"'
-    hits, record = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])
+    hits, record = adlib.retrieve_record(CID_API, 'media', search, '0', session, ['imagen.media.original_filename'])
     if hits is None:
         logger.exception('"CID API was unreachable for Media search: %s', search)
         raise Exception(f"CID API was unreachable for Media search: {search}")
@@ -424,7 +424,7 @@ def asset_is_next_ingest(fname, previous_fname, black_pearl_folder):
         return False
 
 
-def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
+def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder, session):
     '''
     Check which files have persisted already and
     if this file is next in queue
@@ -450,7 +450,7 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
 
     # Get previous parts index (hence -2)
     previous = part - 2
-    ingest_fnames = get_media_ingests(object_number)
+    ingest_fnames = get_media_ingests(object_number, session)
 
     if not ingest_fnames:
         in_bp_ingest_folder = asset_is_next_ingest(fname, filename_range[previous], black_pearl_folder)
@@ -514,6 +514,7 @@ def main():
     config_dict = utils.read_yaml(CONFIG)
     print(f"utils.read_yaml: {config_dict}")
 
+    sess = adlib.create_session()
     for host in config_dict['Hosts']:
         print(host)
         linux_host = list(host.keys())[0]
@@ -558,7 +559,7 @@ def main():
             if 'autoingest/completed/' in fpath:
                 # Push completed/ paths straight to deletions checks
                 print('* Item is in completed/ path, moving to persistence checks')
-                boole = check_for_deletions(fpath, fname, log_paths, messages)
+                boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
                 print(f'File successfully deleted: {boole}')
                 continue
 
@@ -602,7 +603,7 @@ def main():
                 continue
 
             # CID checks
-            priref = get_item_priref(object_number)
+            priref = get_item_priref(object_number, sess)
             if not priref:
                 print(f'* Cannot find record with <object_number>...<{object_number}>')
                 logger.warning('%s\tCannot find record with <object_number>... <%s>', log_paths, object_number)
@@ -610,12 +611,12 @@ def main():
             print(f"* CID item record found with object number {object_number}: priref {priref}")
 
             # Ext in file_type and file_type validity in Collect database
-            confirmed = ext_in_file_type(ext, priref, log_paths)
+            confirmed = ext_in_file_type(ext, priref, log_paths, sess)
             if not confirmed:
                 continue
 
             # CID media record check
-            media_check = check_media_record(fname)
+            media_check = check_media_record(fname, sess)
             if media_check is True:
                 print(f'* Filename {fname} already has a CID Media record. Manual clean up needed.')
                 logger.warning('%s\tFilename already has a CID Media record: %s', log_paths, fname)
@@ -666,7 +667,7 @@ def main():
                 else:
                     print('\t* file is multi-part...')
                     print('\t\t* === AUTOINGEST - TEST for ASSET_IS_NEXT ======')
-                    result = asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder)
+                    result = asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder, sess)
                     if 'No index' in result:
                         print('\t\t***** Indexing logic broken')
                         continue
@@ -724,14 +725,14 @@ def main():
                 continue
 
 
-def check_for_deletions(fpath, fname, log_paths, messages):
+def check_for_deletions(fpath, fname, log_paths, messages, session):
     '''
     Process files in completed/ folder by checking for persistence
     message that confirms deletion is allowed.
     '''
 
     # Check if CID media record exists
-    media_check = check_media_record(fname)
+    media_check = check_media_record(fname, session)
     if media_check is False:
         print(f'* Filename {fname} has no CID Media record. Leaving for manual checks.')
         logger.warning('%s\tCompleted file has no CID Media record: %s', log_paths, fname)

@@ -301,7 +301,6 @@ def make_filename(ob_num, item_list, item):
     '''
     Take individual elements and calculate part whole
     '''
-    print("** Might break here")
     print(item_list)
     extension = False
     file = ob_num.replace('-', '_')
@@ -311,6 +310,7 @@ def make_filename(ob_num, item_list, item):
         return None
     if len(ext[1]) > 0:
         extension = True
+    # Might break here if CID name differs from file
     part = item_list.index(item)
     whole = len(item_list)
     part_ = int(part) + 1

@@ -180,7 +180,7 @@ def main():
     for item in files:
         if item.startswith('.'):
             continue
-        item = item.strip()
+        item = item.rstrip()
         itempath = os.path.join(fullpath, item)
         if itempath.endswith(('.ini', '.json', '.document', '.edl', '.doc', '.docx', '.txt', '.mhl', '.DS_Store', '.log', '.md5')):
             continue

@@ -242,7 +242,7 @@ def main():
             elif 'SDR' in metadata:
                 LOGGER.info("UHD SDR file found: %s", mov_file)
                 # Build dictionary from CID item record
-                item_data = make_item_record_dict(priref, mov_file, record, '')
+                item_data = make_item_record_dict(priref, mov_file, record, 'SDR')
                 if item_data is None:
                     LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
                     continue
@@ -339,8 +339,12 @@ def make_item_record_dict(priref, file, record, arg):
     item.append({'related_object.notes': f'{arg} for'})
     if 'SDR' in arg:
         item.append({'file_type.lref': '114307'})
+        item.append({'language.lref': '74129'})
+        item.append({'language.type': 'DIALORIG'})
     elif 'Audio Description' in arg:
         item.append({'file_type.lref': '114307'})
+        item.append({'language.lref': '74129'})
+        item.append({'language.type': 'AUDDES'})
     if 'acquisition.date' in str(record):
         item.append({'acquisition.date': adlib.retrieve_field_name(record[0], 'acquisition.date')[0]})
     if 'acquisition.method' in str(record):
@@ -443,13 +447,10 @@ def defaults():
                #{'record_access.rights': '1'},
                #{'record_access.reason': 'SENSITIVE_LEGAL'},
                {'grouping.lref': '401361'},
-               {'language.lref': '74129'},
-               {'language.type': 'DIALORIG'},
                {'record_type': 'ITEM'},
                {'item_type': 'DIGITAL'},
                {'copy_status': 'M'},
                {'copy_usage.lref': '131560'},
-               {'file_type.lref': '114307'},
                {'accession_date': str(datetime.datetime.now())[:10]}])
 
     return record

@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 
 '''
-Special Collections Born Digital script
-Creation of Digital internalobject records
+Special Collections Digital Derivative script
+Creation of Digital Item records only linked
+to existing Analogue Items.
 
 Script stages:
-1. Searches STORAGE folder collecting list of 'work' item folders
+1. Searches STORAGE folder collecting list of 'analogue' item folders
 2. Iterates these folders completing following steps:
-    a. Extracts work data from folder name
+    a. Extracts work/item data from folder name
     b. Gets list of image files within folder
     c. Iterates image files, skips if not accepted image extension
     d. Uses CID analogue object number to create CID Digital item record,
-       linked to work via related_object.reference
+       linked to analogue record via source_item, and to work via related_object.reference
     e. Uses CID Digital item record object number to rename the image file
     f. Moves renamed file to local autoingest path
     g. If any CID record creation fails the file is skipped and left in place
@@ -40,9 +41,9 @@ import utils
 
 # Global path variables
 SCPATH = os.environ['SPECIAL_COLLECTIONS']
-STORAGE = os.path.join(SCPATH, 'Uncatalogued_stills_born_digital/')
+STORAGE = os.path.join(SCPATH, 'Part_catalogued_stills_digital_derivative/')
 AUTOINGEST = os.path.join(SCPATH, os.environ['INGEST_SC'])
-LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_born_digital.log')
+LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_rename_partial_digital_derivatives.log')
 MEDIAINFO_PATH = os.path.join(os.environ['LOG_PATH'], 'cid_mediainfo/')
 CID_API = os.environ['CID_API4']
 
@@ -66,6 +67,7 @@ def cid_retrieve(fname, session):
         'title_date.type',
         'title',
         'title.article'
+        'related_object.reference'
     ]
 
     record = adlib.retrieve_record(CID_API, 'internalobject', search, '0', session, fields)[1]
@@ -83,6 +85,10 @@ def cid_retrieve(fname, session):
         ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
     else:
         ob_num = ""
+    if 'related_object.reference' in str(record):
+        related_obj = adlib.retrieve_field_name(record[0], 'related_object.reference')[0]
+    else:
+        related_obj = ""   
     if 'Title' in str(record):
         title = adlib.retrieve_field_name(record[0], 'title')[0]
     else:
@@ -101,7 +107,7 @@ def cid_retrieve(fname, session):
         title_date_type = []
 
     tds = sort_date_types(title_date_start, title_date_type)
-    return priref, ob_num, title, title_article, tds
+    return priref, ob_num, related_obj, title, title_article, tds
 
 
 def sort_date_types(title_date_start, title_date_type):
@@ -123,34 +129,33 @@ def sort_date_types(title_date_start, title_date_type):
 def main():
     '''
     Iterate folders in STORAGE, find image files in folders
-    named after work and create digital item records
-    for every photo. Clean up empty folders.
+    named after analogue record
     '''
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
 
-    utils.logger(LOG, 'info', "=========== Special Collections rename - Born Digital START ============")
-    work_directories = [ x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x)) ]
+    utils.logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives START ============")
+    rec_directories = [ x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x)) ]
     session = adlib.create_session()
-    for work in work_directories:
+    for rec in rec_directories:
         if not utils.check_control('pause_scripts'):
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-        wpath = os.path.join(STORAGE, work)
-        utils.logger(LOG, 'info', f"Work folder found: {work}")
-        work_data = cid_retrieve(work.strip(), session)
-        if work_data is None:
-            utils.logger(LOG, 'warning', f"Please check folder name {work} as no CID match found")
+        rpath = os.path.join(STORAGE, rec)
+        utils.logger(LOG, 'info', f"Analogue record folder found: {rec}")
+        record_data = cid_retrieve(rec.strip(), session)
+        if record_data is None:
+            utils.logger(LOG, 'warning', f"Please check folder name {rec} as no CID match found")
             continue
 
         # Build file list of wpath contents
-        images = [ x for x in os.listdir(wpath) if os.path.isfile(os.path.join(wpath, x)) ]
+        images = [ x for x in os.listdir(rpath) if os.path.isfile(os.path.join(rpath, x)) ]
         sorted_images = sorted(images)
         for image in sorted_images:
             if not image.endswith(('.tiff', '.tif', '.TIFF', '.TIF', '.jpeg', '.jpg', '.JPEG', '.JPG')):
-                utils.logger(LOG, 'warning', f"Skipping: File found in folder {work} that is not image file: {image}")
+                utils.logger(LOG, 'warning', f"Skipping: File found in folder {rec} that is not image file: {image}")
                 continue
             utils.logger(LOG, 'info', f"Processing image file: {image}")
-            ipath = os.path.join(wpath, image)
+            ipath = os.path.join(rpath, image)
 
             if bool(utils.check_filename(image)):
                 utils.logger(LOG, 'warning', f"Skipping: File passed filename checks and likely already renumbered: {image}")
@@ -159,13 +164,13 @@ def main():
                     continue
                 rec = adlib.retrieve_record(CID_API, 'internalobject', f'object_number="{ob_num}"', '1', session, ['digital.born_or_derived'])
                 check = adlib.retrieve_field_name(rec[0], 'digital.born_or_derived')[0]
-                if 'BORN_DIGITAL' in check:
+                if 'DIGITAL_DERIVATIVE_PRES' in check:
                     utils.logger(LOG, 'info', f'Moving to autoingest. File renumbered to matching Digital record: {ob_num}')
                     move(ipath, 'ingest')
                 continue
 
-            # Digital Derivative records to be made
-            record_digital, metadata = build_defaults(work_data, ipath, image, 'Digital')
+            # Digital Derivative record to be made
+            record_digital, metadata = build_defaults(record_data, ipath, image, 'Digital')
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
             utils.logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
 
@@ -203,18 +208,18 @@ def main():
                 continue
 
         # Checking all processed and delete empty folder
-        folder_empty = os.listdir(wpath)
+        folder_empty = os.listdir(rpath)
         if len(folder_empty) == 0:
-            utils.logger(LOG, 'info', f"All files in folder processed. Deleting folder: {work}")
-            os.rmdir(wpath)
+            utils.logger(LOG, 'info', f"All files in folder processed. Deleting folder: {rec}")
+            os.rmdir(rpath)
         else:
             utils.logger(LOG, 'warning', f"Not all items in folder processed, leaving folder in place for repeat attempt.")
             continue
 
-    utils.logger(LOG, 'info', "=========== Special Collections rename - Born Digital END ==============")
+    utils.logger(LOG, 'info', "=========== Special Collections rename - Digital Derivatives END ==============")
 
 
-def build_defaults(work_data, ipath, image):
+def build_defaults(data, ipath, image):
     '''
     Build up item record defaults
     '''
@@ -222,26 +227,31 @@ def build_defaults(work_data, ipath, image):
         'institution.name.lref': '999570701',
         'object_type': 'OBJECT',
         'description_level_object': 'STILLS',
-        'object_category': 'Photograph: Publicity',
+        'object_category': 'Photograph: Production',
     }]
 
-    if len(work_data[1]) > 0:
-        records.extend({'related_object.reference': work_data[1]})
+    if len(data[2]) > 0:
+        records.extend({'related_object.reference': data[2]})
     else:
         utils.logger(LOG, 'warning', "No parent object number retrieved. Script exiting.")
         return None
-    if len(work_data[2]) > 0:
-        records.extend({'title': work_data[2]})
+    if len(data[1]) > 0:
+        records.extend({'source_item': data[1]})
+    else:
+        utils.logger(LOG, 'warning', "No source_item object number retrieved. Script exiting.")
+        return None
+    if len(data[3]) > 0:
+        records.extend({'title': data[3]})
     else:
         utils.logger(LOG, 'warning', "No title data retrieved. Script exiting.")
         return None
-    if len(work_data[3]) > 0:
-        records.extend({'title.article': work_data[3]})
-    if work_data[4] is not None:
-        records.extend({'production.date.start': work_data[4]})
+    if len(data[4]) > 0:
+        records.extend({'title.article': data[4]})
+    if data[5] is not None:
+        records.extend({'production.date.start': data[5]})
 
     records.extend({'analogue_or_digital': 'DIGITAL'})
-    records.extend({'digital.born_or_derived': 'BORN_DIGITAL'})
+    records.extend({'digital.born_or_derived': 'DIGITAL_DERIVATIVE_PRES'})
     records.extend({'digital.acquired_filename': image})
     ext = image.split('.')[-1]
     if len(ext) > 0:
@@ -353,7 +363,7 @@ def create_new_image_record(record_json, session):
     priref = adlib.retrieve_field_name(record, 'priref')[0]
     obj = adlib.retrieve_field_name(record, 'object_number')[0]
     return priref, obj
-
+                
 
 def write_payload(priref, payload_header, session):
     '''

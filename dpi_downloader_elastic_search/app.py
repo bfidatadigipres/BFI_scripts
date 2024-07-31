@@ -62,7 +62,6 @@ def check_date_range(preservation_date):
     for dt in period:
         date_range.append(dt.strftime('%Y-%m-%d'))
 
-    daterange = ', '.join(date_range)
     print(f"Target range for DPI moves: {date_range}")
     print(preservation_date)
     if preservation_date in str(date_range):

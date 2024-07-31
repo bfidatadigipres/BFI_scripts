@@ -27,7 +27,6 @@ Joanna White
 # Public packages
 import os
 import sys
-import json
 import shutil
 import logging
 import datetime
@@ -35,6 +34,7 @@ import datetime
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 LOGS = os.environ.get('LOG_PATH')
@@ -54,29 +54,6 @@ STORAGE = {
     'Netflix': f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/timed_text/')}",
     'Amazon': f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/timed_text/')}"
 }
-
-
-def check_control():
-    '''
-    Check for downtime control
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
-            sys.exit("Script run prevented by downtime_control.json. Script exiting")
-
-
-def cid_check():
-    '''
-    Test if CID API online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def cid_check_ob_num(object_number):
@@ -117,8 +94,12 @@ def main():
 
     LOGGER.info("== Document augmented streaming platform timed text start ===================")
     for key, value in STORAGE.items():
-        check_control()
-        cid_check()
+        if not utils.check_control('pause_scripts'):
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if not utils.cid_check(CID_API):
+            LOGGER.critical("* Cannot establish CID session, exiting script")
+            sys.exit("* Cannot establish CID session, exiting script")
 
         platform = key
         autoingest, storage = value.split(', ')
@@ -225,9 +206,6 @@ def build_record_defaults(platform):
                {'record_access.user': 'Librarian'},
                {'record_access.rights': '2'},
                {'record_access.reason': 'SENSITIVE_LEGAL'}])
-               #{'record_access.user': '$REST'},
-               #{'record_access.rights': '1'},
-               #{'record_access.reason': 'SENSITIVE_LEGAL'}])
 
     return record
 
@@ -320,8 +298,8 @@ def make_item_record_dict(priref, file, record):
     if 'grouping' in str(record):
         item.append({'grouping': adlib.retrieve_field_name(record[0], 'grouping')[0]})
     if 'language' in str(record):
-        item.append({'language': adlib.retrieve_field_name(record[0], 'language')[0]})
-        item.append({'language.type': adlib.retrieve_field_name(record[0], 'language.type')[0]})
+        item.append({'language': 'English'})
+        item.append({'language.type': 'TIMTEXT'})
     if len(file) > 1:
         item.append({'digital.acquired_filename': file})
         item.append({'digital.acquired_filename.type': 'FILE'})

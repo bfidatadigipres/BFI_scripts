@@ -57,9 +57,10 @@ def create_current_errors_logs():
     '''
     data = {}
     with open(GLOBAL_LOG, 'r') as file:
-        rows = csv.reader(file, delimiter='\t')
-
+        rows = csv.reader(file, delimiter='\n')
         for row in rows:
+            row = row[0].split('\t')
+            print(row)
             # Temp addition to reduce current_errors.csv
             if 'MD5 checksum does not yet exist for this file.' in str(row):
                 continue
@@ -135,10 +136,11 @@ def create_current_errors_logs():
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP02'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP03'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP04'], 'current_errors/current_errors.csv'))
-    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP05'], 'current_errors/current_errors.csv'))
+    # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP05'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP06'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP07'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08_OSH'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP09'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP10'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP11'], 'current_errors/current_errors.csv'))

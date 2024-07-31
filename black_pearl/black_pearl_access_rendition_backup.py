@@ -12,6 +12,7 @@ Targeting bfi/ subfolders only at this time:
 - If don't match pushes through to BP bucket along iwth
   items not found there already (new items)
 - Deletes out of date duplicates (replace_list)
+  Sleep for 30 mins before PUT of same files
 - Pushes all replacement/new items to BP bucket
 
 Joanna White
@@ -35,8 +36,8 @@ import utils
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 STORAGE = os.environ['TRANSCODING']
-INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest/')
-MOD_MAX = 90
+INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest_bfi/')
+MOD_MAX = 60
 UPLOAD_MAX = 1099511627776
 BUCKET = 'Access_Renditions_backup'
 
@@ -106,7 +107,7 @@ def delete_existing_proxy(file_list):
         confirmed = bp_utils.delete_black_pearl_object(file, None, BUCKET)
         if confirmed:
             sleep(10)
-            success = bp_utils.check_bp_status(file, [BUCKET])
+            success = bp_utils.check_no_bp_status(file, [BUCKET])
             if success is False:
                 LOGGER.info("File %s deleted successfully", file)
                 file_list.remove(file)
@@ -134,6 +135,7 @@ def main():
         LOGGER.info("** Access path selected: %s", access_path)
         folder_list = os.listdir(access_path)
         folder_list.sort()
+        print(folder_list)
         if folder_list[0] != value:
             LOGGER.warning('SKIPPING: First retrieved folder is not %s:\n%s', value, folder_list[0])
             continue
@@ -142,9 +144,9 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-            if folder.startswith(('201', '2020', '2021', '2022', '2023', '202401', '202402')):
-                continue
-            utils.check_control('black_pearl')
+            if not utils.check_control('black_pearl'):
+                LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
@@ -157,7 +159,7 @@ def main():
                     continue
                 if check_mod_time(old_fpath) is False:
                     continue
-                if bp_utils.check_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is False:
+                if bp_utils.check_no_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is True:
                     LOGGER.info("New item to write to BP: %s/%s/%s", key, folder, file)
                     print(f"New item to write to BP: {key}/{folder}/{file}")
                     file_list.append(f"{key}/{folder}/{file}")
@@ -179,6 +181,8 @@ def main():
                         print(f"Removing from list MD5 match: {item}")
                         LOGGER.info("Skipping item %s as MD5 files match:\n%s - Local MD5\n%s - Remote MD5", item, local_md5, bp_md5)
                         remove_list.append(item)
+                    elif bp_md5 is None:
+                        LOGGER.info("MD5 for item was not found in Black Pearl. File in incorrect list 'replace_list'")
                     else:
                         LOGGER.info("MD5s do not match, queue for deletion:\n%s - Local MD4\n%s - Remote MD5", local_md5, bp_md5)
                         print(f"MD5 do not match - queued for deletion: {item}")
@@ -197,12 +201,15 @@ def main():
                     LOGGER.warning("Duplicate files remaining in Black Pearl - removing from replace_list to avoid duplicate writes: %s", success_list)
                     for fail_item in success_list:
                         replace_list.remove(fail_item)
+                sleep(1800)
 
             # While files remaining in list, move to ingest folder, PUT, and remove again
             for rep_item in replace_list:
                 file_list.append(rep_item)
             while file_list:
-                utils.check_control('black_pearl')
+                if not utils.check_control('black_pearl'):
+                    LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                    sys.exit('Script run prevented by downtime_control.json. Script exiting.')
                 empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
                 if len(empty_check) != 0:
                     LOGGER.warning("Exiting: Files found that weren't moved from ingest point previous run: %s", INGEST_POINT)

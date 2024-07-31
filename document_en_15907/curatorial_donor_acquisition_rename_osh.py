@@ -78,7 +78,8 @@ def cid_retrieve(itemname, search):
         acquired1 = []
         all_filenames = len(query_result[0]['Acquired_filename'])
         for num in range(0, all_filenames):
-            acquired1.append(adlib.retrieve_field_name(query_result[0]['Acquired_filename'][num], 'digital.acquired_filename')[0])
+            acq = adlib.retrieve_field_name(query_result[0]['Acquired_filename'][num], 'digital.acquired_filename')[0]
+            acquired1.append(acq.lstrip().rstrip())
     except (KeyError, IndexError) as err:
         acquired1 = []
         LOGGER.warning("cid_retrieve(): Unable to access acquired filename1 %s", err)
@@ -111,11 +112,12 @@ def sort_ext(ext):
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}
+    print(ext)
 
-    ext = ext.lower()
     for key, val in mime_type.items():
-        if str(ext) in str(val):
-            return key
+        for ftype in val:
+            if ext.lower() == ftype:
+                return key
 
 
 def main():
@@ -178,6 +180,7 @@ def main():
 
     # Begin processing files
     for item in files:
+        print(f"---{item}---")
         if item.startswith('.'):
             continue
         item = item.rstrip()
@@ -191,7 +194,7 @@ def main():
         LOGGER.info("Looking in CID item records for filename match...")
 
         # Check if item is video file, then check for truncation
-        ext = os.path.splitext(itempath)[1]
+        ext = os.path.splitext(itempath)[-1]
         ftype = sort_ext(ext)
         LOGGER.info("File type for %s is %s", item, ftype)
         if ftype == 'video':
@@ -220,7 +223,7 @@ def main():
             if not filename:
                 LOGGER.warning("Problem creating new number for %s", item)
                 local_logger(f"ERROR CREATING NEW FILENAME: {itempath}", fullpath)
-                local_logger("Please check file has no permissions limitations, script will retry later", fullpath)
+                local_logger(f"Skipping: Please check file has no permissions limitations and the name matches the CID Acquired_filename field: {fullpath}")
                 continue
             LOGGER.info("Older filename %s to be replaced with new filename %s", item, filename)
             local_logger(f"Old filename: {item}\nNew filename: {filename}", fullpath)
@@ -302,7 +305,10 @@ def make_filename(ob_num, item_list, item):
     print(item_list)
     extension = False
     file = ob_num.replace('-', '_')
-    ext = os.path.splitext(item)
+    try:
+        ext = os.path.splitext(item)
+    except (ValueError, IndexError, KeyError):
+        return None
     if len(ext[1]) > 0:
         extension = True
     part = item_list.index(item)

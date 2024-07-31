@@ -706,7 +706,8 @@ def main():
                 current_festival = value[1]
                 festival_grouping = value[2]
         LOGGER.info("== Current festival: %s. Festival grouping: %s", current_festival, festival_grouping)
-
+        if festival_grouping != '399153':
+            continue
         # Open json and load all contents to dcts, then iterate through with dct (per work_id)
         filepath = os.path.join(STORAGE_PATH, filename)
         with open(filepath, 'r') as inf:
@@ -743,8 +744,7 @@ def main():
                 advanced_confirm = str(check_work_season[0])
                 qanda_confirm = str(check_work_season[1])
                 qanda_date = str(check_work_season[2])
-                # cid_import_date = str(check_work_season[3])
-                cid_import_date = ''
+                cid_import_date = str(check_work_season[3])
                 nfa_category = str(check_work_season[4])
                 start_date = str(check_work_season[5])
                 work_season_id = str(check_work_season[6])

@@ -268,11 +268,10 @@ def main():
                                 except Exception as exc:
                                     print(exc)
                                     logger.warning("Failed ingest file %s couldn't be moved out of path: %s", value, fpath)
-                                    pass
                 else:
                     logger.info("No files failed transfer to BP data tape")
 
-            success = process_files(autoingest, folder, '', bucket, bucket_list, sess)
+            success = process_files(autoingest, folder, bucket, bucket_list, sess)
             if not success:
                 continue
 
@@ -324,12 +323,10 @@ def main():
     logger.info("======== END Black Pearl validate/CID media record END ========")
 
 
-def process_files(autoingest, job_id, arg, bucket, bucket_list, session):
+def process_files(autoingest, job_id, bucket, bucket_list, session):
     '''
-    Receive ingest fpath and argument 'check' or empty argument.
-    If empty arg then JSON has confirmed files ingested to tape
-    If 'check' then BP query needs sending to confirm
-    successful ingest to BP
+    Receive ingest fpath then JSON has confirmed files ingested to tape
+    and this function handles CID media record check/creation and move
     '''
     for key, val in LOG_PATHS.items():
         if key in autoingest:
@@ -339,14 +336,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list, session):
     file_list = [x for x in os.listdir(folderpath) if os.path.isfile(os.path.join(folderpath, x))]
     logger.info("%s files found in folderpath %s", len(file_list), folderpath)
     logger.info("Preservation bucket: %s Buckets in use for validation checks: %s", bucket, ', '.join(bucket_list))
-
-    if arg == 'check':
-        # Get status
-        status, cached = bp.get_job_status(job_id)
-        if status != 'COMPLETED':
-            logger.info("%s - Job ID has not completed: %s", job_id, status)
-        cached_size = int(cached)
-        logger.info("Checking that cached sizes matches files remaining in folder... %s", cached_size)
 
     check_list = []
     adjusted_list = file_list
@@ -428,8 +417,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list, session):
             move_path = os.path.join(root_path, 'completed', file)
         else:
             move_path = os.path.join(root_path, 'transcode', file)
-        if arg == 'check':
-            cached_size -= int(byte_size)
 
         # New section here to check for Media Record first and clean up file if found
         logger.info("Checking if Media record already exists for file: %s", file)
@@ -446,7 +433,7 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list, session):
                     logger.info("Deleted file: %s", fpath)
                     check_list.append(file)
                 except Exception as err:
-                    logger.warning("Unable to delete asset: %s", fpath)
+                    logger.warning("Unable to delete asset: %s %s", fpath, err)
                     logger.warning("Manual inspection of asset required")
             elif reingest_confirm and md5_match:
                 logger.info("File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion.")
@@ -493,8 +480,6 @@ def process_files(autoingest, job_id, arg, bucket, bucket_list, session):
             logger.warning("File %s has no associated CID media record created.", file)
             logger.warning("File will be left in folder for manual intervention.")
 
-    if arg == 'check':
-        logger.info("Cache size should be 0: %s", cached_size)
     check_list.sort()
     adjusted_list.sort()
     if check_list == adjusted_list:

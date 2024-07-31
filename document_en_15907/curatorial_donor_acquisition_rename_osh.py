@@ -249,7 +249,6 @@ def main():
             LOGGER.info("File information not found in CID. Leaving file in place and updating logs.")
             local_logger(f"\nNO CID MATCH FOUND: File found {item} but no CID data retrieved", fullpath)
             local_logger(f"Please check CID item has digital.acquired_filename field populated with {item}\n", fullpath)
-        local_logger("---------------- File process complete ----------------", fullpath)
 
     # Check new workflow folder has content (renaming failures mean empty)
     new_workflow_folder = os.path.basename(spath)
@@ -261,7 +260,7 @@ def main():
         sys.exit()
 
     # Rsync completed folder over
-    local_logger(f"\nStarting RSYNC copy of {new_workflow_folder} to Digiops QC Curatorial path", fullpath)
+    local_logger(f"Starting RSYNC copy of {new_workflow_folder} to Digiops QC Curatorial path", fullpath)
     print("Rsync start here")
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
     # Repeat for checksum pass if first pass fails
@@ -269,7 +268,7 @@ def main():
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
     print("Rsync finished")
     local_logger("RSYNC complete.", fullpath)
-
+    local_logger("---------------- File process complete ----------------\n", fullpath)
     LOGGER.info("============= END Curatorial Donor Acquisition rename OSH script END ============")
 
 

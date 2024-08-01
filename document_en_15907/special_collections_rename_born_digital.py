@@ -202,13 +202,6 @@ def main():
                 continue
 
             if len(digi_obj) > 0:
-                # Append metadata to header tags
-                if len(metadata) > 0:
-                    header = f"<Header_tags><header_tags.parser>Exiftool</header_tags.parser><header_tags><![CDATA[{metadata}]]></header_tags></Header_tags>"
-                    success = write_payload(digi_priref, header, session)
-                    if not success:
-                        LOGGER.warning("Payload data was not written to CID record: {priref}\n{metadata}")
-                sys.exit()
                 LOGGER.info("** Renumbering file %s with object number %s", image, digi_obj)
                 new_filepath, new_file = rename(ipath, digi_obj)
                 if os.path.exists(new_filepath):
@@ -301,6 +294,8 @@ def get_exifdata(dpath):
     metadata = ([])
     creator_data = rights_data = ''
     data = utils.exif_data(dpath)
+    print(data)
+    sys.exit()
     if not data:
         return None, None
     data_list = data.split('\n')

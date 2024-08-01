@@ -44,7 +44,7 @@ CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_filmfund_timed_text')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_platform_timed_text.log'))
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_filmfund_timed_text.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)

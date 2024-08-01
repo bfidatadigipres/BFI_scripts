@@ -298,7 +298,8 @@ def get_exifdata(dpath):
     Example dict below, waiting for confirmation
     '''
     metadata = ([])
-    creator_data = rights_data = ''
+    creator_data = []
+    rights_data = []
     data = utils.exif_data(dpath)
     print(data)
     if not data:
@@ -346,11 +347,18 @@ def get_exifdata(dpath):
             rights_data = d.split(': ', 1)[-1]
 
     if len(creator_data) > 0 and len(rights_data) > 0:
-        metadata.append({'production.notes': f"Photographer: {creator_data}, Rights: {rights_data}"})
+        creator_data.sort(key=len, reverse=True)
+        rights_data.sort(key=len, reverse=True)
+        metadata.append({'production.notes': f"Photographer: {creator_data[0]}, Rights: {rights_data[0]}"})
     elif len(creator_data) > 0:
-         metadata.append({'production.notes': f"Photographer: {creator_data}"})
+         creator_data.sort(key=len, reverse=True)
+         metadata.append({'production.notes': f"Photographer: {creator_data[0]}"})
     elif len(rights_data) > 0:
-         metadata.append({'production.notes': f"Rights: {rights_data}"})
+         rights_data.sort(key=len, reverse=True)
+         metadata.append({'production.notes': f"Rights: {rights_data[0]}"})
+    density = utils.get_metadata('Image', 'Density/String', dpath)
+    if density:
+        metadata.append({'dimension.free': density})
 
     if len(metadata) > 0:
         return metadata, data

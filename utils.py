@@ -83,6 +83,7 @@ def accepted_file_type(ext):
              'itt': 'itt',
              'stl': 'stl',
              'cap': 'cap',
+             'dxfp': 'dxfp',
              'dfxp': 'dfxp'}
     ext = ext.lower()
     for key, val in ftype.items():

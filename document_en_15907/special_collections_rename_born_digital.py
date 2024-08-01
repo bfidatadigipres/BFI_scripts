@@ -300,41 +300,41 @@ def get_exifdata(dpath):
         return None, None
     data_list = data.split('\n')
     for d in data_list:
-        if d.startswith('File Size '):
+        if d.startswith('File Size   '):
             val = d.split(': ', 1)[-1]
             metadata.append({'filesize': val.split(' ')[0]})
             metadata.append({'filesize.unit': val.split(' ')[-1]})
-        elif d.startswith('Image Height '):
+        elif d.startswith('Image Height   '):
             metadata.append({'dimension.type': 'Height'})
             metadata.append({'dimension.value': d.split(': ', 1)[-1]})
             metadata.append({'dimension.unit': 'Pixels'})
-        elif d.startswith('Image Width '):
+        elif d.startswith('Image Width   '):
             metadata.append({'dimension.type': 'Width'})
             metadata.append({'dimension.value': d.split(': ', 1)[-1]})
             metadata.append({'dimension.unit': 'Pixels'})
-        elif d.startswith('Compression '):
+        elif d.startswith('Compression   '):
             metadata.append({'code_type': d.split(': ', 1)[-1]})
-        elif d.startswith('Color Space Data '):
+        elif d.startswith('Color Space Data   '):
             metadata.append({'colour_space': d.split(': ', 1)[-1]})
 #        elif d.startswith('Camera Model Name '):
 #            metadata.append({'source_device': d.split(': ', 1)[-1]})
-        elif d.startswith('Create Date '):
+        elif d.startswith('Create Date  '):
             try:
                 val = d.split(': ', 1)[-1].split(' ', 1)[0].replace(':', '-')
                 metadata.append({'production.date.start': val})
             except (KeyError, IndexError):
                 pass
-        if d.startswith('Creator '):
+        if d.startswith('Creator   '):
             creator_data.append(d.split(': ', 1)[-1])
-        elif d.startswith('Artist '):
+        elif d.startswith('Artist   '):
             creator_data.append(d.split(': ', 1)[-1])
-        elif d.startswith('By-line '):
+        elif d.startswith('By-line   '):
             creator_data.append(d.split(': ', 1)[-1])
-        if d.startswith('Rights '):
+        if d.startswith('Rights   '):
             rights_data.append(d.split(': ', 1)[-1])
-        elif d.startswith('Copyright Notice '):
+        elif d.startswith('Copyright Notice   '):
             rights_data.append(d.split(': ', 1)[-1])
-        elif d.startswith('Copyright '):
+        elif d.startswith('Copyright   '):
             rights_data.append(d.split(': ', 1)[-1])
 
     if len(creator_data) > 0 and len(rights_data) > 0:

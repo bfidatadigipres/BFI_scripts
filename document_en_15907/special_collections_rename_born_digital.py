@@ -194,7 +194,7 @@ def main():
             record_digital, metadata = build_defaults(work_data, ipath, image)
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
             LOGGER.info("* New Item record created for image %s Digital Derivative %s", image, digi_priref)
-
+            sys.exit()
             if len(digi_priref) == 0:
                 LOGGER.warning("Missing Digital Derivative priref following record creation for %s", image)
                 LOGGER.warning("Moving file to failure folder. Manual clean up of records required.")
@@ -292,10 +292,9 @@ def get_exifdata(dpath):
     Example dict below, waiting for confirmation
     '''
     metadata = ([])
-    creator_data = rights_data = ''
+    creator_data = rights_data = []
     data = utils.exif_data(dpath)
-    print(data)
-    sys.exit()
+
     if not data:
         return None, None
     data_list = data.split('\n')
@@ -328,17 +327,17 @@ def get_exifdata(dpath):
             except (KeyError, IndexError):
                 pass
         if d.startswith('Creator '):
-            creator_data = d.split(': ', 1)[-1]
+            creator_data.append(d.split(': ', 1)[-1])
         elif d.startswith('Artist '):
-            creator_data = d.split(': ', 1)[-1]
+            creator_data.append(d.split(': ', 1)[-1])
         elif d.startswith('By-line '):
-            creator_data = d.split(': ', 1)[-1]
+            creator_data.append(d.split(': ', 1)[-1])
         if d.startswith('Rights '):
-            rights_data = d.split(': ', 1)[-1]
+            rights_data.append(d.split(': ', 1)[-1])
         elif d.startswith('Copyright Notice '):
-            rights_data = d.split(': ', 1)[-1]
+            rights_data.append(d.split(': ', 1)[-1])
         elif d.startswith('Copyright '):
-            rights_data = d.split(': ', 1)[-1]
+            rights_data.append(d.split(': ', 1)[-1])
 
     if len(creator_data) > 0 and len(rights_data) > 0:
         metadata.append({'production.notes': f"Photographer: {creator_data}, Rights: {rights_data}"})

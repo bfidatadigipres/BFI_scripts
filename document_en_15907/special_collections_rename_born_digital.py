@@ -41,7 +41,7 @@ import utils
 # Global path variables
 SCPATH = os.environ['SPECIAL_COLLECTIONS']
 STORAGE = os.path.join(SCPATH, 'Uncatalogued_stills_born_digital/')
-AUTOINGEST = os.path.join(SCPATH, os.environ['INGEST_SC'])
+AUTOINGEST = os.path.join(os.environ['AUTOINGEST_IS_SPEC'], 'ingest/proxy/image/')
 LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_rename_born_digital.log')
 MEDIAINFO_PATH = os.path.join(os.environ['LOG_PATH'], 'cid_mediainfo/')
 CID_API = os.environ['CID_API4']

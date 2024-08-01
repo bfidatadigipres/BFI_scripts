@@ -292,7 +292,8 @@ def get_exifdata(dpath):
     Example dict below, waiting for confirmation
     '''
     metadata = ([])
-    creator_data = rights_data = []
+    creator_data = []
+    rights_data = []
     data = utils.exif_data(dpath)
 
     if not data:

@@ -76,7 +76,13 @@ def cid_retrieve(fname, session):
     Receive filename and search in CID items
     Return object number to main
     '''
+
     search = f'object_number="{fname}"'
+    record = adlib.retrieve_record(CID_API, 'collect', search, '0', session)[1]
+    if 'priref' in str(record):
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+
+    search = f'priref="{priref}"'
     fields = [
         'priref',
         'object_number',
@@ -86,7 +92,7 @@ def cid_retrieve(fname, session):
         'title.article'
     ]
 
-    record = adlib.retrieve_record(CID_API, 'internalobject', search, '0', session, fields)[1]
+    record = adlib.retrieve_record(CID_API, 'collect', search, '0', session, fields)[1]
     LOGGER.info("cid_retrieve(): Making CID query request with:\n%s", search)
     if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {fname}")

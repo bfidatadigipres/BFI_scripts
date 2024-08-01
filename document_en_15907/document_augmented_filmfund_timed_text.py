@@ -39,7 +39,7 @@ import utils
 # Global variables
 LOGS = os.environ.get('LOG_PATH')
 STORAGE = os.path.join(os.environ.get('QNAP_11'), 'timed_text')
-AUTOINGEST = os.path.join(os.environ.get('AUTOINEGST_QNAP11'), 'ingest/autodetect/')
+AUTOINGEST = os.path.join(os.environ.get('AUTOINGEST_QNAP11'), 'ingest/autodetect/')
 CID_API = os.environ.get('CID_API4')
 
 # Setup logging

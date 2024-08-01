@@ -340,6 +340,9 @@ def get_exifdata(dpath):
     if len(creator_data) > 0 and len(rights_data) > 0:
         creator_data.sort(key=len, reverse=True)
         rights_data.sort(key=len, reverse=True)
+        print(creator_data)
+        print(rights_data)
+        sys.exit()
         metadata.append({'production.notes': f"Photographer: {creator_data[0]}, Rights: {rights_data[0]}"})
     elif len(creator_data) > 0:
          creator_data.sort(key=len, reverse=True)

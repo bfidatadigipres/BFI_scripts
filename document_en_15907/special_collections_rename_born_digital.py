@@ -148,6 +148,7 @@ def main():
         sys.exit("* Cannot establish CID session, exiting script")
 
     LOGGER.info("=========== Special Collections rename - Born Digital START ============")
+    print(STORAGE)
     work_directories = [ x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x)) ]
     session = adlib.create_session()
     for work in work_directories:

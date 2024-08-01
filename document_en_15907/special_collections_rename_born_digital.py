@@ -194,7 +194,7 @@ def main():
                 continue
 
             # Digital Derivative records to be made
-            record_digital, metadata = build_defaults(work_data, ipath, image, 'Digital')
+            record_digital, metadata = build_defaults(work_data, ipath, image)
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
             LOGGER.info("* New Item record created for image %s Digital Derivative %s", image, digi_priref)
 

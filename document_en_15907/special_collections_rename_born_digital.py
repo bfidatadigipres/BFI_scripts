@@ -347,6 +347,9 @@ def get_exifdata(dpath):
     elif len(rights_data) > 0:
          rights_data.sort(key=len, reverse=True)
          metadata.append({'production.notes': f"Rights: {rights_data[0]}"})
+    density = utils.get_metadata('Image', 'Density/String', dpath)
+    if density:
+        metadata.append({'dimension.free': density})
 
     if len(metadata) > 0:
         return metadata, data

@@ -78,22 +78,23 @@ def cid_retrieve(fname, session):
     '''
 
     search = f'object_number="{fname}"'
-    record = adlib.retrieve_record(CID_API, 'collect', search, '0', session)[1]
-    if 'priref' in str(record):
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    rec = adlib.retrieve_record(CID_API, 'collect', search, '0', session)[1]
+    if 'priref' in str(rec):
+        priref = adlib.retrieve_field_name(rec[0], 'priref')[0]
 
-    search = f'priref="{priref}"'
-    fields = [
-        'priref',
-        'object_number',
-        'title_date_start',
-        'title_date.type',
-        'title',
-        'title.article'
-    ]
+        search = f'priref="{priref}"'
+        fields = [
+            'priref',
+            'object_number',
+            'title_date_start',
+            'title_date.type',
+            'title',
+            'title.article'
+        ]
 
-    record = adlib.retrieve_record(CID_API, 'collect', search, '0', session, fields)[1]
-    LOGGER.info("cid_retrieve(): Making CID query request with:\n%s", search)
+        record = adlib.retrieve_record(CID_API, 'collect', search, '0', session, fields)[1]
+        LOGGER.info("cid_retrieve(): Making CID query request with:\n%s", search)
+
     if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {fname}")
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", fname)
@@ -103,10 +104,6 @@ def cid_retrieve(fname, session):
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     else:
         priref = ""
-    if 'object_number' in str(record):
-        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
-    else:
-        ob_num = ""
     if 'Title' in str(record):
         title = adlib.retrieve_field_name(record[0], 'title')[0]
     else:
@@ -125,7 +122,7 @@ def cid_retrieve(fname, session):
         title_date_type = []
 
     tds = sort_date_types(title_date_start, title_date_type)
-    return priref, ob_num, title, title_article, tds
+    return priref, fname, title, title_article, tds
 
 
 def sort_date_types(title_date_start, title_date_type):

@@ -249,7 +249,7 @@ def build_defaults(work_data, ipath, image):
         {'institution.name.lref': '999570701'},
         {'object_type': 'OBJECT'},
         {'description_level_object': 'STILLS'},
-        {'object_category': '132812'}
+        {'object_category.lref': '132812'}
     ])
     print(work_data)
     if work_data[1]:

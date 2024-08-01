@@ -317,9 +317,6 @@ def get_exifdata(dpath):
             metadata.append({'colour_space': d.split(': ', 1)[-1]})
 #        elif d.startswith('Camera Model Name '):
 #            metadata.append({'source_device': d.split(': ', 1)[-1]})
-        elif d.startswith('Description '):
-            metadata.append({'description': d.split(': ', 1)[-1]})
-            metadata.append({'description.name': 'Digital file metadata'})
         elif d.startswith('Create Date '):
             try:
                 val = d.split(': ', 1)[-1].split(' ', 1)[0].replace(':', '-')
@@ -340,11 +337,15 @@ def get_exifdata(dpath):
             rights_data.append(d.split(': ', 1)[-1])
 
     if len(creator_data) > 0 and len(rights_data) > 0:
-        metadata.append({'production.notes': f"Photographer: {creator_data}, Rights: {rights_data}"})
+        creator_data.sort(key=len, reverse=True)
+        rights_data.sort(key=len, reverse=True)
+        metadata.append({'production.notes': f"Photographer: {creator_data[0]}, Rights: {rights_data[0]}"})
     elif len(creator_data) > 0:
-         metadata.append({'production.notes': f"Photographer: {creator_data}"})
+         creator_data.sort(key=len, reverse=True)
+         metadata.append({'production.notes': f"Photographer: {creator_data[0]}"})
     elif len(rights_data) > 0:
-         metadata.append({'production.notes': f"Rights: {rights_data}"})
+         rights_data.sort(key=len, reverse=True)
+         metadata.append({'production.notes': f"Rights: {rights_data[0]}"})
 
     if len(metadata) > 0:
         return metadata, data

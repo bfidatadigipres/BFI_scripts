@@ -300,6 +300,7 @@ def get_exifdata(dpath):
     metadata = ([])
     creator_data = []
     rights_data = []
+    camera_model = []
     data = utils.exif_data(dpath)
     print(data)
     if not data:
@@ -322,8 +323,6 @@ def get_exifdata(dpath):
             metadata.append({'code_type': d.split(': ', 1)[-1]})
         elif d.startswith('Color Space Data '):
             metadata.append({'colour_space': d.split(': ', 1)[-1]})
-#        elif d.startswith('Camera Model Name '):
-#            metadata.append({'source_device': d.split(': ', 1)[-1]})
         elif d.startswith('Description '):
             metadata.append({'description': d.split(': ', 1)[-1]})
             metadata.append({'description.name': 'Digital file metadata'})
@@ -345,7 +344,13 @@ def get_exifdata(dpath):
             rights_data = d.split(': ', 1)[-1]
         elif d.startswith('Copyright '):
             rights_data = d.split(': ', 1)[-1]
-
+        if d.startswith('Camera Model Name    '):
+            camera_model.append(d.split(': ', 1)[-1])
+        elif d.startswith('Camera Profile   '):
+            camera_model.append(d.split(': ', 1)[-1])
+    if len(camera_model) > 0:
+        camera_model.sort(key=len, reverse=True)
+        metadata.append({'source_device': camera_model[0]})
     if len(creator_data) > 0 and len(rights_data) > 0:
         creator_data.sort(key=len, reverse=True)
         rights_data.sort(key=len, reverse=True)

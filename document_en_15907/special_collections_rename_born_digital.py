@@ -18,8 +18,7 @@ Script stages:
 3. Checks if the 'works' folder is empty, and if so deletes empty folder
 4. Continues iteration until all 'works' have been processed.
 
-Notes:  
-Waiting for metadata updates from SC teams for digital files.
+Notes:
 Uses requests.Sessions() for creation of works
 within on session. Trial of sessions().
 
@@ -294,6 +293,7 @@ def get_exifdata(dpath):
     metadata = ([])
     creator_data = []
     rights_data = []
+    camera_model = []
     data = utils.exif_data(dpath)
 
     if not data:
@@ -316,8 +316,6 @@ def get_exifdata(dpath):
             metadata.append({'code_type': d.split(': ', 1)[-1]})
         elif d.startswith('Color Space Data   '):
             metadata.append({'colour_space': d.split(': ', 1)[-1]})
-#        elif d.startswith('Camera Model Name '):
-#            metadata.append({'source_device': d.split(': ', 1)[-1]})
         elif d.startswith('Create Date  '):
             try:
                 val = d.split(': ', 1)[-1].split(' ', 1)[0].replace(':', '-')
@@ -336,6 +334,14 @@ def get_exifdata(dpath):
             rights_data.append(d.split(': ', 1)[-1])
         elif d.startswith('Copyright   '):
             rights_data.append(d.split(': ', 1)[-1])
+
+        if d.startswith('Camera Model Name    '):
+            camera_model.append(d.split(': ', 1)[-1])
+        elif d.startswith('Camera Profile   '):
+            camera_model.append(d.split(': ', 1)[-1])
+    camera_model.sort(key=len, reverse=True)
+    if camera_model[0]:
+        metadata.append({'source_device': camera_model[0]})
 
     if len(creator_data) > 0 and len(rights_data) > 0:
         creator_data.sort(key=len, reverse=True)
@@ -366,7 +372,7 @@ def write_exif_to_file(image, metadata):
     with open(meta_dump, 'a+') as file:
         file.write(metadata)
         file.close()
-    
+
     if os.path.isfile(meta_dump):
         return meta_dump
     return None
@@ -384,7 +390,7 @@ def create_new_image_record(record_json, session):
     if not record:
         LOGGER.warning("Adlib POST failed to create CID item record for data:\n%s", record_xml)
         return None
-    
+
     priref = adlib.retrieve_field_name(record, 'priref')[0]
     obj = adlib.retrieve_field_name(record, 'object_number')[0]
     return priref, obj

@@ -224,6 +224,7 @@ def main():
         else:
             LOGGER.warning("Not all items in folder processed, leaving folder in place for repeat attempt.")
             continue
+        sys.exit("One folder at a time only.")
 
     LOGGER.info("=========== Special Collections rename - Born Digital END ==============")
 

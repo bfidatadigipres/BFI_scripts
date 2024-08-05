@@ -358,8 +358,12 @@ def write_exif_to_file(image, metadata):
     '''
 
     meta_dump = os.path.join(MEDIAINFO_PATH, f"{image}_EXIF.txt")
-
-    with open(meta_dump, 'a+') as file:
+    print("****************************")
+    print(meta_dump)
+    print("****************************")
+    with open(meta_dump, 'x') as file:
+        file.close()
+    with open(meta_dump, 'a') as file:
         file.write(metadata)
         file.close()
 

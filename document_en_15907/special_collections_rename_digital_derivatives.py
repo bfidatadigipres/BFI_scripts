@@ -215,7 +215,7 @@ def main():
                         LOGGER.warning("FILE %s DID NOT MOVE SUCCESSFULLY TO AUTOINGEST", new_file)
                 else:
                     LOGGER.warning("Problem creating new number for %s", image)
-                success = write_exif_to_file(image, metadata)
+                success = write_exif_to_file(new_file, metadata)
                 if not success:
                     LOGGER.warning("Unable to create EXIF metadata file for image: %s\n%s", image, metadata)
             else:

@@ -154,8 +154,6 @@ def main():
     work_directories = [ x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x)) ]
     session = adlib.create_session()
     for work in work_directories:
-        if work != 'N-475310':
-            continue
         if not utils.check_control('pause_scripts'):
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         wpath = os.path.join(STORAGE, work)
@@ -169,8 +167,6 @@ def main():
         images = [ x for x in os.listdir(wpath) if os.path.isfile(os.path.join(wpath, x)) ]
         sorted_images = sorted(images)
         for image in sorted_images:
-            if 'EM_Seq030_03' not in image:
-                continue
             if not image.endswith(('.tiff', '.tif', '.TIFF', '.TIF', '.jpeg', '.jpg', '.JPEG', '.JPG')):
                 LOGGER.warning("Skipping: File found in folder %s that is not image file: %s", work, image)
                 continue
@@ -189,13 +185,13 @@ def main():
                     move(ipath, 'ingest')
                 continue
 
-            # Digital Derivative records to be made
+            # Born Digital records to be made
             record_digital, metadata = build_defaults(work_data, ipath, image)
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
-            LOGGER.info("* New Item record created for image %s Digital Derivative %s", image, digi_priref)
-            sys.exit()
+            LOGGER.info("* New Item record created for image %s Born Digital %s", image, digi_priref)
+
             if len(digi_priref) == 0:
-                LOGGER.warning("Missing Digital Derivative priref following record creation for %s", image)
+                LOGGER.warning("Missing Born Digital priref following record creation for %s", image)
                 LOGGER.warning("Moving file to failure folder. Manual clean up of records required.")
                 move(ipath, 'fail')
                 continue
@@ -217,7 +213,7 @@ def main():
                 if not success:
                     LOGGER.warning("Unable to create EXIF metadata file for image: %s\n%s", image, metadata)
             else:
-                LOGGER.warning("Object number was not returned following creation of CID Item record for digital derivative.")
+                LOGGER.warning("Object number was not returned following creation of CID Item record for born digital.")
                 continue
 
         # Checking all processed and delete empty folder

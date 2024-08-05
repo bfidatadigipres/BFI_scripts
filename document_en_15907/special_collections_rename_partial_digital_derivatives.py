@@ -19,8 +19,7 @@ Script stages:
 3. Checks if the 'works' folder is empty, and if so deletes empty folder
 4. Continues iteration until all 'works' have been processed.
 
-Notes:  
-Waiting for metadata updates from SC teams for digital files.
+Notes:
 Uses requests.Sessions() for creation of works
 within on session. Trial of sessions().
 

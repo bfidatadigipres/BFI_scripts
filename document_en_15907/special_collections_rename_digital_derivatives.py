@@ -332,18 +332,18 @@ def get_exifdata(dpath):
                 metadata.append({'production.date.start': val})
             except (KeyError, IndexError):
                 pass
-        if d.startswith('Creator '):
-            creator_data = d.split(': ', 1)[-1]
-        elif d.startswith('Artist '):
-            creator_data = d.split(': ', 1)[-1]
-        elif d.startswith('By-line '):
-            creator_data = d.split(': ', 1)[-1]
-        if d.startswith('Rights '):
-            rights_data = d.split(': ', 1)[-1]
-        elif d.startswith('Copyright Notice '):
-            rights_data = d.split(': ', 1)[-1]
-        elif d.startswith('Copyright '):
-            rights_data = d.split(': ', 1)[-1]
+        if d.startswith('Creator   '):
+            creator_data.append(d.split(': ', 1)[-1])
+        elif d.startswith('Artist   '):
+            creator_data.append(d.split(': ', 1)[-1])
+        elif d.startswith('By-line   '):
+            creator_data.append(d.split(': ', 1)[-1])
+        if d.startswith('Rights   '):
+            rights_data.append(d.split(': ', 1)[-1])
+        elif d.startswith('Copyright Notice   '):
+            rights_data.append(d.split(': ', 1)[-1])
+        elif d.startswith('Copyright   '):
+            rights_data.append(d.split(': ', 1)[-1])
         if d.startswith('Camera Model Name    '):
             camera_model.append(d.split(': ', 1)[-1])
         elif d.startswith('Camera Profile   '):

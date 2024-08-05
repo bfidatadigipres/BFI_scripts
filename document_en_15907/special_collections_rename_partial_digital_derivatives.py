@@ -319,8 +319,14 @@ def get_exifdata(dpath):
             metadata.append({'dimension.type': 'Width'})
             metadata.append({'dimension.value': d.split(': ', 1)[-1]})
             metadata.append({'dimension.unit': 'Pixels'})
-        elif d.startswith('Compression  '):
-            metadata.append({'code_type': d.split(': ', 1)[-1]})
+        elif d.startswith('Compression   '):
+            code = d.split(': ', 1)[-1]
+            if 'jpeg' in code.lower():
+                metadata.append({'code_type.lref': '401578'})
+            elif 'tiff' in code.lower():
+                metadata.append({'code_type.lref': '131655'})
+            elif 'uncompressed' in code.lower():
+                metadata.append({'code_type.lref': '392426'})
         elif d.startswith('Color Space Data  '):
             metadata.append({'colour_space': d.split(': ', 1)[-1]})
         elif d.startswith('Description  '):

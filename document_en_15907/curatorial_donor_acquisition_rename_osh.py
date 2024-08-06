@@ -128,8 +128,12 @@ def main():
     Rename and move to successful_rename/ folder
     '''
     LOGGER.info("=========== START Curatorial Donor Acquisition rename OSH script START ==========")
-    utils.check_control('pause_scripts')
-    utils.cid_check(CID_API)
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
     if len(sys.argv) < 2:
         LOGGER.warning("SCRIPT EXITING: Error with shell script input:\n%s\n", sys.argv)
         sys.exit()

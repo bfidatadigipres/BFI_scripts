@@ -10,7 +10,6 @@ Joanna White
 '''
 import os
 import sys
-import json
 import time
 import shutil
 import logging
@@ -20,6 +19,7 @@ import subprocess
 # Private modules
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 DOWNTIME_CONTROL = os.environ['CONTROL_JSON']
 TS_DAY = time.strftime("%Y-%m-%d")
@@ -63,29 +63,6 @@ FRAMEWORK_PRIREF = {
     'CJP': 999875894,
     'IMES': 999875895
 }
-
-
-def check_control():
-    '''
-    Check for downtime control
-    '''
-    with open(DOWNTIME_CONTROL) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            logger.info("Script run prevented by downtime_control.json. Script exiting")
-            sys.exit("Script run prevented by downtime_control.json. Script exiting")
-
-
-def cid_check():
-    '''
-    Test if CID API online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        logger.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def default_record():
@@ -179,8 +156,12 @@ def main(filepath, frame_work, destination=None):
     '''
     Create a new item record and rename source file
     '''
-    check_control()
-    cid_check()
+    if not utils.check_control('pause_scripts'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     # Parse filename string
     in_file = os.path.basename(filepath)

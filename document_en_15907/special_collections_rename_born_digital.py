@@ -18,8 +18,7 @@ Script stages:
 3. Checks if the 'works' folder is empty, and if so deletes empty folder
 4. Continues iteration until all 'works' have been processed.
 
-Notes:  
-Waiting for metadata updates from SC teams for digital files.
+Notes:
 Uses requests.Sessions() for creation of works
 within on session. Trial of sessions().
 
@@ -31,6 +30,7 @@ Joanna White
 import os
 import sys
 import shutil
+import logging
 import datetime
 
 # Private packages
@@ -41,8 +41,8 @@ import utils
 # Global path variables
 SCPATH = os.environ['SPECIAL_COLLECTIONS']
 STORAGE = os.path.join(SCPATH, 'Uncatalogued_stills_born_digital/')
-AUTOINGEST = os.path.join(SCPATH, os.environ['INGEST_SC'])
-LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_born_digital.log')
+AUTOINGEST = os.path.join(os.environ['AUTOINGEST_IS_SPEC'], 'ingest/proxy/image/')
+LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_rename_born_digital.log')
 MEDIAINFO_PATH = os.path.join(os.environ['LOG_PATH'], 'cid_mediainfo/')
 CID_API = os.environ['CID_API4']
 
@@ -52,37 +52,57 @@ TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
 DATE_TIME = (f"{TODAY_DATE} = {TODAY_TIME}")
 
+LOGGER = logging.getLogger('sc_rename_born_digital')
+HDLR = logging.FileHandler(LOG)
+FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+HDLR.setFormatter(FORMATTER)
+LOGGER.addHandler(HDLR)
+LOGGER.setLevel(logging.INFO)
+
+BIT_DEPTHS = {
+    '8': '401572',
+    '10': '99796',
+    '12': '392421',
+    '16': '99797',
+    '24': '395618',
+    '32': '99838',
+    '48': '95709'
+}
+
 
 def cid_retrieve(fname, session):
     '''
     Receive filename and search in CID items
     Return object number to main
     '''
-    search = f'object_number="{fname}"'
-    fields = [
-        'priref',
-        'object_number',
-        'title_date_start',
-        'title_date.type',
-        'title',
-        'title.article'
-    ]
 
-    record = adlib.retrieve_record(CID_API, 'internalobject', search, '0', session, fields)[1]
-    utils.logger(LOG, 'info', f"cid_retrieve(): Making CID query request with:\n {search}")
+    search = f'object_number="{fname}"'
+    rec = adlib.retrieve_record(CID_API, 'collect', search, '0', session)[1]
+    if 'priref' in str(rec):
+        priref = adlib.retrieve_field_name(rec[0], 'priref')[0]
+
+        search = f'priref="{priref}"'
+        fields = [
+            'priref',
+            'object_number',
+            'title_date_start',
+            'title_date.type',
+            'title',
+            'title.article'
+        ]
+
+        record = adlib.retrieve_record(CID_API, 'collect', search, '0', session, fields)[1]
+        LOGGER.info("cid_retrieve(): Making CID query request with:\n%s", search)
+
     if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {fname}")
-        utils.logger(LOG, 'exception', f"cid_retrieve(): Unable to retrieve data for {fname}")
+        LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", fname)
         return None
 
     if 'priref' in str(record):
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     else:
         priref = ""
-    if 'object_number' in str(record):
-        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
-    else:
-        ob_num = ""
     if 'Title' in str(record):
         title = adlib.retrieve_field_name(record[0], 'title')[0]
     else:
@@ -101,7 +121,7 @@ def cid_retrieve(fname, session):
         title_date_type = []
 
     tds = sort_date_types(title_date_start, title_date_type)
-    return priref, ob_num, title, title_article, tds
+    return priref, fname, title, title_article, tds
 
 
 def sort_date_types(title_date_start, title_date_type):
@@ -129,17 +149,18 @@ def main():
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
 
-    utils.logger(LOG, 'info', "=========== Special Collections rename - Born Digital START ============")
+    LOGGER.info("=========== Special Collections rename - Born Digital START ============")
+    print(STORAGE)
     work_directories = [ x for x in os.listdir(STORAGE) if os.path.isdir(os.path.join(STORAGE, x)) ]
     session = adlib.create_session()
     for work in work_directories:
         if not utils.check_control('pause_scripts'):
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         wpath = os.path.join(STORAGE, work)
-        utils.logger(LOG, 'info', f"Work folder found: {work}")
+        LOGGER.info("Work folder found: %s", work)
         work_data = cid_retrieve(work.strip(), session)
         if work_data is None:
-            utils.logger(LOG, 'warning', f"Please check folder name {work} as no CID match found")
+            LOGGER.warning("Please check folder name %s as no CID match found", work)
             continue
 
         # Build file list of wpath contents
@@ -147,119 +168,117 @@ def main():
         sorted_images = sorted(images)
         for image in sorted_images:
             if not image.endswith(('.tiff', '.tif', '.TIFF', '.TIF', '.jpeg', '.jpg', '.JPEG', '.JPG')):
-                utils.logger(LOG, 'warning', f"Skipping: File found in folder {work} that is not image file: {image}")
+                LOGGER.warning("Skipping: File found in folder %s that is not image file: %s", work, image)
                 continue
-            utils.logger(LOG, 'info', f"Processing image file: {image}")
+            LOGGER.info("Processing image file: %s", image)
             ipath = os.path.join(wpath, image)
 
             if bool(utils.check_filename(image)):
-                utils.logger(LOG, 'warning', f"Skipping: File passed filename checks and likely already renumbered: {image}")
+                LOGGER.warning("Skipping: File passed filename checks and likely already renumbered: %s", image)
                 ob_num = utils.get_object_number(image)
                 if not ob_num:
                     continue
                 rec = adlib.retrieve_record(CID_API, 'internalobject', f'object_number="{ob_num}"', '1', session, ['digital.born_or_derived'])
                 check = adlib.retrieve_field_name(rec[0], 'digital.born_or_derived')[0]
                 if 'BORN_DIGITAL' in check:
-                    utils.logger(LOG, 'info', f'Moving to autoingest. File renumbered to matching Digital record: {ob_num}')
+                    LOGGER.info('Moving to autoingest. File renumbered to matching Digital record: %s', ob_num)
                     move(ipath, 'ingest')
                 continue
 
-            # Digital Derivative records to be made
-            record_digital, metadata = build_defaults(work_data, ipath, image, 'Digital')
+            # Born Digital records to be made
+            record_digital, metadata = build_defaults(work_data, ipath, image)
             digi_priref, digi_obj = create_new_image_record(record_digital, session)
-            utils.logger(LOG, 'info', f"* New Item record created for image {image} Digital Derivative {digi_priref}")
+            LOGGER.info("* New Item record created for image %s Born Digital %s", image, digi_priref)
 
             if len(digi_priref) == 0:
-                utils.logger(LOG, 'warning', f"Missing Digital Derivative priref following record creation for {image}.")
-                utils.logger(LOG, 'warning', f"Moving file to failure folder. Manual clean up of records required.")
+                LOGGER.warning("Missing Born Digital priref following record creation for %s", image)
+                LOGGER.warning("Moving file to failure folder. Manual clean up of records required.")
                 move(ipath, 'fail')
                 continue
 
             if len(digi_obj) > 0:
-                # Append metadata to header tags
-                if len(metadata) > 0:
-                    header = f"<Header_tags><header_tags.parser>Exiftool</header_tags.parser><header_tags><![CDATA[{metadata}]]></header_tags></Header_tags>"
-                    success = write_payload(digi_priref, header, session)
-                    if not success:
-                        utils.logger(LOG, 'warning', "Payload data was not written to CID record: {priref}\n{metadata}")
-
-                utils.logger(LOG, 'info', f"** Renumbering file {image} with object number {digi_obj}")
+                LOGGER.info("** Renumbering file %s with object number %s", image, digi_obj)
                 new_filepath, new_file = rename(ipath, digi_obj)
                 if os.path.exists(new_filepath):
-                    utils.logger(LOG, 'info', f"New filename generated: {new_file}")
-                    utils.logger(LOG, 'info', f"File renumbered and filepath updated to: {new_filepath}")
+                    LOGGER.info("New filename generated: %s", new_file)
+                    LOGGER.info("File renumbered and filepath updated to: %s", new_filepath)
                     success = move(new_filepath, 'ingest')
                     if success:
-                        utils.logger(LOG, 'info', f"File {new_file} relocated to Autoingest {DATE_TIME}")
+                        LOGGER.info("File %s relocated to Autoingest %s", new_file, DATE_TIME)
                     else:
-                        utils.logger(LOG, 'warning', f"FILE {new_file} DID NOT MOVE SUCCESSFULLY TO AUTOINGEST")
+                        LOGGER.warning("FILE %s DID NOT MOVE SUCCESSFULLY TO AUTOINGEST", new_file)
                 else:
-                    utils.logger(LOG, 'warning', f"Problem creating new number for {image}")
-                success = write_exif_to_file(image, metadata)
+                    LOGGER.warning("Problem creating new number for %s", image)
+                success = write_exif_to_file(new_file, metadata)
                 if not success:
-                    utils.logger(LOG, 'warning', f"Unable to create EXIF metadata file for image: {image}\n{metadata}")
+                    LOGGER.warning("Unable to create EXIF metadata file for image: %s\n%s", image, metadata)
             else:
-                utils.logger(LOG, 'warning', "Object number was not returned following creation of CID Item record for digital derivative.")
+                LOGGER.warning("Object number was not returned following creation of CID Item record for born digital.")
                 continue
 
         # Checking all processed and delete empty folder
         folder_empty = os.listdir(wpath)
         if len(folder_empty) == 0:
-            utils.logger(LOG, 'info', f"All files in folder processed. Deleting folder: {work}")
+            LOGGER.info("All files in folder processed. Deleting folder: %s", work)
             os.rmdir(wpath)
         else:
-            utils.logger(LOG, 'warning', f"Not all items in folder processed, leaving folder in place for repeat attempt.")
+            LOGGER.warning("Not all items in folder processed, leaving folder in place for repeat attempt.")
             continue
+        sys.exit("One folder at a time only.")
 
-    utils.logger(LOG, 'info', "=========== Special Collections rename - Born Digital END ==============")
+    LOGGER.info("=========== Special Collections rename - Born Digital END ==============")
 
 
 def build_defaults(work_data, ipath, image):
     '''
     Build up item record defaults
     '''
-    records = [{
-        'institution.name.lref': '999570701',
-        'object_type': 'OBJECT',
-        'description_level_object': 'STILLS',
-        'object_category': 'Photograph: Publicity',
-    }]
-
-    if len(work_data[1]) > 0:
-        records.extend({'related_object.reference': work_data[1]})
+    metadata = None
+    records = ([
+        {'institution.name.lref': '999570701'},
+        {'object_type': 'OBJECT'},
+        {'description_level_object': 'STILLS'},
+        {'object_category.lref': '132885'}
+    ])
+    print(work_data)
+    if work_data[1]:
+        records.append({'related_object.reference.lref': work_data[0]})
     else:
-        utils.logger(LOG, 'warning', "No parent object number retrieved. Script exiting.")
+        LOGGER.warning("No parent object number retrieved. Script exiting.")
         return None
-    if len(work_data[2]) > 0:
-        records.extend({'title': work_data[2]})
+    if work_data[2]:
+        records.append({'title': work_data[2]})
     else:
-        utils.logger(LOG, 'warning', "No title data retrieved. Script exiting.")
+        LOGGER.warning("No title data retrieved. Script exiting.")
         return None
-    if len(work_data[3]) > 0:
-        records.extend({'title.article': work_data[3]})
-    if work_data[4] is not None:
-        records.extend({'production.date.start': work_data[4]})
+    if work_data[3]:
+        records.append({'title.article': work_data[3]})
+    if work_data[4]:
+        records.append({'production.date.start': work_data[4]})
 
-    records.extend({'analogue_or_digital': 'DIGITAL'})
-    records.extend({'digital.born_or_derived': 'BORN_DIGITAL'})
-    records.extend({'digital.acquired_filename': image})
+    records.append({'analogue_or_digital': 'DIGITAL'})
+    records.append({'digital.born_or_derived': 'BORN_DIGITAL'})
+    records.append({'digital.acquired_filename': image})
     ext = image.split('.')[-1]
-    if len(ext) > 0:
-        ftype = utils.accepted_file_type(ext.lower())
-        records.extend({'file_type': ftype})
+    if ext.lower() in ['jpeg', 'jpg']:
+        records.append({'file_type.lref': '396310'})
+    elif ext.lower() in ['tif', 'tiff']:
+        records.append({'file_type.lref': '395395'})
     bitdepth = utils.get_metadata('Image', 'BitDepth', ipath)
-    if len(bitdepth) > 0:
-        records.extend({'bit_depth': bitdepth})
+    if bitdepth:
+        for key, val in BIT_DEPTHS.items():
+            if bitdepth == key:
+                records.append({'bit_depth.lref': val})
 
     metadata_rec, metadata = get_exifdata(ipath)
     if metadata_rec:
-        records.append(metadata_rec)
+        records.extend(metadata_rec)
 
-    records.extend({'input.name': 'datadigipres'})
-    records.extend({'input.date': str(datetime.datetime.now())[:10]})
-    records.extend({'input.time': str(datetime.datetime.now())[11:19]})
-    records.extend({'input.notes': 'Automated record creation for Special Collections, to facilitate ingest to DPI'})
-
+    records.append({'input.name': 'datadigipres'})
+    records.append({'input.date': str(datetime.datetime.now())[:10]})
+    records.append({'input.time': str(datetime.datetime.now())[11:19]})
+    records.append({'input.notes': 'Automated record creation for Special Collections, to facilitate ingest to DPI'})
+    print(records)
     return records, metadata
 
 
@@ -268,54 +287,71 @@ def get_exifdata(dpath):
     Attempt to get metadata for record build
     Example dict below, waiting for confirmation
     '''
-    metadata = {}
-    creator_data = rights_data = ''
+    metadata = ([])
+    creator_data = []
+    rights_data = []
     data = utils.exif_data(dpath)
+
     if not data:
         return None, None
     data_list = data.split('\n')
     for d in data_list:
-        if d.startswith('File Size '):
+        if d.startswith('File Size   '):
             val = d.split(': ', 1)[-1]
-            metadata.append['filesize'] = val.split(' ')[0]
-            metadata.append['filesize.unit'] = val.split(' ')[-1]
-        if d.startswith('Image Height '):
-            metadata['dimension.type'] = 'Height'
-            metadata['dimension.value'] = d.split(': ', 1)[-1]
-            metadata['dimension.unit'] = 'Pixels'
-        if d.startswith('Image Width '):
-            metadata['dimension.type'] = 'Width'
-            metadata['dimension.value'] = d.split(': ', 1)[-1]
-            metadata['dimension.unit'] = 'Pixels'
-        #if d.startswith('Bits Per Sample '):
-        #    metadata['bit_depth'] = d.split(': ', 1)[-1].split(' ')[0]
-        if d.startswith('Compression '):
-            metadata['code_type'] = d.split(': ', 1)[-1]
-        if d.startswith('Color Space Data '):
-            metadata['colour_space'] = d.split(': ', 1)[-1]
-        if d.startswith('Camera Model Name '):
-            metadata['colour_space'] = d.split(': ', 1)[-1]
-        if d.startswith('Date Created '):
-            metadata['production.date.start'] = d.split(': ', 1)[-1]
-        if d.startswith('Creator '):
-            creator_data = d.split(': ', 1)[-1]
-        elif d.startswith('Artist '):
-            creator_data = d.split(': ', 1)[-1]
-        elif d.startswith('By-line '):
-            creator_data = d.split(': ', 1)[-1]
-        if d.startwith('Rights '):
-            rights_data = d.split(': ', 1)[-1]
-        elif d.startwith('Copyright Notice '):
-            rights_data = d.split(': ', 1)[-1]
-        elif d.startwith('Copyright '):
-            rights_data = d.split(': ', 1)[-1]
+            metadata.append({'filesize': val.split(' ')[0]})
+            metadata.append({'filesize.unit': val.split(' ')[-1]})
+        elif d.startswith('Image Height   '):
+            metadata.append({'dimension.type': 'Height'})
+            metadata.append({'dimension.value': d.split(': ', 1)[-1]})
+            metadata.append({'dimension.unit': 'Pixels'})
+        elif d.startswith('Image Width   '):
+            metadata.append({'dimension.type': 'Width'})
+            metadata.append({'dimension.value': d.split(': ', 1)[-1]})
+            metadata.append({'dimension.unit': 'Pixels'})
+        elif d.startswith('Compression   '):
+            code = d.split(': ', 1)[-1]
+            if 'jpeg' in code.lower():
+                metadata.append({'code_type.lref': '401578'})
+            elif 'tiff' in code.lower():
+                metadata.append({'code_type.lref': '131655'})
+            elif 'uncompressed' in code.lower():
+                metadata.append({'code_type.lref': '392426'})
+        elif d.startswith('Color Space Data   '):
+            metadata.append({'colour_space': d.split(': ', 1)[-1]})
+        elif d.startswith('Create Date  '):
+            try:
+                val = d.split(': ', 1)[-1].split(' ', 1)[0].replace(':', '-')
+                metadata.append({'production.date.start': val})
+            except (KeyError, IndexError):
+                pass
+        if d.startswith('Creator   '):
+            creator_data.append(d.split(': ', 1)[-1])
+        elif d.startswith('Artist   '):
+            creator_data.append(d.split(': ', 1)[-1])
+        elif d.startswith('By-line   '):
+            creator_data.append(d.split(': ', 1)[-1])
+        if d.startswith('Rights   '):
+            rights_data.append(d.split(': ', 1)[-1])
+        elif d.startswith('Copyright Notice   '):
+            rights_data.append(d.split(': ', 1)[-1])
+        elif d.startswith('Copyright   '):
+            rights_data.append(d.split(': ', 1)[-1])
+        if d.startswith('Camera Model Name    '):
+            metadata.append({'source_device': d.split(': ', 1)[-1]})
 
     if len(creator_data) > 0 and len(rights_data) > 0:
-        metadata['production.notes'] = f"Photographer: {creator_data}, Rights: {rights_data}"
+        creator_data.sort(key=len, reverse=True)
+        rights_data.sort(key=len, reverse=True)
+        metadata.append({'production.notes': f"Photographer: {creator_data[0]}, Rights: {rights_data[0]}"})
     elif len(creator_data) > 0:
-         metadata['production.notes'] = f"Photographer: {creator_data}"
+         creator_data.sort(key=len, reverse=True)
+         metadata.append({'production.notes': f"Photographer: {creator_data[0]}"})
     elif len(rights_data) > 0:
-         metadata['production.notes'] = f"Rights: {rights_data}"
+         rights_data.sort(key=len, reverse=True)
+         metadata.append({'production.notes': f"Rights: {rights_data[0]}"})
+    density = utils.get_metadata('Image', 'Density/String', dpath)
+    if density:
+        metadata.append({'dimension.free': density})
 
     if len(metadata) > 0:
         return metadata, data
@@ -328,11 +364,15 @@ def write_exif_to_file(image, metadata):
     '''
 
     meta_dump = os.path.join(MEDIAINFO_PATH, f"{image}_EXIF.txt")
-
-    with open(meta_dump, 'a+') as file:
+    print("****************************")
+    print(meta_dump)
+    print("****************************")
+    with open(meta_dump, 'x') as file:
+        file.close()
+    with open(meta_dump, 'a') as file:
         file.write(metadata)
         file.close()
-    
+
     if os.path.isfile(meta_dump):
         return meta_dump
     return None
@@ -343,13 +383,14 @@ def create_new_image_record(record_json, session):
     Function for creation of new CID records
     both Analogue and Digital, returning priref/obj
     '''
+    print(record_json)
     record_xml = adlib.create_record_data('', record_json)
     print(record_xml)
     record = adlib.post(CID_API, record_xml, 'internalobject', 'insertrecord', session)
     if not record:
-        utils.logger(LOG, 'warning', f"Adlib POST failed to create CID item record for data:\n{record_xml}")
+        LOGGER.warning("Adlib POST failed to create CID item record for data:\n%s", record_xml)
         return None
-    
+
     priref = adlib.retrieve_field_name(record, 'priref')[0]
     obj = adlib.retrieve_field_name(record, 'object_number')[0]
     return priref, obj
@@ -388,7 +429,7 @@ def rename(filepath, ob_num):
     try:
         os.rename(filepath, new_filepath)
     except OSError:
-        utils.logger(LOG, 'warning', f"There was an error renaming {filename} to {new_filename}")
+        LOGGER.warning("There was an error renaming %s to %s", filename, new_filename)
 
     return (new_filepath, new_filename)
 
@@ -406,7 +447,7 @@ def move(filepath, arg):
             shutil.move(filepath, failures)
             return True
         except Exception as err:
-            utils.logger(LOG, 'warning', f"Error trying to move file {filepath} to {failures}. Error: {err}")
+            LOGGER.warning("Error trying to move file %s to %s. Error: %s", filepath, failures, err)
             return False
     elif os.path.exists(filepath) and 'ingest' in arg:
         print(f"move(): Moving {filepath} to {AUTOINGEST}")
@@ -414,7 +455,7 @@ def move(filepath, arg):
             shutil.move(filepath, AUTOINGEST)
             return True
         except Exception:
-            utils.logger(LOG, 'warning', f"Error trying to move file {filepath} to {AUTOINGEST}")
+            LOGGER.warning("Error trying to move file %s to %s", filepath, AUTOINGEST)
             return False
     else:
         return False

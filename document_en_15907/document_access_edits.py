@@ -14,13 +14,13 @@ Joanna White
 # Public packages
 import os
 import sys
-import json
 import logging
 import datetime
 
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 INGEST = os.environ.get('AUTOINGEST_QNAP10')
@@ -38,29 +38,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check for downtime control
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
-            sys.exit("Script run prevented by downtime_control.json. Script exiting")
-
-
-def cid_check():
-    '''
-    Test if CID API online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def get_source_record(file):
@@ -89,8 +66,12 @@ def main():
 
     LOGGER.info("======== Document Access Edits scripts start =====================")
     for file in file_list:
-        check_control()
-        cid_check()
+        if not utils.check_control('pause_scripts'):
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if not utils.cid_check(CID_API):
+            LOGGER.critical("* Cannot establish CID session, exiting script")
+            sys.exit("* Cannot establish CID session, exiting script")
         fpath = os.path.join(STORAGE, file)
         LOGGER.info("File found to process: %s", fpath)
         if not os.path.isfile(fpath):

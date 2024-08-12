@@ -140,10 +140,10 @@ def create_current_errors_logs():
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP06'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP07'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08'], 'current_errors/current_errors.csv'))
-    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08_OSH'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP09'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP10'], 'current_errors/current_errors.csv'))
     shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP11'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08_OSH'], 'current_errors/current_errors.csv'))
 
 
 if __name__ == '__main__':

@@ -33,6 +33,10 @@ import requests
 import tenacity
 import pandas
 
+# Local package
+sys.path.append(os.environ['CODE'])
+import utils
+
 # Global variables
 STORAGE = os.environ['QNAP_IMAGEN']
 LOG_PATH = os.environ['LOG_PATH']
@@ -62,30 +66,6 @@ STREAM_KEYS = {
     'Netflix': os.environ['PA_NETFLIX'],
     'Amazon': os.environ['PA_AMAZON']
 }
-
-
-def check_control():
-    '''
-    Check control JSON for downtime request
-    '''
-    with open(os.path.join(LOG_PATH, 'downtime_control.json')) as control:
-        j = json.load(control)
-        if not j['stora']:
-            LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-
-
-@tenacity.retry(wait=tenacity.wait_random(min=50, max=60))
-def check_api():
-    '''
-    Run standard check with test Programme ID
-    '''
-    params = {"asset": "9016da57-c59a-5aa6-97b8-41b74bc9442f", "aliases": "True"}
-    req = requests.request("GET", os.path.join(URL, f"catalogue/{os.environ['PA_NETFLIX']}/asset"), headers=HEADERS, params=params)
-    if req.status_code == 200:
-        return True
-    LOGGER.info("PATV API return status code: %s", req.status_code)
-    raise tenacity.TryAgain
 
 
 def read_csv_to_dict(csv_path):
@@ -120,8 +100,6 @@ def fetch(cat_id, search_type, search_id, title):
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
             LOGGER.critical('**** PROBLEM: Cannot fetch EPG metadata. **** \n%s', err)
             raise tenacity.TryAgain
-        else:
-            return None
     elif search_type == 'cat_asset':
         try:
             req = requests.get(os.path.join(URL, f"catalogue/{cat_id}/asset/{search_id}"), headers=HEADERS)
@@ -131,8 +109,6 @@ def fetch(cat_id, search_type, search_id, title):
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
             LOGGER.critical('**** PROBLEM: Cannot fetch EPG metadata. **** \n%s', err)
             raise tenacity.TryAgain
-        else:
-            return None
     elif search_type == 'asset':
         try:
             req = requests.get(os.path.join(URL, f'asset/{search_id}'), headers=HEADERS)
@@ -142,8 +118,6 @@ def fetch(cat_id, search_type, search_id, title):
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
             LOGGER.critical('**** PROBLEM: Cannot fetch EPG metadata. **** \n%s', err)
             raise tenacity.TryAgain
-        else:
-            return None
     elif search_type == 'contributors':
         try:
             req = requests.get(os.path.join(URL, f'asset/{search_id}/contributor'), headers=HEADERS)
@@ -153,8 +127,7 @@ def fetch(cat_id, search_type, search_id, title):
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
             LOGGER.critical('**** PROBLEM: Cannot fetch EPG metadata. **** \n%s', err)
             raise tenacity.TryAgain
-        else:
-            return None
+    return None
 
 
 def json_dump(json_path, dct=None):
@@ -220,8 +193,10 @@ def main():
     Iterate list and build asset_dict of TV items, then process
     any new items placing in programme led folder structures
     '''
-    check_control()
-    check_api()
+    if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
     LOGGER.info('========== Fetch augmented metadata script STARTED ======================')
 
     # Fetch CSV data for title/article

@@ -39,12 +39,12 @@ import utils
 # Global variables
 LOGS = os.environ.get('LOG_PATH')
 STORAGE = os.path.join(os.environ.get('QNAP_11'), 'timed_text')
-AUTOINGEST = os.path.join(os.environ.get('AUTOINEGST_QNAP11'), 'ingest/autodetect/')
+AUTOINGEST = os.path.join(os.environ.get('AUTOINGEST_QNAP11'), 'ingest/autodetect/')
 CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_filmfund_timed_text')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_platform_timed_text.log'))
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_filmfund_timed_text.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -276,7 +276,7 @@ def create_new_item_record(priref, fname, record, session):
     '''
     item_dct = make_item_record_dict(priref, fname, record)
     LOGGER.info(item_dct)
-    item_xml = adlib.create_record_data('', item_dct)
+    item_xml = adlib.create_record_data(CID_API, 'items', '', item_dct)
     new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord', session)
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)

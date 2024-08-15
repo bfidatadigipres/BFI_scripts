@@ -487,7 +487,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
 
-    record_data_xml = adlib.create_record_data('', record_data)
+    record_data_xml = adlib.create_record_data(CID_API, 'media', '', record_data)
     record = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
     if record:
         try:

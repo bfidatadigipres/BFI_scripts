@@ -112,6 +112,7 @@ def main():
     pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.txt")
     xml_path = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
     json_path = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
+    exif_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
 
     if len(filename) > 0 and filename.endswith((".ini", ".DS_Store", ".mhl", ".json")):
         sys.exit('Incorrect media file detected.')
@@ -122,11 +123,10 @@ def main():
     if len(priref) == 0:
         sys.exit('Script exiting. Priref could not be retrieved.')
 
-    LOGGER.info("============ METADATA CLEAN UP SCRIPT START ===================")
     print(f"Priref retrieved: {priref}. Writing metadata to record")
     print(text_path)
 
-    text = text_full = ebu = pb = xml = json = ''
+    text = text_full = ebu = pb = xml = json = exif = ''
     # Processing metadata output for text path
     if os.path.exists(text_path):
         text_dump = read_extract(text_path)
@@ -157,30 +157,40 @@ def main():
         text_dump = read_extract(json_path)
         json = f"<Header_tags><header_tags.parser>MediaInfo json 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
-    payload_data = text + text_full + ebu + pb + xml + json
+    # Processing metadata output for special collections exif data
+    if os.path.exists(exif_path):
+        text_dump = read_extract(exif_path)
+        exif = f"<Header_tags><header_tags.parser>Exiftool text</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+
+    payload_data = text + text_full + ebu + pb + xml + json + exif
 
     # Write data
     success = write_payload(priref, payload_data)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
-        LOGGER.info("Deleting all path data")
         if os.path.exists(text_path):
+            LOGGER.info("Deleting path: %s", text_path)
             os.remove(text_path)
         if os.path.exists(text_full_path):
+            LOGGER.info("Deleting path: %s", text_full_path)
             os.remove(text_full_path)
         if os.path.exists(ebu_path):
+            LOGGER.info("Deleting path: %s", ebu_path)
             os.remove(ebu_path)
         if os.path.exists(pb_path):
+            LOGGER.info("Deleting path: %s", pb_path)
             os.remove(pb_path)
         if os.path.exists(xml_path):
+            LOGGER.info("Deleting path: %s", xml_path)
             os.remove(xml_path)
         if os.path.exists(json_path):
+            LOGGER.info("Deleting path: %s", json_path)
             os.remove(json_path)
+        if os.path.exists(exif_path):
+            LOGGER.info("Deleting path: %s", exif_path)
+            os.remove(exif_path)
     else:
         LOGGER.warning("Payload data was not written to CID Media record: %s", priref)
-        LOGGER.info("Metadata records being left in place for repeat write attempt")
-
-    LOGGER.info("============ METADATA CLEAN UP SCRIPT COMPLETE ================")
 
 
 def write_payload(priref, payload_data):
@@ -194,10 +204,10 @@ def write_payload(priref, payload_data):
     record = adlib.post(CID_API, payload, 'media', 'updaterecord')
     if record is None:
         return False
-    elif 'error' in str(record):
-        return False
-    else:
+    elif "header_tags.parser" in str(record):
         return True
+    else:
+        return None
 
 
 if __name__ == '__main__':

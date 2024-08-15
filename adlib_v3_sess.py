@@ -252,7 +252,7 @@ def create_record_data(priref, data=None):
 
     if not isinstance(data, list):
         data = [data]
-
+    print(data)
     frag = get_fragments(data)
     if not frag:
         return False
@@ -295,8 +295,11 @@ def get_fragments(obj):
         try:
             list_item = html.fragments_fromstring(sub_item, parser=etree.XMLParser(remove_blank_text=True))
             for itm in list_item:
+                print(itm)
                 xml = etree.fromstring(etree.tostring(itm))
+                print(xml)
                 data.append(etree.tostring(xml))
+                print(data)
         except Exception as err:
             raise TypeError(f'Invalid XML:\n{sub_item}') from err
 

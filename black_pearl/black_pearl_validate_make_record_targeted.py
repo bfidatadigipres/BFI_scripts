@@ -543,7 +543,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
     print(record_data)
-    record_data_xml = adlib.create_record_data(CID_API, 'media', '', record_data)
+    record_data_xml = adlib.create_record_data(CID_API, 'media', session, '', record_data)
     print(record_data_xml)
 
     try:

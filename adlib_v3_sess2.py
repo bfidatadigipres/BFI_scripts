@@ -275,7 +275,7 @@ def get_grouped_items(api, database, session):
                 grouped[group] = [field_name]
         except KeyError:
             pass
-    print(grouped)
+
     return grouped
 
 
@@ -301,18 +301,14 @@ def create_record_data(api, database, session, priref, data=None):
                         new_grouping[key] = item
                         remove_list.append(item)
         if new_grouping:
-            print(f"Appending new grouping: {new_grouping}")
+            print(f"Adjusted grouping data: {new_grouping}")
             data.append(new_grouping)
-    print(data)
-    print(remove_list)
 
     if remove_list:
         for rm in remove_list:
             if rm in data:
                 data.remove(rm)
-            else:
-                print(f"WARNING: {rm} not in data:\n{data}")
-    print(data)
+
     frag = get_fragments(data)
     if not frag:
         return False

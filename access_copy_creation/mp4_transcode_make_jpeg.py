@@ -208,11 +208,13 @@ def main():
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
         # Check stream count and see if 'DL' 'DR' present
-        if len(stream_count) > 6:
-            mixed_dict = check_for_mixed_audio(fullpath)
+        if stream_count:
+            if len(stream_count) > 6:
+                mixed_dict = check_for_mixed_audio(fullpath)
+            else:
+                mixed_dict = None
         else:
             mixed_dict = None
-        
         # Check if FL FR present
         fl_fr = check_for_fl_fr(fullpath)
 

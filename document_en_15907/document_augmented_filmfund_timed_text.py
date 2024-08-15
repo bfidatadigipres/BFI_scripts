@@ -27,7 +27,6 @@ Joanna White
 # Public packages
 import os
 import sys
-import json
 import shutil
 import logging
 import datetime
@@ -40,17 +39,16 @@ import utils
 # Global variables
 LOGS = os.environ.get('LOG_PATH')
 STORAGE = os.path.join(os.environ.get('QNAP_11'), 'timed_text')
-AUTOINGEST = os.path.join(os.environ.get('AUTOINEGST_QNAP11'), 'ingest/autodetect/')
+AUTOINGEST = os.path.join(os.environ.get('AUTOINGEST_QNAP11'), 'ingest/autodetect/')
 CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_filmfund_timed_text')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_platform_timed_text.log'))
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_filmfund_timed_text.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
 
 
 def cid_check_ob_num(object_number, session):
@@ -263,9 +261,8 @@ def make_item_record_dict(priref, file, record):
     item.append({'access_conditions.date': str(datetime.datetime.now())[:10]})
     if 'grouping' in str(record):
         item.append({'grouping': adlib.retrieve_field_name(record[0], 'grouping')[0]})
-    if 'language' in str(record):
-        item.append({'language': adlib.retrieve_field_name(record[0], 'language')[0]})
-        item.append({'language.type': 'TIMTEXT'})
+    item.append({'language': 'English'})
+    item.append({'language.type': 'TIMTEXT'})
     if len(file) > 1:
         item.append({'digital.acquired_filename': file})
         item.append({'digital.acquired_filename.type': 'FILE'})
@@ -279,7 +276,7 @@ def create_new_item_record(priref, fname, record, session):
     '''
     item_dct = make_item_record_dict(priref, fname, record)
     LOGGER.info(item_dct)
-    item_xml = adlib.create_record_data('', item_dct)
+    item_xml = adlib.create_record_data(CID_API, 'items', '', item_dct)
     new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord', session)
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)

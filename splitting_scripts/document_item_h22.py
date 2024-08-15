@@ -129,7 +129,7 @@ def new(source_object_number, segments, duration, extension, note=None):
     if note is not None:
         rec.append({'input.notes': note})
 
-    rec_xml = adlib.create_record_data('', rec)
+    rec_xml = adlib.create_record_data(CID_API, 'items', '', rec)
     new_record = adlib.post(CID_API, rec_xml, 'items', 'insertrecord')
     if new_record:
         try:

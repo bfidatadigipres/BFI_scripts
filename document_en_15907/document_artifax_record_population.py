@@ -44,6 +44,7 @@ import tenacity
 import title_article
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Local date vars for script comparison/activation
 TODAY = datetime.date.today()
@@ -111,30 +112,6 @@ FORMATS = {'DVD': ['DVD (Digital Versatile Disc)', '73390'],
            'HDCAM SR': ['HDCAM SR', '394912'],
            'Digital file': ['ProRes QuickTime', '399231']
            }
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_test():
-    '''
-    Run test for CID before beginning processing
-    To be coupled with tenacity for repeating attempts when connection drops out
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def get_country(code):
@@ -622,8 +599,9 @@ def work_extraction(season_id, dct=None):
     country_dct = []
     country_dct = country_check(dct['countries'])
     work_append_dct.extend(country_dct)
-
-    return (qna_title_dct, manifestation_dct, work_append_dct)
+    print("----------- work extraction manifestation_dct -------------")
+    print(manifestation_dct)
+    return qna_title_dct, manifestation_dct, work_append_dct
 
 
 def country_check(dct=None):
@@ -674,8 +652,12 @@ def main():
     Where Q&A custom field active, CID Work record and new manifestation created for Q&A Internet
     Downloads work_copy and where copies exist with 'Internet' or 'Festival' makes CID manifestations
     '''
-    check_control()
-    cid_test()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     # Opening log statement
     LOGGER.info('========== Python3 start: document_artifax_record_population ==========')
@@ -705,7 +687,8 @@ def main():
                 current_festival = value[1]
                 festival_grouping = value[2]
         LOGGER.info("== Current festival: %s. Festival grouping: %s", current_festival, festival_grouping)
-
+        if festival_grouping != '399153':
+            continue
         # Open json and load all contents to dcts, then iterate through with dct (per work_id)
         filepath = os.path.join(STORAGE_PATH, filename)
         with open(filepath, 'r') as inf:
@@ -718,8 +701,6 @@ def main():
                 check_data = work_quick_check(dct)
                 work_id = check_data[0]
                 priref = check_data[1]
-                if priref != '158354053':
-                    continue
                 cid_import = check_data[2]
                 art_form = check_data[3]
                 print(f"Work ID: {work_id}, Priref: {priref}, CID Import: {cid_import}, Art form: {art_form}")
@@ -744,8 +725,7 @@ def main():
                 advanced_confirm = str(check_work_season[0])
                 qanda_confirm = str(check_work_season[1])
                 qanda_date = str(check_work_season[2])
-                # cid_import_date = str(check_work_season[3])
-                cid_import_date = ''
+                cid_import_date = str(check_work_season[3])
                 nfa_category = str(check_work_season[4])
                 start_date = str(check_work_season[5])
                 work_season_id = str(check_work_season[6])
@@ -778,9 +758,6 @@ def main():
                     edit_name = ''
                 # Extract work metadata lists from work_id
                 work_data = []
-                qna_title_dct = []
-                manifestation_dct = []
-                work_append_dct = []
                 work_data = work_extraction(season_id, dct)
                 if not work_data:
                     LOGGER.warning("Work extraction failed, exiting")
@@ -905,6 +882,7 @@ def main():
                     work_copy_fname = fetch_work_copy(work_id)
                     print(f"******* {work_copy_fname} ********")
                     if len(work_copy_fname) > 0:
+                        print(f"make_manifestations({work_copy_fname}, {current_festival}, {start_date}, {priref}, {manifestation_dct})")
                         success_man = make_manifestations(work_copy_fname, current_festival, start_date, priref, manifestation_dct)
                         if success_man == 'No results':
                             LOGGER.critical("Error creating manifestation for %s using work copy: %s", priref, work_copy_fname)
@@ -958,7 +936,7 @@ def main():
 
         # When all extraction completed, move json to completed folder for next script interaction
         inf.close()
-        #move_file(filepath)
+        move_file(filepath)
 
     LOGGER.info("================ Script completed ===================================\n")
 
@@ -971,8 +949,12 @@ def make_manifestations(work_copy_fname, current_festival, start_date, priref, m
     man_int_priref = ''
     man_fest_priref = ''
     if manifestation_dct is None:
+        print("*** WORK COPY DATA NONE ***")
         manifestation_dct = {}
     work_copy_data = work_copy_extraction(work_copy_fname, current_festival)
+    print("--------------- Work copy data ------------------")
+    print(work_copy_data)
+
     if work_copy_data == 'No results':
         return 'No results'
     try:
@@ -1103,7 +1085,7 @@ def work_update(priref, work_dct=None):
     if work_dct is None:
         return False
 
-    work_dct_xml = adlib.create_record_data(priref, work_dct)
+    work_dct_xml = adlib.create_record_data(CID_API, 'works', priref, work_dct)
     print(f"WORK UPDATE: {priref} {work_dct_xml}")
     try:
         record = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord')
@@ -1188,8 +1170,13 @@ def manifestation_create(start_date, event_type, priref, manifestation_dct=None,
 
     man_priref = ''
     # Create CID record for Manifestation
+<<<<<<< HEAD
     man_values_xml = adlib.create_record_data('', manifestation_values)
+    print("----- manifestation values XML ----------------------")
+=======
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     print("---------------------------")
+>>>>>>> d1f4f18d761288aa6310530cde14a81b40a9d245
     print(man_values_xml)
     print("---------------------------")
     try:
@@ -1276,7 +1263,7 @@ def create_qna_work(qna_date, film_priref, grouping, qna_title_dct=None):
     work_values.extend(work_default)
     print(work_values)
     # Create basic work record
-    work_values_xml = adlib.create_record_data('', work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     try:
         record = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         if record:

@@ -83,6 +83,7 @@ def accepted_file_type(ext):
              'itt': 'itt',
              'stl': 'stl',
              'cap': 'cap',
+             'dxfp': 'dxfp',
              'dfxp': 'dfxp'}
     ext = ext.lower()
     for key, val in ftype.items():
@@ -96,6 +97,8 @@ def check_control(arg):
     '''
     Check control json for downtime requests
     based on passed argument
+    if not utils.check_control['arg']:
+        sys.exit(message)
     '''
     if not isinstance(arg, str):
         arg = str(arg)
@@ -112,6 +115,8 @@ def cid_check(cid_api):
     '''
     Tests if CID API operational before
     all other operations commence
+    if not utils.cid_check[API]:
+        sys.exit(message)
     '''
     try:
         dct = adlib.check(cid_api)
@@ -217,6 +222,22 @@ def sort_ext(ext):
             return key
 
 
+def exif_data(dpath):
+    '''
+    Retrieve exiftool data
+    return match to field if available
+    '''
+
+    cmd = [
+        'exiftool',
+        dpath
+    ]
+    data = subprocess.check_output(cmd)
+    data = data.decode('latin-1')
+
+    return data
+
+
 def get_metadata(stream, arg, dpath):
     '''
     Retrieve metadata with subprocess
@@ -229,7 +250,7 @@ def get_metadata(stream, arg, dpath):
         f'--Output={stream};%{arg}%',
         dpath
     ]
-    
+
     meta = subprocess.check_output(cmd)
     return meta.decode('utf-8').rstrip('\n')
 
@@ -258,6 +279,7 @@ def get_ms(filepath):
     '''
     Retrieve duration as milliseconds if possible
     '''
+    retry = False
     duration = ''
     cmd = [
         'ffprobe',
@@ -269,19 +291,33 @@ def get_ms(filepath):
 
     try:
         duration = subprocess.check_output(cmd)
-        duration = duration.decode('utf-8')
     except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
+        print(f"Unable to extract duration with FFprobe: {err}")
+        retry = True
+    
+    if retry:
+        cmd = [
+            'mediainfo',
+            '--Language=raw', '-f',
+            '--Output=General;%Duration%',
+            filepath
+        ]
+
+        try:
+            duration = subprocess.check_output(cmd)
+        except Exception as err:
+            print(f"Unable to extract duration with MediaInfo: {err}")
     if duration:
+        duration = duration.decode('utf-8')
         return duration.rstrip('\n')
-    else:
-        return None
+    return None
 
 
 def get_duration(filepath):
     '''
     Retrieve duration field if possible
     '''
+    retry = False
     duration = ''
     cmd = [
         'ffprobe',
@@ -293,13 +329,26 @@ def get_duration(filepath):
     ]
     try:
         duration = subprocess.check_output(cmd)
-        duration = duration.decode('utf-8')
-    except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
+    except subprocess.CalledProcessError as err:
+        print(f"Unable to extract duration with FFprobe: {err}")
+        retry = True
+
+    if retry:
+        cmd = [
+            'mediainfo',
+            '--Language=raw', '-f',
+            '--Output=General;%Duration/String3%',
+            filepath
+        ]
+
+        try:
+            duration = subprocess.check_output(cmd)
+        except Exception as err:
+            print(f"Unable to extract duration with MediaInfo: {err}")
     if duration:
+        duration = duration.decode('utf-8')
         return duration.rstrip('\n')
-    else:
-        return None
+    return None
 
 
 def logger(log_path, level, message):

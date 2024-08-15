@@ -21,7 +21,6 @@ Refactored Py3 2023
 import os
 import sys
 import csv
-import json
 import shutil
 import logging
 import datetime
@@ -29,7 +28,8 @@ from lxml import etree
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib_v3 as adlib
+import adlib_v3_sess as adlib
+import utils
 
 # Global variables
 STORAGE = os.environ['STORA_PATH']
@@ -55,30 +55,6 @@ YEST_CLEAN = YEST.strftime('%Y-%m-%d')
 YEAR = YEST_CLEAN[0:4]
 #YEAR = '2023'
 STORAGE_PATH = os.path.join(STORAGE, YEAR)
-
-
-def check_control():
-    '''
-    Check for downtime control
-    '''
-
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts'] or not j['stora']:
-            logger.info("Script run prevented by downtime_control.json. Script exiting.")
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def check_cid():
-    '''
-    Test if CID API online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        logger.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def csv_retrieve(fullpath):
@@ -233,15 +209,22 @@ def main():
     which have no matching EPG data. Create CID work - manifestation - item records
     '''
 
-    check_control()
-    check_cid()
-    logger.info('========== STORA documentation script STARTED ===============================================')
+    if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
+    logger.info('========== STORA documentation script STARTED ===============================================')
+    session = adlib.create_session()
     # Iterate through all info.csv.redux/.stora creating CID records
     for root, _, files in os.walk(STORAGE_PATH):
         for file in files:
             # Check control json for STORA false
-            check_control()
+            if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+                logger.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
             if not file.endswith('.stora'):
                 continue
@@ -281,22 +264,22 @@ def main():
                                                                      code_type)
 
             # create a Work-Manifestation CID record hierarchy
-            work_id = create_work(fullpath, title, record, work, work_restricted)
-            man_id = create_manifestation(work_id, fullpath, title, record, manifestation)
+            work_id = create_work(fullpath, title, session, record, work, work_restricted)
+            man_id = create_manifestation(work_id, fullpath, title, session, record, manifestation)
 
             # Create CID record for Item, first managing subtitles text if present
             old_webvtt = os.path.join(root, "subtitles.vtt")
             webvtt_payload = build_webvtt_dct(old_webvtt)
 
-            item_id, item_ob_num = create_item(man_id, fullpath, title, acquired_filename, record, item)
+            item_id, item_ob_num = create_item(man_id, fullpath, title, session, acquired_filename, record, item)
             if not item_id:
                 print('* Item record failed to create. Marking Work and Manifestation with DELETE warning')
-                mark_for_deletion(work_id, man_id, fullpath)
+                mark_for_deletion(work_id, man_id, fullpath, session)
                 continue
             '''
             # Build webvtt payload [Deprecated]
             if webvtt_payload:
-                success = push_payload(item_id, webvtt_payload)
+                success = push_payload(item_id, session, webvtt_payload)
                 if not success:
                     logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
             '''
@@ -340,7 +323,7 @@ def main():
     logger.info('========== STORA documentation script END ===================================================\n')
 
 
-def create_work(fullpath, title, record_defaults, work_defaults, work_restricted_defaults):
+def create_work(fullpath, title, session, record_defaults, work_defaults, work_restricted_defaults):
     '''
     Create CID record for Work
     '''
@@ -351,7 +334,7 @@ def create_work(fullpath, title, record_defaults, work_defaults, work_restricted
     work_values.extend(work_defaults)
     work_values.extend(work_restricted_defaults)
 
-    work_values_xml = adlib.create_record_data('', work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None
     print("***************************")
@@ -359,7 +342,7 @@ def create_work(fullpath, title, record_defaults, work_defaults, work_restricted
 
     try:
         logger.info("Attempting to create Work record for item %s", title)
-        data = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
+        data = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord', session)
         if data:
             work_id = adlib.retrieve_field_name(data, 'priref')[0]
             object_number = adlib.retrieve_field_name(data, 'object_number')[0]
@@ -378,7 +361,7 @@ def create_work(fullpath, title, record_defaults, work_defaults, work_restricted
     return work_id
 
 
-def create_manifestation(work_id, fullpath, title, record_defaults, manifestation_defaults):
+def create_manifestation(work_id, fullpath, title, session, record_defaults, manifestation_defaults):
 
     '''
     Create CID record for Manifestation
@@ -389,7 +372,7 @@ def create_manifestation(work_id, fullpath, title, record_defaults, manifestatio
     manifestation_values.extend(manifestation_defaults)
     manifestation_values.append({'part_of_reference.lref': work_id})
 
-    man_values_xml = adlib.create_record_data('', manifestation_values)
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     if man_values_xml is None:
         return None
     print("***************************")
@@ -397,7 +380,7 @@ def create_manifestation(work_id, fullpath, title, record_defaults, manifestatio
 
     try:
         logger.info("Attempting to create Manifestation record for item %s", title)
-        data = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
+        data = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord', session)
         if data:
             manifestation_id = adlib.retrieve_field_name(data, 'priref')[0]
             object_number = adlib.retrieve_field_name(data, 'object_number')[0]
@@ -444,7 +427,7 @@ def build_webvtt_dct(old_webvtt):
     return webvtt_payload.replace("\'", "'")
 
 
-def create_item(manifestation_id, fullpath, title, acquired_filename, record_defaults, item_defaults):
+def create_item(manifestation_id, fullpath, title, session, acquired_filename, record_defaults, item_defaults):
     '''
     Create item record, and if failure of item record
     creation then add delete warning to work and manifestation records
@@ -456,7 +439,7 @@ def create_item(manifestation_id, fullpath, title, acquired_filename, record_def
     item_values.append({'part_of_reference.lref': manifestation_id})
     item_values.append({'digital.acquired_filename': acquired_filename})
 
-    item_values_xml = adlib.create_record_data('', item_values)
+    item_values_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
     if item_values_xml is None:
         return None
     print("***************************")
@@ -464,7 +447,7 @@ def create_item(manifestation_id, fullpath, title, acquired_filename, record_def
 
     try:
         logger.info("Attempting to create CID item record for item %s", title)
-        data = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+        data = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord', session)
         if data:
             item_id = adlib.retrieve_field_name(data, 'priref')[0]
             item_object_number = adlib.retrieve_field_name(data, 'object_number')[0]
@@ -478,7 +461,7 @@ def create_item(manifestation_id, fullpath, title, acquired_filename, record_def
     return item_id, item_object_number
 
 
-def mark_for_deletion(work_id, manifestation_id, fullpath):
+def mark_for_deletion(work_id, manifestation_id, fullpath, session):
     '''
     Update work and manifestation records with deletion prompt in title
     '''
@@ -490,7 +473,7 @@ def mark_for_deletion(work_id, manifestation_id, fullpath):
     payload = etree.tostring(etree.fromstring(work))
 
     try:
-        response = adlib.post(CID_API, payload, 'works', 'updaterecord')
+        response = adlib.post(CID_API, payload, 'works', 'updaterecord', session)
         if response:
             logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
         else:
@@ -505,7 +488,7 @@ def mark_for_deletion(work_id, manifestation_id, fullpath):
                      '''
     payload = etree.tostring(etree.fromstring(manifestation))
     try:
-        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
+        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord', session)
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
         else:
@@ -514,7 +497,7 @@ def mark_for_deletion(work_id, manifestation_id, fullpath):
         logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title. Error: %s', fullpath, manifestation, err)
 
 
-def push_payload(item_id, webvtt_payload):
+def push_payload(item_id, session, webvtt_payload):
     '''
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
@@ -530,7 +513,7 @@ def push_payload(item_id, webvtt_payload):
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     try:
-        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord', session)
         if post_resp:
             return True
     except Exception as err:

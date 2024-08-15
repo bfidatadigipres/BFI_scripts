@@ -46,6 +46,7 @@ import yaml
 from document_augmented_streaming_cast import create_contributors
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 STORAGE = os.environ.get('QNAP_IMAGEN')
@@ -73,29 +74,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check for downtime control
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
-            sys.exit("Script run prevented by downtime_control.json. Script exiting")
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def read_csv_to_dict(csv_path):
@@ -608,7 +586,12 @@ def main():
     Where an episodic series, create a
     series work. Link all records as needed.
     '''
-    check_control()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     csv_path = sys.argv[1]
     if not os.path.isfile(csv_path):
@@ -1037,7 +1020,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
     print(f"Series work values:\n{series_work_values}")
 
     # Start creating CID Work Series record
-    series_work_xml = adlib.create_record_data('', series_work_values)
+    series_work_xml = adlib.create_record_data(CID_API, 'works', '', series_work_values)
 
     try:
         print("Attempting to create CID record")
@@ -1071,7 +1054,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
     if series_genres_filter:
         print(series_genres, series_genres_filter)
         print("**** Attempting to write work genres to records ****")
-        series_genres_xml = adlib.create_record_data(series_work_id, series_genres_filter)
+        series_genres_xml = adlib.create_record_data(CID_API, 'works', series_work_id, series_genres_filter)
         success = adlib.post(CID_API, series_genres_xml, 'works', 'updaterecord')
         if success is None:
             LOGGER.info("Failed to update genres to Series Work record: %s", series_work_id)
@@ -1155,7 +1138,7 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
     print(f"Work values:\n{work_values}")
 
     # Start creating CID Work Series record
-    work_xml = adlib.create_record_data('', work_values)
+    work_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     try:
         print("Attempting to create CID record")
         work_rec = adlib.post(CID_API, work_xml, 'works', 'insertrecord')
@@ -1187,7 +1170,7 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
     work_genres_filter = [i for n, i in enumerate(work_genres) if i not in work_genres[n + 1:]]
     if work_genres_filter:
         print(f"**** Attempting to write work genres to records {work_genres_filter} ****")
-        work_genres_xml = adlib.create_record_data(work_id, work_genres_filter)
+        work_genres_xml = adlib.create_record_data(CID_API, 'works', work_id, work_genres_filter)
         success = adlib.post(CID_API, work_genres_xml, 'works', 'updaterecord')
         if success is None:
             LOGGER.info("Failed to update genres to Series Work record: %s", work_id)
@@ -1241,7 +1224,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     print(f"Manifestation values:\n{manifestation_values}")
 
     broadcast_addition = []
-    manifestation_xml = adlib.create_record_data('', manifestation_values)
+    manifestation_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     try:
         print("Attempting to create CID record")
         man_rec = adlib.post(CID_API, manifestation_xml, 'manifestations', 'insertrecord')
@@ -1262,7 +1245,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
         return None
 
     broadcast_addition = [{'broadcast_company.lref': '999823516'}] # Amazon Prime Video
-    broadcast_xml = adlib.create_record_data(manifestation_id, broadcast_addition)
+    broadcast_xml = adlib.create_record_data(CID_API, 'manifestations', manifestation_id, broadcast_addition)
     print("**** Attempting to write work genres to records ****")
 
     success = adlib.post(CID_API, broadcast_xml, 'manifestations', 'updaterecord')
@@ -1328,7 +1311,7 @@ def create_item(man_priref, work_title, work_title_art, work_dict, record_defaul
         item_values.append({'title.type': '05_MAIN'})
 
     print(item_values)
-    item_xml = adlib.create_record_data('', item_values)
+    item_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
     try:
         print("Attempting to create CID Item record")
         item_rec = adlib.post(CID_API, item_xml, 'items', 'insertrecord')

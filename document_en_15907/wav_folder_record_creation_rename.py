@@ -416,7 +416,7 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
     item_values.append({'title.type': '05_MAIN'})
     print(item_values)
 
-    item_values_xml = adlib.create_record_data('', item_values)
+    item_values_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
     print(item_values_xml)
 
     record = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')

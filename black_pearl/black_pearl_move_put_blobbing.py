@@ -278,6 +278,12 @@ def main():
         if not utils.check_control('black_pearl'):
             LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if '.DS_Store' in fname:
+            continue
+        if fname.startswith('.'):
+            continue
+        if fname.endswith(('.txt', '.md5', '.log', '.mhl', '.ini', '.json')):
+            continue
         fpath = os.path.join(autoingest, fname)
 
         # Begin blobbed PUT (bool argument for checksum validation off/on in ds3Helpers)
@@ -481,7 +487,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
 
-    record_data_xml = adlib.create_record_data('', record_data)
+    record_data_xml = adlib.create_record_data(CID_API, 'media', '', record_data)
     record = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
     if record:
         try:

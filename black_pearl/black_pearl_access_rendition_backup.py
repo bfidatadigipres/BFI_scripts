@@ -37,7 +37,7 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 STORAGE = os.environ['TRANSCODING']
 INGEST_POINT = os.path.join(STORAGE, 'mp4_proxy_backup_ingest_bfi/')
-MOD_MAX = 14
+MOD_MAX = 30
 UPLOAD_MAX = 1099511627776
 BUCKET = 'Access_Renditions_backup'
 
@@ -159,7 +159,7 @@ def main():
                     continue
                 if check_mod_time(old_fpath) is False:
                     continue
-                if bp_utils.check_no_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is False:
+                if bp_utils.check_no_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is True:
                     LOGGER.info("New item to write to BP: %s/%s/%s", key, folder, file)
                     print(f"New item to write to BP: {key}/{folder}/{file}")
                     file_list.append(f"{key}/{folder}/{file}")
@@ -181,6 +181,8 @@ def main():
                         print(f"Removing from list MD5 match: {item}")
                         LOGGER.info("Skipping item %s as MD5 files match:\n%s - Local MD5\n%s - Remote MD5", item, local_md5, bp_md5)
                         remove_list.append(item)
+                    elif bp_md5 is None:
+                        LOGGER.info("MD5 for item was not found in Black Pearl. File in incorrect list 'replace_list'")
                     else:
                         LOGGER.info("MD5s do not match, queue for deletion:\n%s - Local MD4\n%s - Remote MD5", local_md5, bp_md5)
                         print(f"MD5 do not match - queued for deletion: {item}")

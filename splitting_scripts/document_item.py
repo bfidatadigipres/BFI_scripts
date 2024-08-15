@@ -197,7 +197,7 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
     log_print(f"NO SEGMENTS\n{rec}")
 
     print(rec)
-    rec_xml = adlib.create_record_data('', rec)
+    rec_xml = adlib.create_record_data(CID_API, 'items', '', rec)
     print(rec_xml)
     new_record = adlib.post(CID_API, rec_xml, 'items', 'insertrecord')
     if new_record:
@@ -258,7 +258,7 @@ def new_no_segments(source_object_number, extension, note=None):
 
     log_print(f"NO SEGMENTS\n{rec}")
 
-    rec_xml = adlib.create_record_data('', rec)
+    rec_xml = adlib.create_record_data(CID_API, 'items', '', rec)
     print(rec_xml)
     new_record = adlib.post(CID_API, rec_xml, 'items', 'insertrecord')
     if new_record:
@@ -330,7 +330,7 @@ def new(source_object_number, segments, duration, extension, note=None):
 
     log_print(f"SEGMENTS\n{rec}")
     print(rec)
-    rec_xml = adlib.create_record_data('', rec)
+    rec_xml = adlib.create_record_data(CID_API, 'items', '', rec)
     print(rec_xml)
     new_record = adlib.post(CID_API, rec_xml, 'items', 'insertrecord')
     if new_record:

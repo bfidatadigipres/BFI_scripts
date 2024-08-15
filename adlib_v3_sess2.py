@@ -266,7 +266,6 @@ def get_grouped_items(api, database, session):
     grouped = {}
     mdata = metadata['adlibXML']['recordList']['record']
     for num in range(0, len(mdata)):
-        print(mdata[num])
         try:
             group = mdata[num]['group']
             field_name = mdata[num]['fieldName']['value'][0]['#text']
@@ -303,11 +302,13 @@ def create_record_data(api, database, session, priref, data=None):
                         remove_list.append(item)
         if new_grouping:
             data.append(new_grouping)
+    print(data)
+    print(remove_list)
 
     if remove_list:
         for rm in remove_list:
             data.remove(rm)
-
+    print(data)
     frag = get_fragments(data)
     if not frag:
         return False

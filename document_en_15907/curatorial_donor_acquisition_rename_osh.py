@@ -128,8 +128,12 @@ def main():
     Rename and move to successful_rename/ folder
     '''
     LOGGER.info("=========== START Curatorial Donor Acquisition rename OSH script START ==========")
-    utils.check_control('pause_scripts')
-    utils.cid_check(CID_API)
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
     if len(sys.argv) < 2:
         LOGGER.warning("SCRIPT EXITING: Error with shell script input:\n%s\n", sys.argv)
         sys.exit()
@@ -249,7 +253,6 @@ def main():
             LOGGER.info("File information not found in CID. Leaving file in place and updating logs.")
             local_logger(f"\nNO CID MATCH FOUND: File found {item} but no CID data retrieved", fullpath)
             local_logger(f"Please check CID item has digital.acquired_filename field populated with {item}\n", fullpath)
-        local_logger("---------------- File process complete ----------------", fullpath)
 
     # Check new workflow folder has content (renaming failures mean empty)
     new_workflow_folder = os.path.basename(spath)
@@ -261,7 +264,7 @@ def main():
         sys.exit()
 
     # Rsync completed folder over
-    local_logger(f"\nStarting RSYNC copy of {new_workflow_folder} to Digiops QC Curatorial path", fullpath)
+    local_logger(f"Starting RSYNC copy of {new_workflow_folder} to Digiops QC Curatorial path", fullpath)
     print("Rsync start here")
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
     # Repeat for checksum pass if first pass fails
@@ -269,7 +272,7 @@ def main():
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
     print("Rsync finished")
     local_logger("RSYNC complete.", fullpath)
-
+    local_logger("---------------- File process complete ----------------\n", fullpath)
     LOGGER.info("============= END Curatorial Donor Acquisition rename OSH script END ============")
 
 
@@ -301,7 +304,6 @@ def make_filename(ob_num, item_list, item):
     '''
     Take individual elements and calculate part whole
     '''
-    print("** Might break here")
     print(item_list)
     extension = False
     file = ob_num.replace('-', '_')
@@ -311,6 +313,7 @@ def make_filename(ob_num, item_list, item):
         return None
     if len(ext[1]) > 0:
         extension = True
+    # Might break here if CID name differs from file
     part = item_list.index(item)
     whole = len(item_list)
     part_ = int(part) + 1

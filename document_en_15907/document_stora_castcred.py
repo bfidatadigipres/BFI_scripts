@@ -40,7 +40,8 @@ import datetime
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib_v3 as adlib
+import adlib_v3_sess as adlib
+import utils
 
 # Global vars
 TODAY = str(datetime.datetime.now())
@@ -103,29 +104,6 @@ production = {'abridged-by': ['Script', 'Scripting', '15500'],
               'series-producer': ['Series Producer', 'Production', '4500'],
               'writer-nf': ['Script', 'Scripting', '15500'],
               'writer-f': ['Screenplay', 'Scripting', '15000']}
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['stora']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def split_title(title_article):
@@ -407,13 +385,13 @@ def retrieve_person(credit_list_raw, nfa_cat):
     return (cast_dct, cred_dct)
 
 
-def cid_person_check(credit_id):
+def cid_person_check(credit_id, session):
     '''
     Retrieve if Person record with priref already exist for credit_entity_id
     '''
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
     try:
-        result = adlib.retrieve_record(CID_API, 'people', search, '0')[1]
+        result = adlib.retrieve_record(CID_API, 'people', search, '0', session)[1]
     except (KeyError, IndexError, TypeError):
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
         result = None
@@ -515,19 +493,27 @@ def main():
     Link new/existing People priref to CID Work
     '''
     LOGGER.info("============= START document_stora_castcred script START =============")
-    check_control()
-    cid_check()
+    if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
     LOGGER.info("Checking path for documented JSON: %s", ARCHIVE_PATH)
     print(ARCHIVE_PATH)
 
     # Iterate through all historical EPG metadata file
     # Later limit to just 1 week range before yesterday
+    session = adlib.create_session()
+
     for root, _, files in os.walk(ARCHIVE_PATH):
         for file in files:
             if not file.endswith('json.documented'):
                 continue
 
-            check_control()
+            if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+                LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
             LOGGER.info("New file found for processing: %s", file)
             fullpath = os.path.join(root, file)
             credit_data = ''
@@ -622,7 +608,7 @@ def main():
                         print(cast_name, cast_id)
 
                         # Check person record exists
-                        person_priref, person_name, person_act_type = cid_person_check(cast_id)
+                        person_priref, person_name, person_act_type = cid_person_check(cast_id, session)
                         if person_priref is None:
                             cast_dct_data = ''
                             # Create data for Person record creation
@@ -634,7 +620,7 @@ def main():
                             trivia = cast_dct_data[4]
 
                             # Make Person record
-                            person_priref = make_person_record(cast_dct_formatted)
+                            person_priref = make_person_record(session, cast_dct_formatted)
                             if not person_priref:
                                 LOGGER.warning("Failure to create person record for %s", cast_name)
                                 continue
@@ -644,7 +630,7 @@ def main():
                             if len(person_priref) > 5:
                                 payload = create_payload(person_priref, known_for, early_life, bio, trivia)
                                 if len(payload) > 90:
-                                    success = write_payload(payload, person_priref)
+                                    success = write_payload(payload, person_priref, session)
                                     if success:
                                         LOGGER.info("** Payload data successfully written to Person record %s, %s", person_priref, person_name)
                                         print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
@@ -663,7 +649,7 @@ def main():
                                         LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
                                     else:
                                         LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
-                                        append_activity_type(person_priref, person_act_type, activity_type)
+                                        append_activity_type(person_priref, person_act_type, activity_type, session)
                             LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
 
                         # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
@@ -697,7 +683,7 @@ def main():
                         print(cred_name, cred_id)
 
                         # Check person record exists
-                        person_priref, person_name, person_act_type = cid_person_check(cred_id)
+                        person_priref, person_name, person_act_type = cid_person_check(cred_id, session)
                         if person_priref is None:
                             cred_dct_data = ''
                             # Create data for Person record creation
@@ -709,7 +695,7 @@ def main():
                             cred_trivia = cred_dct_data[4]
 
                             # Make Person record
-                            person_priref = make_person_record(cred_dct_formatted)
+                            person_priref = make_person_record(session, cred_dct_formatted)
                             if not person_priref:
                                 LOGGER.warning("Failure to create person record for %s", person_name)
                                 continue
@@ -719,7 +705,7 @@ def main():
                             if len(person_priref) > 5:
                                 payload = create_payload(person_priref, cred_known_for, cred_early_life, cred_bio, cred_trivia)
                             if len(payload) > 90:
-                                success = write_payload(payload, person_priref)
+                                success = write_payload(payload, person_priref, session)
                                 if success:
                                     LOGGER.info("** Payload data successfully written to Person record %s, %s", person_priref, person_name)
                                     print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
@@ -738,7 +724,7 @@ def main():
                                         print(f"Matched activity type {activity_type_cred} : {person_act_type}")
                                     else:
                                         print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
-                                        success = append_activity_type(person_priref, person_act_type, activity_type_cred)
+                                        success = append_activity_type(person_priref, person_act_type, activity_type_cred, session)
                                         if success is True:
                                             LOGGER.info("Activity type appended successfully to person: %s", person_priref)
                                         else:
@@ -774,7 +760,7 @@ def main():
             LOGGER.info("** Appending data to work record now...")
             print(work_append_dct)
 
-            work_append(work_priref, work_append_dct)
+            work_append(work_priref, session, work_append_dct)
             LOGGER.info("Checking work_append_dct written to CID Work record")
 
             edit_name = cid_work_check(f"priref='{work_priref}'")[1]
@@ -822,7 +808,7 @@ def sort_cred_dct(cred_list):
     return cred_dct_update
 
 
-def append_activity_type(person_priref, old_act_type, activity_type):
+def append_activity_type(person_priref, old_act_type, activity_type, session):
     '''
     Append activity type to person record if different
     '''
@@ -832,7 +818,8 @@ def append_activity_type(person_priref, old_act_type, activity_type):
             act_type.append({'activity_type': act})
 
     # Convert dict to xml using adlib
-    xml = adlib.create_record_data(person_priref, act_type)
+    print(act_type)
+    xml = adlib.create_record_data(CID_API, 'people', person_priref, act_type)
     if xml:
         print(xml)
     else:
@@ -841,7 +828,7 @@ def append_activity_type(person_priref, old_act_type, activity_type):
     # Create basic person record
     try:
         LOGGER.info("Attempting to append activity type to Person record %s", person_priref)
-        record = adlib.post(CID_API, xml, 'people', 'updaterecord')
+        record = adlib.post(CID_API, xml, 'people', 'updaterecord', session)
         if record is None:
             print(f"Unable to write activity type to Person record")
             return False
@@ -923,7 +910,7 @@ def make_person_dct(dct=None):
     return (credit_dct, known_for, early_life, biography, trivia)
 
 
-def make_person_record(credit_dct=None):
+def make_person_record(session, credit_dct=None):
     '''
     Where person record does not exist create new one
     and return priref for person for addition to work record
@@ -933,7 +920,7 @@ def make_person_record(credit_dct=None):
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = adlib.create_record_data('', credit_dct)
+    credit_xml = adlib.create_record_data(CID_API, 'people', '', credit_dct)
     if credit_xml:
         print("*************************")
         print(credit_xml)
@@ -943,7 +930,7 @@ def make_person_record(credit_dct=None):
     # Create basic person record
     LOGGER.info("Attempting to create Person record for item")
     try:
-        record = adlib.post(CID_API, credit_xml, 'people', 'insertrecord')
+        record = adlib.post(CID_API, credit_xml, 'people', 'insertrecord', session)
     except (IndexError, TypeError, KeyError) as err:
         LOGGER.critical('make_person_record():Unable to create People record', err)
         return None
@@ -957,7 +944,7 @@ def make_person_record(credit_dct=None):
     return credit_priref
 
 
-def work_append(priref, work_dct=None):
+def work_append(priref, session, work_dct=None):
     '''
     Items passed in work_dct for amending to Work record
     '''
@@ -965,9 +952,9 @@ def work_append(priref, work_dct=None):
         LOGGER.warning("work_append(): work_update_dct passed to function as None")
         return False
 
-    work_dct_xml = adlib.create_record_data(priref, work_dct)
+    work_dct_xml = adlib.create_record_data(CID_API, 'works', priref, work_dct)
     try:
-        rec = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord')
+        rec = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord', session)
         if rec:
             return True
     except Exception as err:
@@ -1026,14 +1013,14 @@ def create_payload(priref, known_for, early_life, bio, trivia):
     return payload
 
 
-def write_payload(payload, person_priref):
+def write_payload(payload, person_priref, session):
     '''
     Removed from main to avoid repetition
     '''
     print('Sending POST request to people database to lock record')
     
     try:
-        record = adlib.post(CID_API, payload, 'people', 'updaterecord')
+        record = adlib.post(CID_API, payload, 'people', 'updaterecord', session)
         print(record)
     except Exception as err:
         LOGGER.warning("write_payload(): WRITE TO CID PERSON RECORD %s FAILED:\n%s", person_priref, err)

@@ -11,6 +11,7 @@ Joanna White
 import json
 import requests
 import datetime
+import xmltodict
 from lxml import etree, html
 from dicttoxml import dicttoxml
 from tenacity import retry, stop_after_attempt
@@ -232,26 +233,79 @@ def group_check(record, fname):
         return None
 
 
-def create_record_data(priref, data=None):
+def get_grouped_items(api, database):
     '''
-    Create a record from given XML string or dictionary (or list of dictionaries)
+    Check dB for groupings and ensure
+    these are added to XML configuration
     '''
+    query = {
+        'command': 'getmetadata',
+        'database': database,
+        'limit': 0
+    }
 
+    result = requests('GET', api, headers=HEADERS, params=query)
+    metadata = xmltodict.parse(result.text)
+    if not isinstance(metadata, dict):
+        return None, None
+
+    grouped = {}
+    mdata = metadata['adlibXML']['recordList']['record']
+    for num in range(0, len(mdata)):
+        try:
+            group = mdata[num]['group']
+            field_name = mdata[num]['fieldName']['value'][0]['#text']
+            if group in grouped.keys():
+                grouped[group].append(field_name)
+            else:
+                grouped[group] = [field_name]
+        except KeyError:
+            pass
+
+    return grouped
+
+
+def create_record_data(api, database, priref, data=None):
+    '''
+    Create a record from supplied dictionary (or list of dictionaries)
+    '''
     if not isinstance(data, list):
         data = [data]
+
+    # Take data and group where matched to grouped dict
+    grouped = get_grouped_items(api, database)
+    remove_list = []
+    for key, value in grouped.items():
+        new_grouping = {}
+        for item in data:
+            for k in item.keys():
+                if k in value:
+                    if key in new_grouping.keys():
+                        new_grouping[key].update(item)
+                        remove_list.append(item)
+                    else:
+                        new_grouping[key] = item
+                        remove_list.append(item)
+        if new_grouping:
+            print(f"Adjusted grouping data: {new_grouping}")
+            data.append(new_grouping)
+
+    if remove_list:
+        for rm in remove_list:
+            if rm in data:
+                data.remove(rm)
 
     frag = get_fragments(data)
     if not frag:
         return False
 
     record = etree.XML('<record></record>')
-    for i in frag:
-        record.append(etree.fromstring(i))
-
     if not priref:
         record.append(etree.fromstring('<priref>0</priref>'))
     else:
         record.append(etree.fromstring(f'<priref>{priref}</priref>'))
+    for i in frag:
+        record.append(etree.fromstring(i))
 
     # Convert XML object to string
     payload = etree.tostring(record)

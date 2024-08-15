@@ -214,7 +214,7 @@ def main(filepath, frame_work, destination=None):
 
     if dupe is False:
         # Create CID record
-        record_xml = adlib.create_record_data('', record)
+        record_xml = adlib.create_record_data(CID_API, 'items', '', record)
         result = adlib.post(CID_API, record_xml, 'items', 'insertrecord')
         if not result:
             logger.warning("Record creation failed with XML:\n%s", record_xml)

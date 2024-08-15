@@ -13,6 +13,7 @@ import datetime
 from requests import Session, exceptions
 from lxml import etree, html
 from dicttoxml import dicttoxml
+import xmltodict
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {
@@ -39,7 +40,7 @@ def create_session():
     '''
     session = Session()
     return session
-
+    
 
 def retrieve_record(api, database, search, limit, session=None, fields=None):
     '''
@@ -104,7 +105,7 @@ def post(api, payload, database, method, session=None):
     params = {
         'command': method,
         'database': database,
-        'xmltype': 'unstructured',
+        'xmltype': 'grouped',
         'output': 'jsonv1'
     }
     payload = payload.encode('utf-8')
@@ -245,14 +246,69 @@ def group_check(record, fname):
         return None
 
 
-def create_record_data(priref, data=None):
+def get_grouped_items(api, database, session):
     '''
-    Create a record from given XML string or dictionary (or list of dictionaries)
+    Check dB for groupings and ensure
+    these are added to XML configuration
     '''
+    query = {
+        'command': 'getmetadata',
+        'database': database,
+        'limit': 0
+    }
+    if not session:
+        session = create_session()
+    result = session.get(api, headers=HEADERS, params=query)
+    metadata = xmltodict.parse(result.text)
+    if not isinstance(metadata, dict):
+        return None, None
 
+    grouped = {}
+    mdata = metadata['adlibXML']['recordList']['record']
+    for num in range(0, len(mdata)):
+        try:
+            group = mdata[num]['group']
+            field_name = mdata[num]['fieldName']['value'][0]['#text']
+            if group in grouped.keys():
+                grouped[group].append(field_name)
+            else:
+                grouped[group] = [field_name]
+        except KeyError:
+            pass
+
+    return grouped
+
+
+def create_record_data(api, database, session, priref, data=None):
+    '''
+    Create a record from supplied dictionary (or list of dictionaries)
+    '''
     if not isinstance(data, list):
         data = [data]
-    print(data)
+
+    # Take data and group where matched to grouped dict
+    grouped = get_grouped_items(api, database, session)
+    remove_list = []
+    for key, value in grouped.items():
+        new_grouping = {}
+        for item in data:
+            for k in item.keys():
+                if k in value:
+                    if key in new_grouping.keys():
+                        new_grouping[key].update(item)
+                        remove_list.append(item)
+                    else:
+                        new_grouping[key] = item
+                        remove_list.append(item)
+        if new_grouping:
+            print(f"Adjusted grouping data: {new_grouping}")
+            data.append(new_grouping)
+
+    if remove_list:
+        for rm in remove_list:
+            if rm in data:
+                data.remove(rm)
+
     frag = get_fragments(data)
     if not frag:
         return False
@@ -263,9 +319,6 @@ def create_record_data(priref, data=None):
     else:
         record.append(etree.fromstring(f'<priref>{priref}</priref>'))
     for i in frag:
-        # Groupings to be appended here?
-        print("*** Fragments ***")
-        print(i)
         record.append(etree.fromstring(i))
 
     # Convert XML object to string

@@ -1084,7 +1084,7 @@ def work_update(priref, work_dct=None):
     if work_dct is None:
         return False
 
-    work_dct_xml = adlib.create_record_data(priref, work_dct)
+    work_dct_xml = adlib.create_record_data(CID_API, 'works', priref, work_dct)
     print(f"WORK UPDATE: {priref} {work_dct_xml}")
     try:
         record = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord')
@@ -1169,7 +1169,7 @@ def manifestation_create(start_date, event_type, priref, manifestation_dct=None,
 
     man_priref = ''
     # Create CID record for Manifestation
-    man_values_xml = adlib.create_record_data('', manifestation_values)
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     print("---------------------------")
     print(man_values_xml)
     print("---------------------------")
@@ -1257,7 +1257,7 @@ def create_qna_work(qna_date, film_priref, grouping, qna_title_dct=None):
     work_values.extend(work_default)
     print(work_values)
     # Create basic work record
-    work_values_xml = adlib.create_record_data('', work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     try:
         record = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         if record:

@@ -541,7 +541,9 @@ def append_activity_type(person_priref, activity_type, existing_types, session):
     data = [{'activity_type': activity_type}]
     for act_type in existing_types:
         data.extend([{'activity_type': act_type}])
-    act_xml = adlib.create_record_data(person_priref, data)
+    print(data)
+    act_xml = adlib.create_record_data(CID_API, 'people', person_priref, data)
+    print(act_xml)
     try:
         record = adlib.post(CID_API, act_xml, 'people', 'updaterecord', session)
         print(record)
@@ -627,7 +629,7 @@ def work_append(priref, session, work_dct=None):
     if work_dct is None:
         LOGGER.warning("work_append(): work_update_dct passed to function as None")
         return False
-    work_dct_xml = adlib.create_record_data(priref, work_dct)
+    work_dct_xml = adlib.create_record_data(CID_API, 'works', priref, work_dct)
     record = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord', session)
     if record:
         print("*** Work append result:")
@@ -648,7 +650,7 @@ def make_person_record(session, credit_dct=None):
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = adlib.create_record_data('', credit_dct)
+    credit_xml = adlib.create_record_data(CID_API, 'people', '', credit_dct)
     if not credit_xml:
         LOGGER.warning("Credit data failed to create XML: %s", credit_dct)
         return None

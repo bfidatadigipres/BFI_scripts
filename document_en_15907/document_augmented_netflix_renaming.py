@@ -384,7 +384,7 @@ def item_append(priref, item_append_dct):
     Items passed in item_dct for amending to CID item record
     '''
 
-    item_xml = adlib.create_record_data(priref, item_append_dct)
+    item_xml = adlib.create_record_data(CID_API, 'items', priref, item_append_dct)
     try:
         result = adlib.post(CID_API, item_xml, 'items', 'updaterecord')
         print("*** CID item record append result:")

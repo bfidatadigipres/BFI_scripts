@@ -334,7 +334,7 @@ def create_work(fullpath, title, session, record_defaults, work_defaults, work_r
     work_values.extend(work_defaults)
     work_values.extend(work_restricted_defaults)
 
-    work_values_xml = adlib.create_record_data('', work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None
     print("***************************")
@@ -372,7 +372,7 @@ def create_manifestation(work_id, fullpath, title, session, record_defaults, man
     manifestation_values.extend(manifestation_defaults)
     manifestation_values.append({'part_of_reference.lref': work_id})
 
-    man_values_xml = adlib.create_record_data('', manifestation_values)
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     if man_values_xml is None:
         return None
     print("***************************")
@@ -439,7 +439,7 @@ def create_item(manifestation_id, fullpath, title, session, acquired_filename, r
     item_values.append({'part_of_reference.lref': manifestation_id})
     item_values.append({'digital.acquired_filename': acquired_filename})
 
-    item_values_xml = adlib.create_record_data('', item_values)
+    item_values_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
     if item_values_xml is None:
         return None
     print("***************************")

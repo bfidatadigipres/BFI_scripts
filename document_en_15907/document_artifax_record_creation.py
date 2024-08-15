@@ -513,7 +513,7 @@ def create_work(work_data_dct=None):
     work_values.extend(work_default)
 
     # Create basic work record
-    work_values_xml = adlib.create_record_data('', work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None
     print("***************************")

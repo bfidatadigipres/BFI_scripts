@@ -228,7 +228,7 @@ def main():
                 if item_data is None:
                     LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
                     continue
-                item_xml = adlib.create_record_data('', item_data)
+                item_xml = adlib.create_record_data(CID_API, 'items', '', item_data)
                 qcomm = 'UHD SDR version'
             elif 'Audio Description' in metadata:
                 LOGGER.info("Audio Description file found: %s", mov_file)
@@ -237,7 +237,7 @@ def main():
                 if item_data is None:
                     LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
                     continue
-                item_xml = adlib.create_record_data('', item_data)
+                item_xml = adlib.create_record_data(CID_API, 'items', '', item_data)
                 qcomm = 'Audio Description'
             else:
                 LOGGER.warning("File found with metadata not recognised. Skipping this item.")
@@ -381,7 +381,7 @@ def item_append(priref, item_append_dct):
     '''
     Items passed in item_dct for amending to CID item record
     '''
-    item_xml = adlib.create_record_data(priref, item_append_dct)
+    item_xml = adlib.create_record_data(CID_API, 'items', priref, item_append_dct)
     try:
         result = adlib.post(CID_API, item_xml, 'items', 'updaterecord')
         print("*** CID item record append result:")

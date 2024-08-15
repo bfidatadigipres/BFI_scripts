@@ -192,7 +192,7 @@ def main():
                 filename_dct.append({"digital.acquired_filename.type": "FILE"})
 
             # Append digital.acquired_filename and quality_comments to new CID item record
-            payload = adlib.create_record_data(new_priref, filename_dct)
+            payload = adlib.create_record_data(CID_API, 'items', new_priref, filename_dct)
             record = adlib.post(CID_API, payload, 'items', 'updaterecord')
             if not record:
                 LOGGER.warning("Filename changes were not updated to digital.acquired_filename fields: %s", filename_dct)
@@ -396,7 +396,7 @@ def create_new_item_record(priref, platform, record):
     '''
     item_dct = make_item_record_dict(priref, platform, record)
     LOGGER.info(item_dct)
-    item_xml = adlib.create_record_data('', item_dct)
+    item_xml = adlib.create_record_data(CID_API, 'items', '', item_dct)
     new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)

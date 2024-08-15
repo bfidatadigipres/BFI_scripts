@@ -13,6 +13,7 @@ import datetime
 from requests import Session, exceptions
 from lxml import etree, html
 from dicttoxml import dicttoxml
+import xmltodict
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {
@@ -39,7 +40,7 @@ def create_session():
     '''
     session = Session()
     return session
-
+    
 
 def retrieve_record(api, database, search, limit, session=None, fields=None):
     '''
@@ -245,14 +246,49 @@ def group_check(record, fname):
         return None
 
 
-def create_record_data(priref, data=None):
+def get_grouped_items(api, database, session):
     '''
-    Create a record from given XML string or dictionary (or list of dictionaries)
+    Check dB for groupings and ensure
+    these are added to XML configuration
     '''
+    query = {
+        'command': 'getmetadata',
+        'database': database,
+        'limit': 0
+    }
+    result = get(api, query, session)
+    metadata = xmltodict.parse(result.text)
+    if not isinstance(metadata, dict):
+        return None, None
+    
+    grouped = {}
+    ungrouped = []
+    mdata = metadata['adlibXML']['recordList']['record']
+    for num in range(0, len(mdata)):
+        try:
+            group = mdata[num]['group']
+            field_name = mdata[num]['fieldName']['value'][0]['#text']
+            if group not in grouped.keys():
+                grouped[group] = [field_name]
+            else:
+                grouped[group].append(field_name)
+        except KeyError:
+            ungrouped.append(mdata[num]['fieldName']['value'][0]['#text'])
+    
+    return grouped, ungrouped
 
+
+def create_record_data(priref, database, data=None):
+    '''
+    Create a record from supplied dictionary (or list of dictionaries)
+    '''
     if not isinstance(data, list):
         data = [data]
     print(data)
+
+    # Split here to grouped, not grouped
+    grouped, ungrouped = create_record_data(api, database, session, data)
+
     frag = get_fragments(data)
     if not frag:
         return False
@@ -277,6 +313,15 @@ def create_record_data(priref, data=None):
 
 def get_fragments(obj):
     '''
+    Create XML string, from dict with
+    check for groupings
+    '''
+    # New code
+
+
+
+def get_fragments(obj):
+    '''
     Validate given XML string(s), or create valid XML
     fragment from dictionary / list of dictionaries
     Attribution @ Edward Anderson
@@ -297,8 +342,11 @@ def get_fragments(obj):
         try:
             list_item = html.fragments_fromstring(sub_item, parser=etree.XMLParser(remove_blank_text=True))
             for itm in list_item:
+                print(itm)
                 xml = etree.fromstring(etree.tostring(itm))
+                print(xml)
                 data.append(etree.tostring(xml))
+                print(data)
         except Exception as err:
             raise TypeError(f'Invalid XML:\n{sub_item}') from err
 

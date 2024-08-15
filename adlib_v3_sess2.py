@@ -9,11 +9,11 @@ Joanna White
 '''
 
 import json
-import requests
 import datetime
-import xmltodict
+from requests import Session, exceptions
 from lxml import etree, html
 from dicttoxml import dicttoxml
+import xmltodict
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {
@@ -34,7 +34,15 @@ def check(api):
     return get(api, query)
 
 
-def retrieve_record(api, database, search, limit, fields=None):
+def create_session():
+    '''
+    Start a requests session and return
+    '''
+    session = Session()
+    return session
+    
+
+def retrieve_record(api, database, search, limit, session=None, fields=None):
     '''
     Retrieve data from CID using new API
     '''
@@ -49,7 +57,7 @@ def retrieve_record(api, database, search, limit, fields=None):
         field_str = ', '.join(fields)
         query['fields'] = field_str
 
-    record = get(api, query)
+    record = get(api, query, session)
     if not record:
         return None, None
     elif record['adlibJSON']['diagnostic']['hits'] == 0:
@@ -67,28 +75,30 @@ def retrieve_record(api, database, search, limit, fields=None):
 
 
 @retry(stop=stop_after_attempt(10))
-def get(api, query):
+def get(api, query, session):
     '''
     Send a GET request
     '''
+    if not session:
+        session = create_session()
     try:
-        req = requests.request('GET', api, headers=HEADERS, params=query)
+        req = session.get(api, headers=HEADERS, params=query)
         if req.status_code != 200:
             raise Exception
         dct = json.loads(req.text)
         return dct
-    except requests.exceptions.Timeout as err:
+    except exceptions.Timeout as err:
         print(err)
         raise Exception
-    except requests.exceptions.ConnectionError as err:
+    except exceptions.ConnectionError as err:
         print(err)
         raise Exception
-    except requests.exceptions.HTTPError as err:
+    except exceptions.HTTPError as err:
         print(err)
         raise Exception
 
 
-def post(api, payload, database, method):
+def post(api, payload, database, method, session=None):
     '''
     Send a POST request
     '''
@@ -100,29 +110,32 @@ def post(api, payload, database, method):
     }
     payload = payload.encode('utf-8')
 
+    if not session:
+        session = create_session()
+
     if method == 'insertrecord':
         try:
-            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
-        except requests.exceptions.Timeout as err:
+            response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+        except exceptions.Timeout as err:
             print(err)
             raise Exception
-        except requests.exceptions.ConnectionError as err:
+        except exceptions.ConnectionError as err:
             print(err)
             raise Exception
-        except requests.exceptions.HTTPError as err:
+        except exceptions.HTTPError as err:
             print(err)
             raise Exception
 
     if method == 'updaterecord':
         try:
-            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
-        except requests.exceptions.Timeout as err:
+            response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+        except exceptions.Timeout as err:
             print(err)
             raise Exception
-        except requests.exceptions.ConnectionError as err:
+        except exceptions.ConnectionError as err:
             print(err)
             raise Exception
-        except requests.exceptions.HTTPError as err:
+        except exceptions.HTTPError as err:
             print(err)
             raise Exception
 
@@ -233,7 +246,7 @@ def group_check(record, fname):
         return None
 
 
-def get_grouped_items(api, database):
+def get_grouped_items(api, database, session):
     '''
     Check dB for groupings and ensure
     these are added to XML configuration
@@ -243,8 +256,9 @@ def get_grouped_items(api, database):
         'database': database,
         'limit': 0
     }
-
-    result = requests('GET', api, headers=HEADERS, params=query)
+    if not session:
+        session = create_session()
+    result = session.get(api, headers=HEADERS, params=query)
     metadata = xmltodict.parse(result.text)
     if not isinstance(metadata, dict):
         return None, None
@@ -265,7 +279,7 @@ def get_grouped_items(api, database):
     return grouped
 
 
-def create_record_data(api, database, priref, data=None):
+def create_record_data(api, database, session, priref, data=None):
     '''
     Create a record from supplied dictionary (or list of dictionaries)
     '''
@@ -273,7 +287,7 @@ def create_record_data(api, database, priref, data=None):
         data = [data]
 
     # Take data and group where matched to grouped dict
-    grouped = get_grouped_items(api, database)
+    grouped = get_grouped_items(api, database, session)
     remove_list = []
     for key, value in grouped.items():
         new_grouping = {}
@@ -344,7 +358,7 @@ def get_fragments(obj):
     return data
 
 
-def add_quality_comments(api, priref, comments):
+def add_quality_comments(api, priref, comments, session=None):
     '''
     Receive comments string
     convert to XML quality comments
@@ -359,8 +373,10 @@ def add_quality_comments(api, priref, comments):
     p_end = "</quality_comments></record></recordList></adlibXML>"
     payload = p_start + p_comm + p_date + p_writer + p_end
 
-    response = requests.request(
-        'POST',
+    if not session:
+        session = create_session()
+
+    response = session.post(
         api,
         headers={'Content-Type': 'text/xml'},
         params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},

@@ -45,6 +45,7 @@ from datetime import timedelta
 import title_article
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Local date vars for script comparison/activation
 TODAY_TIME = str(datetime.datetime.now())
@@ -100,29 +101,6 @@ FESTIVALS = {
     'FFF2026': ["159", "Future Film Festival 2026", "399160"],
     'LFF2026': ["154", "LFF 2026", "399150"]
 }
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def check_cid():
-    '''
-    Check CID is online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        logger.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def date_gen(date_str):
@@ -234,8 +212,12 @@ def main():
     Iterate through each work_id to assess suitability to make new CID work record
     Extract data from relevant work_ids and pass into CID with defaults for CID works from Artifax Festivals
     '''
-    check_cid()
-    check_control()
+    if not utils.check_control('pause_scripts'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     # Opening log statement
     logger.info('========== Python3 start: Fetching Artifax JSON data and creating CID record =======')
@@ -531,7 +513,7 @@ def create_work(work_data_dct=None):
     work_values.extend(work_default)
 
     # Create basic work record
-    work_values_xml = adlib.create_record_data('', work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None
     print("***************************")

@@ -402,7 +402,10 @@ def main():
         if not os.path.exists(download_fpath):
             os.makedirs(download_fpath, 0o777, exist_ok=True)
             LOGGER.info("Download file path created: %s", download_fpath)
-        os.chmod(download_fpath, 0o777)
+        try:
+            os.chmod(download_fpath, 0o777)
+        except PermissionError as err:
+            print(err)
 
         priref_list = []
         # Single download

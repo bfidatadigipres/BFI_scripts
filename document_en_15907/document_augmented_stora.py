@@ -7,7 +7,9 @@ Create CID record hierarchies for Work-Manifestation-Item
 using augmented metadata supply (JSON via API) and traversing filesystem paths to files
     1. Create work-manifestation-item for each JSON in the path and link to a
        series work if the programme is episodic. Where the programme is a repeated showing
-       only create manifestation and item, and link to existing work.
+       check for episode title starting 'Generic' (PA Media assure us this identifies a repeated
+       asset_id that has a new episode). If 'Generic' present at start of episode title create new work,
+       otherwise only create manifestation and item, and link to existing work.
        If new series (if episodic and series data present) create new series from downloaded
        EPG series data, then link work-manifestion-item to it.
     2. Add the WebVTT subtitles to the Item record (utb and label.text) using requests library
@@ -40,7 +42,8 @@ from lxml import etree
 # Private packages
 from series_retrieve import retrieve
 sys.path.append(os.environ['CODE'])
-import adlib_v3 as adlib
+import adlib_v3_sess2 as adlib
+import utils
 
 # Global variables
 STORAGE = os.environ['STORA_PATH']
@@ -71,6 +74,13 @@ YEAR_PATH = YESTERDAY_CLEAN[:4]
 # YEAR_PATH = '2023'
 STORAGE_PATH = STORAGE + YEAR_PATH
 
+NEWS_CHANNELS = [
+    'Al Jazeera',
+    'BBC NEWS HD',
+    'Sky News',
+    'GB News'
+]
+
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],
             'bbctwohd': ["BBC Two HD", "This is BBC Two", "Highlights of programmes BBC Two. [HD]"],
             'bbcthree': ["BBC Three HD", "This is BBC Three", "Programmes start at 7:00pm. [HD]"],
@@ -92,34 +102,8 @@ CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's roll
             '5star': ["5STAR", "5STAR close", "Programmes will resume shortly."],
             'al_jazeera': ["Al Jazeera", "Al Jazeera close", "This is a 24 hour broadcast news channel."],
             'gb_news': ["GB News", "GB News close", "This is a 24 hour broadcast news channel."],
-            'sky_news': ["Sky News", "Sky News close", "This is a 24 hour broadcast news channel."],
-            'talk_tv': ["Talk TV", "Talk TV close", "This is a 24 hour broadcast news channel."]
+            'sky_news': ["Sky News", "Sky News close", "This is a 24 hour broadcast news channel."]
 }
-
-
-def check_control():
-    '''
-    Check for downtime control
-    '''
-
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts'] or not j['stora']:
-            logger.info("Script run prevented by downtime_control.json. Script exiting.")
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-@tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def cid_check():
-    '''
-    Test if CID API online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        logger.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def split_title(title_article):
@@ -152,7 +136,7 @@ def look_up_series_list(alternative_num):
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def cid_series_query(series_id):
+def cid_series_query(series_id, session):
     '''
     Sends CID request for series_id data
     '''
@@ -161,7 +145,7 @@ def cid_series_query(series_id):
     search = f'alternative_number="{series_id}"'
 
     try:
-        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
+        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1', session)
     except Exception as err:
         print(err)
         raise Exception
@@ -183,14 +167,14 @@ def cid_series_query(series_id):
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def find_repeats(asset_id):
+def find_repeats(asset_id, session):
     '''
     Use asset_id to check in CID for duplicate
     PATV showings of a manifestation
     '''
 
     search = f'alternative_number="{asset_id}"'
-    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', ['priref', 'alternative_number.type', 'part_of_reference.lref'])
+    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', session, ['priref', 'alternative_number.type', 'part_of_reference.lref'])
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
         print(f'CID API could not be reached for Manifestations search: {search}')
@@ -203,7 +187,7 @@ def find_repeats(asset_id):
     except (IndexError, TypeError, KeyError):
         return None
 
-    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '1', ['alternative_number.type', 'part_of_reference.lref'])[1]
+    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '1', session, ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
     try:
@@ -364,9 +348,11 @@ def csv_retrieve(fullpath):
         print("No info.csv file found. Skipping CSV retrieve")
         return None
 
+    print("**** Check CSV reading correctly ****")
     with open(fullpath, 'r', encoding='utf-8') as inf:
         rows = csv.reader(inf)
         for row in rows:
+            print(row)
             data = {'channel': row[0], 'title': row[1], 'description': row[2], \
                     'title_date_start': row[3], 'time': row[4], 'duration': row[5], 'actual_duration': row[6]}
             logger.info('%s\tCSV being processed: %s', fullpath, data['title'])
@@ -389,7 +375,7 @@ def fetch_lines(fullpath, lines):
     and return as a dictionary
     '''
     epg_dict = {}
-
+    generic = False
     for _ in lines:
         print(f"Fullpath for file being handled: {fullpath}")
         try:
@@ -401,8 +387,12 @@ def fetch_lines(fullpath, lines):
         except (IndexError, KeyError, TypeError):
             title_new = ""
 
-        # This block is for correct title formatting, inc replacing 'Generic'
-        if title_whole == "Generic" or title_whole == "":
+        # This block is for correct title formatting, and flagging 'Generic'
+        if title_whole.title().startswith("Generic"):
+            print(title_whole)
+            title_for_split = title_new
+            generic = True
+        elif title_whole == "":
             title_for_split = title_new
         else:
             title_bare = ''.join(str for str in title_whole if str.isalnum())
@@ -685,7 +675,7 @@ def fetch_lines(fullpath, lines):
             print(f"Work type = {work_type}")
             epg_dict['work_type'] = work_type
 
-    return epg_dict
+    return generic, epg_dict
 
 
 def main():
@@ -701,8 +691,14 @@ def main():
     file_list.sort()
     print(f"Found JSON file total: {len(file_list)}")
 
+    session = adlib.create_session()
     for fullpath in file_list:
-        check_control()
+#        if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+#            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+#            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if not utils.cid_check(CID_API):
+            logger.critical("* Cannot establish CID session, exiting script")
+            sys.exit("* Cannot establish CID session, exiting script")
 
         root, file = os.path.split(fullpath)
         if not file.endswith('.json') or not file.startswith('info_'):
@@ -715,20 +711,23 @@ def main():
 
         # Retrieve all data needed from JSON
         if lines:
-            epg_dict = fetch_lines(fullpath, lines)
+            generic, epg_dict = fetch_lines(fullpath, lines)
         else:
             print("No EPG dictionary found. Skipping!")
             continue
+        if generic is True:
+            print("Generic episode title found")
         title = epg_dict['title']
         print(f"Title: {title}")
         description = epg_dict['description']
         print(f"Longest Description: {description}")
         broadcast_channel = ''
-        if 'channel' in epg_dict and 'broadcast_channel' in epg_dict:
+        if 'channel' in epg_dict:
             channel = epg_dict['channel']
+            print(f"Channel selected: {channel}")
+        if 'broadcast_channel' in epg_dict:
             broadcast_channel = epg_dict['broadcast_channel']
-            print(f"Broadcaster {broadcast_channel} and Channel {channel}")
-            print(f"Colour manifestation = {epg_dict['colour_manifestation']}")
+            print(f"Broadcaster: {broadcast_channel}")
 
         # CSV data gather
         csv_data = csv_retrieve(os.path.join(root, 'info.csv'))
@@ -753,12 +752,26 @@ def main():
         work_priref = ''
         if 'asset_id' in epg_dict:
             print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
-            work_priref = find_repeats(epg_dict['asset_id'])
+            work_priref = find_repeats(epg_dict['asset_id'], session)
         if work_priref is None:
             print("Cannot access dB via API. Skipping")
             logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
             continue
         elif work_priref == 0:
+            new_work = True
+        elif len(work_priref) > 4:
+            print(f"**** JSON file found to have repeated Asset ID, previous work: {work_priref}")
+            if generic is True:
+                print("Generic in title, assuming programme is new content")
+                new_work = True
+            else:
+                logger.info("** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s", work_priref)
+
+        # Make news channels new works for all live programming
+        if channel in NEWS_CHANNELS:
+            new_work = True
+
+        if new_work is True:
             # Create the Work record here, and populate work_priref
             print("JSON file does not have repeated asset_id. Creating new work record...")
             series_return = []
@@ -773,7 +786,7 @@ def main():
                     series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
                     logger.info("Series found for annual refresh: %s", series_chck)
 
-                series_return = cid_series_query(series_id)
+                series_return = cid_series_query(series_id, session)
                 if series_return[0] is None:
                     print(f"CID Series data not retrieved: {epg_dict['series_id']}")
                     logger.warning("Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s", epg_dict['series_id'])
@@ -784,21 +797,17 @@ def main():
                 if hit_count == 0:
                     print("This Series does not exist yet in CID - attempting creation now")
                     # Launch create series function
-                    series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict, series_id)
+                    series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict, series_id, session)
                     if not series_work_id:
                         logger.warning("Skipping further actions: Creation of series failed as no series_work_id found: \n%s", epg_dict['series_id'])
                         continue
 
             # Create Work
-            new_work = True
             work_values = []
             work_values.extend(rec_def)
             work_values.extend(work_def)
             work_values.extend(work_res_def)
-            work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict)
-        elif len(work_priref) > 4:
-            print(f"**** JSON file found to have repeated Asset ID, previous work: {work_priref}")
-            logger.info("** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s", work_priref)
+            work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict, session)
 
         if not work_priref:
             print(f"Work error, priref not numeric from new file creation: {work_priref}")
@@ -811,7 +820,7 @@ def main():
         manifestation_values = []
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
-        manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict)
+        manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict, session)
 
         if not manifestation_priref:
             print(f"CID Manifestation priref not retrieved for manifestation: {manifestation_priref}")
@@ -827,8 +836,7 @@ def main():
         item_values = []
         item_values.extend(rec_def)
         item_values.extend(item_def)
-
-        item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict)
+        item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict, session)
         print(f"item_object_number: {item_data}")
 
         if item_data is None:
@@ -847,10 +855,11 @@ def main():
             else:
                 print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
                 continue
+
         '''
         # Build webvtt payload [deprecated]
         if webvtt_payload:
-            success = push_payload(item_data[1], webvtt_payload)
+            success = push_payload(item_data[1], webvtt_payload, session)
             if not success:
                 logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
         '''
@@ -886,11 +895,12 @@ def main():
             except Exception as err:
                 print(f'** PROBLEM: Could not rename {old_webvtt} to {new_vtt}')
                 logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_webvtt, new_vtt, err)
+        sys.exit("Close for review of record creations")
 
     logger.info('========== STORA documentation script END ===================================================\n')
 
 
-def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id):
+def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id, session):
     '''
     Call function series_check(series_id) and build all data needed
     to make new series. Return boole for success/fail
@@ -1059,13 +1069,13 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         series_work_values.extend(series_work_genres)
 
     # Start creating CID Work Series record
-    series_values_xml = adlib.create_record_data('', series_work_values)
+    series_values_xml = adlib.create_record_data(CID_API, 'works', session, '', series_work_values)
     if series_values_xml is None:
         return None
 
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
-        work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
+        work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord', session)
         print(f"create_series(): {work_rec}")
         if 'priref' in str(work_rec):
             try:
@@ -1192,7 +1202,7 @@ def build_webvtt_dct(old_webvtt):
     return webvtt_payload.replace("\'", "'")
 
 
-def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict):
+def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict, session):
     '''
     Create work records
     '''
@@ -1282,13 +1292,14 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
 
     work_id = ''
     # Start creating CID Work record
-    work_values_xml = adlib.create_record_data('', work_values)
+    print(work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', session, '', work_values)
     if work_values_xml is None:
         return None
 
     try:
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
-        work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
+        work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord', session)
         print(f"create_work(): {work_rec}")
         if 'priref' in str(work_rec):
             try:
@@ -1310,7 +1321,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
     return work_id
 
 
-def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict):
+def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict, session):
     '''
     Create a manifestation record,
     linked to work_priref
@@ -1319,6 +1330,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     title = epg_dict['title']
     manifestation_values = []
     manifestation_values.extend(manifestation_defaults)
+    print(manifestation_values)
     manifestation_values.append({'part_of_reference.lref': work_priref})
     manifestation_values.append({'alternative_number.type': 'PATV asset id'})
     if 'asset_id' in epg_dict:
@@ -1334,13 +1346,16 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         manifestation_values.append({'transmission_duration': epg_dict['duration_total']})
         manifestation_values.append({'runtime': epg_dict['duration_total']})
 
-
-    man_values_xml = adlib.create_record_data('', manifestation_values)
+    print(manifestation_values)
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', session, '', manifestation_values)
+    print("=================================")
+    print(man_values_xml)
+    print("=================================")
     if man_values_xml is None:
         return None
     try:
         logger.info("Attempting to create Manifestation record for item %s", title)
-        man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
+        man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord', session)
         print(f"create_manifestation(): {man_rec}")
         if 'priref' in str(man_rec):
             try:
@@ -1359,7 +1374,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     return manifestation_id
 
 
-def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, epg_dict):
+def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, epg_dict, session):
     '''
     Create CID Item record
     '''
@@ -1375,14 +1390,14 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     except (KeyError, IndexError, TypeError):
         print("Title article is not present")
 
-
-    item_values_xml = adlib.create_record_data('', item_values)
+    print(item_values)
+    item_values_xml = adlib.create_record_data(CID_API, 'items', session, '', item_values)
     if item_values_xml is None:
         return None
 
     try:
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
-        item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+        item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord', session)
         print(f"create_cid_item_record(): {item_rec}")
         if 'priref' in str(item_rec):
             try:
@@ -1402,14 +1417,14 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath}")
 
-        success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id)
+        success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session)
         logger.warning("Data cleaned following failure of Item record creation: %s", success)
         return None
 
     return item_object_number, item_id
 
 
-def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
+def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
     '''
     Item record creation failed
     Update manifestation records with deletion prompt in title
@@ -1421,7 +1436,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     payload = etree.tostring(etree.fromstring(manifestation))
 
     try:
-        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
+        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord', session)
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
         else:
@@ -1438,7 +1453,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         payload = etree.tostring(etree.fromstring(work))
 
         try:
-            response = adlib.post(CID_API, payload, 'works', 'updaterecord')
+            response = adlib.post(CID_API, payload, 'works', 'updaterecord', session)
             if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
             else:
@@ -1460,7 +1475,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         return True
 
 
-def push_payload(item_id, webvtt_payload):
+def push_payload(item_id, webvtt_payload, session):
     '''
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
@@ -1475,7 +1490,7 @@ def push_payload(item_id, webvtt_payload):
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     try:
-        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord', session)
         if post_resp:
             return True
     except Exception as err:

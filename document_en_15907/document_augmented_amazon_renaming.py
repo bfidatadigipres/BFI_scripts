@@ -50,6 +50,7 @@ import subprocess
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
@@ -70,29 +71,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check for downtime control
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
-            sys.exit("Script run prevented by downtime_control.json. Script exiting")
-
-
-def cid_check():
-    '''
-    Test if CID API online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def cid_check_fname(object_number):
@@ -184,8 +162,12 @@ def main():
     then create additional CID item records for
     remaining video/audio files (wrapped .mov)
     '''
-    check_control()
-    cid_check()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     folder_list = walk_folders()
     if len(folder_list) == 0:
@@ -242,11 +224,11 @@ def main():
             elif 'SDR' in metadata:
                 LOGGER.info("UHD SDR file found: %s", mov_file)
                 # Build dictionary from CID item record
-                item_data = make_item_record_dict(priref, mov_file, record, '')
+                item_data = make_item_record_dict(priref, mov_file, record, 'SDR')
                 if item_data is None:
                     LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
                     continue
-                item_xml = adlib.create_record_data('', item_data)
+                item_xml = adlib.create_record_data(CID_API, 'items', '', item_data)
                 qcomm = 'UHD SDR version'
             elif 'Audio Description' in metadata:
                 LOGGER.info("Audio Description file found: %s", mov_file)
@@ -255,7 +237,7 @@ def main():
                 if item_data is None:
                     LOGGER.info("Skipping: Creation of Item record dictionary failed for file %s", mov_file)
                     continue
-                item_xml = adlib.create_record_data('', item_data)
+                item_xml = adlib.create_record_data(CID_API, 'items', '', item_data)
                 qcomm = 'Audio Description'
             else:
                 LOGGER.warning("File found with metadata not recognised. Skipping this item.")
@@ -339,8 +321,12 @@ def make_item_record_dict(priref, file, record, arg):
     item.append({'related_object.notes': f'{arg} for'})
     if 'SDR' in arg:
         item.append({'file_type.lref': '114307'})
+        item.append({'language.lref': '74129'})
+        item.append({'language.type': 'DIALORIG'})
     elif 'Audio Description' in arg:
         item.append({'file_type.lref': '114307'})
+        item.append({'language.lref': '74129'})
+        item.append({'language.type': 'AUDDES'})
     if 'acquisition.date' in str(record):
         item.append({'acquisition.date': adlib.retrieve_field_name(record[0], 'acquisition.date')[0]})
     if 'acquisition.method' in str(record):
@@ -395,7 +381,7 @@ def item_append(priref, item_append_dct):
     '''
     Items passed in item_dct for amending to CID item record
     '''
-    item_xml = adlib.create_record_data(priref, item_append_dct)
+    item_xml = adlib.create_record_data(CID_API, 'items', priref, item_append_dct)
     try:
         result = adlib.post(CID_API, item_xml, 'items', 'updaterecord')
         print("*** CID item record append result:")
@@ -443,13 +429,10 @@ def defaults():
                #{'record_access.rights': '1'},
                #{'record_access.reason': 'SENSITIVE_LEGAL'},
                {'grouping.lref': '401361'},
-               {'language.lref': '74129'},
-               {'language.type': 'DIALORIG'},
                {'record_type': 'ITEM'},
                {'item_type': 'DIGITAL'},
                {'copy_status': 'M'},
                {'copy_usage.lref': '131560'},
-               {'file_type.lref': '114307'},
                {'accession_date': str(datetime.datetime.now())[:10]}])
 
     return record

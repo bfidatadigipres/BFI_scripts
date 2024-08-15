@@ -44,6 +44,7 @@ import tenacity
 import title_article
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Local date vars for script comparison/activation
 TODAY = datetime.date.today()
@@ -111,30 +112,6 @@ FORMATS = {'DVD': ['DVD (Digital Versatile Disc)', '73390'],
            'HDCAM SR': ['HDCAM SR', '394912'],
            'Digital file': ['ProRes QuickTime', '399231']
            }
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_test():
-    '''
-    Run test for CID before beginning processing
-    To be coupled with tenacity for repeating attempts when connection drops out
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def get_country(code):
@@ -674,8 +651,12 @@ def main():
     Where Q&A custom field active, CID Work record and new manifestation created for Q&A Internet
     Downloads work_copy and where copies exist with 'Internet' or 'Festival' makes CID manifestations
     '''
-    check_control()
-    cid_test()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     # Opening log statement
     LOGGER.info('========== Python3 start: document_artifax_record_population ==========')
@@ -1103,7 +1084,7 @@ def work_update(priref, work_dct=None):
     if work_dct is None:
         return False
 
-    work_dct_xml = adlib.create_record_data(priref, work_dct)
+    work_dct_xml = adlib.create_record_data(CID_API, 'works', priref, work_dct)
     print(f"WORK UPDATE: {priref} {work_dct_xml}")
     try:
         record = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord')
@@ -1188,7 +1169,7 @@ def manifestation_create(start_date, event_type, priref, manifestation_dct=None,
 
     man_priref = ''
     # Create CID record for Manifestation
-    man_values_xml = adlib.create_record_data('', manifestation_values)
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     print("---------------------------")
     print(man_values_xml)
     print("---------------------------")
@@ -1276,7 +1257,7 @@ def create_qna_work(qna_date, film_priref, grouping, qna_title_dct=None):
     work_values.extend(work_default)
     print(work_values)
     # Create basic work record
-    work_values_xml = adlib.create_record_data('', work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     try:
         record = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         if record:

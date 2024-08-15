@@ -39,6 +39,7 @@ import datetime
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 LOGS = os.environ.get('LOG_PATH')
@@ -67,28 +68,6 @@ ORDER = {
     'Ls': '05',
     'Rs': '06'
 }
-
-def check_control():
-    '''
-    Check for downtime control
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
-            sys.exit("Script run prevented by downtime_control.json. Script exiting")
-
-
-def cid_check():
-    '''
-    Test if CID API online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def cid_check_ob_num(object_number):
@@ -129,8 +108,12 @@ def main():
 
     LOGGER.info("== Document augmented streaming platform separate audio start ===================")
     for key, value in STORAGE.items():
-        check_control()
-        cid_check()
+        if not utils.check_control('pause_scripts'):
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if not utils.cid_check(CID_API):
+            LOGGER.critical("* Cannot establish CID session, exiting script")
+            sys.exit("* Cannot establish CID session, exiting script")
 
         platform = key
         autoingest, storage = value.split(', ')
@@ -185,7 +168,7 @@ def main():
                 new_fname = key
                 old_fname = value
                 if not old_fname.endswith(('.WAV', '.wav')):
-                    LOGGER.warning("File contained in separate audio folder that is not WAV: %s", old_fname)
+                    LOGGER.warning("File contained in separate audio folder that is not WAV/MOV: %s", old_fname)
 
                 new_fpath = os.path.join(fpath, new_fname)
                 LOGGER.info("%s to be renamed %s", old_fname, new_fname)
@@ -209,7 +192,7 @@ def main():
                 filename_dct.append({"digital.acquired_filename.type": "FILE"})
 
             # Append digital.acquired_filename and quality_comments to new CID item record
-            payload = adlib.create_record_data(new_priref, filename_dct)
+            payload = adlib.create_record_data(CID_API, 'items', new_priref, filename_dct)
             record = adlib.post(CID_API, payload, 'items', 'updaterecord')
             if not record:
                 LOGGER.warning("Filename changes were not updated to digital.acquired_filename fields: %s", filename_dct)
@@ -413,7 +396,7 @@ def create_new_item_record(priref, platform, record):
     '''
     item_dct = make_item_record_dict(priref, platform, record)
     LOGGER.info(item_dct)
-    item_xml = adlib.create_record_data('', item_dct)
+    item_xml = adlib.create_record_data(CID_API, 'items', '', item_dct)
     new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)

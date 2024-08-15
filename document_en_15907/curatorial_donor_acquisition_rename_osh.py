@@ -78,7 +78,8 @@ def cid_retrieve(itemname, search):
         acquired1 = []
         all_filenames = len(query_result[0]['Acquired_filename'])
         for num in range(0, all_filenames):
-            acquired1.append(adlib.retrieve_field_name(query_result[0]['Acquired_filename'][num], 'digital.acquired_filename')[0])
+            acq = adlib.retrieve_field_name(query_result[0]['Acquired_filename'][num], 'digital.acquired_filename')[0]
+            acquired1.append(acq.lstrip().rstrip())
     except (KeyError, IndexError) as err:
         acquired1 = []
         LOGGER.warning("cid_retrieve(): Unable to access acquired filename1 %s", err)
@@ -111,11 +112,12 @@ def sort_ext(ext):
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}
+    print(ext)
 
-    ext = ext.lower()
     for key, val in mime_type.items():
-        if str(ext) in str(val):
-            return key
+        for ftype in val:
+            if ext.lower() == ftype:
+                return key
 
 
 def main():
@@ -126,8 +128,12 @@ def main():
     Rename and move to successful_rename/ folder
     '''
     LOGGER.info("=========== START Curatorial Donor Acquisition rename OSH script START ==========")
-    utils.check_control('pause_scripts')
-    utils.cid_check(CID_API)
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
     if len(sys.argv) < 2:
         LOGGER.warning("SCRIPT EXITING: Error with shell script input:\n%s\n", sys.argv)
         sys.exit()
@@ -178,8 +184,10 @@ def main():
 
     # Begin processing files
     for item in files:
+        print(f"---{item}---")
         if item.startswith('.'):
             continue
+        item = item.rstrip()
         itempath = os.path.join(fullpath, item)
         if itempath.endswith(('.ini', '.json', '.document', '.edl', '.doc', '.docx', '.txt', '.mhl', '.DS_Store', '.log', '.md5')):
             continue
@@ -190,7 +198,7 @@ def main():
         LOGGER.info("Looking in CID item records for filename match...")
 
         # Check if item is video file, then check for truncation
-        ext = os.path.splitext(itempath)[1]
+        ext = os.path.splitext(itempath)[-1]
         ftype = sort_ext(ext)
         LOGGER.info("File type for %s is %s", item, ftype)
         if ftype == 'video':
@@ -219,7 +227,7 @@ def main():
             if not filename:
                 LOGGER.warning("Problem creating new number for %s", item)
                 local_logger(f"ERROR CREATING NEW FILENAME: {itempath}", fullpath)
-                local_logger("Please check file has no permissions limitations, script will retry later", fullpath)
+                local_logger(f"Skipping: Please check file has no permissions limitations and the name matches the CID Acquired_filename field: {fullpath}")
                 continue
             LOGGER.info("Older filename %s to be replaced with new filename %s", item, filename)
             local_logger(f"Old filename: {item}\nNew filename: {filename}", fullpath)
@@ -245,7 +253,6 @@ def main():
             LOGGER.info("File information not found in CID. Leaving file in place and updating logs.")
             local_logger(f"\nNO CID MATCH FOUND: File found {item} but no CID data retrieved", fullpath)
             local_logger(f"Please check CID item has digital.acquired_filename field populated with {item}\n", fullpath)
-        local_logger("---------------- File process complete ----------------", fullpath)
 
     # Check new workflow folder has content (renaming failures mean empty)
     new_workflow_folder = os.path.basename(spath)
@@ -257,7 +264,7 @@ def main():
         sys.exit()
 
     # Rsync completed folder over
-    local_logger(f"\nStarting RSYNC copy of {new_workflow_folder} to Digiops QC Curatorial path", fullpath)
+    local_logger(f"Starting RSYNC copy of {new_workflow_folder} to Digiops QC Curatorial path", fullpath)
     print("Rsync start here")
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
     # Repeat for checksum pass if first pass fails
@@ -265,7 +272,7 @@ def main():
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
     print("Rsync finished")
     local_logger("RSYNC complete.", fullpath)
-
+    local_logger("---------------- File process complete ----------------\n", fullpath)
     LOGGER.info("============= END Curatorial Donor Acquisition rename OSH script END ============")
 
 
@@ -297,13 +304,16 @@ def make_filename(ob_num, item_list, item):
     '''
     Take individual elements and calculate part whole
     '''
-    print("** Might break here")
     print(item_list)
     extension = False
     file = ob_num.replace('-', '_')
-    ext = os.path.splitext(item)
+    try:
+        ext = os.path.splitext(item)
+    except (ValueError, IndexError, KeyError):
+        return None
     if len(ext[1]) > 0:
         extension = True
+    # Might break here if CID name differs from file
     part = item_list.index(item)
     whole = len(item_list)
     part_ = int(part) + 1

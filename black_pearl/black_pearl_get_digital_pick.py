@@ -186,7 +186,7 @@ def get_media_original_filename(search):
     records = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename', 'reference_number', 'preservation_bucket'])[1]
     if not records:
         LOGGER.exception("get_media_original_filename: Unable to retrieve Media data")
-        raise Exception
+        return None, None, None
 
     try:
         orig_fname = adlib.retrieve_field_name(records[0], 'imagen.media.original_filename')[0]
@@ -367,12 +367,12 @@ def main():
             child_ob_num = get_child_ob_num(child_priref)
             LOGGER.info("Child object number returned from description field: <%s>", child_ob_num)
             filename, ref_num, bucket = get_media_original_filename(f"object.object_number='{child_ob_num}'")
-            print(child_priref, child_ob_num, filename, ref_num)
-            LOGGER.info("Looking at child object number %s - priref %s", child_ob_num, child_priref)
             if not filename:
                 LOGGER.info("Skipping. No matching Media record object number / imagen original filename: %s", child_ob_num)
                 downloads.append('False')
                 continue
+            print(child_priref, child_ob_num, filename, ref_num)
+            LOGGER.info("Looking at child object number %s - priref %s", child_ob_num, child_priref)
 
             # Check if file is first part of sequence of files
             parts_downloads = []

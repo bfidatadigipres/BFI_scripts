@@ -577,7 +577,7 @@ def create_wav_record(gp_priref, title, title_article, title_language):
     item_values.append({'title.type': '05_MAIN'})
     print(item_values)
 
-    item_values_xml = adlib.create_record_data('', item_values)
+    item_values_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
     record = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
     if record:
         try:
@@ -603,7 +603,7 @@ def append_source(source_ob_num, priref, ob_num):
     after push is only way to verify if successful.
     '''
     source = {'source_item': source_ob_num}
-    source_xml = adlib.create_record_data(priref, source)
+    source_xml = adlib.create_record_data(CID_API, 'items', priref, source)
     record = adlib.post(CID_API, source_xml, 'items', 'updaterecord')
     if not record:
         LOGGER.warning("Unable to append work data to CID work record: %s", priref)

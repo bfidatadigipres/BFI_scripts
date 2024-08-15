@@ -10,7 +10,6 @@ June 2022
 import os
 import sys
 import datetime
-import tenacity
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -32,7 +31,6 @@ def log_print(data):
         file.write("--------------------------------\n")
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def fetch_existing_object_number(source_object_number):
     ''' Retrieve the Object Number for an existing MKV record, for use in renaming
         the existing Matroska (single Item) or naming the segment'''
@@ -69,7 +67,6 @@ def new_or_existing(source_object_number, segments, duration, extension, note=No
         return destination_object
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def already_exists(source_object_number):
     ''' Has an MKV record already been created for source? '''
 
@@ -84,7 +81,6 @@ def already_exists(source_object_number):
         return hits, None
 
 
-@tenacity.retry(stop=(tenacity.stop_after_delay(10) | tenacity.stop_after_attempt(10)))
 def new(source_object_number, segments, duration, extension, note=None):
     ''' Create a new item record '''
 
@@ -133,7 +129,7 @@ def new(source_object_number, segments, duration, extension, note=None):
     if note is not None:
         rec.append({'input.notes': note})
 
-    rec_xml = adlib.create_record_data('', rec)
+    rec_xml = adlib.create_record_data(CID_API, 'items', '', rec)
     new_record = adlib.post(CID_API, rec_xml, 'items', 'insertrecord')
     if new_record:
         try:

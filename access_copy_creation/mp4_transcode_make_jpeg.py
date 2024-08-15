@@ -208,13 +208,18 @@ def main():
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
         # Check stream count and see if 'DL' 'DR' present
-        if len(stream_count) > 6:
-            mixed_dict = check_for_mixed_audio(fullpath)
+        if stream_count:
+            if len(stream_count) > 6:
+                mixed_dict = check_for_mixed_audio(fullpath)
+            else:
+                mixed_dict = None
         else:
             mixed_dict = None
+        # Check if FL FR present
+        fl_fr = check_for_fl_fr(fullpath)
 
         # Build FFmpeg command based on dar/height
-        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, mixed_dict)
+        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, mixed_dict, fl_fr)
         if not ffmpeg_cmd:
             log_build.append(f"{local_time()}\tWARNING\tFailed to build FFmpeg command with data: {fullpath}\nHeight {height} Width {width} DAR {dar}")
             log_output(log_build)
@@ -319,8 +324,6 @@ def main():
 
     else:
         log_build.append(f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}")
-        error_path = os.path.join(filepath, 'error/', file)
-        shutil.move(fullpath, error_path)
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
         log_output(log_build)
         sys.exit("Exiting as script does not recognised file type")
@@ -567,17 +570,17 @@ def get_height(fullpath):
     else:
         height = str(reg_height)
 
-    if '480' == height:
+    if height.startswith('480 '):
         return '480'
-    if '486' == height:
+    if height.startswith('486 '):
         return '486'
-    if '576' == height:
+    if height.startswith('576 '):
         return '576'
-    if '608' == height:
+    if height.startswith('608 '):
         return '608'
-    if '720' == height:
+    if height.startswith('720 '):
         return '720'
-    if '1080' == height or '1 080' == height:
+    if height.startswith('1080 ') or height.startswith('1 080 '):
         return '1080'
 
     height = height.split(' pixel', maxsplit=1)[0]
@@ -590,16 +593,19 @@ def get_width(fullpath):
     '''
 
     width = utils.get_metadata('Video', 'Width/String', fullpath)
-
-    if '720' == width:
+    clap_width = utils.get_metadata('Video', 'Width_CleanAperture/String', fullpath)
+    print(width, clap_width)
+    if width.startswith('720 ') and clap_width.startswith('703 '):
+        return '703'
+    if width.startswith('720 '):
         return '720'
-    if '768' == width:
+    if width.startswith('768 '):
         return '768'
-    if '1024' == width or '1 024' == width:
+    if width.startswith('1024 ') or width.startswith('1 024 '):
         return '1024'
-    if '1280' == width or '1 280' == width:
+    if width.startswith('1280 ') or width.startswith('1 280 '):
         return '1280'
-    if '1920' == width or '1 920' == width:
+    if width.startswith('1920 ') or width.startswith('1 920 '):
         return '1920'
     if width.isdigit():
         return str(width)
@@ -629,11 +635,36 @@ def check_for_mixed_audio(fpath):
                 audio_downmix['DL'] = num
             if '(DR)' in audio_channels[num]:
                 audio_downmix['DR'] = num
-
         if len(audio_downmix) == 2:
             return audio_downmix
 
     return None
+
+
+def check_for_fl_fr(fpath):
+    '''
+    For use where audio is '1 channels (FL) or (FR)
+    which is unsupported by FFmpeg, add -ac 2 to command
+    '''
+    cmd = [
+        'ffprobe', '-v', 'error',
+        '-show_entries', 'stream=channel_layout',
+        '-of', 'csv=p=0', fpath
+    ]
+    audio = subprocess.check_output(cmd)
+    audio = audio.decode('utf-8').lstrip('\n').rstrip('\n')
+    audio_channels = audio.split('\n')
+    if len(audio_channels) > 1:
+        audio_downmix = {}
+        for num in range(0, len(audio_channels)):
+            if '1 channels (FL)' in audio_channels[num]:
+                audio_downmix['FL'] = num
+            if '1 channels (FR)' in audio_channels[num]:
+                audio_downmix['FR'] = num
+        if len(audio_downmix) == 2:
+            return True
+
+    return False
 
 
 def get_duration(fullpath):
@@ -730,7 +761,7 @@ def check_audio(fullpath):
         return ('Audio', None, streams)
 
 
-def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs, mixed_dict):
+def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs, mixed_dict, fl_fr):
     '''
     Builds FFmpeg command based on height/dar input
     '''
@@ -773,6 +804,16 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
     ]
 
+    scale_sd_4x3 = [
+        "-vf",
+        "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
+    scale_sd_16x9 = [
+        "-vf",
+        "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
     crop_sd_15x11 = [
         "-vf",
         "yadif,crop=704:572,scale=768:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
@@ -796,6 +837,16 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     crop_sd_16x9 = [
         "-vf",
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
+    sd_downscale_16x9 = [
+        "-vf",
+        "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
+    sd_downscale_4x3 = [
+        "-vf",
+        "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
     ]
 
     hd_16x9 = [
@@ -832,17 +883,22 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     if mixed_dict:
         print(f"Mixed DL DR audio found: {mixed_dict}")
         map_audio = [
-            f"-map 0:a:{mixed_dict['DL']}", f"-map 0:a:{mixed_dict['DR']}",
+            "-map", f"0:a:{mixed_dict['DL']}", "-map", f"0:a:{mixed_dict['DR']}",
             "-ac", "2", "-c:a:0", "aac", "-ab:1", "320k", "-ar:1", "48000", "-ac:1", "2", "-disposition:a:0", "default",
             "-c:a:1", "aac", "-ab:2", "210k", "-ar:2", "48000", "-ac:2", "1", "-disposition:a:1", "0", "-strict", "2", "-async", "1", "-dn"
         ]
+    elif fl_fr is True:
+        map_audio = [
+            "-map", "0:a?",
+            "-ac", "2", "-dn"
+        ] 
     elif default and audio:
         print(f"Default {default}, Audio {audio}")
         map_audio = [
             "-map", "0:a?",
             f"-disposition:a:{default}",
             "default", "-dn"
-        ]
+        ]       
     else:
         map_audio = [
             "-map", "0:a?",
@@ -855,12 +911,24 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     aspect = round(width / height, 3)
     cmd_mid = []
 
-    if height <= 486 and dar == '16:9':
+    if height < 400 and width < 533 and dar == '4:3':
+        cmd_mid = scale_sd_4x3
+    elif height < 400 and width < 533 and dar == '16:9':
+        cmd_mid = scale_sd_16x9
+    elif height <= 486 and dar == '16:9':
         cmd_mid = crop_ntsc_486_16x9
     elif height <= 486 and dar == '4:3':
         cmd_mid = crop_ntsc_486
     elif height <= 486 and width == 640:
         cmd_mid = crop_ntsc_640x480
+    elif height < 576 and width == 720 and dar == '4:3':
+        cmd_mid = scale_sd_4x3
+    elif height == 576 and width == 703 and dar == '4:3':
+        cmd_mid = scale_sd_4x3
+    elif height < 576 and width > 720 and dar == '16:9':
+        cmd_mid = sd_downscale_16x9
+    elif height < 576 and width > 720 and dar == '4:3':
+        cmd_mid = sd_downscale_4x3
     elif height <= 576 and dar == '16:9':
         cmd_mid = crop_sd_16x9
     elif height <= 576 and width == 768:
@@ -875,7 +943,11 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = crop_sd_608
     elif height == 576 and dar == '1.85:1':
         cmd_mid = crop_sd_16x9
-    elif height <= 720 and dar == '16:9':
+    elif height < 720 and dar == '16:9':
+        cmd_mid = sd_downscale_16x9
+    elif height < 720 and dar == '4:3':
+        cmd_mid = sd_downscale_4x3
+    elif height == 720 and dar == '16:9':
         cmd_mid = hd_16x9
     elif width == 1920 and aspect >= 1.778:
         cmd_mid = fhd_letters

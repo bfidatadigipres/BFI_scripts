@@ -286,7 +286,7 @@ def create_record_data(api, database, session, priref, data=None):
     if not isinstance(data, list):
         data = [data]
 
-    # Take data and move separate dicts into groups
+    # Take data and group where matched to grouped dict
     grouped = get_grouped_items(api, database, session)
     remove_list = []
     for key, value in grouped.items():
@@ -301,13 +301,17 @@ def create_record_data(api, database, session, priref, data=None):
                         new_grouping[key] = item
                         remove_list.append(item)
         if new_grouping:
+            print(f"Appending new grouping: {new_grouping}")
             data.append(new_grouping)
     print(data)
     print(remove_list)
 
     if remove_list:
         for rm in remove_list:
-            data.remove(rm)
+            if rm in data:
+                data.remove(rm)
+            else:
+                print(f"WARNING: {rm} not in data:\n{data}")
     print(data)
     frag = get_fragments(data)
     if not frag:
@@ -319,8 +323,6 @@ def create_record_data(api, database, session, priref, data=None):
     else:
         record.append(etree.fromstring(f'<priref>{priref}</priref>'))
     for i in frag:
-        # Groupings to be appended here?
-        print(i)
         record.append(etree.fromstring(i))
 
     # Convert XML object to string
@@ -352,11 +354,8 @@ def get_fragments(obj):
         try:
             list_item = html.fragments_fromstring(sub_item, parser=etree.XMLParser(remove_blank_text=True))
             for itm in list_item:
-                print(itm)
                 xml = etree.fromstring(etree.tostring(itm))
-                print(xml)
                 data.append(etree.tostring(xml))
-                print(data)
         except Exception as err:
             raise TypeError(f'Invalid XML:\n{sub_item}') from err
 

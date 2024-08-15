@@ -262,23 +262,22 @@ def get_grouped_items(api, database, session):
         return None, None
     
     grouped = {}
-    ungrouped = []
     mdata = metadata['adlibXML']['recordList']['record']
     for num in range(0, len(mdata)):
         try:
             group = mdata[num]['group']
             field_name = mdata[num]['fieldName']['value'][0]['#text']
-            if group not in grouped.keys():
-                grouped[group] = [field_name]
-            else:
+            if group in grouped.keys():
                 grouped[group].append(field_name)
+            else:
+                grouped[group] = [field_name]
         except KeyError:
-            ungrouped.append(mdata[num]['fieldName']['value'][0]['#text'])
+            pass
     
-    return grouped, ungrouped
+    return grouped
 
 
-def create_record_data(priref, database, data=None):
+def create_record_data(api, database, session, priref, data=None):
     '''
     Create a record from supplied dictionary (or list of dictionaries)
     '''
@@ -286,8 +285,26 @@ def create_record_data(priref, database, data=None):
         data = [data]
     print(data)
 
-    # Split here to grouped, not grouped
-    grouped, ungrouped = create_record_data(api, database, session, data)
+    # Take data and move separate dicts into groups
+    grouped = get_grouped_items(api, database, session)
+    remove_list = []
+    for key, value in grouped.items():
+        new_grouping = {}
+        for item in data:
+            for k in item.keys():
+                if k in value:
+                    if key in new_grouping.keys():
+                        new_grouping[key].update(item)
+                        remove_list.append(item)
+                    else:
+                        new_grouping[key] = item
+                        remove_list.append(item)
+        if new_grouping:
+            data.append(new_grouping)
+
+    if remove_list:
+        for rm in remove_list:
+            data.remove(rm)
 
     frag = get_fragments(data)
     if not frag:
@@ -300,7 +317,6 @@ def create_record_data(priref, database, data=None):
         record.append(etree.fromstring(f'<priref>{priref}</priref>'))
     for i in frag:
         # Groupings to be appended here?
-        print("*** Fragments ***")
         print(i)
         record.append(etree.fromstring(i))
 
@@ -309,15 +325,6 @@ def create_record_data(priref, database, data=None):
     payload = payload.decode('utf-8')
 
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
-
-
-def get_fragments(obj):
-    '''
-    Create XML string, from dict with
-    check for groupings
-    '''
-    # New code
-
 
 
 def get_fragments(obj):

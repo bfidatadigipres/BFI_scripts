@@ -105,7 +105,7 @@ def post(api, payload, database, method, session=None):
     params = {
         'command': method,
         'database': database,
-        'xmltype': 'unstructured',
+        'xmltype': 'grouped',
         'output': 'jsonv1'
     }
     payload = payload.encode('utf-8')
@@ -262,7 +262,7 @@ def get_grouped_items(api, database, session):
     metadata = xmltodict.parse(result.text)
     if not isinstance(metadata, dict):
         return None, None
-    
+
     grouped = {}
     mdata = metadata['adlibXML']['recordList']['record']
     for num in range(0, len(mdata)):

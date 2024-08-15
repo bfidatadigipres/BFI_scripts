@@ -42,7 +42,7 @@ from lxml import etree
 # Private packages
 from series_retrieve import retrieve
 sys.path.append(os.environ['CODE'])
-import adlib_v3_sess as adlib
+import adlib_v3_sess2 as adlib
 import utils
 
 # Global variables
@@ -103,7 +103,6 @@ CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's roll
             'al_jazeera': ["Al Jazeera", "Al Jazeera close", "This is a 24 hour broadcast news channel."],
             'gb_news': ["GB News", "GB News close", "This is a 24 hour broadcast news channel."],
             'sky_news': ["Sky News", "Sky News close", "This is a 24 hour broadcast news channel."]
-            # 'talk_tv': ["Talk TV", "Talk TV close", "This is a 24 hour broadcast news channel."]
 }
 
 
@@ -808,7 +807,6 @@ def main():
             work_values.extend(rec_def)
             work_values.extend(work_def)
             work_values.extend(work_res_def)
-            print(work_values)
             work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict, session)
 
         if not work_priref:
@@ -822,7 +820,6 @@ def main():
         manifestation_values = []
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
-        print(manifestation_values)
         manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict, session)
 
         if not manifestation_priref:
@@ -839,7 +836,6 @@ def main():
         item_values = []
         item_values.extend(rec_def)
         item_values.extend(item_def)
-        print(item_values)
         item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict, session)
         print(f"item_object_number: {item_data}")
 
@@ -859,8 +855,6 @@ def main():
             else:
                 print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
                 continue
-
-        sys.exit("Close for review of record creation")
 
         '''
         # Build webvtt payload [deprecated]
@@ -901,6 +895,7 @@ def main():
             except Exception as err:
                 print(f'** PROBLEM: Could not rename {old_webvtt} to {new_vtt}')
                 logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_webvtt, new_vtt, err)
+        sys.exit("Close for review of record creations")
 
     logger.info('========== STORA documentation script END ===================================================\n')
 
@@ -1074,7 +1069,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         series_work_values.extend(series_work_genres)
 
     # Start creating CID Work Series record
-    series_values_xml = adlib.create_record_data('', series_work_values)
+    series_values_xml = adlib.create_record_data(CID_API, 'works', session, '', series_work_values)
     if series_values_xml is None:
         return None
 
@@ -1297,7 +1292,8 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
 
     work_id = ''
     # Start creating CID Work record
-    work_values_xml = adlib.create_record_data('', work_values)
+    print(work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', session, '', work_values)
     if work_values_xml is None:
         return None
 
@@ -1334,6 +1330,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     title = epg_dict['title']
     manifestation_values = []
     manifestation_values.extend(manifestation_defaults)
+    print(manifestation_values)
     manifestation_values.append({'part_of_reference.lref': work_priref})
     manifestation_values.append({'alternative_number.type': 'PATV asset id'})
     if 'asset_id' in epg_dict:
@@ -1349,8 +1346,8 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         manifestation_values.append({'transmission_duration': epg_dict['duration_total']})
         manifestation_values.append({'runtime': epg_dict['duration_total']})
 
-
-    man_values_xml = adlib.create_record_data('', manifestation_values)
+    print(manifestation_values)
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', session, '', manifestation_values)
     print("=================================")
     print(man_values_xml)
     print("=================================")
@@ -1393,8 +1390,8 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     except (KeyError, IndexError, TypeError):
         print("Title article is not present")
 
-
-    item_values_xml = adlib.create_record_data('', item_values)
+    print(item_values)
+    item_values_xml = adlib.create_record_data(CID_API, 'items', session, '', item_values)
     if item_values_xml is None:
         return None
 

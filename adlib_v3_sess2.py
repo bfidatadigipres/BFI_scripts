@@ -264,6 +264,7 @@ def get_grouped_items(api, database, session):
     grouped = {}
     mdata = metadata['adlibXML']['recordList']['record']
     for num in range(0, len(mdata)):
+        print(mdata[num])
         try:
             group = mdata[num]['group']
             field_name = mdata[num]['fieldName']['value'][0]['#text']
@@ -273,7 +274,7 @@ def get_grouped_items(api, database, session):
                 grouped[group] = [field_name]
         except KeyError:
             pass
-    
+    print(grouped)
     return grouped
 
 

@@ -256,7 +256,9 @@ def get_grouped_items(api, database, session):
         'database': database,
         'limit': 0
     }
-    result = get(api, query, session)
+    if not session:
+        session = create_session()
+    result = session.get(api, headers=HEADERS, params=query)
     metadata = xmltodict.parse(result.text)
     if not isinstance(metadata, dict):
         return None, None
@@ -284,7 +286,6 @@ def create_record_data(api, database, session, priref, data=None):
     '''
     if not isinstance(data, list):
         data = [data]
-    print(data)
 
     # Take data and move separate dicts into groups
     grouped = get_grouped_items(api, database, session)

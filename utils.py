@@ -19,7 +19,6 @@ import adlib_v3 as adlib
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
-csv.field_size_limit(10000000000)
 
 PREFIX = [
     'N',
@@ -40,6 +39,7 @@ ACCEPTED_EXT = [
     'dpx',
     'wav',
     'mpg',
+    'mpeg',
     'mp4',
     'mov',
     'mkv',
@@ -58,10 +58,46 @@ ACCEPTED_EXT = [
 ]
 
 
+def accepted_file_type(ext):
+    '''
+    Receive extension and return
+    matching accepted file_type
+    '''
+    ftype = {'imp': 'mxf, xml',
+             'tar': 'dpx, dcp, dcdm, wav',
+             'mxf': 'mxf, 50i, imp',
+             'mpg': 'mpeg-1, mpeg-ps',
+             'mpeg': 'mpeg-1, mpeg-ps',
+             'mp4': 'mp4',
+             'mov': 'mov, prores',
+             'mkv': 'mkv, dpx',
+             'wav': 'wav',
+             'tif': 'tif, tiff',
+             'tiff': 'tif, tiff',
+             'jpg': 'jpg, jpeg',
+             'jpeg': 'jpg, jpeg',
+             'ts': 'mpeg-ts',
+             'srt': 'srt',
+             'xml': 'xml, imp',
+             'scc': 'scc',
+             'itt': 'itt',
+             'stl': 'stl',
+             'cap': 'cap',
+             'dfxp': 'dfxp'}
+    ext = ext.lower()
+    for key, val in ftype.items():
+        if key == ext:
+            return val
+
+    return None
+
+
 def check_control(arg):
     '''
     Check control json for downtime requests
     based on passed argument
+    if not utils.check_control['arg']:
+        sys.exit(message)
     '''
     if not isinstance(arg, str):
         arg = str(arg)
@@ -78,6 +114,8 @@ def cid_check(cid_api):
     '''
     Tests if CID API operational before
     all other operations commence
+    if not utils.cid_check[API]:
+        sys.exit(message)
     '''
     try:
         dct = adlib.check(cid_api)
@@ -127,7 +165,7 @@ def check_filename(fname):
         if len(fname.split('.')) != 2:
             return False
         ext = fname.split('.')[-1]
-        if ext.lower() not in (ACCEPTED_EXT):
+        if ext.lower() not in ACCEPTED_EXT:
             return False
 
     return True
@@ -172,7 +210,7 @@ def sort_ext(ext):
     '''
     Decide on file type
     '''
-    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg'],
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4ßimport ', 'mpg', 'avi', 'ts', 'mpeg'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}
@@ -181,6 +219,22 @@ def sort_ext(ext):
     for key, val in mime_type.items():
         if str(ext) in str(val):
             return key
+
+
+def exif_data(dpath):
+    '''
+    Retrieve exiftool data
+    return match to field if available
+    '''
+
+    cmd = [
+        'exiftool',
+        dpath
+    ]
+    data = subprocess.check_output(cmd)
+    data = data.decode('utf-8')
+
+    return data
 
 
 def get_metadata(stream, arg, dpath):
@@ -224,6 +278,7 @@ def get_ms(filepath):
     '''
     Retrieve duration as milliseconds if possible
     '''
+    retry = False
     duration = ''
     cmd = [
         'ffprobe',
@@ -235,19 +290,33 @@ def get_ms(filepath):
 
     try:
         duration = subprocess.check_output(cmd)
-        duration = duration.decode('utf-8')
     except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
+        print(f"Unable to extract duration with FFprobe: {err}")
+        retry = True
+    
+    if retry:
+        cmd = [
+            'mediainfo',
+            '--Language=raw', '-f',
+            '--Output=General;%Duration%',
+            filepath
+        ]
+
+        try:
+            duration = subprocess.check_output(cmd)
+        except Exception as err:
+            print(f"Unable to extract duration with MediaInfo: {err}")
     if duration:
+        duration = duration.decode('utf-8')
         return duration.rstrip('\n')
-    else:
-        return None
+    return None
 
 
 def get_duration(filepath):
     '''
     Retrieve duration field if possible
     '''
+    retry = False
     duration = ''
     cmd = [
         'ffprobe',
@@ -259,13 +328,26 @@ def get_duration(filepath):
     ]
     try:
         duration = subprocess.check_output(cmd)
-        duration = duration.decode('utf-8')
-    except Exception as err:
-        logger.info("Unable to extract duration: %s", err)
+    except subprocess.CalledProcessError as err:
+        print(f"Unable to extract duration with FFprobe: {err}")
+        retry = True
+
+    if retry:
+        cmd = [
+            'mediainfo',
+            '--Language=raw', '-f',
+            '--Output=General;%Duration/String3%',
+            filepath
+        ]
+
+        try:
+            duration = subprocess.check_output(cmd)
+        except Exception as err:
+            print(f"Unable to extract duration with MediaInfo: {err}")
     if duration:
+        duration = duration.decode('utf-8')
         return duration.rstrip('\n')
-    else:
-        return None
+    return None
 
 
 def logger(log_path, level, message):

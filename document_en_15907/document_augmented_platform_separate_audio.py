@@ -185,7 +185,7 @@ def main():
                 new_fname = key
                 old_fname = value
                 if not old_fname.endswith(('.WAV', '.wav')):
-                    LOGGER.warning("File contained in separate audio folder that is not WAV: %s", old_fname)
+                    LOGGER.warning("File contained in separate audio folder that is not WAV/MOV: %s", old_fname)
 
                 new_fpath = os.path.join(fpath, new_fname)
                 LOGGER.info("%s to be renamed %s", old_fname, new_fname)

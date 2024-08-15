@@ -201,13 +201,11 @@ def main():
     if 'None' in str(md5_checksum):
         md5_checksum = make_output_md5(filepath, filename)
 
-    # Write to checksum path as filename.ext.md5
+    # Make metadata then write to checksum path as filename.ext.md5
     if 'None' not in str(md5_checksum):
+        make_metadata(path, filename)
         success = checksum_write(filename, md5_checksum, filepath)
         LOGGER.info("%s Checksum written to: %s", filename, success)
-
-        # Make metadata files
-        make_metadata(path, filename)
 
     LOGGER.info("=============== Python3 %s END ==============", filename)
 

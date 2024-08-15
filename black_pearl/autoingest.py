@@ -156,7 +156,9 @@ def check_accepted_file_type(fpath):
     if any(x in fpath for x in ['qnap_access_renditions', 'qnap_10']):
         if fpath.endswith(('tar', 'TAR')):
             return True
-
+    if any(x in fpath for x in ['qnap_06', 'film_operations', 'qnap_film']):
+        if fpath.endswith(('mkv', 'MKV')):
+            return True
     formt = utils.get_metadata('Video', 'Format', fpath)
     print(f"utils.get_metadata: {formt}")
     if 'ProRes' in str(formt):
@@ -315,36 +317,14 @@ def ext_in_file_type(ext, priref, log_paths):
     '''
     Check if ext matches file_type
     '''
-    ext = ext.lower()
-    dct = {'imp': 'mxf, xml',
-           'tar': 'dpx, dcp, dcdm, wav',
-           'mxf': 'mxf, 50i, imp',
-           'mpg': 'mpeg-1, mpeg-2',
-           'mp4': 'mp4',
-           'mov': 'mov, prores',
-           'mkv': 'mkv, dpx',
-           'wav': 'wav',
-           'tif': 'tif, tiff',
-           'tiff': 'tif, tiff',
-           'jpg': 'jpg, jpeg',
-           'jpeg': 'jpg, jpeg',
-           'ts': 'mpeg-ts',
-           'srt': 'srt',
-           'xml': 'xml, imp',
-           'scc': 'scc',
-           'itt': 'itt',
-           'stl': 'stl',
-           'cap': 'cap',
-           'dfxp': 'dfxp'}
 
-    try:
-        ftype = dct[ext]
-        ftype = ftype.split(', ')
-    except Exception:
+    ftype = utils.accepted_file_type(ext)
+    if not ftype:
         print(f"Filetype not matched in dictionary: {ext}")
         logger.warning('%s\tFile type is not recognised in autoingest', log_paths)
         return False
 
+    ftype = ftype.split(', ')
     print(ftype)
     search = f'priref={priref}'
     record = adlib.retrieve_record(CID_API, 'collect', search, '1', ['file_type'])[1]
@@ -458,8 +438,8 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
     range_whole = whole + 1
     filename_range = []
 
-    # Netflix extensions vary within IMP so shouldn't be included in range check
-    if 'netflix_ingest' in black_pearl_folder:
+    # Netflix extensions/DPX encodings can vary within filename range so shouldn't be included in range check
+    if 'netflix_ingest' in black_pearl_folder or ext.lower() in ['mkv', 'tar']:
         fname_check = fname.split('.')[0]
         for num in range(1, range_whole):
             filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}")

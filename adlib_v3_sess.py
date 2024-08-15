@@ -104,7 +104,7 @@ def post(api, payload, database, method, session=None):
     params = {
         'command': method,
         'database': database,
-        'xmltype': 'grouped',
+        'xmltype': 'unstructured',
         'output': 'jsonv1'
     }
     payload = payload.encode('utf-8')

@@ -37,13 +37,24 @@ LOGGER.setLevel(logging.INFO)
 
 FOLDERS = {
     f"{os.environ['QNAP_H22']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
-    f"{os.environ['ISILON_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_IS_VID']}ingest/proxy/video/adjust/",
+#    f"{os.environ['ISILON_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_IS_VID']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
     f"{os.environ['GRACK_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_H22']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_08']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP08']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_10']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP10']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP01']}ingest/proxy/video/adjust/"
 }
+
+
+def control_check():
+    '''
+    Check that `downtime_control.json` has not indicated termination
+    '''
+    with open(os.path.join(LOGS, 'downtime_control.json')) as control:
+        j = json.load(control)
+        if not j['split_control_delete']:
+            logger.info("Exit requested by downtime_control.json")
+            sys.exit('Exit requested by downtime_control.json')
 
 
 def get_dar(fullpath):
@@ -181,6 +192,7 @@ def main():
     LOGGER.info("==== aspect.py START =================")
 
     for fol in FOLDERS:
+        control_check()
         LOGGER.info("Targeting folder: %s", fol)
         files = []
         for root, _, filenames in os.walk(fol):

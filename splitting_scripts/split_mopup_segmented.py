@@ -51,8 +51,8 @@ TARGETS = [
     '/mnt/qnap_10/processing/',
     '/mnt/qnap_h22/Public/processing/',
     '/mnt/qnap_08/processing/',
-    '/mnt/qnap_video/Public/F47/processing/',
-    '/mnt/isilon/video_operations/processing/'
+    '/mnt/qnap_video/Public/F47/processing/'
+#    '/mnt/isilon/video_operations/processing/'
 ]
 
 

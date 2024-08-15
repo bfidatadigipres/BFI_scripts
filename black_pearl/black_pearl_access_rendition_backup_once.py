@@ -55,11 +55,11 @@ START_FOLDERS = {
 #    'lsa': '201605',
 #    'mace': '201605',
 #    'nefa': '201605',
-    'nis': '201605',
-    'nls': '201605',
-    'nssaw': '201605',
-    'nwfa': '201605',
-    'sase': '201605',
+#    'nis': '201605',
+#    'nls': '201605',
+#    'nssaw': '201605',
+#    'nwfa': '201605',
+#    'sase': '201605',
     'thebox': '201605',
     'wfsa': '201605',
     'yfa': '201605'
@@ -196,12 +196,12 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-            check_control()
+#            check_control()
 
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
-            if 'nis/201' in new_path:
-                continue
+ #           if 'nis/201' in new_path:
+ #               continue
 
             os.makedirs(new_path, mode=0o777, exist_ok=True)
             LOGGER.info("Created new ingest path: %s", new_path)
@@ -242,7 +242,7 @@ def main():
 
             # While files remaining in list, move to ingest folder, PUT, and remove again
             while file_list:
-                check_control()
+#                check_control()
                 empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
                 if len(empty_check) != 0:
                     LOGGER.warning("Exiting: Files found that weren't moved from ingest point previous run: %s", INGEST_POINT)

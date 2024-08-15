@@ -78,6 +78,7 @@ def cid_retrieve(fname, session):
 
     search = f'object_number="{fname}"'
     rec = adlib.retrieve_record(CID_API, 'collect', search, '0', session)[1]
+    print(rec)
     if 'priref' in str(rec):
         priref = adlib.retrieve_field_name(rec[0], 'priref')[0]
 
@@ -156,6 +157,9 @@ def main():
     for work in work_directories:
         if not utils.check_control('pause_scripts'):
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        if work != 'N-9616069':
+            continue
+
         wpath = os.path.join(STORAGE, work)
         LOGGER.info("Work folder found: %s", work)
         work_data = cid_retrieve(work.strip(), session)
@@ -224,7 +228,6 @@ def main():
         else:
             LOGGER.warning("Not all items in folder processed, leaving folder in place for repeat attempt.")
             continue
-        sys.exit("One folder at a time only.")
 
     LOGGER.info("=========== Special Collections rename - Born Digital END ==============")
 
@@ -291,7 +294,6 @@ def get_exifdata(dpath):
     creator_data = []
     rights_data = []
     data = utils.exif_data(dpath)
-
     if not data:
         return None, None
     data_list = data.split('\n')

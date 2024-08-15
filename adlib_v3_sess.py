@@ -39,7 +39,7 @@ def create_session():
     '''
     session = Session()
     return session
-    
+
 
 def retrieve_record(api, database, search, limit, session=None, fields=None):
     '''

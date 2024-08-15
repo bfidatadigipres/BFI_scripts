@@ -233,7 +233,7 @@ def exif_data(dpath):
         dpath
     ]
     data = subprocess.check_output(cmd)
-    data = data.decode('utf-8')
+    data = data.decode('latin-1')
 
     return data
 
@@ -250,7 +250,7 @@ def get_metadata(stream, arg, dpath):
         f'--Output={stream};%{arg}%',
         dpath
     ]
-    
+
     meta = subprocess.check_output(cmd)
     return meta.decode('utf-8').rstrip('\n')
 

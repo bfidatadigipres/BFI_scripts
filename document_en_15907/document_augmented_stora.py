@@ -175,7 +175,7 @@ def find_repeats(asset_id, session):
     '''
 
     search = f'alternative_number="{asset_id}"'
-    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', ['priref', 'alternative_number.type', 'part_of_reference.lref'], session)
+    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', session, ['priref', 'alternative_number.type', 'part_of_reference.lref'])
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
         print(f'CID API could not be reached for Manifestations search: {search}')
@@ -188,7 +188,7 @@ def find_repeats(asset_id, session):
     except (IndexError, TypeError, KeyError):
         return None
 
-    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '1', ['alternative_number.type', 'part_of_reference.lref'], session)[1]
+    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '1', session, ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
     try:
@@ -692,11 +692,11 @@ def main():
     file_list.sort()
     print(f"Found JSON file total: {len(file_list)}")
 
-    session = utils.create_session()
+    session = adlib.create_session()
     for fullpath in file_list:
-        if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
-            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+#        if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+#            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+#            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         if not utils.cid_check(CID_API):
             logger.critical("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
@@ -808,6 +808,7 @@ def main():
             work_values.extend(rec_def)
             work_values.extend(work_def)
             work_values.extend(work_res_def)
+            print(work_values)
             work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict, session)
 
         if not work_priref:
@@ -821,6 +822,7 @@ def main():
         manifestation_values = []
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
+        print(manifestation_values)
         manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict, session)
 
         if not manifestation_priref:
@@ -837,7 +839,7 @@ def main():
         item_values = []
         item_values.extend(rec_def)
         item_values.extend(item_def)
-
+        print(item_values)
         item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict, session)
         print(f"item_object_number: {item_data}")
 
@@ -857,6 +859,9 @@ def main():
             else:
                 print(f"*** Manual clean up needed for Manifestation {manifestation_priref}")
                 continue
+
+        sys.exit("Close for review of record creation")
+
         '''
         # Build webvtt payload [deprecated]
         if webvtt_payload:

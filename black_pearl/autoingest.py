@@ -278,19 +278,19 @@ def check_media_record(fname, session):
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
-        print(f"** HITS: {hits}")
         if hits is None:
             logger.exception('"CID API was unreachable for Media search: %s', search)
             raise Exception(f"CID API was unreachable for Media search: {search}")
         print(f"check_media_record(): AdlibV3 record for hits: {hits}")
-        num = int(hits)
-        if num == 1:
+        if hits == 0:
+            return False
+        elif hits == 1:
             return True
-        if num > 1:
+        elif hits > 1:
             return f'Hits exceed 1: {num}'
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
-    return False
+        return False
 
 
 def get_buckets(bucket_collection):
@@ -562,7 +562,6 @@ def main():
                 boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
                 print(f'File successfully deleted: {boole}')
                 continue
-
             elif 'special_collections' in fpath and 'proxy/image/archive/' in fpath:
                 print('* File is Special Collections archive image')
                 # Simplified name check

@@ -49,17 +49,16 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 START_FOLDERS = {
-#    'bfi': '201605'
-#    'eafa': '201605',
-#    'iwm': '201605',
-#    'lsa': '201605',
-#    'mace': '201605',
-#    'nefa': '201605',
-#    'nis': '201605',
-#    'nls': '201605',
-#    'nssaw': '201605',
-#    'nwfa': '201605',
-#    'sase': '201605',
+    'eafa': '201605',
+    'iwm': '201605',
+    'lsa': '201605',
+    'mace': '201605',
+    'nefa': '201605',
+    'nis': '201605',
+    'nls': '201605',
+    'nssaw': '201605',
+    'nwfa': '201605',
+    'sase': '201605',
     'thebox': '201605',
     'wfsa': '201605',
     'yfa': '201605'
@@ -196,13 +195,10 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-#            check_control()
+            check_control()
 
             LOGGER.info("** Working with access path date folder: %s", folder)
             new_path = os.path.join(INGEST_POINT, key, folder)
- #           if 'nis/201' in new_path:
- #               continue
-
             os.makedirs(new_path, mode=0o777, exist_ok=True)
             LOGGER.info("Created new ingest path: %s", new_path)
 

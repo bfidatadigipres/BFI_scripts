@@ -132,6 +132,8 @@ def main():
 
             # Create CID item record for each timed text in folder
             for file in file_list:
+                if file.lower().endswith('.md5'):
+                    continue
                 ext = file.split('.')[-1]
                 item_record = create_new_item_record(priref, file, record)
                 if item_record is None:
@@ -312,8 +314,8 @@ def create_new_item_record(priref, fname, record):
     Build new CID item record from existing data and make CID item record
     '''
     item_dct = make_item_record_dict(priref, fname, record)
-    LOGGER.info(item_dct)
     item_xml = adlib.create_record_data(CID_API, 'items', '', item_dct)
+    LOGGER.info(item_xml)
     new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)

@@ -278,6 +278,7 @@ def create_new_item_record(priref, fname, record, session):
     '''
     item_dct = make_item_record_dict(priref, fname, record)
     item_xml = adlib.create_record_data(CID_API, 'items', '', item_dct)
+    print(item_xml)
     LOGGER.info(item_xml)
     new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord', session)
     if new_record is None:

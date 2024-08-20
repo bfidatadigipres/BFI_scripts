@@ -123,6 +123,8 @@ def main():
 
         # Create CID item record for each timed text in folder
         for file in file_list:
+            if file.lower().endswith('.md5'):
+                continue
             ext = file.split('.')[-1]
             item_record = create_new_item_record(priref, file, record, session)
             if item_record is None:

@@ -693,9 +693,9 @@ def main():
 
     session = adlib.create_session()
     for fullpath in file_list:
-#        if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
-#            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-#            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         if not utils.cid_check(CID_API):
             logger.critical("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")

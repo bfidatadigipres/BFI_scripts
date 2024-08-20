@@ -733,7 +733,7 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
     # Check if CID media record exists
     media_check = check_media_record(fname, session)
     if media_check is False:
-        print(f'* Filename {fname} has no CID Media record. Leaving for manual checks.')
+        print(f'*********** Filename {fname} has no CID Media record. Leaving for manual checks. (cid_media_record returned False)')
         logger.warning('%s\tCompleted file has no CID Media record: %s', log_paths, fname)
         return False
 

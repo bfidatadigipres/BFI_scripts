@@ -244,7 +244,7 @@ def get_grouped_items(api, database):
         'limit': 0
     }
 
-    result = requests('GET', api, headers=HEADERS, params=query)
+    result = requests.request('GET', api, headers=HEADERS, params=query)
     metadata = xmltodict.parse(result.text)
     if not isinstance(metadata, dict):
         return None, None

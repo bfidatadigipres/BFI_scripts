@@ -56,25 +56,24 @@ Joanna White
 import os
 import sys
 import json
-import hashlib
 import logging
 import itertools
 from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError
-from ds3 import ds3, ds3Helpers
 
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
+sys.path.append(os.path.join(os.environ['CODE'], 'black_pearl/'))
+import bp_utils as bp
 from downloaded_transcode_prores import transcode_mov
 from downloaded_transcode_mp4 import transcode_mp4
 from downloaded_transcode_mp4_watermark import transcode_mp4_access
 
 # GLOBAL VARIABLES
 CID_API = os.environ['CID_API4']
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 CODEPTH = os.environ['CODE']
@@ -240,40 +239,15 @@ def get_media_record_data(priref):
     return all_files
 
 
-def get_bp_md5(fname, bucket):
-    '''
-    Fetch BP checksum to compare
-    to new local MD5
-    '''
-    md5 = ''
-    query = ds3.HeadObjectRequest(bucket, fname)
-    result = CLIENT.head_object(query)
-    try:
-        md5 = result.response.msg['ETag']
-    except Exception as err:
-        print(err)
-    if md5:
-        return md5.replace('"', '')
-
-
 def make_check_md5(fpath, fname, bucket):
     '''
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
     and see if checksums match. If not, write to log
     '''
-    download_checksum = ''
 
-    try:
-        hash_md5 = hashlib.md5()
-        with open(fpath, "rb") as file:
-            for chunk in iter(lambda: file.read(65536), b""):
-                hash_md5.update(chunk)
-        download_checksum = hash_md5.hexdigest()
-    except Exception as err:
-        print(err)
-
-    bp_checksum = get_bp_md5(fname, bucket)
+    download_checksum = utils.create_md5_65536(fpath)
+    bp_checksum = bp.get_bp_md5(fname, bucket)
     print(f"Created from download: {download_checksum} | Retrieved from BP: {bp_checksum}")
     return str(download_checksum).strip(), str(bp_checksum).strip()
 
@@ -442,11 +416,7 @@ def main():
                 # Download from BP
                 LOGGER.info("Beginning download of file %s to download path", fname)
                 update_table(user_id, 'Downloading')
-                download_job_id = download_bp_object(fname, download_fpath, bucket)
-                if download_job_id == '404':
-                    LOGGER.warning("Download of file %s failed. File not found in Black Pearl tape library.", fname)
-                    update_table(user_id, 'Filename not found in Black Pearl')
-                    continue
+                download_job_id = bp.download_bp_object(fname, download_fpath, bucket)
                 if not download_job_id:
                     LOGGER.warning("Download of file %s failed. Resetting download status and script exiting.", fname)
                     update_table(user_id, 'Requested')
@@ -558,13 +528,8 @@ def main():
                         # Download from BP
                         LOGGER.info("Beginning download of file %s to download path", filename)
                         update_table(user_id, f'Downloading {orig_fname}')
-                        download_job_id = download_bp_object(filename, download_fpath, bucket)
-                        if download_job_id == '404':
-                            LOGGER.warning("Download of file %s failed. File not found in Black Pearl tape library.", filename)
-                            update_table(user_id, f'Unable to download {filename} in batch')
-                            download_failures.append(f"CID media priref: {media_priref} - Filename: {filename}")
-                            continue
-                        elif not download_job_id:
+                        download_job_id = bp.download_bp_object(filename, download_fpath, bucket)
+                        if not download_job_id:
                             LOGGER.warning("Download of file %s failed. Attempting to download next item in queue", filename)
                             update_table(user_id, f'Unable to download {filename} in batch')
                             download_failures.append(f"CID media priref: {media_priref} - Filename: {filename}")
@@ -611,25 +576,6 @@ def main():
             update_table(user_id, "Bulk download complete. See email for details")
 
     LOGGER.info("================ DPI DOWNLOAD REQUESTS COMPLETED. Date: %s =================\n", datetime.now().strftime(FMT)[:19])
-
-
-def download_bp_object(fname, outpath, bucket):
-    '''
-    Download the BP object from SpectraLogic
-    tape library and save to outpath
-    '''
-    file_path = os.path.join(outpath, fname)
-    get_objects = [ds3Helpers.HelperGetObject(fname, file_path)]
-    try:
-        get_job_id = HELPER.get_objects(get_objects, bucket)
-        print(f"BP get job ID: {get_job_id}")
-    except Exception as err:
-        LOGGER.warning("Unable to retrieve file %s from Black Pearl", fname)
-        if 'NotFound[404]: Could not find requested blobs' in str(err):
-            get_job_id = '404'
-        else:
-            get_job_id = None
-    return get_job_id
 
 
 def create_transcode(new_fpath, transcode, fname, user_id):

@@ -777,6 +777,8 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
                     os.remove(fpath)
                     logger.info('%s\tSuccessfully deleted file', log_paths)
                     log_delete_message(fpath, 'Successfully deleted file', fname)
+                    print('* successfully deleted QNAP-04 item based on CID Media record...')
+                    return True
 
     return False
 

@@ -770,15 +770,15 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
                 else:
                     print('* File already absent from path. Check problem with persistence message')
 
-            # Temporary step to delete completed items whose logging failed early August 2024 (QNAP-01 drive failure)
-            elif 'qnap_imagen_storage/Public/autoingest/completed' in fpath:
-                logger.info("Ingested during QNAP-01 drive failure impacting Logs/ writes (August 2024). No deletion confirmation in global.log but CID Media record present. Deleting.")
-                if media_check is True:
-                    os.remove(fpath)
-                    logger.info('%s\tSuccessfully deleted file', log_paths)
-                    log_delete_message(fpath, 'Successfully deleted file', fname)
-                    print('* successfully deleted QNAP-04 item based on CID Media record...')
-                    return True
+    # Temporary step to delete completed items whose logging failed early August 2024 (QNAP-01 drive failure)
+    if 'qnap_imagen_storage/Public/autoingest/completed' in fpath:
+        if media_check is True:
+            logger.info("Ingested during QNAP-01 drive failure impacting Logs/ writes (August 2024). No deletion confirmation in global.log but CID Media record present. Deleting.")
+            os.remove(fpath)
+            logger.info('%s\tSuccessfully deleted file', log_paths)
+            log_delete_message(fpath, 'Successfully deleted file', fname)
+            print('* successfully deleted QNAP-04 item based on CID Media record...')
+            return True
 
     return False
 

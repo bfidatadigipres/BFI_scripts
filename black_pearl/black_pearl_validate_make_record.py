@@ -76,6 +76,7 @@ logger.setLevel(logging.INFO)
 
 LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
              os.environ['QNAP_08']: os.environ['L_QNAP08'],
+             os.environ['QNAP08_OSH']: os.environ['L_QNAP08_OSH'],
              os.environ['QNAP_10']: os.environ['L_QNAP10'],
              os.environ['QNAP_H22']: os.environ['L_QNAP02'],
              os.environ['GRACK_H22']: os.environ['L_GRACK02'],

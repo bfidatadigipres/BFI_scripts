@@ -49,17 +49,16 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 START_FOLDERS = {
-#    'bfi': '201605'
-#    'eafa': '201605',
-#    'iwm': '201605',
-#    'lsa': '201605',
-#    'mace': '201605',
-#    'nefa': '201605',
-#    'nis': '201605',
-#    'nls': '201605',
-#    'nssaw': '201605',
-#    'nwfa': '201605',
-#    'sase': '201605',
+    'eafa': '201605',
+    'iwm': '201605',
+    'lsa': '201605',
+    'mace': '201605',
+    'nefa': '201605',
+    'nis': '201605',
+    'nls': '201605',
+    'nssaw': '201605',
+    'nwfa': '201605',
+    'sase': '201605',
     'thebox': '201605',
     'wfsa': '201605',
     'yfa': '201605'
@@ -196,36 +195,40 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-#            check_control()
-
+            check_control()
             LOGGER.info("** Working with access path date folder: %s", folder)
-            new_path = os.path.join(INGEST_POINT, key, folder)
- #           if 'nis/201' in new_path:
- #               continue
-
-            os.makedirs(new_path, mode=0o777, exist_ok=True)
-            LOGGER.info("Created new ingest path: %s", new_path)
-
             files = os.listdir(os.path.join(access_path, folder))
-            LOGGER.info("Starting batch ingest of target files in date folder - modified within last %s days", MOD_MAX)
             for file in files:
-                old_fpath = os.path.join(access_path, folder, file)
-                if check_mod_time(old_fpath) is False:
-                     LOGGER.info("File %s mod time outside of maximum days allowed for upload: %s", file, MOD_MAX)
-                     continue
-                if check_bp_status(f"{key}/{folder}/{file}") is False:
+                if bp_utils.check_no_bp_status(f"{key}/{folder}/{file}", [BUCKET]) is True:
+                    LOGGER.info("New item to write to BP: %s/%s/%s", key, folder, file)
+                    print(f"New item to write to BP: {key}/{folder}/{file}")
                     file_list.append(f"{key}/{folder}/{file}")
                 else:
-                    print(f"Already in Black Pearl: {file}")
+                    print(f"Existing item to overwrite: {key}/{folder}/{file}")
+                    LOGGER.info("Existing item to delete and write to BP: %s/%s/%s", key, folder, file)
+                    replace_list.append(f"{key}/{folder}/{file}")
+
+            # Checking for matching MD5 within replace list
+            print(len(replace_list))
+            remove_list = []
+            if replace_list:
+                for item in replace_list:
                     local_md5 = utils.create_md5_65536(os.path.join(access_path, folder, file))
-                    bp_md5 = bp_utils.get_bp_md5(f"{key}/{folder}/{file}", BUCKET)
-                    if local_md5 != bp_md5:
-                        print(f"MD5 mismatch between local and BP: {file}")
-                        print(f"Local {local_md5} - {file}")
-                        print(f"Remote {bp_md5} - {file}")
-                        LOGGER.info("Overwriting item %s as MD5 files don't match:\n%s - Local MD5\n%s - Remote MD5", file, local_md5, bp_md5)
-                        file_list.append(f"{key}/{folder}/{file}")
-                        replace_list.append(f"{key}/{folder}/{file}")
+                    bp_md5 = bp_utils.get_bp_md5(item, BUCKET)
+                    print(f"Local {local_md5} - {item}")
+                    print(f"Remote {bp_md5} - {item}")
+                    if local_md5 == bp_md5:
+                        print(f"Removing from list MD5 match: {item}")
+                        LOGGER.info("Skipping item %s as MD5 files match:\n%s - Local MD5\n%s - Remote MD5", item, local_md5, bp_md5)
+                        remove_list.append(item)
+                    elif bp_md5 is None:
+                        LOGGER.info("MD5 for item was not found in Black Pearl. File in incorrect list 'replace_list'")
+                    else:
+                        LOGGER.info("MD5s do not match, queue for deletion:\n%s - Local MD4\n%s - Remote MD5", local_md5, bp_md5)
+                        print(f"MD5 do not match - queued for deletion: {item}")
+
+            for item in remove_list:
+                replace_list.remove(item)
 
             # Delete existing versions if being replaced
             if len(replace_list) > 0:
@@ -241,8 +244,11 @@ def main():
                         replace_list.remove(fail_item)
 
             # While files remaining in list, move to ingest folder, PUT, and remove again
+            new_path = os.path.join(INGEST_POINT, key, folder)
+            os.makedirs(new_path, mode=0o777, exist_ok=True)
+            LOGGER.info("Created new ingest path: %s", new_path)
             while file_list:
-#                check_control()
+                check_control()
                 empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
                 if len(empty_check) != 0:
                     LOGGER.warning("Exiting: Files found that weren't moved from ingest point previous run: %s", INGEST_POINT)

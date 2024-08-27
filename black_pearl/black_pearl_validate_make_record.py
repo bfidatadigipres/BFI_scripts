@@ -76,6 +76,7 @@ logger.setLevel(logging.INFO)
 
 LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
              os.environ['QNAP_08']: os.environ['L_QNAP08'],
+             os.environ['QNAP08_OSH']: os.environ['L_QNAP08_OSH'],
              os.environ['QNAP_10']: os.environ['L_QNAP10'],
              os.environ['QNAP_H22']: os.environ['L_QNAP02'],
              os.environ['GRACK_H22']: os.environ['L_GRACK02'],
@@ -168,7 +169,7 @@ def check_for_media_record(fname, session):
         except (KeyError, IndexError):
             pass
         try:
-            access_mp4 = adlib.retrieve_field_name(result[0], 'access_rendition.mp4')[0]
+            access_mp4 = adlib.retrieve_field_name(result[0], 'access_rendition.largeimage')[0]
         except (KeyError, IndexError):
             pass
 
@@ -452,6 +453,15 @@ def process_files(autoingest, job_id, bucket, bucket_list, session):
                     check_list.append(file)
                 except Exception:
                     logger.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
+            elif md5_match and access_mp4:
+                # Temporary option for failure of Log message writes to global.log early August 2024
+                persistence_log_message("Persistence checks passed: delete file", fpath, wpath, file)
+                logger.info("DELETING DUPLICATE: File has Media record, and Access Renditions populated.")
+                try:
+                    shutil.move(fpath, os.path.join(root_path, 'completed', file))
+                    check_list.append(file)
+                except Exception as err:
+                    logger.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
             else:
                 logger.warning("Problem with file %s: Has media record but no deletion message in global.log", fpath)
             continue
@@ -544,7 +554,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
 
     media_priref = ""
     print(record_data)
-    record_data_xml = adlib.create_record_data(CID_API, 'media', '', record_data)
+    record_data_xml = adlib.create_record_data(CID_API, 'media', session, '', record_data)
     print(record_data_xml)
     try:
         item_rec = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord', session)

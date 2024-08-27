@@ -22,6 +22,7 @@ Joanna White
 
 import os
 import sys
+import json
 import hashlib
 import logging
 import subprocess
@@ -33,6 +34,7 @@ LOG_PATH = os.environ['LOG_PATH']
 CODE_PTH = os.environ['CODE_DDP']
 CODE = os.environ['CODE']
 TODAY = str(datetime.date.today())
+CONTROL_JSON = os.environ['CONTROL_JSON']
 CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
 CHECKSUM_PATH2 = os.path.join(CODE_PTH, 'Logs', 'checksum_md5')
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
@@ -45,6 +47,17 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
+
+
+def check_control():
+    '''
+    Check control json for downtime requests
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['power_off_all']:
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
 
 def md5_65536(file):
@@ -178,7 +191,7 @@ def main():
     if len(sys.argv) < 2:
         LOGGER.error("Shell script failed to pass argument path via GNU parallel")
         sys.exit('Shell script failed to pass argument to Python script')
-
+    check_control()
     filepath = sys.argv[1]
     path_split = os.path.split(filepath)
     filename = path_split[1]

@@ -211,7 +211,7 @@ def sort_ext(ext):
     '''
     Decide on file type
     '''
-    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4ßimport ', 'mpg', 'avi', 'ts', 'mpeg'],
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'mpg', 'avi', 'ts', 'mpeg'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}

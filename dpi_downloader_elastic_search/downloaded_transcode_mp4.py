@@ -70,6 +70,33 @@ def local_time():
     return datetime.datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def check_for_mixed_audio(fpath):
+    '''
+    For use where audio channels 6+ exist
+    check for 'DL' and 'DR' and build different
+    FFmpeg command that uses mixed audio only
+    '''
+    cmd = [
+        'ffprobe', '-v', 'error',
+        '-show_entries', 'stream=channel_layout',
+        '-of', 'csv=p=0', fpath
+    ]
+    audio = subprocess.check_output(cmd)
+    audio = audio.decode('utf-8').lstrip('\n').rstrip('\n')
+    audio_channels = audio.split('\n')
+    if len(audio_channels) > 1:
+        audio_downmix = {}
+        for num in range(0, len(audio_channels)):
+            if '(DL)' in audio_channels[num]:
+                audio_downmix['DL'] = num
+            if '(DR)' in audio_channels[num]:
+                audio_downmix['DR'] = num
+        if len(audio_downmix) == 2:
+            return audio_downmix
+
+    return None
+
+
 def transcode_mp4(fpath):
     '''
     Get ext, check filetype then process
@@ -176,7 +203,7 @@ def transcode_mp4(fpath):
         fl_fr = check_for_fl_fr(fullpath)
 
         # Build FFmpeg command based on dar/height
-        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, stereo, fl_fr)
+        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, mixed_dict, fl_fr)
         if not ffmpeg_cmd:
             log_build.append(f"{local_time()}\tWARNING\tFailed to build FFmpeg command with data: {fullpath}\nHeight {height} Width {width} DAR {dar}")
             log_output(log_build)
@@ -725,7 +752,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     '''
     Builds FFmpeg command based on height/dar input
     '''
-    print(f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs} Stereo {stereo}")
+    print(f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs} Mixed dict {mixed_dict}")
     print(f"Fullpath {fullpath} Output path {output_path}")
 
     ffmpeg_program_call = [

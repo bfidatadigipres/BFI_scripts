@@ -654,6 +654,8 @@ def check_for_fl_fr(fpath):
     audio = subprocess.check_output(cmd)
     audio = audio.decode('utf-8').lstrip('\n').rstrip('\n')
     audio_channels = audio.split('\n')
+    if '5.1(side)' in audio_channels:
+        return True
     if len(audio_channels) > 1:
         audio_downmix = {}
         for num in range(0, len(audio_channels)):
@@ -663,7 +665,9 @@ def check_for_fl_fr(fpath):
                 audio_downmix['FR'] = num
         if len(audio_downmix) == 2:
             return True
-
+    else:
+        if '5.1' in audio_channels:
+            return True
     return False
 
 

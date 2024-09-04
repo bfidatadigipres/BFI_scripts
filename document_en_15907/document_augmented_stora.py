@@ -693,9 +693,9 @@ def main():
 
     session = adlib.create_session()
     for fullpath in file_list:
-#        if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
-#            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-#            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         if not utils.cid_check(CID_API):
             logger.critical("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
@@ -895,7 +895,6 @@ def main():
             except Exception as err:
                 print(f'** PROBLEM: Could not rename {old_webvtt} to {new_vtt}')
                 logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_webvtt, new_vtt, err)
-        sys.exit("Close for review of record creations")
 
     logger.info('========== STORA documentation script END ===================================================\n')
 
@@ -1292,7 +1291,6 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
 
     work_id = ''
     # Start creating CID Work record
-    print(work_values)
     work_values_xml = adlib.create_record_data(CID_API, 'works', session, '', work_values)
     if work_values_xml is None:
         return None
@@ -1330,7 +1328,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     title = epg_dict['title']
     manifestation_values = []
     manifestation_values.extend(manifestation_defaults)
-    print(manifestation_values)
+
     manifestation_values.append({'part_of_reference.lref': work_priref})
     manifestation_values.append({'alternative_number.type': 'PATV asset id'})
     if 'asset_id' in epg_dict:
@@ -1346,9 +1344,9 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         manifestation_values.append({'transmission_duration': epg_dict['duration_total']})
         manifestation_values.append({'runtime': epg_dict['duration_total']})
 
-    print(manifestation_values)
     man_values_xml = adlib.create_record_data(CID_API, 'manifestations', session, '', manifestation_values)
     print("=================================")
+    print(manifestation_values)
     print(man_values_xml)
     print("=================================")
     if man_values_xml is None:
@@ -1390,7 +1388,6 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     except (KeyError, IndexError, TypeError):
         print("Title article is not present")
 
-    print(item_values)
     item_values_xml = adlib.create_record_data(CID_API, 'items', session, '', item_values)
     if item_values_xml is None:
         return None

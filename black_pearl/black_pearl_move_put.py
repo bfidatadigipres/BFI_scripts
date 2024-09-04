@@ -62,6 +62,8 @@ def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_
     folder_size = utils.get_size(folderpth)
     max_fill_size = upload_size - folder_size
     for file in file_list:
+        if '.DS_Store' in file:
+            continue
         if not max_fill_size >= 0:
             logger.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
             break

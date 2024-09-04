@@ -16,9 +16,7 @@ LOG_LEAD="$LOG_PATH"
 CODE_LEAD="$CODE"
 PY3_LAUNCH="$PYENV311"
 LOG="${LOG_LEAD}checksum_maker${PATH_INSERT}launch.log"
-AUTOINGEST="${PTH}autoingest/black_pearl_ingest/"
-AUTOINGEST2="${PTH}autoingest/black_pearl_netflix_ingest/"
-AUTOINGEST3="${PTH}autoingest/black_pearl_amazon_ingest/"
+AUTOINGEST="${PTH}autoingest/black_pearl_ingest/pending_*"
 HASHES="$HASH_PATH"
 DUMP_TO="${HASHES}${PATH_INSERT}autoingest_file_list.txt"
 
@@ -34,9 +32,7 @@ echo " == Start checksum_maker scripts in AUTOINGEST == " >> "${LOG}"
 echo " == Shell script creating autoingest file list for parallel launch of Python scripts == " >> "${LOG}"
 
 # Command to build file list from autoingest folder ingest/ contents
-find "${AUTOINGEST}" -type f -mmin +10 >> "${DUMP_TO}"
-find "${AUTOINGEST2}" -type f -mmin +10 >> "${DUMP_TO}"
-find "${AUTOINGEST3}" -type f -mmin +10 >> "${DUMP_TO}"
+find "${AUTOINGEST}" -name 'N_*' -mmin +10 >> "${DUMP_TO}"
 list=$(cat "${DUMP_TO}" | tr " " "\n")
 echo "${PTH} files to have checksum's generated *if not already created*:" >> "${LOG}"
 echo "${list}" >> "${LOG}"

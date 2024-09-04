@@ -93,13 +93,17 @@ def get_tar_checksums(tar_path, folder):
     for item in tar:
         if item.isdir():
             continue
+        pth, file = os.path.split(item.name)
+        if fname in ['ASSETMAP','VOLINDEX']:
+            folder_prefix = os.path.basename(pth)
+            file = f'{folder_prefix}_{file}
         try:
             f = tar.extractfile(item)
         except Exception as exc:
             LOGGER.warning("get_tar_checksums(): Unable to extract from tar file\n%s", exc)
             continue
 
-        fname = f"{folder}/{os.path.split(item.name)[1]}" if folder else os.path.split(item.name)[1]
+        fname = f"{folder}/{os.path.split(item.name)[1]}" if folder else file
 
         hash_md5 = hashlib.md5()
         for chunk in iter(lambda: f.read(65536), b""):
@@ -115,7 +119,10 @@ def get_checksum(fpath, source):
     return as list with filename
     '''
     data = {}
-    fname = os.path.split(fpath)[1]
+    pth, file = os.path.split(fpath)
+    if file in ['ASSETMAP','VOLINDEX']:
+        folder_prefix = os.path.basename(pth)
+        file = f'{folder_prefix}_{file}'
     dct_name = f"{source}/{fname}" if source != '' else fname
 
     try:

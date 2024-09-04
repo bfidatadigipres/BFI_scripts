@@ -204,7 +204,7 @@ def write_payload(priref, payload_data):
     record = adlib.post(CID_API, payload, 'media', 'updaterecord')
     if record is None:
         return False
-    elif '{"adlibJSON":{"recordList":{"record":[{"@attributes":{"priref":' in str(record):
+    elif "header_tags.parser" in str(record):
         return True
     else:
         return None

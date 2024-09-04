@@ -221,16 +221,13 @@ def main():
         if not folders:
             continue
 
-        logger.info("======== START Black Pearl validate/CID Media record START ========")
-        logger.info("Folders found in Autoingest path: %s", autoingest)
-
         for folder in folders:
             if not utils.check_control('black_pearl'):
                 logger.info('Script run prevented by downtime_control.json. Script exiting.')
                 sys.exit('Script run prevented by downtime_control.json. Script exiting.')
             if folder.startswith(('ingest_', 'error_', 'blob')):
                 continue
-
+            logger.info("======== START Black Pearl validate/CID Media record START ========")
             logger.info("Folder found that is not an ingest folder, or has failed or errored files within: %s", folder)
             json_file = success = ''
 
@@ -543,8 +540,8 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
                     {'imagen.media.total': whole},
                     {'preservation_bucket': bucket}])
     print(record_data)
-    record_data_xml = adlib.create_record_data(CID_API, 'media', '', record_data)
-    print(record_data_xml)
+    record_data_xml = adlib.create_record_data(CID_API, 'media', session, '', record_data)
+    logger.info(record_data_xml)
 
     try:
         item_rec = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord', session)

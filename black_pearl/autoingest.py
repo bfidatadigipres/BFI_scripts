@@ -278,19 +278,19 @@ def check_media_record(fname, session):
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
-        print(f"** HITS: {hits}")
         if hits is None:
             logger.exception('"CID API was unreachable for Media search: %s', search)
             raise Exception(f"CID API was unreachable for Media search: {search}")
         print(f"check_media_record(): AdlibV3 record for hits: {hits}")
-        num = int(hits)
-        if num == 1:
+        if hits == 0:
+            return False
+        elif hits == 1:
             return True
-        if num > 1:
-            return f'Hits exceed 1: {num}'
+        elif hits > 1:
+            return f'Hits exceed 1: {hits}'
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
-    return False
+        return False
 
 
 def get_buckets(bucket_collection):
@@ -562,7 +562,6 @@ def main():
                 boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
                 print(f'File successfully deleted: {boole}')
                 continue
-
             elif 'special_collections' in fpath and 'proxy/image/archive/' in fpath:
                 print('* File is Special Collections archive image')
                 # Simplified name check
@@ -734,7 +733,7 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
     # Check if CID media record exists
     media_check = check_media_record(fname, session)
     if media_check is False:
-        print(f'* Filename {fname} has no CID Media record. Leaving for manual checks.')
+        print(f'*********** Filename {fname} has no CID Media record. Leaving for manual checks. (cid_media_record returned False)')
         logger.warning('%s\tCompleted file has no CID Media record: %s', log_paths, fname)
         return False
 
@@ -770,6 +769,17 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
                         logger.warning('%s\tFailed to delete file', log_paths)
                 else:
                     print('* File already absent from path. Check problem with persistence message')
+    '''
+    # Temporary step to delete completed items whose logging failed early August 2024 (QNAP-01 drive failure)
+    if 'qnap_imagen_storage/Public/autoingest/completed' in fpath:
+        if media_check is True:
+            logger.info("Ingested during QNAP-01 drive failure impacting Logs/ writes (August 2024). No deletion confirmation in global.log but CID Media record present. Deleting.")
+            os.remove(fpath)
+            logger.info('%s\tSuccessfully deleted file', log_paths)
+            log_delete_message(fpath, 'Successfully deleted file', fname)
+            print('* successfully deleted QNAP-04 item based on CID Media record...')
+            return True
+    '''
     return False
 
 

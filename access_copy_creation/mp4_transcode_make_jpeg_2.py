@@ -785,14 +785,14 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
 
     if default and audio:
         map_audio = [
-            "-map", "0:a?",
+            "-map", "0:a?", "-c:a", "aac",
             f"-disposition:a:{default}",
             "default", "-dn"
         ]
     else:
         map_audio = [
             "-map", "0:a?",
-            "-dn"
+             "-c:a", "aac","-dn"
         ]
 
     height = int(height)

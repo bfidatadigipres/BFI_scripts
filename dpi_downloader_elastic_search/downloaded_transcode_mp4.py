@@ -29,6 +29,7 @@ import tenacity
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global paths from environment vars
 MP4_POLICY = os.environ['MP4_POLICY']
@@ -567,84 +568,63 @@ def get_height(fullpath):
     height and stored height differ (MXF samples)
     '''
 
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Sampled_Height%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    sampled_height = subprocess.check_output(cmd)
-
-    cmd2 = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Height%"',
-        fullpath
-    ]
-
-    cmd2[3] = cmd2[3].replace('"', '')
-    reg_height = subprocess.check_output(cmd2)
+    sampled_height = utils.get_metadata('Video', 'Sampled_Height', fullpath)
+    reg_height = utils.get_metadata('Video', 'Height', fullpath)
 
     try:
         int(sampled_height)
     except ValueError:
         sampled_height = 0
 
-    if int(sampled_height) > int(reg_height):
+    if sampled_height == 0:
+        height = str(reg_height)
+    elif int(sampled_height) > int(reg_height):
         height = str(sampled_height)
     else:
         height = str(reg_height)
 
-    if '480' == height:
+    if height.startswith('480 '):
         return '480'
-    if '486' == height:
+    if height.startswith('486 '):
         return '486'
-    if '576' == height:
+    if height.startswith('576 '):
         return '576'
-    if '608' == height:
+    if height.startswith('608 '):
         return '608'
-    if '720' == height:
+    if height.startswith('720 '):
         return '720'
-    if '1080' == height or '1 080' == height:
+    if height.startswith('1080 ') or height.startswith('1 080 '):
         return '1080'
-    else:
-        height = height.split(' pixel', maxsplit=1)[0]
-        return re.sub("[^0-9]", "", height)
+
+    height = height.split(' pixel', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", height)
 
 
 def get_width(fullpath):
     '''
     Retrieves height information using mediainfo
     '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Width/String%"',
-        fullpath
-    ]
 
-    cmd[3] = cmd[3].replace('"', '')
-    width = subprocess.check_output(cmd)
-    width = str(width)
-
-    if '720' == width:
+    width = utils.get_metadata('Video', 'Width/String', fullpath)
+    clap_width = utils.get_metadata('Video', 'Width_CleanAperture/String', fullpath)
+    print(width, clap_width)
+    if width.startswith('720 ') and clap_width.startswith('703 '):
+        return '703'
+    if width.startswith('720 '):
         return '720'
-    if '768' == width:
+    if width.startswith('768 '):
         return '768'
-    if '1024' == width or '1 024' == width:
+    if width.startswith('1024 ') or width.startswith('1 024 '):
         return '1024'
-    if '1280' == width or '1 280' == width:
+    if width.startswith('1280 ') or width.startswith('1 280 '):
         return '1280'
-    if '1920' == width or '1 920' == width:
+    if width.startswith('1920 ') or width.startswith('1 920 '):
         return '1920'
-    else:
-        if width.isdigit():
-            return str(width)
-        else:
-            width = width.split(' p', maxsplit=1)[0]
-            return re.sub("[^0-9]", "", width)
+    if width.isdigit():
+        return str(width)
+    
+    width = width.split(' p', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", width)
 
 
 def get_duration(fullpath):
@@ -655,20 +635,9 @@ def get_duration(fullpath):
     for update to ffmpeg map command
     '''
 
-    cmd = [
-        'mediainfo', '--Language=raw',
-        '--Full', '--Inform="Video;%Duration%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    duration = subprocess.check_output(cmd)
+    duration = utils.get_metadata('Video', 'Duration', fullpath)
     if not duration:
         return ('', '')
-
-    duration = duration.decode('utf-8').rstrip('\n')
-    print(f"Mediainfo seconds: {duration}")
-
     if '.' in duration:
         duration = duration.split('.')
 

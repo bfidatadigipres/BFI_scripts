@@ -103,16 +103,16 @@ def new_or_existing_no_segments_mopup(source_object_number, extension, grouping,
     print(hits, record)
     if hits is None:
         raise Exception('Unable to retrieve data from Item record')
-    if hits == 1:
+    elif hits == 1:
         destination_object = adlib.retrieve_field_name(record, 'object_number')[0]
         log_print(f"new_or_existing(): Found CID item record - {destination_object}")
         return destination_object
-    if hits > 1:
+    elif hits > 1:
         log_print(f"new_or_existing(): Multiple records found {record}")
         return None
         # Append segmentation information
         # Increment total item duration
-    if hits == 0:
+    elif hits == 0:
         # Create new
         log_print(f"new_or_existing(): No record found {source_object_number}, creating new one")
         destination_object = new_no_segments_mopup(source_object_number, extension, grouping, note)

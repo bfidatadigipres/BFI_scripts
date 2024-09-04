@@ -560,6 +560,7 @@ def main():
             try:
                 logger.info('%s\tRenaming Matroska file with new Item object_number and partWhole: %s --> %s', filepath, of, dst)
                 print(f'\t{of} --> {dst}')
+                os.chmod(of, 0o777)
                 os.rename(of, dst)
             except Exception as err:
                 logger.warning('%s\tFailed to rename Matroska file with new Item object_number and partWhole\t%s\n%s', filepath, of, err)

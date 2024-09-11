@@ -880,7 +880,7 @@ def conformance_check(file):
 
 def check_mod_time(fpath):
     '''
-    See if mod time over 10 hrs old
+    See if mod time over 5 hrs old
     '''
     now = datetime.now().astimezone()
     local_tz = pytz.timezone("Europe/London")
@@ -893,7 +893,7 @@ def check_mod_time(fpath):
     hours = (seconds / 60) // 60
     LOGGER.info('%s\tModified time is %s seconds ago. %s hours', fpath, seconds, hours)
     print(f'{fpath}\tModified time is {seconds} seconds ago')
-    if seconds < 36000:
+    if seconds < 18000:
         print(f"*** Deleting file as old MP4: {fpath}")
         return True
     return False

@@ -538,7 +538,8 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
                     {'object.object_number': ob_num},
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},
-                    {'preservation_bucket': bucket}])
+                    {'preservation_bucket': bucket},
+                    {'container.file_size.total_bytes': byte_size}])
     print(record_data)
     record_data_xml = adlib.create_record_data(CID_API, 'media', session, '', record_data)
     logger.info(record_data_xml)

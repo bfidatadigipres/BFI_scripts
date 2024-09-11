@@ -547,7 +547,8 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
                     {'object.object_number': ob_num},
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},
-                    {'preservation_bucket': bucket}])
+                    {'preservation_bucket': bucket},
+                    {'container.file_size.total_bytes': byte_size}])
 
     media_priref = ""
     print(record_data)

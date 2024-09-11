@@ -159,7 +159,7 @@ def main():
     check_name = os.path.join(transcode_pth, fname)
     if os.path.exists(f"{check_name}.mp4"):
         delete_confirm = check_mod_time(f"{check_name}.mp4")
-        if delete_confirm:
+        if delete_confirm is True:
             os.remove(f"{check_name}.mp4")
         else:
             sys.exit("File already being processed. Skipping.")
@@ -1047,6 +1047,7 @@ def check_mod_time(fpath):
     LOGGER.info('%s\tModified time is %s seconds ago. %s hours', fpath, seconds, hours)
     print(f'{fpath}\tModified time is {seconds} seconds ago')
     if seconds < 36000:
+        print(f"*** Deleting file as old MP4: {fpath}")
         return True
     return False
 

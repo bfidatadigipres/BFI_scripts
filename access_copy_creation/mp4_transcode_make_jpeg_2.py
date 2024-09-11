@@ -162,22 +162,10 @@ def main():
     check_name = os.path.join(transcode_pth, fname)
     if os.path.exists(f"{check_name}.mp4"):
         delete_confirm = check_mod_time(f"{check_name}.mp4")
-        if delete_confirm:
+        if delete_confirm is True:
             os.remove(f"{check_name}.mp4")
         else:
             sys.exit("File already being processed. Skipping.")
-
-    check_name = os.path.join(transcode_pth, fname)
-    if os.path.exists(f"{check_name}.mp4"):
-        instance_running = check_ps_runs(fullpath)
-        if instance_running is True:
-            LOGGER.info("Script exiting: This file is currently being transcoded.")
-            log_build.append(f"{local_time()}\tINFO\tFile is already being processed by another transcode script: {fname}.mp4")
-            log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-            log_output(log_build)
-            sys.exit(f'EXITING: Script already processing this file: {file}')
-        else:
-            LOGGER.info("Found MP4 file is from a broken transcode attempt. Deleting file.")
 
     # Check if transcode already completed
     if fname in access and thumbnail and largeimage:
@@ -906,6 +894,7 @@ def check_mod_time(fpath):
     LOGGER.info('%s\tModified time is %s seconds ago. %s hours', fpath, seconds, hours)
     print(f'{fpath}\tModified time is {seconds} seconds ago')
     if seconds < 36000:
+        print(f"*** Deleting file as old MP4: {fpath}")
         return True
     return False
 

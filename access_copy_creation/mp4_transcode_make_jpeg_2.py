@@ -39,7 +39,7 @@ import sys
 import time
 import shutil
 import logging
-import datetime
+from datetime import datetime, timezone
 import subprocess
 import pytz
 import tenacity
@@ -61,6 +61,8 @@ CID_API = os.environ['CID_API4']
 HOST = os.uname()[1]
 
 # Setup logging
+if LOG_PREFIX != '_mnt_qnap_imagen_storage_Public':
+    sys.exit(f"Incorrect filepath received: {LOG_PREFIX}")
 LOGGER = logging.getLogger('mp4_transcode_make_jpeg')
 HDLR = logging.FileHandler(LOG_FILE)
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
@@ -88,26 +90,7 @@ def local_time():
     Return strftime object formatted
     for London time (includes BST adjustment)
     '''
-    return datetime.datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
-
-
-def check_ps_runs(fpath):
-    '''
-    Subprocess ps aux call to check
-    if a file already has an FFmpeg command
-    operational where a '.mp4' is found
-    '''
-    cmd = [
-        f'ps aux | grep -c {fpath}'
-    ]
-
-    proc_num = subprocess.check_output(cmd, shell=True)
-    proc_num = int(proc_num.decode('utf-8'))
-    print(proc_num)
-    if proc_num <= 3:
-        return False
-    if proc_num > 3:
-        return True
+    return datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def main():
@@ -123,9 +106,6 @@ def main():
     fullpath = sys.argv[1]
     if not os.path.isfile(fullpath):
         sys.exit("EXIT: Supplied path is not a file")
-
-    if LOG_PREFIX != '_mnt_qnap_imagen_storage_Public':
-        sys.exit(f"Incorrect filepath received: {LOG_PREFIX}")
 
     # Multiple instances of script so collecting logs for one burst output
     if not utils.check_control('mp4_transcode'):
@@ -181,16 +161,11 @@ def main():
     # Check to ensure that the file isn't already being processed
     check_name = os.path.join(transcode_pth, fname)
     if os.path.exists(f"{check_name}.mp4"):
-        instance_running = check_ps_runs(fullpath)
-        if instance_running is True:
-            LOGGER.info("Script exiting: This file is currently being transcoded.")
-            log_build.append(f"{local_time()}\tINFO\tFile is already being processed by another transcode script: {fname}.mp4")
-            log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
-            log_output(log_build)
-            sys.exit(f'EXITING: Script already processing this file: {file}')
+        delete_confirm = check_mod_time(f"{check_name}.mp4")
+        if delete_confirm is True:
+            os.remove(f"{check_name}.mp4")
         else:
-            LOGGER.info("Found MP4 file is from a broken transcode attempt. Deleting file.")
-            os.remove(os.path.join(transcode_pth, f"{fname}.mp4"))
+            sys.exit("File already being processed. Skipping.")
 
     # Check if transcode already completed
     if fname in access and thumbnail and largeimage:
@@ -901,6 +876,27 @@ def conformance_check(file):
         return "PASS!"
     else:
         return f"FAIL! This policy has failed {success[1]}"
+
+
+def check_mod_time(fpath):
+    '''
+    See if mod time over 5 hrs old
+    '''
+    now = datetime.now().astimezone()
+    local_tz = pytz.timezone("Europe/London")
+    file_mod_time = os.stat(fpath).st_mtime
+    modified = datetime.fromtimestamp(file_mod_time, tz=timezone.utc)
+    mod = modified.replace(tzinfo=pytz.utc).astimezone(local_tz)
+
+    diff = now - mod
+    seconds = diff.seconds
+    hours = (seconds / 60) // 60
+    LOGGER.info('%s\tModified time is %s seconds ago. %s hours', fpath, seconds, hours)
+    print(f'{fpath}\tModified time is {seconds} seconds ago')
+    if seconds < 18000:
+        print(f"*** Deleting file as old MP4: {fpath}")
+        return True
+    return False
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))

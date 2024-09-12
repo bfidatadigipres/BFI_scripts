@@ -40,9 +40,9 @@ import sys
 import time
 import shutil
 import logging
-import datetime
-import subprocess
+from datetime import datetime, timezone
 import pytz
+import subprocess
 import tenacity
 
 # Local packages
@@ -89,7 +89,7 @@ def local_time():
     Return strftime object formatted
     for London time (includes BST adjustment)
     '''
-    return datetime.datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def main():
@@ -155,6 +155,14 @@ def main():
         transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
     else:
         transcode_pth = os.path.join(TRANSCODE, 'bfi', date_pth)
+
+    check_name = os.path.join(transcode_pth, fname)
+    if os.path.exists(f"{check_name}.mp4"):
+        delete_confirm = check_mod_time(f"{check_name}.mp4")
+        if delete_confirm is True:
+            os.remove(f"{check_name}.mp4")
+        else:
+            sys.exit("File already being processed. Skipping.")
 
     # Check if transcode already completed
     if fname in access and thumbnail and largeimage:
@@ -1021,6 +1029,27 @@ def make_jpg(filepath, arg, transcode_pth, percent):
 
     if os.path.exists(outfile):
         return outfile
+
+
+def check_mod_time(fpath):
+    '''
+    See if mod time over 5 hrs old
+    '''
+    now = datetime.now().astimezone()
+    local_tz = pytz.timezone("Europe/London")
+    file_mod_time = os.stat(fpath).st_mtime
+    modified = datetime.fromtimestamp(file_mod_time, tz=timezone.utc)
+    mod = modified.replace(tzinfo=pytz.utc).astimezone(local_tz)
+
+    diff = now - mod
+    seconds = diff.seconds
+    hours = (seconds / 60) // 60
+    LOGGER.info('%s\tModified time is %s seconds ago. %s hours', fpath, seconds, hours)
+    print(f'{fpath}\tModified time is {seconds} seconds ago')
+    if seconds < 18000:
+        print(f"*** Deleting file as old MP4: {fpath}")
+        return True
+    return False
 
 
 def conformance_check(file):

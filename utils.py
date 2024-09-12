@@ -54,7 +54,9 @@ ACCEPTED_EXT = [
     'stl',
     'cap',
     'dfxp',
-    'dxfp'
+    'dxfp',
+    'csv',
+    'pdf'
 ]
 
 
@@ -84,7 +86,9 @@ def accepted_file_type(ext):
              'stl': 'stl',
              'cap': 'cap',
              'dxfp': 'dxfp',
-             'dfxp': 'dfxp'}
+             'dfxp': 'dfxp',
+             'csv': 'csv',
+             'pdf': 'pdf'}
     ext = ext.lower()
     for key, val in ftype.items():
         if key == ext:

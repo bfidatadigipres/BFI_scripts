@@ -537,7 +537,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
     part, whole = utils.check_part_whole(filename)
     if not part:
         return None
-
+    byte_size = int(byte_size)
     record_data = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},
                     {'input.time': str(datetime.now())[11:19]},

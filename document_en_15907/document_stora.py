@@ -333,7 +333,7 @@ def create_work(fullpath, title, session, record_defaults, work_defaults, work_r
     work_values.extend(record_defaults)
     work_values.extend(work_defaults)
     work_values.extend(work_restricted_defaults)
-
+    print(work_values)
     work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None

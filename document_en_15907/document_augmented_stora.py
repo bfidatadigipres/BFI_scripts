@@ -183,11 +183,11 @@ def find_repeats(asset_id, session):
         return 0
 
     try:
-        priref = adlib.retrieve_field_name(result[0], 'priref')[0]
+        man_priref = adlib.retrieve_field_name(result[0], 'priref')[0]
     except (IndexError, TypeError, KeyError):
         return None
 
-    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '1', session, ['alternative_number.type', 'part_of_reference.lref'])[1]
+    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{man_priref}"', '1', session, ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
     try:
@@ -754,7 +754,7 @@ def main():
             print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
             work_priref = find_repeats(epg_dict['asset_id'], session)
         if work_priref is None:
-            print("Cannot access dB via API. Skipping")
+            print("Cannot retrieve Work parent data. Maybe missing in CID or problems accessing dB via API. Skipping")
             logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
             continue
         elif work_priref == 0:

@@ -932,12 +932,12 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = scale_sd_4x3
     elif height == 576 and width == 703 and dar == '4:3':
         cmd_mid = scale_sd_4x3
+    elif height == 576 and width == 1024:
+        cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '16:9':
         cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
-    elif height <= 576 and width == 1024:
-        cmd_mid = scale_sd_16x9
     elif height <= 576 and dar == '16:9':
         cmd_mid = crop_sd_16x9
     elif height <= 576 and width == 768:

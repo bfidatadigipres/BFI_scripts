@@ -528,18 +528,17 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
     part, whole = utils.check_part_whole(filename)
     if not part:
         return None
-    byte_size = int(byte_size)
     record_data = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},
                     {'input.time': str(datetime.now())[11:19]},
                     {'input.notes': 'Digital preservation ingest - automated bulk documentation.'},
                     {'reference_number': filename},
                     {'imagen.media.original_filename': filename},
+                    {'container.file_size.total_bytes': int(byte_size)},
                     {'object.object_number': ob_num},
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},
-                    {'preservation_bucket': bucket},
-                    {'container.file_size.total_bytes': byte_size}])
+                    {'preservation_bucket': bucket}])
     print(record_data)
     record_data_xml = adlib.create_record_data(CID_API, 'media', session, '', record_data)
     logger.info(record_data_xml)

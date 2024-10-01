@@ -42,7 +42,7 @@ from lxml import etree
 # Private packages
 from series_retrieve import retrieve
 sys.path.append(os.environ['CODE'])
-import adlib_v3_sess2 as adlib
+import adlib_v3_sess as adlib
 import utils
 
 # Global variables
@@ -208,7 +208,7 @@ def find_repeats(asset_id, session):
         logger.warning("Matching episode work found to be a Netflix work record: %s", priref)
     if ppriref is None:
         return None
-    print(f"Priref with matching asset_id in CID: {priref} / Parent Work: {ppriref}")
+    print(f"Priref with matching asset_id in CID: {man_priref} / Parent Work: {ppriref}")
     if len(ppriref) > 1:
         return ppriref
 

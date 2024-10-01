@@ -16,8 +16,6 @@ Note: this script requires the BlackPearl creds loaded as
 
 Refactored for Python3
 Updated for Adlib V3
-
-Joanna White
 2023
 '''
 

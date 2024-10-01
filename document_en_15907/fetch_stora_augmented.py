@@ -14,7 +14,6 @@ move():
 folder_check():
 7. Called by move(): looks for folders without .json files in. If found renames the csv to end '.stora'
 
-Stephen McConnachie / Joanna White
 2020
 '''
 

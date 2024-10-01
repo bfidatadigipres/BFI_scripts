@@ -17,10 +17,7 @@ Script functions:
 5. All actions logged human readable for Mike, and placed in audio ops
    folder, at top level.
 
-NOTE: Not in use
-      Updated for Adlib V3
 
-Joanna White
 2022
 '''
 

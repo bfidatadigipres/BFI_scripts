@@ -13,8 +13,7 @@ using STORA created csv metadata source and traversing filesystem paths to files
     4. Rename the subtitles.vtt file with the Item object number, move to Isilon folder
     5. Identify the folder as completed by renaming the csv with .documented suffix
 
-Stephen McConnachie / Joanna White
-Refactored Py3 2023
+Refactored 2023
 '''
 
 # Public packages

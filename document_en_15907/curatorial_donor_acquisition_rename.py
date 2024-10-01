@@ -24,7 +24,7 @@ Curatorial Donor Acquisition Rename:
 
 NOTE: DMS may want to alter accepted filetypes over time.
 
-Joanna White 2022
+2022
 Python 3.6+
 '''
 

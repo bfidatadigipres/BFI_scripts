@@ -20,7 +20,6 @@ NOTES: Can in time be used for other streaming platforms
        with update to input note check for non-platform specific name
        Updated for Adlib V3
 
-Joanna White
 2023
 '''
 

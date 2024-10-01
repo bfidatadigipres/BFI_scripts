@@ -23,7 +23,6 @@ Steps:
        for retry at later date.
 7. Write 'Python tarfile' note to CID item record
 
-Joanna White
 2022
 '''
 

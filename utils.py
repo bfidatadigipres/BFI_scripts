@@ -2,7 +2,6 @@
 Consolidate all repeat modules
 to one utils.py document
 
-Joanna White
 2024
 '''
 

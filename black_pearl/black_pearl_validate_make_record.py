@@ -35,7 +35,6 @@ NOTE: Restriction in main() temporarily in place to allow second version of scri
       to target specific (slow) paths, allowing the rest to move quickly. Eventually
       this will be set to QNAP-04 STORA full time.
 
-Joanna White / Stephen McConnachie
 2022
 '''
 

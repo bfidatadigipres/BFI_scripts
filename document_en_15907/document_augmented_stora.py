@@ -22,7 +22,6 @@ using augmented metadata supply (JSON via API) and traversing filesystem paths t
     for each programme from the API and place it in paths to be used here. Where none is matched
     document_stora.py will update to CID from the info.csv generated from the STORA TS file metadata.
 
-Stephen McConnachie / Joanna White
 Refactored Py3 2023
 '''
 

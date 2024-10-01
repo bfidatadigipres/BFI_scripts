@@ -8,7 +8,6 @@ Iterates through each of list paths:
 4. Return these in list 'move_folders' comma separated, ordered emptiest path first
 5. Iterates 'move1' through 'move7' file by file passing file name and 'new_path' to move():
 
-Joanna White
 2020
 '''
 

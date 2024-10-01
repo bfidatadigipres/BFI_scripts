@@ -32,7 +32,6 @@ Script actions:
 
 NOTES: Updated to work with adlib_v3
 
-Joanna White
 2022
 '''
 

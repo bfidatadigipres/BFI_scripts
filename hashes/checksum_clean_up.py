@@ -14,7 +14,7 @@ writes checksums to CID media record priref before deleting files.
 7. Where data written successfully delete checksum
 8. Where there's no match leave original checksum and may still be needed
 
-Joanna White 2021
+2021
 Python3.8+
 '''
 

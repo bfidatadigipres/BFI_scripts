@@ -9,7 +9,6 @@ Use:
   $ clipmd5 source.mkv --start 00:05:00 --end 25 --output clip.mkv --ffmpeg -an -
 
 Converted from Py2 legacy code to Py3
-Joanna White
 2022
 '''
 

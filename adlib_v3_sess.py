@@ -4,7 +4,6 @@
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
-Joanna White
 2024
 '''
 

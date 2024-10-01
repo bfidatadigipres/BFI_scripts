@@ -15,7 +15,6 @@ main():
 6. Move file from folder to new autoingest target path
 
 Converted from Py2 legacy code to Py3
-Joanna White
 October 2022
 '''
 

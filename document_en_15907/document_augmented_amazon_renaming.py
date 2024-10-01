@@ -34,7 +34,6 @@ video and audio desc also MOV wrapped.
    black_pearl_amazon_ingest path where new put
    scripts ensure file is moved to amazon01 bucket.
 
-Joanna White
 2024
 '''
 

@@ -29,7 +29,6 @@ Steps:
 NOTES: Configured for adlib_v3, API will need
        updating when available.
 
-Joanna White
 2024
 '''
 

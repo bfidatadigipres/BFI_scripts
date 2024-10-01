@@ -5,7 +5,6 @@ Looks to database.db for preservation date and
 news channel information retrieving rows with status
 'Requested'. Stores username, email, date, channel, status.
 
-Joanna White
 2023
 '''
 

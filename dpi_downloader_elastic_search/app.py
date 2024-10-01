@@ -6,7 +6,6 @@ from HTML dpi_requests.html forwarding
 to SQLite3 database for retrieval by
 python code which organises move of data.
 
-Joanna White
 2023
 '''
 

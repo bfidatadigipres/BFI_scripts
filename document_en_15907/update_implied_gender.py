@@ -5,7 +5,7 @@ Assign a gender to any uncatalogued people agents if the given name(s)
 extracted from the <name> and <used_for> fields appear unambigiously
 in the ONS baby names dataset.
 
-Updated fro Py3.11 / Adlib V3
+Updated fro Py3.11 2024 / Adlib V3
 '''
 
 # Public packages

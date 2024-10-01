@@ -24,7 +24,6 @@ CID Item record object_number.
 
 NOTES: Integrated with adlib_v3 for test
 
-Joanna White
 2024
 '''
 

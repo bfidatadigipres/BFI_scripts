@@ -30,7 +30,6 @@ NOTES: Dependency for cast create_contributors()
        will need review when API updates complete
        Updated for adlib_v3 and new API
 
-Joanna White
 2023
 '''
 

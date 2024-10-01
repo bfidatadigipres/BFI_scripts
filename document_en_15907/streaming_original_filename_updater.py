@@ -17,7 +17,6 @@ in CID digital media record
 
 NOTE: Updated for Adlib V3
 
-Joanna White
 2023
 '''
 

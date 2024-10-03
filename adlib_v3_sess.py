@@ -4,7 +4,6 @@
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
-Joanna White
 2024
 '''
 
@@ -96,6 +95,9 @@ def get(api, query, session):
     except exceptions.HTTPError as err:
         print(err)
         raise Exception
+    except Exception as err:
+        print(err)
+        raise Exception
 
 
 def post(api, payload, database, method, session=None):
@@ -116,6 +118,8 @@ def post(api, payload, database, method, session=None):
     if method == 'insertrecord':
         try:
             response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+            if response.status_code != 200:
+                raise Exception
         except exceptions.Timeout as err:
             print(err)
             raise Exception
@@ -123,12 +127,17 @@ def post(api, payload, database, method, session=None):
             print(err)
             raise Exception
         except exceptions.HTTPError as err:
+            print(err)
+            raise Exception
+        except Exception as err:
             print(err)
             raise Exception
 
     if method == 'updaterecord':
         try:
             response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+            if response.status_code != 200:
+                raise Exception
         except exceptions.Timeout as err:
             print(err)
             raise Exception
@@ -136,6 +145,9 @@ def post(api, payload, database, method, session=None):
             print(err)
             raise Exception
         except exceptions.HTTPError as err:
+            print(err)
+            raise Exception
+        except Exception as err:
             print(err)
             raise Exception
 

@@ -14,7 +14,6 @@ Fix C- N-prefix files in processing/segmented where CID Item creation has failed
 
 NOTE: Updated for Adlib V3
 
-Stephen McConnachie
 June 2021
 Refactored 2023
 '''

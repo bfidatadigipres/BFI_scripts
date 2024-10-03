@@ -4,7 +4,6 @@
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
-Joanna White
 2024
 '''
 
@@ -86,6 +85,9 @@ def get(api, query):
     except requests.exceptions.HTTPError as err:
         print(err)
         raise Exception
+    except Exception as err:
+        print(err)
+        raise Exception
 
 
 def post(api, payload, database, method):
@@ -112,6 +114,9 @@ def post(api, payload, database, method):
         except requests.exceptions.HTTPError as err:
             print(err)
             raise Exception
+        except Exception as err:
+            print(err)
+            raise Exception
 
     if method == 'updaterecord':
         try:
@@ -123,6 +128,9 @@ def post(api, payload, database, method):
             print(err)
             raise Exception
         except requests.exceptions.HTTPError as err:
+            print(err)
+            raise Exception
+        except Exception as err:
             print(err)
             raise Exception
 

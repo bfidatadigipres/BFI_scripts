@@ -28,7 +28,6 @@ Steps:
 TO DO:  Change autoingest path away from STORE
         as and when autoingest paths update
 
-Joanna White
 2022
 '''
 

@@ -41,7 +41,6 @@ metadata files.
 
 Note: Configured for adlib_v3 and will require API update
 
-Joanna White
 2023
 '''
 

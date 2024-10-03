@@ -10,7 +10,6 @@ main():
 2. Where present download the JSON to cache folder named as the series id
 3. Save this file in series_cache/ folder
 
-Joanna White
 2020
 '''
 

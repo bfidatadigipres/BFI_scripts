@@ -10,7 +10,6 @@ series_retrieve():
 2. Where present download the JSON to cache folder named as the series id
 3. Save this file into relevant folder, SERIES_CACHE_PATH
 
-Joanna White
 2023
 '''
 

@@ -22,7 +22,6 @@ Notes:
 Uses requests.Sessions() for creation of works
 within on session. Trial of sessions().
 
-Joanna White
 2024
 '''
 

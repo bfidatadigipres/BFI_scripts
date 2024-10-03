@@ -14,7 +14,6 @@ Young Audience Content Fund rename and move to autoingest:
 
 NOTE: Supports use of adlib_v3.py
 
-Joanna White
 2021
 '''
 

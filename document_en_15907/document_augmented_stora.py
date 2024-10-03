@@ -22,7 +22,6 @@ using augmented metadata supply (JSON via API) and traversing filesystem paths t
     for each programme from the API and place it in paths to be used here. Where none is matched
     document_stora.py will update to CID from the info.csv generated from the STORA TS file metadata.
 
-Stephen McConnachie / Joanna White
 Refactored Py3 2023
 '''
 
@@ -57,6 +56,7 @@ CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH2']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
 CID_API = os.environ['CID_API4']
+FAILURE_COUNTER = 0
 
 # Setup logging
 logger = logging.getLogger('document_augmented_stora')
@@ -203,9 +203,9 @@ def find_repeats(asset_id, session):
 
     print(f"********** Alternative number types: {alt_num_type} ************")
     if 'Amazon' in alt_num_type:
-        logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
+        logger.warning("Matching episode work found to be an Amazon work record: %s", man_priref)
     if 'Netflix' in alt_num_type:
-        logger.warning("Matching episode work found to be a Netflix work record: %s", priref)
+        logger.warning("Matching episode work found to be a Netflix work record: %s", man_priref)
     if ppriref is None:
         return None
     print(f"Priref with matching asset_id in CID: {man_priref} / Parent Work: {ppriref}")
@@ -305,7 +305,7 @@ def genre_retrieval(category_code, description, title):
                             genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
                         genre_one_priref = ''
                     else:
-                        for key, val in genre_one.items():
+                        for _, val in genre_one.items():
                             genre_one_priref = val
                         print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
                 except (IndexError, TypeError, KeyError):
@@ -319,14 +319,14 @@ def genre_retrieval(category_code, description, title):
                     genre_two_priref = ''
                 try:
                     subject_one = data['genres'][category_code.strip('u')]['Subject']
-                    for key, val in subject_one.items():
+                    for _, val in subject_one.items():
                         subject_one_priref = val
                     print(f"genre_retrieval(): Key value for subject_one_priref: {subject_one_priref}")
                 except (IndexError, TypeError, KeyError):
                     subject_one_priref = ''
                 try:
                     subject_two = data['genres'][category_code.strip('u')]['Subject2']
-                    for key, val in subject_two.items():
+                    for _, val in subject_two.items():
                         subject_two_priref = val
                     print(f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}")
                 except (IndexError, TypeError, KeyError):
@@ -693,6 +693,9 @@ def main():
 
     session = adlib.create_session()
     for fullpath in file_list:
+        if FAILURE_COUNTER > 5:
+            logger.critical("Multipe CID item record creation failures. Script exiting.")
+            sys.exit('Multiple CID item record creation failures detected. Script exiting.')
         if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
             logger.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
@@ -1076,18 +1079,16 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord', session)
         print(f"create_series(): {work_rec}")
-        if 'priref' in str(work_rec):
-            try:
-                series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
-                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
-                print(f'* Series record created with Priref {series_work_id}')
-                print(f'* Series record created with Object number {object_number}')
-                logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
-            except (IndexError, TypeError, KeyError) as err:
-                print(f'* Unable to create Series Work record for <{series_title_full}>\n{err}')
-                logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
-                return None
-
+        try:
+            series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+            object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+            print(f'* Series record created with Priref {series_work_id}')
+            print(f'* Series record created with Object number {object_number}')
+            logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
+        except (IndexError, TypeError, KeyError) as err:
+            print(f'* Unable to create Series Work record for <{series_title_full}>\n{err}')
+            logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
         logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
@@ -1299,16 +1300,15 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord', session)
         print(f"create_work(): {work_rec}")
-        if 'priref' in str(work_rec):
-            try:
-                print("Populating work_id and object_number variables")
-                work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
-                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
-                print(f'* Work record created with Priref {work_id} Object number {object_number}')
-                logger.info('%s\tWork record created with priref %s', fullpath, work_id)
-            except (IndexError, TypeError, KeyError) as err:
-                print(f"Creation of record failed using adlib_v3: 'works', 'insertrecord' for {epg_dict['title']}")
-                return None
+        try:
+            print("Populating work_id and object_number variables")
+            work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+            object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+            print(f'* Work record created with Priref {work_id} Object number {object_number}')
+            logger.info('%s\tWork record created with priref %s', fullpath, work_id)
+        except (IndexError, TypeError, KeyError) as err:
+            print(f"Creation of record failed using adlib_v3: 'works', 'insertrecord' for {epg_dict['title']}")
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f"* Unable to create Work record for <{epg_dict['title']}>")
         print(err)
@@ -1355,15 +1355,14 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord', session)
         print(f"create_manifestation(): {man_rec}")
-        if 'priref' in str(man_rec):
-            try:
-                manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
-                object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
-                print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
-                logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
-            except (IndexError, KeyError, TypeError) as err:
-                print(f"Unable to write manifestation record - {title}")
-                return None
+        try:
+            manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
+            object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
+            print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
+            logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
+        except (IndexError, KeyError, TypeError) as err:
+            print(f"Unable to write manifestation record - {title}")
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
         logger.critical("Unable to write manifestation record <%s> %s", manifestation_id, err)
@@ -1396,15 +1395,14 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord', session)
         print(f"create_cid_item_record(): {item_rec}")
-        if 'priref' in str(item_rec):
-            try:
-                item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
-                item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
-                print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
-                logger.info('%s\tItem record created with priref %s', fullpath, item_id)
-            except (IndexError, KeyError, TypeError) as err:
-                print("Unable to create Item record", err)
-                return None
+        try:
+            item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
+            item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
+            print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
+            logger.info('%s\tItem record created with priref %s', fullpath, item_id)
+        except (IndexError, KeyError, TypeError) as err:
+            print("Unable to create Item record", err)
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
@@ -1413,7 +1411,6 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     if item_rec is None:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath}")
-
         success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session)
         logger.warning("Data cleaned following failure of Item record creation: %s", success)
         return None
@@ -1462,6 +1459,8 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
     problem = f'{fullpath}.PROBLEM'
     print(f'* Renaming {fullpath} to {problem}')
     logger.info('%s\t Renaming JSON to %s', fullpath, problem)
+    global FAILURE_COUNTER
+    FAILURE_COUNTER += 1
     try:
         os.rename(fullpath, problem)
     except Exception as err:
@@ -1474,6 +1473,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
 
 def push_payload(item_id, webvtt_payload, session):
     '''
+    DEPRECATED
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     '''

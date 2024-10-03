@@ -29,7 +29,7 @@ to determine correct transcode paths (RNA or BFI).
 
 NOTES: Updated for Adlib V3
 
-Joanna White 2022
+2022
 Python 3.6+
 '''
 

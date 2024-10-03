@@ -28,7 +28,7 @@ to determine correct transcode paths (RNA or BFI).
 13. Moves source file to completed folder for deletion.
 14. Maintain log of all actions against file and dump in one lot to avoid log overlaps.
 
-Joanna White 2022
+2022
 Python 3.6+
 '''
 

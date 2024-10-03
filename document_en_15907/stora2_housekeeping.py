@@ -10,7 +10,6 @@ Script to handle clean up of the emptied folders in STORAGE_PATH/*year*
 5. Checks for recording.log, restart or schedule files and deletes
 6. Clean up of folders at day, month (if last day of month) and year level (if last day of year).
 
-Joanna White
 Python 3.7 +
 2023
 '''

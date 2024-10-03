@@ -17,7 +17,6 @@ Script functions:
 
 NOTE: Updated for Adlib V3
 
-Joanna White
 2023
 '''
 

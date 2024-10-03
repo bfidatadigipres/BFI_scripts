@@ -14,7 +14,6 @@ Script function:
    a JSON formatted file, saved as MKV filename.json
 5. Move both the MKV and JSON to the BFI_replay folder.
 
-Joanna White
 2021
 '''
 

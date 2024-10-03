@@ -7,7 +7,6 @@ Loads TITLE_ARTICLES dict, which returns a list of title articles relevant to su
 Script matches title_art to language key's value list, if possible
 Where found returns Title/Title article, where not found returns None
 
-Joanna White
 2021
 '''
 

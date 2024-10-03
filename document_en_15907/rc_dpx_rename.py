@@ -21,9 +21,7 @@ RC DPX renaming script
 10. All details of movements are written to Isilon log and human readable log in QNAP-06.
 
 NOTE: Updated for Adlib V3
-      Presently ununsed
-
-Joanna White 2022
+2022
 '''
 
 # Public packages

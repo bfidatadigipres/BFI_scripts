@@ -11,7 +11,6 @@ Script to handle clean up of the completed folders in STORA_PATH/*YEAR*
    This folder can me moved to ARCHIVE_PATH
 5. Clean up of folders at day, month (if last day of month) and year level (if last day of year).
 
-Joanna White
 Python 3.7 +
 2021
 '''

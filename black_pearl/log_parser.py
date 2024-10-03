@@ -4,7 +4,6 @@
 Parse `global.log` and report on files with outstanding
 WARNING alerts issued for the given day.
 
-Joanna White
 2022
 '''
 

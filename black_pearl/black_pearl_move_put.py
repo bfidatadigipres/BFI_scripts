@@ -17,9 +17,8 @@ Script actions:
    notification JSON is issued to validate PUT success.
 5. Use receieved job_id to rename the PUT subfolder.
 
-Threads hardcoded to 3 per script run / 5000 objects per job
+Notes: Threads hardcoded to 3 per script run / 5000 objects per job
 
-Joanna White / Stephen McConnachie
 2022
 '''
 

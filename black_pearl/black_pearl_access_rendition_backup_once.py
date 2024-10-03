@@ -10,7 +10,6 @@ run with an open modification time but
 later to be set to a given amount of
 days that matches script run frequency.
 
-Joanna White
 2024
 '''
 

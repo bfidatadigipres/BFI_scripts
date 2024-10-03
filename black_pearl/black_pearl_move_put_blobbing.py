@@ -27,7 +27,6 @@ Script VALIDATE actions:
 6. Once completed above move JSON to Logs/black_pearl/completed folder.
    The empty job id folder is deleted if empty, if not prepended 'error_'
 
-Joanna White
 2024
 '''
 

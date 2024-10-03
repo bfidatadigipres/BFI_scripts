@@ -55,7 +55,6 @@ main():
 9. The file is moved from the autoingest/ingest path into
    the black_pearl_ingest folder where it is ingested to DPI.
 
-Joanna White
 2022
 '''
 

@@ -85,6 +85,9 @@ def get(api, query):
     except requests.exceptions.HTTPError as err:
         print(err)
         raise Exception
+    except Exception as err:
+        print(err)
+        raise Exception
 
 
 def post(api, payload, database, method):
@@ -111,6 +114,9 @@ def post(api, payload, database, method):
         except requests.exceptions.HTTPError as err:
             print(err)
             raise Exception
+        except Exception as err:
+            print(err)
+            raise Exception
 
     if method == 'updaterecord':
         try:
@@ -122,6 +128,9 @@ def post(api, payload, database, method):
             print(err)
             raise Exception
         except requests.exceptions.HTTPError as err:
+            print(err)
+            raise Exception
+        except Exception as err:
             print(err)
             raise Exception
 

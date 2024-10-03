@@ -16,7 +16,6 @@ Actions of the script:
 6. tenacity decorators for part 3, 4 and 5 to ensure retries occur until no exception is raised.
 7. Write paths for mediainfo files to CSV for management of ingest to CID/deletion
 
-Joanna White
 2021
 '''
 

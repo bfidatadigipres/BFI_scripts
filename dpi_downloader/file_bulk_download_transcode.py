@@ -47,7 +47,6 @@ Single:
 
 Blocks download from 'netflix' or 'amazon' buckets.
 
-Joanna White
 2023
 '''
 

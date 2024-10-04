@@ -42,7 +42,7 @@ from lxml import etree
 # Private packages
 from series_retrieve import retrieve
 sys.path.append(os.environ['CODE'])
-import adlib_v3_sess as adlib
+import adlib_v3 as adlib
 import utils
 
 # Global variables
@@ -137,7 +137,7 @@ def look_up_series_list(alternative_num):
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def cid_series_query(series_id, session):
+def cid_series_query(series_id):
     '''
     Sends CID request for series_id data
     '''
@@ -146,7 +146,7 @@ def cid_series_query(series_id, session):
     search = f'alternative_number="{series_id}"'
     sleep(2)
     try:
-        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1', session)
+        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
     except Exception as err:
         print(err)
         raise Exception
@@ -167,7 +167,7 @@ def cid_series_query(series_id, session):
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def find_repeats(asset_id, session):
+def find_repeats(asset_id):
     '''
     Use asset_id to check in CID for duplicate
     PATV showings of a manifestation
@@ -175,7 +175,7 @@ def find_repeats(asset_id, session):
 
     search = f'alternative_number="{asset_id}"'
     sleep(2)
-    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', session, ['priref', 'alternative_number.type', 'part_of_reference.lref'])
+    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', ['priref', 'alternative_number.type', 'part_of_reference.lref'])
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
         print(f'CID API could not be reached for Manifestations search: {search}')
@@ -187,7 +187,7 @@ def find_repeats(asset_id, session):
     except (IndexError, TypeError, KeyError):
         return None
     sleep(2)
-    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{man_priref}"', '1', session, ['alternative_number.type', 'part_of_reference.lref'])[1]
+    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{man_priref}"', '1', ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
     try:
@@ -690,7 +690,6 @@ def main():
     file_list.sort()
     print(f"Found JSON file total: {len(file_list)}")
 
-    session = adlib.create_session()
     for fullpath in file_list:
         if FAILURE_COUNTER > 5:
             logger.critical("Multiple CID item record creation failures. Script exiting.")
@@ -754,7 +753,7 @@ def main():
         work_priref = ''
         if 'asset_id' in epg_dict:
             print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
-            work_priref = find_repeats(epg_dict['asset_id'], session)
+            work_priref = find_repeats(epg_dict['asset_id'])
         if work_priref is None:
             print("Cannot retrieve Work parent data. Maybe missing in CID or problems accessing dB via API. Skipping")
             logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
@@ -788,7 +787,7 @@ def main():
                     series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
                     logger.info("Series found for annual refresh: %s", series_chck)
 
-                series_return = cid_series_query(series_id, session)
+                series_return = cid_series_query(series_id)
                 if series_return[0] is None:
                     print(f"CID Series data not retrieved: {epg_dict['series_id']}")
                     logger.warning("Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s", epg_dict['series_id'])
@@ -799,7 +798,7 @@ def main():
                 if hit_count == 0:
                     print("This Series does not exist yet in CID - attempting creation now")
                     # Launch create series function
-                    series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict, series_id, session)
+                    series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict, series_id)
                     if not series_work_id:
                         logger.warning("Skipping further actions: Creation of series failed as no series_work_id found: \n%s", epg_dict['series_id'])
                         continue
@@ -809,7 +808,7 @@ def main():
             work_values.extend(rec_def)
             work_values.extend(work_def)
             work_values.extend(work_res_def)
-            work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict, session)
+            work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict)
 
         if not work_priref:
             print(f"Work error, priref not numeric from new file creation: {work_priref}")
@@ -822,7 +821,7 @@ def main():
         manifestation_values = []
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
-        manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict, session)
+        manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict)
 
         if not manifestation_priref:
             print(f"CID Manifestation priref not retrieved for manifestation: {manifestation_priref}")
@@ -838,7 +837,7 @@ def main():
         item_values = []
         item_values.extend(rec_def)
         item_values.extend(item_def)
-        item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict, session)
+        item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict)
         print(f"item_object_number: {item_data}")
 
         if item_data is None:
@@ -861,7 +860,7 @@ def main():
         '''
         # Build webvtt payload [deprecated]
         if webvtt_payload:
-            success = push_payload(item_data[1], webvtt_payload, session)
+            success = push_payload(item_data[1], webvtt_payload)
             if not success:
                 logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
         '''
@@ -901,7 +900,7 @@ def main():
     logger.info('========== STORA documentation script END ===================================================\n')
 
 
-def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id, session):
+def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id):
     '''
     Call function series_check(series_id) and build all data needed
     to make new series. Return boole for success/fail
@@ -1069,13 +1068,13 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         logger.warning("Appending series genres to CID work record:\n%s", series_work_genres)
         series_work_values.extend(series_work_genres)
     # Start creating CID Work Series record
-    series_values_xml = adlib.create_record_data(CID_API, 'works', session, '', series_work_values)
+    series_values_xml = adlib.create_record_data(CID_API, 'works', '', series_work_values)
     if series_values_xml is None:
         return None
     sleep(2)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
-        work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord', session)
+        work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
         print(f"create_series(): {work_rec}")
         try:
             series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
@@ -1200,7 +1199,7 @@ def build_webvtt_dct(old_webvtt):
     return webvtt_payload.replace("\'", "'")
 
 
-def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict, session):
+def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict):
     '''
     Create work records
     '''
@@ -1291,14 +1290,14 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
     work_id = ''
     # Start creating CID Work record
     sleep(3)
-    work_values_xml = adlib.create_record_data(CID_API, 'works', session, '', work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None
 
     try:
         sleep(2)
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
-        work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord', session)
+        work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         print(f"create_work(): {work_rec}")
         try:
             print("Populating work_id and object_number variables")
@@ -1319,7 +1318,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
     return work_id
 
 
-def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict, session):
+def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict):
     '''
     Create a manifestation record,
     linked to work_priref
@@ -1344,7 +1343,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         manifestation_values.append({'transmission_duration': epg_dict['duration_total']})
         manifestation_values.append({'runtime': epg_dict['duration_total']})
 
-    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', session, '', manifestation_values)
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     print("=================================")
     print(manifestation_values)
     print(man_values_xml)
@@ -1354,7 +1353,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     try:
         sleep(2)
         logger.info("Attempting to create Manifestation record for item %s", title)
-        man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord', session)
+        man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
         print(f"create_manifestation(): {man_rec}")
         try:
             manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
@@ -1372,7 +1371,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     return manifestation_id
 
 
-def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, epg_dict, session):
+def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, epg_dict):
     '''
     Create CID Item record
     '''
@@ -1388,14 +1387,14 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     except (KeyError, IndexError, TypeError):
         print("Title article is not present")
 
-    item_values_xml = adlib.create_record_data(CID_API, 'items', session, '', item_values)
+    item_values_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
     if item_values_xml is None:
         return None
 
     try:
         sleep(2)
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
-        item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord', session)
+        item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
         print(f"create_cid_item_record(): {item_rec}")
         try:
             item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
@@ -1413,14 +1412,14 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     if item_rec is None:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath}")
-        success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session)
+        success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id)
         logger.warning("Data cleaned following failure of Item record creation: %s", success)
         return None
 
     return item_object_number, item_id
 
 
-def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
+def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     '''
     Item record creation failed
     Update manifestation records with deletion prompt in title
@@ -1433,7 +1432,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
 
     try:
         sleep(2)
-        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord', session)
+        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
         else:
@@ -1451,7 +1450,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
 
         try:
             sleep(2)
-            response = adlib.post(CID_API, payload, 'works', 'updaterecord', session)
+            response = adlib.post(CID_API, payload, 'works', 'updaterecord')
             if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
             else:
@@ -1475,7 +1474,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
         return True
 
 
-def push_payload(item_id, webvtt_payload, session):
+def push_payload(item_id, webvtt_payload):
     '''
     DEPRECATED
     Push webvtt payload separately to Item record
@@ -1491,7 +1490,7 @@ def push_payload(item_id, webvtt_payload, session):
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     try:
-        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord', session)
+        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord')
         if post_resp:
             return True
     except Exception as err:

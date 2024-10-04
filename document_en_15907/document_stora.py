@@ -23,7 +23,6 @@ import csv
 import shutil
 import logging
 import datetime
-from lxml import etree
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -342,20 +341,21 @@ def create_work(fullpath, title, session, record_defaults, work_defaults, work_r
     try:
         logger.info("Attempting to create Work record for item %s", title)
         data = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord', session)
-        if data:
+        try:
             work_id = adlib.retrieve_field_name(data, 'priref')[0]
             object_number = adlib.retrieve_field_name(data, 'object_number')[0]
             print(f'* Work record created with Priref {work_id} Object number {object_number}')
             logger.info('%s\tWork record created with priref %s', fullpath, work_id)
-        else:
-            print(f"Creation of record failed using method Requests: 'works', 'insertrecord'\n{work_values_xml}")
-            return None
+        except (IndexError, TypeError, KeyError) as err:
+            logger.critical(f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {title}")
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
+
     except Exception as err:
         print(f"* Unable to create Work record for <{title}>")
         print(err)
         logger.critical('%s\tUnable to create Work record for <%s>', fullpath, title)
         logger.critical(err)
-        return None
+        raise Exception('Unable to write Work record.').with_traceback(err.__traceback__)
 
     return work_id
 
@@ -380,20 +380,22 @@ def create_manifestation(work_id, fullpath, title, session, record_defaults, man
     try:
         logger.info("Attempting to create Manifestation record for item %s", title)
         data = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord', session)
-        if data:
+        try:
             manifestation_id = adlib.retrieve_field_name(data, 'priref')[0]
             object_number = adlib.retrieve_field_name(data, 'object_number')[0]
             print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
             logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
-
+        except (IndexError, TypeError, KeyError) as err:
+            logger.critical(f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {title}")
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         if 'bool' in str(err):
             logger.critical("Unable to write manifestation record <%s>", manifestation_id)
             print(f"Unable to write manifestation record - error: {err}")
-            return None
+            raise Exception('Unable to write manifestation record.').with_traceback(err.__traceback__)
         print(f"*** Unable to write manifestation record: {err}")
         logger.critical("Unable to write manifestation record <%s> %s", manifestation_id, err)
-        raise
+        raise Exception('Unable to write manifestation record.').with_traceback(err.__traceback__)
 
     return manifestation_id
 
@@ -447,15 +449,18 @@ def create_item(manifestation_id, fullpath, title, session, acquired_filename, r
     try:
         logger.info("Attempting to create CID item record for item %s", title)
         data = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord', session)
-        if data:
+        try:
             item_id = adlib.retrieve_field_name(data, 'priref')[0]
             item_object_number = adlib.retrieve_field_name(data, 'object_number')[0]
             print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
             logger.info('%s\tItem record created with priref %s', fullpath, item_id)
-
+        except (TypeError, IndexError, KeyError) as err:
+            logger.critical(f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {title}")
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f'** PROBLEM: Unable to create Item record for <{title}> {err}')
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s>, marking Work and Manifestation records for deletion', fullpath, title)
+        raise Exception('Unable to write Item record.').with_traceback(err.__traceback__)
 
     return item_id, item_object_number
 

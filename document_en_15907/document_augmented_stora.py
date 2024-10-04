@@ -1,4 +1,4 @@
-#/usr/bin/env python3
+#!/usr/bin/env python3
 
 '''
 THIS SCRIPT DEPENDS ON PYTHON ENV PATH

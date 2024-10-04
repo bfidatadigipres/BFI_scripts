@@ -694,7 +694,7 @@ def main():
     session = adlib.create_session()
     for fullpath in file_list:
         if FAILURE_COUNTER > 5:
-            logger.critical("Multipe CID item record creation failures. Script exiting.")
+            logger.critical("Multiple CID item record creation failures. Script exiting.")
             sys.exit('Multiple CID item record creation failures detected. Script exiting.')
         if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
             logger.info('Script run prevented by downtime_control.json. Script exiting.')

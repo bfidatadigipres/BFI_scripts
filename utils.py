@@ -123,6 +123,7 @@ def cid_check(cid_api):
     '''
     try:
         dct = adlib.check(cid_api)
+        print(dct)
         if isinstance(dct, dict):
             return True
     except KeyError:

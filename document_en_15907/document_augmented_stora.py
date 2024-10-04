@@ -36,6 +36,7 @@ import logging
 import datetime
 import yaml
 import tenacity
+from time import sleep
 from lxml import etree
 
 # Private packages
@@ -143,7 +144,7 @@ def cid_series_query(series_id, session):
 
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
-
+    sleep(2)
     try:
         hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1', session)
     except Exception as err:
@@ -155,7 +156,6 @@ def cid_series_query(series_id, session):
         print(f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id}")
         print("cid_series_query(): Series hit count and series priref will return empty strings")
         return hit_count, ''
-
     if 'priref' in str(series_query_result):
         series_priref = adlib.retrieve_field_name(series_query_result[0], 'priref')[0]
         print(f"cid_series_query(): Series priref: {series_priref}")
@@ -174,6 +174,7 @@ def find_repeats(asset_id, session):
     '''
 
     search = f'alternative_number="{asset_id}"'
+    sleep(2)
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', session, ['priref', 'alternative_number.type', 'part_of_reference.lref'])
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
@@ -181,12 +182,11 @@ def find_repeats(asset_id, session):
         return None
     if hits == 0:
         return 0
-
     try:
         man_priref = adlib.retrieve_field_name(result[0], 'priref')[0]
     except (IndexError, TypeError, KeyError):
         return None
-
+    sleep(2)
     full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{man_priref}"', '1', session, ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
@@ -195,7 +195,6 @@ def find_repeats(asset_id, session):
         alt_num_type = adlib.retrieve_field_name(full_result[0], 'alternative_number.type')[0]
     except (IndexError, TypeError, KeyError):
         alt_num_type = ''
-
     try:
         ppriref = adlib.retrieve_field_name(full_result[0], 'part_of_reference.lref')[0]
     except (IndexError, TypeError, KeyError):
@@ -1069,12 +1068,11 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     if 'content.' in str(series_work_genres):
         logger.warning("Appending series genres to CID work record:\n%s", series_work_genres)
         series_work_values.extend(series_work_genres)
-
     # Start creating CID Work Series record
     series_values_xml = adlib.create_record_data(CID_API, 'works', session, '', series_work_values)
     if series_values_xml is None:
         return None
-
+    sleep(2)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord', session)
@@ -1292,11 +1290,13 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
 
     work_id = ''
     # Start creating CID Work record
+    sleep(3)
     work_values_xml = adlib.create_record_data(CID_API, 'works', session, '', work_values)
     if work_values_xml is None:
         return None
 
     try:
+        sleep(2)
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord', session)
         print(f"create_work(): {work_rec}")
@@ -1307,7 +1307,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
             print(f'* Work record created with Priref {work_id} Object number {object_number}')
             logger.info('%s\tWork record created with priref %s', fullpath, work_id)
         except (IndexError, TypeError, KeyError) as err:
-            print(f"Creation of record failed using adlib_v3: 'works', 'insertrecord' for {epg_dict['title']}")
+            logger.critical(f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {epg_dict['title']}")
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f"* Unable to create Work record for <{epg_dict['title']}>")
@@ -1352,6 +1352,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     if man_values_xml is None:
         return None
     try:
+        sleep(2)
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord', session)
         print(f"create_manifestation(): {man_rec}")
@@ -1361,7 +1362,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
             print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
             logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
         except (IndexError, KeyError, TypeError) as err:
-            print(f"Unable to write manifestation record - {title}")
+            logger.critical(f"Failed to retrieve Priref from record created for - {title}")
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
@@ -1392,6 +1393,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         return None
 
     try:
+        sleep(2)
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord', session)
         print(f"create_cid_item_record(): {item_rec}")
@@ -1401,7 +1403,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
             print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
             logger.info('%s\tItem record created with priref %s', fullpath, item_id)
         except (IndexError, KeyError, TypeError) as err:
-            print("Unable to create Item record", err)
+            logger.critical(f"Failed to retrieve Priref from record created %s", err)
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
@@ -1430,6 +1432,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
     payload = etree.tostring(etree.fromstring(manifestation))
 
     try:
+        sleep(2)
         response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord', session)
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
@@ -1447,6 +1450,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
         payload = etree.tostring(etree.fromstring(work))
 
         try:
+            sleep(2)
             response = adlib.post(CID_API, payload, 'works', 'updaterecord', session)
             if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)

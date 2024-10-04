@@ -37,7 +37,6 @@ import datetime
 import yaml
 import tenacity
 from time import sleep
-from lxml import etree
 
 # Private packages
 from series_retrieve import retrieve

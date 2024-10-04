@@ -1424,12 +1424,10 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     Item record creation failed
     Update manifestation records with deletion prompt in title
     '''
-    manifestation = f'''<record>
-                        <priref>{int(manifestation_id)}</priref>
-                        <title>DELETE - STORA record creation problem</title>
-                        </record>'''
-    payload = etree.tostring(etree.fromstring(manifestation))
-
+    payload_start = f"<adlibXML><recordList><record priref='{manifestation_id}'>"
+    payload_mid = f"<Title><title>DELETE - STORA record creation problem</title></Title>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload_start + payload_mid + payload_end
     try:
         sleep(2)
         response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
@@ -1442,12 +1440,10 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
 
     # Update work record with deletion prompt in title
     if new_work is True:
-        work = f'''<record>
-                   <priref>{int(work_id)}</priref>
-                   <title>DELETE - STORA record creation problem</title>
-                   </record>'''
-        payload = etree.tostring(etree.fromstring(work))
-
+        payload_start = f"<adlibXML><recordList><record priref='{work_id}'>"
+        payload_mid = f"<Title><title>DELETE - STORA record creation problem</title></Title>"
+        payload_end = "</record></recordList></adlibXML>"
+        payload = payload_start + payload_mid + payload_end
         try:
             sleep(2)
             response = adlib.post(CID_API, payload, 'works', 'updaterecord')

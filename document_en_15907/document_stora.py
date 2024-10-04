@@ -464,13 +464,10 @@ def mark_for_deletion(work_id, manifestation_id, fullpath, session):
     '''
     Update work and manifestation records with deletion prompt in title
     '''
-    work = f'''<record>
-               <priref>{work_id}</priref>
-               <title>DELETE - STORA record creation problem</title>
-               </record>
-            '''
-    payload = etree.tostring(etree.fromstring(work))
-
+    payload_start = f"<adlibXML><recordList><record priref='{work_id}'>"
+    payload_mid = f"<Title><title>DELETE - STORA record creation problem</title></Title>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload_start + payload_mid + payload_end
     try:
         response = adlib.post(CID_API, payload, 'works', 'updaterecord', session)
         if response:
@@ -480,12 +477,10 @@ def mark_for_deletion(work_id, manifestation_id, fullpath, session):
     except Exception as err:
         logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion. Error: %s', fullpath, work, err)
 
-    manifestation = f'''<record>
-                        <priref>{manifestation_id}</priref>
-                        <title>DELETE - Redux record creation problem</title>
-                        </record>
-                     '''
-    payload = etree.tostring(etree.fromstring(manifestation))
+    payload_start = f"<adlibXML><recordList><record priref='{manifestation_id}'>"
+    payload_mid = f"<Title><title>DELETE - STORA record creation problem</title></Title>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload_start + payload_mid + payload_end
     try:
         response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord', session)
         if response:

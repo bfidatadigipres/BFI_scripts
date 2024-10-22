@@ -76,18 +76,9 @@ def get_aspect_ratio(fullpath):
     '''
     Retrieves metadata DAR info and returns as string
     '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%DisplayAspectRatio/String%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    dar_setting = subprocess.check_output(cmd)
-    dar_setting = dar_setting.decode('utf-8')
-    dar = str(dar_setting).rstrip('\n')
-    return dar
+    ar = utils.get_metadata('Video', 'DisplayAspectRatio/String', fullpath)
+    if len(ar) > 0:
+        return ar
 
 
 def get_par(fullpath):
@@ -95,18 +86,7 @@ def get_par(fullpath):
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
     '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%PixelAspectRatio%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    par_setting = subprocess.check_output(cmd)
-    par_setting = par_setting.decode('utf-8')
-    par_full = str(par_setting).rstrip('\n')
-
+    par_full = utils.get_metadata('Video', 'PixelAspectRatio', fullpath)
     if len(par_full) <= 5:
         return par_full
     return par_full[:5]
@@ -119,29 +99,8 @@ def get_height(fullpath):
     height and stored height differ (MXF samples)
     '''
 
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Sampled_Height%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    sampled_height = subprocess.check_output(cmd)
-    sampled_height = sampled_height.decode('utf-8')
-    sheight = str(sampled_height).rstrip('\n')
-
-    cmd2 = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Height%"',
-        fullpath
-    ]
-
-    cmd2[3] = cmd2[3].replace('"', '')
-    reg_height = subprocess.check_output(cmd2)
-    reg_height = reg_height.decode('utf-8')
-    rheight = str(reg_height).rstrip('\n')
+    sheight = utils.get_metadata('Video', 'Sampled_height', fullpath)
+    rheight = utils.get_metadata('Video', 'Height', fullpath)
 
     try:
         int(sheight)
@@ -191,6 +150,35 @@ def check_parent_aspect_ratio(object_number):
     return adlib.retrieve_field_name(source_rec[0], 'aspect_ratio')[0]
 
 
+def get_colour(fullpath):
+    '''
+    Retrieves colour information via mediainfo and returns in correct FFmpeg format
+    '''
+
+    colour_prim = utils.get_metadata('Video', 'colour_primaries', fullpath)
+    col_matrix = utils.get_metadata('Video', 'matrix_coefficients', fullpath)
+
+    if 'BT.709' in colour_prim:
+        color_primaries = 'bt709'
+    elif 'BT.601' in colour_prim and 'NTSC' in colour_prim:
+        color_primaries = 'smpte170m'
+    elif 'BT.601' in colour_prim and 'PAL' in colour_prim:
+        color_primaries = 'bt470bg'
+    else:
+        color_primaries = ''
+
+    if 'BT.709' in col_matrix:
+        colormatrix = 'bt709'
+    elif 'BT.601' in col_matrix:
+        colormatrix = 'smpte170m'
+    elif 'BT.470' in col_matrix:
+        colormatrix = 'bt470bg'
+    else:
+        colormatrix = ''
+
+    return (color_primaries, colormatrix)
+
+
 def adjust_par_metadata(filepath):
     '''
     Use MKVToolNix MKVPropEdit to
@@ -220,7 +208,7 @@ def adjust_par_metadata(filepath):
         return True
 
 
-def fix_aspect_ratio(fpath, height):
+def fix_aspect_ratio(fpath, height, data):
     '''
     Trim if height 608 if needed
     Change DAR 4x3 to 16x9
@@ -255,12 +243,20 @@ def fix_aspect_ratio(fpath, height):
         '-aspect', '16:9'
     ]
 
+    colour_build = [
+        "-color_primaries", f"{data[2]}",
+        "-color_trc", f"{data[1]}",
+        "-colorspace", f"{data[0]}",
+        "-color_range", "1"
+    ]
+
     audio_map = [
         '-c:a', 'copy',
         '-map', '0',
         replace
     ]
-    command = launch + crop + cv + aspect + audio_map
+    command = launch + crop + cv + colour_build + aspect + audio_map
+
     try:
         process = subprocess.run(command, shell=False, capture_output=True, text=True)            
     except subprocess.CalledProcessError as err:
@@ -333,14 +329,19 @@ def main():
                 LOGGER.warning('%s\tCould not fetch frame height (px)', f)
                 continue
             '''
-            JMW - Requires test to ensure file cropped/encoded are not at fault
+            colour_data = get_colour(fullpath)
+            color_primaries = colour_data[0]
+            color_trc = 'bt709'
+            colormatrix = colour_data[1]
+            colour = [colormatrix, color_trc, color_primaries]
+            
             # Check aspect ratio of CID item record
             ob_num = utils.get_object_number(fn)
             aspect = check_parent_aspect_ratio(ob_num)
             print(aspect)
             if '16:9' in str(aspect):
                 LOGGER.info("File requires transcode to aspect ratio 16x9")
-                if not fix_aspect_ratio(f, height):
+                if not fix_aspect_ratio(f, height, colour):
                     LOGGER.warning("Unsuccessful attempt to change Aspect ratio to 4x3: %s", fn)
                     continue
                 LOGGER.info("File metadata updated to 4x3 and file replaced with new version: %s", fn)

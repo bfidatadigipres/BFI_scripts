@@ -243,19 +243,16 @@ def fix_aspect_ratio(fpath, height):
 
     if 'mkv' in ext.lower():
         cv = [
-            '-vf',
             '-c:v', 'ffv1', '-level', '3',
             '-g', '1', '-slicecrc', '1'
         ]
     else:
         cv = [
-            '-vf',
             '-c:v', 'v210'
         ]
 
     aspect = [
-        '-aspect', '16:9',
-        '-map', '0'
+        '-aspect', '16:9'
     ]
 
     audio_map = [
@@ -335,20 +332,19 @@ def main():
                 print(f'{f}\tCould not fetch frame height (px)')
                 LOGGER.warning('%s\tCould not fetch frame height (px)', f)
                 continue
-
+            '''
+            JMW - Requires test to ensure file cropped/encoded are not at fault
             # Check aspect ratio of CID item record
             ob_num = utils.get_object_number(fn)
             aspect = check_parent_aspect_ratio(ob_num)
             print(aspect)
             if '16:9' in str(aspect):
                 LOGGER.info("File requires transcode to aspect ratio 16x9")
-                success = fix_aspect_ratio(f, height)
-                if success:
-                    LOGGER.info("File metadata updated to 4x3: %s", fn)
-                else:
+                if not fix_aspect_ratio(f, height):
                     LOGGER.warning("Unsuccessful attempt to change Aspect ratio to 4x3: %s", fn)
                     continue
-
+                LOGGER.info("File metadata updated to 4x3 and file replaced with new version: %s", fn)
+            '''
             # Check PAR and DAR
             dar = get_dar(f)
             par = get_par(f)

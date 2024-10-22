@@ -277,19 +277,20 @@ def check_media_record(fname, session):
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
-        if hits is None:
-            logger.exception('"CID API was unreachable for Media search: %s', search)
-            raise Exception(f"CID API was unreachable for Media search: {search}")
-        print(f"check_media_record(): AdlibV3 record for hits: {hits}")
-        if hits == 0:
-            return False
-        elif hits == 1:
-            return True
-        elif hits > 1:
-            return f'Hits exceed 1: {hits}'
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
         return False
+
+    if hits is None:
+        logger.exception('"CID API was unreachable for Media search: %s', search)
+        raise Exception(f"CID API was unreachable for Media search: {search}")
+    print(f"check_media_record(): AdlibV3 record for hits: {hits}")
+    if int(hits) == 1:
+        return True
+    elif int(hits) == 0:
+        return False
+    if int(hits) > 1:
+        return f'Hits exceed 1: {hits}'
 
 
 def get_buckets(bucket_collection):
@@ -770,7 +771,7 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
                     print('* File already absent from path. Check problem with persistence message')
     '''
     # Temporary step to delete completed items whose logging failed early August 2024 (QNAP-01 drive failure)
-    if 'qnap_imagen_storage/Public/autoingest/completed' in fpath:
+    if '/mnt/isilon/film_operations/Finished/autoingest/completed' in fpath:
         if media_check is True:
             logger.info("Ingested during QNAP-01 drive failure impacting Logs/ writes (August 2024). No deletion confirmation in global.log but CID Media record present. Deleting.")
             os.remove(fpath)

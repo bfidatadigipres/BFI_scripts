@@ -63,13 +63,13 @@ def retrieve_record(api, database, search, limit, session=None, fields=None):
         return 0, None
     elif 'recordList' not in str(record):
         try:
-            hits = record['adlibJSON']['diagnostic']['hits']
+            hits = int(record['adlibJSON']['diagnostic']['hits'])
             return hits, record
         except (IndexError, KeyError, TypeError) as err:
             print(err)
             return 0, record
 
-    hits = record['adlibJSON']['diagnostic']['hits']
+    hits = int(record['adlibJSON']['diagnostic']['hits'])
     return hits, record['adlibJSON']['recordList']['record']
 
 

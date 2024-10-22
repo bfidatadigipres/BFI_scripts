@@ -21,9 +21,18 @@ October 2022
 # Public modules
 import os
 import re
+import sys
 import shutil
 import logging
 import subprocess
+
+# Public packages
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
+import utils
+
+# Configure adlib
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('aspect_ratio_triage')
@@ -53,6 +62,24 @@ def get_dar(fullpath):
         'mediainfo',
         '--Language=raw', '--Full',
         '--Inform="Video;%DisplayAspectRatio%"',
+        fullpath
+    ]
+
+    cmd[3] = cmd[3].replace('"', '')
+    dar_setting = subprocess.check_output(cmd)
+    dar_setting = dar_setting.decode('utf-8')
+    dar = str(dar_setting).rstrip('\n')
+    return dar
+
+
+def get_aspect_ratio(fullpath):
+    '''
+    Retrieves metadata DAR info and returns as string
+    '''
+    cmd = [
+        'mediainfo',
+        '--Language=raw', '--Full',
+        '--Inform="Video;%DisplayAspectRatio/String%"',
         fullpath
     ]
 
@@ -143,6 +170,27 @@ def get_height(fullpath):
     return re.sub("[^0-9]", "", height)
 
 
+def check_parent_aspect_ratio(object_number):
+    '''
+    Retrieve the DAR from the parent item record
+    object_number supplied
+    '''
+    if not object_number.startswith('N_'):
+        return None
+    
+    search = f"object_number='{object_number}'"
+    hits, record = adlib.retrieve_record(CID_API, 'media', search, '1', ['priref'])
+    print(f"Check media record response: {hits} hits\n{record}")
+    if hits is None or hits == 0:
+        return None
+    
+    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    rec = adlib.retrieve_record(CID_API, 'media', f'priref="{priref}"', '1', ['source_item.lref'])[1]
+    source_priref = adlib.retrieve_field_name(rec[0], 'priref')[0]
+    source_rec = adlib.retrieve_record(CID_API, 'media', f'priref="{source_priref}"', '1', ['aspect_ratio'])[1]
+    return adlib.retrieve_field_name(source_rec[0], 'aspect_ratio')[0]
+
+
 def adjust_par_metadata(filepath):
     '''
     Use MKVToolNix MKVPropEdit to
@@ -170,6 +218,75 @@ def adjust_par_metadata(filepath):
     if '1.29' in new_dar:
         LOGGER.info("DAR converted from %s to %s", dar, new_dar)
         return True
+
+
+def fix_aspect_ratio(fpath, height):
+    '''
+    Trim if height 608 if needed
+    Change DAR 4x3 to 16x9
+    '''
+    fpath_split, ext = os.path.splitext(fpath)
+    replace = f"{fpath_split}_4x3.{ext}"
+
+    launch = [
+        'ffmpeg', '-i',
+        fpath
+    ]
+
+    if str(height) == '608':
+        crop = [
+            '-vf',
+            'crop=720:608-32:0:576'
+        ]
+    else:
+        crop = []
+
+    if 'mkv' in ext.lower():
+        cv = [
+            '-c:v', 'ffv1', '-level', '3',
+            '-g', '1', '-slicecrc', '1'
+        ]
+    else:
+        cv = [
+            '-c:v', 'v210'
+        ]
+
+    aspect = [
+        '-aspect', '16:9'
+    ]
+
+    audio_map = [
+        '-c:a', 'copy',
+        '-map', '0',
+        replace
+    ]
+    command = launch + crop + cv + aspect + audio_map
+    try:
+        process = subprocess.run(command, shell=False, capture_output=True, text=True)            
+    except subprocess.CalledProcessError as err:
+        LOGGER.warning(err)
+        return None
+
+    if process.returncode != 0:
+        if os.path.exists(replace):
+            LOGGER.warning("Subprocess returncode was not 0, deleted failed transcode attempt")
+            os.remove(replace)
+            return False
+    else:
+        if os.path.exists(replace):
+            check_dar = get_aspect_ratio(replace)
+            if '16:9' in check_dar:
+                os.rename(fpath, f"{fpath}_DELETE")
+                os.rename(replace, fpath)
+                return True
+            else:
+                LOGGER.warning("Aspect ratio of new file is not 16:9, deleted failed transcode attempt")
+                os.remove(replace)
+                return False     
+        else:
+            LOGGER.info("Renaming of file that replaces %s failed: %s.", fpath, replace)
+            LOGGER.info("Manual fix needed to complete process.")
+            return False
 
 
 def main():
@@ -206,19 +323,31 @@ def main():
 
             ext = f.split('.')[-1]
 
-            # Get metadata values
-            dar = get_dar(f)
-            par = get_par(f)
+            # Get height
             height = get_height(f)
-            print(f'DAR: {dar} PAR: {par} Height: {height}')
+            print(f'Height: {height}')
 
             # Test for 608 line height
             if not height:
                 print(f'{f}\tCould not fetch frame height (px)')
                 LOGGER.warning('%s\tCould not fetch frame height (px)', f)
                 continue
-
+            '''
+            JMW - Requires test to ensure file cropped/encoded are not at fault
+            # Check aspect ratio of CID item record
+            ob_num = utils.get_object_number(fn)
+            aspect = check_parent_aspect_ratio(ob_num)
+            print(aspect)
+            if '16:9' in str(aspect):
+                LOGGER.info("File requires transcode to aspect ratio 16x9")
+                if not fix_aspect_ratio(f, height):
+                    LOGGER.warning("Unsuccessful attempt to change Aspect ratio to 4x3: %s", fn)
+                    continue
+                LOGGER.info("File metadata updated to 4x3 and file replaced with new version: %s", fn)
+            '''
             # Check PAR and DAR
+            dar = get_dar(f)
+            par = get_par(f)
             if not dar:
                 print(f'{f}\tCould not fetch DAR from header')
                 LOGGER.warning('%s\tCould not fetch DAR from header', f)
@@ -227,7 +356,6 @@ def main():
                 print(f'{f}\tCould not fetch PAR from header')
                 LOGGER.warning('%s\tCould not fetch PAR from header', f)
                 continue
-
             # Update CID with DAR warning
             if '1.26' in dar:
                 print(f'{f}\tFile found with 1.26 DAR. Converting to 1.29 DAR')

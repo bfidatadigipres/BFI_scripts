@@ -313,7 +313,7 @@ def get_buckets(bucket_collection):
     return bucket_list
 
 
-def ext_in_file_type(ext, priref, log_paths, session):
+def ext_in_file_type(ext, priref, log_paths, ob_num, session):
     '''
     Check if ext matches file_type
     '''
@@ -326,8 +326,14 @@ def ext_in_file_type(ext, priref, log_paths, session):
 
     ftype = ftype.split(', ')
     print(ftype)
+    if ob_num.startswith('CA-'):
+        logger.info("Collections Asset item file type check with 'asset_file_type' field")
+        retrieved_fields = ['asset_file_type']
+    else:
+        retrieved_fields = ['file_type']
+
     search = f'priref={priref}'
-    record = adlib.retrieve_record(CID_API, 'collect', search, '1', session, ['file_type'])[1]
+    record = adlib.retrieve_record(CID_API, 'collect', search, '1', session, retrieved_fields)[1]
     if record is None:
         return False
 
@@ -610,7 +616,7 @@ def main():
             print(f"* CID item record found with object number {object_number}: priref {priref}")
 
             # Ext in file_type and file_type validity in Collect database
-            confirmed = ext_in_file_type(ext, priref, log_paths, sess)
+            confirmed = ext_in_file_type(ext, priref, log_paths, object_number, sess)
             if not confirmed:
                 continue
 

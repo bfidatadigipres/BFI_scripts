@@ -331,7 +331,7 @@ def main():
         LOGGER.info("Checksums match for file >1TB local and stored on Black Pearl:\n%s\n%s", local_checksum, remote_checksum)
         toc3 = time.perf_counter()
         checksum_put_time3 = (toc3 - toc2) // 60
-        LOGGER.info("Total time in minutes for PUT without Spectra checksum, but download and whole file checksum comparison: %s", checksum_put_time3)
+        LOGGER.info("Total time in minutes for checksum creation and comparison: %s", checksum_put_time3)
 
         # Delete downloaded file and move to further validation checks
         LOGGER.info("Deleting downloaded file: %s", delivery_path)

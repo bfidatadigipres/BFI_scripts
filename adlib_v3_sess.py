@@ -45,9 +45,18 @@ def retrieve_record(api, database, search, limit, session=None, fields=None):
     '''
     Retrieve data from CID using new API
     '''
+    if database == 'items':
+        search_new = f'(record_type=ITEM) and {search}'
+    elif database == 'works':
+        search_new = f'(record_type=WORK) and {search}'
+    elif database == 'manifestations':
+        search_new = f'(record_type=MANIFESTATION) and {search}'
+    else:
+        search_new = search
+
     query = {
         'database': database,
-        'search': search,
+        'search': search_new,
         'limit': limit,
         'output': 'jsonv1'
     }

@@ -420,7 +420,7 @@ def main():
             LOGGER.warning("File will be left in folder for manual intervention.")
         toc4 = time.perf_counter()
         whole_put_time = (toc4 - tic) // 60
-        LOGGER.info("** Total time for whole process for PUT without BP hash validation: %s", whole_put_time)
+        LOGGER.info("** Total time for whole process for PUT with BP hash validation: %s", whole_put_time)
 
     LOGGER.info(f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========")
 

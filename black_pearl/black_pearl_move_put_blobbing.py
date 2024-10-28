@@ -291,7 +291,7 @@ def main():
         put_job_id = bp.put_single_file(fpath, fname, bucket, check=True)
         toc = time.perf_counter()
         checksum_put_time = (toc - tic) // 60
-        LOGGER.info("** Total time in minutes for PUT without BP hash validation: %s", checksum_put_time)
+        LOGGER.info("** Total time in minutes for PUT WITH BP hash validation: %s", checksum_put_time)
 
         # Confirm job list exists
         if not put_job_id:

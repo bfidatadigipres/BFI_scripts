@@ -379,7 +379,6 @@ def main():
             LOGGER.info("Media record %s already exists for file: %s", media_priref, fpath)
             # Check for already deleted message in global.log
             deletion_confirm = utils.check_global_log(fname, 'Successfully deleted file')
-            reingest_confirm = utils.check_global_log(fname, 'Renewed ingest of file will be attempted')
             if deletion_confirm:
                 LOGGER.info("DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s", deletion_confirm)
                 try:
@@ -388,14 +387,6 @@ def main():
                 except Exception as err:
                     LOGGER.warning("Unable to delete asset: %s %s", fpath, err)
                     LOGGER.warning("Manual inspection of asset required")
-            if reingest_confirm:
-                LOGGER.info("File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion.")
-                persistence_log_message("Persistence checks passed: delete file", fpath, wpath, fname)
-                # Move to next folder for autoingest deletion - may not be duplicate
-                try:
-                    shutil.move(fpath, move_path)
-                except Exception:
-                    LOGGER.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
             elif not access_mp4:
                 persistence_log_message("Persistence checks passed: delete file", fpath, wpath, fname)
                 LOGGER.info("File has media record but has no Access MP4. Moving to transcode folder and updating global.log for deletion.")

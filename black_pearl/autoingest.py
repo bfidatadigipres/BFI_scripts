@@ -339,7 +339,7 @@ def ext_in_file_type(ext, priref, log_paths, ob_num, session):
 
     print(f"ext_in_file_type(): AdlibV3 record returned:\n{record}")
     try:
-        file_type = adlib.retrieve_field_name(record[0], 'file_type')
+        file_type = adlib.retrieve_field_name(record[0], retrieved_fields[0])
         print(f"ext_in_file_type(): AdlibV3 file type: {file_type}")
     except (IndexError, KeyError):
         logger.warning('%s\tInvalid <file_type> in Collect record', log_paths)

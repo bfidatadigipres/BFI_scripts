@@ -191,17 +191,17 @@ def main():
                 #filename_dct.append({"digital.acquired_filename.type": "FILE"})
 
             # Append digital.acquired_filename and quality_comments to new CID item record
-            payload_head = f'<adlibXML><recordList><record><priref={new_priref}></priref>'
+            payload = f'<adlibXML><recordList><record priref={new_priref}>'
             payload_end = '</record></recordList></adlibXML>'
             for filename in filename_lst:
-                sleep(3)
                 LOGGER.info("Writing to digital.acquired_filename: %s", filename)
                 pay_mid = f'<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>'
-                payload = payload_head + pay_mid + payload_end
-                print(payload)
-                record = adlib.post(CID_API, payload, 'items', 'updaterecord')
-                if not record:
-                    LOGGER.warning("Filename changes were not updated to digital.acquired_filename field for %s", filename)
+                payload = payload + pay_mid
+            payload = payload + payload_end
+            print(payload)
+            record = adlib.post(CID_API, payload, 'items', 'updaterecord')
+            if not record:
+                LOGGER.warning("Filename changes were not updated to digital.acquired_filename field for %s", filename)
             LOGGER.info("Digital Acquired Filename data added to CID item record %s", new_priref)
             if platform == 'Netflix':
                 qual_comm = "5.1 audio supplied separately as IMP contains Dolby Atmos IAB."

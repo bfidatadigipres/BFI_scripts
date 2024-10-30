@@ -1,6 +1,7 @@
 #!/usr/bin/ python3
 
 '''
+DEPRECATED?
 Script to retrieve folders of
 Platform separate 5.1 audio files named after
 CID Item record object_number.

@@ -7,7 +7,7 @@ from DPI Black Pearl tape library.
 
 Script actions:
 1. Script works through Workflow Jobs querying 'description'
-   field looking for trigger statement 'DGO' (long-term phrase to be defined).
+   field looking for trigger statement 'DPIDL'
    It must only look for items with a completion date within CHECK_RANGE,
    and a Status=InProgress.
 2. Captures all instances as a dict and returns to main() workflow_jobs,
@@ -135,6 +135,7 @@ def get_date_range():
     dr = today + timedelta(days=CHECK_RANGE)
     todays_date = datetime.strftime(today, FMT)
     end_date = datetime.strftime(dr, FMT)
+
     return todays_date, end_date
 
 

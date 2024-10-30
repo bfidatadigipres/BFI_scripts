@@ -37,14 +37,17 @@ def retrieve_record(api, database, search, limit, fields=None):
     '''
     Retrieve data from CID using new API
     '''
-    if database == 'items':
-        search_new = f'(record_type=ITEM) and {search}'
-    elif database == 'works':
-        search_new = f'(record_type=WORK) and {search}'
-    elif database == 'manifestations':
-        search_new = f'(record_type=MANIFESTATION) and {search}'
-    else:
+    if search.startswith('priref='):
         search_new = search
+    else:
+        if database == 'items':
+            search_new = f'(record_type=ITEM) and {search}'
+        elif database == 'works':
+            search_new = f'(record_type=WORK) and {search}'
+        elif database == 'manifestations':
+            search_new = f'(record_type=MANIFESTATION) and {search}'
+        else:
+            search_new = search
 
     query = {
         'database': database,
@@ -299,10 +302,10 @@ def create_record_data(api, database, priref, data=None):
             for k in item.keys():
                 if k in value:
                     if key in new_grouping.keys():
-                        new_grouping[key].update(item)
+                        new_grouping[key].append(item)
                         remove_list.append(item)
                     else:
-                        new_grouping[key] = item
+                        new_grouping[key] = [item]
                         remove_list.append(item)
         if new_grouping:
             print(f"Adjusted grouping data: {new_grouping}")
@@ -312,7 +315,6 @@ def create_record_data(api, database, priref, data=None):
         for rm in remove_list:
             if rm in data:
                 data.remove(rm)
-
     frag = get_fragments(data)
     if not frag:
         return False
@@ -349,7 +351,9 @@ def get_fragments(obj):
             sub_item = item
         else:
             sub_item = dicttoxml(item, root=False, attr_type=False)
-
+            if '<item>' in str(sub_item):
+                ss = str(sub_item).lstrip("b'").rstrip("'").replace("<item>","").replace("</item>", "")
+                sub_item = ss.encode()
         # Append valid XML fragments to `data`
         try:
             list_item = html.fragments_fromstring(sub_item, parser=etree.XMLParser(remove_blank_text=True))

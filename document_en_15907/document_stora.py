@@ -271,7 +271,7 @@ def main():
             if work_id is None or man_id is None:
                 print('* Work or Manifestation record failed to create. Marking with DELETE warning')
                 mark_for_deletion(work_id, man_id, fullpath, session)
-                continue              
+                continue
             if len(work_id) == 0 or len(man_id) == 0:
                 print('* Work or Manifestation record failed to create. Marking with DELETE warning')
                 mark_for_deletion(work_id, man_id, fullpath, session)

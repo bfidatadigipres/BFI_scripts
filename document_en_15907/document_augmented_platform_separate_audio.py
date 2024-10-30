@@ -191,11 +191,11 @@ def main():
                 #filename_dct.append({"digital.acquired_filename.type": "FILE"})
 
             # Append digital.acquired_filename and quality_comments to new CID item record
-            payload = f'<adlibXML><recordList><record priref={new_priref}>'
-            payload_end = '</record></recordList></adlibXML>'
+            payload = f"<adlibXML><recordList><record priref='{new_priref}'>"
+            payload_end = "</record></recordList></adlibXML>"
             for filename in filename_lst:
                 LOGGER.info("Writing to digital.acquired_filename: %s", filename)
-                pay_mid = f'<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>'
+                pay_mid = f"<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
                 payload = payload + pay_mid
             payload = payload + payload_end
             print(payload)

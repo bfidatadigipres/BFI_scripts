@@ -47,7 +47,6 @@ Note: Configured for adlib_v3 and will require API update
 # Public packages
 import os
 import sys
-import json
 import shutil
 import logging
 import datetime

@@ -332,31 +332,29 @@ def create_digital_original_filenames(priref, folder_name, asset_list_dct):
     Create entries for digital.acquired_filename
     and append to the CID item record.
     '''
-    name_updates = []
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
     for key, val in asset_list_dct.items():
-        name_updates.append({'digital.acquired_filename': f'{key} - Renamed to: {val}'})
-        name_updates.append({'digital.acquired_filename.type': 'File'})
-    name_updates.append({'digital.acquired_filename': folder_name})
-    name_updates.append({'digital.acquired_filename.type': 'Folder'})
+        filename = f'{key} - Renamed to: {val}'
+        LOGGER.info("Writing to digital.acquired_filename: %s", filename)
+        pay_mid = f"<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
+        payload = payload + pay_mid
 
-    # Append cast/credit and edit name blocks to work_append_dct
-    item_append_dct = []
-    item_append_dct.extend(name_updates)
-    item_edit_data = ([{'edit.name': 'datadigipres'},
-                       {'edit.date': str(datetime.datetime.now())[:10]},
-                       {'edit.time': str(datetime.datetime.now())[11:19]},
-                       {'edit.notes': 'Netflix automated digital acquired filename update'}])
+    pay_mid = f"<Acquired_filename><digital.acquired_filename>{folder_name}</digital.acquired_filename><digital.acquired_filename.type>FOLDER</digital.acquired_filename.type></Acquired_filename>"
+    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>str(datetime.datetime.now())[:10]</edit.date><edit.time>str(datetime.datetime.now())[11:19]</edit.time><edit.notes>Netflix automated digital acquired filename update</edit.notes></Edit>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload + pay_mid + pay_edit + payload_end
 
-    item_append_dct.extend(item_edit_data)
-    LOGGER.info("** Appending data to work record now...")
-    LOGGER.info(name_updates)
+    LOGGER.info("** Appending digital.acquired_filename data to item record now...")
+    LOGGER.info(payload)
 
-    result = item_append(priref, item_append_dct)
-    if result:
-        print(f"Item appended successful! {priref}")
+    try:
+        result = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info("Successfully appended IMP digital.acquired_filenames to Item record %s", priref)
+        print(result)
         return True
-    else:
+    except Exception as err:
+        print(err)
         LOGGER.warning("Failed to append IMP digital.acquired_filenames to Item record %s", priref)
         print(f"CID item record append FAILED!! {priref}")
         return False
@@ -367,31 +365,29 @@ def xml_item_append(priref, xml_data):
     Write XML data to CID item record
     '''
     num = 1
-    label_dct = []
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
     for xml_block in xml_data:
-        label_dct.append({'label.source': f'Netflix XML data {num}'})
-        label_dct.append({'label.text': xml_block})
+        text = f'Netflix XML data {num}'
+        pay_mid = f"<Label><label.source>{text}</label.source><label.text>{xml_block}</label.text></Label>"
+        payload = payload + pay_mid
         num += 1
+    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>str(datetime.datetime.now())[:10]</edit.date><edit.time>str(datetime.datetime.now())[11:19]</edit.time><edit.notes>Netflix automated label text XML update</edit.notes></Edit>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload + pay_edit + payload_end
 
-    success = item_append(priref, label_dct)
-    if success:
-        return True
+    LOGGER.info("** Appending Labe text data to item record now...")
+    LOGGER.info(payload)
 
-
-def item_append(priref, item_append_dct):
-    '''
-    Items passed in item_dct for amending to CID item record
-    '''
-
-    item_xml = adlib.create_record_data(CID_API, 'items', priref, item_append_dct)
     try:
-        result = adlib.post(CID_API, item_xml, 'items', 'updaterecord')
-        print("*** CID item record append result:")
+        result = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        print(f"Item appended successful! {priref}\n{result}")
+        LOGGER.info("Successfully appended Label fields to Item record %s", priref)
         print(result)
         return True
     except Exception as err:
-        LOGGER.warning("item_append(): Unable to append work data to CID item record %s", err)
         print(err)
+        LOGGER.warning("Failed to append Label fields to Item record %s", priref)
+        print(f"CID item record append FAILED!! {priref}")
         return False
 
 

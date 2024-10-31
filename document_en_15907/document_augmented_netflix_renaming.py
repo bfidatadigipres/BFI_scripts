@@ -340,7 +340,7 @@ def create_digital_original_filenames(priref, folder_name, asset_list_dct):
         payload = payload + pay_mid
 
     pay_mid = f"<Acquired_filename><digital.acquired_filename>{folder_name}</digital.acquired_filename><digital.acquired_filename.type>FOLDER</digital.acquired_filename.type></Acquired_filename>"
-    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>str(datetime.datetime.now())[:10]</edit.date><edit.time>str(datetime.datetime.now())[11:19]</edit.time><edit.notes>Netflix automated digital acquired filename update</edit.notes></Edit>"
+    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Netflix automated digital acquired filename update</edit.notes></Edit>"
     payload_end = "</record></recordList></adlibXML>"
     payload = payload + pay_mid + pay_edit + payload_end
 
@@ -371,7 +371,7 @@ def xml_item_append(priref, xml_data):
         pay_mid = f"<Label><label.source>{text}</label.source><label.text>{xml_block}</label.text></Label>"
         payload = payload + pay_mid
         num += 1
-    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>str(datetime.datetime.now())[:10]</edit.date><edit.time>str(datetime.datetime.now())[11:19]</edit.time><edit.notes>Netflix automated label text XML update</edit.notes></Edit>"
+    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Netflix automated label text XML update</edit.notes></Edit>"
     payload_end = "</record></recordList></adlibXML>"
     payload = payload + pay_edit + payload_end
 

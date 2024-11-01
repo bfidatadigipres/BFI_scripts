@@ -990,7 +990,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         nfa_category = ''
 
     # Series work value extensions for missing series data
-    series_work_genres = series_work_values = []
+    series_work_values = []
     series_work_values.extend(series_work_defaults)
     series_work_values.extend(work_restricted_def)
 
@@ -1008,30 +1008,6 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         series_work_values.append({'alternative_number': series_id})
     except (IndexError, TypeError, KeyError):
         print("series_id will not be added to series_work_values")
-    if len(series_short) > 0:
-        try:
-            series_work_values.append({'label.type': 'EPGSHORT'})
-            series_work_values.append({'label.text': series_short})
-            series_work_values.append({'label.source': 'EBS augmented EPG supply'})
-            series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-        except (IndexError, TypeError, KeyError):
-            print("Series description short will not be added to series_work_values")
-    if len(series_medium) > 0:
-        try:
-            series_work_values.append({'label.type': 'EPGMEDIUM'})
-            series_work_values.append({'label.text': series_medium})
-            series_work_values.append({'label.source': 'EBS augmented EPG supply'})
-            series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-        except (IndexError, TypeError, KeyError):
-            print("Series description medium will not be added to series_work_values")
-    if len(series_long) > 0:
-        try:
-            series_work_values.append({'label.type': 'EPGLONG'})
-            series_work_values.append({'label.text': series_long})
-            series_work_values.append({'label.source': 'EBS augmented EPG supply'})
-            series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-        except (IndexError, TypeError, KeyError):
-            print("Series description long will not be added to series_work_values")
 
     if new_series_list is True:
         if len(series_description) > 0:
@@ -1051,22 +1027,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
             except (IndexError, TypeError, KeyError):
                 print("Series description LONGEST will not be added to series_work_values")
 
-
-    series_work_genres = []
-    if len(str(series_genre_one)) > 0:
-        series_work_genres.append({'content.genre.lref': str(series_genre_one)})
-    if len(str(series_genre_two)) > 0:
-        series_work_genres.append({'content.genre.lref': str(series_genre_two)})
-    if len(str(series_subject_one)) > 0:
-        series_work_genres.append({'content.subject.lref': str(series_subject_one)})
-    if len(str(series_subject_two)) > 0:
-        series_work_genres.append({'content.subject.lref': str(series_subject_two)})
-
-    print(f"Attempting to write series work genres and subjects to records {series_work_genres}")
-    if 'content.' in str(series_work_genres):
-        logger.warning("Appending series genres to CID work record:\n%s", series_work_genres)
-        series_work_values.extend(series_work_genres)
-    # Start creating CID Work Series record
+    # Start creating CID Work Series record with no nested groups
     series_values_xml = adlib.create_record_data(CID_API, 'works', '', series_work_values)
     if series_values_xml is None:
         return None
@@ -1090,6 +1051,49 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
         raise
 
+    if not series_work_id:
+        return None
+
+    # Append Content genres to record
+    series_content_genres = []
+    if len(str(series_genre_one)) > 0:
+        series_content_genres.append([{'content.genre.lref': series_genre_one}])
+    if len(str(series_genre_two)) > 0:
+        series_content_genres.append([{'content.genre.lref': series_genre_two}])
+    genre_xml = adlib.create_grouped_data(series_work_id, 'Content_genre', series_content_genres)
+    print(genre_xml)
+    update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+    if 'Content_genre' in str(update_rec):
+        logger.info("Label text successfully updated to Series Work %s", series_work_id)
+
+    # Append Content subject to record
+    series_content_subject = []
+    if len(str(series_subject_one)) > 0:
+        series_content_subject.append([{'content.subject.lref': series_subject_one}])
+    if len(str(series_subject_two)) > 0:
+        series_content_subject.append([{'content.subject.lref': series_subject_two}])
+    subject_xml = adlib.create_grouped_data(series_work_id, 'Content_subject', series_content_subject)
+    print(subject_xml)
+    update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+    if 'Content_subject' in str(update_rec):
+        logger.info("Label text successfully updated to Series Work %s", series_work_id)
+
+    # Append group data contents to record
+    label_fields = []
+    if len(series_short) > 0:
+        label_fields.append([{'label.type': 'EPGSHORT'},{'label.text': series_short},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Series description short will not be added to series_work_values")
+    if len(series_medium) > 0:
+        label_fields.append([{'label.type': 'EPGMEDIUM'},{'label.text': series_medium},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Series description medium will not be added to series_work_values")
+    if len(series_long) > 0:
+        label_fields.append([{'label.type': 'EPGLONG'},{'label.text': series_long},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Series description long will not be added to series_work_values")
+    label_xml = adlib.create_grouped_data(series_work_id, 'Label', label_fields)
+    print(label_xml)
+    update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+    if 'Label' in str(update_rec):
+        logger.info("Label text successfully updated to Series Work %s", series_work_id)
     return series_work_id
 
 
@@ -1202,7 +1206,6 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
     '''
     Create work records
     '''
-    work_genres = []
     if 'title_article' in epg_dict:
         work_values.append({'title.article': epg_dict['title_article']})
     if series_work_id:
@@ -1241,24 +1244,6 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         else:
             print("Series number isn't present, skipping.")
 
-    if 'd_short' in epg_dict:
-        d_short = epg_dict['d_short']
-        work_values.append({'label.type': 'EPGSHORT'})
-        work_values.append({'label.text': d_short})
-        work_values.append({'label.source': 'EBS augmented EPG supply'})
-        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-    if 'd_medium' in epg_dict:
-        d_medium = epg_dict['d_medium']
-        work_values.append({'label.type': 'EPGMEDIUM'})
-        work_values.append({'label.text': d_medium})
-        work_values.append({'label.source': 'EBS augmented EPG supply'})
-        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-    if 'd_long' in epg_dict:
-        d_long = epg_dict['d_long']
-        work_values.append({'label.type': 'EPGLONG'})
-        work_values.append({'label.text': d_long})
-        work_values.append({'label.source': 'EBS augmented EPG supply'})
-        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
     if 'description' in epg_dict:
         description = epg_dict['description']
         work_values.append({'description': description})
@@ -1272,19 +1257,6 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         if csv_dump:
             work_values.append({'utb.fieldname': 'Freeview EPG'})
             work_values.append({'utb.content': csv_dump})
-
-    work_genres = []
-    if 'work_genre_one' in epg_dict:
-        work_genres.append({'content.genre.lref': epg_dict['work_genre_one']})
-    if 'work_genre_two' in epg_dict:
-        work_genres.append({'content.genre.lref': epg_dict['work_genre_two']})
-    if 'work_subject_one' in epg_dict:
-        work_genres.append({'content.subject.lref': epg_dict['work_subject_one']})
-    if 'work_subject_two' in epg_dict:
-        work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
-    if 'content.' in str(work_genres):
-        logger.info("Adding work genres to CID work record: \n%s", work_genres)
-        work_values.extend(work_genres)
 
     work_id = ''
     # Start creating CID Work record
@@ -1313,6 +1285,50 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         logger.critical('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
         logger.critical(err)
         raise
+
+    if not work_id:
+        return None
+
+    # Append Content genres to record
+    content_genres = []
+    if 'work_genre_one' in epg_dict:
+        content_genres.append([{'content.genre.lref': epg_dict['work_genre_one']}])
+    if 'work_genre_two' in epg_dict:
+        content_genres.append([{'content.genre.lref': epg_dict['work_genre_two']}])
+    genre_xml = adlib.create_grouped_data(work_id, 'Content_genre', content_genres)
+    print(genre_xml)
+    update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+    if 'Content_genre' in str(update_rec):
+        logger.info("Label text successfully updated to Series Work %s", work_id)
+
+    # Append Content subject to record
+    content_subject = []
+    if 'work_subject_one' in epg_dict:
+        content_subject.append([{'content.subject.lref': epg_dict['work_subject_one']}])
+    if 'work_subject_two' in epg_dict:
+        content_subject.append([{'content.subject.lref': epg_dict['work_subject_two']}])
+    subject_xml = adlib.create_grouped_data(work_id, 'Content_subject', content_subject)
+    print(subject_xml)
+    update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+    if 'Content_subject' in str(update_rec):
+        logger.info("Label text successfully updated to Series Work %s", work_id)
+
+    # Append group data contents to record
+    label_fields = []
+    if 'd_short' in epg_dict:
+        label_fields.append([{'label.type': 'EPGSHORT'},{'label.text': epg_dict['d_short']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Work description short will not be added to series_work_values")
+    if 'd_medium' in epg_dict:
+        label_fields.append([{'label.type': 'EPGMEDIUM'},{'label.text': epg_dict['d_medium']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Work description medium will not be added to series_work_values")
+    if 'd_long' in epg_dict:
+        label_fields.append([{'label.type': 'EPGLONG'},{'label.text': epg_dict['d_long']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Work description long will not be added to series_work_values")
+    label_xml = adlib.create_grouped_data(work_id, 'Label', label_fields)
+    print(label_xml)
+    update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+    if 'Label' in str(update_rec):
+        logger.info("Label text successfully updated to Series Work %s", work_id)
 
     return work_id
 

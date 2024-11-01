@@ -286,21 +286,6 @@ def get_grouped_items(api, database):
     return grouped
 
 
-def match_grouping(groups, field, value):
-    '''
-    Match values to field lists
-    return formatted key/value pair
-    '''
-    group_keys = list(groups.keys())
-    group_fields = list(groups.values())
-    idx = ''
-    for gfield in group_fields:
-        if field in gfield:
-            idx = group_fields.index(gfield)
-    if isinstance(idx, int):
-        return {group_keys[idx]: {field: value}}
-
-
 def create_record_data(api, database, priref, data=None):
     '''
     Create a record from supplied dictionary (or list of dictionaries)

@@ -404,6 +404,7 @@ def append_repeating_groups(api, database, priref, grouping, field_pairs):
 
     payload = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_end = "</record></recordList></adlibXML>"
+    payload_mid = ''
     for lst in field_pairs:
         mid = ''
         mid_fields = ''

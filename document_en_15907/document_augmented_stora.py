@@ -753,6 +753,7 @@ def main():
         if 'asset_id' in epg_dict:
             print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
             work_priref = find_repeats(epg_dict['asset_id'])
+            print(work_priref)
         if work_priref is None:
             print("Cannot retrieve Work parent data. Maybe missing in CID or problems accessing dB via API. Skipping")
             logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
@@ -895,6 +896,7 @@ def main():
             except Exception as err:
                 print(f'** PROBLEM: Could not rename {old_webvtt} to {new_vtt}')
                 logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_webvtt, new_vtt, err)
+        sys.exit("One pass")
 
     logger.info('========== STORA documentation script END ===================================================\n')
 

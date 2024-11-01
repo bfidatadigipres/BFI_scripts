@@ -1057,44 +1057,58 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
 
     # Append Content genres to record
     series_content_genres = []
+    genre = False
     if len(str(series_genre_one)) > 0:
+        genre = True
         series_content_genres.append([{'content.genre.lref': series_genre_one}])
     if len(str(series_genre_two)) > 0:
+        genre = True
         series_content_genres.append([{'content.genre.lref': series_genre_two}])
-    genre_xml = adlib.create_grouped_data(series_work_id, 'Content_genre', series_content_genres)
-    print(genre_xml)
-    update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
-    if 'Content_genre' in str(update_rec):
-        logger.info("Label text successfully updated to Series Work %s", series_work_id)
+    if genre is True:
+        genre_xml = adlib.create_grouped_data(series_work_id, 'Content_genre', series_content_genres)
+        print(genre_xml)
+        update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+        if 'Content_genre' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", series_work_id)
 
     # Append Content subject to record
     series_content_subject = []
+    content = False
     if len(str(series_subject_one)) > 0:
+        content = True
         series_content_subject.append([{'content.subject.lref': series_subject_one}])
     if len(str(series_subject_two)) > 0:
+        content = True
         series_content_subject.append([{'content.subject.lref': series_subject_two}])
-    subject_xml = adlib.create_grouped_data(series_work_id, 'Content_subject', series_content_subject)
-    print(subject_xml)
-    update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
-    if 'Content_subject' in str(update_rec):
-        logger.info("Label text successfully updated to Series Work %s", series_work_id)
+    if content is True:
+        subject_xml = adlib.create_grouped_data(series_work_id, 'Content_subject', series_content_subject)
+        print(subject_xml)
+        update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+        if 'Content_subject' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", series_work_id)
 
     # Append group data contents to record
     label_fields = []
+    labels = False
     if len(series_short) > 0:
+        labels = True
         label_fields.append([{'label.type': 'EPGSHORT'},{'label.text': series_short},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
         print("Series description short will not be added to series_work_values")
     if len(series_medium) > 0:
+        labels = True
         label_fields.append([{'label.type': 'EPGMEDIUM'},{'label.text': series_medium},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
         print("Series description medium will not be added to series_work_values")
     if len(series_long) > 0:
+        labels = True
         label_fields.append([{'label.type': 'EPGLONG'},{'label.text': series_long},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
         print("Series description long will not be added to series_work_values")
-    label_xml = adlib.create_grouped_data(series_work_id, 'Label', label_fields)
-    print(label_xml)
-    update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
-    if 'Label' in str(update_rec):
-        logger.info("Label text successfully updated to Series Work %s", series_work_id)
+    if labels is True:
+        label_xml = adlib.create_grouped_data(series_work_id, 'Label', label_fields)
+        print(label_xml)
+        update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+        if 'Label' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", series_work_id)
+
     return series_work_id
 
 
@@ -1292,44 +1306,57 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
 
     # Append Content genres to record
     content_genres = []
+    genre = False
     if 'work_genre_one' in epg_dict:
+        genre = True
         content_genres.append([{'content.genre.lref': epg_dict['work_genre_one']}])
     if 'work_genre_two' in epg_dict:
+        genre = True
         content_genres.append([{'content.genre.lref': epg_dict['work_genre_two']}])
-    genre_xml = adlib.create_grouped_data(work_id, 'Content_genre', content_genres)
-    print(genre_xml)
-    update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
-    if 'Content_genre' in str(update_rec):
-        logger.info("Label text successfully updated to Series Work %s", work_id)
+    if genre is True:
+        genre_xml = adlib.create_grouped_data(work_id, 'Content_genre', content_genres)
+        print(genre_xml)
+        update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+        if 'Content_genre' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", work_id)
 
     # Append Content subject to record
     content_subject = []
+    content = False
     if 'work_subject_one' in epg_dict:
+        content = True
         content_subject.append([{'content.subject.lref': epg_dict['work_subject_one']}])
     if 'work_subject_two' in epg_dict:
+        content = True
         content_subject.append([{'content.subject.lref': epg_dict['work_subject_two']}])
-    subject_xml = adlib.create_grouped_data(work_id, 'Content_subject', content_subject)
-    print(subject_xml)
-    update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
-    if 'Content_subject' in str(update_rec):
-        logger.info("Label text successfully updated to Series Work %s", work_id)
+    if content is True:
+        subject_xml = adlib.create_grouped_data(work_id, 'Content_subject', content_subject)
+        print(subject_xml)
+        update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+        if 'Content_subject' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", work_id)
 
     # Append group data contents to record
     label_fields = []
+    labels = False
     if 'd_short' in epg_dict:
+        labels = True
         label_fields.append([{'label.type': 'EPGSHORT'},{'label.text': epg_dict['d_short']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
         print("Work description short will not be added to series_work_values")
     if 'd_medium' in epg_dict:
+        labels = True
         label_fields.append([{'label.type': 'EPGMEDIUM'},{'label.text': epg_dict['d_medium']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
         print("Work description medium will not be added to series_work_values")
     if 'd_long' in epg_dict:
+        labels = True
         label_fields.append([{'label.type': 'EPGLONG'},{'label.text': epg_dict['d_long']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
         print("Work description long will not be added to series_work_values")
-    label_xml = adlib.create_grouped_data(work_id, 'Label', label_fields)
-    print(label_xml)
-    update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
-    if 'Label' in str(update_rec):
-        logger.info("Label text successfully updated to Series Work %s", work_id)
+    if labels is True:
+        label_xml = adlib.create_grouped_data(work_id, 'Label', label_fields)
+        print(label_xml)
+        update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+        if 'Label' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", work_id)
 
     return work_id
 

@@ -393,3 +393,25 @@ def add_quality_comments(api, priref, comments):
     else:
         return True
 
+
+def append_repeating_groups(api, database, priref, grouping, field_pairs):
+    '''
+    Handle repeated groups of fields pairs, suppied as list of dcts per group
+    along with grouping known in advance and priref for append
+    '''
+    if not priref:
+        return None
+
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_end = "</record></recordList></adlibXML>"
+    for lst in field_pairs:
+        mid = ''
+        mid_fields = ''
+        for key, value in lst.items():
+            xml_field = f'<{key}>{value}</{key}>'
+            mid += xml_field
+        mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
+        payload_mid += mid_fields
+    
+    payload = payload + payload_mid + payload_end
+    print(payload)

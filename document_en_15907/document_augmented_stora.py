@@ -174,7 +174,7 @@ def find_repeats(asset_id):
 
     search = f'alternative_number="{asset_id}"'
     sleep(2)
-    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', ['priref', 'alternative_number.type', 'part_of_reference.lref'])
+    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1')
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
         print(f'CID API could not be reached for Manifestations search: {search}')
@@ -757,7 +757,6 @@ def main():
         if work_priref is None:
             print("Cannot retrieve Work parent data. Maybe missing in CID or problems accessing dB via API. Skipping")
             logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
-            sys.exit()
             continue
         elif work_priref == 0:
             new_work = True
@@ -897,7 +896,6 @@ def main():
             except Exception as err:
                 print(f'** PROBLEM: Could not rename {old_webvtt} to {new_vtt}')
                 logger.warning('%s\tCould not rename %s to %s. Error: %s', fullpath, old_webvtt, new_vtt, err)
-        sys.exit("One pass")
 
     logger.info('========== STORA documentation script END ===================================================\n')
 

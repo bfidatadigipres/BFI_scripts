@@ -191,15 +191,13 @@ def main():
                 #filename_dct.append({"digital.acquired_filename.type": "FILE"})
 
             # Append digital.acquired_filename and quality_comments to new CID item record
-            payload = f"<adlibXML><recordList><record priref='{new_priref}'>"
-            payload_end = "</record></recordList></adlibXML>"
+            field_pairs = []
             for filename in filename_lst:
+                field_pairs.append([{'digital.acquired_filename': f'{filename}'}, {'digital.acquired_filename.type': 'FILE'}])
                 LOGGER.info("Writing to digital.acquired_filename: %s", filename)
-                pay_mid = f"<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
-                payload = payload + pay_mid
-            payload = payload + payload_end
-            print(payload)
-            record = adlib.post(CID_API, payload, 'items', 'updaterecord')
+            xml_grouped = adlib.create_grouped_data(new_priref, 'Acquired_filename', field_pairs)
+            print(xml_grouped)
+            record = adlib.post(CID_API, xml_grouped, 'items', 'updaterecord')
             if not record:
                 LOGGER.warning("Filename changes were not updated to digital.acquired_filename field for %s", filename)
             LOGGER.info("Digital Acquired Filename data added to CID item record %s", new_priref)

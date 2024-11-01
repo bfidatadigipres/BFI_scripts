@@ -757,6 +757,7 @@ def main():
         if work_priref is None:
             print("Cannot retrieve Work parent data. Maybe missing in CID or problems accessing dB via API. Skipping")
             logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
+            sys.exit()
             continue
         elif work_priref == 0:
             new_work = True

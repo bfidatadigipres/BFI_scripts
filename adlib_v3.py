@@ -407,10 +407,13 @@ def append_repeating_groups(api, database, priref, grouping, field_pairs):
     for lst in field_pairs:
         mid = ''
         mid_fields = ''
-        for key, value in lst.items():
-            xml_field = f'<{key}>{value}</{key}>'
-            mid += xml_field
+        print("New group block:")
+        for grouped in lst:
+            for key, value in grouped.items():
+                xml_field = f'<{key}>{value}</{key}>'
+                mid += xml_field
         mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
+        print(mid_fields)
         payload_mid += mid_fields
     
     payload = payload + payload_mid + payload_end

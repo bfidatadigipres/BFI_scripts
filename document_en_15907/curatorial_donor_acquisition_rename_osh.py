@@ -107,6 +107,8 @@ def sort_ext(ext):
     '''
     Decide on file type
     '''
+    if ext.startswith('.'):
+        ext = ext[1:]
     mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg', 'mpg'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],

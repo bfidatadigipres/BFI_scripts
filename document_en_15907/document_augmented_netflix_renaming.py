@@ -370,9 +370,8 @@ def xml_item_append(priref, xml_data):
         pay_mid = f"<Label><label.source>{text}</label.source><label.text><![CDATA[{xml_block}]]></label.text></Label>"
         payload = payload + pay_mid
         num += 1
-    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Netflix automated label text XML update</edit.notes></Edit>"
     payload_end = "</record></recordList></adlibXML>"
-    payload = payload + pay_edit + payload_end
+    payload = payload + payload_end
 
     LOGGER.info("** Appending Labe text data to item record now...")
     LOGGER.info(payload)

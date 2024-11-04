@@ -62,6 +62,7 @@ def retrieve_record(api, database, search, limit, fields=None):
 
     record = get(api, query)
     if not record:
+        print(query)
         return None, None
     elif record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
@@ -334,6 +335,32 @@ def create_record_data(api, database, priref, data=None):
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
+def create_grouped_data(priref, grouping, field_pairs):
+    '''
+    Handle repeated groups of fields pairs, suppied as list of dcts per group
+    along with grouping known in advance and priref for append
+    '''
+    if not priref:
+        return None
+
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload_mid = ''
+    for lst in field_pairs:
+        mid = ''
+        mid_fields = ''
+        print("New group block:")
+        for grouped in lst:
+            for key, value in grouped.items():
+                xml_field = f'<{key}>{value}</{key}>'
+                mid += xml_field
+        mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
+        print(mid_fields)
+        payload_mid = payload_mid + mid_fields
+    
+    return payload + payload_mid + payload_end
+
+
 def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
@@ -392,4 +419,3 @@ def add_quality_comments(api, priref, comments):
         return False
     else:
         return True
-

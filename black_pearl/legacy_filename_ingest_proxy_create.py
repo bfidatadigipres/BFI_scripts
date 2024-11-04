@@ -40,7 +40,6 @@ The script should be agnostic to name types and possibly match N 123456 01of01 a
 Files not to be handled via the regular autoingest/black_pearl scripting
 and therefore not to use the autoingest folder structures.
 
-Joanna White
 2024
 '''
 

@@ -11,7 +11,6 @@ encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
 and transcode.
 
-Joanna White
 2023
 '''
 

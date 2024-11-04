@@ -15,7 +15,6 @@
            python backup.py
 
 Refactored for Python3
-Joanna White
 2023
 '''
 

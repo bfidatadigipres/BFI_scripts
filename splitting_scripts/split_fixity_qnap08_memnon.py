@@ -20,6 +20,7 @@ Process F47 digitisation output:
   $ python split_fixity.py <path_to_folder> multi
 
 Refactored for Python3
+Updated for Adlib V3
 June 2022
 '''
 
@@ -37,7 +38,7 @@ import subprocess
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-import document_item
+import document_item_memnon as document_item
 import models
 import clipmd5
 
@@ -62,7 +63,7 @@ CID_API = os.environ['CID_API4']
 # Setup logging, overwrite each time
 logger = logging.getLogger(f'split_fixity_{NUM}')
 hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'))
-# hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'), mode=w)
+# hdlr = logging.FileHandler(os.path.join(MEDIA_TARGET, f'log/split_{NUM}.log'), mode='w')
 formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -147,7 +148,7 @@ def main():
     # List files in recursive sub-directories
     files = []
     for root, _, filenames in os.walk(TARGET):
-        for filename in [f for f in filenames if f.endswith(('.mov', '.mxf', '.mkv', '.MOV', '.MXF', '.MKV'))]:
+        for filename in [f for f in filenames if f.endswith(('.mkv', '.MKV'))]:
             files.append(os.path.join(root, filename))
 
     # Process digitised tape files sequentially
@@ -263,7 +264,7 @@ def main():
                     if check_result is None:
                         logger.warning("Skipping: Unable to retrieve CID Media hit information, try again next pass")
                         continue
-                    print(f"**** AUTOINGEST: {AUTOINGEST}")
+                    print(f"**** AUTOINEGST: {AUTOINGEST}")
                     match_path = glob.glob(f"{AUTOINGEST}/**/*/{firstpart_check}", recursive=True)
                     print(f"****** MATCH PATH {match_path}")
                     if firstpart_check in str(match_path):
@@ -294,6 +295,9 @@ def main():
             logger.info('%s\t* Destination for new file: %s', filepath, of)
             if os.path.isfile(of):
                 logger.warning('%s\tDestination file already exists for file: %s', filepath, of)
+                if segments:
+                    logger.warning('%s\tDestination file already exists for segmented file. Deleting: %s', filepath, of)
+                    os.remove(of)
                 continue
 
             # Programme in/out (seconds)
@@ -313,7 +317,6 @@ def main():
             # Get duration of file
             print("Get file duration")
             item_duration = get_duration(filepath)
-            print(f"*********** {item_duration} ***********")
             if not item_duration:
                 print("No duration retrieved")
                 logger.warning("%s\t* Item has no duration, skipping this file.", filepath)

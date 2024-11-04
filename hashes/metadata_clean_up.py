@@ -16,7 +16,7 @@ writes mediainfo data to CID media record priref before deleting files.
 7. Where data written successfully delete mediainfo file
 8. Where there's no match leave file and may be needed later
 
-Joanna White 2023
+2023
 Python3.8+
 '''
 

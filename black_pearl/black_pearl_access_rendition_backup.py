@@ -15,7 +15,6 @@ Targeting bfi/ subfolders only at this time:
   Sleep for 30 mins before PUT of same files
 - Pushes all replacement/new items to BP bucket
 
-Joanna White
 2024
 '''
 

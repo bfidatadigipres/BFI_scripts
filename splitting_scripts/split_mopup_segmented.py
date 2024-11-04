@@ -14,7 +14,6 @@ Fix C- N-prefix files in processing/segmented where CID Item creation has failed
 
 NOTE: Updated for Adlib V3
 
-Stephen McConnachie
 June 2021
 Refactored 2023
 '''
@@ -254,6 +253,7 @@ def main():
             dst = os.path.join(fpath, new_f)
             try:
                 print(f'\t{filepath} --> {dst}')
+                os.chmod(filepath, 0o777)
                 os.rename(filepath, dst)
                 logger.info('%s\tRenamed Matroska file with MKV Item object_number and partWhole: %s --> %s', filepath, f, new_f)
                 print(f'{filepath}\tRenamed Matroska file with MKV Item object_number and partWhole: {f} --> {new_f}')

@@ -39,16 +39,12 @@ CID_API = os.environ['CID_API4']
 CLIENT = ds3.createClientFromEnv()
 
 TARGETS = [
-   f"{os.environ['QNAP_H22']}/processing/",
-   f"{os.environ['GRACK_H22']}/processing/",
-   f"{os.environ['ISILON_VID']}/processing/",
-   f"{os.environ['QNAP_08']}/processing/",
-   f"{os.environ['QNAP_10']}/processing/"
+   f"{os.environ['QNAP_08']}/memnon_processing/"
 ]
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('delete_post_split')
-hdlr = logging.FileHandler(os.path.join(LOG_PATH, 'delete_post_split.log'))
+hdlr = logging.FileHandler(os.path.join(LOG_PATH, 'delete_post_split_memnon.log'))
 formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -122,7 +118,7 @@ def main():
         # List video files in recursive sub-directories
         files = []
         for directory, _, filenames in os.walk(root):
-            for filename in [f for f in filenames if f.endswith(('.mov', '.mxf', 'mkv', '.MOV', '.MKV', '.MXF'))]:
+            for filename in [f for f in filenames if f.endswith(('.mkv', '.MKV'))]:
                 files.append(os.path.join(directory, filename))
 
         # Track tapes processed total
@@ -181,10 +177,7 @@ def main():
                 object_number = adlib.retrieve_field_name(item, 'object_number')[0]
 
                 # Check expected number of media records have been created for correct grouping
-                if '/qnap_h22/' in filepath or '/qnap_10/' in filepath:
-                    grouping = '398385'
-                else:
-                    grouping = '397987'
+                grouping = '401629'
 
                 record = get_results(filepath, grouping, object_number)
                 if not record:
@@ -256,7 +249,7 @@ def get_results(filepath, grouping, object_number):
     and 'collectionssystems' in CID media record
     '''
 
-    search = f'(object.object_number->((grouping.lref="{grouping}") and (input.name="datadigipres" or input.name="collectionssystems") and (source_item->(object_number="{object_number}"))))'
+    search = f'(object.object_number->((grouping.lref="{grouping}") and (input.name="datadigipres") and (source_item->(object_number="{object_number}"))))'
     fields = [
         'reference_number',
         'imagen.media.original_filename',

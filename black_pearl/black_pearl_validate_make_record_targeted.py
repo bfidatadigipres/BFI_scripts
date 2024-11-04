@@ -35,7 +35,6 @@ NOTE: Restriction in main() temporarily in place to allow second version of scri
       to target specific (slow) paths, allowing the rest to move quickly. Eventually
       this will be set to QNAP-04 STORA full time.
 
-Joanna White / Stephen McConnachie
 2022
 '''
 
@@ -221,16 +220,13 @@ def main():
         if not folders:
             continue
 
-        logger.info("======== START Black Pearl validate/CID Media record START ========")
-        logger.info("Folders found in Autoingest path: %s", autoingest)
-
         for folder in folders:
             if not utils.check_control('black_pearl'):
                 logger.info('Script run prevented by downtime_control.json. Script exiting.')
                 sys.exit('Script run prevented by downtime_control.json. Script exiting.')
             if folder.startswith(('ingest_', 'error_', 'blob')):
                 continue
-
+            logger.info("======== START Black Pearl validate/CID Media record START ========")
             logger.info("Folder found that is not an ingest folder, or has failed or errored files within: %s", folder)
             json_file = success = ''
 
@@ -531,13 +527,13 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
     part, whole = utils.check_part_whole(filename)
     if not part:
         return None
-
     record_data = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},
                     {'input.time': str(datetime.now())[11:19]},
                     {'input.notes': 'Digital preservation ingest - automated bulk documentation.'},
                     {'reference_number': filename},
                     {'imagen.media.original_filename': filename},
+                    {'container.file_size.total_bytes': int(byte_size)},
                     {'object.object_number': ob_num},
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},

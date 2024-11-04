@@ -8,7 +8,6 @@ Iterates through each of list paths:
 4. Return these in list 'move_folders' comma separated, ordered emptiest path first
 5. Iterates 'move1' through 'move7' file by file passing file name and 'new_path' to move():
 
-Joanna White
 2020
 '''
 
@@ -18,6 +17,7 @@ import shutil
 # List with paths, folder names for counts
 PATHS = [
     os.path.join(os.environ['QNAP_08'], 'processing/source/'),
+    os.path.join(os.environ['QNAP_08'], 'memnon_processing/source/'),
     os.path.join(os.environ['QNAP_10'], 'processing/source/'),
     os.path.join(os.environ['QNAP_H22'], 'processing/source/'),
 #    os.path.join(os.environ['ISILON_VID'],'processing/source/'),

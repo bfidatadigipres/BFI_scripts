@@ -25,7 +25,7 @@ def log_print(data):
     Temp func to track failures in
     CID item record creation
     '''
-    with open(os.path.join(CODE_PATH, 'splitting_scripts/temp_logs/ofcom_item_records.log'), 'a') as file:
+    with open(os.path.join(CODE_PATH, 'splitting_scripts/temp_logs/memnon_item_records.log'), 'a') as file:
         file.write(f"{datetime.datetime.now().isoformat()}\n")
         file.write(f"{data}\n")
         file.write("--------------------------------\n")
@@ -37,7 +37,8 @@ def fetch_existing_object_number(source_object_number):
     the existing Matroska (single Item) or naming the segment
     '''
 
-    search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref=397987'
+    # JMW - will this grouping.lref search find a file populated with the correct grouping from manual creations?
+    search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref=401629'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '1', ['object_number'])
     if hits is None:
         raise Exception('Unable to retrieve data from Item record')
@@ -98,36 +99,12 @@ def new_or_existing_no_segments(source_object_number, extension, note=None):
         return destination_object
 
 
-def new_or_existing_no_segments_mopup(source_object_number, extension, grouping, note=None):
-    ''' Create a new item record for multi-reeler if one doesn't already exist,
-        otherwise return the ID of the existing record '''
-
-    hits, record = already_exists_grouping(source_object_number, grouping)
-    print(hits, record)
-    if hits is None:
-        raise Exception('Unable to retrieve data from Item record')
-    elif hits == 1:
-        destination_object = adlib.retrieve_field_name(record, 'object_number')[0]
-        log_print(f"new_or_existing(): Found CID item record - {destination_object}")
-        return destination_object
-    elif hits > 1:
-        log_print(f"new_or_existing(): Multiple records found {record}")
-        return None
-        # Append segmentation information
-        # Increment total item duration
-    elif hits == 0:
-        # Create new
-        log_print(f"new_or_existing(): No record found {source_object_number}, creating new one")
-        destination_object = new_no_segments_mopup(source_object_number, extension, grouping, note)
-        return destination_object
-
-
 def already_exists(source_object_number):
     '''
     Has an F47 record already been created for source?
     '''
 
-    search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref=397987'
+    search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref=401629'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
     if hits is None:
         raise Exception('Unable to retrieve data from Item record')
@@ -138,27 +115,14 @@ def already_exists(source_object_number):
         return hits, None
 
 
-def already_exists_grouping(source_object_number, grouping_lref):
-    '''
-    Has an F47 record already been created for source?
-    '''
-
-    search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref={grouping_lref}'
-    hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
-    if hits is None:
-        raise Exception('Unable to retrieve data from Item record')
-    elif hits >= 1:
-        log_print(f"already_exists_grouping(): {record}")
-        return hits, record[0]
-    else:
-        return hits, None
-
-
 def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
     '''
     Create a new item record
     Python 3 changes to record creation - unsure of write impact
     '''
+    if str(grouping) != '401629':
+        print(f"Incorrect grouping received in Memnon workflow: {grouping}")
+        grouping = '401629'
 
     # Fetch source item data
     search = f'object_number="{source_object_number}"'
@@ -184,6 +148,7 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
             {'file_type': extension.upper()},
             {'code_type': 'FFV1 v3'},
             {'grouping.lref': grouping},
+            {'creator.lref': '999931007'},
             {'input.name': 'datadigipres'},
             {'input.date': datetime.datetime.now().isoformat()[:10]},
             {'input.time': datetime.datetime.now().isoformat()[11:].split('.')[0]},
@@ -245,7 +210,8 @@ def new_no_segments(source_object_number, extension, note=None):
             {'copy_usage': 'Restricted access to preserved digital file'},
             {'file_type': extension.upper()},
             {'code_type': 'FFV1 v3'},
-            {'grouping.lref': '397987'},
+            {'grouping.lref': '401629'},
+            {'creator.lref': '999931007'},
             {'input.name': 'datadigipres'},
             {'input.date': datetime.datetime.now().isoformat()[:10]},
             {'input.time': datetime.datetime.now().isoformat()[11:].split('.')[0]},
@@ -308,7 +274,8 @@ def new(source_object_number, segments, duration, extension, note=None):
             {'copy_usage': 'Restricted access to preserved digital file'},
             {'file_type': extension.upper()},
             {'code_type': 'FFV1 v3'},
-            {'grouping.lref': '397987'},
+            {'grouping.lref': '401629'},
+            {'creator.lref': '999931007'},
             {'input.name': 'datadigipres'},
             {'input.date': datetime.datetime.now().isoformat()[:10]},
             {'input.time': datetime.datetime.now().isoformat()[11:].split('.')[0]},

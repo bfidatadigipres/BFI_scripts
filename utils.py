@@ -2,7 +2,6 @@
 Consolidate all repeat modules
 to one utils.py document
 
-Joanna White
 2024
 '''
 
@@ -54,7 +53,9 @@ ACCEPTED_EXT = [
     'stl',
     'cap',
     'dfxp',
-    'dxfp'
+    'dxfp',
+    'csv',
+    'pdf'
 ]
 
 
@@ -84,7 +85,9 @@ def accepted_file_type(ext):
              'stl': 'stl',
              'cap': 'cap',
              'dxfp': 'dxfp',
-             'dfxp': 'dfxp'}
+             'dfxp': 'dfxp',
+             'csv': 'csv',
+             'pdf': 'pdf'}
     ext = ext.lower()
     for key, val in ftype.items():
         if key == ext:
@@ -120,6 +123,7 @@ def cid_check(cid_api):
     '''
     try:
         dct = adlib.check(cid_api)
+        print(dct)
         if isinstance(dct, dict):
             return True
     except KeyError:
@@ -211,7 +215,7 @@ def sort_ext(ext):
     '''
     Decide on file type
     '''
-    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4ßimport ', 'mpg', 'avi', 'ts', 'mpeg'],
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'mpg', 'avi', 'ts', 'mpeg'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}

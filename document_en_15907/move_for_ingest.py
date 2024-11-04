@@ -6,7 +6,6 @@ And move ingested folders out, after checking status
 
 Updated for Adlib_V3 and Python3
 
-Joanna White
 2024
 '''
 

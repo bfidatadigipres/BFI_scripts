@@ -20,7 +20,6 @@ Steps:
        Output warning to Local log and leave file
        for retry at later date.
 
-Joanna White
 2022
 '''
 

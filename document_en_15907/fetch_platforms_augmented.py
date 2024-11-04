@@ -19,7 +19,6 @@ main():
 
 Platform agnostic, this data take from CSV input
 
-Joanna White
 2024
 '''
 

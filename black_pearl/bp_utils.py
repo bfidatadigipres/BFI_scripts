@@ -2,7 +2,6 @@
 Consolidate all BP activities
 to one utility module
 
-Joanna White
 2024
 '''
 

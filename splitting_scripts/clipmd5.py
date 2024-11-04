@@ -8,8 +8,7 @@ Use:
   $ clipmd5 /path/to/source.mkv --start 00:01:15 --end 00:03:00 --output clip.mkv
   $ clipmd5 source.mkv --start 00:05:00 --end 25 --output clip.mkv --ffmpeg -an -
 
-Converted from Py2 legacy code to Py3
-Joanna White
+Converted to Python3
 2022
 '''
 
@@ -94,7 +93,6 @@ def framemd5_cut(framemd5):
     '''
     This function to chop up framemd5 so only checksum remain for comparison
     avoiding errors with non-matching duration columns, split on comma
-    JMW new function 08/09/2022
     '''
 
     new_manifest = []

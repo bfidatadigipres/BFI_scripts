@@ -4,7 +4,6 @@
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
-Joanna White
 2024
 '''
 
@@ -40,15 +39,27 @@ def create_session():
     '''
     session = Session()
     return session
-    
+
 
 def retrieve_record(api, database, search, limit, session=None, fields=None):
     '''
     Retrieve data from CID using new API
     '''
+    if search.startswith('priref='):
+        search_new = search
+    else:
+        if database == 'items':
+            search_new = f'(record_type=ITEM) and {search}'
+        elif database == 'works':
+            search_new = f'(record_type=WORK) and {search}'
+        elif database == 'manifestations':
+            search_new = f'(record_type=MANIFESTATION) and {search}'
+        else:
+            search_new = search
+
     query = {
         'database': database,
-        'search': search,
+        'search': search_new,
         'limit': limit,
         'output': 'jsonv1'
     }
@@ -64,13 +75,13 @@ def retrieve_record(api, database, search, limit, session=None, fields=None):
         return 0, None
     elif 'recordList' not in str(record):
         try:
-            hits = record['adlibJSON']['diagnostic']['hits']
+            hits = int(record['adlibJSON']['diagnostic']['hits'])
             return hits, record
         except (IndexError, KeyError, TypeError) as err:
             print(err)
             return 0, record
 
-    hits = record['adlibJSON']['diagnostic']['hits']
+    hits = int(record['adlibJSON']['diagnostic']['hits'])
     return hits, record['adlibJSON']['recordList']['record']
 
 
@@ -96,6 +107,9 @@ def get(api, query, session):
     except exceptions.HTTPError as err:
         print(err)
         raise Exception
+    except Exception as err:
+        print(err)
+        raise Exception
 
 
 def post(api, payload, database, method, session=None):
@@ -116,6 +130,8 @@ def post(api, payload, database, method, session=None):
     if method == 'insertrecord':
         try:
             response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+            if response.status_code != 200:
+                raise Exception
         except exceptions.Timeout as err:
             print(err)
             raise Exception
@@ -123,12 +139,17 @@ def post(api, payload, database, method, session=None):
             print(err)
             raise Exception
         except exceptions.HTTPError as err:
+            print(err)
+            raise Exception
+        except Exception as err:
             print(err)
             raise Exception
 
     if method == 'updaterecord':
         try:
             response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+            if response.status_code != 200:
+                raise Exception
         except exceptions.Timeout as err:
             print(err)
             raise Exception
@@ -136,6 +157,9 @@ def post(api, payload, database, method, session=None):
             print(err)
             raise Exception
         except exceptions.HTTPError as err:
+            print(err)
+            raise Exception
+        except Exception as err:
             print(err)
             raise Exception
 
@@ -326,6 +350,32 @@ def create_record_data(api, database, session, priref, data=None):
     payload = payload.decode('utf-8')
 
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
+
+
+def create_grouped_data(priref, grouping, field_pairs):
+    '''
+    Handle repeated groups of fields pairs, suppied as list of dcts per group
+    along with grouping known in advance and priref for append
+    '''
+    if not priref:
+        return None
+
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload_mid = ''
+    for lst in field_pairs:
+        mid = ''
+        mid_fields = ''
+        print("New group block:")
+        for grouped in lst:
+            for key, value in grouped.items():
+                xml_field = f'<{key}>{value}</{key}>'
+                mid += xml_field
+        mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
+        print(mid_fields)
+        payload_mid = payload_mid + mid_fields
+    
+    return payload + payload_mid + payload_end
 
 
 def get_fragments(obj):

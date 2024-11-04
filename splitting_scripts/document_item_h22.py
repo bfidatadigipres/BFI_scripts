@@ -51,16 +51,18 @@ def new_or_existing(source_object_number, segments, duration, extension, note=No
         otherwise return the ID of the existing record '''
 
     hits, record = already_exists(source_object_number)
-    if hits == 1:
+    if hits is None:
+        raise Exception('Unable to retrieve data from Item record')
+    elif hits == 1:
         destination_object = adlib.retrieve_field_name(record, 'object_number')[0]
         log_print(f"new_or_existing(): Found CID item record - {destination_object}")
         return destination_object
-    if hits > 1:
+    elif hits > 1:
         log_print(f"new_or_existing(): Multiple records found {record}")
         return None
         # Append segmentation information
         # Increment total item duration
-    if hits == 0:
+    elif hits == 0:
         # Create new
         log_print(f"new_or_existing(): No record found {source_object_number}, creating new one")
         destination_object = new(source_object_number, segments, duration, extension, note)
@@ -74,7 +76,7 @@ def already_exists(source_object_number):
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
     if hits is None:
         raise Exception('Unable to retrieve data from Item record')
-    if hits >= 1:
+    elif hits >= 1:
         log_print(f"already_exists(): {record}")
         return hits, record[0]
     else:
@@ -89,7 +91,7 @@ def new(source_object_number, segments, duration, extension, note=None):
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '1')
     if hits is None:
         raise Exception('Unable to retrieve data from Item record')
-    if hits > 0:
+    elif hits > 0:
         source_lref = int(adlib.retrieve_field_name(record[0], 'priref')[0])
     if 'title' in str(record):
         title = adlib.retrieve_field_name(record[0], 'title')[0]

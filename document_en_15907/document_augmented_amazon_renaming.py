@@ -34,14 +34,12 @@ video and audio desc also MOV wrapped.
    black_pearl_amazon_ingest path where new put
    scripts ensure file is moved to amazon01 bucket.
 
-Joanna White
 2024
 '''
 
 # Public packages
 import os
 import sys
-import json
 import shutil
 import logging
 import datetime
@@ -353,43 +351,25 @@ def create_digital_original_filenames(priref, folder, digital_note):
     Create entries for digital.acquired_filename
     and append to the CID item record.
     '''
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    pay_mid = f"<Acquired_filename><digital.acquired_filename>{digital_note}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
+    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Amazon automated digital acquired filename update</edit.notes></Edit>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload + pay_mid + pay_edit + payload_end
 
-    item_append_dct = []
-    item_append_dct.append({'digital.acquired_filename': digital_note})
-    item_append_dct.append({'digital.acquired_filename.type': 'FILE'})
+    LOGGER.info("** Appending data to work record now...")
+    LOGGER.info(payload)
 
-    item_edit_data = ([{'edit.name': 'datadigipres'},
-                       {'edit.date': str(datetime.datetime.now())[:10]},
-                       {'edit.time': str(datetime.datetime.now())[11:19]},
-                       {'edit.notes': 'Amazon automated digital acquired filename update'}])
-
-    item_append_dct.extend(item_edit_data)
-    LOGGER.info("** Appending data to work record now")
-
-    result = item_append(priref, item_append_dct)
-    if result:
+    try:
+        result = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        print(f"Item appended successful! {priref}\n{result}")
         print(f"Item appended successful! {priref}")
         LOGGER.info("Successfully appended MOV digital.acquired_filenames to Item record %s %s", priref, folder)
         return True
-    else:
+    except Exception as err:
+        print(err)
         LOGGER.warning("Failed to append MOV digital.acquired_filenames to Item record %s %s", priref, folder)
         print(f"CID item record append FAILED!! {priref}")
-        return False
-
-
-def item_append(priref, item_append_dct):
-    '''
-    Items passed in item_dct for amending to CID item record
-    '''
-    item_xml = adlib.create_record_data(CID_API, 'items', priref, item_append_dct)
-    try:
-        result = adlib.post(CID_API, item_xml, 'items', 'updaterecord')
-        print("*** CID item record append result:")
-        print(result)
-        return True
-    except Exception as err:
-        LOGGER.warning("item_append(): Unable to append work data to CID item record %s", err)
-        print(err)
         return False
 
 

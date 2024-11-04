@@ -26,7 +26,7 @@ Add function to add +1 GMT to all timings of show data
 ready for update of STORA data to correct scheduling times
 (not current EPG timings, all -1 GMT to schedule)
 
-Joanna White 2021
+2021
 Python 3.6+
 '''
 

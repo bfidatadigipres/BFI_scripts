@@ -4,8 +4,6 @@
 Create a new CID Item record for a file and rename
 the file with the new <object_number>
 
-Converted to Python3
-Joanna White
 2023
 '''
 import os

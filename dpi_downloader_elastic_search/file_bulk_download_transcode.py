@@ -160,17 +160,17 @@ def get_prirefs(pointer):
     for list of prirefs in CID
     '''
     query = {'command': 'getpointerfile',
-             'database': 'items',
+             'database': 'collect',
              'number': pointer,
              'output': 'jsonv1'}
-
+    print(query)
     try:
         result = adlib.get(CID_API, query)
     except Exception as exc:
         LOGGER.exception('get_prirefs(): Unable to get pointer file %s\n%s', pointer, exc)
         result = None
-
-    if not result['adlibJSON']['recordList']['record'][0]['hitlist']:
+    print(result)
+    if 'hitlist' not in str(result):
         return None
     prirefs = result['adlibJSON']['recordList']['record'][0]['hitlist']
     LOGGER.info("Prirefs retrieved: %s", prirefs)

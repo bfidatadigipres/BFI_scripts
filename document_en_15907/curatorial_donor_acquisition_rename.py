@@ -74,6 +74,8 @@ def cid_retrieve(itemname, search):
         print(f"cid_retrieve(): Unable to retrieve data for {itemname}")
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", itemname)
         query_result = None
+    if query_result is None:
+        return None
     try:
         acquired1 = []
         all_filenames = len(query_result[0]['Acquired_filename'])
@@ -208,6 +210,9 @@ def main():
         # Retrieve CID data
         search = f'digital.acquired_filename="{item}"'
         cid_data = cid_retrieve(item, search)
+        if cid_data is None:
+            LOGGER.info("Skipping: No name match found for %s", item)
+            continue
         priref = cid_data[0]
         ob_num = cid_data[1]
         title = cid_data[2]

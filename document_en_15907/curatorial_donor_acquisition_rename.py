@@ -42,11 +42,10 @@ import adlib_v3 as adlib
 import utils
 
 # Global path variables
-CURATORIAL_PATH = os.environ['IS_CURATORIAL']
+CURATORIAL_PATH = os.environ['CURATORIAL']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 DIGIOPS_PATH = os.path.join(os.environ['QNAP_11_DIGIOPS'], 'Acquisitions/Curatorial/')
-# DIGIOPS_PATH = os.path.join(os.environ['QNAP_09'], 'Acquisitions/Curatorial/')
 RSYNC_LOG = os.path.join(DIGIOPS_PATH, 'transfer_logs')
 CID_API = os.environ['CID_API4']
 

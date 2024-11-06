@@ -170,9 +170,9 @@ def check_mime_type(fpath, log_paths):
     Checks the mime type of the file
     and if stream media checks ffprobe
     '''
-    if fpath.lower().endswith(('.mxf', '.ts', '.mpg')):
+    if fpath.lower().endswith(('.mxf', '.ts', '.mpg', '.m2ts')):
         mime = 'video'
-    elif fpath.lower().endswith(('.csv', '.pdf', '.srt', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml')):
+    elif fpath.lower().endswith(('.csv', '.pdf', '.srt', '.rtf', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml')):
         mime = 'application'
     else:
         mime = magic.from_file(fpath, mime=True)

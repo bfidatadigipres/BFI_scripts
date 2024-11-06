@@ -70,8 +70,7 @@ def check_control():
 
 def cid_check_items(grouping, file_type, platform):
     '''
-    Sends CID request for digital.acquired_filename
-    block for iteration
+    Sends CID request grouping and file_type block
     '''
     search = f'(grouping.lref="{grouping}" and file_type="{file_type}")'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0', ['priref'])
@@ -244,7 +243,7 @@ def update_cid_media_record(priref, orig_fname, platform, file_type):
     '''
     name_updates = []
     name_updates.append({'digital.acquired_filename': orig_fname})
-    name_updates.append({'digital.acquired_filename.type': 'File'})
+    name_updates.append({'digital.acquired_filename.type': 'FILE'})
 
     # Append file name with edit block
     media_append_dct = []

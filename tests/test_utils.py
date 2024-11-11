@@ -96,7 +96,7 @@ def test_read_csv(writing_csv):
     ("N_123456_01of01.mkv", True),
     ("C_345678_01of02.mp4", True),
     ("PBL_123456_02of05.ts", True),
-    ("SCR_846573_010f09.ts", True),
+    ("SCR?_846573_010f09.ts", True),
     ("Q_345678_01of02.mp", False),
     ("STL_987654_09of20.avi", False),
     (".DS_STORE", False),
@@ -223,6 +223,14 @@ def test_get_metadata(stream, args, expected_result):
     # we should get duration
     assert result == expected_result
 
+@pytest.mark.parametrize("dpath, policy, outcome", [
+    ("tests/MKV_sample.mkv", "tests/test_policy.xml", (True, 'pass! tests/MKV_sample.mkv\n'))
+])
+def test_get_mediaconch(dpath, policy, outcome):
+    result = utils.get_mediaconch(dpath=dpath, policy=policy)
+
+    assert result == outcome
+
 @pytest.mark.parametrize("file_name, expected_results", 
 [
     ("tests/MKV_sample.mkv", "10.000000")
@@ -254,7 +262,8 @@ def test_get_duration(file_name, expected_results):
 
 @pytest.mark.parametrize("file_name, expected_results", 
 [
-    ("tests/MKV_sample.mkv", "a249fba2c4a44a9354d2c3d6d0805dd6")
+    ("tests/MKV_sample.mkv", "a249fba2c4a44a9354d2c3d6d0805dd6"),
+    ("", None)
 ]
 )
 def test_create_md5_65536(file_name, expected_results):
@@ -267,6 +276,25 @@ def test_create_md5_65536(file_name, expected_results):
     # we should get hash value of the file
     assert result == expected_results
 
+@pytest.mark.parametrize("input, expected_output", [
+    ("", None),
+    ("tests/MKV_sample.mkv", 8149026)
+    ])
+def test_get_size(input, expected_output):
+    
+    result = utils.get_size(input)
 
-# rest is on my work laptop -> macos
+    assert result == expected_output
+    
+@pytest.mark.slow
+@pytest.mark.parametrize("filename, message, expected_output", [
+    ("N_10307017_01of01.mkv", "Successfully deleted file", None),
+     ("N_10306783_01of01.mkv", "Successfully deleted file", None)
+    ])
+def test_check_global_logs(filename, message, expected_output):
+    
+    result = utils.check_global_log(filename, message)
+
+    assert result == expected_output
+
 # PYTHONPATH=$(pwd) pytest -s -vv test/test_utils.py

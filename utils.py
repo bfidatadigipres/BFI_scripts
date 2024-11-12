@@ -40,6 +40,7 @@ ACCEPTED_EXT = [
     'mpg',
     'mpeg',
     'mp4',
+    'm2ts',
     'mov',
     'mkv',
     'tif',

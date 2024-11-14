@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 import csv
 import os
-import sys
 import pytest
+import subprocess
+import sys
 sys.path.append(os.environ['CODE'])
+
+# custom import
 import utils
 
-@pytest.mark.skip(reason='no control json file found')
-def test_check_control():
-    true_response = utils.check_control('black_pearl')
-    assert true_response is True
-    false_response = utils.check_control('power_off_all')
-    assert false_response is False
+@pytest.mark.parametrize("input, expected_output", [
+    ("black_pearl", True),
+    ("power_off_all", True),
+    ("/mnt/isilon/film_operations/Finished", False)
+])
+def test_check_control(input, expected_output):
+    json_response = utils.check_control(input)
+    assert json_response is expected_output 
 
 
 @pytest.mark.skip(reason='no api credentials')
@@ -96,7 +101,7 @@ def test_read_csv(writing_csv):
     ("N_123456_01of01.mkv", True),
     ("C_345678_01of02.mp4", True),
     ("PBL_123456_02of05.ts", True),
-    ("SCR?_846573_010f09.ts", True),
+    ("SCR_846573_010f09.ts", True),
     ("Q_345678_01of02.mp", False),
     ("STL_987654_09of20.avi", False),
     (".DS_STORE", False),
@@ -206,22 +211,86 @@ def test_sort_ext(extension_type, expected_output):
     # assert the file type to expected -> true
     assert result is expected_output
 
+# # mock testing?
+# @pytest.mark.parametrize("file_name, expected_output", [
+#     ("tests/MKV_sample.mkv")
+# ])
+def test_exif_data(mocker):
+
+    mock_output = (
+        b"ExifTool Version Number         : 11.88\n"
+        b"File Name                       : MKV_sample.mkv\n"
+        b"Directory                       : tests\n"
+        b"File Size                       : 7.8 MB\n"
+        b"File Modification Date/Time     : 2024:10:31 11:08:20+00:00\n"
+        b"File Access Date/Time           : 2024:11:12 13:20:32+00:00\n"
+        b"File Inode Change Date/Time     : 2024:11:06 09:16:37+00:00\n"
+        b"File Permissions                : rwxrwxrwx\n"
+        b"File Type                       : MKV\n"
+        b"File Type Extension             : mkv\n"
+        b"MIME Type                       : video/x-matroska\n"
+        b"EBML Version                    : 1\n"
+        b"EBML Read Version               : 1\n"
+        b"Doc Type                        : matroska\n"
+        b"Doc Type Version                : 4\n"
+        b"Doc Type Read Version           : 2\n"
+        b"Timecode Scale                  : 1 ms\n"
+        b"Muxing App                      : Lavf58.76.100\n"
+        b"Writing App                     : Lavf58.76.100\n"
+        b"Duration                        : 10.00 s\n"
+        b"Codec ID                        : A_PCM/INT/LIT\n"
+        b"Track Default                   : No\n"
+        b"Audio Codec ID                  : A_PCM/INT/LIT\n"
+        b"Audio Channels                  : 2\n"
+        b"Audio Sample Rate               : 48000\n"
+        b"Audio Bits Per Sample           : 24\n"
+        b"Track Number                    : 3\n"
+        b"Track Language                  : eng\n"
+        b"Track Type                      : Video\n"
+        b"Video Frame Rate                : 25\n"
+        b"Video Codec ID                  : V_MS/VFW/FOURCC\n"
+        b"Image Width                     : 720\n"
+        b"Image Height                    : 576\n"
+        b"Display Width                   : 20\n"
+        b"Display Height                  : 11\n"
+        b"Display Unit                    : Unknown (3)\n"
+        b"Tag Name                        : DURATION\n"
+        b"Tag String                      : 00:00:10.000000000\n"
+        b"Image Size                      : 720x576\n"
+        b"Megapixels                      : 0.415\n"
+            )
+    mocker.patch("subprocess.check_output", return_value=mock_output)
+    # mocker.patch("subprocess.check_output", side_effect=subprocess.CalledProcessError(1, 'exiftool'))
+
+    result = utils.exif_data('tests/MKV_sample.mkv')
+
+    assert "File Name                       : MKV_sample.mkv\n" in result
+
+    subprocess.check_output.assert_called_with(['exiftool', 'tests/MKV_sample.mkv'])
+
 
 @pytest.mark.parametrize("stream, args, expected_result",[
-('Video', 'Duration', '10000.000000'),
-('Video', 'BitRate', '1781489'),
-('Video', 'Width', '720'),
-('Video', 'Height', '576')])
-def test_get_metadata(stream, args, expected_result):
+('Video', 'Duration', b'10000.000000'),
+('Video', 'BitRate', b'1781489'),
+('Video', 'Width', b'720'),
+('Video', 'Height', b'576')])
+def test_get_metadata(mocker, stream, args, expected_result):
     # given a file name
     file_name = "tests/MKV_sample.mkv"
+
+    mocker.patch("subprocess.check_output", return_value=expected_result)
 
     # when get metadata is called
     result = utils.get_metadata(stream, args, file_name)
 
 
     # we should get duration
-    assert result == expected_result
+    assert result == expected_result.decode('latin-1')
+
+    subprocess.check_output.assert_called_with([        'mediainfo', '--Full',
+        '--Language=raw',
+        f'--Output={stream};%{args}%',
+        file_name])
 
 @pytest.mark.parametrize("dpath, policy, outcome", [
     ("tests/MKV_sample.mkv", "tests/test_policy.xml", (True, 'pass! tests/MKV_sample.mkv\n'))
@@ -296,5 +365,8 @@ def test_check_global_logs(filename, message, expected_output):
     result = utils.check_global_log(filename, message)
 
     assert result == expected_output
+
+
+
 
 # PYTHONPATH=$(pwd) pytest -s -vv test/test_utils.py

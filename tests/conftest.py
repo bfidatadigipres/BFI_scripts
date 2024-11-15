@@ -13,9 +13,27 @@ import yaml
 def yaml_data(request):
     return request.param
 
-
 @pytest.fixture
 def writing_yaml(tmp_path, yaml_data):
+    '''
+    This function writes the different typs of data into
+    temporary csv file for testing purposes.
+
+    Parameter:
+    -----------
+
+        tmp_path: pathlib.Path
+            pytest builtin module to create paths
+
+        csv_data: string
+            the data to input to thre file
+
+    Returns:
+    --------
+        csv_file
+            return the csv path
+
+    '''
     d = tmp_path / 'sub'
     d.mkdir()
     yaml_path = d / "hello.yaml"
@@ -23,6 +41,20 @@ def writing_yaml(tmp_path, yaml_data):
         yaml.dump(yaml_data, f)
     return yaml_path
 
+@pytest.fixture(params = [
+    "hello world!",
+    ""
+])
+def txt_data(request):
+    return request.param
+
+@pytest.fixture
+def writing_txt(tmp_path, txt_data):
+    d = tmp_path / 'sub'
+    d.mkdir()
+    txt_file = d / 'testting.txt'
+    txt_file.write_text(txt_data)
+    return txt_file
 
 @pytest.fixture(params = [
     [
@@ -41,6 +73,24 @@ def csv_data(request):
 
 @pytest.fixture()
 def writing_csv(tmp_path, csv_data):
+    '''
+    This function writes the different types of data into
+    temporary csv file for testing purposes.
+
+    Parameter:
+    -----------
+
+        tmp_path: pathlib.Path
+            pytest builtin module to create paths
+
+        csv_data: string
+            the data to input to thre file
+
+    Returns:
+    --------
+        csv_file
+            return the csv path
+    '''
     d = tmp_path / "sub"
     d.mkdir()
     csv_file = d / "hello.csv"

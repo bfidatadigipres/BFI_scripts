@@ -15,6 +15,15 @@ import utils
     ("/mnt/isilon/film_operations/Finished", False)
 ])
 def test_check_control(input, expected_output):
+    '''
+    Tests the check control function.
+
+    This test checks the behaviour of the function that verifies the ability to retrieve 
+    the correct value associated with a given key.  
+    It uses paramterized inputs to validate various of cases where:
+    - the key exists and return the value
+
+    '''
     json_response = utils.check_control(input)
     assert json_response is expected_output 
 
@@ -42,6 +51,16 @@ def test_check_cid():
     ('mvp', None) # invlaid file type
 ])
 def test_accepted_file_type(file_extension, expected_output):
+    '''
+    Tests the accepted file type function.
+
+    This test checks the behaviour of the function that checks 
+    the specific file extension is a valid type. 
+    It uses paramterized inputs to validate various of cases where:
+    - the file_extension is valid
+    - the file_extension is not valid
+
+    '''
     print(f"file_extension={file_extension}")
     print(f"expected_output={expected_output}")
     
@@ -54,6 +73,18 @@ def test_accepted_file_type(file_extension, expected_output):
 
 
 def test_read_yaml(writing_yaml):
+    '''
+    Tests the read_yaml function.
+
+    This test checks the behaviour of the function that checks if the data in the 
+    yaml file is the correctly written into
+    the file. It uses paramterized inputs to validate various of cases.
+
+    Notes:
+    ------
+    Creating the file is specified in conftest.py using tmp_path, to prevent creating an actual
+    file
+    '''
 
     # given a yaml file
 
@@ -76,6 +107,18 @@ def test_read_yaml(writing_yaml):
     assert result == expected
 
 def test_read_csv(writing_csv):
+    '''
+    Tests the read_csv function.
+
+    This test checks the behaviour of the function that checks if the data in the 
+    csv file is the correctly written into
+    the file. It uses paramterized inputs to validate various of cases.
+
+    Notes:
+    ------
+    Creating the file is specified in conftest.py using tmp_path, to prevent creating an actual
+    file
+    '''
 
     result = utils.read_csv(writing_csv)
 
@@ -95,6 +138,17 @@ def test_read_csv(writing_csv):
         {"film_company": "Odeon", "full_name": "Odeon"}    
     ]
         assert results_data == expected
+
+def test_read_extract(writing_txt):
+    result = utils.read_extract(writing_txt)
+
+    if result == '':
+        expected = ''
+        assert result == expected
+
+    else:
+        expected = 'hello world!'
+        assert result == expected
         
 
 @pytest.mark.parametrize("filename, expected_results", [
@@ -110,6 +164,17 @@ def test_read_csv(writing_csv):
 ])
 
 def test_check_filename(filename, expected_results):
+    '''
+    Tests the check_filename function.
+
+    This test checks the behaviour of the function that the filename supplied is
+    in the correct format. It uses paramterized inputs to validate various of cases.
+
+    Examples:
+    >>> test_check_filename(".DS_STORE", False) # not correct format
+    >>> test_check_filename("N_123456_01of01.mkv", True) # in correct format
+
+    '''
     # given a filename
 
     # when check filename is called
@@ -132,6 +197,23 @@ def test_check_filename(filename, expected_results):
 ])
 
 def test_check_part_whole(filename, expected_result):
+    '''
+    Tests the check_part_whole function.
+
+    This test checks the behaviour of the function that filename supplied is
+    in the correct format and extract the whole and part
+    . It uses paramterized inputs to validate various of cases.
+
+    Examples:
+    -------
+    >>> test_check_part_whole("N_126_03of01.mkv", (None, None)) # part larger than whole
+    >>> test_check_part_whole("N_126Q4?_03of03.mkv", (3, 3)) # valid
+
+    Notes:
+    -----
+    For cases where the part is greater than the whole, it returns None,None
+
+    '''
     # given a file name
 
     # when check part whole function is called
@@ -152,6 +234,18 @@ def test_check_part_whole(filename, expected_result):
 ])
 
 def test_get_object_number(filename, expected_outcome):
+    '''
+    Tests the get_object_number function.
+
+    This test checks the behaviour of the function that filename supplied is
+    in the correct format and extract the object number. 
+    It uses paramterized inputs to validate various of cases.
+
+    Examples:
+    ---------
+    >>> test_get_object_number(Q_126_03of01.mkv, False) # not in a valid format
+    >>> test_get_object_number(N_123456_01of01.mkv, N-123456) # first half in correct format
+    '''
     # given a file name
 
     # when get object is called
@@ -203,6 +297,18 @@ def test_get_object_number(filename, expected_outcome):
 ])
 
 def test_sort_ext(extension_type, expected_output):
+    '''
+    Tests the sort_ext function.
+
+    This test checks the behaviour of the function where the extension_type supplied
+    and returns the mime type (document, audio, image, video). 
+    It uses paramterized inputs to validate various of cases.
+
+    Examples:
+    ---------
+    >>> test_sort_ext(mkv, Video) # not in a valid format
+    >>> test_sort_ext(<3, None) # not a mime type
+    '''
     # given an extension
 
     # when the sort_ext function called
@@ -211,11 +317,16 @@ def test_sort_ext(extension_type, expected_output):
     # assert the file type to expected -> true
     assert result is expected_output
 
-# # mock testing?
-# @pytest.mark.parametrize("file_name, expected_output", [
-#     ("tests/MKV_sample.mkv")
-# ])
 def test_exif_data(mocker):
+    '''
+    Tests the exif_data function.
+
+    This test checks the behaviour of the function where the filename is supplied
+    and returns the the file's metadata. 
+    It uses mocking and patching to replicate and isolate the command line process
+    for testing purposes.
+
+    '''
 
     mock_output = (
         b"ExifTool Version Number         : 11.88\n"
@@ -275,6 +386,15 @@ def test_exif_data(mocker):
 ('Video', 'Width', b'720'),
 ('Video', 'Height', b'576')])
 def test_get_metadata(mocker, stream, args, expected_result):
+    '''
+    Tests the get_metadat function.
+
+    This test checks the behaviour of the function where the stream, 
+    args and filename are supplied and returns the metadata of the file. 
+    It uses mocking and patching to replicate and isolate the command line process
+    for testing purposes.
+
+    '''
     # given a file name
     file_name = "tests/MKV_sample.mkv"
 
@@ -282,7 +402,6 @@ def test_get_metadata(mocker, stream, args, expected_result):
 
     # when get metadata is called
     result = utils.get_metadata(stream, args, file_name)
-
 
     # we should get duration
     assert result == expected_result.decode('latin-1')
@@ -296,6 +415,14 @@ def test_get_metadata(mocker, stream, args, expected_result):
     ("tests/MKV_sample.mkv", "tests/test_policy.xml", (True, 'pass! tests/MKV_sample.mkv\n'))
 ])
 def test_get_mediaconch(dpath, policy, outcome):
+    '''
+    Tests the get_mediaconch function.
+
+    This test checks the behaviour of the function where the policy and filename are supplied
+    and checks for 'pass! {path}' in mediaconch reponse. 
+    It uses paramterized inputs to validate various of cases.
+
+    '''
     result = utils.get_mediaconch(dpath=dpath, policy=policy)
 
     assert result == outcome
@@ -306,6 +433,14 @@ def test_get_mediaconch(dpath, policy, outcome):
 ]
 )
 def test_get_ms(file_name, expected_results):
+    '''
+    Tests the get_ms function.
+
+    This test checks the behaviour of the function where the filename is supplied
+    and returns the duration of the file in milliseconds. 
+    It uses paramterized inputs to validate various of cases.
+
+    '''
     # given a file name
     # when get ms is called
     result = utils.get_ms(file_name)
@@ -321,6 +456,14 @@ def test_get_ms(file_name, expected_results):
 ]
 )
 def test_get_duration(file_name, expected_results):
+    '''
+    Tests the get_duration function.
+
+    This test checks the behaviour of the function where the filename is supplied
+    and returns the duration of the file. 
+    It uses paramterized inputs to validate various of cases.
+
+    '''
     # given a file name
     # when get ms is called
     result = utils.get_duration(file_name)
@@ -336,6 +479,18 @@ def test_get_duration(file_name, expected_results):
 ]
 )
 def test_create_md5_65536(file_name, expected_results):
+    '''
+    Tests the create_md5_65536 function.
+
+    This test checks the behaviour of the function where the filename is supplied
+    and returns the checksum_value of the file. 
+    It uses paramterized inputs to validate various of cases.
+
+    Note:
+    -----
+    For empty files, it should return None.
+
+    '''
     # given a file name/ folder 
 
     # when get md5 65536 is called
@@ -345,13 +500,24 @@ def test_create_md5_65536(file_name, expected_results):
     # we should get hash value of the file
     assert result == expected_results
 
-@pytest.mark.parametrize("input, expected_output", [
+@pytest.mark.parametrize("filename, expected_output", [
     ("", None),
     ("tests/MKV_sample.mkv", 8149026)
     ])
-def test_get_size(input, expected_output):
+def test_get_size(filename, expected_output):
+    '''
+    Tests the get_size function.
+
+    This test checks the behaviour of the function where the filename is supplied
+    and returns the size of the file. 
+    It uses paramterized inputs to validate various of cases.
+
+    Note:
+    -----
+    For empty files, it should return None.
+    '''
     
-    result = utils.get_size(input)
+    result = utils.get_size(filename)
 
     assert result == expected_output
     
@@ -361,12 +527,21 @@ def test_get_size(input, expected_output):
      ("N_10306783_01of01.mkv", "Successfully deleted file", None)
     ])
 def test_check_global_logs(filename, message, expected_output):
+    '''
+    Tests the check_global_logs function.
+
+    This test checks the behaviour of the function where the filename and message are supplied
+    and returns a value if its present in the global logs. 
+    It uses paramterized inputs to validate various of cases.
+
+    Note:
+    -----
+    This function takes a while to run.
+
+    '''
     
     result = utils.check_global_log(filename, message)
 
     assert result == expected_output
 
 
-
-
-# PYTHONPATH=$(pwd) pytest -s -vv test/test_utils.py

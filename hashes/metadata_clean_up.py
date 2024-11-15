@@ -29,6 +29,7 @@ import logging
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 LOG_PATH = os.environ['LOG_PATH']
@@ -46,29 +47,6 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def check_cid():
-    '''
-    Test CID online before script progresses
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
-
-
 def cid_retrieve(fname):
     '''
     Retrieve priref for media record from imagen.media.original_filename
@@ -84,22 +62,21 @@ def cid_retrieve(fname):
     return ''
 
 
-def read_extract(metadata_pth):
-    '''
-    Open mediainfo text files from path, read() and store to variable
-    '''
-    with open(metadata_pth, 'r') as data:
-        readme = data.read()
-    return readme
-
 
 def main():
     '''
     Clean up scripts for checksum files that have been processed by autoingest
     and also mediainfo reports, writing text file dumps to media record in CID
     '''
-    check_cid()
-    check_control()
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
     if len(sys.argv) < 2:
         sys.exit()
 
@@ -129,37 +106,37 @@ def main():
     text = text_full = ebu = pb = xml = json = exif = ''
     # Processing metadata output for text path
     if os.path.exists(text_path):
-        text_dump = read_extract(text_path)
+        text_dump = utils.read_extract(text_path)
         text = f"<Header_tags><header_tags.parser>MediaInfo text 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for text full path
     if os.path.exists(text_full_path):
-        text_dump = read_extract(text_full_path)
+        text_dump = utils.read_extract(text_full_path)
         text_full = f"<Header_tags><header_tags.parser>MediaInfo text 0 full</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for ebucore path
     if os.path.exists(ebu_path):
-        text_dump = read_extract(ebu_path)
+        text_dump = utils.read_extract(ebu_path)
         ebu = f"<Header_tags><header_tags.parser>MediaInfo ebucore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for pbcore path
     if os.path.exists(pb_path):
-        text_dump = read_extract(pb_path)
+        text_dump = utils.read_extract(pb_path)
         pb = f"<Header_tags><header_tags.parser>MediaInfo pbcore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for pbcore path
     if os.path.exists(xml_path):
-        text_dump = read_extract(xml_path)
+        text_dump = utils.read_extract(xml_path)
         xml = f"<Header_tags><header_tags.parser>MediaInfo xml 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for json path
     if os.path.exists(json_path):
-        text_dump = read_extract(json_path)
+        text_dump = utils.read_extract(json_path)
         json = f"<Header_tags><header_tags.parser>MediaInfo json 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for special collections exif data
     if os.path.exists(exif_path):
-        text_dump = read_extract(exif_path)
+        text_dump = utils.read_extract(exif_path)
         exif = f"<Header_tags><header_tags.parser>Exiftool text</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     payload_data = text + text_full + ebu + pb + xml + json + exif

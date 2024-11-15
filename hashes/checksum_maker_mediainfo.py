@@ -19,6 +19,7 @@ Actions of the script:
 2021
 '''
 
+# External Libraries
 import os
 import sys
 import json
@@ -27,6 +28,9 @@ import logging
 import subprocess
 import datetime
 import tenacity
+
+# Custom Libraries
+import utils
 
 # Global variables
 LOG_PATH = os.environ['LOG_PATH']
@@ -48,32 +52,32 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def check_control():
+# thes line of code is repeated twice so maybe it's a good idea to write it as a functions?
+def actual_writing_to_checksum(checksum_path, checksum, filepath):
     '''
-    Check control json for downtime requests
+    This function writes the checksum into a file and returns the paths
+
+    Parameters:
+    -----------
+        checksum_path: string
+            the file directory to the checksum file
+
+        checksum: string
+            the checksum value generated from the video/film
+
+        filepath: string
+            the full file path from absolute to the file(film)
+
+    Returns:
+    --------
+        checksum_path: string
+            the file where the checksum is stored
     '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['power_off_all']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
-
-def md5_65536(file):
-    '''
-    Hashlib md5 generation, return as 32 character hexdigest
-    '''
-    try:
-        hash_md5 = hashlib.md5()
-        with open(file, "rb") as fname:
-            for chunk in iter(lambda: fname.read(65536), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
-
-    except Exception:
-        LOGGER.exception("%s - Unable to generate MD5 checksum", file)
-        return None
-
+    with open(checksum_path, 'w') as fname:
+        fname.write(f"{checksum} - {filepath} - {TODAY}")
+        fname.close()
+    return checksum_path
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
 def checksum_write(filename, checksum, filepath):
@@ -84,9 +88,7 @@ def checksum_write(filename, checksum, filepath):
     checksum_path = os.path.join(CHECKSUM_PATH, f"{filename}.md5")
     if os.path.isfile(checksum_path):
         try:
-            with open(checksum_path, 'w') as fname:
-                fname.write(f"{checksum} - {filepath} - {TODAY}")
-                fname.close()
+            checksum_path = actual_writing_to_checksum(checksum_path, checksum, filename)
             return checksum_path
         except Exception:
             LOGGER.exception("%s - Unable to write checksum: %s", filename, checksum_path)
@@ -94,9 +96,7 @@ def checksum_write(filename, checksum, filepath):
         try:
             with open(checksum_path, 'x') as fnm:
                 fnm.close()
-            with open(checksum_path, 'w') as fname:
-                fname.write(f"{checksum} - {filepath} - {TODAY}")
-                fname.close()
+            checksum_path = actual_writing_to_checksum(checksum_path, checksum, filename)
             return checksum_path
         except Exception:
             LOGGER.exception("%s Unable to write checksum to path: %s", filename, checksum_path)
@@ -108,7 +108,7 @@ def make_output_md5(filepath, filename):
     Runs checksum generation/output to file as separate function allowing for easier retries
     '''
     try:
-        md5_checksum = md5_65536(filepath)
+        md5_checksum = utils.create_md5_65536(filepath)
         LOGGER.info("%s - MD5 sum generated: %s", filename, md5_checksum)
         return md5_checksum
     except Exception:
@@ -190,7 +190,9 @@ def main():
     if len(sys.argv) < 2:
         LOGGER.error("Shell script failed to pass argument path via GNU parallel")
         sys.exit('Shell script failed to pass argument to Python script')
-    check_control()
+    if not utils.check_control('power_off_all'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     filepath = sys.argv[1]
     path_split = os.path.split(filepath)
     filename = path_split[1]

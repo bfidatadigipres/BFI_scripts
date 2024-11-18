@@ -22,8 +22,6 @@ Actions of the script:
 # External Libraries
 import os
 import sys
-import json
-import hashlib
 import logging
 import subprocess
 import datetime
@@ -53,7 +51,7 @@ LOGGER.setLevel(logging.INFO)
 
 
 # thes line of code is repeated twice so maybe it's a good idea to write it as a functions?
-def actual_writing_to_checksum(checksum_path, checksum, filepath):
+def actual_writing_to_checksum(checksum_path, checksum, filepath, filename):
     '''
     This function writes the checksum into a file and returns the paths
 
@@ -73,11 +71,14 @@ def actual_writing_to_checksum(checksum_path, checksum, filepath):
         checksum_path: string
             the file where the checksum is stored
     '''
+    try:
+        with open(checksum_path, 'w') as fname:
+            fname.write(f"{checksum} - {filepath} - {TODAY}")
+            fname.close()
+        return checksum_path
+    except Exception:
+        LOGGER.exception("%s - Unable to write checksum: %s", filename, checksum_path)
 
-    with open(checksum_path, 'w') as fname:
-        fname.write(f"{checksum} - {filepath} - {TODAY}")
-        fname.close()
-    return checksum_path
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
 def checksum_write(filename, checksum, filepath):
@@ -87,19 +88,13 @@ def checksum_write(filename, checksum, filepath):
     '''
     checksum_path = os.path.join(CHECKSUM_PATH, f"{filename}.md5")
     if os.path.isfile(checksum_path):
-        try:
-            checksum_path = actual_writing_to_checksum(checksum_path, checksum, filename)
-            return checksum_path
-        except Exception:
-            LOGGER.exception("%s - Unable to write checksum: %s", filename, checksum_path)
+        checksum_path = actual_writing_to_checksum(checksum_path, checksum, filepath, filename)
+        return checksum_path
     else:
-        try:
-            with open(checksum_path, 'x') as fnm:
-                fnm.close()
-            checksum_path = actual_writing_to_checksum(checksum_path, checksum, filename)
-            return checksum_path
-        except Exception:
-            LOGGER.exception("%s Unable to write checksum to path: %s", filename, checksum_path)
+        with open(checksum_path, 'x') as fnm:
+            fnm.close()
+        checksum_path = actual_writing_to_checksum(checksum_path, checksum, filepath, filename)
+        return checksum_path
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))

@@ -50,8 +50,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-# thes line of code is repeated twice so maybe it's a good idea to write it as a functions?
-def actual_writing_to_checksum(checksum_path, checksum, filepath, filename):
+def checksum_write(checksum_path, checksum, filepath, filename):
     '''
     This function writes the checksum into a file and returns the paths
 
@@ -81,19 +80,19 @@ def actual_writing_to_checksum(checksum_path, checksum, filepath, filename):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def checksum_write(filename, checksum, filepath):
+def checksum_exist(filename, checksum, filepath):
     '''
     Create a new Checksum file and write MD5_checksum
     Return checksum path where successfully written
     '''
     checksum_path = os.path.join(CHECKSUM_PATH, f"{filename}.md5")
     if os.path.isfile(checksum_path):
-        checksum_path = actual_writing_to_checksum(checksum_path, checksum, filepath, filename)
+        checksum_path = checksum_write(checksum_path, checksum, filepath, filename)
         return checksum_path
     else:
         with open(checksum_path, 'x') as fnm:
             fnm.close()
-        checksum_path = actual_writing_to_checksum(checksum_path, checksum, filepath, filename)
+        checksum_path = checksum_write(checksum_path, checksum, filepath, filename)
         return checksum_path
 
 
@@ -213,7 +212,7 @@ def main():
     # Make metadata then write to checksum path as filename.ext.md5
     if 'None' not in str(md5_checksum):
         make_metadata(path, filename)
-        success = checksum_write(filename, md5_checksum, filepath)
+        success = checksum_exist(filename, md5_checksum, filepath)
         LOGGER.info("%s Checksum written to: %s", filename, success)
 
     LOGGER.info("=============== Python3 %s END ==============", filename)

@@ -19,8 +19,8 @@ from ds3 import ds3
 
 # Setup client/paths
 CLIENT = ds3.createClientFromEnv()
-CSV_PATH = ''
-NEW_CSV_PATH = ''
+CSV_PATH = '/mnt/qnap_imagen_storage/Public/Admin/code/filesize_extractor/ofcom_dpi_ingest_2.csv'
+NEW_CSV_PATH = '/mnt/qnap_imagen_storage/Public/Admin/code/filesize_extractor/ofcom_dpi_ingest_filesizes.csv'
 
 
 def read_csv(csv_path):
@@ -71,7 +71,7 @@ def write_to_new_csv(data):
     if not os.path.exists(NEW_CSV_PATH):
         sys.exit("Incorrect CSV path supplied for destination.")
     with open(NEW_CSV_PATH, 'a', newline='') as csv_file:
-        datawrite = csv.write(csv_file)
+        datawrite = csv.writer(csv_file)
         datawrite.writerow(data)
         csv_file.close()
 

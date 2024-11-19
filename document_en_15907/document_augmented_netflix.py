@@ -54,7 +54,7 @@ NETFLIX = os.path.join(STORAGE, 'NETFLIX')
 CAT_ID = os.environ.get('PA_NETFLIX')
 ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
-CODE = os.environ.get('CODE_PATH')
+CODE = os.environ.get('CODE')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API4')
@@ -759,8 +759,12 @@ def main():
 
             # Fetch just single episodes
             if episode != 'all':
-                episodes = episode.split(', ')
-                total_eps = len(episodes)
+                if ',' in str(episode):
+                    episodes = episode.split(', ')
+                    total_eps = len(episodes)
+                else:
+                    episodes = [episode]
+                    total_eps = 1
                 count = 0
                 for ep in episodes:
                     LOGGER.info("Creating one-off episode record for %s episode number %s", title, ep)

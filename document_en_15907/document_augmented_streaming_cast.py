@@ -232,7 +232,7 @@ def cid_person_check(credit_id, session):
     Retrieve if Person record with priref already exist for credit_entity_id
     '''
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
-    record = adlib.retrieve_record(CID_API, 'people', search, '0', ['priref', 'name', 'activity_type'], session)[1]
+    record = adlib.retrieve_record(CID_API, 'people', search, '0', session, ['priref', 'name', 'activity_type'])[1]
     if not record:
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
         return None
@@ -259,7 +259,7 @@ def cid_work_check(search, platform, session):
     edit_names = []
     platform = platform.title()
 
-    records = adlib.retrieve_record(CID_API, 'works', search, '0', ['priref', 'input.notes', 'edit.name'], session)
+    records = adlib.retrieve_record(CID_API, 'works', search, '0', session, ['priref', 'input.notes', 'edit.name'])
     if not records:
         LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
         return '', ''
@@ -267,13 +267,13 @@ def cid_work_check(search, platform, session):
     print(records)
     for record in records:
         try:
-            priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-            input_note = adlib.retrieve_field_name(record[0], 'input.notes')[0]
+            priref = adlib.retrieve_field_name(record, 'priref')[0]
+            input_note = adlib.retrieve_field_name(record, 'input.notes')[0]
         except (KeyError, IndexError):
             priref = ''
             input_note = ''
         try:
-            edit_name = adlib.retrieve_field_name(record[0], 'edit.name')[0]
+            edit_name = adlib.retrieve_field_name(record, 'edit.name')[0]
         except (KeyError, IndexError):
             edit_name = ''
 
@@ -289,7 +289,7 @@ def cid_manifestation_check(priref, session):
     Retrieve Manifestation transmission start time from parent priref
     '''
     search = f"(part_of_reference.lref='{priref}')"
-    record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', ['transmission_start_time'], session)[1]
+    record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', session, ['transmission_start_time'])[1]
     if not record:
         LOGGER.exception("cid_manifestation_check(): Unable to check for record with priref: %s", priref)
         return ''
@@ -346,7 +346,7 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 name_list.append(cast_name)
 
                 # Check person record exists
-                person_priref, person_name, person_act_type = cid_person_check(cast_id)
+                person_priref, person_name, person_act_type = cid_person_check(cast_id, session)
                 if len(person_priref) > 5:
                     for k_, v_ in contributors.items():
                         if str(cast_type) == k_:
@@ -415,7 +415,7 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 name_list.append(cred_name)
 
                 # Check person record exists
-                person_priref, person_name, person_act_type = cid_person_check(cred_id)
+                person_priref, person_name, person_act_type = cid_person_check(cred_id, session)
                 if len(person_priref) > 5:
                     LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
                     for k_, v_ in production.items():
@@ -541,7 +541,7 @@ def append_activity_type(person_priref, activity_type, existing_types, session):
     for act_type in existing_types:
         data.extend([{'activity_type': act_type}])
     print(data)
-    act_xml = adlib.create_record_data(CID_API, 'people', person_priref, data)
+    act_xml = adlib.create_record_data(CID_API, 'people', session, person_priref, data)
     print(act_xml)
     try:
         record = adlib.post(CID_API, act_xml, 'people', 'updaterecord', session)
@@ -628,7 +628,7 @@ def work_append(priref, session, work_dct=None):
     if work_dct is None:
         LOGGER.warning("work_append(): work_update_dct passed to function as None")
         return False
-    work_dct_xml = adlib.create_record_data(CID_API, 'works', priref, work_dct)
+    work_dct_xml = adlib.create_record_data(CID_API, 'works', session, priref, work_dct)
     record = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord', session)
     if record:
         print("*** Work append result:")
@@ -649,7 +649,7 @@ def make_person_record(session, credit_dct=None):
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = adlib.create_record_data(CID_API, 'people', '', credit_dct)
+    credit_xml = adlib.create_record_data(CID_API, 'people', session, '', credit_dct)
     if not credit_xml:
         LOGGER.warning("Credit data failed to create XML: %s", credit_dct)
         return None

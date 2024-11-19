@@ -401,11 +401,7 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
         LOGGER.info("** Appending cast data to work record now...")
         cast_xml = adlib.create_grouped_data(priref, 'cast', cast_dct_sorted)
         print(cast_xml)
-<<<<<<< HEAD
-        update_rec = adlib.post(CID_API, cast_xml, 'works', 'updaterecord')
-=======
         update_rec = adlib.post(CID_API, cast_xml, 'works', 'updaterecord', session)
->>>>>>> 6e7046b0807d766a28e69fa4fe9bf408230f97c1
         if 'cast' in str(update_rec):
             LOGGER.info("Cast data successfully updated to Work %s", priref)
     else:
@@ -481,11 +477,7 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
         LOGGER.info("** Appending credit data to work record now...")
         cred_xml = adlib.create_grouped_data(priref, 'credits', cred_dct_sorted)
         print(cred_xml)
-<<<<<<< HEAD
-        update_rec = adlib.post(CID_API, cred_xml, 'works', 'updaterecord')
-=======
         update_rec = adlib.post(CID_API, cred_xml, 'works', 'updaterecord', session)
->>>>>>> 6e7046b0807d766a28e69fa4fe9bf408230f97c1
         if 'credits' in str(update_rec):
             LOGGER.info("Credit data successfully updated to Work %s", priref)
     else:
@@ -612,25 +604,6 @@ def make_person_dct(dct=None):
             trivia = ''
 
     return (credit_dct, known_for, early_life, biography, trivia)
-
-
-def work_append(priref, session, work_dct=None):
-    '''
-    Items passed in work_dct for amending to Work record
-    '''
-    print(work_dct)
-    if work_dct is None:
-        LOGGER.warning("work_append(): work_update_dct passed to function as None")
-        return False
-    work_dct_xml = adlib.create_record_data(CID_API, 'works', session, priref, work_dct)
-    record = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord', session)
-    if record:
-        print("*** Work append result:")
-        print(record)
-        return True
-    else:
-        LOGGER.warning("work_append(): Unable to append work data to CID work record %s", record)
-        return False
 
 
 def make_person_record(session, credit_dct=None):

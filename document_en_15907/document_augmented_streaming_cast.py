@@ -395,11 +395,17 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 cast_data = ([int(cast_seq_sort), int(cast_sort), person_priref, cast_credit_type, screen_name])
                 cast_list.append(cast_data)
 
+        cast_list.sort()
+        cast_dct_sorted = sort_cast_dct(cast_list)
+        # Append cast/credit and edit name blocks to work_append_dct
+        LOGGER.info("** Appending cast data to work record now...")
+        cast_xml = adlib.create_grouped_data(priref, 'cast', cast_dct_sorted)
+        print(cast_xml)
+        update_rec = adlib.post(CID_API, cast_xml, 'works', 'updaterecord')
+        if 'cast' in str(update_rec):
+            LOGGER.info("Cast data successfully updated to Work %s", priref)
     else:
         LOGGER.info("No Cast dictionary information for supplied contributors")
-
-    cast_list.sort()
-    cast_dct_sorted = sort_cast_dct(cast_list)
 
     person_priref, person_name, person_act_type = '', '', ''
     # Create credit data records
@@ -466,38 +472,18 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 cred_data = ([int(seq_sort), int(cred_sort), person_priref, credit_type])
                 cred_list.append(cred_data)
 
+        cred_list.sort()
+        cred_dct_sorted = sort_cred_dct(cred_list)
+        LOGGER.info("** Appending credit data to work record now...")
+        cred_xml = adlib.create_grouped_data(priref, 'credits', cred_dct_sorted)
+        print(cred_xml)
+        update_rec = adlib.post(CID_API, cred_xml, 'works', 'updaterecord')
+        if 'credits' in str(update_rec):
+            LOGGER.info("Credit data successfully updated to Work %s", priref)
     else:
-        LOGGER.info("No Credit dictionary information for supplied creditors")
+        LOGGER.info("No Credit dictionary information for supplied contributors")
 
-    cred_list.sort()
-    cred_dct_sorted = sort_cred_dct(cred_list)
-
-    # Append cast/credit and edit name blocks to work_append_dct
-    work_append_dct = []
-    work_append_dct.extend(cast_dct_sorted)
-    work_append_dct.extend(cred_dct_sorted)
-    work_edit_data = ([{'edit.name': 'datadigipres'},
-                       {'edit.date': str(datetime.datetime.now())[:10]},
-                       {'edit.time': str(datetime.datetime.now())[11:19]},
-                       {'edit.notes': 'Automated cast and credit update from PATV augmented EPG metadata'}])
-    work_append_dct.extend(work_edit_data)
-    LOGGER.info("** Appending data to work record now...")
-    print(work_append_dct)
-
-    work_append(priref, session, work_append_dct)
-    LOGGER.info("Checking work_append_dct written to CID Work record")
-
-    edit_name = cid_work_check(f"priref='{priref}'", platform, session)[1]
-    if 'datadigipres' in str(edit_name):
-        print(f"Work appended successful! {priref}")
-        LOGGER.info("Successfully appended additional cast credit EPG metadata to Work record %s\n", priref)
-        LOGGER.info("=============== END document_augmented_streaming_castcred script END ===============\n")
-        return (cast_dct, cred_dct)
-    else:
-        LOGGER.warning("Writing EPG cast credit metadata to Work %s failed\n", priref)
-        print(f"Work append FAILED!! {priref}")
-        LOGGER.info("=============== END document_augmented_streaming_castcred script END ===============\n")
-        return False
+    return (cast_dct, cred_dct)
 
 
 def sort_cast_dct(cast_list):
@@ -505,14 +491,14 @@ def sort_cast_dct(cast_list):
     Make up new cast dct ordered
     '''
     cast_dct_update = []
-
     for item in cast_list:
-        cast_dct_update.append({'cast.name.lref': item[2]})
-        cast_dct_update.append({'cast.credit_type': item[3]})
-        cast_dct_update.append({'cast.credit_on_screen': item[4]})
-        cast_dct_update.append({'cast.sequence': str(item[1])})
-        cast_dct_update.append({'cast.sequence.sort': str(item[0])})
-        cast_dct_update.append({'cast.section': '[normal cast]'})
+        cast_dct_update.append([
+            {'cast.name.lref': item[2]},
+            {'cast.credit_type': item[3]},
+            {'cast.credit_on_screen': item[4]},
+            {'cast.sequence': str(item[1])},
+            {'cast.sequence.sort': str(item[0])},
+            {'cast.section': '[normal cast]'}])
 
     return cast_dct_update
 
@@ -522,13 +508,13 @@ def sort_cred_dct(cred_list):
     Make up new credit dct ordered
     '''
     cred_dct_update = []
-
     for item in cred_list:
-        cred_dct_update.append({'credit.name.lref': item[2]})
-        cred_dct_update.append({'credit.type': item[3]})
-        cred_dct_update.append({'credit.sequence': str(item[1])})
-        cred_dct_update.append({'credit.sequence.sort': str(item[0])})
-        cred_dct_update.append({'credit.section': '[normal credit]'})
+        cred_dct_update.append([
+            {'credit.name.lref': item[2]},
+            {'credit.type': item[3]},
+            {'credit.sequence': str(item[1])},
+            {'credit.sequence.sort': str(item[0])},
+            {'credit.section': '[normal credit]'}])
 
     return cred_dct_update
 

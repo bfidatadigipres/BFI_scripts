@@ -120,8 +120,8 @@ def split_title(title_article):
         title = ' '.join(ttl)
         title_art = title_split[0]
         return title, title_art
-    else:
-        return None
+
+    return None
 
 
 def title_filter(item_asset_title, item_title):
@@ -186,11 +186,10 @@ def firstname_split(person):
         firstname, *rest, surname = name_list
         rest = ' '.join(rest)
         return surname + ", " + firstname + " " + rest
-    elif count > 1:
+    if count > 1:
         firstname, surname = name_list
         return surname + ", " + firstname
-    else:
-        return person
+    return person
 
 
 def retrieve_epg_data(fullpath):
@@ -418,7 +417,7 @@ def cid_person_check(credit_id, session):
     return priref, name, activity_types
 
 
-def cid_work_check(search):
+def cid_work_check(search, session):
     '''
     Retrieve CID work record priref where search matches
     '''
@@ -426,7 +425,7 @@ def cid_work_check(search):
     edit_names = []
 
     try:
-        hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', ['priref', 'input.notes, edit.name'])
+        hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', session, ['priref', 'input.notes, edit.name'])
     except (KeyError, IndexError):
         LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
     if not hits:
@@ -462,13 +461,13 @@ def cid_work_check(search):
     return prirefs, edit_names
 
 
-def cid_manifestation_check(priref):
+def cid_manifestation_check(priref, session):
     '''
     Retrieve Manifestation transmission start time from parent priref
     '''
     search = f"(part_of_reference.lref='{priref}')"
     try:
-        record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', ['transmission_start_time'])[1]
+        record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', session, ['transmission_start_time'])[1]
         print("-------------------")
         print(record)
     except (KeyError, IndexError):
@@ -505,6 +504,7 @@ def main():
 
     # Iterate through all historical EPG metadata file
     file_list = glob.glob(f"{ARCHIVE_PATH}/**/*.json.documented", recursive=True)
+    LOGGER.info(f"{len(file_list)} JSON files found for processing")
     file_list.sort()
 
     session = adlib.create_session()
@@ -550,7 +550,7 @@ def main():
         # Check in CID for Work title/date match
         search = f"(title='{title}' AND title_date_start='{date}')"
         print(search)
-        prirefs = cid_work_check(search)[0]
+        prirefs = cid_work_check(search, session)[0]
         if not prirefs:
             LOGGER.info("SKIPPING: Likely repeat as no work record data found for %s transmitted on %s", title, date)
             LOGGER.info("Renaming JSON with _castcred appended\n")
@@ -566,7 +566,7 @@ def main():
                 LOGGER.info("Checking work manifestation to see if broadcast times match...")
 
                 # Check manifestation for matching transmission time
-                transmission_time = cid_manifestation_check(work_priref_check)
+                transmission_time = cid_manifestation_check(work_priref_check, session)
                 if not transmission_time:
                     continue
                 print(f"If {str(time)} == {str(transmission_time[:8])}:")
@@ -823,7 +823,7 @@ def append_activity_type(person_priref, old_act_type, activity_type, session):
         LOGGER.info("Attempting to append activity type to Person record %s", person_priref)
         record = adlib.post(CID_API, xml, 'people', 'updaterecord', session)
         if record is None:
-            print(f"Unable to write activity type to Person record")
+            print("Unable to write activity type to Person record")
             return False
         return True
     except Exception as err:
@@ -930,29 +930,11 @@ def make_person_record(session, credit_dct=None):
     try:
         credit_priref = adlib.retrieve_field_name(record, 'priref')[0]
         if not credit_priref:
-            print(f"Unable to write Person record")
+            print("Unable to write Person record")
             return None
     except (IndexError, TypeError, KeyboardInterrupt):
         return None
     return credit_priref
-
-
-def work_append(priref, session, work_dct=None):
-    '''
-    Items passed in work_dct for amending to Work record
-    '''
-    if work_dct is None:
-        LOGGER.warning("work_append(): work_update_dct passed to function as None")
-        return False
-
-    work_dct_xml = adlib.create_record_data(CID_API, 'works', priref, work_dct)
-    try:
-        rec = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord', session)
-        if rec:
-            return True
-    except Exception as err:
-        LOGGER.warning("work_append(): Unable to append work data to CID work record %s", err)
-        return False
 
 
 def rename(root, file, info):
@@ -1011,7 +993,7 @@ def write_payload(payload, person_priref, session):
     Removed from main to avoid repetition
     '''
     print('Sending POST request to people database to lock record')
-    
+
     try:
         record = adlib.post(CID_API, payload, 'people', 'updaterecord', session)
         print(record)

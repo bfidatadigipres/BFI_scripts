@@ -373,7 +373,7 @@ def xml_item_append(priref, xml_data):
     payload_end = "</record></recordList></adlibXML>"
     payload = payload + payload_end
 
-    LOGGER.info("** Appending Labe text data to item record now...")
+    LOGGER.info("** Appending Label text data to item record now...")
     LOGGER.info(payload)
 
     try:

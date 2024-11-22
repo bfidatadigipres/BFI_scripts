@@ -50,9 +50,9 @@ TODAY_TIME = TODAY[11:19]
 TODAY_DATE = TODAY[:10]
 YEST = str(datetime.datetime.today() - datetime.timedelta(days=1))
 YEAR = YEST[:4]
-MONTH = YEST[5:7]
+MONTH = YEST[5:7]  = down to 05 needed JMW
 # YEAR = '2024'
-# MONTH = '03'
+# MONTH = '05'
 COMPLETE = os.environ['STORA_COMPLETED']
 ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH = os.environ['LOG_PATH']
@@ -426,9 +426,10 @@ def cid_work_check(search, session):
 
     try:
         hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', session, ['priref', 'input.notes, edit.name'])
+        print(hits, record)
     except (KeyError, IndexError):
         LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
-    if not hits:
+    if hits is None:
         raise Exception(f"CID API was unreachable for Works search: {search}")
     if hits == 0:
         return None, None
@@ -518,6 +519,7 @@ def main():
 
         LOGGER.info("New file found for processing: %s", fullpath)
         credit_data = ''
+        updates = False
         # Retrieve all data from EPG
         credit_data = retrieve_epg_data(fullpath)
         item_title = credit_data[0]
@@ -668,10 +670,8 @@ def main():
             # Append cast/credit and edit name blocks to work_append_dct
             LOGGER.info("** Appending cast data to work record now...")
             cast_xml = adlib.create_grouped_data(work_priref, 'cast', cast_dct_sorted)
-            print(cast_xml)
             update_rec = adlib.post(CID_API, cast_xml, 'works', 'updaterecord', session)
-            if 'cast' in str(update_rec):
-                LOGGER.info("Cast data successfully updated to Work %s", work_priref)
+            updates = True
 
         else:
             LOGGER.info("No Cast dictionary information for work %s", title)
@@ -757,11 +757,19 @@ def main():
             cred_xml = adlib.create_grouped_data(work_priref, 'credits', cred_dct_sorted)
             print(cred_xml)
             update_rec = adlib.post(CID_API, cred_xml, 'works', 'updaterecord', session)
-            if 'credits' in str(update_rec):
-                LOGGER.info("Credit data successfully updated to Work %s", work_priref)
+            updates = True
 
         else:
             LOGGER.info("No Credit dictionary information for work %s", title)
+
+        if updates is True:
+            work_edit_data = ([{'edit.date': TODAY_DATE},
+                               {'edit.name': 'datadigipres'},
+                               {'edit.notes': 'Automated cast and credit update from PATV augmented EPG metadata'},
+                               {'edit.time': str(datetime.datetime.now())[11:19]}])
+            edit_xml = adlib.create_grouped_data(work_priref, 'Edit', [work_edit_data])
+            update_rec = adlib.post(CID_API, edit_xml, 'works', 'updaterecord', session)
+            LOGGER.info("Cast/credit data successfully updated to Work %s\n", work_priref)
 
         rename(root, file, work_priref)
 
@@ -812,7 +820,7 @@ def append_activity_type(person_priref, old_act_type, activity_type, session):
 
     # Convert dict to xml using adlib
     print(act_type)
-    xml = adlib.create_record_data(CID_API, 'people', person_priref, act_type)
+    xml = adlib.create_record_data(CID_API, 'people', session, person_priref, act_type)
     if xml:
         print(xml)
     else:
@@ -913,7 +921,7 @@ def make_person_record(session, credit_dct=None):
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = adlib.create_record_data(CID_API, 'people', '', credit_dct)
+    credit_xml = adlib.create_record_data(CID_API, 'people', session, '', credit_dct)
     if credit_xml:
         print("*************************")
         print(credit_xml)

@@ -13,7 +13,7 @@ import yaml
 import hashlib
 import logging
 import subprocess
-import adlib_v3 as adlib
+# import adlib_v3 as adlib
 
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
@@ -43,6 +43,7 @@ ACCEPTED_EXT = [
     'm2ts',
     'mov',
     'mkv',
+    'wmv',
     'tif',
     'tiff',
     'jpg',
@@ -76,6 +77,7 @@ def accepted_file_type(ext):
              'mov': 'mov, prores',
              'mkv': 'mkv, dpx',
              'wav': 'wav',
+	         'wmv': 'wmv',
              'tif': 'tif, tiff',
              'tiff': 'tif, tiff',
              'jpg': 'jpg, jpeg',
@@ -220,7 +222,7 @@ def sort_ext(ext):
     '''
     Decide on file type
     '''
-    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'wmv', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}

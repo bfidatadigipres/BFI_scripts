@@ -102,5 +102,20 @@ def writing_csv(tmp_path, csv_data):
             f.write("\n")
     return csv_file
 
+@pytest.fixture()
+def creating_checksum_path(tmp_path):
+    d = tmp_path / 'checksum_folder'
+    d.mkdir()
+    checksum_file_name = d / 'mkv_sample.mkv.md5'
+    return checksum_file_name
 
+
+
+
+
+# @pytest.fixture()
+# def create_mediainfo_folder(tmp_path):
+#     d = tmp_path / 'mediainfo_folder'
+#     d.mkdir()
+#     return d
             

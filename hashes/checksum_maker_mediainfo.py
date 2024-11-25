@@ -28,6 +28,7 @@ import datetime
 import tenacity
 
 # Custom Libraries
+sys.path.append(os.environ['CODE'])
 import utils
 
 # Global variables
@@ -75,8 +76,8 @@ def checksum_write(checksum_path, checksum, filepath, filename):
             fname.write(f"{checksum} - {filepath} - {TODAY}")
             fname.close()
         return checksum_path
-    except Exception:
-        LOGGER.exception("%s - Unable to write checksum: %s", filename, checksum_path)
+    except Exception as e:
+        LOGGER.exception(f"{filename} - Unable to write checksum: {checksum_path}")
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
@@ -103,22 +104,21 @@ def make_output_md5(filepath, filename):
     '''
     try:
         md5_checksum = utils.create_md5_65536(filepath)
-        LOGGER.info("%s - MD5 sum generated: %s", filename, md5_checksum)
+        LOGGER.info(f"{filename} - MD5 sum generated: {md5_checksum}")
         return md5_checksum
-    except Exception:
-        LOGGER.exception("%s - Failed to make MD5 checksum for %s", filename, filepath)
+    except Exception as e:
+        LOGGER.exception(f"{filename} - Failed to make MD5 checksum for {filepath}")
         return None
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def mediainfo_create(arg, output_type, filepath):
+def mediainfo_create(arg, output_type, filepath, mediainfo_path):
     '''
     Output mediainfo data to text files
     '''
     filename = os.path.basename(filepath)
-
     if len(arg) > 0:
-        out_path = os.path.join(MEDIAINFO_PATH, f"{filename}_{output_type}_FULL.txt")
+        out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}_FULL.txt")
 
         command = [
             'mediainfo',
@@ -146,7 +146,7 @@ def mediainfo_create(arg, output_type, filepath):
             ext = 'txt'
             outp = 'TEXT'
 
-        out_path = os.path.join(MEDIAINFO_PATH, f"{filename}_{output_type}.{ext}")
+        out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.{ext}")
         command = [
             'mediainfo',
             '--Details=0',
@@ -158,22 +158,28 @@ def mediainfo_create(arg, output_type, filepath):
     try:
         subprocess.call(command)
         return out_path
-    except Exception:
+    except Exception as e:
+        LOGGER.info(e)
         return False
 
 
-def checksum_test(check):
+def checksum_test(CHECKSUM_PATH, check):
     '''
     Check for 'None' where checksum should be
     '''
-    if os.path.exists(os.path.join(CHECKSUM_PATH, check)):
-        checksum_pth = os.path.join(CHECKSUM_PATH, check)
+    try:
+        if os.path.exists(os.path.join(CHECKSUM_PATH, check)):
+            checksum_pth = os.path.join(CHECKSUM_PATH, check)
 
-    with open(checksum_pth, 'r') as file:
-        line = file.readline()
-        if line.startswith('None'):
-            LOGGER.info("None entry found: %s", check)
-            return True
+        with open(checksum_pth, 'r') as file:
+            line = file.readline()
+            if line.startswith('None'):
+                LOGGER.info(f"None entry found: {check}")
+                return True
+                
+    except Exception as e:
+        LOGGER.info(e)
+        return None
 
 
 def main():
@@ -201,7 +207,7 @@ def main():
 
     # Check if existing MD5 starts with 'None'
     if len(check) == 1:
-        checksum_present = checksum_test(check[0])
+        checksum_present = checksum_test(CHECKSUM_PATH, check[0])
         if checksum_present:
             sys.exit('Checksum already exists for this file, exiting.')
 
@@ -211,31 +217,31 @@ def main():
 
     # Make metadata then write to checksum path as filename.ext.md5
     if 'None' not in str(md5_checksum):
-        make_metadata(path, filename)
+        make_metadata(path, filename, MEDIAINFO_PATH)
         success = checksum_exist(filename, md5_checksum, filepath)
         LOGGER.info("%s Checksum written to: %s", filename, success)
 
     LOGGER.info("=============== Python3 %s END ==============", filename)
 
 
-@tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def make_metadata(path, fname):
+# @tenacity.retry(stop=tenacity.stop_after_attempt(5))
+def make_metadata(fpath, fname, mediainfo_path):
     '''
     Create mediainfo files
     '''
     # Run script from media files local directory
-    os.chdir(path)
-    path1 = mediainfo_create('-f', 'TEXT', fname)
-    path2 = mediainfo_create('', 'TEXT', fname)
-    path3 = mediainfo_create('', 'EBUCore', fname)
-    path4 = mediainfo_create('', 'PBCore2', fname)
-    path5 = mediainfo_create('', 'XML', fname)
-    path6 = mediainfo_create('', 'JSON', fname)
+    os.chdir(fpath)
+    path1 = mediainfo_create('-f', 'TEXT', fname, mediainfo_path)
+    path2 = mediainfo_create('', 'TEXT', fname, mediainfo_path)
+    path3 = mediainfo_create('', 'EBUCore', fname,mediainfo_path)
+    path4 = mediainfo_create('', 'PBCore2', fname, mediainfo_path)
+    path5 = mediainfo_create('', 'XML', fname, mediainfo_path)
+    path6 = mediainfo_create('', 'JSON', fname,mediainfo_path)
 
     # Return path back to script directory
     os.chdir(os.path.join(CODE, 'hashes'))
     LOGGER.info("Written metadata to paths:\n%s\n%s\n%s\n%s\n%s\n%s", path1, path2, path3, path4, path5, path6)
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()

@@ -33,14 +33,14 @@ import utils
 
 # Global variables
 LOG_PATH = os.environ['LOG_PATH']
-CODE_PTH = os.environ['CODE_DDP']
+# CODE_PTH = os.environ['CODE_DDP']
 CODE = os.environ['CODE']
 TODAY = str(datetime.date.today())
 CONTROL_JSON = os.environ['CONTROL_JSON']
 CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
-CHECKSUM_PATH2 = os.path.join(CODE_PTH, 'Logs', 'checksum_md5')
+# CHECKSUM_PATH2 = os.path.join(CODE_PTH, 'Logs', 'checksum_md5')
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
-MEDIAINFO_PATH2 = os.path.join(CODE_PTH, 'Logs', 'cid_mediainfo')
+#MEDIAINFO_PATH2 = os.path.join(CODE_PTH, 'Logs', 'cid_mediainfo')
 
 # Setup logging
 LOGGER = logging.getLogger('checksum_maker_mediainfo')
@@ -81,12 +81,12 @@ def checksum_write(checksum_path, checksum, filepath, filename):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def checksum_exist(filename, checksum, filepath):
+def checksum_exist(checksum_path_env, filename, checksum, filepath):
     '''
     Create a new Checksum file and write MD5_checksum
     Return checksum path where successfully written
     '''
-    checksum_path = os.path.join(CHECKSUM_PATH, f"{filename}.md5")
+    checksum_path = os.path.join(checksum_path_env, f"{filename}.md5")
     if os.path.isfile(checksum_path):
         checksum_path = checksum_write(checksum_path, checksum, filepath, filename)
         return checksum_path
@@ -218,7 +218,7 @@ def main():
     # Make metadata then write to checksum path as filename.ext.md5
     if 'None' not in str(md5_checksum):
         make_metadata(path, filename, MEDIAINFO_PATH)
-        success = checksum_exist(filename, md5_checksum, filepath)
+        success = checksum_exist(CHECKSUM_PATH, filename, md5_checksum, filepath)
         LOGGER.info("%s Checksum written to: %s", filename, success)
 
     LOGGER.info("=============== Python3 %s END ==============", filename)
@@ -243,5 +243,5 @@ def make_metadata(fpath, fname, mediainfo_path):
     LOGGER.info("Written metadata to paths:\n%s\n%s\n%s\n%s\n%s\n%s", path1, path2, path3, path4, path5, path6)
 
 
-# if __name__ == '__main__':
-#     main()
+if __name__ == '__main__':
+    main()

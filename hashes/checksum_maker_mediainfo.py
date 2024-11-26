@@ -81,12 +81,12 @@ def checksum_write(checksum_path, checksum, filepath, filename):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def checksum_exist(filename, checksum, filepath):
+def checksum_exist(checksum_path_env, filename, checksum, filepath):
     '''
     Create a new Checksum file and write MD5_checksum
     Return checksum path where successfully written
     '''
-    checksum_path = os.path.join(CHECKSUM_PATH, f"{filename}.md5")
+    checksum_path = os.path.join(checksum_path_env, f"{filename}.md5")
     if os.path.isfile(checksum_path):
         checksum_path = checksum_write(checksum_path, checksum, filepath, filename)
         return checksum_path
@@ -218,7 +218,7 @@ def main():
     # Make metadata then write to checksum path as filename.ext.md5
     if 'None' not in str(md5_checksum):
         make_metadata(path, filename, MEDIAINFO_PATH)
-        success = checksum_exist(filename, md5_checksum, filepath)
+        success = checksum_exist(CHECKSUM_PATH, filename, md5_checksum, filepath)
         LOGGER.info("%s Checksum written to: %s", filename, success)
 
     LOGGER.info("=============== Python3 %s END ==============", filename)

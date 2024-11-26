@@ -13,7 +13,7 @@ import yaml
 import hashlib
 import logging
 import subprocess
-# import adlib_v3 as adlib
+import adlib_v3 as adlib
 
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
@@ -77,7 +77,7 @@ def accepted_file_type(ext):
              'mov': 'mov, prores',
              'mkv': 'mkv, dpx',
              'wav': 'wav',
-	         'wmv': 'wmv',
+             'wmv': 'wmv',
              'tif': 'tif, tiff',
              'tiff': 'tif, tiff',
              'jpg': 'jpg, jpeg',

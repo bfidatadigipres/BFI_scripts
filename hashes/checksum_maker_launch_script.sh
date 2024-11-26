@@ -19,6 +19,7 @@ LOG="${LOG_LEAD}checksum_maker${PATH_INSERT}launch.log"
 AUTOINGEST="${PTH}autoingest/black_pearl_ingest/"
 HASHES="$HASH_PATH"
 DUMP_TO="${HASHES}${PATH_INSERT}autoingest_file_list.txt"
+echo $DUMP_TO
 
 # replace list to ensure clean data
 rm "${DUMP_TO}"

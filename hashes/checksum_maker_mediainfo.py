@@ -33,14 +33,14 @@ import utils
 
 # Global variables
 LOG_PATH = os.environ['LOG_PATH']
-# CODE_PTH = os.environ['CODE_DDP']
+CODE_PTH = os.environ['CODE_DDP']
 CODE = os.environ['CODE']
 TODAY = str(datetime.date.today())
 CONTROL_JSON = os.environ['CONTROL_JSON']
 CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
-# CHECKSUM_PATH2 = os.path.join(CODE_PTH, 'Logs', 'checksum_md5')
+CHECKSUM_PATH2 = os.path.join(CODE_PTH, 'Logs', 'checksum_md5')
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
-#MEDIAINFO_PATH2 = os.path.join(CODE_PTH, 'Logs', 'cid_mediainfo')
+MEDIAINFO_PATH2 = os.path.join(CODE_PTH, 'Logs', 'cid_mediainfo')
 
 # Setup logging
 LOGGER = logging.getLogger('checksum_maker_mediainfo')

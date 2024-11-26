@@ -176,7 +176,7 @@ def checksum_test(CHECKSUM_PATH, check):
             if line.startswith('None'):
                 LOGGER.info(f"None entry found: {check}")
                 return True
-                
+
     except Exception as e:
         LOGGER.info(e)
         return None
@@ -224,7 +224,7 @@ def main():
     LOGGER.info("=============== Python3 %s END ==============", filename)
 
 
-# @tenacity.retry(stop=tenacity.stop_after_attempt(5))
+@tenacity.retry(stop=tenacity.stop_after_attempt(5))
 def make_metadata(fpath, fname, mediainfo_path):
     '''
     Create mediainfo files
@@ -243,5 +243,5 @@ def make_metadata(fpath, fname, mediainfo_path):
     LOGGER.info("Written metadata to paths:\n%s\n%s\n%s\n%s\n%s\n%s", path1, path2, path3, path4, path5, path6)
 
 
-# if __name__ == '__main__':
-#     main()
+if __name__ == '__main__':
+    main()

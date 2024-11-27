@@ -62,7 +62,6 @@ def cid_retrieve(fname):
     return ''
 
 
-
 def main():
     '''
     Clean up scripts for checksum files that have been processed by autoingest
@@ -83,13 +82,6 @@ def main():
     text_path = sys.argv[1]
     text_file = os.path.basename(text_path)
     filename = text_file.split("_TEXT.txt")[0]
-    # Make all possible paths
-    text_full_path = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
-    ebu_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.txt")
-    pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.txt")
-    xml_path = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
-    json_path = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
-    exif_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
 
     if len(filename) > 0 and filename.endswith((".ini", ".DS_Store", ".mhl", ".json")):
         sys.exit('Incorrect media file detected.')
@@ -103,6 +95,67 @@ def main():
     print(f"Priref retrieved: {priref}. Writing metadata to record")
     print(text_path)
 
+
+    header_payload = make_header_data(text_path, filename)
+    if not header_payload:
+        sys.exit()
+    success = write_payload(priref, payload_data)
+    if success:
+        LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
+        clean_up(filename)
+
+
+def clean_up(filename, text_path):
+    '''
+    Clean up metadata
+    '''
+    tfp, ep, pp, xp, jp, ep = make_paths(filename)
+
+    if os.path.exists(text_path):
+        LOGGER.info("Deleting path: %s", text_path)
+        os.remove(text_path)
+    if os.path.exists(text_full_path):
+        LOGGER.info("Deleting path: %s", text_full_path)
+        os.remove(text_full_path)
+    if os.path.exists(ebu_path):
+        LOGGER.info("Deleting path: %s", ebu_path)
+        os.remove(ebu_path)
+    if os.path.exists(pb_path):
+        LOGGER.info("Deleting path: %s", pb_path)
+        os.remove(pb_path)
+    if os.path.exists(xml_path):
+        LOGGER.info("Deleting path: %s", xml_path)
+        os.remove(xml_path)
+    if os.path.exists(json_path):
+        LOGGER.info("Deleting path: %s", json_path)
+        os.remove(json_path)
+    if os.path.exists(exif_path):
+        LOGGER.info("Deleting path: %s", exif_path)
+        os.remove(exif_path)
+
+
+
+
+def make_paths(filename):
+    '''
+    Make all possible paths
+    '''
+    text_full_path = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
+    ebu_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.txt")
+    pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.txt")
+    xml_path = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
+    json_path = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
+    exif_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
+
+    return text_full_path, ebu_path, pb_path, xml_path, json_path, exif_path
+
+
+def make_header_data(text_path, filename):
+    '''
+    Create the header tag data
+    '''
+    tfp, ep, pp, xp, jp, ep = make_paths(filename)
+
     text = text_full = ebu = pb = xml = json = exif = ''
     # Processing metadata output for text path
     if os.path.exists(text_path):
@@ -110,64 +163,37 @@ def main():
         text = f"<Header_tags><header_tags.parser>MediaInfo text 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for text full path
-    if os.path.exists(text_full_path):
-        text_dump = utils.read_extract(text_full_path)
+    if os.path.exists(tfp):
+        text_dump = utils.read_extract(tfp)
         text_full = f"<Header_tags><header_tags.parser>MediaInfo text 0 full</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for ebucore path
-    if os.path.exists(ebu_path):
-        text_dump = utils.read_extract(ebu_path)
+    if os.path.exists(ep):
+        text_dump = utils.read_extract(ep)
         ebu = f"<Header_tags><header_tags.parser>MediaInfo ebucore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for pbcore path
-    if os.path.exists(pb_path):
-        text_dump = utils.read_extract(pb_path)
+    if os.path.exists(pp):
+        text_dump = utils.read_extract(pp)
         pb = f"<Header_tags><header_tags.parser>MediaInfo pbcore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for pbcore path
-    if os.path.exists(xml_path):
-        text_dump = utils.read_extract(xml_path)
+    if os.path.exists(xp):
+        text_dump = utils.read_extract(xp)
         xml = f"<Header_tags><header_tags.parser>MediaInfo xml 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for json path
-    if os.path.exists(json_path):
-        text_dump = utils.read_extract(json_path)
+    if os.path.exists(jp):
+        text_dump = utils.read_extract(jp)
         json = f"<Header_tags><header_tags.parser>MediaInfo json 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     # Processing metadata output for special collections exif data
-    if os.path.exists(exif_path):
-        text_dump = utils.read_extract(exif_path)
+    if os.path.exists(ep):
+        text_dump = utils.read_extract(ep)
         exif = f"<Header_tags><header_tags.parser>Exiftool text</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     payload_data = text + text_full + ebu + pb + xml + json + exif
-
-    # Write data
-    success = write_payload(priref, payload_data)
-    if success:
-        LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
-        if os.path.exists(text_path):
-            LOGGER.info("Deleting path: %s", text_path)
-            os.remove(text_path)
-        if os.path.exists(text_full_path):
-            LOGGER.info("Deleting path: %s", text_full_path)
-            os.remove(text_full_path)
-        if os.path.exists(ebu_path):
-            LOGGER.info("Deleting path: %s", ebu_path)
-            os.remove(ebu_path)
-        if os.path.exists(pb_path):
-            LOGGER.info("Deleting path: %s", pb_path)
-            os.remove(pb_path)
-        if os.path.exists(xml_path):
-            LOGGER.info("Deleting path: %s", xml_path)
-            os.remove(xml_path)
-        if os.path.exists(json_path):
-            LOGGER.info("Deleting path: %s", json_path)
-            os.remove(json_path)
-        if os.path.exists(exif_path):
-            LOGGER.info("Deleting path: %s", exif_path)
-            os.remove(exif_path)
-    else:
-        LOGGER.warning("Payload data was not written to CID Media record: %s", priref)
+    return payload_data
 
 
 def write_payload(priref, payload_data):

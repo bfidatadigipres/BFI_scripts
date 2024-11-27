@@ -341,11 +341,6 @@ def create_grouped_data(priref, grouping, field_pairs):
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append
     '''
-    if not priref:
-        return None
-
-    payload = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_end = "</record></recordList></adlibXML>"
     payload_mid = ''
     for lst in field_pairs:
         mid = ''
@@ -359,7 +354,12 @@ def create_grouped_data(priref, grouping, field_pairs):
         print(mid_fields)
         payload_mid = payload_mid + mid_fields
     
-    return payload + payload_mid + payload_end
+    if len(priref) > 0:
+        payload = f"<adlibXML><recordList><record priref='{priref}'>"
+        payload_end = "</record></recordList></adlibXML>"
+        return payload + payload_mid + payload_end
+    else:
+        return payload_mid
 
 
 def get_fragments(obj):

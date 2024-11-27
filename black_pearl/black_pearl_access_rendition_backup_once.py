@@ -194,7 +194,11 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-            check_control()
+            if not utils.check_control('black_pearl'):
+                OGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+                
+        
             LOGGER.info("** Working with access path date folder: %s", folder)
             files = os.listdir(os.path.join(access_path, folder))
             for file in files:

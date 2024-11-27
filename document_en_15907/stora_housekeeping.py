@@ -22,6 +22,9 @@ import logging
 import datetime
 import itertools
 
+sys.path.append(os.environ['CODE'])
+import utils
+
 # Global paths
 STORA_PATH = os.environ['STORA_PATH']
 ARCHIVE_PATH = os.path.join(STORA_PATH, "completed/")
@@ -97,6 +100,10 @@ def main():
     Only move/clean up folders in target date range, protecting
     empty folders created ahead of today for future recordings
     '''
+    if not utils.check_control('power_off_all'):
+        logger.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        
     logger.info("=========== stora_housekeeping.py START ===========")
     period = []
     date_range = []

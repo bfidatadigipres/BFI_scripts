@@ -40,6 +40,9 @@ import logging
 import hashlib
 import datetime
 
+sys.path.append(os.environ['CODE'])
+import utils
+
 # Global paths
 LOCAL_PATH = os.environ['QNAP_DIGIOPS']
 AUTOINGEST = os.path.join(LOCAL_PATH, os.environ['AUTOINGEST_STORE'])
@@ -95,7 +98,7 @@ def get_tar_checksums(tar_path, folder):
         pth, file = os.path.split(item.name)
         if fname in ['ASSETMAP','VOLINDEX']:
             folder_prefix = os.path.basename(pth)
-            file = f'{folder_prefix}_{file}
+            file = f'{folder_prefix}_{file}'
         try:
             f = tar.extractfile(item)
         except Exception as exc:
@@ -166,6 +169,9 @@ def main():
     Compare checksum manifests, if match add into TAR and close.
     Delete original file, move TAR to autoingest path.
     '''
+
+    if not utils.check_control('power_off_all'):
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     if len(sys.argv) != 2:
         LOGGER.warning("SCRIPT EXIT: Error with shell script input:\n %s", sys.argv)

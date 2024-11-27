@@ -41,6 +41,17 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
+def check_control():
+    '''
+    Check control json for downtime requests
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['power_off_all']:
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
+
 def date_gen(date_str):
     '''
     Generate date for checks if date
@@ -147,6 +158,7 @@ def main():
     if len(data) == 0:
         sys.exit('No data found in DOWNLOADS database')
 
+    check_control()
     LOGGER.info("================ DPI NEWS PRESERVATION REQUESTS RETRIEVED: %s. Date: %s =================", len(data), datetime.datetime.now().strftime(FMT)[:19])
     for row in data:
         username = row[0].strip()

@@ -624,6 +624,7 @@ def transcode_mp4_access(fpath, arg):
     running = check_control()
     if not running:
         logger.warning('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit()
         return 'False'
 
     logger.info("================== START DPI download transcode to MP4 watermark START ==================")

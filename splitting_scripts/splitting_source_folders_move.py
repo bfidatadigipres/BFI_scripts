@@ -13,6 +13,7 @@ Iterates through each of list paths:
 
 import os
 import shutil
+import utils
 
 # List with paths, folder names for counts
 PATHS = [
@@ -26,6 +27,8 @@ PATHS = [
 
 
 def main():
+    if not utils.check_control('power_off_all'):
+        sys.exit('Exit requested by downtime_control.json')
     move_folders = []
     # Iterate through path list, searching top folder only for files to move
     for pth in PATHS:

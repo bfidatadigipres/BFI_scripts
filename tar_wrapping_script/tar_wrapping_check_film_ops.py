@@ -32,6 +32,9 @@ import logging
 import hashlib
 import datetime
 
+sys.path.append(os.environ['CODE'])
+import utils
+
 # Global paths
 LOCAL_PATH = os.environ['FILM_OPS']
 AUTO_TAR = os.path.join(LOCAL_PATH, 'automation_tar')
@@ -153,6 +156,9 @@ def main():
     Compare checksum manifests, if match add into TAR and close.
     Delete original file, move TAR to autoingest path.
     '''
+
+    if not utils.check_control('power_off_all'):
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     if len(sys.argv) != 2:
         LOGGER.warning("SCRIPT EXIT: Error with shell script input:\n %s", sys.argv)

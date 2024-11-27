@@ -4,6 +4,8 @@ import os
 import csv
 import sys
 from ds3 import ds3
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Setup client/paths
 CLIENT = ds3.createClientFromEnv()
@@ -70,6 +72,9 @@ def main():
     retrieve BP data and write
     to new CSV
     '''
+    if not utils.check_control("power_off_all"):
+        print("Script run prevented by downtime_control.json. Script exiting")
+        sys.exit('Script run prevented by downtime_control.json. Script exiting')
     for row in read_csv(CSV_PATH):
         if len(row) < 2:
             print(f"Skipping invalid row: {row}")

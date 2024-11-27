@@ -129,6 +129,9 @@ def main():
     Rename and move to successful_rename/ folder
     '''
     LOGGER.info("=========== START Curatorial Donor Acquisition rename OSH script START ==========")
+    if not utils.check_control('power_off_all'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exit')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting')
     if not utils.check_control('pause_scripts'):
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')

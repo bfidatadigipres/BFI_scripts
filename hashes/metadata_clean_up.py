@@ -51,15 +51,20 @@ def cid_retrieve(fname):
     '''
     Retrieve priref for media record from imagen.media.original_filename
     '''
-    priref = ''
-    search = f"imagen.media.original_filename='{fname}'"
-    record = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
-    if not record:
+    try:
+        priref = ''
+        search = f"imagen.media.original_filename='{fname}'"
+        record = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
+        if not record:
+            return ''
+        if 'priref' in str(record):
+            priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+            return priref
         return ''
-    if 'priref' in str(record):
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-        return priref
-    return ''
+    except Exception as e:
+        print(e)
+    except AttributeError:
+        print('Priref return None type')
 
 
 
@@ -174,17 +179,20 @@ def write_payload(priref, payload_data):
     '''
     Payload formatting per mediainfo output
     '''
-    payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_end = "</record></recordList></adlibXML>"
-    payload = payload_head + payload_data + payload_end
+    try:
+        payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
+        payload_end = "</record></recordList></adlibXML>"
+        payload = payload_head + payload_data + payload_end
 
-    record = adlib.post(CID_API, payload, 'media', 'updaterecord')
-    if record is None:
-        return False
-    elif "header_tags.parser" in str(record):
-        return True
-    else:
-        return None
+        record = adlib.post(CID_API, payload, 'media', 'updaterecord')
+        if record is None:
+            return False
+        elif "header_tags.parser" in str(record):
+            return True
+        else:
+            return None
+    except Exception as e:
+        print(e)
 
 
 if __name__ == '__main__':

@@ -20,6 +20,9 @@ import logging
 import datetime
 import itertools
 
+# local packages
+import utils
+
 # Global paths
 STORAGE_PATH = os.environ['STORAGE_PATH']
 TEXT_PATH = os.path.join(os.environ['CODE_BFI'], "document_en_15907/stora2_dump_text.txt")
@@ -94,6 +97,10 @@ def main():
     Only move/clean up folders in target date range, protecting
     empty folders created ahead of today for future recordings
     '''
+    if not utils.check_control('power_off_all'):
+        logger.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        
 
     logger.info("=========== stora2_housekeeping.py START ===========")
     period = []

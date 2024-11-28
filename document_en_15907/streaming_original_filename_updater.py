@@ -231,7 +231,7 @@ def main():
                         LOGGER.info("\tSKIPPING: No CID media record created yet for ingesting asset: %s", ingest_name)
                         continue
                 else:
-                    LOGGER.info("\tSKIPPING: Acquired filename, not in scope for update: %s - %s", fname)
+                    LOGGER.info("\tSKIPPING: Acquired filename, not in scope for update: %s - %s", fname, priref)
 
     LOGGER.info("=== Streaming Platform original filename updates END =====================")
 

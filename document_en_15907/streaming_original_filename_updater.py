@@ -223,6 +223,7 @@ def main():
                     if mpriref and not match:
                         LOGGER.info("\tCID media record found %s - Updating digital.acquired_filename to record %s", mpriref, original_fname)
                         success = update_cid_media_record(mpriref, original_fname, platform, file_type)
+                        sys.exit("One example test")
                         if not success:
                             LOGGER.warning("\tFAILED: Update of original filename to CID media record %s: %s", mpriref, original_fname)
                             continue
@@ -247,7 +248,7 @@ def update_cid_media_record(priref, orig_fname, platform, file_type):
     name_updates.append({'digital.acquired_filename.type': 'FILE'})
     fname_xml = adlib.create_record_data(CID_API, 'media', priref, name_updates)
     update_rec = adlib.post(CID_API, fname_xml, 'media', 'updaterecord')
-    if 'Acquired_filename' in str(update_rec):
+    if 'digital.acquired_filename' in str(update_rec):
         names = True
 
     # Append file name with edit block

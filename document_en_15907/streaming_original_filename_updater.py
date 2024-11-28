@@ -130,7 +130,7 @@ def cid_check_media(priref, original_filename, ingest_fname):
     record = adlib.retrieve_record(CID_API, 'media', search, '1', fields)[1]
     if not record:
         LOGGER.warning("cid_check_media(): Unable to find CID digital media record match: %s", priref)
-        return None
+        return None, None
 
     try:
         mpriref = adlib.retrieve_field_name(record[0], 'priref')[0]
@@ -184,7 +184,7 @@ def main():
 
         # Generate ISO date range for last 30 days for edit.date check
         date_range = []
-        period = itertools.islice(date_gen(TODAY), 300)
+        period = itertools.islice(date_gen(TODAY), 30)
         for dt in period:
             date_range.append(dt.strftime(FORMAT))
         print(f"Target date range for {platform} check: {', '.join(date_range)}")
@@ -223,7 +223,6 @@ def main():
                     if mpriref and not match:
                         LOGGER.info("\tCID media record found %s - Updating digital.acquired_filename to record %s", mpriref, original_fname)
                         success = update_cid_media_record(mpriref, original_fname, platform, file_type)
-                        sys.exit("One example test")
                         if not success:
                             LOGGER.warning("\tFAILED: Update of original filename to CID media record %s: %s", mpriref, original_fname)
                             continue

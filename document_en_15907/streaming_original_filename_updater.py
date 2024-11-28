@@ -243,20 +243,20 @@ def update_cid_media_record(priref, orig_fname, platform, file_type):
     '''
     names = False
     name_updates = []
-    name_updates.append([{'digital.acquired_filename': orig_fname}])
-    name_updates.append([{'digital.acquired_filename.type': 'FILE'}])
-    fname_xml = adlib.create_grouped_data(priref, 'Acquired_filename', name_updates)
+    name_updates.append({'digital.acquired_filename': orig_fname})
+    name_updates.append({'digital.acquired_filename.type': 'FILE'})
+    fname_xml = adlib.create_record_data(CID_API, 'media', priref, name_updates)
     update_rec = adlib.post(CID_API, fname_xml, 'media', 'updaterecord')
     if 'Acquired_filename' in str(update_rec):
         names = True
 
     # Append file name with edit block
     edit_data = []
-    edit_data.append([{'edit.name': 'datadigipres'}])
-    edit_data.append([{'edit.date': str(datetime.datetime.now())[:10]}])
-    edit_data.append([{'edit.time': str(datetime.datetime.now())[11:19]}])
-    edit_data.append([{'edit.notes': f'{platform} automated digital acquired filename update'}])
-    edit_xml = adlib.create_grouped_data(priref, 'Edit', edit_data)
+    edit_data.append({'edit.name': 'datadigipres'})
+    edit_data.append({'edit.date': str(datetime.datetime.now())[:10]})
+    edit_data.append({'edit.time': str(datetime.datetime.now())[11:19]})
+    edit_data.append({'edit.notes': f'{platform} automated digital acquired filename update'})
+    edit_xml = adlib.create_record_data(CID_API, 'media', priref, edit_data)
     update_rec = adlib.post(CID_API, edit_xml, 'media', 'updaterecord')
     if 'edit.notes' in str(update_rec) and names is True:
         LOGGER.info("Successfully appended %s digital.acquired_filenames to CID media record %s", file_type, priref)

@@ -16,6 +16,8 @@ import shutil
 import datetime
 csv.field_size_limit(10000000)
 
+import utils
+
 # Date variable for use in ordering error outputs
 TODAY = datetime.date.today()
 YEST = TODAY - datetime.timedelta(days=1)

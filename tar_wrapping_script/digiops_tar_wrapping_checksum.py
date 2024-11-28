@@ -171,6 +171,7 @@ def main():
     '''
 
     if not utils.check_control('power_off_all'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     if len(sys.argv) != 2:

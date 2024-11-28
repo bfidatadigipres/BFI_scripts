@@ -27,6 +27,7 @@ PATHS = [
 
 
 def main():
+    
     if not utils.check_control('power_off_all'):
         sys.exit('Exit requested by downtime_control.json')
     move_folders = []

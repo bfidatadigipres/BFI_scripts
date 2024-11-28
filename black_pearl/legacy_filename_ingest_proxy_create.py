@@ -323,7 +323,7 @@ def main():
     LOGGER.info("============== Legacy filename updater START ==================")
     LOGGER.info("Files located in filename_updated/ folder: %s", ', '.join(files))
     if not utils.check_control('power_off_all'):
-        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     for file in files:

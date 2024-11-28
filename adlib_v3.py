@@ -85,7 +85,6 @@ def get(api, query):
     '''
     try:
         req = requests.request('GET', api, headers=HEADERS, params=query)
-        print(req.status_code)
         if req.status_code != 200:
             raise Exception
         dct = json.loads(req.text)

@@ -184,7 +184,7 @@ def main():
 
         # Generate ISO date range for last 30 days for edit.date check
         date_range = []
-        period = itertools.islice(date_gen(TODAY), 30)
+        period = itertools.islice(date_gen(TODAY), 300)
         for dt in period:
             date_range.append(dt.strftime(FORMAT))
         print(f"Target date range for {platform} check: {', '.join(date_range)}")
@@ -241,35 +241,26 @@ def update_cid_media_record(priref, orig_fname, platform, file_type):
     CID media record found without
     original filename, append here
     '''
+    names = False
     name_updates = []
-    name_updates.append({'digital.acquired_filename': orig_fname})
-    name_updates.append({'digital.acquired_filename.type': 'FILE'})
+    name_updates.append([{'digital.acquired_filename': orig_fname}])
+    name_updates.append([{'digital.acquired_filename.type': 'FILE'}])
+    fname_xml = adlib.create_grouped_data(priref, 'Acquired_filename', name_updates)
+    update_rec = adlib.post(CID_API, fname_xml, 'media', 'updaterecord')
+    if 'Acquired_filename' in str(update_rec):
+        names = True
 
     # Append file name with edit block
-    media_append_dct = []
-    media_append_dct.extend(name_updates)
-    edit_data = ([{'edit.name': 'datadigipres'},
-                  {'edit.date': str(datetime.datetime.now())[:10]},
-                  {'edit.time': str(datetime.datetime.now())[11:19]},
-                  {'edit.notes': f'{platform} automated digital acquired filename update'}])
-
-    media_append_dct.extend(edit_data)
-    LOGGER.info("** Appending data to CID media record now...")
-    print("*********************")
-    print(media_append_dct)
-    print("*********************")
-
-    try:
-        result = CUR.update_record(priref=priref,
-                                   database='media',
-                                   data=media_append_dct,
-                                   output='json',
-                                   write=True)
+    edit_data = []
+    edit_data.append([{'edit.name': 'datadigipres'}])
+    edit_data.append([{'edit.date': str(datetime.datetime.now())[:10]}])
+    edit_data.append([{'edit.time': str(datetime.datetime.now())[11:19]}])
+    edit_data.append([{'edit.notes': f'{platform} automated digital acquired filename update'}])
+    edit_xml = adlib.create_grouped_data(priref, 'Edit', edit_data)
+    update_rec = adlib.post(CID_API, edit_xml, 'media', 'updaterecord')
+    if 'edit.notes' in str(update_rec) and names is True:
         LOGGER.info("Successfully appended %s digital.acquired_filenames to CID media record %s", file_type, priref)
         return True
-    except Exception as err:
-        LOGGER.warning("Failed to append %s digital.acquired_filenames to CID media record %s %s", file_type, priref, err)
-        return False
 
 
 if __name__ == '__main__':

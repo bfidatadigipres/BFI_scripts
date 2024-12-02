@@ -21,6 +21,17 @@ HASHES="$HASH_PATH"
 DUMP_TO="${HASHES}${PATH_INSERT}autoingest_file_list.txt"
 echo $DUMP_TO
 
+function control {
+    boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      exit 0
+    fi
+}
+
+# Control check inserted into code
+control
+
 # replace list to ensure clean data
 rm "${DUMP_TO}"
 touch "${DUMP_TO}"

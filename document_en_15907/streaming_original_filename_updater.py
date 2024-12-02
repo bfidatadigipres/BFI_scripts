@@ -170,7 +170,7 @@ def main():
     digital_acquired.filename already populated in CID media
     - if not update the CID digital media record with IMP name.
     '''
-
+    check_control()
     LOGGER.info("=== Streaming Platform original filename updates START ===================")
 
     for key, value in GROUPINGS.items():

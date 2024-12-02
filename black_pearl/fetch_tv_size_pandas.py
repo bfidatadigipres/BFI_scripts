@@ -11,6 +11,8 @@ BK-CI-DATA11:
 
 from ds3 import ds3
 import pandas as pd
+sys.path.append(os.environ['CODE'])
+import utils
 
 CSV_PATH = ''
 NEW_CSV = ''
@@ -23,6 +25,9 @@ def main():
     fetch DS3 length then write to 
     new CSV using pandas
     '''
+    if not utils.check_control("power_off_all"):
+        print("Script run prevented by downtime_control.json. Script exiting")
+        sys.exit('Script run prevented by downtime_control.json. Script exiting')
 
     dataframe = pd.read_csv(CSV_PATH, chunksize=1)
     write_header = True

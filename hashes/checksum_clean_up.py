@@ -21,13 +21,13 @@ Python3.8+
 # Global packages
 import os
 import sys
-import json
 import datetime
 import logging
 
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 LOG_PATH = os.environ['LOG_PATH']
@@ -48,29 +48,6 @@ TODAY_TIME = str(datetime.datetime.now())
 TIME = TODAY_TIME[11:19]
 DATE = datetime.date.today()
 TODAY = str(DATE)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def check_cid():
-    '''
-    Test CID online before script progresses
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def name_split(filepath):
@@ -145,8 +122,13 @@ def main():
     Clean up scripts for checksum files that have been processed by autoingest
     writing text file dumps to media record in CID
     '''
-    check_control()
-    check_cid()
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     if len(sys.argv) != 2:
         LOGGER.warning("SCRIPT NOT STARTING: MD5 path argument error: %s", sys.argv)

@@ -12,7 +12,12 @@ Iterates through each of list paths:
 '''
 
 import os
+import sys
 import shutil
+
+# Private imports
+sys.path.append(os.environ['CODE'])
+import utils
 
 # List with paths, folder names for counts
 PATHS = [
@@ -20,12 +25,14 @@ PATHS = [
     os.path.join(os.environ['QNAP_08'], 'memnon_processing/source/'),
     os.path.join(os.environ['QNAP_10'], 'processing/source/'),
     os.path.join(os.environ['QNAP_H22'], 'processing/source/'),
-#    os.path.join(os.environ['ISILON_VID'],'processing/source/'),
     os.path.join(os.environ['QNAP_VID'], 'processing/source/')
 ]
 
 
 def main():
+    
+    if not utils.check_control('power_off_all'):
+        sys.exit('Exit requested by downtime_control.json')
     move_folders = []
     # Iterate through path list, searching top folder only for files to move
     for pth in PATHS:

@@ -11,10 +11,13 @@ Use:
 Converted to Python3
 2022
 '''
-
+import os
 import sys
 import argparse
 import subprocess
+
+sys.path.append(os.environ['CODE'])
+import utils
 
 
 def framemd5_manifest(cmd):
@@ -139,6 +142,9 @@ def construct_command(in_file, start, out_file, end=None, ffmpeg=None):
 
 def main():
     ''' Create a new clip, and confirm that its framemd5 manifest matches the source '''
+
+    if not utils.check_control('power_off_all'):
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     parser = argparse.ArgumentParser(description='Extract a clip with framemd5 fixity')
     parser.add_argument('file', nargs='?', type=argparse.FileType('r'), help='Input file')

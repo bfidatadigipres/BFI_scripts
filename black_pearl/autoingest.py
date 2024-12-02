@@ -55,7 +55,6 @@ main():
 9. The file is moved from the autoingest/ingest path into
    the black_pearl_ingest folder where it is ingested to DPI.
 
-Joanna White
 2022
 '''
 
@@ -171,9 +170,9 @@ def check_mime_type(fpath, log_paths):
     Checks the mime type of the file
     and if stream media checks ffprobe
     '''
-    if fpath.endswith(('.mxf', '.ts', '.mpg')):
+    if fpath.lower().endswith(('.mxf', '.ts', '.mpg', '.m2ts')):
         mime = 'video'
-    elif fpath.endswith(('.srt', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml')):
+    elif fpath.lower().endswith(('.csv', '.pdf', '.srt', '.rtf', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml')):
         mime = 'application'
     else:
         mime = magic.from_file(fpath, mime=True)
@@ -278,19 +277,20 @@ def check_media_record(fname, session):
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
-        if hits is None:
-            logger.exception('"CID API was unreachable for Media search: %s', search)
-            raise Exception(f"CID API was unreachable for Media search: {search}")
-        print(f"check_media_record(): AdlibV3 record for hits: {hits}")
-        if hits == 0:
-            return False
-        elif hits == 1:
-            return True
-        elif hits > 1:
-            return f'Hits exceed 1: {hits}'
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
         return False
+
+    if hits is None:
+        logger.exception('"CID API was unreachable for Media search: %s', search)
+        raise Exception(f"CID API was unreachable for Media search: {search}")
+    print(f"check_media_record(): AdlibV3 record for hits: {hits}")
+    if int(hits) == 1:
+        return True
+    elif int(hits) == 0:
+        return False
+    if int(hits) > 1:
+        return f'Hits exceed 1: {hits}'
 
 
 def get_buckets(bucket_collection):
@@ -313,7 +313,7 @@ def get_buckets(bucket_collection):
     return bucket_list
 
 
-def ext_in_file_type(ext, priref, log_paths, session):
+def ext_in_file_type(ext, priref, log_paths, ob_num, session):
     '''
     Check if ext matches file_type
     '''
@@ -326,14 +326,20 @@ def ext_in_file_type(ext, priref, log_paths, session):
 
     ftype = ftype.split(', ')
     print(ftype)
+    if ob_num.startswith('CA-'):
+        logger.info("Collections Asset item file type check with 'asset_file_type' field")
+        retrieved_fields = ['asset_file_type']
+    else:
+        retrieved_fields = ['file_type']
+
     search = f'priref={priref}'
-    record = adlib.retrieve_record(CID_API, 'collect', search, '1', session, ['file_type'])[1]
+    record = adlib.retrieve_record(CID_API, 'collect', search, '1', session, retrieved_fields)[1]
     if record is None:
         return False
 
     print(f"ext_in_file_type(): AdlibV3 record returned:\n{record}")
     try:
-        file_type = adlib.retrieve_field_name(record[0], 'file_type')
+        file_type = adlib.retrieve_field_name(record[0], retrieved_fields[0])
         print(f"ext_in_file_type(): AdlibV3 file type: {file_type}")
     except (IndexError, KeyError):
         logger.warning('%s\tInvalid <file_type> in Collect record', log_paths)
@@ -610,7 +616,7 @@ def main():
             print(f"* CID item record found with object number {object_number}: priref {priref}")
 
             # Ext in file_type and file_type validity in Collect database
-            confirmed = ext_in_file_type(ext, priref, log_paths, sess)
+            confirmed = ext_in_file_type(ext, priref, log_paths, object_number, sess)
             if not confirmed:
                 continue
 
@@ -771,7 +777,7 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
                     print('* File already absent from path. Check problem with persistence message')
     '''
     # Temporary step to delete completed items whose logging failed early August 2024 (QNAP-01 drive failure)
-    if 'qnap_imagen_storage/Public/autoingest/completed' in fpath:
+    if '/mnt/isilon/film_operations/Finished/autoingest/completed' in fpath:
         if media_check is True:
             logger.info("Ingested during QNAP-01 drive failure impacting Logs/ writes (August 2024). No deletion confirmation in global.log but CID Media record present. Deleting.")
             os.remove(fpath)

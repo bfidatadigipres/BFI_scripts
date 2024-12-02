@@ -11,7 +11,6 @@ encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
 and transcode.
 
-Joanna White
 2023
 '''
 
@@ -491,6 +490,7 @@ def transcode_mov(fpath):
     running = check_control()
     if not running:
         logger.warning('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting')
         return False
 
     logger.info("================== START DPI download transcode to prores START ==================")

@@ -35,7 +35,6 @@ NOTE: Restriction in main() temporarily in place to allow second version of scri
       to target specific (slow) paths, allowing the rest to move quickly. Eventually
       this will be set to QNAP-04 STORA full time.
 
-Joanna White / Stephen McConnachie
 2022
 '''
 
@@ -182,7 +181,7 @@ def main():
     not starting with 'ingest_'. When found, check in json path for
     matching folder names to json filename
     '''
-    if not utils.check_control('black_pearl'):
+    if not utils.check_control('black_pearl') or not utils.check_control('pause_scripts'):
         logger.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     if not utils.cid_check(CID_API):
@@ -528,13 +527,13 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
     part, whole = utils.check_part_whole(filename)
     if not part:
         return None
-
     record_data = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},
                     {'input.time': str(datetime.now())[11:19]},
                     {'input.notes': 'Digital preservation ingest - automated bulk documentation.'},
                     {'reference_number': filename},
                     {'imagen.media.original_filename': filename},
+                    {'container.file_size.total_bytes': int(byte_size)},
                     {'object.object_number': ob_num},
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},

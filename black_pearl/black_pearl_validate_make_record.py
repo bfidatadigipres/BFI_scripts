@@ -35,7 +35,6 @@ NOTE: Restriction in main() temporarily in place to allow second version of scri
       to target specific (slow) paths, allowing the rest to move quickly. Eventually
       this will be set to QNAP-04 STORA full time.
 
-Joanna White / Stephen McConnachie
 2022
 '''
 
@@ -93,7 +92,9 @@ LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
              os.environ['GRACK_FILM']: os.environ['L_GRACK01'],
              os.environ['QNAP_07']: os.environ['L_QNAP07'],
              os.environ['QNAP_09']: os.environ['L_QNAP09'],
-             os.environ['QNAP_11']: os.environ['L_QNAP11']
+             os.environ['QNAP_11']: os.environ['L_QNAP11'],
+             os.environ['QNAP_TEMP']: os.environ['L_QNAP_TEMP'],
+             os.environ['EDITSHARE']: os.environ['L_EDITSHARE']
 }
 
 
@@ -183,7 +184,7 @@ def main():
     not starting with 'ingest_'. When found, check in json path for
     matching folder names to json filename
     '''
-    if not utils.check_control('black_pearl'):
+    if not utils.check_control('black_pearl') or not utils.check_control('pause_scripts'):
         logger.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     if not utils.cid_check(CID_API):
@@ -537,13 +538,13 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
     part, whole = utils.check_part_whole(filename)
     if not part:
         return None
-
     record_data = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},
                     {'input.time': str(datetime.now())[11:19]},
                     {'input.notes': 'Digital preservation ingest - automated bulk documentation.'},
                     {'reference_number': filename},
                     {'imagen.media.original_filename': filename},
+                    {'container.file_size.total_bytes': int(byte_size)},
                     {'object.object_number': ob_num},
                     {'imagen.media.part': part},
                     {'imagen.media.total': whole},
@@ -555,6 +556,7 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
     print(record_data_xml)
     try:
         item_rec = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord', session)
+        print(item_rec)
         if item_rec:
             try:
                 media_priref = adlib.retrieve_field_name(item_rec, 'priref')[0]

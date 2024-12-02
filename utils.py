@@ -2,7 +2,6 @@
 Consolidate all repeat modules
 to one utils.py document
 
-Joanna White
 2024
 '''
 
@@ -41,20 +40,26 @@ ACCEPTED_EXT = [
     'mpg',
     'mpeg',
     'mp4',
+    'm2ts',
     'mov',
     'mkv',
+    'wmv',
     'tif',
     'tiff',
     'jpg',
     'jpeg',
     'ts',
+    'm2ts',
+    'rtf',
     'srt',
     'scc',
     'itt',
     'stl',
     'cap',
     'dfxp',
-    'dxfp'
+    'dxfp',
+    'csv',
+    'pdf'
 ]
 
 
@@ -72,19 +77,24 @@ def accepted_file_type(ext):
              'mov': 'mov, prores',
              'mkv': 'mkv, dpx',
              'wav': 'wav',
+             'wmv': 'wmv',
              'tif': 'tif, tiff',
              'tiff': 'tif, tiff',
              'jpg': 'jpg, jpeg',
              'jpeg': 'jpg, jpeg',
              'ts': 'mpeg-ts',
+             'm2ts': 'mpeg-ts',
              'srt': 'srt',
              'xml': 'xml, imp',
              'scc': 'scc',
              'itt': 'itt',
              'stl': 'stl',
+             'rtf': 'rtf',
              'cap': 'cap',
              'dxfp': 'dxfp',
-             'dfxp': 'dfxp'}
+             'dfxp': 'dfxp',
+             'csv': 'csv',
+             'pdf': 'pdf'}
     ext = ext.lower()
     for key, val in ftype.items():
         if key == ext:
@@ -120,6 +130,7 @@ def cid_check(cid_api):
     '''
     try:
         dct = adlib.check(cid_api)
+        print(dct)
         if isinstance(dct, dict):
             return True
     except KeyError:
@@ -211,7 +222,7 @@ def sort_ext(ext):
     '''
     Decide on file type
     '''
-    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'mpg', 'avi', 'ts', 'mpeg'],
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'wmv', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}

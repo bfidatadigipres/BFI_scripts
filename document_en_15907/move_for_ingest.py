@@ -6,7 +6,6 @@ And move ingested folders out, after checking status
 
 Updated for Adlib_V3 and Python3
 
-Joanna White
 2024
 '''
 
@@ -14,13 +13,13 @@ Joanna White
 import os
 import sys
 import json
-import shutil
 import logging
 import datetime
 
 # Local imports
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 CID_API = os.environ['CID_API4']
@@ -46,29 +45,6 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def check_control():
-    '''
-    Check for downtime control
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
-            sys.exit("Script run prevented by downtime_control.json. Script exiting")
-
-
-def cid_check():
-    '''
-    Test if CID API online
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
-
-
 def check_media_records(folder_search, time):
     '''
     Check number of successful CID media records created from folder
@@ -92,8 +68,13 @@ def main():
     LOGGER.info('==== Move for ingest script running at %s ===============', str(datetime.datetime.now())[0:19])
     for _, dirs, _ in os.walk(INGEST_PATH):
         for foldername in dirs:
-            check_control()
-            cid_check()
+            if not utils.cid_check(CID_API):
+                print("* Cannot establish CID session, exiting script")
+                LOGGER.critical("* Cannot establish CID session, exiting script")
+                sys.exit()
+            if not utils.check_control('pause_scripts'):
+                LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
             move_folder = False
             folder_search = f'_{foldername}of'
             LOGGER.info('* Current folder is %s - searching for %s', foldername, folder_search)

@@ -17,7 +17,6 @@ Script functions:
 
 NOTE: Updated for Adlib V3
 
-Joanna White
 2023
 '''
 
@@ -25,7 +24,6 @@ Joanna White
 import os
 import re
 import sys
-import json
 import shutil
 import logging
 import datetime
@@ -34,6 +32,7 @@ import subprocess
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global paths/vars
 AUTO_WAV_PATH = os.environ['AUTOMATION_WAV']
@@ -56,29 +55,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def remove_whitespace(title):
@@ -224,8 +200,14 @@ def main():
     extract object number and make new filename. Apply filename to all parts (mediaconch check)
     and move to autoingest path in audio isilon share.
     '''
-    check_control()
-    cid_check()
+
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
+
     directory_list = {}
     dirs = [ x for x in os.listdir(WAV_RENAME_PATH) if os.path.isdir(os.path.join(WAV_RENAME_PATH, x)) ]
     for directory in dirs:

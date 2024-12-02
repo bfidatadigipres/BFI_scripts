@@ -29,7 +29,7 @@ to determine correct transcode paths (RNA or BFI).
 
 NOTES: Updated for Adlib V3
 
-Joanna White 2022
+2022
 Python 3.6+
 '''
 
@@ -40,9 +40,9 @@ import sys
 import time
 import shutil
 import logging
-import datetime
-import subprocess
+from datetime import datetime, timezone
 import pytz
+import subprocess
 import tenacity
 
 # Local packages
@@ -89,7 +89,7 @@ def local_time():
     Return strftime object formatted
     for London time (includes BST adjustment)
     '''
-    return datetime.datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def main():
@@ -155,6 +155,14 @@ def main():
         transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
     else:
         transcode_pth = os.path.join(TRANSCODE, 'bfi', date_pth)
+
+    check_name = os.path.join(transcode_pth, fname)
+    if os.path.exists(f"{check_name}.mp4"):
+        delete_confirm = check_mod_time(f"{check_name}.mp4")
+        if delete_confirm is True:
+            os.remove(f"{check_name}.mp4")
+        else:
+            sys.exit("File already being processed. Skipping.")
 
     # Check if transcode already completed
     if fname in access and thumbnail and largeimage:
@@ -843,11 +851,6 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
     ]
 
-    sd_downscale_16x9 = [
-        "-vf",
-        "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
     sd_downscale_4x3 = [
         "-vf",
         "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
@@ -929,8 +932,10 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = scale_sd_4x3
     elif height == 576 and width == 703 and dar == '4:3':
         cmd_mid = scale_sd_4x3
+    elif height == 576 and width == 1024:
+        cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '16:9':
-        cmd_mid = sd_downscale_16x9
+        cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
     elif height <= 576 and dar == '16:9':
@@ -948,10 +953,14 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     elif height == 576 and dar == '1.85:1':
         cmd_mid = crop_sd_16x9
     elif height < 720 and dar == '16:9':
-        cmd_mid = sd_downscale_16x9
+        cmd_mid = scale_sd_16x9
     elif height < 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
+    elif width == 1280 and height >= 720:
+        cmd_mid = hd_16x9
     elif height == 720 and dar == '16:9':
+        cmd_mid = hd_16x9
+    elif height == 720 and width >= 1200:
         cmd_mid = hd_16x9
     elif width == 1920 and aspect >= 1.778:
         cmd_mid = fhd_letters
@@ -1021,6 +1030,27 @@ def make_jpg(filepath, arg, transcode_pth, percent):
 
     if os.path.exists(outfile):
         return outfile
+
+
+def check_mod_time(fpath):
+    '''
+    See if mod time over 5 hrs old
+    '''
+    now = datetime.now().astimezone()
+    local_tz = pytz.timezone("Europe/London")
+    file_mod_time = os.stat(fpath).st_mtime
+    modified = datetime.fromtimestamp(file_mod_time, tz=timezone.utc)
+    mod = modified.replace(tzinfo=pytz.utc).astimezone(local_tz)
+
+    diff = now - mod
+    seconds = diff.seconds
+    hours = (seconds / 60) // 60
+    LOGGER.info('%s\tModified time is %s seconds ago. %s hours', fpath, seconds, hours)
+    print(f'{fpath}\tModified time is {seconds} seconds ago')
+    if seconds < 18000:
+        print(f"*** Deleting file as old MP4: {fpath}")
+        return True
+    return False
 
 
 def conformance_check(file):

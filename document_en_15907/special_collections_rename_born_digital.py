@@ -22,7 +22,6 @@ Notes:
 Uses requests.Sessions() for creation of works
 within on session. Trial of sessions().
 
-Joanna White
 2024
 '''
 
@@ -147,6 +146,10 @@ def main():
     named after work and create digital item records
     for every photo. Clean up empty folders.
     '''
+    if not utils.check_control('power_off_all'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
 

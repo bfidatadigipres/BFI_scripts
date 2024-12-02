@@ -24,17 +24,16 @@ CID Item record object_number.
 
 NOTES: Integrated with adlib_v3 for test
 
-Joanna White
 2024
 '''
 
 # Public packages
 import os
 import sys
-import json
 import shutil
 import logging
 import datetime
+from time import sleep
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -48,8 +47,8 @@ PLATFORM_STORAGE = os.environ.get('PLATFORM_INGEST_PTH')
 CID_API = os.environ.get('CID_API4')
 
 # Setup logging
-LOGGER = logging.getLogger('document_augmented_platform_separate_51_audio')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_platform_separate_51_audio.log'))
+LOGGER = logging.getLogger('document_augmented_platform_separate_audio')
+HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_platform_separate_audio.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -163,7 +162,7 @@ def main():
             file_names = build_fname_dct(file_list, new_ob_num, platform)
             print(file_names)
 
-            filename_dct = []
+            filename_lst = []
             for key, value in file_names.items():
                 new_fname = key
                 old_fname = value
@@ -188,14 +187,19 @@ def main():
                     LOGGER.info("File successfully moved to %s ingest path: %s\n", platform, autoingest)
                 elif move_success == 'Path error':
                     LOGGER.warning("Path error: %s", new_fpath)
-                filename_dct.append({"digital.acquired_filename": f"{old_fname} - Renamed to: {new_fname}"})
-                filename_dct.append({"digital.acquired_filename.type": "FILE"})
+                filename_lst.append(f"{old_fname} - Renamed to: {new_fname}")
+                #filename_dct.append({"digital.acquired_filename.type": "FILE"})
 
             # Append digital.acquired_filename and quality_comments to new CID item record
-            payload = adlib.create_record_data(CID_API, 'items', new_priref, filename_dct)
-            record = adlib.post(CID_API, payload, 'items', 'updaterecord')
+            field_pairs = []
+            for filename in filename_lst:
+                field_pairs.append([{'digital.acquired_filename': f'{filename}'}, {'digital.acquired_filename.type': 'FILE'}])
+                LOGGER.info("Writing to digital.acquired_filename: %s", filename)
+            xml_grouped = adlib.create_grouped_data(new_priref, 'Acquired_filename', field_pairs)
+            print(xml_grouped)
+            record = adlib.post(CID_API, xml_grouped, 'items', 'updaterecord')
             if not record:
-                LOGGER.warning("Filename changes were not updated to digital.acquired_filename fields: %s", filename_dct)
+                LOGGER.warning("Filename changes were not updated to digital.acquired_filename field for %s", filename)
             LOGGER.info("Digital Acquired Filename data added to CID item record %s", new_priref)
             if platform == 'Netflix':
                 qual_comm = "5.1 audio supplied separately as IMP contains Dolby Atmos IAB."

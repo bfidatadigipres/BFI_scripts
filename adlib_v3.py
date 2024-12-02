@@ -4,7 +4,6 @@
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
-Joanna White
 2024
 '''
 
@@ -38,9 +37,21 @@ def retrieve_record(api, database, search, limit, fields=None):
     '''
     Retrieve data from CID using new API
     '''
+    if search.startswith('priref='):
+        search_new = search
+    else:
+        if database == 'items':
+            search_new = f'(record_type=ITEM) and {search}'
+        elif database == 'works':
+            search_new = f'(record_type=WORK) and {search}'
+        elif database == 'manifestations':
+            search_new = f'(record_type=MANIFESTATION) and {search}'
+        else:
+            search_new = search
+
     query = {
         'database': database,
-        'search': search,
+        'search': search_new,
         'limit': limit,
         'output': 'jsonv1'
     }
@@ -51,18 +62,19 @@ def retrieve_record(api, database, search, limit, fields=None):
 
     record = get(api, query)
     if not record:
+        print(query)
         return None, None
     elif record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
     elif 'recordList' not in str(record):
         try:
-            hits = record['adlibJSON']['diagnostic']['hits']
+            hits = int(record['adlibJSON']['diagnostic']['hits'])
             return hits, record
         except (IndexError, KeyError, TypeError) as err:
             print(err)
             return 0, record
 
-    hits = record['adlibJSON']['diagnostic']['hits']
+    hits = int(record['adlibJSON']['diagnostic']['hits'])
     return hits, record['adlibJSON']['recordList']['record']
 
 
@@ -84,6 +96,9 @@ def get(api, query):
         print(err)
         raise Exception
     except requests.exceptions.HTTPError as err:
+        print(err)
+        raise Exception
+    except Exception as err:
         print(err)
         raise Exception
 
@@ -112,6 +127,9 @@ def post(api, payload, database, method):
         except requests.exceptions.HTTPError as err:
             print(err)
             raise Exception
+        except Exception as err:
+            print(err)
+            raise Exception
 
     if method == 'updaterecord':
         try:
@@ -123,6 +141,9 @@ def post(api, payload, database, method):
             print(err)
             raise Exception
         except requests.exceptions.HTTPError as err:
+            print(err)
+            raise Exception
+        except Exception as err:
             print(err)
             raise Exception
 
@@ -246,6 +267,7 @@ def get_grouped_items(api, database):
 
     result = requests.request('GET', api, headers=HEADERS, params=query)
     metadata = xmltodict.parse(result.text)
+
     if not isinstance(metadata, dict):
         return None, None
 
@@ -281,10 +303,10 @@ def create_record_data(api, database, priref, data=None):
             for k in item.keys():
                 if k in value:
                     if key in new_grouping.keys():
-                        new_grouping[key].update(item)
+                        new_grouping[key].append(item)
                         remove_list.append(item)
                     else:
-                        new_grouping[key] = item
+                        new_grouping[key] = [item]
                         remove_list.append(item)
         if new_grouping:
             print(f"Adjusted grouping data: {new_grouping}")
@@ -294,7 +316,6 @@ def create_record_data(api, database, priref, data=None):
         for rm in remove_list:
             if rm in data:
                 data.remove(rm)
-
     frag = get_fragments(data)
     if not frag:
         return False
@@ -314,6 +335,32 @@ def create_record_data(api, database, priref, data=None):
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
+def create_grouped_data(priref, grouping, field_pairs):
+    '''
+    Handle repeated groups of fields pairs, suppied as list of dcts per group
+    along with grouping known in advance and priref for append
+    '''
+    payload_mid = ''
+    for lst in field_pairs:
+        mid = ''
+        mid_fields = ''
+        print("New group block:")
+        for grouped in lst:
+            for key, value in grouped.items():
+                xml_field = f'<{key}>{value}</{key}>'
+                mid += xml_field
+        mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
+        print(mid_fields)
+        payload_mid = payload_mid + mid_fields
+    
+    if len(priref) > 0:
+        payload = f"<adlibXML><recordList><record priref='{priref}'>"
+        payload_end = "</record></recordList></adlibXML>"
+        return payload + payload_mid + payload_end
+    else:
+        return payload_mid
+
+
 def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
@@ -331,7 +378,9 @@ def get_fragments(obj):
             sub_item = item
         else:
             sub_item = dicttoxml(item, root=False, attr_type=False)
-
+            if '<item>' in str(sub_item):
+                ss = str(sub_item).lstrip("b'").rstrip("'").replace("<item>","").replace("</item>", "")
+                sub_item = ss.encode()
         # Append valid XML fragments to `data`
         try:
             list_item = html.fragments_fromstring(sub_item, parser=etree.XMLParser(remove_blank_text=True))
@@ -370,4 +419,3 @@ def add_quality_comments(api, priref, comments):
         return False
     else:
         return True
-

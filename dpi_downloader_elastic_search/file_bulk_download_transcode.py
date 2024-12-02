@@ -55,7 +55,6 @@ Joanna White
 # Python packages
 import os
 import sys
-import json
 import logging
 import itertools
 from datetime import datetime
@@ -105,20 +104,6 @@ def check_elasticsearch():
         sys.exit('Connection to Elasticsearch not found. Script exiting.')
 
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
 def get_media_original_filename(fname):
     '''
     Retrieve the reference_number from CID media record
@@ -160,17 +145,17 @@ def get_prirefs(pointer):
     for list of prirefs in CID
     '''
     query = {'command': 'getpointerfile',
-             'database': 'items',
+             'database': 'collect',
              'number': pointer,
              'output': 'jsonv1'}
-
+    print(query)
     try:
         result = adlib.get(CID_API, query)
     except Exception as exc:
         LOGGER.exception('get_prirefs(): Unable to get pointer file %s\n%s', pointer, exc)
         result = None
-
-    if not result['adlibJSON']['recordList']['record'][0]['hitlist']:
+    print(result)
+    if 'hitlist' not in str(result):
         return None
     prirefs = result['adlibJSON']['recordList']['record'][0]['hitlist']
     LOGGER.info("Prirefs retrieved: %s", prirefs)
@@ -353,7 +338,9 @@ def main():
 
     LOGGER.info("================ DPI DOWNLOAD REQUESTS RETRIEVED: %s. Date: %s =================", len(data), datetime.now().strftime(FMT)[:19])
     for row in data:
-        check_control()
+        if not utils.check_control('pause_scripts') or not utils.check_control('black_pearl'):
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         check_elasticsearch()
         username = row[0].strip()
         email = row[1].strip()

@@ -10,7 +10,6 @@ encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
 and transcode.
 
-Joanna White
 2023
 '''
 
@@ -29,6 +28,7 @@ import tenacity
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global paths from environment vars
 MP4_POLICY = os.environ['MP4_POLICY']
@@ -69,6 +69,33 @@ def local_time():
     return datetime.datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def check_for_mixed_audio(fpath):
+    '''
+    For use where audio channels 6+ exist
+    check for 'DL' and 'DR' and build different
+    FFmpeg command that uses mixed audio only
+    '''
+    cmd = [
+        'ffprobe', '-v', 'error',
+        '-show_entries', 'stream=channel_layout',
+        '-of', 'csv=p=0', fpath
+    ]
+    audio = subprocess.check_output(cmd)
+    audio = audio.decode('utf-8').lstrip('\n').rstrip('\n')
+    audio_channels = audio.split('\n')
+    if len(audio_channels) > 1:
+        audio_downmix = {}
+        for num in range(0, len(audio_channels)):
+            if '(DL)' in audio_channels[num]:
+                audio_downmix['DL'] = num
+            if '(DR)' in audio_channels[num]:
+                audio_downmix['DR'] = num
+        if len(audio_downmix) == 2:
+            return audio_downmix
+
+    return None
+
+
 def transcode_mp4(fpath):
     '''
     Get ext, check filetype then process
@@ -80,6 +107,9 @@ def transcode_mp4(fpath):
         logger.warning("%s\tWARNING\tSCRIPT EXITING: Error with file path supplied, not a file: %s", local_time(), fullpath)
         return 'failed transcode'
 
+    if not utils.check_control('pause_scripts'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     log_build = []
 
     filepath, file = os.path.split(fullpath)
@@ -175,7 +205,7 @@ def transcode_mp4(fpath):
         fl_fr = check_for_fl_fr(fullpath)
 
         # Build FFmpeg command based on dar/height
-        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, stereo, fl_fr)
+        ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, mixed_dict, fl_fr)
         if not ffmpeg_cmd:
             log_build.append(f"{local_time()}\tWARNING\tFailed to build FFmpeg command with data: {fullpath}\nHeight {height} Width {width} DAR {dar}")
             log_output(log_build)
@@ -567,84 +597,63 @@ def get_height(fullpath):
     height and stored height differ (MXF samples)
     '''
 
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Sampled_Height%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    sampled_height = subprocess.check_output(cmd)
-
-    cmd2 = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Height%"',
-        fullpath
-    ]
-
-    cmd2[3] = cmd2[3].replace('"', '')
-    reg_height = subprocess.check_output(cmd2)
+    sampled_height = utils.get_metadata('Video', 'Sampled_Height', fullpath)
+    reg_height = utils.get_metadata('Video', 'Height', fullpath)
 
     try:
         int(sampled_height)
     except ValueError:
         sampled_height = 0
 
-    if int(sampled_height) > int(reg_height):
+    if sampled_height == 0:
+        height = str(reg_height)
+    elif int(sampled_height) > int(reg_height):
         height = str(sampled_height)
     else:
         height = str(reg_height)
 
-    if '480' == height:
+    if height.startswith('480 '):
         return '480'
-    if '486' == height:
+    if height.startswith('486 '):
         return '486'
-    if '576' == height:
+    if height.startswith('576 '):
         return '576'
-    if '608' == height:
+    if height.startswith('608 '):
         return '608'
-    if '720' == height:
+    if height.startswith('720 '):
         return '720'
-    if '1080' == height or '1 080' == height:
+    if height.startswith('1080 ') or height.startswith('1 080 '):
         return '1080'
-    else:
-        height = height.split(' pixel', maxsplit=1)[0]
-        return re.sub("[^0-9]", "", height)
+
+    height = height.split(' pixel', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", height)
 
 
 def get_width(fullpath):
     '''
     Retrieves height information using mediainfo
     '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Width/String%"',
-        fullpath
-    ]
 
-    cmd[3] = cmd[3].replace('"', '')
-    width = subprocess.check_output(cmd)
-    width = str(width)
-
-    if '720' == width:
+    width = utils.get_metadata('Video', 'Width/String', fullpath)
+    clap_width = utils.get_metadata('Video', 'Width_CleanAperture/String', fullpath)
+    print(width, clap_width)
+    if width.startswith('720 ') and clap_width.startswith('703 '):
+        return '703'
+    if width.startswith('720 '):
         return '720'
-    if '768' == width:
+    if width.startswith('768 '):
         return '768'
-    if '1024' == width or '1 024' == width:
+    if width.startswith('1024 ') or width.startswith('1 024 '):
         return '1024'
-    if '1280' == width or '1 280' == width:
+    if width.startswith('1280 ') or width.startswith('1 280 '):
         return '1280'
-    if '1920' == width or '1 920' == width:
+    if width.startswith('1920 ') or width.startswith('1 920 '):
         return '1920'
-    else:
-        if width.isdigit():
-            return str(width)
-        else:
-            width = width.split(' p', maxsplit=1)[0]
-            return re.sub("[^0-9]", "", width)
+    if width.isdigit():
+        return str(width)
+    
+    width = width.split(' p', maxsplit=1)[0]
+    return re.sub("[^0-9]", "", width)
 
 
 def get_duration(fullpath):
@@ -655,20 +664,9 @@ def get_duration(fullpath):
     for update to ffmpeg map command
     '''
 
-    cmd = [
-        'mediainfo', '--Language=raw',
-        '--Full', '--Inform="Video;%Duration%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    duration = subprocess.check_output(cmd)
+    duration = utils.get_metadata('Video', 'Duration', fullpath)
     if not duration:
         return ('', '')
-
-    duration = duration.decode('utf-8').rstrip('\n')
-    print(f"Mediainfo seconds: {duration}")
-
     if '.' in duration:
         duration = duration.split('.')
 
@@ -756,7 +754,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     '''
     Builds FFmpeg command based on height/dar input
     '''
-    print(f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs} Stereo {stereo}")
+    print(f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs} Mixed dict {mixed_dict}")
     print(f"Fullpath {fullpath} Output path {output_path}")
 
     ffmpeg_program_call = [
@@ -828,11 +826,6 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     crop_sd_16x9 = [
         "-vf",
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
-    ]
-
-    sd_downscale_16x9 = [
-        "-vf",
-        "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
     ]
 
     sd_downscale_4x3 = [
@@ -916,8 +909,10 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = scale_sd_4x3
     elif height == 576 and width == 703 and dar == '4:3':
         cmd_mid = scale_sd_4x3
+    elif height == 576 and width == 1024:
+        cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '16:9':
-        cmd_mid = sd_downscale_16x9
+        cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
     elif height <= 576 and dar == '16:9':
@@ -935,7 +930,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     elif height == 576 and dar == '1.85:1':
         cmd_mid = crop_sd_16x9
     elif height < 720 and dar == '16:9':
-        cmd_mid = sd_downscale_16x9
+        cmd_mid = scale_sd_16x9
     elif height < 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
     elif height == 720 and dar == '16:9':

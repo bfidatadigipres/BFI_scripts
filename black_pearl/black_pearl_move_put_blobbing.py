@@ -27,7 +27,6 @@ Script VALIDATE actions:
 6. Once completed above move JSON to Logs/black_pearl/completed folder.
    The empty job id folder is deleted if empty, if not prepended 'error_'
 
-Joanna White
 2024
 '''
 
@@ -275,7 +274,7 @@ def main():
     LOGGER.info("======== START Black Pearl blob ingest and validation %s START ========", sys.argv[1])
 
     for fname in files:
-        if not utils.check_control('black_pearl'):
+        if not utils.check_control('black_pearl') or not utils.check_control('pause_scripts'):
             LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         if '.DS_Store' in fname:
@@ -292,7 +291,7 @@ def main():
         put_job_id = bp.put_single_file(fpath, fname, bucket, check=True)
         toc = time.perf_counter()
         checksum_put_time = (toc - tic) // 60
-        LOGGER.info("** Total time in minutes for PUT without BP hash validation: %s", checksum_put_time)
+        LOGGER.info("** Total time in minutes for PUT WITH BP hash validation: %s", checksum_put_time)
 
         # Confirm job list exists
         if not put_job_id:
@@ -332,7 +331,7 @@ def main():
         LOGGER.info("Checksums match for file >1TB local and stored on Black Pearl:\n%s\n%s", local_checksum, remote_checksum)
         toc3 = time.perf_counter()
         checksum_put_time3 = (toc3 - toc2) // 60
-        LOGGER.info("Total time in minutes for PUT without Spectra checksum, but download and whole file checksum comparison: %s", checksum_put_time3)
+        LOGGER.info("Total time in minutes for checksum creation and comparison: %s", checksum_put_time3)
 
         # Delete downloaded file and move to further validation checks
         LOGGER.info("Deleting downloaded file: %s", delivery_path)
@@ -380,7 +379,6 @@ def main():
             LOGGER.info("Media record %s already exists for file: %s", media_priref, fpath)
             # Check for already deleted message in global.log
             deletion_confirm = utils.check_global_log(fname, 'Successfully deleted file')
-            reingest_confirm = utils.check_global_log(fname, 'Renewed ingest of file will be attempted')
             if deletion_confirm:
                 LOGGER.info("DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s", deletion_confirm)
                 try:
@@ -389,14 +387,6 @@ def main():
                 except Exception as err:
                     LOGGER.warning("Unable to delete asset: %s %s", fpath, err)
                     LOGGER.warning("Manual inspection of asset required")
-            if reingest_confirm:
-                LOGGER.info("File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion.")
-                persistence_log_message("Persistence checks passed: delete file", fpath, wpath, fname)
-                # Move to next folder for autoingest deletion - may not be duplicate
-                try:
-                    shutil.move(fpath, move_path)
-                except Exception:
-                    LOGGER.warning("MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s", fpath, move_path)
             elif not access_mp4:
                 persistence_log_message("Persistence checks passed: delete file", fpath, wpath, fname)
                 LOGGER.info("File has media record but has no Access MP4. Moving to transcode folder and updating global.log for deletion.")
@@ -430,7 +420,7 @@ def main():
             LOGGER.warning("File will be left in folder for manual intervention.")
         toc4 = time.perf_counter()
         whole_put_time = (toc4 - tic) // 60
-        LOGGER.info("** Total time for whole process for PUT without BP hash validation: %s", whole_put_time)
+        LOGGER.info("** Total time for whole process for PUT with BP hash validation: %s", whole_put_time)
 
     LOGGER.info(f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========")
 

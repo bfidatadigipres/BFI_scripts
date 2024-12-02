@@ -3,7 +3,6 @@
 '''
 Called by splitting scripts
 Refactored to Py3
-Updated for Adlib V3
 June 2022
 '''
 

@@ -7,7 +7,6 @@ file then move to autoingest path
 
 NOTES: Integrated with adlib_v3 for test
 
-Joanna White
 2024
 '''
 

@@ -14,7 +14,6 @@ Script function:
    a JSON formatted file, saved as MKV filename.json
 5. Move both the MKV and JSON to the BFI_replay folder.
 
-Joanna White
 2021
 '''
 
@@ -29,6 +28,7 @@ import tenacity
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 WATCH_FOLDER = os.environ['BFI_REPLAY']
@@ -49,29 +49,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 @tenacity.retry(stop=(tenacity.stop_after_delay(60) | tenacity.stop_after_attempt(10)))
@@ -169,8 +146,14 @@ def main():
     and time_code start/end data for each matching manifestation.
     Pretty print to json file, named as MKV filename. Move to replay.
     '''
-    check_control()
-    cid_check()
+
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     LOGGER.info("------------- Replay JSON creation script START --------------")
     files = [x for x in os.listdir(WATCH_FOLDER) if x.startswith('N_') and x.endswith(('.mkv', '.MKV'))]

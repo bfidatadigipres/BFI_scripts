@@ -16,11 +16,13 @@ Python 3.7 +
 
 # Python packages
 import os
+import sys
 import logging
 import datetime
 import itertools
 
 # local packages
+sys.path.append(os.environ['CODE'])
 import utils
 
 # Global paths

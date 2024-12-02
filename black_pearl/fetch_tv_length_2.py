@@ -12,6 +12,7 @@ CLIENT = ds3.createClientFromEnv()
 CSV_PATH = '/mnt/qnap_imagen_storage/Public/Admin/code/filesize_extractor/ofcom_dpi_ingest_1_3.csv'
 NEW_CSV_PATH = '/mnt/qnap_imagen_storage/Public/Admin/code/filesize_extractor/ofcom_dpi_ingest_filesizes.csv'
 
+
 def read_csv(csv_path):
     '''
     Yield contents line by line
@@ -22,6 +23,7 @@ def read_csv(csv_path):
             if row:  # Skip empty lines
                 yield row.split(',')
 
+
 def fetch_length(bucket, ref_num):
     '''
     Fetch length from Black Pearl using
@@ -30,6 +32,7 @@ def fetch_length(bucket, ref_num):
     r = ds3.HeadObjectRequest(bucket, ref_num)
     result = CLIENT.head_object(r)
     return result.response.msg['content-length']
+
 
 def write_to_new_csv(data):
     '''
@@ -44,6 +47,7 @@ def write_to_new_csv(data):
     with open(NEW_CSV_PATH, 'a', newline='') as csv_file:
         datawrite = csv.writer(csv_file)
         datawrite.writerow(data)
+
 
 def check_complete(ref_num):
     '''
@@ -65,6 +69,7 @@ def check_complete(ref_num):
         return False
 
     return False
+
 
 def main():
     '''
@@ -96,6 +101,7 @@ def main():
         except Exception as e:
             print(f"Error processing {ref_num}: {e}")
             continue
+
 
 if __name__ == '__main__':
     main()

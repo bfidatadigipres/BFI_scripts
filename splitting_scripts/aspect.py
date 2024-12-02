@@ -283,6 +283,7 @@ def main():
     '''
     LOGGER.info("==== aspect.py START =================")
     if not utils.check_control("power_off_all"):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     for fol in FOLDERS:
         LOGGER.info("Targeting folder: %s", fol)

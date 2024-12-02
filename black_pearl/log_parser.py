@@ -11,11 +11,12 @@ WARNING alerts issued for the given day.
 import os
 import sys
 import csv
-import json
 import shutil
 import datetime
 csv.field_size_limit(10000000)
 
+# Local imports
+sys.path.append(os.environ['CODE'])
 import utils
 
 # Date variable for use in ordering error outputs
@@ -32,23 +33,13 @@ CURRENT_ERRORS = os.path.join(CURRENT_ERROR_FOLD, 'current_errors.csv')
 CURRENT_ERRORS_NEW = os.path.join(CURRENT_ERROR_FOLD, 'current_errors_new.csv')
 
 
-def check_control():
-    '''
-    Check control_json isn't False
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['autoingest']:
-            print('* Exit requested by downtime_control.json. Script exiting')
-            sys.exit('Exit requested by downtime_control.json. Script exiting')
-
-
 def main():
     '''
     For standalone use of log_parser
     not, launched from autoingest
     '''
-    check_control()
+    if not utils.check_control('autoingest'):
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     create_current_errors_logs()
 
 
@@ -126,18 +117,8 @@ def create_current_errors_logs():
         shutil.move(CURRENT_ERRORS_NEW, CURRENT_ERRORS)
 
     print('* Creating versions of error log in all in-scope autoingest NAS shares')
-    # if os.path.exists(os.environ['AUTOINGEST_IS_DIG']):
-        # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_DIG'], 'current_errors/current_errors.csv'))
-    # if os.path.exists(os.environ['AUTOINGEST_IS_FILM']):
-        # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_FILM'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_IS_AUD']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_AUD'], 'current_errors/current_errors.csv'))
-    # if os.path.exists(os.environ['AUTOINGEST_IS_VID']):
-        # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_VID'], 'current_errors/current_errors.csv'))
-    # if os.path.exists(os.environ['AUTOINGEST_IS_ING']):
-        # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_ING'], 'current_errors/current_errors.csv'))
-    # if os.path.exists(os.environ['AUTOINGEST_IS_SPEC']):
-        # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_SPEC'], 'current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['AUTOINGEST_EDITSHARE']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_EDITSHARE'], 'current_errors/current_errors.csv'))
     if os.path.exists(os.environ['AUTOINGEST_H22']):
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_H22'], 'current_errors/current_errors.csv'))
     if os.path.exists(os.environ['AUTOINGEST_QNAP01']):
@@ -148,8 +129,8 @@ def create_current_errors_logs():
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP03'], 'current_errors/current_errors.csv'))
     if os.path.exists(os.environ['AUTOINGEST_QNAP04']):
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP04'], 'current_errors/current_errors.csv'))
-    # if os.path.exists(os.environ['AUTOINGEST_QNAP05']):
-        # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP05'], 'current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['AUTOINGEST_QNAP05']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP05'], 'current_errors/current_errors.csv'))
     if os.path.exists(os.environ['AUTOINGEST_QNAP06']):
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP06'], 'current_errors/current_errors.csv'))
     if os.path.exists(os.environ['AUTOINGEST_QNAP07']):

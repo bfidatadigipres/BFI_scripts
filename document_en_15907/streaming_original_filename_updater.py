@@ -31,6 +31,7 @@ import datetime
 # Local packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 ADMIN = os.environ.get('ADMIN')
@@ -55,17 +56,6 @@ GROUPINGS = {
     'Netflix': '400947, IMP',
     'Amazon': '401361, MOV'
 }
-
-
-def check_control():
-    '''
-    Check for downtime control
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
-            sys.exit("Script run prevented by downtime_control.json. Script exiting")
 
 
 def cid_check_items(grouping, file_type, platform):
@@ -170,7 +160,11 @@ def main():
     digital_acquired.filename already populated in CID media
     - if not update the CID digital media record with IMP name.
     '''
-    check_control()
+
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+
     LOGGER.info("=== Streaming Platform original filename updates START ===================")
 
     for key, value in GROUPINGS.items():
@@ -199,7 +193,9 @@ def main():
 
         # Iterate list of prirefs
         for priref in priref_list:
-            check_control()
+            if not utils.check_control('pause_scripts'):
+                LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+                sys.exit("Script run prevented by downtime_control.json. Script exiting.")
             digital_filenames, edit_date = cid_check_filenames(priref, platform)
             if edit_date not in date_range:
                 LOGGER.info("Skipping priref %s, out of date range: %s", priref, edit_date)

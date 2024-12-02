@@ -12,7 +12,11 @@ Iterates through each of list paths:
 '''
 
 import os
+import sys
 import shutil
+
+# Private imports
+sys.path.append(os.environ['CODE'])
 import utils
 
 # List with paths, folder names for counts
@@ -21,7 +25,6 @@ PATHS = [
     os.path.join(os.environ['QNAP_08'], 'memnon_processing/source/'),
     os.path.join(os.environ['QNAP_10'], 'processing/source/'),
     os.path.join(os.environ['QNAP_H22'], 'processing/source/'),
-#    os.path.join(os.environ['ISILON_VID'],'processing/source/'),
     os.path.join(os.environ['QNAP_VID'], 'processing/source/')
 ]
 

@@ -60,16 +60,6 @@ SUPPLIERS = {"East Anglian Film Archive": "eafa",
              "Wessex Film and Sound Archive": "wfsa",
              "Yorkshire Film Archive": "yfa"}
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            return False
-        else:
-            return True
 
 def local_time():
     '''
@@ -117,11 +107,9 @@ def transcode_mp4(fpath):
         logger.warning("%s\tWARNING\tSCRIPT EXITING: Error with file path supplied, not a file: %s", local_time(), fullpath)
         return 'failed transcode'
 
-    running = check_control()
-    if not running:
+    if not utils.check_control('pause_scripts'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-        return 'False'
-
     log_build = []
 
     filepath, file = os.path.split(fullpath)

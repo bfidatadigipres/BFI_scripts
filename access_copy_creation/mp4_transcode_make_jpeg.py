@@ -956,6 +956,8 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = scale_sd_16x9
     elif height < 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
+    elif width == 1280 and height >= 720:
+        cmd_mid = hd_16x9
     elif height == 720 and dar == '16:9':
         cmd_mid = hd_16x9
     elif height == 720 and width >= 1200:

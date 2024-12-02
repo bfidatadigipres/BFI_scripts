@@ -117,8 +117,11 @@ def mediainfo_create(arg, output_type, filepath, mediainfo_path):
     Output mediainfo data to text files
     '''
     filename = os.path.basename(filepath)
-    if len(arg) > 0:
-        out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}_FULL.txt")
+    if arg == '-f':
+        if output_type == 'TEXT':
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}_FULL.txt")
+        elif output_type == 'JSON':
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.json")
 
         command = [
             'mediainfo',
@@ -128,29 +131,20 @@ def mediainfo_create(arg, output_type, filepath, mediainfo_path):
             f'--LogFile={out_path}',
             filepath
         ]
-
     else:
         if 'XML' in output_type:
-            ext = 'xml'
-            outp = 'XML'
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
         elif 'EBUCore' in output_type:
-            ext = 'xml'
-            outp = 'EBUCore'
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
         elif 'PBCore' in output_type:
-            ext = 'xml'
-            outp = 'PBCore2'
-        elif 'JSON' in output_type:
-            ext = 'json'
-            outp = 'JSON'
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
         else:
-            ext = 'txt'
-            outp = 'TEXT'
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.txt")
 
-        out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.{ext}")
         command = [
             'mediainfo',
             '--Details=0',
-            f'--Output={outp}',
+            f'--Output={output_type}',
             f'--LogFile={out_path}',
             filepath
         ]
@@ -176,7 +170,7 @@ def checksum_test(CHECKSUM_PATH, check):
             if line.startswith('None'):
                 LOGGER.info(f"None entry found: {check}")
                 return True
-                
+
     except Exception as e:
         LOGGER.info(e)
         return None
@@ -224,7 +218,7 @@ def main():
     LOGGER.info("=============== Python3 %s END ==============", filename)
 
 
-# @tenacity.retry(stop=tenacity.stop_after_attempt(5))
+@tenacity.retry(stop=tenacity.stop_after_attempt(5))
 def make_metadata(fpath, fname, mediainfo_path):
     '''
     Create mediainfo files
@@ -236,7 +230,7 @@ def make_metadata(fpath, fname, mediainfo_path):
     path3 = mediainfo_create('', 'EBUCore', fname,mediainfo_path)
     path4 = mediainfo_create('', 'PBCore2', fname, mediainfo_path)
     path5 = mediainfo_create('', 'XML', fname, mediainfo_path)
-    path6 = mediainfo_create('', 'JSON', fname,mediainfo_path)
+    path6 = mediainfo_create('-f', 'JSON', fname,mediainfo_path)
 
     # Return path back to script directory
     os.chdir(os.path.join(CODE, 'hashes'))

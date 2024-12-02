@@ -19,6 +19,7 @@ LOG="${LOG_LEAD}checksum_maker${PATH_INSERT}launch.log"
 AUTOINGEST="${PTH}autoingest/black_pearl_ingest/"
 HASHES="$HASH_PATH"
 DUMP_TO="${HASHES}${PATH_INSERT}autoingest_file_list.txt"
+echo $DUMP_TO
 
 function control {
     boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')

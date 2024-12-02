@@ -208,54 +208,45 @@ def adjust_par_metadata(filepath):
         return True
 
 
-def fix_aspect_ratio(fpath, height, data):
+def fix_aspect_ratio(fpath, data):
     '''
-    Trim if height 608 if needed
-    Change DAR 4x3 to 16x9
+    Change AR 4x3 to 16x9
+    Crop not needed
+    Should always be MKV, but
+    re-encode to MKV if MOV found
     '''
     fpath_split, ext = os.path.splitext(fpath)
-    replace = f"{fpath_split}_4x3.{ext}"
+    replace = f"{fpath_split}_4x3.mkv"
 
     launch = [
         'ffmpeg', '-i',
         fpath
     ]
 
-    if str(height) == '608':
-        crop = [
-            '-vf',
-            'crop=720:608-32:0:576'
-        ]
-    else:
-        crop = []
-
     if 'mkv' in ext.lower():
+        cv = [
+            '-c:v', 'copy'
+        ]
+    elif 'mov' in ext.lower():
         cv = [
             '-c:v', 'ffv1', '-level', '3',
             '-g', '1', '-slicecrc', '1'
         ]
-    else:
-        cv = [
-            '-c:v', 'v210'
-        ]
-
     aspect = [
         '-aspect', '16:9'
     ]
-
     colour_build = [
         "-color_primaries", f"{data[2]}",
         "-color_trc", f"{data[1]}",
         "-colorspace", f"{data[0]}",
         "-color_range", "1"
     ]
-
     audio_map = [
         '-c:a', 'copy',
         '-map', '0',
         replace
     ]
-    command = launch + crop + cv + colour_build + aspect + audio_map
+    command = launch + cv + colour_build + aspect + audio_map
 
     try:
         process = subprocess.run(command, shell=False, capture_output=True, text=True)            
@@ -342,7 +333,7 @@ def main():
             print(aspect)
             if '16:9' in str(aspect):
                 LOGGER.info("File requires transcode to aspect ratio 16x9")
-                if not fix_aspect_ratio(f, height, colour):
+                if not fix_aspect_ratio(f, colour):
                     LOGGER.warning("Unsuccessful attempt to change Aspect ratio to 4x3: %s", fn)
                     continue
                 LOGGER.info("File metadata updated to 4x3 and file replaced with new version: %s", fn)

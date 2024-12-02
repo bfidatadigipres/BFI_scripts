@@ -274,7 +274,7 @@ def main():
     LOGGER.info("======== START Black Pearl blob ingest and validation %s START ========", sys.argv[1])
 
     for fname in files:
-        if not utils.check_control('black_pearl'):
+        if not utils.check_control('black_pearl') or not utils.check_control('pause_scripts'):
             LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         if '.DS_Store' in fname:

@@ -238,30 +238,31 @@ def fix_aspect_ratio(fpath, data):
         fpath
     ]
 
+    cv = []
     if 'mkv' in ext.lower():
         cv = [
-            '-c:v', 'copy'
+            "-c", "copy",
+            "-map", "0"
         ]
-    elif 'mov' in ext.lower():
+
+    else:
         cv = [
-            '-c:v', 'ffv1', '-level', '3',
-            '-g', '1', '-slicecrc', '1'
+            "-c:v", "ffv1", "-level", "3",
+            "-g", "1", "-slicecrc", "1",
+            "-color_primaries", f"{data[2]}",
+            "-color_trc", f"{data[1]}",
+            "-colorspace", f"{data[0]}",
+            "-color_range", "1",
+            "-c:a", "copy",
+            "-map", "0"
         ]
+
     aspect = [
-        '-aspect', '16:9'
-    ]
-    colour_build = [
-        "-color_primaries", f"{data[2]}",
-        "-color_trc", f"{data[1]}",
-        "-colorspace", f"{data[0]}",
-        "-color_range", "1"
-    ]
-    audio_map = [
-        '-c:a', 'copy',
-        '-map', '0',
+        "-aspect", "16:9",
         replace
     ]
-    command = launch + cv + colour_build + aspect + audio_map
+
+    command = launch + cv + aspect
 
     try:
         process = subprocess.run(command, shell=False, capture_output=True, text=True)            

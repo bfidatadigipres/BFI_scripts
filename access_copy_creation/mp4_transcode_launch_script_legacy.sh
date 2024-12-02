@@ -15,6 +15,18 @@ dump_to="${LOG_PATH}mp4_transcode${path_insert}files.txt"
 log_path="${LOG_PATH}mp4_transcode_make_jpeg_legacy.log"
 python_script="${CODE}access_copy_creation/mp4_transcode_make_jpeg_legacy.py"
 
+function control {
+    boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      echo 'Control json requests script exit immediately'
+      exit 0
+    fi
+}
+
+# Control check inserted into code
+control
+
 # replace list to ensure clean data
 echo "" > "${dump_to}"
 

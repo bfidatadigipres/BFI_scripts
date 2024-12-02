@@ -31,6 +31,9 @@ import datetime
 import requests
 import tenacity
 
+sys.path.append(os.environ['CODE'])
+import utils
+
 # Global variables
 STORAGE_PATH = os.environ['STORA_PATH']
 LOG_PATH = os.environ['LOG_PATH']
@@ -177,6 +180,10 @@ def main():
     '''
     check_control()
     logger.info('========== Fetch augmented metadata script STARTED ===============================================')
+    if not utils.check_control('power_off_all'):
+        logger.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+
 
     fails = 0
     for item in CHANNEL.keys():

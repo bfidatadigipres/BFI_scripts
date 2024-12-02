@@ -50,7 +50,7 @@ TODAY_TIME = TODAY[11:19]
 TODAY_DATE = TODAY[:10]
 YEST = str(datetime.datetime.today() - datetime.timedelta(days=1))
 YEAR = YEST[:4]
-MONTH = YEST[5:7]  = down to 05 needed JMW
+MONTH = YEST[5:7]  #= down to 05 needed JMW
 # YEAR = '2024'
 # MONTH = '05'
 COMPLETE = os.environ['STORA_COMPLETED']

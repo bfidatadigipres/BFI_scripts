@@ -21,6 +21,10 @@ import logging
 import datetime
 import requests
 
+# Local packages
+sys.path.append(os.environ['CODE'])
+import utils
+
 # Setup logging
 logger = logging.getLogger('fetch_series_stora_augmented')
 hdlr = logging.FileHandler(os.path.join(os.environ['LOG_PATH'], 'fetch_series_stora_augmented.log'))
@@ -73,6 +77,10 @@ def main():
     '''
 
     check_control()
+    if not utils.check_control('power_off_all'):
+        logger.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        
     logger.info('========== Series Cache fetch metadata script STARTED ===============================================')
 
     for root, _, files in os.walk(PATHS):

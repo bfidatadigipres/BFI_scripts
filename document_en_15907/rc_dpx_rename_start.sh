@@ -12,6 +12,18 @@ qnap_path2="${QNAP_FILMOPS}${SEQ_RENUMBER}graded/"
 dump_to="${CODE_PATH}document_en_15907/"
 log_path="${LOG_PATH}qnap06_rc_dpx_rename.log"
 
+function control {
+    boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      echo 'Control json requests script exit immediately'
+      exit 0
+    fi
+}
+
+# Control check inserted into code
+control
+
 # Directory path change just to run shell find commands
 cd "${dump_to}"
 

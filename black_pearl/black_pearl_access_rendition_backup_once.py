@@ -64,17 +64,6 @@ START_FOLDERS = {
 }
 
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
 def get_size(fpath):
     '''
     Check the size of given folder path
@@ -194,7 +183,10 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-            check_control()
+            if not utils.check_control('black_pearl'):
+                LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+            
             LOGGER.info("** Working with access path date folder: %s", folder)
             files = os.listdir(os.path.join(access_path, folder))
             for file in files:

@@ -91,12 +91,16 @@ def main():
     # Checking for existence of Digital Media record
     print(text_path, filename)
     priref = cid_retrieve(filename)
+    if priref is None:
+        sys.exit('Script exiting. Could not find matching Priref.')
     if len(priref) == 0:
         sys.exit('Script exiting. Priref could not be retrieved.')
 
     print(f"Priref retrieved: {priref}. Writing metadata to record")
     json_path = make_paths(filename)[4]
     mdata_xml = build_metadata_xml(json_path, priref)
+    print(mdata_xml)
+    sys.exit("Not writing to anywhere")
     success = write_payload(priref, mdata_xml, 'container.duration')
     if success:
         LOGGER.info("Digital Media metadata from JSON successfully written to CID Media record: %s", priref)

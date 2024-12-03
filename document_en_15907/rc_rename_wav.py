@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
 '''
-rc_rename_wav.py
-
 Script functions:
-
 1. Pick up files (part whole 01 search first, then create list of all
    parts where whole is > 01, and check all files are in folder
    before acting against them - skip if part missing)
@@ -20,11 +17,7 @@ Script functions:
 5. All actions logged human readable for Mike, and placed in audio ops
    folder, at top level.
 
-NOTE: The script is configured to just let one WAV file pass at a time
-      with sys.exit functions behind each continue/at end of loop.
-      Remove for use against all file sin folder
 
-Joanna White
 2022
 '''
 
@@ -32,15 +25,15 @@ Joanna White
 import os
 import re
 import sys
-import json
-import time
 import shutil
 import logging
 import datetime
 import subprocess
 
 # Private packages
-import adlib
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
+import utils
 
 # Global paths/vars
 WAV_ARCHIVE_PATH = os.environ['WAV_ARCHIVE_RC']
@@ -51,9 +44,7 @@ LOCAL_LOG = os.path.join(WAV_ARCHIVE_PATH, 'rc_audio_renaming.log')
 LOG_PATH = os.environ['LOG_PATH']
 RC = os.environ['RC']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ['CID_API4']
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
@@ -65,31 +56,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        LOGGER.info('* Initialising CID session... Script will exit if CID off line')
-        CUR = adlib.Cursor(CID)
-        LOGGER.info("* CID online, script will proceed")
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical('Cannot establish CID session, exiting script')
-        sys.exit()
 
 
 def fname_split(filename):
@@ -186,58 +152,54 @@ def cid_query(database, search, object_number):
     '''
     Format CID query for cid_data_retrieval()
     '''
-    query = {'database': database,
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, title, title.article, object_number, derived_item, source_item, title.language'}
-    try:
-        query_result = CID.get(query)
-    except Exception:
+    fields = [
+        'priref',
+        'title',
+        'title.article',
+        'object_number',
+        'derived_item',
+        'source_item',
+        'title.language'
+    ]
+
+    record = adlib.retrieve_record(CID_API, database, search, '0', fields)[1]
+    if not record:
         print(f"cid_query(): Unable to retrieve data for {object_number}")
         LOGGER.exception("cid_query(): Unable to retrieve data for %s", object_number)
-        query_result = None
-    print(query_result.records)
-    try:
-        priref = query_result.records[0]['priref'][0]
-        print(priref)
-    except (KeyError, IndexError) as err:
+        return None
+
+    if 'priref' in str(record[0]):
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    else:
         priref = ""
-        print(err)
-    try:
-        ob_num = query_result.records[0]['object_number'][0]
-    except (KeyError, IndexError) as err:
+    if 'object_number' in str(record[0]):
+        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
+    else:
         ob_num = ""
-        print(err)
-    try:
-        title = query_result.records[0]['Title'][0]['title'][0]
-    except (KeyError, IndexError) as err:
+    if 'title' in str(record[0]):
+        title = adlib.retrieve_field_name(record[0], 'title')[0]
+    else:
         title = ""
-        print(err)
-    try:
-        title_article = query_result.records[0]['Title'][0]['title.article'][0]
-    except (KeyError, IndexError) as err:
-        print(err)
+    if 'title.article' in str(record[0]):
+        title_article = adlib.retrieve_field_name(record[0], 'title.article')[0]
+    else:
         title_article = ""
-    try:
-        title_language = query_result.records[0]['Title'][0]['title.language'][0]
-    except (KeyError, IndexError) as err:
+    if 'title.language' in str(record[0]):
+        title_language = adlib.retrieve_field_name(record[0], 'title.language')[0]
+    else:
         title_language = ""
-        print(err)
-    try:
-        derived_item = query_result.records[0]['Derived_item'][0]['derived_item'][0]
-    except (KeyError, IndexError) as err:
+    if 'derived_item' in str(record[0]):
+        derived_item = adlib.retrieve_field_name(record[0], 'derived_item')[0]
+    else:
         derived_item = ""
-        print(err)
-    try:
-        source_item = query_result.records[0]['Source_item'][0]['source_item'][0]
-    except (KeyError, IndexError) as err:
+    if 'source_item' in str(record[0]):
+        source_item = adlib.retrieve_field_name(record[0], 'source_item')[0]
+    else:
         source_item = ""
-        print(err)
 
     new_title = remove_whitespace(title)
 
-    return (priref, new_title, title_article, ob_num, derived_item, source_item, title_language)
+    return priref, new_title, title_article, ob_num, derived_item, source_item, title_language
 
 
 def cid_data_retrieval(ob_num):
@@ -247,7 +209,7 @@ def cid_data_retrieval(ob_num):
     '''
     cid_data = []
     search = f'(object_number="{ob_num}")'
-    priref = cid_query('Items', search, ob_num)[0]
+    priref = cid_query('items', search, ob_num)[0]
 
     if priref:
         print("Priref retrieved, checking for title.language...")
@@ -256,7 +218,7 @@ def cid_data_retrieval(ob_num):
         parent_search = f'(parts_reference->object_number="{ob_num}")'
 
     LOGGER.info("Retrieving CID data using query: %s", parent_search)
-    parent_data = cid_query('Manifestations', parent_search, ob_num)
+    parent_data = cid_query('manifestations', parent_search, ob_num)
 
     try:
         cid_data.extend(parent_data)
@@ -287,8 +249,13 @@ def main():
     and move to autoingest path in audio isilon share.
     '''
     LOGGER.info("========== rc_rename_wav.py START ============")
-    check_control()
-    cid_check()
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     wav_files = [f for f in os.listdir(WAV_ARCHIVE_PATH) if f.endswith(('.wav', '.WAV'))]
     if len(wav_files) == 0:
@@ -588,33 +555,24 @@ def create_wav_record(gp_priref, title, title_article, title_language):
     item_values.append({'title.type': '05_MAIN'})
     print(item_values)
 
-    try:
-        i = CUR.create_record(database='items',
-                              data=item_values,
-                              output='json',
-                              write=True)
-        print(i)
-        print(i.records)
-        if i.records:
-            try:
-                wav_priref = i.records[0]['priref'][0]
-                wav_ob_num = i.records[0]['object_number'][0]
-                print(f'** WAV Item record created with Priref {wav_priref}')
-                print(f'** WAV Item record created with object number {wav_ob_num}')
-                LOGGER.info('WAV Item record created with priref %s', wav_priref)
-                return wav_ob_num, wav_priref
-            except Exception:
-                LOGGER.exception("WAV Item record failed to retrieve object number")
-                return None
-        else:
-            print(f"\nUnable to create CID WAV item record for {title}")
-            LOGGER.exception("Unable to create WAV item record!")
+    item_values_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
+    record = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+    if record:
+        try:
+            wav_priref = adlib.retrieve_field_name(record, 'priref')[0]
+            wav_ob_num = adlib.retrieve_field_name(record, 'object_number')[0]
+            print(f'** WAV Item record created with Priref {wav_priref}')
+            print(f'** WAV Item record created with object number {wav_ob_num}')
+            LOGGER.info('WAV Item record created with priref %s', wav_priref)
+            return wav_ob_num, wav_priref
+        except Exception:
+            LOGGER.exception("WAV Item record failed to retrieve object number")
             return None
-    except Exception:
+    else:
         print(f"\nUnable to create CID WAV item record for {title}")
         LOGGER.exception("Unable to create WAV item record!")
         return None
-
+  
 
 def append_source(source_ob_num, priref, ob_num):
     '''
@@ -623,18 +581,13 @@ def append_source(source_ob_num, priref, ob_num):
     after push is only way to verify if successful.
     '''
     source = {'source_item': source_ob_num}
-
-    try:
-        result = CUR.create_occurrences(database='items',
-                                        priref=priref,
-                                        data=source,
-                                        output='json')
-        print(result)
-    except Exception as err:
-        LOGGER.warning("Unable to append work data to CID work record: %s", err)
+    source_xml = adlib.create_record_data(CID_API, 'items', priref, source)
+    record = adlib.post(CID_API, source_xml, 'items', 'updaterecord')
+    if not record:
+        LOGGER.warning("Unable to append work data to CID work record: %s", priref)
+        return False
 
     # Attempt retrieval of source_item, only means to check if populated
-    time.sleep(10)
     search = f'(priref="{priref}")'
     data = cid_query('items', search, ob_num)
     print(f"CHECK FOR SOURCE_ITEM: {data}")

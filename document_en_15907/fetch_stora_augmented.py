@@ -14,7 +14,6 @@ move():
 folder_check():
 7. Called by move(): looks for folders without .json files in. If found renames the csv to end '.stora'
 
-Stephen McConnachie / Joanna White
 2020
 '''
 
@@ -32,6 +31,9 @@ import datetime
 import requests
 import tenacity
 
+sys.path.append(os.environ['CODE'])
+import utils
+
 # Global variables
 STORAGE_PATH = os.environ['STORA_PATH']
 LOG_PATH = os.environ['LOG_PATH']
@@ -41,11 +43,11 @@ UNMATCHED_JSON = os.path.join(STORAGE_PATH, 'unmatched_jsons/')
 TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=3)
 YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
-#START = f'{YESTERDAY_CLEAN}T00:00:00'
-#END = f'{YESTERDAY_CLEAN}T23:59:00'
+START = f'{YESTERDAY_CLEAN}T00:00:00'
+END = f'{YESTERDAY_CLEAN}T23:59:00'
 # If a different date period needs targeting use:
-START = '2024-11-29T00:00:00'
-END = '2024-11-29T23:59:00'
+#START = '2024-10-19T00:00:00'
+#END = '2024-10-19T23:59:00'
 DATE_PATH = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
@@ -179,6 +181,10 @@ def main():
     '''
     check_control()
     logger.info('========== Fetch augmented metadata script STARTED ===============================================')
+    if not utils.check_control('power_off_all'):
+        logger.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+
 
     fails = 0
     for item in CHANNEL.keys():

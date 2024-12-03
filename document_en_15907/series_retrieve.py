@@ -10,7 +10,6 @@ series_retrieve():
 2. Where present download the JSON to cache folder named as the series id
 3. Save this file into relevant folder, SERIES_CACHE_PATH
 
-Joanna White
 2023
 '''
 
@@ -19,7 +18,6 @@ import os
 import time
 import json
 import logging
-import datetime
 import requests
 
 # Global variables
@@ -36,8 +34,8 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 # API variables to access Press Association metadata
-URL = os.environ['PATV_URL']
-QUERY = {"aliases":"true"}
+URL = os.environ['PATV_FETCH']
+QUERY = {"aliases": "true"}
 HEADERS = {
     "Accept": "application/json",
     "apikey": os.environ['PATV_KEY']

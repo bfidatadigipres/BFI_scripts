@@ -1,14 +1,14 @@
-#! /usr/bin/env LANG=en_UK.UTF-8 /usr/local/bin/python3
+#!/usr/bin/env python3
 
 '''
 Curatorial Donor Acquisition Rename:
 
 *** MUST BE LAUNCHED FROM SHELL START SCRIPT ***
-1. Receive list of ‘workflow ****’ folders at a maximum and minimum depth of 2
+1. Receive list of 'workflow ****' folders at a maximum and minimum depth of 2
    folders from the curatorial isilon share. Each entry is passed to this
    Python script and populates sys.argv[1] with the path name and launching
    a single run of the script.
-2. Look through ‘workflow ****’ folder for files or folders, iterating through each.
+2. Look through 'workflow ****' folder for files or folders, iterating through each.
 3. Where a folder is found, the contents are checked for image sequence files
    (TIF, DPX, MXF) and a note is appended to a local log (placed within the
    'workflow ****' folder) recommending certain actions to be taken.
@@ -24,7 +24,7 @@ Curatorial Donor Acquisition Rename:
 
 NOTE: DMS may want to alter accepted filetypes over time.
 
-Joanna White 2022
+2022
 Python 3.6+
 '''
 
@@ -32,20 +32,22 @@ Python 3.6+
 import subprocess
 import datetime
 import logging
-import json
+import shutil
 import sys
 import os
 
 # Private packages
-import adlib
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
+import utils
 
 # Global path variables
-CURATORIAL_PATH = os.environ['IS_CURATORIAL']
+CURATORIAL_PATH = os.environ['CURATORIAL']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 DIGIOPS_PATH = os.path.join(os.environ['QNAP_11_DIGIOPS'], 'Acquisitions/Curatorial/')
 RSYNC_LOG = os.path.join(DIGIOPS_PATH, 'transfer_logs')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('curatorial_donor_acquisition_rename.log')
@@ -56,34 +58,9 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 # Global variables
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        CUR = adlib.Cursor(CID)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical('Cannot establish CID session, exiting script')
-        sys.exit()
 
 
 def cid_retrieve(itemname, search):
@@ -91,42 +68,56 @@ def cid_retrieve(itemname, search):
     Receive filename and search in CID items
     Return object number to main
     '''
-    query = {'database': 'items',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, object_number, title, Acquired_filename, digital.acquired_filename'}
     try:
-        query_result = CID.get(query)
+        query_result = adlib.retrieve_record(CID_API, 'items', search, 0)[1]
     except Exception:
-        print("cid_retrieve(): Unable to retrieve data for {}".format(itemname))
+        print(f"cid_retrieve(): Unable to retrieve data for {itemname}")
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", itemname)
         query_result = None
-    print(query_result.records[0])
+    if query_result is None:
+        return None
     try:
-        acquired1 = query_result.records[0]['Acquired_filename']
+        acquired1 = []
+        all_filenames = len(query_result[0]['Acquired_filename'])
+        for num in range(0, all_filenames):
+            acquired1.append(adlib.retrieve_field_name(query_result[0]['Acquired_filename'][num], 'digital.acquired_filename')[0])
     except (KeyError, IndexError) as err:
         acquired1 = []
         LOGGER.warning("cid_retrieve(): Unable to access acquired filename1 %s", err)
         print(err)
     try:
-        priref = query_result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(query_result[0], 'priref')[0]
         print(priref)
     except (KeyError, IndexError) as err:
         priref = ""
         LOGGER.warning("cid_retrieve(): Unable to access priref %s", err)
     try:
-        ob_num = query_result.records[0]['object_number'][0]
+        ob_num = adlib.retrieve_field_name(query_result[0], 'object_number')[0]
     except (KeyError, IndexError) as err:
         ob_num = ""
         LOGGER.warning("cid_retrieve(): Unable to access object_number: %s", err)
     try:
-        title = query_result.records[0]['Title'][0]['title'][0]
+        title = adlib.retrieve_field_name(query_result[0]['Title'][0], 'title')[0]
     except (KeyError, IndexError) as err:
         title = ""
         LOGGER.warning("cid_retrieve(): Unable to access title: %s", err)
 
     return (priref, ob_num, title, acquired1)
+
+
+def sort_ext(ext):
+    '''
+    Decide on file type
+    '''
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg', 'mpg'],
+                 'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
+                 'audio': ['wav', 'flac', 'mp3'],
+                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}
+
+    ext = ext.lower()
+    for key, val in mime_type.items():
+        if str(ext) in str(val):
+            return key
 
 
 def main():
@@ -137,8 +128,12 @@ def main():
     Rename and move to successful_rename/ folder
     '''
     LOGGER.info("=========== START Curatorial Donor Acquisition rename script START ==========")
-    check_control()
-    cid_check()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
     if len(sys.argv) < 2:
         LOGGER.warning("SCRIPT EXITING: Error with shell script input:\n%s\n", sys.argv)
         sys.exit()
@@ -179,7 +174,7 @@ def main():
     spath = check_path(root, success_path)
     full_spath = os.path.join(root, spath)
     try:
-        os.makedirs(full_spath, exist_ok=False)
+        os.makedirs(full_spath, mode=0o777, exist_ok=False)
         LOGGER.info("Making new success folder: %s", full_spath)
     except FileExistsError as err:
         LOGGER.warning("Folder already exists... %s", err)
@@ -192,17 +187,32 @@ def main():
         if item.startswith('.'):
             continue
         itempath = os.path.join(fullpath, item)
+        if itempath.endswith(('.ini', '.json', '.document', '.edl', '.doc', '.docx', '.txt', '.mhl', '.DS_Store', '.log', '.md5')):
+            continue
         LOGGER.info("Item found checking file validity: %s", itempath)
         cid_data, priref, ob_num, title, acquired1 = '', '', '', '', ''
-        if itempath.endswith(('.ini', '.json', '.document', '.edl', '.doc', '.docx', '.txt', '.mhl', '.DS_Store', '.log')):
-            continue
         print(f"Item path found to process: {itempath}")
         LOGGER.info("** File okay to process: %s", item)
         LOGGER.info("Looking in CID item records for filename match...")
 
+        # Check if item is video file, then check for truncation
+        ext = os.path.splitext(itempath)[1]
+        ftype = sort_ext(ext)
+        LOGGER.info("File type for %s is %s", item, ftype)
+        if ftype == 'video':
+            duration = utils.get_metadata('General', 'Duration', itempath)
+            if len(duration) == 0:
+                LOGGER.warning("Skipping: General duration missing from video file %s - moving to fail_trucated/ folder", item)
+                os.makedirs(os.path.join(fullpath, 'fail_truncated'), mode=0o777, exist_ok=True)
+                shutil.move(itempath, os.path.join(fullpath, 'fail_truncated/', item))
+                continue
+
         # Retrieve CID data
         search = f'digital.acquired_filename="{item}"'
         cid_data = cid_retrieve(item, search)
+        if cid_data is None:
+            LOGGER.info("Skipping: No name match found for %s", item)
+            continue
         priref = cid_data[0]
         ob_num = cid_data[1]
         title = cid_data[2]
@@ -257,9 +267,12 @@ def main():
 
     # Rsync completed folder over
     local_logger(f"\nStarting RSYNC copy of {new_workflow_folder} to Digiops QC Curatorial path", fullpath)
+    print("Rsync start here")
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
     # Repeat for checksum pass if first pass fails
+    print("Repeat rsync start")
     rsync(spath, DIGIOPS_PATH, new_workflow_folder)
+    print("Rsync finished")
     local_logger("RSYNC complete.", fullpath)
 
     LOGGER.info("============= END Curatorial Donor Acquisition rename script END ============")
@@ -281,30 +294,27 @@ def check_path(root, spath):
 
     if not dir_list:
         return f"{spath}_01"
-    else:
-        dir_list.sort()
-        last_dir = dir_list[-1]
-        num = int(last_dir[-2:]) + 1
-        number = str(num).zfill(2)
-        return f"{spath}_{number}"
+
+    dir_list.sort()
+    last_dir = dir_list[-1]
+    num = int(last_dir[-2:]) + 1
+    number = str(num).zfill(2)
+    return f"{spath}_{number}"
 
 
 def make_filename(ob_num, item_list, item):
     '''
     Take individual elements and calculate part whole
     '''
+    print("** Might break here")
+    print(item_list)
     extension = False
     file = ob_num.replace('-', '_')
     ext = os.path.splitext(item)
     if len(ext[1]) > 0:
         extension = True
-    acquired_list = []
-    for dct in item_list:
-        for _, val in dct.items():
-            for string in val:
-                acquired_list.append(string)
-    part = acquired_list.index(item)
-    whole = len(acquired_list)
+    part = item_list.index(item)
+    whole = len(item_list)
     part_ = int(part) + 1
     part_ = str(part_).zfill(2)
     whole_ = str(whole).zfill(2)
@@ -332,6 +342,7 @@ def rsync(file_path1, file_path2, folder):
 
     try:
         LOGGER.info("rsync(): Beginning rsync move of file %s to %s", file_path1, file_path2)
+        print(f"Start rsync: {rsync_cmd}")
         subprocess.call(rsync_cmd)
     except Exception:
         LOGGER.exception("rsync(): Move command failure: %s to %s", file_path1, file_path2)
@@ -350,16 +361,16 @@ def folder_found(fullpath):
             if file.endswith(('.dpx', '.DPX')):
                 image_seq = 'DPX'
                 break
-            elif file.endswith(('.tif', '.tiff', '.TIF', '.TIFF')):
+            if file.endswith(('.tif', '.tiff', '.TIF', '.TIFF')):
                 image_seq = 'TIF'
                 break
-            elif file.endswith(('.mxf', '.MXF')):
+            if file.endswith(('.mxf', '.MXF')):
                 image_seq = 'MXF'
                 break
-            elif os.path.isfile(filepath):
+            if os.path.isfile(filepath):
                 local_logger(f"\n{fullpath}:\nSub folder found containing files. Please review contents and remove from Workflow folder", path)
                 break
-            else:
+            if os.path.isdir(filepath):
                 local_logger(f"\n{fullpath}: Folder found containing no files. Please review and remove from Workflow folder", path)
                 break
     if len(image_seq) > 0:
@@ -374,7 +385,7 @@ def rename_pth(filepath, new_filename):
     new_filepath = ''
     path, old_filename = os.path.split(filepath)
     new_filepath = os.path.join(path, new_filename)
-    print("Renaming {} to {}".format(old_filename, new_filename))
+    print(f"Renaming {old_filename} to {new_filename}")
 
     try:
         os.rename(filepath, new_filepath)

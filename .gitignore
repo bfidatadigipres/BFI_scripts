@@ -1,4 +1,5 @@
 # File/folders to be ignored
+*list.json
 *.csv
 *.yaml
 *.txt

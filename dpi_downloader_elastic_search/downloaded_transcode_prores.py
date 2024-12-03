@@ -11,7 +11,6 @@ encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
 and transcode.
 
-Joanna White
 2023
 '''
 
@@ -23,6 +22,10 @@ import json
 import logging
 import subprocess
 import magic
+
+# Private packages
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Global paths from server environmental variables
 PATH_POLICY = os.environ['MEDIACONCH']
@@ -37,18 +40,6 @@ formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            return False
-        else:
-            return True
 
 
 def check_mime_type(fpath):
@@ -488,9 +479,8 @@ def transcode_mov(fpath):
     if not mime_true:
         logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", sys.argv)
         return 'not video'
-    running = check_control()
-    if not running:
-        logger.warning('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_control('pause_scripts'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
         return False
 
     logger.info("================== START DPI download transcode to prores START ==================")
@@ -533,7 +523,7 @@ def transcode_mov(fpath):
         return 'transcode fail'
     toc = time.perf_counter()
     encoding_time = (toc - tic) // 60
-    seconds_time = (toc - tic)
+    seconds_time = toc - tic
     logger_data.append(f"*** Encoding time for {file}: {encoding_time} minutes or as seconds: {seconds_time}")
     logger_data.append("Checking if new Prores file passes Mediaconch policy")
     pass_policy = check_policy(output_fullpath)
@@ -551,4 +541,3 @@ def transcode_mov(fpath):
             logger.info("%s", line)
         logger.info("==================== END DPI download transcode to prores END ====================")
         return 'transcode fail'
-

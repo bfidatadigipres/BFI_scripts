@@ -11,7 +11,6 @@ encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
 and transcode. Deletes source if successful.
 
-Joanna White
 2023
 '''
 
@@ -20,11 +19,13 @@ import re
 import sys
 import time
 import json
-import getopt
 import logging
 import subprocess
 import magic
 
+
+sys.path.append(os.environ['CODE'])
+import utils
 # Global paths from server environmental variables
 MP4_POLICY = os.environ['MP4_POLICY']
 LOG = os.environ['LOG_PATH']
@@ -623,9 +624,12 @@ def transcode_mp4_access(fpath, arg):
     if not mime_true:
         logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", fullpath)
         return 'not video'
+
+    
     running = check_control()
     if not running:
         logger.warning('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit()
         return 'False'
 
     logger.info("================== START DPI download transcode to MP4 watermark START ==================")

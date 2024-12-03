@@ -6,7 +6,7 @@ Python interface for [Adlib API]
 Edward Anderson, 2017
 
 Converted for Python3
-Joanna White, 2021
+2021
 '''
 
 import re
@@ -591,7 +591,7 @@ class Cursor:
         else:
             return payload
 
-    def create_record_data(self, data=None):
+    def create_record_data(self, priref, data=None):
         '''
         Create a record from given XML string or dictionary (or list of dictionaries)
         '''
@@ -612,8 +612,12 @@ class Cursor:
         for i in fragment:
             record.append(etree.fromstring(i))
 
-        # Insert `priref=0` element
-        record.append(etree.fromstring('<priref>0</priref>'))
+        if not priref:
+            # Insert `priref=0` element
+            record.append(etree.fromstring('<priref>0</priref>'))
+        else:
+            # Insert `priref` element
+            record.append(etree.fromstring(f'<priref>{priref}</priref>'))
 
         # Convert XML object to string
         payload = etree.tostring(record)

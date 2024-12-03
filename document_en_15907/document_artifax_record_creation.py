@@ -23,7 +23,8 @@ Fetch metadata from Artifax
    (to be tested with Artifax sandbox)
 4. Delete JSON files in completed/ folder if over 2 days since last modification
 
-Joanna White
+NOTE: Updated to Adlib V3
+
 2021
 '''
 
@@ -40,9 +41,10 @@ import itertools
 from datetime import timedelta
 
 # Local packages
-sys.path.append(os.environ['CODE'])
-import adlib
 import title_article
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
+import utils
 
 # Local date vars for script comparison/activation
 TODAY_TIME = str(datetime.datetime.now())
@@ -58,6 +60,7 @@ JSON_DELETE_PATH = os.environ['COMPLETED_PATH']
 LANGUAGE_MAP = os.environ['LANGUAGE_YAML']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
+CID_API = os.environ['CID_API4']
 
 # Setup logging (running from bk-qnap-video)
 logger = logging.getLogger('document_artifax_record_creation')
@@ -74,10 +77,6 @@ CUSTOM_API = os.environ['ARTIFAX_CUSTOM']
 HEADERS = {
     "X-API-KEY": os.environ['ARTIFAX_API_KEY']
 }
-
-# CID URL details
-cid = adlib.Database(os.environ['CID_API'])
-cur = adlib.Cursor(cid)
 
 # Data for CID Festival/Artifax season thesaurus look up
 FESTIVALS = {
@@ -103,31 +102,6 @@ FESTIVALS = {
 }
 
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def check_cid():
-    '''
-    Check CID is online
-    '''
-    try:
-        logger.info('* Initialising CID session... Script will exit if CID off line')
-        cur = adlib.Cursor(cid)
-        logger.info("* CID online, script will proceed")
-    except Exception:
-        print("* Cannot establish CID session, exiting script")
-        logger.exception('Cannot establish CID session, exiting script')
-        sys.exit()
-
-
 def date_gen(date_str):
     '''
     Attributed to Ayman Hourieh, Stackoverflow question 993358
@@ -147,7 +121,7 @@ def get_country(code):
     code = code.lower()
     with open(LANGUAGE_MAP, 'r') as files:
         data = (yaml.load(files, Loader=yaml.FullLoader))
-        for key, val in data.items():
+        for _ in data.items():
             if str(code) in data['languages']:
                 country = data['languages'][f'{code}']
     return country
@@ -237,8 +211,12 @@ def main():
     Iterate through each work_id to assess suitability to make new CID work record
     Extract data from relevant work_ids and pass into CID with defaults for CID works from Artifax Festivals
     '''
-    check_cid()
-    check_control()
+    if not utils.check_control('pause_scripts'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     # Opening log statement
     logger.info('========== Python3 start: Fetching Artifax JSON data and creating CID record =======')
@@ -262,6 +240,7 @@ def main():
                 season_list = []
                 season_json = os.path.basename(val)
                 logger.info("Opening and extracting data from: %s", season_json)
+
                 # split season_json name to usable variables:
                 season_data = season_json.split('_')
                 season_code = season_data[0]
@@ -385,6 +364,7 @@ def main():
 
                         # Create CID record and extract priref/object_number
                         cid_data = create_work(work_data_dct)
+                        print(f"CID data returned from create_work: {cid_data}")
                         cid_priref = cid_data[0]
                         cid_object_number = cid_data[1]
                         # Push back if priref to Artifax
@@ -400,7 +380,7 @@ def main():
                         else:
                             logger.warning("Artifax push confirmation not received for %s", cid_object_number)
 
-    remove_json(JSON_DELETE_PATH)
+    #remove_json(JSON_DELETE_PATH)
     logger.info('========== Python3 end - script completed =========\n')
 
 
@@ -484,6 +464,8 @@ def create_work(work_data_dct=None):
         logger.warning("create_work(): Work data dictionary failed to send from main()")
 
     # Work record defaults, basic and retrieve priref/object_numberfor Artifax push
+    title = work_data_dct[0]['title']
+    print(title)
     application_restriction_date = str(datetime.date.today() + datetime.timedelta(120))
     application_restriction_date_8yr = str(datetime.date.today() + datetime.timedelta(2922))
     work_default = []
@@ -498,11 +480,11 @@ def create_work(work_data_dct=None):
                     {'record_access.date': TODAY},
                     {'record_access.duration': 'TEMP'},
                     {'record_access.review_date': application_restriction_date},
-                    {'record_access.user': '$REST'},
-                    {'record_access.rights': '1'},
-                    {'record_access.reason': 'SENSITIVE_LEGAL'},
-                    {'record_access.date': TODAY},
-                    {'record_access.duration': 'TEMP'},
+                    #{'record_access.user': '$REST'},
+                    #{'record_access.rights': '1'},
+                    #{'record_access.reason': 'SENSITIVE_LEGAL'},
+                    #{'record_access.date': TODAY},
+                    #{'record_access.duration': 'TEMP'},
                     {'record_access.review_date': application_restriction_date},
                     {'record_access.user': 'vickr'},
                     {'record_access.rights': '2'},
@@ -530,22 +512,23 @@ def create_work(work_data_dct=None):
     work_values.extend(work_default)
 
     # Create basic work record
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
+    if work_values_xml is None:
+        return None
+    print("***************************")
+    print(work_values_xml)
+
     try:
-        wrk = cur.create_record(database='works',
-                                data=work_values,
-                                output='json',
-                                write=True)
-        if wrk.records:
-            try:
-                cid_priref = wrk.records[0]['priref'][0]
-                cid_object_number = wrk.records[0]['object_number'][0]
-                print(f'* Work record created with Priref {cid_priref}')
-                logger.info('create_work(): Work record created with priref %s', cid_priref)
-
-            except Exception as error:
-                logger.warning("CID work id is not present - error:", error)
-                raise
-
+        logger.info("Attempting to create Work record for item %s", title)
+        record = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
+        if record:
+            cid_priref = adlib.retrieve_field_name(record, 'priref')[0]
+            cid_object_number = adlib.retrieve_field_name(record, 'object_number')[0]
+            print(f'* Work record created with Priref {cid_priref} Object number {cid_object_number}')
+            logger.info('create_work(): Work record created with priref %s', cid_priref)
+        else:
+            logger.warning("CID priref/object_number is not present after creating CID record")
+            print("Creation of record failed using adlib.post()")
     except Exception as err:
         print('* Unable to create Work record')
         logger.critical('create_work():Unable to create Work record', err)
@@ -560,7 +543,7 @@ def push_priref_artifax(object_id, priref):
     '''
     dct = []
     data = {'object_id': object_id,
-            'object_type_id': '55',
+            'object_type_id': '69',
             'custom_form_element_id': '1004',
             'custom_form_assignment_id': '25493',
             'custom_form_data_value': priref}
@@ -578,7 +561,7 @@ def push_ob_num_artifax(object_id, object_number):
     '''
     dct = []
     data = {'object_id': object_id,
-            'object_type_id': '55',
+            'object_type_id': '69',
             'custom_form_element_id': '1003',
             'custom_form_assignment_id': '25493',
             'custom_form_data_value': object_number}
@@ -592,9 +575,9 @@ def push_ob_num_artifax(object_id, object_number):
 def remove_json(completed_path):
     '''
     Clear files moved into completed/ folder to prevent congestion
-    When over 48 hours/2 days old
+    When over 48 hours/2 days old. utcnow() depracated Py3.12
     '''
-    for root, dirs, files in os.walk(completed_path):
+    for root, _, files in os.walk(completed_path):
         for file in files:
             filepath = os.path.join(root, file)
             delta = timedelta(seconds=864000)

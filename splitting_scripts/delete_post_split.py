@@ -15,29 +15,27 @@ Note: this script requires the BlackPearl creds loaded as
           python backup.py
 
 Refactored for Python3
-Joanna White
+Updated for Adlib V3
 2023
 '''
 
 # Public packages
 import os
 import sys
-import json
 import shutil
 import logging
 from ds3 import ds3
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
+import utils
 import models
 
 # Global variables
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ['CID_API4']
 CLIENT = ds3.createClientFromEnv()
 
 TARGETS = [
@@ -55,31 +53,6 @@ formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl'] or not j['split_control_delete']:
-            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        logger.info('* Initialising CID session... Script will exit if CID off line')
-        CUR = adlib.Cursor(CID)
-        logger.info("* CID online, script will proceed %s", CUR)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        logger.critical('Cannot establish CID session, exiting script')
-        sys.exit()
 
 
 def get_object_list(fname):
@@ -116,8 +89,13 @@ def main():
     to process.
     '''
     for media_target in TARGETS:
-        check_control()
-        cid_check()
+        if not utils.check_control('split_control_delete') or not utils.check_control('black_pearl'):
+            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if not utils.cid_check(CID_API):
+            print("* Cannot establish CID session, exiting script")
+            logger.critical("* Cannot establish CID session, exiting script")
+            sys.exit()
 
         # Path to source media
         root = os.path.join(media_target, 'source')
@@ -167,6 +145,9 @@ def main():
             except Exception:
                 continue
 
+            if not isinstance(items, list):
+                items = [items]
+
             # Track BlackPearl-preserved objects
             preserved_objects = {}
 
@@ -179,7 +160,7 @@ def main():
 
             # Process each item on tape
             for item in items:
-                object_number = item['object_number'][0]
+                object_number = adlib.retrieve_field_name(item, 'object_number')[0]
 
                 # Check expected number of media records have been created for correct grouping
                 if '/qnap_h22/' in filepath or '/qnap_10/' in filepath:
@@ -187,20 +168,19 @@ def main():
                 else:
                     grouping = '397987'
 
-
-                result = get_results(filepath, grouping, object_number)
-                if not result:
+                record = get_results(filepath, grouping, object_number)
+                if not record:
                     logger.warning('%s\tNo CID record found for object_number %s and grouping %s', filepath, object_number, grouping)
                     continue
 
                 # Check that each media record umid has been preserved to tape by BlackPearl
-                for r in result.records:
-                    bp_umid = r['reference_number'][0]
+                for rec in record:
+                    bp_umid = adlib.retrieve_field_name(rec, 'reference_number')[0]
                     try:
-                        bucket = r['preservation_bucket'][0]
+                        bucket = adlib.retrieve_field_name(rec, 'preservation_bucket')[0]
                     except (IndexError, TypeError, KeyError):
                         bucket = 'imagen'
-                    original_filename = r['imagen.media.original_filename'][0]
+                    original_filename = adlib.retrieve_field_name(rec, 'imagen.media.original_filename')[0]
                     print(f'* CID Media record has reference number {bp_umid} and original filename {original_filename}')
                     logger.info('%s\tCID Media record has reference number %s and original filename %s', filepath, bp_umid, original_filename)
 
@@ -217,6 +197,7 @@ def main():
                         print(f'* Total objects expected = {total_objects_expected}')
 
             deleteable = len(preserved_objects) >= total_objects_expected
+            logger.info('%s\tPreserved objects: %s / Total objects expected: %s', filepath, len(preserved_objects), total_objects_expected)
             print(f'{f}\tDeletable={deleteable}\t{len(preserved_objects)}/{total_objects_expected}')
 
             # Set move destination
@@ -248,7 +229,7 @@ def main():
 
             else:
                 print(f'* Ignoring because not all Items are persisted: {filepath}, {len(preserved_objects)} persisted, {total_objects_expected} expected')
-                logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath,len(preserved_objects), total_objects_expected)
+                logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath, len(preserved_objects), total_objects_expected)
 
 
 def get_results(filepath, grouping, object_number):
@@ -256,25 +237,24 @@ def get_results(filepath, grouping, object_number):
     Checks for cross-over period between 'datadigipres'
     and 'collectionssystems' in CID media record
     '''
-    query = f"""(object.object_number->((grouping.lref='{grouping}') and (input.name='datadigipres' or input.name='collectionssystems') and (source_item->(object_number='{object_number}'))))"""
-    q = {'database': 'media',
-         'search': query,
-         'output': 'json',
-         'fields': 'reference_number, imagen.media.original_filename, preservation_bucket',
-         'limit': '0'}
 
+    search = f'(object.object_number->((grouping.lref="{grouping}") and (input.name="datadigipres" or input.name="collectionssystems") and (source_item->(object_number="{object_number}"))))'
+    fields = [
+        'reference_number',
+        'imagen.media.original_filename',
+        'preservation_bucket'
+    ]
     print(f'* Querying for ingest status of CID Item record {object_number}')
-    try:
-        result = CID.get(q)
-        logger.info('%s\tCID Item record found, with object number %s', filepath, object_number)
-        return result
-    except Exception as err:
-        print(f'* CID query failed to obtain result using input.name {input_name}')
-        print(err)
-        logger.warning('%s\tCID query failed to obtain result with input.name %s', filepath, input_name)
+    hits, record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)
+    print(f'Hits: {hits}\nRecord: {record}')
+    if hits is None or hits == 0:
+        print(f'* CID query failed to obtain result using search:\n{search}')
+        logger.warning('%s\tCID query failed to obtain result with input.name datadigipres', filepath)
         return None
+    if hits >= 1:
+        logger.info('%s\tCID Item record found, with object number %s', filepath, object_number)
+        return record
 
 
 if __name__ == '__main__':
     main()
-

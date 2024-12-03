@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 '''
-wav_folder_record_creation_rename.py
-
 Script functions:
 
 1. Pick up folders (named after their source Item record)
@@ -17,9 +15,8 @@ Script functions:
 7. All actions logged human readable for Mike, and placed in audio ops
    folder, at top level.
 
-NOTES: Waiting on CID record configs.
+NOTE: Updated for Adlib V3
 
-Joanna White
 2023
 '''
 
@@ -27,8 +24,6 @@ Joanna White
 import os
 import re
 import sys
-import json
-import time
 import shutil
 import logging
 import datetime
@@ -36,7 +31,8 @@ import subprocess
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
+import utils
 
 # Global paths/vars
 AUTO_WAV_PATH = os.environ['AUTOMATION_WAV']
@@ -47,9 +43,7 @@ FAILED_PATH = os.path.join(WAV_RENAME_PATH, 'failed_rename/')
 LOCAL_LOG = os.path.join(WAV_RENAME_PATH, 'record_create_folder_rename.log')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ['CID_API4']
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
@@ -61,31 +55,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        LOGGER.info('* Initialising CID session... Script will exit if CID off line')
-        CUR = adlib.Cursor(CID)
-        LOGGER.info("* CID online, script will proceed")
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical('Cannot establish CID session, exiting script')
-        sys.exit()
 
 
 def remove_whitespace(title):
@@ -130,61 +99,55 @@ def cid_query(database, search, object_number):
     '''
     Format CID query for cid_data_retrieval()
     '''
-    query = {'database': database,
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, title, title.article, title.language, object_number, source_item, derived_item, sound_item'}
-    try:
-        query_result = CID.get(query)
-    except Exception:
+    fields = [
+        'priref',
+        'title',
+        'title.article',
+        'title.language',
+        'object_number',
+        'source_item',
+        'derived_item',
+        'sound_item'
+    ]
+    record = adlib.retrieve_record(CID_API, database, search, '0', fields)[1]
+    if not record:
         print(f"cid_query(): Unable to retrieve data for {object_number}")
         LOGGER.exception("cid_query(): Unable to retrieve data for %s", object_number)
-        query_result = None
+        return None
 
-    print(query_result.records)
-
-    try:
-        priref = query_result.records[0]['priref'][0]
-        print(priref)
-    except (KeyError, IndexError) as err:
+    print(record[0])
+    if 'priref' in str(record[0]):
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    else:
         priref = ""
-        print(err)
-    try:
-        title = query_result.records[0]['Title'][0]['title'][0]
-    except (KeyError, IndexError) as err:
+    if 'title' in str(record[0]):
+        title = adlib.retrieve_field_name(record[0], 'title')[0]
+    else:
         title = ""
-        print(err)
-    try:
-        title_article = query_result.records[0]['Title'][0]['title.article'][0]
-    except (KeyError, IndexError) as err:
-        print(err)
+    if 'title.article' in str(record[0]):
+        title_article = adlib.retrieve_field_name(record[0], 'title.article')[0]
+    else:
         title_article = ""
-    try:
-        title_language = query_result.records[0]['Title'][0]['title.language'][0]
-    except (KeyError, IndexError) as err:
+    if 'title.language' in str(record[0]):
+        title_language = adlib.retrieve_field_name(record[0], 'title.language')[0]
+    else:
         title_language = ""
-        print(err)
-    try:
-        ob_num = query_result.records[0]['object_number'][0]
-    except (KeyError, IndexError) as err:
+    if 'object_number' in str(record[0]):
+        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
+    else:
         ob_num = ""
-        print(err)
-    try:
-        source_item = query_result.records[0]['Source_item'][0]['source_item'][0]
-    except (KeyError, IndexError) as err:
+    if 'source_item' in str(record[0]):
+        source_item = adlib.retrieve_field_name(record[0], 'source_item')[0]
+    else:
         source_item = ""
-        print(err)
-    try:
-        derived_item = query_result.records[0]['Derived_item'][0]['derived_item'][0]
-    except (KeyError, IndexError) as err:
+    if 'derived_item' in str(record[0]):
+        derived_item = adlib.retrieve_field_name(record[0], 'derived_item')[0]
+    else:
         derived_item = ""
-        print(err)
-    try:
-        sound_item = query_result.records[0]['sound_item'][0]['value'][1]
-    except (KeyError, IndexError) as err:
+    if 'sound_item' in str(record[0]):
+        sound_item = adlib.retrieve_field_name(record[0], 'sound_item')[0]
+    else:
         sound_item = ""
-        print(err)
 
     new_title = remove_whitespace(title)
 
@@ -231,54 +194,68 @@ def cid_data_retrieval(ob_num):
 
 def main():
     '''
-    Looks through WAV_ARCHIVE_PATH for files ending .wav/.WAV
+    Looks through WAV_RENAME_PATH for files ending .wav/.WAV
     If part whole is greater than 01, extract all parts to list and check all present
     Find 01of* and check against policy, before CID actions to generate Item record
     extract object number and make new filename. Apply filename to all parts (mediaconch check)
     and move to autoingest path in audio isilon share.
     '''
 
-    LOGGER.info("========== wav folder record creation rename START ============")
-    check_control()
-    cid_check()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     directory_list = {}
-    for root, dirs, _ in os.walk(WAV_RENAME_PATH):
-        for directory in dirs:
-            if directory == 'failed_rename':
-                continue
-            dirpath = os.path.join(root, directory)
-            dirlist = os.listdir(dirpath)
-            wav_files = [ x for x in dirlist if x.endswith(('.wav', '.WAV', '.mp3', '.MP3')) ]
-            if len(wav_files) != len(dirlist):
-                LOGGER.info("Non audio files found in directory %s", directory)
-            if len(wav_files) > 0:
-                directory_list[dirpath] = wav_files.sort()
-            else:
-                LOGGER.info("Skipping: No audio files in folder %s", directory)
-                continue
-
+    dirs = [ x for x in os.listdir(WAV_RENAME_PATH) if os.path.isdir(os.path.join(WAV_RENAME_PATH, x)) ]
+    for directory in dirs:
+        if directory == 'failed_rename':
+            continue
+        dirpath = os.path.join(WAV_RENAME_PATH, directory)
+        wav_files = []
+        other_files = []
+        for root, dirs, files in os.walk(dirpath):
+            for file in files:
+                if file.endswith(('.wav', '.WAV')):
+                    wav_files.append(os.path.join(root, file))
+                else:
+                    other_files.append(os.path.join(root, file))
+        if len(other_files) > 0:
+            LOGGER.warning("Non WAV files found in %s: %s", directory, other_files)
+            LOGGER.warning("Skipping processing this folder until files reviewed.")
+            continue
+        if len(wav_files) > 0:
+            directory_list[dirpath] = wav_files
+        else:
+            LOGGER.info("Skipping: No audio files in folder %s", directory)
+            continue
     if not directory_list:
         LOGGER.info("No items found this time. Script exiting")
         sys.exit()
 
+    LOGGER.info("========== wav folder record creation rename START ============")
+    print(directory_list)
     for key, value in directory_list.items():
+        print(key, value)
         LOGGER.info("======== Folder path being processed %s ========", key)
         LOGGER.info("Contents of folder being processed:")
-        LOGGER.info("%s", ', '.join(value))
-        folder = os.path.split(key)[1]
+        join_up = ', '.join(value)
+        LOGGER.info("%s", join_up)
+        folder = os.path.split(key)[-1]
         local_log(f"============= NEW WAV FOLDER FOUND {folder} ============= {str(datetime.datetime.now())}")
         local_log(f"Folder contents: {', '.join(value)}")
 
         # Mediaconch policy assessment
         quality_comments = []
         mediaconch_assess = []
-        for file in value:
-            if file.endswith(('.wav', '.WAV')):
-                filepath = os.path.join(key, file)
+        for filepath in value:
+            if filepath.endswith(('.wav', '.WAV')):
+                file = os.path.split(filepath)[-1]
                 success = conformance_check(filepath)
                 LOGGER.info("Conformance check results for %s: %s", file, success)
-                quality_comments.append(file)
+                quality_comments.append(os.path.relpath(filepath, key))
                 if 'PASS!' not in success:
                     mediaconch_assess.append('FAIL')
                     local_log(f"File failed Mediaconch policy: {file}\n{success}")
@@ -292,14 +269,13 @@ def main():
             local_log(f"Skipping: Unable to retrieve Source object number from folder: {folder}")
             LOGGER.warning("Skipping: Unable to retrieve source object number from folder: %s", folder)
             continue
-
         print(source_ob_num, part_whole)
         local_log(f"Source object number retrieved from folder {folder}: {source_ob_num}")
         cid_data = cid_data_retrieval(source_ob_num)
         print(cid_data)
 
         # Check source Item source_item field
-        if cid_data[15] != 'Sound':
+        if cid_data[15] not in ('Sound', 'Combined', 'Mixed', 'Combined as Sound'):
             LOGGER.info("Skipping: Supplied CID item record source does not have 'sound_item': 'Sound'")
             local_log(f"Skipping: Could not find 'Sound' in sound_item record for source item {source_ob_num}")
             continue
@@ -308,21 +284,18 @@ def main():
             LOGGER.info("Skipping: No priref retrieved for folder %s", folder)
             local_log(f"SKIPPING: Could not find priref for source item {source_ob_num}")
             continue
-        # Compile list of enclosed files
-        qual_comm = f"TAR file contains: {'; '.join(quality_comments)}."
-
         # Make CID record with Title of source item
         if len(cid_data[9]) > 0:
             LOGGER.info("Making new CID item record for WAV using source item title %s", cid_data[9])
             local_log(f"Creating new CID item record using source item title: {cid_data[9]}")
-            wav_ob_num, wav_priref = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14], cid_data[8], qual_comm)
+            wav_ob_num, wav_priref = create_wav_record(cid_data[0], cid_data[9], cid_data[10], cid_data[14], cid_data[8])
             local_log(f"New CID item record created: {wav_ob_num} {wav_priref}")
 
         # Else use Title of manifestation parent
         elif len(cid_data[1]) > 0:
             LOGGER.info("Making new CID item record for WAV using manifestation parent title %s", cid_data[1])
             local_log(f"Creating new CID item record using manifestation parent title: {cid_data[1]}")
-            wav_ob_num, wav_priref = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6], cid_data[8], qual_comm)
+            wav_ob_num, wav_priref = create_wav_record(cid_data[0], cid_data[1], cid_data[2], cid_data[6], cid_data[8])
         else:
             local_log(f"Unable to retrieve CID data for: {source_ob_num}. Moving file to failed_rename folder.")
             LOGGER.warning("Title information absent from CID data retrieval, skipping record creation")
@@ -332,7 +305,6 @@ def main():
             local_log(f"Moving {key} to {fail_path}")
             shutil.move(key, fail_path)
             continue
-
         # Check wav_ob_num present following Item creation
         if wav_ob_num:
             local_log(f"Creation of new WAV item record successful: {wav_ob_num}")
@@ -341,6 +313,12 @@ def main():
             LOGGER.warning("No WAV object number obtained - failed record creation")
             local_log(f"FAILED: Creation of new WAV Item record failed for {folder}. Leaving to retry")
             continue
+
+        # Compile list of enclosed files and add to quality comments of new Item record
+        qual_comm = f"TAR file contains: {'; '.join(quality_comments)}."
+        append_success = adlib.add_quality_comments(CID_API, wav_priref, qual_comm)
+        if not append_success:
+            LOGGER.warning("Unable to add QUALITY COMMENTS data to CID Item record <%s>\n<%s>", wav_priref, qual_comm)
 
         # Rename file and move
         success = rename(folder, wav_ob_num)
@@ -370,7 +348,7 @@ def main():
     LOGGER.info("================ END WAV folder record creation rename END =================")
 
 
-def create_wav_record(gp_priref, title, title_article, title_language, source_priref, qual_comm):
+def create_wav_record(gp_priref, title, title_article, title_language, source_priref):
     '''
     Item record creation for WAV file
     TO DO: Needs reviewing with Lucy
@@ -382,32 +360,26 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
     record_defaults = ([{'input.name': 'datadigipres'},
                         {'input.date': str(datetime.datetime.now())[:10]},
                         {'input.time': str(datetime.datetime.now())[11:19]},
-                        {'input.notes': 'Created by automation to aid ingest of legacy projects and workflows.'}, #
-                        {'record_access.owner': 'Acquisitions Full'}]) #
+                        {'input.notes': 'Created by automation to aid ingest of legacy projects and workflows.'},
+                        {'record_access.owner': 'Acquisitions Full'}])
 
-    item_defaults = ([{'record_type': 'ITEM'}, #
-                      {'code_type': 'Uncompressed'}, # Unknown
-                      {'bit_depth.type': 'AUDIO'}, # Unknown
-                      {'bit_depth': '24'}, # Unknown
-                      {'sample_rate': '96kHz'}, # Unknown
-                      {'grouping.lref': ''}, # Unknown
-                      {'acquisition.method': 'Created by'}, #
-                      {'acquisition.source': 'BFI National Archive'}, #
-                      {'acquisition.source.lref': '999570701'}, #
-                      {'acquisition.reason': 'Digital deliverable from BFI'}, # Unsure
-                      {'copy_status': 'M'}, #
-                      {'copy_usage': 'Restricted access to preserved digital file'}, #
-                      {'copy_usage.lref': '131560'}, #
-                      {'creator': 'BFI National Archive'}, #
-                      {'creator.lref': '999570701'}, #
-                      {'creator.role.lref': '392405'}, #
+    item_defaults = ([{'record_type': 'ITEM'},
+                      {'acquisition.method': 'Created by'},
+                      {'acquisition.source': 'BFI National Archive'},
+                      {'acquisition.source.lref': '999570701'},
+                      {'acquisition.reason': 'Digital deliverable from BFI'},
+                      {'copy_status': 'M'},
+                      {'copy_usage': 'Restricted access to preserved digital file'},
+                      {'copy_usage.lref': '131560'},
+                      {'creator': 'BFI National Archive'},
+                      {'creator.lref': '999570701'},
+                      {'creator.role.lref': '392405'},
                       {'description.date': str(datetime.datetime.now())[:10]},
-                      {'file_type': 'WAV'}, #
-                      {'item_type': 'DIGITAL'}, #
-                      {'quality_comments': qual_comm}, #
-                      {'quality_comments.date': str(datetime.datetime.now())[:10]}, #
-                      {'source_item.lref': source_priref}, #
-                      {'source_item.content': 'SOUND'}]) #
+                      {'file_type': 'WAV'},
+                      {'code_type': 'Uncompressed'},
+                      {'item_type': 'DIGITAL'},
+                      {'source_item.lref': source_priref},
+                      {'source_item.content': 'SOUND'}])
 
     wav_ob_num = ""
     item_values = []
@@ -415,77 +387,34 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
     item_values.extend(item_defaults)
 
     # Appended data
-    item_values.append({'part_of_reference.lref': gp_priref}) #
-    item_values.append({'title': title}) #
+    item_values.append({'part_of_reference.lref': gp_priref})
+    item_values.append({'title': title})
     if len(title_article) > 0:
-        item_values.append({'title.article': title_article}) #
+        item_values.append({'title.article': title_article})
     if len(title_language) > 0:
-        item_values.append({'title.language': title_language}) #
+        item_values.append({'title.language': title_language})
     else:
-        item_values.append({'title.language': 'English'}) #
-    item_values.append({'title.type': '05_MAIN'}) #
+        item_values.append({'title.language': 'English'})
+    item_values.append({'title.type': '05_MAIN'})
     print(item_values)
 
+    item_values_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
+    print(item_values_xml)
+
+    record = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+    if not record:
+        return None
     try:
-        i = CUR.create_record(database='items',
-                              data=item_values,
-                              output='json',
-                              write=True)
-        print(i)
-        print(i.records)
-        if i.records:
-            try:
-                wav_priref = i.records[0]['priref'][0]
-                wav_ob_num = i.records[0]['object_number'][0]
-                print(f'** WAV Item record created with Priref {wav_priref}')
-                print(f'** WAV Item record created with object number {wav_ob_num}')
-                LOGGER.info('WAV Item record created with priref %s', wav_priref)
-                return wav_ob_num, wav_priref
-            except Exception:
-                LOGGER.exception("WAV Item record failed to retrieve object number")
-                return None
-        else:
-            print(f"\nUnable to create CID WAV item record for {title}")
-            LOGGER.exception("Unable to create WAV item record!")
-            return None
-    except Exception:
-        print(f"\nUnable to create CID WAV item record for {title}")
+        wav_priref = adlib.retrieve_field_name(record, 'priref')[0]
+        wav_ob_num = adlib.retrieve_field_name(record, 'object_number')[0]
+        print(f'** WAV Item record created with Priref {wav_priref}')
+        print(f'** WAV Item record created with object number {wav_ob_num}')
+        LOGGER.info('WAV Item record created with priref %s', wav_priref)
+        return wav_ob_num, wav_priref
+    except Exception as err:
+        print(f"\nUnable to create CID WAV item record for {title} {err}")
         LOGGER.exception("Unable to create WAV item record!")
         return None
-
-
-def append_source(source_ob_num, priref, ob_num, comment, date):
-    '''
-    Where source_item can't be written with record creation
-    appended after record created. Check source_item field
-    after push is only way to verify if successful.
-    '''
-    source = {
-         'source_item': source_ob_num,
-         'quality_comments': comment,
-         'quality_comments.date': date
-    }
-    try:
-        result = CUR.create_occurrences(database='items',
-                                        priref=priref,
-                                        data=source,
-                                        output='json')
-        print(result)
-    except Exception as err:
-        LOGGER.warning("Unable to append work data to CID work record: %s", err)
-
-    # Attempt retrieval of source_item, only means to check if populated
-    time.sleep(10)
-    search = f'(priref="{priref}")'
-    data = cid_query('items', search, ob_num)
-    print(f"CHECK FOR SOURCE_ITEM: {data}")
-
-    if str(data[5]) == str(source_ob_num):
-        print(f"Retrieved source_item field from Item record: {data[5]} match {source_ob_num}")
-        return True
-    else:
-        print(f"Retrieved source_item field from Item. No match for {source_ob_num}")
-        return False
 
 
 def rename(folder, ob_num):

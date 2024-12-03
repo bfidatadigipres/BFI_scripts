@@ -1,3 +1,12 @@
+'''
+Flask App for DPI downloader tool using SQLite database supply
+Retrieve requests from HTML web input, update SQLite db with
+new requests, using POST. Accessed by download Python script
+using GET requests, and statuses updated as download progresses.
+
+2023
+'''
+
 import os
 import re
 import sqlite3

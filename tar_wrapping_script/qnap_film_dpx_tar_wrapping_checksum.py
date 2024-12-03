@@ -28,7 +28,6 @@ Steps:
 TO DO:  Change autoingest path away from STORE
         as and when autoingest paths update
 
-Joanna White
 2022
 '''
 
@@ -40,6 +39,9 @@ import tarfile
 import logging
 import hashlib
 import datetime
+
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Global paths
 LOCAL_PATH = os.environ['QNAP_FILM']
@@ -93,13 +95,17 @@ def get_tar_checksums(tar_path, folder):
     for item in tar:
         if item.isdir():
             continue
+        pth, file = os.path.split(item.name)
+        if fname in ['ASSETMAP','VOLINDEX']:
+            folder_prefix = os.path.basename(pth)
+            file = f'{folder_prefix}_{file}'
         try:
             f = tar.extractfile(item)
         except Exception as exc:
             LOGGER.warning("get_tar_checksums(): Unable to extract from tar file\n%s", exc)
             continue
 
-        fname = f"{folder}/{os.path.split(item.name)[1]}" if folder else os.path.split(item.name)[1]
+        fname = f"{folder}/{os.path.split(item.name)[1]}" if folder else file
 
         hash_md5 = hashlib.md5()
         for chunk in iter(lambda: f.read(65536), b""):
@@ -115,7 +121,10 @@ def get_checksum(fpath, source):
     return as list with filename
     '''
     data = {}
-    fname = os.path.split(fpath)[1]
+    pth, file = os.path.split(fpath)
+    if file in ['ASSETMAP','VOLINDEX']:
+        folder_prefix = os.path.basename(pth)
+        file = f'{folder_prefix}_{file}'
     dct_name = f"{source}/{fname}" if source != '' else fname
 
     try:
@@ -160,6 +169,11 @@ def main():
     Compare checksum manifests, if match add into TAR and close.
     Delete original file, move TAR to autoingest path.
     '''
+
+    if not utils.check_control('power_off_all'):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
 
     if len(sys.argv) != 2:
         LOGGER.warning("SCRIPT EXIT: Error with shell script input:\n %s", sys.argv)

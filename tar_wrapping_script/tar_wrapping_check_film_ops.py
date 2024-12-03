@@ -20,7 +20,6 @@ Steps:
        Output warning to Local log and leave file
        for retry at later date.
 
-Joanna White
 2022
 '''
 
@@ -32,6 +31,9 @@ import tarfile
 import logging
 import hashlib
 import datetime
+
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Global paths
 LOCAL_PATH = os.environ['FILM_OPS']
@@ -85,7 +87,10 @@ def get_tar_checksums(tar_path, folder):
         if item.isdir():
             continue
 
-        fname = os.path.basename(item_name)
+        pth, fname = os.path.split(item_name)
+        if fname in ['ASSETMAP','VOLINDEX']:
+            folder_prefix = os.path.basename(pth)
+            fname = f'{folder_prefix}_{fname}'
         print(item_name, fname, item)
 
         try:
@@ -113,7 +118,10 @@ def get_checksum(fpath):
     return as list with filename
     '''
     data = {}
-    file = os.path.split(fpath)[1]
+    pth, file = os.path.split(fpath)
+    if file in ['ASSETMAP','VOLINDEX']:
+        folder_prefix = os.path.basename(pth)
+        file = f'{folder_prefix}_{file}'
     hash_md5 = hashlib.md5()
     with open(fpath, 'rb') as f:
         for chunk in iter(lambda: f.read(65536), b""):
@@ -148,6 +156,10 @@ def main():
     Compare checksum manifests, if match add into TAR and close.
     Delete original file, move TAR to autoingest path.
     '''
+
+    if not utils.check_control('power_off_all'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     if len(sys.argv) != 2:
         LOGGER.warning("SCRIPT EXIT: Error with shell script input:\n %s", sys.argv)

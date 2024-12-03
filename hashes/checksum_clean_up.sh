@@ -6,7 +6,7 @@
 
 LOG_LEAD="$LOG_PATH"
 CODE_LEAD="$CODE"
-PY3_LAUNCH="$PY3_ENV"
+PY3_LAUNCH="$PYENV311"
 LOG="${LOG_LEAD}checksum_clean_up.log"
 CHECKSUM_PATH="${LOG_LEAD}checksum_md5/"
 CHECKSUM_LIST="${CODE_LEAD}checksum_list.txt"
@@ -25,7 +25,7 @@ control
 
 # Build list of MD5 files and output to log for reference
 echo " ===================== SHELL SCRIPT LAUNCH CHECKSUM_CLEAN_UP =========================== " >> "${LOG}"
-find "$CHECKSUM_PATH" -name '*.md5' | sort -R | tail -200 | sort -n -k10.12 > "${CHECKSUM_LIST}"
+find "$CHECKSUM_PATH" -name '*.md5' | sort -R | tail -500 | sort -n -k10.12 > "${CHECKSUM_LIST}"
 echo "List of MD5 files to be processed:" >> "$LOG"
 cat "$CHECKSUM_LIST" >> "$LOG"
 

@@ -12,9 +12,9 @@ Fix C- N-prefix files in processing/segmented where CID Item creation has failed
    correct part whole for the file being processed.
 8. Files are renamed and left in folder for aspect.py to pick up
 
-Stephen McConnachie
-June 2021
+NOTE: Updated for Adlib V3
 
+June 2021
 Refactored 2023
 '''
 
@@ -22,21 +22,20 @@ Refactored 2023
 import os
 import sys
 import glob
-import json
 import logging
 from datetime import datetime, timezone
 import pytz
 
 # Private imports
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
+import utils
 import document_item
 import models
 
 # Logging
 LOGS = os.environ['SCRIPT_LOG']
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
+CID_API = os.environ['CID_API4']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('split_mopup_segmented')
@@ -52,24 +51,8 @@ TARGETS = [
     '/mnt/qnap_h22/Public/processing/',
     '/mnt/qnap_08/processing/',
     '/mnt/qnap_video/Public/F47/processing/'
-#    '/mnt/isilon/video_operations/processing/',
-#    '/mnt/grack_f47/processing/'
+#    '/mnt/isilon/video_operations/processing/'
 ]
-
-
-def check_control():
-    '''
-    Check downtime control and stop script of False
-    '''
-    with open(os.path.join(LOGS, 'downtime_control.json')) as control:
-        j = json.load(control)
-
-        if not j['split_control_delete']:
-            logger.info('Exit requested by downtime_control.json')
-            sys.exit('Exit requested by downtime_control.json')
-        if not j['split_control_h22']:
-            logger.info('Exit requested by downtime_control.json')
-            sys.exit('Exit requested by downtime_control.json')
 
 
 def check_for_parts(ob_num):
@@ -77,40 +60,19 @@ def check_for_parts(ob_num):
     Call up CID for hits against
     part_of_reference for ob_num
     '''
-
     search = f'part_of_reference="{ob_num}"'
-    query = {'database': 'carriers',
-             'search': search,
-             'limit': 0,
-             'output': 'json',
-             'fields': 'object_number'}
-
-    try:
-        result = CID.get(query)
-    except Exception as err:
-        logger.exception('CID check for carriers failed: %s', err)
-        result = None
-    print(result.records[0])
-    if len(result.records[0]) == 1:
-        if result.records[0]['object_number'][0]:
-            print(result.records[0]['object_number'][0])
-            return True
-    elif len(result.records[0]) > 1:
+    hits, record = adlib.retrieve_record(CID_API, 'carriers', search, '0', ['object_number'])
+    if not record or not hits:
+        logger.exception('CID check for carriers failed: %s', search)
+        return False
+    print(record[0])
+    if hits == 1 and 'object_number' in str(record[0]):
+        print(adlib.retrieve_field_name(record[0], 'object_number')[0])
+        return True
+    elif hits > 1:
         return "Model carrier check"
     else:
         return False
-
-
-def check_cid():
-    '''
-    Check CID API responsive
-    '''
-    try:
-        logger.info("Initialising CID session. Script will exit if CID offline")
-        cid = adlib.Cursor(CID)
-    except KeyError:
-        logger.warning("Cannot establish CID session, exiting script.")
-        sys.exit()
 
 
 def check_media_record(fname):
@@ -119,20 +81,14 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-    query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-    }
-
-    try:
-        result = CID.get(query)
-        if result.hits == 1:
-            return True
-    except Exception as err:
-        print(f"Unable to retrieve CID Media record {err}")
-    return False
+    hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+    if hits is None:
+        raise SystemExit(f'CID API cannot be reached using search: {search}')
+    if hits >= 1:
+        return True
+    else:
+        print(f"Unable to retrieve CID Media record with search: {search}")
+        return False
 
 
 def main():
@@ -145,8 +101,13 @@ def main():
     to generate part whole and print to log for test period
     '''
     logger.info("======================== SPLIT MOPUP START ==========================")
-    check_control()
-    check_cid()
+    if not utils.check_control('split_control_delete') or not utils.check_control('split_control_h22'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
 
     # Iterate targets
     for media_target in TARGETS:
@@ -188,7 +149,7 @@ def main():
             logger.info('%s\tModified time is %s seconds ago. %s hours', filepath, seconds, hours)
             print(f'{filepath}\tModified time is {seconds} seconds ago')
 
-            if seconds < 36000: # 10 hours
+            if seconds < 36000:
                 logger.info('%s\tFile modified time is too recent, skipping file\t%s', filepath, os.path.basename(filepath))
                 print(f'{filepath}\tFile modified time is too recent, skipping file\t{f}')
                 continue
@@ -252,20 +213,25 @@ def main():
 
             # Check if filename already exists in CID/autoingest (don't rename if duplicate)
             check_result = check_media_record(new_f)
-            if check_result:
-                logger.info("Skipping: Filename found to have persisted to DPI: %s", new_f)
-                print(f"SKIPPING: Filename {new_f} persisted to BP, CID media record found")
+            if check_result is True:
+                logger.info("* Filename found to have persisted to DPI: %s", new_f)
+                logger.info("Deleting duplicate split file %s from folder: %s", f, fpath)
+                print(f"DELETING: Filename {new_f} persisted to BP, CID media record found")
+                os.remove(filepath)
                 continue
             match = glob.glob(f"{autoingest}/**/*/{new_f}", recursive=True)
             if new_f in str(match):
-                logger.info("Skipping - CID item record exists and file found in autoingest: %s", match[0])
-                print(f"SKIPPING: CID item record exists and file found in autoingest: {match[0]}")
+                logger.info("* CID item record exists and file found in autoingest: %s", match[0])
+                logger.info("Deleting duplicate split file %s from folder: %s", f, fpath)
+                print(f"DELETING: CID item record exists and file found in autoingest: {match[0]}")
+                os.remove(filepath)
                 continue
 
             logger.info("**** %s\tFile to be renamed %s -> %s", filepath, f, new_f)
             dst = os.path.join(fpath, new_f)
             try:
                 print(f'\t{filepath} --> {dst}')
+                os.chmod(filepath, 0o777)
                 os.rename(filepath, dst)
                 logger.info('%s\tRenamed Matroska file with MKV Item object_number and partWhole: %s --> %s', filepath, f, new_f)
                 print(f'{filepath}\tRenamed Matroska file with MKV Item object_number and partWhole: {f} --> {new_f}')

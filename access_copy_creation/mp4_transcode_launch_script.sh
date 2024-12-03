@@ -15,6 +15,18 @@ dump_to="${LOG_PATH}mp4_transcode${path_insert}files.txt"
 log_path="${LOG_PATH}mp4_transcode_make_jpeg.log"
 python_script="${CODE}access_copy_creation/mp4_transcode_make_jpeg.py"
 
+function control {
+    boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      echo 'Control json requests script exit immediately'
+      exit 0
+    fi
+}
+
+# Control check inserted into code
+control
+
 # replace list to ensure clean data
 echo "" > "${dump_to}"
 
@@ -26,6 +38,6 @@ echo " == Shell script creating dump_text.txt output for parallel launch of Pyth
 find "${transcode_path1}" -maxdepth 1 -mindepth 1 -type f -mmin +30 >> "${dump_to}"
 
 echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
-grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" "$PYENV $python_script {}"
+grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" --timeout 86400 "$PYENV311 $python_script {}"
 
 echo " ========================= SHELL END - $path_insert ========================== $date_FULL" >> "${log_path}"

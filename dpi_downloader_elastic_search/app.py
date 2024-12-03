@@ -6,7 +6,6 @@ from HTML dpi_requests.html forwarding
 to SQLite3 database for retrieval by
 python code which organises move of data.
 
-Joanna White
 2023
 '''
 
@@ -24,7 +23,7 @@ app = Flask(__name__)
 @app.route('/')
 @app.route('/home')
 def index():
-    return render_template('index_transcode.html')
+    return render_template('index.html')
 
 ES_SEARCH = os.environ.get('ES_SEARCH_PATH')
 ES = Elasticsearch([ES_SEARCH])
@@ -38,9 +37,6 @@ else:
 DBASE = os.environ['DATABASE_NEWS_PRESERVATION']
 CONNECT = sqlite3.connect(DBASE)
 CONNECT.execute('CREATE TABLE IF NOT EXISTS DOWNLOADS (name TEXT, email TEXT, preservation_date TEXT, channel TEXT, status TEXT, date TEXT)')
-TODAY = str(datetime.date.today())
-YESTERDAY = datetime.date.today() - datetime.timedelta(days=1)
-YEST = str(YESTERDAY)
 
 
 def date_gen(date_str):
@@ -60,13 +56,15 @@ def check_date_range(preservation_date):
     and that the file is not today
     '''
     date_range = []
-    period = itertools.islice(date_gen(TODAY), 14)
+    today_date = str(datetime.date.today())
+    period = itertools.islice(date_gen(today_date), 14)
     for dt in period:
         date_range.append(dt.strftime('%Y-%m-%d'))
 
-    daterange = ', '.join(date_range)
-    print(f"Target range for DPI moves: {daterange}")
-    if preservation_date in date_range:
+    print(f"Target range for DPI moves: {date_range}")
+    print(preservation_date)
+    if preservation_date in str(date_range):
+        print("Requested date is in date range")
         return True
 
     return False
@@ -87,9 +85,11 @@ def dpi_move_request():
         # Check manually entered date is valid for format/period
         pattern = "^20[0-9]{2}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}$"
         if not re.match(pattern, preservation_date):
+            print("Failed regex check")
             return render_template('date_error.html')
         success = check_date_range(preservation_date)
         if not success:
+            print("Failed check_date_range()")
             return render_template('date_error.html')
         status = 'Requested'
         date_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')

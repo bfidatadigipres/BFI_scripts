@@ -8,14 +8,16 @@ Use:
   $ clipmd5 /path/to/source.mkv --start 00:01:15 --end 00:03:00 --output clip.mkv
   $ clipmd5 source.mkv --start 00:05:00 --end 25 --output clip.mkv --ffmpeg -an -
 
-Converted from Py2 legacy code to Py3
-Joanna White
+Converted to Python3
 2022
 '''
-
+import os
 import sys
 import argparse
 import subprocess
+
+sys.path.append(os.environ['CODE'])
+import utils
 
 
 def framemd5_manifest(cmd):
@@ -26,7 +28,7 @@ def framemd5_manifest(cmd):
     command = ' '.join(cmd)
 
     try:
-        p = subprocess.check_output(command,shell=True,stderr=subprocess.STDOUT)
+        p = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
         return p
     except subprocess.CalledProcessError as err:
         raise RuntimeError(f"Command {err.cmd} returned with error (code {err.returncode}): {err.output}") from err
@@ -36,7 +38,7 @@ def segment(cmd):
     ''' Trim a new file from the given source '''
 
     command = ' '.join(cmd)
-    status = subprocess.call(command,shell=True)
+    status = subprocess.call(command, shell=True)
     if status == 0:
         return True
 
@@ -94,7 +96,6 @@ def framemd5_cut(framemd5):
     '''
     This function to chop up framemd5 so only checksum remain for comparison
     avoiding errors with non-matching duration columns, split on comma
-    JMW new function 08/09/2022
     '''
 
     new_manifest = []
@@ -141,6 +142,9 @@ def construct_command(in_file, start, out_file, end=None, ffmpeg=None):
 
 def main():
     ''' Create a new clip, and confirm that its framemd5 manifest matches the source '''
+
+    if not utils.check_control('power_off_all'):
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     parser = argparse.ArgumentParser(description='Extract a clip with framemd5 fixity')
     parser.add_argument('file', nargs='?', type=argparse.FileType('r'), help='Input file')

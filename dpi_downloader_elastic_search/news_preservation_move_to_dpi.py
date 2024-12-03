@@ -5,7 +5,6 @@ Looks to database.db for preservation date and
 news channel information retrieving rows with status
 'Requested'. Stores username, email, date, channel, status.
 
-Joanna White
 2023
 '''
 
@@ -17,6 +16,10 @@ import logging
 import itertools
 import subprocess
 import datetime
+
+# Local packages
+sys.path.append(os.environ['CODE'])
+import utils
 
 # GLOBAL VARIABLES
 STORA = os.environ['STORA']
@@ -148,6 +151,9 @@ def main():
     if len(data) == 0:
         sys.exit('No data found in DOWNLOADS database')
 
+    if not utils.check_control('power_off_all'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     LOGGER.info("================ DPI NEWS PRESERVATION REQUESTS RETRIEVED: %s. Date: %s =================", len(data), datetime.datetime.now().strftime(FMT)[:19])
     for row in data:
         username = row[0].strip()
@@ -165,7 +171,6 @@ def main():
         # Make paths
         date_path = preservation_date.replace('-', '/')
         source_path = os.path.join(STORA_BACKUP, date_path, channel)
-        dest_path = os.path.join(STORA, date_path)
 
         if not os.path.exists(source_path):
             LOGGER.warning("Skipping: Error with source path: %s", source_path)

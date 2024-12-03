@@ -7,7 +7,6 @@ Loads TITLE_ARTICLES dict, which returns a list of title articles relevant to su
 Script matches title_art to language key's value list, if possible
 Where found returns Title/Title article, where not found returns None
 
-Joanna White
 2021
 '''
 
@@ -29,6 +28,7 @@ TITLE_ARTICLES = {'af': ["Die ", "'N ", "DIE ", "'N "],
                   'pt': ["O ", "A ", "Os ", "As ", "Um ", "Uma ", "OS ", "AS ", "UM ", "UMA "],
                   'ro': ["Un ", "Una ", "O ", "UN ", "UNA "],
                   'es': ["El ", "La ", "Lo ", "Los ", "Las ", "Un ", "Una ", "EL ", "LA ", "LO ", "LOS ", "LAS ", "UN ", "UNA "],
+                  'ca': ["El ", "La ", "L'", "Els ", "Les ", "Lo ", "Los ", "Un ", "Una ", "Uns ", "Unes ", "EL ", "LA ", "ELS ", "LES ", "LO ", "LOS ", "UN ", "UNA ", "UNS ", "UNES "],
                   'sv': ["Den ", "Det ", "De ", "En ", "Ett ", "DEN ", "DET ", "DE ", "EN ", "ETT "],
                   'tr': ["Bir ", "BIR "],
                   'cy': ["Y ", "Yr ", "YR "],

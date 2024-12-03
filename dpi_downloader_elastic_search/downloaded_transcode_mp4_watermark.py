@@ -11,7 +11,6 @@ encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
 and transcode. Deletes source if successful.
 
-Joanna White
 2023
 '''
 
@@ -19,11 +18,13 @@ import os
 import re
 import sys
 import time
-import json
-import getopt
 import logging
 import subprocess
 import magic
+
+# Local imports
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Global paths from server environmental variables
 MP4_POLICY = os.environ['MP4_POLICY']
@@ -38,18 +39,6 @@ formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            return False
-        else:
-            return True
 
 
 def check_mime_type(fpath):
@@ -365,7 +354,7 @@ def create_watermark_command(fullpath, output):
     input_watermark = [
         "-i", WATERMARK,
     ]
-
+    '''
     # Top left
     filter_graph1 = [
         "-filter_complex",
@@ -377,7 +366,7 @@ def create_watermark_command(fullpath, output):
         "-filter_complex",
         "[1]format=rgba,colorchannelmixer=aa=0.3[logo];[logo][0]scale2ref=oh*mdar:ih[logo][video];[video][logo]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2"
     ]
-
+    '''
     # Top right
     filter_graph3 = [
         "-filter_complex",
@@ -623,10 +612,9 @@ def transcode_mp4_access(fpath, arg):
     if not mime_true:
         logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", fullpath)
         return 'not video'
-    running = check_control()
-    if not running:
-        logger.warning('Script run prevented by downtime_control.json. Script exiting.')
-        return 'False'
+    if not utils.check_control('pause_scripts'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     logger.info("================== START DPI download transcode to MP4 watermark START ==================")
     if watermark:
@@ -684,7 +672,7 @@ def transcode_mp4_access(fpath, arg):
         return 'transcode fail'
     toc = time.perf_counter()
     encoding_time = (toc - tic) // 60
-    seconds_time = (toc - tic)
+    seconds_time = toc - tic
     logger_data.append(f"*** Encoding time for {file}: {encoding_time} minutes or as seconds: {seconds_time}")
     logger_data.append("Checking if new MP4 access file passes Mediaconch policy")
     pass_policy = check_policy(output_fullpath)
@@ -712,7 +700,7 @@ def transcode_mp4_access(fpath, arg):
             subprocess.call(ffmpeg_call)
             logger_data.append("Subprocess call for FFmpeg watermark command successful")
         except Exception as err:
-            logger_data.append("WARNING: FFmpeg watermark command failed")
+            logger_data.append(f"WARNING: FFmpeg watermark command failed: {err}")
             log_clean = list(dict.fromkeys(logger_data))
             for line in log_clean:
                 if 'WARNING' in str(line):
@@ -722,7 +710,7 @@ def transcode_mp4_access(fpath, arg):
             return 'transcode fail'
         toc = time.perf_counter()
         encoding_time = (toc - tic) // 60
-        seconds_time = (toc - tic)
+        seconds_time = toc - tic
         os.remove(output_fullpath)
         logger_data.append(f"*** Encoding time for {file}: {encoding_time} minutes or as seconds: {seconds_time}")
 

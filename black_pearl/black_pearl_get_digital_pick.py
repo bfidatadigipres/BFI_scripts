@@ -7,7 +7,7 @@ from DPI Black Pearl tape library.
 
 Script actions:
 1. Script works through Workflow Jobs querying 'description'
-   field looking for trigger statement 'DGO' (long-term phrase to be defined).
+   field looking for trigger statement 'DPIDL'
    It must only look for items with a completion date within CHECK_RANGE,
    and a Status=InProgress.
 2. Captures all instances as a dict and returns to main() workflow_jobs,
@@ -30,7 +30,8 @@ Script actions:
    f. Overwrite request.details data to Workflow record.
 4. Exit script with final log message.
 
-Joanna White
+NOTES: Updated to work with adlib_v3
+
 2022
 '''
 
@@ -41,21 +42,15 @@ import csv
 import json
 import hashlib
 import logging
+from xml.sax.saxutils import escape
 from datetime import datetime, timedelta
-import requests
-from ds3 import ds3, ds3Helpers
+from tenacity import retry, stop_after_attempt
 
 # Local package
-CODE = os.environ['CODE']
-sys.path.append(CODE)
-import adlib
-
-# API VARIABLES
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
+import bp_utils as bp
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
+import utils
 
 # GLOBAL VARIABLES
 PICK_FOLDER = os.environ['DIGITAL_PICK']
@@ -70,6 +65,8 @@ FMT = "%Y-%m-%d"
 FORMAT = "%Y-%m-%d %H:%M:%S"
 TODAY = datetime.strftime(datetime.now(), FORMAT)
 CONTROL_JSON = os.environ['CONTROL_JSON']
+HEADERS = {'Content-Type': 'text/xml'}
+CID_API = os.environ['CID_API4']
 
 # Set up logging
 LOGGER = logging.getLogger('bp_get_digital_pick')
@@ -80,20 +77,6 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
 def fetch_workflow_jobs():
     '''
     Search for in target workflow jobs, compile into a
@@ -101,45 +84,37 @@ def fetch_workflow_jobs():
     '''
     todayd, endd = get_date_range()
     search = f"request.details='*{SEARCH_TERM}*' and completion.date>'{todayd}' and completion.date<'{endd}' and status=InProgress sort completion.date ascending"
-    query = {
-        'database': 'workflow',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-        'fields': 'priref, object_number, jobnumber, contact_person, request.details, request.from.name'
-    }
-
-    try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s\n%s", d, err)
-        print(err)
-        query_result = None
-    print(query_result)
-    if not query_result:
+    hits, records = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['priref', 'jobnumber', 'contact_person', 'request.details', 'request.from.name'])
+    if hits is None:
+        LOGGER.exception('"CID API was unreachable for Workflow search:\n%s', search)
+        raise Exception(f"CID API was unreachable for Workflow search:\n{search}")
+    if hits == 0:
+        LOGGER.info("fetch_workflow_jobs: No matching InProgress jobs found.")
+        return None
+    if not records:
+        LOGGER.exception("fetch_workflow_jobs: No workflow data found")
         return None
 
-    total_jobs = len(query_result.records)
     workflow_jobs = {}
-    for num in range(total_jobs):
+    for num in range(0, hits):
         try:
-            priref = query_result.records[num]['priref'][0]
+            priref = adlib.retrieve_field_name(records[num], 'priref')[0]
         except (IndexError, TypeError, KeyError):
             priref = ''
         try:
-            jobnumber = query_result.records[num]['jobnumber'][0]
+            jobnumber = adlib.retrieve_field_name(records[num], 'jobnumber')[0]
         except (IndexError, KeyError, TypeError):
             jobnumber = ''
         try:
-            contact_person = query_result.records[num]['contact_person'][0]
+            contact_person = adlib.retrieve_field_name(records[num], 'contact_person')[0]
         except (IndexError, KeyError, TypeError):
             contact_person = ''
         try:
-            request_details = query_result.records[num]['request.details'][0]
+            request_details = adlib.retrieve_field_name(records[num], 'request.details')[0]
         except (IndexError, KeyError, TypeError):
             request_details = ''
         try:
-            request_from = query_result.records[num]['request.from.name'][0]
+            request_from = adlib.retrieve_field_name(records[num], 'request.from.name')[0]
         except (IndexError, KeyError, TypeError):
             request_from = ''
 
@@ -160,6 +135,7 @@ def get_date_range():
     dr = today + timedelta(days=CHECK_RANGE)
     todays_date = datetime.strftime(today, FMT)
     end_date = datetime.strftime(dr, FMT)
+
     return todays_date, end_date
 
 
@@ -168,22 +144,14 @@ def fetch_item_list(priref):
     Fetch a workflow job's items list
     '''
     search = f"parent_record={priref} and recordType=ObjectList"
-    query = {
-        'database': 'workflow',
-        'search': search,
-        'limit': '0',
-        'output': 'json'
-    }
+    records = adlib.retrieve_record(CID_API, 'workflow', search, '0')[1]
+    if not records:
+        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s", priref)
+        return None
+    print(records)
 
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s\n%s", priref, err)
-        query_result = None
-    print(query_result.records)
-
-    try:
-        children = query_result.records[0]['child']
+        children = adlib.retrieve_field_name(records[0], 'child')
     except (IndexError, TypeError, KeyError):
         children = ''
     print(children, len(children))
@@ -196,58 +164,40 @@ def get_child_ob_num(priref):
     Retrieve the child's object number from workflow
     '''
     search = f"priref={priref}"
-    query = {
-        'database': 'workflow',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-        'fields': 'description'
-    }
+    records = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['description'])[1]
+    if not records:
+        LOGGER.exception("get_child_ob_num: Unable to retrieve workflow data")
+        return None
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("get_child_ob_num: Unable to retrieve workflow data upto: %s", err)
-        print(err)
-        query_result = None
-    try:
-        ob_num = query_result.records[0]['description'][0]
+        ob_num = adlib.retrieve_field_name(records[0], 'description')[0]
         print(ob_num)
         return ob_num
     except (IndexError, TypeError, KeyError):
         return None
 
 
+@retry(stop=stop_after_attempt(10))
 def get_media_original_filename(search):
     '''
     Retrieve the first returned media record
     for a match against object.object_number
     (may return many)
     '''
-    query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
-        'fields': 'imagen.media.original_filename, reference_number, preservation_bucket'
-    }
+    records = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename', 'reference_number', 'preservation_bucket'])[1]
+    if not records:
+        LOGGER.exception("get_media_original_filename: Unable to retrieve Media data")
+        return None, None, None
 
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("get_media_original_filename: Unable to retrieve Media data upto: %s", err)
-        print(err)
-        query_result = None
-
-    try:
-        orig_fname = query_result.records[0]['imagen.media.original_filename'][0]
+        orig_fname = adlib.retrieve_field_name(records[0], 'imagen.media.original_filename')[0]
     except (IndexError, TypeError, KeyError):
         orig_fname = ''
     try:
-        ref_num = query_result.records[0]['reference_number'][0]
+        ref_num = adlib.retrieve_field_name(records[0], 'reference_number')[0]
     except (IndexError, TypeError, KeyError):
         ref_num = ''
     try:
-        bucket = query_result.records[0]['preservation_bucket'][0]
+        bucket = adlib.retrieve_field_name(records[0], 'preservation_bucket')[0]
     except (IndexError, TypeError, KeyError):
         bucket = ''
 
@@ -262,22 +212,14 @@ def bucket_check(bucket, filename):
     Check CID media record that bucket
     matches for all parts
     '''
-    query = {
-        'database': 'media',
-        'search': f'reference_number="{filename}"',
-        'limit': '1',
-        'output': 'json',
-        'fields': 'preservation_bucket'
-    }
 
+    search = f'reference_number="{filename}"'
+    records = adlib.retrieve_record(CID_API, 'media', search, '1', ['preservation_bucket'])[1]
+    if not records:
+        LOGGER.exception("bucket_check(): Unable to retrieve Media data")
+        return None
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        LOGGER.exception("get_media_original_filename: Unable to retrieve Media data upto: %s", err)
-        print(err)
-        query_result = None
-    try:
-        download_bucket = query_result.records[0]['preservation_bucket'][0]
+        download_bucket = adlib.retrieve_field_name(records[0], 'preservation_bucket')[0]
     except (IndexError, TypeError, KeyError):
         download_bucket = ''
 
@@ -326,22 +268,6 @@ def get_missing_part_names(filename):
     return fname_list
 
 
-def get_bp_md5(fname, bucket):
-    '''
-    Fetch BP checksum to compare
-    to new local MD5
-    '''
-    md5 = ''
-    query = ds3.HeadObjectRequest(bucket, fname)
-    result = CLIENT.head_object(query)
-    try:
-        md5 = result.response.msg['ETag']
-    except Exception as err:
-        print(err)
-    if md5:
-        return md5.replace('"', '')
-
-
 def make_check_md5(fpath, fname, bucket):
     '''
     Generate MD5 for fpath
@@ -359,7 +285,7 @@ def make_check_md5(fpath, fname, bucket):
     except Exception as err:
         print(err)
 
-    local_checksum = get_bp_md5(fname, bucket)
+    local_checksum = bp.get_bp_md5(fname, bucket)
     print(f"Created from download: {download_checksum} | Retrieved from BP: {local_checksum}")
     return str(download_checksum), str(local_checksum)
 
@@ -395,7 +321,13 @@ def main():
     of files for download from DPI. Map in digital_pick.csv
     to avoid repeating unecessary DPI downloads
     '''
-    check_control()
+    if not utils.check_control('black_pearl') or not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
+
     workflow_jobs = fetch_workflow_jobs()
     if not workflow_jobs:
         sys.exit("Script exiting. No workflow jobs found status=InProgress for next two weeks.")
@@ -416,7 +348,7 @@ def main():
 
         # Fetch child items of ObjectList
         children = fetch_item_list(priref)
-        if len(children) == 0:
+        if children is None or len(children) == 0:
             LOGGER.info("Skipping. No children found for Priref: %s", priref)
             continue
 
@@ -435,12 +367,12 @@ def main():
             child_ob_num = get_child_ob_num(child_priref)
             LOGGER.info("Child object number returned from description field: <%s>", child_ob_num)
             filename, ref_num, bucket = get_media_original_filename(f"object.object_number='{child_ob_num}'")
-            print(child_priref, child_ob_num, filename, ref_num)
-            LOGGER.info("Looking at child object number %s - priref %s", child_ob_num, child_priref)
             if not filename:
                 LOGGER.info("Skipping. No matching Media record object number / imagen original filename: %s", child_ob_num)
                 downloads.append('False')
                 continue
+            print(child_priref, child_ob_num, filename, ref_num)
+            LOGGER.info("Looking at child object number %s - priref %s", child_ob_num, child_priref)
 
             # Check if file is first part of sequence of files
             parts_downloads = []
@@ -478,7 +410,7 @@ def main():
 
             # Call up BP and get the file object
             if filename not in downloaded_fnames:
-                download_job_id = download_bp_object(download_fname, outpath, bucket)
+                download_job_id = bp.download_bp_object(download_fname, outpath, bucket)
                 if os.path.exists(os.path.join(outpath, download_fname)):
                     # Write successful download to CSV
                     if umid:
@@ -514,7 +446,7 @@ def main():
                     else:
                         dpart_fname = part_umid
                     # check bucket for all parts, can't assume they match
-                    d_job_id = download_bp_object(dpart_fname, outpath, download_bucket)
+                    d_job_id = bp.download_bp_object(dpart_fname, outpath, download_bucket)
                     if os.path.exists(os.path.join(outpath, dpart_fname)):
                         # Write successful download to CSV
                         if part_fname != dpart_fname:
@@ -546,66 +478,22 @@ def main():
         # Update workflow request.details field when all completed
         payload = build_payload(priref, request_details, datetime.strftime(datetime.now(), FORMAT))
         print(payload)
-
-        success_lock = write_lock(priref)
-        if not success_lock:
-            print("Request to lock record failed")
+        record = adlib.post(CID_API, payload, 'workflow', 'updaterecord')
+        if not record:
+            LOGGER.warning("FAILED: Payload write to CID workflow request.details field: %s", priref)
         else:
-            completed = write_payload(priref, payload)
-            if not completed:
-                success_unlock = unlock_record(priref)
-                if not success_unlock:
-                    print("Request to unlock record failed")
-                    LOGGER.warning("FAILED: Unlock of Workflow record %s", priref)
-                LOGGER.warning("FAILED: Payload write to CID workflow request.details field: %s", priref)
-            else:
-                LOGGER.info("Workflow %s - DPI download complete and request.details field updated", priref)
+            LOGGER.info("Workflow %s - DPI download complete and request.details field updated", priref)
 
     LOGGER.info("=========== Digital Pick script end =============\n")
-
-
-def download_bp_object(fname, outpath, bucket):
-    '''
-    Download the BP object from SpectraLogic
-    tape library and save to outpath
-    '''
-    if bucket == '':
-        bucket = 'imagen'
-
-    file_path = os.path.join(outpath, fname)
-    get_objects = [ds3Helpers.HelperGetObject(fname, file_path)]
-    try:
-        get_job_id = HELPER.get_objects(get_objects, bucket)
-        print(f"BP get job ID: {get_job_id}")
-    except Exception as err:
-        LOGGER.warning("Unable to retrieve file %s from Black Pearl", fname)
-        get_job_id = None
-
-    return get_job_id
-
-
-def write_lock(priref):
-    '''
-    Apply a write lock to record before updating metadata
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'workflow', 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'json'}
-        )
-        print("write_lock() response:")
-        print(post_response.text)
-        return True
-    except Exception as err:
-        LOGGER.warning("write_lock: Unable to lock record %s:\n%s", priref, err)
 
 
 def build_payload(priref, data, today):
     '''
     Build payload info to write to Workflow record
     '''
+    cleaned_data = escape(data)
     payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_addition = f"<request.details>DPI Download completed {today}. {data}</request.details>"
+    payload_addition = f"<request.details>DPI Download completed {today}. {cleaned_data}</request.details>"
     payload_edit = f"<edit.name>{USERNAME}</edit.name><edit.date>{today[:10]}</edit.date><edit.time>{today[11:]}</edit.time>"
     payload_end = "</record></recordList></adlibXML>"
     return payload_head + payload_addition + payload_edit + payload_end
@@ -616,35 +504,15 @@ def write_payload(priref, payload):
     Recieve header, payload and priref and write
     to CID workflow record
     '''
-    post_response = requests.post(
-        CID_API,
-        params={'database': 'workflow', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'json'},
-        data={'data': payload}
-    )
-    print("write_payload() response:")
-    print(post_response.text)
-    if "<error><info>" in str(post_response.text) or 'error' in str(post_response.text):
+    record = adlib.post(CID_API, payload, 'workflow', 'updaterecord')
+    if not record:
         LOGGER.warning("write_payload: Error returned for requests.post for %s:\n%s", priref, payload)
         return False
     else:
+        print("write_payload() response:")
+        print(record)
         LOGGER.info("write_payload: No error returned in post_response.text. Payload successfully written.")
         return True
-
-
-def unlock_record(priref):
-    '''
-    Only used if write fails to unlock record
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': 'workflow', 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'}
-        )
-        print("unlock_record() response:")
-        print(post_response.text)
-        return True
-    except Exception as err:
-        LOGGER.warning("unlock_record: Unable to unlock record. Please check record and unlock manually %s:\n%s", priref, err)
 
 
 def write_to_csv(data):

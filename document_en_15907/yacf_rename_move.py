@@ -12,9 +12,8 @@ Young Audience Content Fund rename and move to autoingest:
 3. Renames files and updates logs
 4. Moves new file to Video_operations/finished/autoingest path
 
-Script must be called from Python3 in ENV for adlib.py
+NOTE: Supports use of adlib_v3.py
 
-Joanna White
 2021
 '''
 
@@ -28,7 +27,8 @@ import datetime
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
+import utils
 
 # Global path variables
 YACF_PATH = os.environ['YACF_COMPLETE']
@@ -37,7 +37,7 @@ AUTOINGEST = os.environ['AUTOINGEST_YACF']
 LOG_PATH = os.environ['LOG_PATH']
 LOCAL_LOG = os.path.join(YACF_PATH, 'YACF_renumbering.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API']
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('YACF_rename_move.log')
@@ -48,37 +48,10 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 # Global variables
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
 DATE_TIME = (f"{TODAY_DATE} = {TODAY_TIME}")
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        LOGGER.info('* Initialising CID session... Script will exit if CID off line')
-        CUR = adlib.Cursor(CID)
-        LOGGER.info("* CID online, script will proceed")
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical('Cannot establish CID session, exiting script')
-        sys.exit()
 
 
 def cid_retrieve(filename):
@@ -87,42 +60,34 @@ def cid_retrieve(filename):
     Return object number to main
     '''
     search = f'digital.acquired_filename="{filename}"'
-
-    query = {'database': 'items',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'priref, object_number, title, title.article'}
-    try:
-        query_result = CID.get(query)
-        LOGGER.info("cid_retrieve(): Making CID query request with:\n %s", query)
-    except Exception:
+    record = adlib.retrieve_record(CID_API, 'items', search, '0', ['priref', 'object_number', 'title', 'title.article'])[1]
+    LOGGER.info("cid_retrieve(): Making CID query request with:\n %s", search)
+    if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {filename}")
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", filename)
-        query_result = None
-
+        return None
     try:
-        priref = query_result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     except (KeyError, IndexError) as err:
         priref = ""
         LOGGER.warning("cid_retrieve(): Unable to access priref %s", err)
     try:
-        ob_num = query_result.records[0]['object_number'][0]
+        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
     except (KeyError, IndexError) as err:
         ob_num = ""
         LOGGER.warning("cid_retrieve(): Unable to access object_number: %s", err)
     try:
-        title = query_result.records[0]['Title'][0]['title'][0]
+        title = adlib.retrieve_field_name(record[0], 'title')[0]
     except (KeyError, IndexError) as err:
         title = ""
         LOGGER.warning("cid_retrieve(): Unable to access title: %s", err)
     try:
-        title_article = query_result.records[0]['Title'][0]['title.article'][0]
+        title_article = adlib.retrieve_field_name(record[0], 'title.article')[0]
     except (KeyError, IndexError) as err:
         title_article = ""
         LOGGER.warning("cid_retrieve(): Unable to access title article %s", err)
 
-    return (priref, ob_num, title, title_article)
+    return priref, ob_num, title, title_article
 
 
 def main():
@@ -133,9 +98,15 @@ def main():
     Move file to autoingest path
     '''
     LOGGER.info("=========== YACF script start ==========")
-    check_control()
-    cid_check()
-    for root, dirs, files in os.walk(YACF_PATH):
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
+    for root, _, files in os.walk(YACF_PATH):
         for file in files:
             filepath = os.path.join(root, file)
             if 'CID_item_not_found' in filepath:
@@ -145,11 +116,8 @@ def main():
             if file.endswith(('.MXF', '.mxf', '.MOV', '.mov')):
                 LOGGER.info("----------------- New file found %s ----------------", file)
                 LOGGER.info("Processing %s now. Looking in CID item records for filename", file)
-                cid_data = cid_retrieve(file)
-                priref = cid_data[0]
-                ob_num = cid_data[1]
-                title = cid_data[2]
-                title_art = cid_data[3]
+                priref, ob_num, title, title_art = cid_retrieve(file)
+
                 if len(ob_num) > 0:
                     LOGGER.info("CID item data retrieved - Priref: %s  Object_number: %s  Title: %s %s", priref, ob_num, title_art, title)
                     local_logger("\n------------------------- New file found ------------------------------")

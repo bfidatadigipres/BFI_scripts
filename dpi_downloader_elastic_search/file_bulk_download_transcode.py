@@ -7,6 +7,9 @@ Stores username, email, download path, folder
 filename and status.
 
 Checks if the download type is single or bulk:
+Before any actions checks that status has not been
+updated to 'Cancelled' since first downloaded.
+
 Bulk:
 1. Checks Saved Search number is correctly formatted
 2. Counts if prirefs listed in saved search exceed
@@ -52,29 +55,24 @@ Joanna White
 # Python packages
 import os
 import sys
-import json
-import hashlib
 import logging
 import itertools
 from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError
-import requests
-from ds3 import ds3, ds3Helpers
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
+import utils
+sys.path.append(os.path.join(os.environ['CODE'], 'black_pearl/'))
+import bp_utils as bp
 from downloaded_transcode_prores import transcode_mov
 from downloaded_transcode_mp4 import transcode_mp4
 from downloaded_transcode_mp4_watermark import transcode_mp4_access
 
 # GLOBAL VARIABLES
-CID_API = os.environ['CID_API3']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
+CID_API = os.environ['CID_API4']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 CODEPTH = os.environ['CODE']
@@ -106,49 +104,34 @@ def check_elasticsearch():
         sys.exit('Connection to Elasticsearch not found. Script exiting.')
 
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
 def get_media_original_filename(fname):
     '''
     Retrieve the reference_number from CID media record
     '''
-    query = {
-        'database': 'media',
-        'search': f'reference_number="{fname}"',
-        'output': 'json'}
-
-    try:
-        query_result = requests.get(CID_API, params=query)
-        results = query_result.json()
-    except Exception as err:
-        LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s\n%s", fname, err)
+    search = f'reference_number="{fname}"'
+    fields = [
+        'priref',
+        'imagen.media.original_filename',
+        'preservation_bucket'
+    ]
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
+    if record is None:
+        LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s", fname)
         return None, None, None
-    try:
-        media_priref = results['adlibJSON']['recordList']['record'][0]['@attributes']['priref']
-    except (IndexError, TypeError, KeyError) as exc:
-        print(exc)
+    if 'priref' in str(record):
+        media_priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    else:
+        print(record)
         media_priref = ''
-    try:
-        orig_fname = results['adlibJSON']['recordList']['record'][0]['imagen.media.original_filename'][0]
-    except (IndexError, TypeError, KeyError) as exc:
-        print(exc)
+    if 'imagen.media.original_filename' in str(record):
+        orig_fname = adlib.retrieve_field_name(record[0], 'imagen.media.original_filename')[0]
+    else:
+        print(record)
         orig_fname = ''
-    try:
-        bucket = results['adlibJSON']['recordList']['record'][0]['preservation_bucket'][0]
-    except (IndexError, TypeError, KeyError) as exc:
-        print(exc)
+    if 'preservation_bucket' in str(record):
+        bucket = adlib.retrieve_field_name(record[0], 'preservation_bucket')[0]
+    else:
+        print(record)
         bucket = ''
     if bucket == '':
         bucket = 'imagen'
@@ -162,20 +145,21 @@ def get_prirefs(pointer):
     for list of prirefs in CID
     '''
     query = {'command': 'getpointerfile',
-             'database': 'items',
+             'database': 'collect',
              'number': pointer,
-             'output': 'json'}
-
+             'output': 'jsonv1'}
+    print(query)
     try:
-        result = CID.get(query)
-        data = result.records[0]
-        prirefs = data['hit']
-        LOGGER.info("Prirefs retrieved: %s", prirefs)
-        return prirefs
+        result = adlib.get(CID_API, query)
     except Exception as exc:
-        LOGGER.exception('get_prirefs(): Unable to get pointer file %s', pointer)
-        print(exc)
+        LOGGER.exception('get_prirefs(): Unable to get pointer file %s\n%s', pointer, exc)
+        result = None
+    print(result)
+    if 'hitlist' not in str(result):
         return None
+    prirefs = result['adlibJSON']['recordList']['record'][0]['hitlist']
+    LOGGER.info("Prirefs retrieved: %s", prirefs)
+    return prirefs
 
 
 def get_dictionary(priref_list):
@@ -196,45 +180,42 @@ def get_media_record_data(priref):
     '''
     Get CID media record details
     '''
-    priref = priref.strip()
-    print("Launching get_media_record_data()")
-    query = {'database': 'media',
-             'search': f'object.object_number.lref="{priref}"',
-             'fields': 'imagen.media.original_filename, reference_number, preservation_bucket',
-             'limit': '0',
-             'output': 'json'}
-    try:
-        query_result = requests.get(CID_API, params=query)
-        results = query_result.json()
-    except Exception as err:
-        LOGGER.exception("get_media_record_data: Unable to match filename to CID media record: %s\n%s", priref, err)
-        results = []
-        print(err)
+    print(f"** Launching get_media_record_data() with priref: {priref}")
+    search = f'object.object_number.lref="{priref}"'
+    fields = [
+        'imagen.media.original_filename',
+        'reference_number',
+        'preservation_bucket'
+    ]
 
-    if 'recordList' not in str(results):
+    hits, records = adlib.retrieve_record(CID_API, 'media', search, '0', fields)
+    if hits is None:
+        LOGGER.exception("get_media_record_data: AdlibV3 unable to retrieve data from API with search: %s", search)
+        return []
+    if records is None:
+        LOGGER.exception("get_media_record_data: Unable to match filename to CID media record: %s", priref)
         return []
 
-    total_returns = len(results['adlibJSON']['recordList']['record'])
-    print(total_returns)
+    print(hits)
     all_files = []
-    for num in range(0, total_returns):
-        try:
-            ref_num = results['adlibJSON']['recordList']['record'][num]['reference_number'][0]
+    for num in range(0, hits):
+        if 'reference_number' in str(records[num]):
+            ref_num = adlib.retrieve_field_name(records[num], 'reference_number')[0]
             print(ref_num)
-        except (IndexError, TypeError, KeyError) as exc:
-            print(exc)
+        else:
+            print(records[num])
             ref_num = ''
-        try:
-            orig_fname = results['adlibJSON']['recordList']['record'][num]['imagen.media.original_filename'][0]
+        if 'imagen.media.original_filename' in str(records[num]):
+            orig_fname = adlib.retrieve_field_name(records[num], 'imagen.media.original_filename')[0]
             print(orig_fname)
-        except (IndexError, TypeError, KeyError) as exc:
-            print(exc)
+        else:
+            print(records[num])
             orig_fname = ''
-        try:
-            bucket = results['adlibJSON']['recordList']['record'][num]['preservation_bucket'][0]
+        if 'preservation_bucket' in str(records[num]):
+            bucket = adlib.retrieve_field_name(records[num], 'preservation_bucket')[0]
             print(orig_fname)
-        except (IndexError, TypeError, KeyError) as exc:
-            print(exc)
+        else:
+            print(records[num])
             bucket = ''
         if bucket == '':
             bucket = 'imagen'
@@ -243,40 +224,15 @@ def get_media_record_data(priref):
     return all_files
 
 
-def get_bp_md5(fname, bucket):
-    '''
-    Fetch BP checksum to compare
-    to new local MD5
-    '''
-    md5 = ''
-    query = ds3.HeadObjectRequest(bucket, fname)
-    result = CLIENT.head_object(query)
-    try:
-        md5 = result.response.msg['ETag']
-    except Exception as err:
-        print(err)
-    if md5:
-        return md5.replace('"', '')
-
-
 def make_check_md5(fpath, fname, bucket):
     '''
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
     and see if checksums match. If not, write to log
     '''
-    download_checksum = ''
 
-    try:
-        hash_md5 = hashlib.md5()
-        with open(fpath, "rb") as file:
-            for chunk in iter(lambda: file.read(65536), b""):
-                hash_md5.update(chunk)
-        download_checksum = hash_md5.hexdigest()
-    except Exception as err:
-        print(err)
-
-    bp_checksum = get_bp_md5(fname, bucket)
+    download_checksum = utils.create_md5_65536(fpath)
+    bp_checksum = bp.get_bp_md5(fname, bucket)
     print(f"Created from download: {download_checksum} | Retrieved from BP: {bp_checksum}")
     return str(download_checksum).strip(), str(bp_checksum).strip()
 
@@ -294,6 +250,18 @@ def retrieve_requested():
         all_items = tuple(record) + tuple(get_id)
         requested_data.append(all_items)
     return remove_duplicates(requested_data)
+
+
+def check_for_cancellation(user_id):
+    '''
+    Pull data from ES index for user ID being processed
+    Return status update
+    '''
+    search_results = ES.search(index='dpi_downloads', query={'term': {'_id': {'value': f'{user_id}'}}}, size=200)
+    if len(search_results['hits']['hits']) != 1:
+        return None
+
+    return search_results['hits']['hits'][0]['_source']['status']
 
 
 def remove_duplicates(list_data):
@@ -370,7 +338,9 @@ def main():
 
     LOGGER.info("================ DPI DOWNLOAD REQUESTS RETRIEVED: %s. Date: %s =================", len(data), datetime.now().strftime(FMT)[:19])
     for row in data:
-        check_control()
+        if not utils.check_control('pause_scripts') or not utils.check_control('black_pearl'):
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         check_elasticsearch()
         username = row[0].strip()
         email = row[1].strip()
@@ -391,8 +361,12 @@ def main():
         download_fpath = os.path.join(dpath, dfolder)
         print(download_fpath)
         if not os.path.exists(download_fpath):
-            os.makedirs(download_fpath, mode=0o777, exist_ok=True)
+            os.makedirs(download_fpath, 0o777, exist_ok=True)
             LOGGER.info("Download file path created: %s", download_fpath)
+        try:
+            os.chmod(download_fpath, 0o777)
+        except PermissionError as err:
+            print(err)
 
         priref_list = []
         # Single download
@@ -407,6 +381,10 @@ def main():
                 LOGGER.warning("Filename is a Netflix item and will not be downloaded")
                 update_table(user_id, 'Filename not accessible')
                 continue
+            if 'amazon' in bucket:
+                LOGGER.warning("Filename is an Amazon item and will not be downloaded")
+                update_table(user_id, 'Filename not accessible')
+                continue
             LOGGER.info("Download file request matched to CID file %s media record %s", orig_fname, media_priref)
 
             # Check if download already exists
@@ -415,15 +393,17 @@ def main():
                 update_table(user_id, 'Download complete, no transcode required')
                 LOGGER.warning("Downloaded file (no transcode) in location already. Skipping further processing.")
                 continue
+            status_check = check_for_cancellation(user_id)
+            LOGGER.info("Checking status remains 'Requested': %s", status_check)
+            if status_check == 'Cancelled':
+                LOGGER.warning("File download has been cancelled. Skipping further processing.")
+                continue
+
             if not skip_download:
                 # Download from BP
                 LOGGER.info("Beginning download of file %s to download path", fname)
                 update_table(user_id, 'Downloading')
-                download_job_id = download_bp_object(fname, download_fpath, bucket)
-                if download_job_id == '404':
-                    LOGGER.warning("Download of file %s failed. File not found in Black Pearl tape library.", fname)
-                    update_table(user_id, 'Filename not found in Black Pearl')
-                    continue
+                download_job_id = bp.download_bp_object(fname, download_fpath, bucket)
                 if not download_job_id:
                     LOGGER.warning("Download of file %s failed. Resetting download status and script exiting.", fname)
                     update_table(user_id, 'Requested')
@@ -433,6 +413,9 @@ def main():
                     LOGGER.info("Updating download UMID filename with item filename: %s", orig_fname)
                     umid_fpath = os.path.join(download_fpath, fname)
                     os.rename(umid_fpath, new_fpath)
+
+                # Apply CHMOD to download
+                os.chmod(new_fpath, 0o777)
 
                 # MD5 Verification
                 local_md5, bp_md5 = make_check_md5(new_fpath, fname, bucket)
@@ -463,12 +446,22 @@ def main():
                 update_table(user_id, 'Error with DPI collection details')
                 LOGGER.warning("Problem seems to have occurred with retrieval of DPI Browser collection details. Skipping.")
                 continue
+            status_check = check_for_cancellation(user_id)
+            LOGGER.info("Checking status remains 'Requested': %s", status_check)
+            if status_check == 'Cancelled':
+                LOGGER.warning("DPI browser file download has been cancelled. Skipping further processing.")
+                continue
         # dtype is bulk
         elif dtype == 'bulk':
             print(f"Finding prirefs from Pointer file with number: {fname}")
             if not fname.isnumeric():
                 update_table(user_id, 'Error with pointer file number')
                 LOGGER.warning("Bulk download request. Error with pointer file number: %s.", fname)
+                continue
+            status_check = check_for_cancellation(user_id)
+            LOGGER.info("Checking status remains 'Requested': %s", status_check)
+            if status_check == 'Cancelled':
+                LOGGER.warning("Bulk download has been cancelled. Skipping further processing.")
                 continue
             priref_list = get_prirefs(fname)
             if not isinstance(priref_list, list):
@@ -491,7 +484,7 @@ def main():
             update_table(user_id, 'Pointer file found no digital media records')
             LOGGER.warning("CID item number supplied in pointer file have no associated CID digital media records: %s", pointer_dct)
             continue
-        # update_table(user_id, 'Processing bulk request')
+        download_failures = []
         for key, value in pointer_dct.items():
             media_priref = key
             print(key)
@@ -522,18 +515,20 @@ def main():
                         # Download from BP
                         LOGGER.info("Beginning download of file %s to download path", filename)
                         update_table(user_id, f'Downloading {orig_fname}')
-                        download_job_id = download_bp_object(filename, download_fpath, bucket)
-                        if download_job_id == '404':
-                            LOGGER.warning("Download of file %s failed. File not found in Black Pearl tape library.", filename)
-                            continue
-                        elif not download_job_id:
-                            LOGGER.warning("Download of file %s failed. Resetting download status and script exiting.", filename)
+                        download_job_id = bp.download_bp_object(filename, download_fpath, bucket)
+                        if not download_job_id:
+                            LOGGER.warning("Download of file %s failed. Attempting to download next item in queue", filename)
+                            update_table(user_id, f'Unable to download {filename} in batch')
+                            download_failures.append(f"CID media priref: {media_priref} - Filename: {filename}")
                             continue
                         LOGGER.info("Downloaded file retrieved successfully. Job ID: %s", download_job_id)
                         if str(orig_fname).strip() != str(filename).strip():
                             LOGGER.info("Updating download UMID filename with item filename: %s", orig_fname)
                             umid_fpath = os.path.join(download_fpath, filename)
                             os.rename(umid_fpath, new_fpath)
+
+                        # Apply CHMOD to download
+                        os.chmod(new_fpath, 0o777)
 
                         # MD5 Verification
                         local_md5, bp_md5 = make_check_md5(new_fpath, filename, bucket)
@@ -553,34 +548,21 @@ def main():
                         LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                         os.remove(new_fpath)
                     files_processed[orig_fname] = f"{trans}"
-
         # Send notification email
-        if len(files_processed) == 0:
+        if len(files_processed) == 0 and len(download_failures) > 0:
+            LOGGER.warning("Files failed to download: %s", download_failures)
+            send_email_failures_bulk(email, download_fpath, download_failures)
+            update_table(user_id, "All downloads failed. Please see email for details")
             continue
         LOGGER.info("Files processed: %s", files_processed)
-        send_email_update_bulk(email, download_fpath, files_processed)
-        update_table(user_id, "Bulk download complete. See email for details")
+        send_email_update_bulk(email, download_fpath, files_processed, download_failures)
+        if len(download_failures) > 0:
+            LOGGER.warning("Files failed to process: %s", download_failures)
+            update_table(user_id, "Some items failed to download. See email for successful downloads")
+        else:
+            update_table(user_id, "Bulk download complete. See email for details")
 
     LOGGER.info("================ DPI DOWNLOAD REQUESTS COMPLETED. Date: %s =================\n", datetime.now().strftime(FMT)[:19])
-
-
-def download_bp_object(fname, outpath, bucket):
-    '''
-    Download the BP object from SpectraLogic
-    tape library and save to outpath
-    '''
-    file_path = os.path.join(outpath, fname)
-    get_objects = [ds3Helpers.HelperGetObject(fname, file_path)]
-    try:
-        get_job_id = HELPER.get_objects(get_objects, bucket)
-        print(f"BP get job ID: {get_job_id}")
-    except Exception as err:
-        LOGGER.warning("Unable to retrieve file %s from Black Pearl", fname)
-        if 'NotFound[404]: Could not find requested blobs' in str(err):
-            get_job_id = '404'
-        else:
-            get_job_id = None
-    return get_job_id
 
 
 def create_transcode(new_fpath, transcode, fname, user_id):
@@ -726,7 +708,7 @@ Digital Preservation team'''
             LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
 
 
-def send_email_update_bulk(email, download_fpath, files_processed):
+def send_email_update_bulk(email, download_fpath, files_processed, failure_list):
     '''
     Update user that their item has been
     downloaded, with path, folder and
@@ -759,6 +741,7 @@ def send_email_update_bulk(email, download_fpath, files_processed):
         elif value == 'no_transcode':
             file_list.append(f"{key}. No transcode was requested for this download.")
 
+    num_failed = len(failure_list)
     name_extracted = email.split('.')[0]
     subject = 'DPI bulk file download request completed'
     data = '\n'.join(file_list)
@@ -767,12 +750,59 @@ Hello {name_extracted.title()},
 
 Your DPI bulk download request has completed for your files. If you selected a download and transcode option for a new file then the downloaded item will have been deleted and only the transcoded file will remain.
 
+There were {num_failed} failed downloads in your bulk request.
+
 The files were downloaded to the DPI location that you specified:
 {download_fpath}
 
 {data}
 
 If there are problems with the files, please raise an issue in the BFI Collections Systems Service Desk:
+https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1
+
+This is an automated notification, please do not reply to this email.
+
+Thank you,
+Digital Preservation team'''
+
+    send_mail = EmailMessage()
+    send_mail['From'] = EMAIL_SENDER
+    send_mail['To'] = email
+    send_mail['Subject'] = subject
+    send_mail.set_content(body)
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
+        try:
+            smtp.login(EMAIL_SENDER, EMAIL_PSWD)
+            smtp.sendmail(EMAIL_SENDER, email, send_mail.as_string())
+            LOGGER.info("Email notification sent to %s", email)
+        except Exception as exc:
+            LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
+
+
+def send_email_failures_bulk(email, download_fpath, failed_downloads):
+    '''
+    Update user that their item has failed
+    to download, with path, folder and
+    filenames of failed items
+    '''
+    from email.message import EmailMessage
+    import ssl
+    import smtplib
+
+    name_extracted = email.split('.')[0]
+    subject = 'FAILED: DPI bulk file download request'
+    data = '\n'.join(failed_downloads)
+    body = f'''
+Hello {name_extracted.title()},
+
+I'm afraid your DPI bulk download request has failed. None of your items could be downloaded to your specified path:
+{download_fpath}
+
+Failed file details:
+{data}
+
+Please raise an issue in the BFI Collections Systems Service Desk:
 https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1
 
 This is an automated notification, please do not reply to this email.

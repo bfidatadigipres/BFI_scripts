@@ -14,7 +14,6 @@ Script function:
    a JSON formatted file, saved as MKV filename.json
 5. Move both the MKV and JSON to the BFI_replay folder.
 
-Joanna White
 2021
 '''
 
@@ -28,7 +27,8 @@ import tenacity
 
 # Private packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
+import utils
 
 # Global variables
 WATCH_FOLDER = os.environ['BFI_REPLAY']
@@ -36,7 +36,7 @@ SPLIT_PATH = os.path.join(WATCH_FOLDER, 'split')
 MULTI_SPLIT_PATH = os.path.join(WATCH_FOLDER, 'multiple_split')
 NO_SPLIT_PATH = os.path.join(WATCH_FOLDER, 'no_split')
 LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API']
+CID_API = os.environ['CID_API4']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
@@ -50,32 +50,6 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-# CID config
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        CUR = adlib.Cursor(CID)
-    except KeyError:
-        LOGGER.critical('Cannot establish CID session, exiting script')
-        sys.exit()
-
 
 @tenacity.retry(stop=(tenacity.stop_after_delay(60) | tenacity.stop_after_attempt(10)))
 def cid_retrieve(filename, search):
@@ -84,71 +58,74 @@ def cid_retrieve(filename, search):
     Return list of lists to main. Retry every minute for
     10 minutes in case of problem accessing CID API
     '''
-    query = {'database': 'manifestations',
-             'search': search,
-             'limit': '0',
-             'output': 'json',
-             'fields': 'time_code.start, time_code.end, part_of_reference, part_of_reference.lref'}
-    try:
-        query_result = CID.get(query)
-        return query_result.records
-    except Exception as err:
-        LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s\n%s", filename, err)
-        raise Exception from err
+    fields = [
+        'time_code.start',
+        'time_code.end',
+        'part_of_reference',
+        'part_of_reference.lref'
+    ]
 
-    return None
+    record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', fields)[1]
+    if not record:
+        LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", filename)
+        return None
+    else:
+        return record
 
 
-def extract_prirefs(data_list):
+def extract_prirefs(records):
     '''
     Iterate returned CID hits for individual prirefs
     '''
     prirefs = []
-    for dct in data_list:
+    for rec in records:
         try:
-            priref = dct['priref'][0]
+            priref = adlib.retrieve_field_name(rec, 'priref')[0]
             prirefs.append(priref)
         except (KeyError, IndexError):
-            priref = ''
+            pass
 
     return prirefs
 
 
-def create_dictionary(cid_data):
+def create_dictionary(records):
     '''
     Extract data and list of dictionaries
     '''
     loop_dict = {}
-    for dct in cid_data:
+    for rec in records:
         try:
-            priref = dct['priref'][0]
+            priref = adlib.retrieve_field_name(rec, 'priref')[0]
             print(priref)
-        except (KeyError, IndexError) as err:
-            print(err)
+        except (KeyError, IndexError):
+            priref = ''
         try:
-            ob_num = dct['object_number'][0]
+            ob_num = adlib.retrieve_field_name(rec, 'object_number')[0]
             print(ob_num)
-        except (KeyError, IndexError) as err:
-            print(err)
+        except (KeyError, IndexError):
+            ob_num = ''
         try:
-            parent_ob_num = dct['Part_of'][0]['part_of_reference'][0]['object_number'][0]
-        except (KeyError, IndexError) as err:
-            print(err)
+            parent_priref = adlib.retrieve_field_name(rec, 'part_of_reference.lref')[0]
+        except (KeyError, IndexError):
+            parent_priref = ''
+        parent_rec = adlib.retrieve_record(CID_API, 'works', f'priref="{parent_priref}"', '1', ['object_number'])[1]
+        if not parent_rec:
+            continue
         try:
-            parent_priref = dct['Part_of'][0]['part_of_reference.lref'][0]
-        except (KeyError, IndexError) as err:
-            print(err)
+            parent_ob_num = adlib.retrieve_field_name(parent_rec, 'object_number')[0]
+        except (KeyError, IndexError):
+            parent_ob_num = ""
         # Check Part_of data present
         if (len(parent_ob_num) == 0 or len(parent_priref) == 0):
             continue
         try:
-            time_code_start = dct['Time_code'][0]['time_code.start'][0]
+            time_code_start = adlib.retrieve_field_name(rec, 'time_code.start')[0]
             print(time_code_start)
         except (KeyError, IndexError) as err:
             time_code_start = ''
             print(err)
         try:
-            time_code_end = dct['Time_code'][0]['time_code.end'][0]
+            time_code_end = adlib.retrieve_field_name(rec, 'time_code.end')[0]
             print(time_code_end)
         except (KeyError, IndexError) as err:
             time_code_end = ''
@@ -169,8 +146,14 @@ def main():
     and time_code start/end data for each matching manifestation.
     Pretty print to json file, named as MKV filename. Move to replay.
     '''
-    check_control()
-    cid_check()
+
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     LOGGER.info("------------- Replay JSON creation script START --------------")
     files = [x for x in os.listdir(WATCH_FOLDER) if x.startswith('N_') and x.endswith(('.mkv', '.MKV'))]
@@ -329,7 +312,5 @@ def local_logger(data):
         log.close()
 
 
-
 if __name__ == '__main__':
     main()
-

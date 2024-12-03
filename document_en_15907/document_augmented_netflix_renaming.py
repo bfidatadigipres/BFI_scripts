@@ -39,7 +39,8 @@ metadata files.
    where new put scripts ensure file is moved to
    the netflix01 bucket.
 
-Joanna White
+Note: Configured for adlib_v3 and will require API update
+
 2023
 '''
 
@@ -53,10 +54,11 @@ import xmltodict
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-import adlib
+import adlib_v3 as adlib
+import utils
 
 # Global variables
-STORAGE_PTH = os.environ.get('NETFLIX_INGEST_PTH')
+STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
 NETFLIX_PTH = os.environ.get('NETFLIX_PATH')
 NET_INGEST = os.environ.get('NETFLIX_INGEST')
 AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
@@ -65,17 +67,7 @@ ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CODE = os.environ.get('CODE_PATH')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API')
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
-
-# Date variables
-TODAY = datetime.date.today()
-TWO_WEEKS = TODAY - datetime.timedelta(days=14)
-START = f"{TWO_WEEKS.strftime('%Y-%m-%d')}T00:00:00"
-END = f"{TODAY.strftime('%Y-%m-%d')}T23:59:00"
-TITLE_DATA = ''
-UPDATE_AFTER = '2022-07-01T00:00:00'
+CID_API = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_netflix_renaming')
@@ -85,32 +77,36 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-def cid_check(imp_fname):
+
+def cid_check_filename(imp_fname):
     '''
     Sends CID request for series_id data
     '''
-    query = {'database': 'items',
-             'search': f'digital.acquired_filename="{imp_fname}"',
-             'limit': '1',
-             'output': 'json',
-             'fields': 'priref, object_number, digital.acquired_filename.type'}
+    search = f'digital.acquired_filename="{imp_fname}"'
+    record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
+    print(record)
+    if not record:
+        print(f"cid_check(): Unable to match IMP with Item record: {imp_fname}")
+        LOGGER.info("Unable to match %s to digital.acquired_filename field", imp_fname)
+        return None
     try:
-        query_result = CID.get(query)
-    except Exception as err:
-        print(f"cid_check(): Unable to match IMP with Item record: {imp_fname} {err}")
-        query_result = None
-    try:
-        priref = query_result.records[0]['priref'][0]
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"cid_check(): Priref: {priref}")
     except (IndexError, KeyError, TypeError):
         priref = ''
+
+    search = f'priref="{priref}"'
+    record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
+    print(record)
+    if not record:
+        return None
     try:
-        ob_num = query_result.records[0]['object_number'][0]
+        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
         print(f"cid_check(): Object number: {ob_num}")
     except (IndexError, KeyError, TypeError):
         ob_num = ''
     try:
-        file_type = query_result.records[0]['Acquired_filename'][0]['digital.acquired_filename.type'][0]['value'][0]
+        file_type = adlib.retrieve_field_name(record[0], 'digital.acquired_filename.type')[0]
         print(f"cid_check(): File type: {file_type}")
     except (IndexError, KeyError, TypeError):
         file_type = ''
@@ -126,9 +122,9 @@ def walk_netflix_folders():
     print(STORAGE)
     rename_folders = []
     for root, dirs, _ in os.walk(STORAGE):
-        for dir in dirs:
-            if 'rename_netflix' == dir:
-                rename_folders.append(os.path.join(root, dir))
+        for directory in dirs:
+            if 'rename_netflix' == directory:
+                rename_folders.append(os.path.join(root, directory))
     print(f"{len(rename_folders)} rename folder(s) found")
     folder_list = []
     for rename_folder in rename_folders:
@@ -157,6 +153,13 @@ def main():
     read PKL XML for part whole order
     and check contents match Asset list.
     '''
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
+
     folder_list = walk_netflix_folders()
     if len(folder_list) == 0:
         LOGGER.info("Netflix IMP renaming script. No folders found.")
@@ -166,7 +169,7 @@ def main():
     for fpath in folder_list:
         folder = os.path.split(fpath)[1]
         LOGGER.info("Folder path found: %s", fpath)
-        priref, ob_num, file_type = cid_check(folder.strip())
+        priref, ob_num, file_type = cid_check_filename(folder.strip())
         print(f"CID item record found: {priref} with matching {file_type.title()}")
 
         if not priref:
@@ -328,31 +331,29 @@ def create_digital_original_filenames(priref, folder_name, asset_list_dct):
     Create entries for digital.acquired_filename
     and append to the CID item record.
     '''
-    name_updates = []
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
     for key, val in asset_list_dct.items():
-        name_updates.append({'digital.acquired_filename': f'{key} - Renamed to: {val}'})
-        name_updates.append({'digital.acquired_filename.type': 'File'})
-    name_updates.append({'digital.acquired_filename': folder_name})
-    name_updates.append({'digital.acquired_filename.type': 'Folder'})
+        filename = f'{key} - Renamed to: {val}'
+        LOGGER.info("Writing to digital.acquired_filename: %s", filename)
+        pay_mid = f"<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
+        payload = payload + pay_mid
 
-    # Append cast/credit and edit name blocks to work_append_dct
-    item_append_dct = []
-    item_append_dct.extend(name_updates)
-    item_edit_data = ([{'edit.name': 'datadigipres'},
-                       {'edit.date': str(datetime.datetime.now())[:10]},
-                       {'edit.time': str(datetime.datetime.now())[11:19]},
-                       {'edit.notes': 'Netflix automated digital acquired filename update'}])
+    pay_mid = f"<Acquired_filename><digital.acquired_filename>{folder_name}</digital.acquired_filename><digital.acquired_filename.type>FOLDER</digital.acquired_filename.type></Acquired_filename>"
+    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Netflix automated digital acquired filename update</edit.notes></Edit>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload + pay_mid + pay_edit + payload_end
 
-    item_append_dct.extend(item_edit_data)
-    LOGGER.info("** Appending data to work record now...")
-    LOGGER.info(name_updates)
+    LOGGER.info("** Appending digital.acquired_filename data to item record now...")
+    LOGGER.info(payload)
 
-    result = item_append(priref, item_append_dct)
-    if result:
-        print(f"Item appended successful! {priref}")
+    try:
+        result = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info("Successfully appended IMP digital.acquired_filenames to Item record %s", priref)
+        print(result)
         return True
-    else:
+    except Exception as err:
+        print(err)
         LOGGER.warning("Failed to append IMP digital.acquired_filenames to Item record %s", priref)
         print(f"CID item record append FAILED!! {priref}")
         return False
@@ -363,34 +364,28 @@ def xml_item_append(priref, xml_data):
     Write XML data to CID item record
     '''
     num = 1
-    label_dct = []
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
     for xml_block in xml_data:
-        label_dct.append({'label.source': f'Netflix XML data {num}'})
-        label_dct.append({'label.text': xml_block})
+        text = f'Netflix XML data {num}'
+        pay_mid = f"<Label><label.source>{text}</label.source><label.text><![CDATA[{xml_block}]]></label.text></Label>"
+        payload = payload + pay_mid
         num += 1
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload + payload_end
 
-    success = item_append(priref, label_dct)
-    if success:
-        return True
-
-
-def item_append(priref, item_append_dct):
-    '''
-    Items passed in item_dct for amending to CID item record
-    '''
+    LOGGER.info("** Appending Label text data to item record now...")
+    LOGGER.info(payload)
 
     try:
-        result = CUR.update_record(priref=priref,
-                                   database='items',
-                                   data=item_append_dct,
-                                   output='json',
-                                   write=True)
-        print("*** CID item record append result:")
+        result = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        print(f"Item appended successful! {priref}\n{result}")
+        LOGGER.info("Successfully appended Label fields to Item record %s", priref)
         print(result)
         return True
     except Exception as err:
-        LOGGER.warning("item_append(): Unable to append work data to CID item record %s", err)
         print(err)
+        LOGGER.warning("Failed to append Label fields to Item record %s", priref)
+        print(f"CID item record append FAILED!! {priref}")
         return False
 
 

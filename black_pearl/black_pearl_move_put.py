@@ -17,30 +17,27 @@ Script actions:
    notification JSON is issued to validate PUT success.
 5. Use receieved job_id to rename the PUT subfolder.
 
-Threads hardcoded to 3 per script run / 5000 objects per job
+Notes: Threads hardcoded to 3 per script run / 5000 objects per job
 
-Joanna White / Stephen McConnachie
 2022
 '''
 
 import os
 import sys
-import json
+import pytz
 import shutil
 import logging
 from datetime import datetime
-import pytz
-import yaml
-from ds3 import ds3, ds3Helpers
+
+# Local import
+import bp_utils as bp
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Global vars
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.environ['CONTROL_JSON']
 INGEST_CONFIG = os.environ['INGEST_SIZE']
-JSON_END = os.environ['JSON_END_POINT']
-DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 
 # Setup logging
 log_name = sys.argv[1].replace("/", '_')
@@ -52,108 +49,38 @@ logger.addHandler(HDLR)
 logger.setLevel(logging.INFO)
 
 
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def load_yaml(file):
-    ''' Open yaml with safe_load '''
-    with open(file) as config_file:
-        return yaml.safe_load(config_file)
-
-
-def get_buckets(bucket_collection):
-    '''
-    Read JSON list return
-    key_value and list of others
-    '''
-    bucket_list = []
-    key_bucket = ''
-
-    with open(DPI_BUCKETS) as data:
-        bucket_data = json.load(data)
-    if bucket_collection == 'netflix':
-        for key, value in bucket_data.items():
-            if bucket_collection in key:
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-    elif bucket_collection == 'bfi':
-        for key, value in bucket_data.items():
-            if 'preservation' in key.lower():
-                if value is True:
-                    key_bucket = key
-                bucket_list.append(key)
-            # Imagen path read only now
-            if 'imagen' in key:
-                bucket_list.append(key)
-
-    return key_bucket, bucket_list
-
-
-def get_size(fpath):
-    '''
-    Check the size of given folder path
-    return size in kb
-    '''
-    try:
-        byte_size = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
-    except OSError as err:
-        logger.warning("get_size(): Cannot reach folderpath for size check: %s\n%s", fpath, err)
-        byte_size = None
-
-    return byte_size
-
-
-def check_bp_status(fname, bucket_list):
-    '''
-    Look up filename in BP buckets
-    to avoid multiple ingest of files
-    '''
-
-    for bucket in bucket_list:
-        query = ds3.HeadObjectRequest(bucket, fname)
-        result = CLIENT.head_object(query)
-        # Only return false if DOESNTEXIST is missing, eg file found
-        if 'DOESNTEXIST' not in str(result.result):
-            logger.info("File %s found in Black Pearl bucket %s", fname, bucket)
-            return False
-
-    return True
-
-
-def move_to_ingest_folder(folderpth, file_list, upload_size, autoingest, bucket_list):
+def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_list):
     '''
     Runs while loop and moves upto 2TB folder size
     End when 2TB reached or files run out
     '''
     remove_list = []
+    print("Move to ingest folder found....")
     logger.info("move_to_ingest_folder(): Moving files to %s", folderpth)
 
+    folder_size = utils.get_size(folderpth)
+    max_fill_size = upload_size - folder_size
     for file in file_list:
-        status = check_bp_status(file, bucket_list)
-        if not status:
+        if '.DS_Store' in file:
+            continue
+        if not max_fill_size >= 0:
+            logger.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
+            break
+        status = bp.check_no_bp_status(file, bucket_list)
+        print(f"bp.check_no_bp_status: {status}")
+        if status is False:
             logger.warning("move_to_ingest_folder(): Skipping. File already found in Black Pearl: %s", file)
             continue
         fpath = os.path.join(autoingest, file)
-        folder_size = get_size(folderpth)
-        if folder_size < upload_size:
-            shutil.move(fpath, os.path.join(folderpth, file))
-            logger.info("move_to_ingest_folder(): Moved file into new Ingest folder: %s", file)
-            remove_list.append(file)
-        else:
-            break
+        file_size = utils.get_size(fpath)
+        max_fill_size -= file_size
+        shutil.move(fpath, os.path.join(folderpth, file))
+        logger.info("move_to_ingest_folder(): Moved file into new Ingest folder: %s", file)
+        remove_list.append(file)
 
-    for f in remove_list:
-        if f in file_list:
-            file_list.remove(f)
+    for remove_file in remove_list:
+        if remove_file in file_list:
+            file_list.remove(remove_file)
     logger.info("move_to_ingest_folder(): Revised file list in Black Pearl ingest folder: %s", file_list)
 
     return file_list
@@ -186,17 +113,17 @@ def format_dt():
 def check_folder_age(fname):
     '''
     Retrieve date time stamp from folder
-    Return number of days old
+    Returns days in integer using timedelta days
     '''
     fmt = "%Y-%m-%d %H:%M:%S.%f"
     dt_str = fname[7:].split('_')
     dt_time = dt_str[1].replace('-', ':')
     new_name = f"{dt_str[0]} {dt_time}.000000"
-    dt = datetime.strptime(new_name, fmt)
+    date_time = datetime.strptime(new_name, fmt)
     now = datetime.strptime(str(datetime.now()), fmt)
-    difference = now - dt
+    difference = now - date_time
 
-    return difference.days  # Returns days in integer using timedelta days
+    return difference.days
 
 
 def main():
@@ -210,14 +137,19 @@ def main():
         sys.exit("Missing launch path, script exiting")
 
     upload_size = fullpath = autoingest = bucket_collection = ''
-    if 'qnap09_netflix' in sys.argv[1]:
-        fullpath = os.environ['NETFLIX_INGEST_PTH']
+    if 'netflix' in str(sys.argv[1]):
+        fullpath = os.environ['PLATFORM_INGEST_PTH']
         upload_size = 559511627776
         autoingest = os.path.join(fullpath, os.environ['BP_INGEST_NETFLIX'])
         bucket_collection = 'netflix'
+    elif 'amazon' in str(sys.argv[1]):
+        fullpath = os.environ['PLATFORM_INGEST_PTH']
+        upload_size = 559511627776
+        autoingest = os.path.join(fullpath, os.environ['BP_INGEST_AMAZON'])
+        bucket_collection = 'amazon'
     else:
         # Retrieve an upload size limit in bytes
-        data_sizes = load_yaml(INGEST_CONFIG)
+        data_sizes = utils.read_yaml(INGEST_CONFIG)
         hosts = data_sizes['Host_size']
         for host in hosts:
             for key, val in host.items():
@@ -238,102 +170,108 @@ def main():
         sys.exit()
 
     # Get current bucket name for bucket_collection type
-    bucket, bucket_list = get_buckets(bucket_collection)
+    bucket, bucket_list = bp.get_buckets(bucket_collection)
+    print(f"bp.get_buckets: {bucket} {bucket_list}")
+    logger.info("Key bucket selected %s, bucket list %s", bucket, bucket_list)
+    if 'blobbing' in str(bucket):
+        logger.warning("Blobbing bucket selected. Aborting PUT")
+        sys.exit()
 
     # Get initial filenames / foldernames
     files = [f for f in os.listdir(autoingest) if os.path.isfile(os.path.join(autoingest, f))]
     folders = [d for d in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, d))]
+    if len(files) == 0 and len(folders) <= 1:
+        print(f"Files found: {len(files)} - Folders found: {len(folders)}")
+        sys.exit()
 
-    logs = []
     logger.info("======== START Black Pearl ingest %s START ========", sys.argv[1])
 
     # If no files, check for part filled folder first then exit
     if not files:
         for folder in folders:
-            check_control()
+            if not utils.check_control('black_pearl'):
+                logger.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
             folderpth = os.path.join(autoingest, folder)
             if not folder.startswith('ingest_'):
                 continue
 
-            logs.append(f"** Ingest folder found (and no files present): {folderpth}")
+            logger.info("** Ingest folder found (and no files present): %s", folderpth)
             job_list = []
             # Check how old ingest folder is, if over 1 day push anyway
             fname = os.path.split(folderpth)[1]
             days_old = check_folder_age(fname)
-            logs.append(f"Folder {folder} is {days_old} days old")
+            logger.info("Folder %s is %s days old", folder, days_old)
             if days_old >= 1:
-                logs.append(f"Ingest folder over {days_old} days old - moving to Black Pearl ingest bucket {bucket}.")
+                logger.info("Ingest folder over %s days old - moving to Black Pearl ingest bucket %s.", days_old, bucket)
                 job_list = put_dir(folderpth, bucket)
             else:
-                logs.append("Ingest folder not over 24 hours old. Leaving for more files to be added.")
-                logger_write(logs)
+                logger.info("Ingest folder not over 24 hours old. Leaving for more files to be added.")
                 continue
             # Rename folder path with job_list so it is bypassed
             if job_list:
-                logs.append(f"Job list retrieved for Black Pearl PUT, renaming folder: {job_list}")
+                logger.info("Job list retrieved for Black Pearl PUT, renaming folder: %s", job_list)
                 success = pth_rename(folderpth, job_list)
                 if not success:
-                    logs.append("WARNING! Renaming of folderpath to job id failed.")
-                    logs.append(f"WARNING! Please ensure this folder {folderpth} is renamed manually to {job_list}")
-        logs.append("No files or folders remaining to be processed. Script exiting.")
-        logs.append(f"======== END Black Pearl ingest {sys.argv[1]} END ========")
+                    logger.warning("Renaming of folderpath to job id failed.")
+                    logger.warning("Please ensure this folder %s is renamed manually to %s", folderpth, job_list)
+        logger.info("No files or folders remaining to be processed. Script exiting.")
+        logger.info("======== END Black Pearl ingest %s END ========", sys.argv[1])
         sys.exit()
 
     while files:
-        check_control()
+        if not utils.check_control('black_pearl'):
+            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         folderpth = ''
         # Autoingest check for ingest_ path under 2TB
-        folders = [d for d in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, d))]
-        for folder in folders:
-            if folder.startswith('ingest_'):
-                folderpth = os.path.join(autoingest, folder)
-                logs.append(f"** Ingest folder found (and files present): {folderpth}")
-                # Only should be needed if renaming fails - may remove
-                fsize = get_size(folderpth)
+        folders = [d for d in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, d)) and d.startswith("ingest_")]
+        if len(folders) >= 1:
+            logger.info("One or more ingest folders found. Checking size of each")
+            for folder in folders:
+                folder_check_pth = os.path.join(autoingest, folder)
+                logger.info("** Ingest folder found (and files present): %s", folder_check_pth)
+                fsize = utils.get_size(folder_check_pth)
                 if fsize < upload_size:
-                    logs.append("Folder will have more files added to reach maximum upload size.")
+                    logger.info("Folder will have more files added to reach maximum upload size.")
+                    folderpth = folder_check_pth
                 else:
-                    # Any folders reaching here need a check against BP ingest to see if they've been uploaded and rename failed
-                    logs.append(f"WARNING: Skipping ingest folder already over maximum upload size and not renamed: {folderpth}")
-                    logs.append("WARNING: Please check the contents of this folder are uploaded to BP.")
-                    folderpth = ''
+                    logger.info("Already over maximum upload size, will not add more files: %s", folder_check_pth)
 
-        # Create if ingest_ doesn't yet exist
-        if not folderpth:
-            logs.append("No suitable ingest folder exists, creating new one...")
+        # If found ingest_ paths not selected for further ingest
+        if folderpth == '':
+            logger.info("No suitable ingest folder exists, creating new one...")
             folderpth = create_folderpth(autoingest)
 
         # Start move to folderpth now identified
-        logs.append(f"Ingest folder selected: {folderpth}")
-        files_remaining = move_to_ingest_folder(folderpth, files, upload_size, autoingest, bucket_list)
+        logger.info("Ingest folder selected: %s", folderpth)
+        print(f"move_to_ingest_folder: {folderpth}, {autoingest}, {files}, {bucket_list}")
+        files_remaining = move_to_ingest_folder(folderpth, upload_size, autoingest, files, bucket_list)
         if files_remaining is None:
-            logs.append("Problem with folder size extraction in get_size().")
-            logger_write(logs)
+            logger.info("Problem with folder size extraction in get_size().")
             continue
 
         job_list = []
-        fsize = get_size(folderpth)
+        fsize = utils.get_size(folderpth)
         print(f"Folder identified is {fsize} bytes, and upload size limit is {upload_size} bytes")
         if len(os.listdir(folderpth)) == 0:
-            logs.append(f"Skipping: Folderpath found that has no content in: {folderpth}")
-            logger_write(logs)
-            continue
+            logger.info("Script exiting: Folderpath still remains empty after move_to_ingest function: %s", folderpth)
+            sys.exit()
         if fsize > upload_size:
             # Ensure ingest folder is now pushed to black pearl
-            logs.append(f"Starting move of folder path to Black Pearl ingest bucket {bucket}")
+            logger.info("Starting move of folder path to Black Pearl ingest bucket %s", bucket)
             job_list = put_dir(folderpth, bucket)
         else:
             # Check how old ingest folder is, if over 1 day push anyway
             fname = os.path.split(folderpth)[1]
             days_old = check_folder_age(fname)
-            logs.append(f"Folder {fname} is {days_old} days old.")
-            logs.append("Folder under min ingest size, checking how long since creation...")
+            logger.info("Folder %s is %s days old.", fname, days_old)
+            logger.info("Folder under min ingest size, checking how long since creation...")
             if days_old >= 1:
-                logs.append(f"Over one day old, moving to Black Pearl ingest bucket {bucket}")
+                logger.info("Over one day old, moving to Black Pearl ingest bucket %s", bucket)
                 job_list = put_dir(folderpth, bucket)
             else:
-                logs.append("Skipping: Folder not over 1 day old.")
-                logger_write(logs)
+                logger.info("Skipping: Folder not over 1 day old.")
                 files = None
                 continue
 
@@ -341,30 +279,18 @@ def main():
         if job_list:
             success = pth_rename(folderpth, job_list)
             if not success:
-                logs.append("WARNING. Renaming of folderpath to job id failed.")
-                logs.append(f"WARNING. Please ensure this folder {folderpth} is renamed manually to {job_list}")
+                logger.warning("Renaming of folderpath to job id failed.")
+                logger.warning("Please ensure this folder %s is renamed manually to %s", folderpth, job_list)
 
-        logs.append(f"Successfully written data to BP. Job list for folder: {job_list}")
+        logger.info("Successfully written data to BP. Job list for folder: %s", job_list)
 
         if not files_remaining:
-            logs.append("No files remaining in Black Pearl ingest folder, script exiting.")
+            logger.info("No files remaining in Black Pearl ingest folder, script exiting.")
 
-        logs.append("More files to process, restarting move sequence.\n")
+        logger.info("More files to process, restarting move sequence.\n")
         files = files_remaining
-        logger_write(logs)
 
-    logs.append(f"======== END Black Pearl ingest {sys.argv[1]} END ========")
-
-
-def logger_write(logs):
-    '''
-    Output all log messages in a block
-    '''
-    for line in logs:
-        if 'WARNING' in line:
-            logger.warning(line)
-        else:
-            logger.info(line)
+    logger.info(f"======== END Black Pearl ingest %s END ========", sys.argv[1])
 
 
 def put_dir(directory_pth, bucket_choice):
@@ -373,18 +299,17 @@ def put_dir(directory_pth, bucket_choice):
     Retrieve job number and launch json notification
     '''
     try:
-        put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=bucket_choice, objects_per_bp_job=5000, max_threads=3)
+        job_list = bp.put_directory(directory_pth, bucket_choice)
+        print(f"bp.put_directory: {job_list}")
     except Exception as err:
         logger.error('Exception: %s', err)
         print('Exception: %s', err)
-    logger.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_ids)
-    job_list = []
-    for job_id in put_job_ids:
-        # Should always be one, but leaving incase of variation
-        job_completed_registration = CLIENT.put_job_completed_notification_registration_spectra_s3(
-                ds3.PutJobCompletedNotificationRegistrationSpectraS3Request(notification_end_point=JSON_END, format='JSON', job_id=job_id))
-        logger.info('Job %s registered for completion notification at %s', job_id, job_completed_registration.result['NotificationEndPoint'])
-        job_list.append(job_id)
+    logger.info("PUT COMPLETE - JOB ID retrieved: %s", job_list)
+
+    for job_id in job_list:
+        confirmation = bp.put_notification(job_id)
+        print(f"bp.put_notification: {confirmation}")
+        logger.info('Job %s registered for completion notification at %s', job_id, confirmation)
 
     return job_list
 

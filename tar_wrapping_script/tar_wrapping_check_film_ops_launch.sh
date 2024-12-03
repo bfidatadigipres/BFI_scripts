@@ -6,6 +6,19 @@
 
 date_FULL=$(date +'%Y-%m-%d - %T')
 
+# Function to check for control json activity
+function control {
+    boole=$(cat "${LOG_PATH}downtime_control.json" | grep "rawcooked" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      log "Control json requests script exit immediately"
+      log "===================== DPX assessment workflow ENDED ====================="
+      exit 0
+    fi
+}
+
+# Control check
+control
+
 # Path to folder
 FPATH="${FILM_OPS}automation_tar/for_tar_wrap/"
 LOGS="${FILM_OPS}automation_tar/tar_wrapping_checksum.log"
@@ -34,5 +47,5 @@ cat "$FLIST" >> "$LOGS"
 
 # Launching Python script using parallel
 echo " Launching Python script to TAR wrap files/folders " >> "$LOGS"
-grep "/mnt/" "$FLIST" | parallel --jobs 1 "${PY3_ENV} ${CODE}tar_wrapping_script/tar_wrapping_check_film_ops.py {}"
+grep "/mnt/" "$FLIST" | parallel --jobs 1 "${PYENV311} ${CODE}tar_wrapping_script/tar_wrapping_check_film_ops.py {}"
 echo " =========== TAR WRAPPING CHECKSUM SCRIPT END =========== $date_FULL" >> "$LOGS"

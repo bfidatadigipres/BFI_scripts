@@ -15,16 +15,28 @@ main():
 6. Move file from folder to new autoingest target path
 
 Converted from Py2 legacy code to Py3
-Joanna White
 October 2022
 '''
 
 # Public modules
 import os
 import re
+<<<<<<< HEAD
+import json
+=======
+import sys
+>>>>>>> 24919e5b80b32c2c6ca078af48f3f8fde4f6d6b4
 import shutil
 import logging
 import subprocess
+
+# Public packages
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
+import utils
+
+# Configure adlib
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('aspect_ratio_triage')
@@ -37,13 +49,24 @@ LOGGER.setLevel(logging.INFO)
 
 FOLDERS = {
     f"{os.environ['QNAP_H22']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
-    f"{os.environ['ISILON_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_IS_VID']}ingest/proxy/video/adjust/",
+#    f"{os.environ['ISILON_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_IS_VID']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
     f"{os.environ['GRACK_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_H22']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_08']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP08']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_10']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP10']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP01']}ingest/proxy/video/adjust/"
 }
+
+
+def control_check():
+    '''
+    Check that `downtime_control.json` has not indicated termination
+    '''
+    with open(os.path.join(LOGS, 'downtime_control.json')) as control:
+        j = json.load(control)
+        if not j['split_control_delete']:
+            logger.info("Exit requested by downtime_control.json")
+            sys.exit('Exit requested by downtime_control.json')
 
 
 def get_dar(fullpath):
@@ -64,23 +87,21 @@ def get_dar(fullpath):
     return dar
 
 
+def get_aspect_ratio(fullpath):
+    '''
+    Retrieves metadata DAR info and returns as string
+    '''
+    ar = utils.get_metadata('Video', 'DisplayAspectRatio/String', fullpath)
+    if len(ar) > 0:
+        return ar
+
+
 def get_par(fullpath):
     '''
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
     '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%PixelAspectRatio%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    par_setting = subprocess.check_output(cmd)
-    par_setting = par_setting.decode('utf-8')
-    par_full = str(par_setting).rstrip('\n')
-
+    par_full = utils.get_metadata('Video', 'PixelAspectRatio', fullpath)
     if len(par_full) <= 5:
         return par_full
     return par_full[:5]
@@ -93,29 +114,8 @@ def get_height(fullpath):
     height and stored height differ (MXF samples)
     '''
 
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Sampled_Height%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    sampled_height = subprocess.check_output(cmd)
-    sampled_height = sampled_height.decode('utf-8')
-    sheight = str(sampled_height).rstrip('\n')
-
-    cmd2 = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%Height%"',
-        fullpath
-    ]
-
-    cmd2[3] = cmd2[3].replace('"', '')
-    reg_height = subprocess.check_output(cmd2)
-    reg_height = reg_height.decode('utf-8')
-    rheight = str(reg_height).rstrip('\n')
+    sheight = utils.get_metadata('Video', 'Sampled_height', fullpath)
+    rheight = utils.get_metadata('Video', 'Height', fullpath)
 
     try:
         int(sheight)
@@ -142,6 +142,56 @@ def get_height(fullpath):
 
     height = height.split(' pixel', maxsplit=1)[0]
     return re.sub("[^0-9]", "", height)
+
+
+def check_parent_aspect_ratio(object_number):
+    '''
+    Retrieve the DAR from the parent item record
+    object_number supplied
+    '''
+    if not object_number.startswith('N_'):
+        return None
+    
+    search = f"object_number='{object_number}'"
+    hits, record = adlib.retrieve_record(CID_API, 'media', search, '1', ['priref'])
+    print(f"Check media record response: {hits} hits\n{record}")
+    if hits is None or hits == 0:
+        return None
+    
+    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    rec = adlib.retrieve_record(CID_API, 'media', f'priref="{priref}"', '1', ['source_item.lref'])[1]
+    source_priref = adlib.retrieve_field_name(rec[0], 'priref')[0]
+    source_rec = adlib.retrieve_record(CID_API, 'media', f'priref="{source_priref}"', '1', ['aspect_ratio'])[1]
+    return adlib.retrieve_field_name(source_rec[0], 'aspect_ratio')[0]
+
+
+def get_colour(fullpath):
+    '''
+    Retrieves colour information via mediainfo and returns in correct FFmpeg format
+    '''
+
+    colour_prim = utils.get_metadata('Video', 'colour_primaries', fullpath)
+    col_matrix = utils.get_metadata('Video', 'matrix_coefficients', fullpath)
+
+    if 'BT.709' in colour_prim:
+        color_primaries = 'bt709'
+    elif 'BT.601' in colour_prim and 'NTSC' in colour_prim:
+        color_primaries = 'smpte170m'
+    elif 'BT.601' in colour_prim and 'PAL' in colour_prim:
+        color_primaries = 'bt470bg'
+    else:
+        color_primaries = ''
+
+    if 'BT.709' in col_matrix:
+        colormatrix = 'bt709'
+    elif 'BT.601' in col_matrix:
+        colormatrix = 'smpte170m'
+    elif 'BT.470' in col_matrix:
+        colormatrix = 'bt470bg'
+    else:
+        colormatrix = ''
+
+    return (color_primaries, colormatrix)
 
 
 def adjust_par_metadata(filepath):
@@ -173,14 +223,86 @@ def adjust_par_metadata(filepath):
         return True
 
 
+def fix_aspect_ratio(fpath, data):
+    '''
+    Change AR 4x3 to 16x9
+    Crop not needed
+    Should always be MKV, but
+    re-encode to MKV if MOV found
+    '''
+    fpath_split, ext = os.path.splitext(fpath)
+    replace = f"{fpath_split}_4x3.mkv"
+
+    launch = [
+        'ffmpeg', '-i',
+        fpath
+    ]
+
+    cv = []
+    if 'mkv' in ext.lower():
+        cv = [
+            "-c", "copy",
+            "-map", "0"
+        ]
+
+    else:
+        cv = [
+            "-c:v", "ffv1", "-level", "3",
+            "-g", "1", "-slicecrc", "1",
+            "-color_primaries", f"{data[2]}",
+            "-color_trc", f"{data[1]}",
+            "-colorspace", f"{data[0]}",
+            "-color_range", "1",
+            "-c:a", "copy",
+            "-map", "0"
+        ]
+
+    aspect = [
+        "-aspect", "16:9",
+        replace
+    ]
+
+    command = launch + cv + aspect
+
+    try:
+        process = subprocess.run(command, shell=False, capture_output=True, text=True)            
+    except subprocess.CalledProcessError as err:
+        LOGGER.warning(err)
+        return None
+
+    if process.returncode != 0:
+        if os.path.exists(replace):
+            LOGGER.warning("Subprocess returncode was not 0, deleted failed transcode attempt")
+            os.remove(replace)
+            return False
+    else:
+        if os.path.exists(replace):
+            check_dar = get_aspect_ratio(replace)
+            if '16:9' in check_dar:
+                os.rename(fpath, f"{fpath}_DELETE")
+                os.rename(replace, fpath)
+                return True
+            else:
+                LOGGER.warning("Aspect ratio of new file is not 16:9, deleted failed transcode attempt")
+                os.remove(replace)
+                return False     
+        else:
+            LOGGER.info("Renaming of file that replaces %s failed: %s.", fpath, replace)
+            LOGGER.info("Manual fix needed to complete process.")
+            return False
+
+
 def main():
     '''
     Iterate folders, checking for files (not partial)
     extract metdata and filter to correct autoingest path
     '''
     LOGGER.info("==== aspect.py START =================")
-
+    if not utils.check_control("power_off_all"):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     for fol in FOLDERS:
+        control_check()
         LOGGER.info("Targeting folder: %s", fol)
         files = []
         for root, _, filenames in os.walk(fol):
@@ -195,7 +317,7 @@ def main():
                 continue
 
             # Require partWhole
-            if not 'of' in fn:
+            if 'of' not in fn:
                 print(f'{f}\tFilename does not contain _of_')
                 LOGGER.warning('%s\tFilename does not contain _of_', f)
                 continue
@@ -207,19 +329,36 @@ def main():
 
             ext = f.split('.')[-1]
 
-            # Get metadata values
-            dar = get_dar(f)
-            par = get_par(f)
+            # Get height
             height = get_height(f)
-            print(f'DAR: {dar} PAR: {par} Height: {height}')
+            print(f'Height: {height}')
 
             # Test for 608 line height
             if not height:
                 print(f'{f}\tCould not fetch frame height (px)')
                 LOGGER.warning('%s\tCould not fetch frame height (px)', f)
                 continue
-
+            '''
+            colour_data = get_colour(fullpath)
+            color_primaries = colour_data[0]
+            color_trc = 'bt709'
+            colormatrix = colour_data[1]
+            colour = [colormatrix, color_trc, color_primaries]
+            
+            # Check aspect ratio of CID item record
+            ob_num = utils.get_object_number(fn)
+            aspect = check_parent_aspect_ratio(ob_num)
+            print(aspect)
+            if '16:9' in str(aspect):
+                LOGGER.info("File requires transcode to aspect ratio 16x9")
+                if not fix_aspect_ratio(f, colour):
+                    LOGGER.warning("Unsuccessful attempt to change Aspect ratio to 4x3: %s", fn)
+                    continue
+                LOGGER.info("File metadata updated to 4x3 and file replaced with new version: %s", fn)
+            '''
             # Check PAR and DAR
+            dar = get_dar(f)
+            par = get_par(f)
             if not dar:
                 print(f'{f}\tCould not fetch DAR from header')
                 LOGGER.warning('%s\tCould not fetch DAR from header', f)
@@ -228,7 +367,6 @@ def main():
                 print(f'{f}\tCould not fetch PAR from header')
                 LOGGER.warning('%s\tCould not fetch PAR from header', f)
                 continue
-
             # Update CID with DAR warning
             if '1.26' in dar:
                 print(f'{f}\tFile found with 1.26 DAR. Converting to 1.29 DAR')
@@ -284,7 +422,7 @@ def main():
 
                 try:
                     shutil.move(f, target)
-                    LOGGER.info('%s\tSuccessfully moved to target: %s\t', f,target)
+                    LOGGER.info('%s\tSuccessfully moved to target: %s\t', f, target)
                 except Exception:
                     LOGGER.warning('%s\tCould not move to target: %s\t', f, target)
                     raise

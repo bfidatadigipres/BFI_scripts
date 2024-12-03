@@ -4,13 +4,10 @@
 Create a new CID Item record for a file and rename
 the file with the new <object_number>
 
-Converted to Python3
-Joanna White
 2023
 '''
 import os
 import sys
-import json
 import time
 import shutil
 import logging
@@ -18,20 +15,19 @@ import argparse
 import subprocess
 
 # Private modules
-sys.path.append(os.environ['CODE_PATH'])
-import adlib
+sys.path.append(os.environ['CODE'])
+import adlib_v3 as adlib
+import utils
 
 DOWNTIME_CONTROL = os.environ['CONTROL_JSON']
 TS_DAY = time.strftime("%Y-%m-%d")
 TS_TIME = time.strftime("%H:%M:%S")
 DUPE_ERRORS = os.path.join(os.environ['GRACK_H22'], 'duplicates/')
-CID_API = os.environ['CID_API']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor(CID)
+CID_API = os.environ['CID_API4']
 
 # Setup logging
 logger = logging.getLogger('rna_document')
-hdlr = logging.FileHandler(os.path.join(os.environ['H22_POLICIES'], 'rna_document_move.txt'))
+hdlr = logging.FileHandler(os.path.join(os.environ['GRACK_H22'], '/mediaconch/rna_document_move.txt'))
 formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -146,6 +142,7 @@ def get_duration(filepath):
 
     try:
         duration = subprocess.check_output(cmd)
+        duration = duration.decode('utf-8')
     except Exception as err:
         logger.warning(err)
         duration = ''
@@ -157,11 +154,12 @@ def main(filepath, frame_work, destination=None):
     '''
     Create a new item record and rename source file
     '''
-
-    with open(DOWNTIME_CONTROL) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_control('pause_scripts'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
 
     # Parse filename string
     in_file = os.path.basename(filepath)
@@ -195,14 +193,8 @@ def main(filepath, frame_work, destination=None):
         record.append({'filesize': str(round(size, 1))})
         record.append({'filesize.unit': 'MB (Megabyte)'})
 
-    dupe_query = {'database': 'items',
-                  'search': f'digital.acquired_filename={in_file}',
-                  'limit': '-1',
-                  'output': 'json'}
-
-    dupe_query_result = CID.get(dupe_query)
-    hit_count = int(dupe_query_result.hits)
-
+    search = f'digital.acquired_filename={in_file}'
+    hit_count = adlib.retrieve_record(CID_API, 'items', search, '-1')[0]
     print(f"Number of CID records with filename {in_file} already = {hit_count}")
     logger.info("Number of CID records with filename %s already = %s", in_file, hit_count)
 
@@ -218,19 +210,22 @@ def main(filepath, frame_work, destination=None):
         print(f'Dupe file {in_file} moved to error folder')
         logger.info('Dupe file %s moved to error folder', in_file)
 
-    print(record)
     if dupe is False:
         # Create CID record
+        record_xml = adlib.create_record_data(CID_API, 'items', '', record)
+        result = adlib.post(CID_API, record_xml, 'items', 'insertrecord')
+        if not result:
+            logger.warning("Record creation failed with XML:\n%s", record_xml)
+            sys.exit('CID item record creation failed')
         try:
-            result = CUR.create_record(database='items', data=record, output='json')
-            object_number = result.records[0]['object_number'][0]
+            object_number = adlib.retrieve_field_name(result, 'object_number')[0]
         except Exception as err:
             object_number = None
             logger.warning(err)
 
         if not object_number:
             logger.warning("CID record creation failed, script exiting.")
-            sys.exit('CID item record creation failed')
+            sys.exit("CID object number couldn't be extracted from new record")
 
         # Rename source
         ob_num_name = object_number.replace('-', '_')

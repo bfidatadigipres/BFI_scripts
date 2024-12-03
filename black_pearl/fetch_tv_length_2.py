@@ -4,11 +4,14 @@ import os
 import csv
 import sys
 from ds3 import ds3
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Setup client/paths
 CLIENT = ds3.createClientFromEnv()
 CSV_PATH = '/mnt/qnap_imagen_storage/Public/Admin/code/filesize_extractor/ofcom_dpi_ingest_1_3.csv'
 NEW_CSV_PATH = '/mnt/qnap_imagen_storage/Public/Admin/code/filesize_extractor/ofcom_dpi_ingest_filesizes.csv'
+
 
 def read_csv(csv_path):
     '''
@@ -20,6 +23,7 @@ def read_csv(csv_path):
             if row:  # Skip empty lines
                 yield row.split(',')
 
+
 def fetch_length(bucket, ref_num):
     '''
     Fetch length from Black Pearl using
@@ -28,6 +32,7 @@ def fetch_length(bucket, ref_num):
     r = ds3.HeadObjectRequest(bucket, ref_num)
     result = CLIENT.head_object(r)
     return result.response.msg['content-length']
+
 
 def write_to_new_csv(data):
     '''
@@ -42,6 +47,7 @@ def write_to_new_csv(data):
     with open(NEW_CSV_PATH, 'a', newline='') as csv_file:
         datawrite = csv.writer(csv_file)
         datawrite.writerow(data)
+
 
 def check_complete(ref_num):
     '''
@@ -64,12 +70,16 @@ def check_complete(ref_num):
 
     return False
 
+
 def main():
     '''
     Open CSV, yield each line
     retrieve BP data and write
     to new CSV
     '''
+    if not utils.check_control("power_off_all"):
+        print("Script run prevented by downtime_control.json. Script exiting")
+        sys.exit('Script run prevented by downtime_control.json. Script exiting')
     for row in read_csv(CSV_PATH):
         if len(row) < 2:
             print(f"Skipping invalid row: {row}")
@@ -91,6 +101,7 @@ def main():
         except Exception as e:
             print(f"Error processing {ref_num}: {e}")
             continue
+
 
 if __name__ == '__main__':
     main()

@@ -22,7 +22,6 @@ Refactored 2023
 import os
 import sys
 import glob
-import json
 import logging
 from datetime import datetime, timezone
 import pytz
@@ -30,6 +29,7 @@ import pytz
 # Private imports
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 import document_item
 import models
 
@@ -52,33 +52,6 @@ TARGETS = [
     '/mnt/qnap_08/processing/',
     '/mnt/qnap_01/Public/F47/processing/'
 ]
-
-
-def check_control():
-    '''
-    Check downtime control and stop script of False
-    '''
-    with open(os.path.join(LOGS, 'downtime_control.json')) as control:
-        j = json.load(control)
-
-        if not j['split_control_delete']:
-            logger.info('Exit requested by downtime_control.json')
-            sys.exit('Exit requested by downtime_control.json')
-        if not j['split_control_h22']:
-            logger.info('Exit requested by downtime_control.json')
-            sys.exit('Exit requested by downtime_control.json')
-
-
-def check_cid():
-    '''
-    Check CID API responsive
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        logger.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def check_for_parts(ob_num):
@@ -127,8 +100,13 @@ def main():
     to generate part whole and print to log for test period
     '''
     logger.info("======================== SPLIT MOPUP START ==========================")
-    check_control()
-    check_cid()
+    if not utils.check_control('split_control_delete') or not utils.check_control('split_control_h22'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
 
     # Iterate targets
     for media_target in TARGETS:

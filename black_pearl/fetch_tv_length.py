@@ -16,6 +16,8 @@ import os
 import csv
 import sys
 from ds3 import ds3
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Setup client/paths
 CLIENT = ds3.createClientFromEnv()
@@ -51,6 +53,10 @@ def main():
     retrieve BP data and write
     to new CSV
     '''
+    if not utils.check_control("power_off_all"):
+        print("Script run prevented by downtime_control.json. Script exiting")
+        sys.exit('Script run prevented by downtime_control.json. Script exiting')
+
     for ref_num, bucket in read_csv(CSV_PATH):
         check = check_complete(ref_num)
         if check:

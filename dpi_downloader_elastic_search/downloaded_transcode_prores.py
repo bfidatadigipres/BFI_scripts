@@ -23,6 +23,10 @@ import logging
 import subprocess
 import magic
 
+# Private packages
+sys.path.append(os.environ['CODE'])
+import utils
+
 # Global paths from server environmental variables
 PATH_POLICY = os.environ['MEDIACONCH']
 PRORES_POLICY = os.path.join(PATH_POLICY, 'BFI_download_transcode_basic_prores.xml')
@@ -36,18 +40,6 @@ formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            return False
-        else:
-            return True
 
 
 def check_mime_type(fpath):
@@ -487,9 +479,8 @@ def transcode_mov(fpath):
     if not mime_true:
         logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", sys.argv)
         return 'not video'
-    running = check_control()
-    if not running:
-        logger.warning('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_control('pause_scripts'):
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
         return False
 
     logger.info("================== START DPI download transcode to prores START ==================")

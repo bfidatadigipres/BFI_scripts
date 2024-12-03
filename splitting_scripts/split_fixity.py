@@ -26,7 +26,6 @@ June 2022
 # Public packages
 import os
 import sys
-import json
 import time
 import glob
 import shutil
@@ -37,6 +36,7 @@ import subprocess
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 import document_item
 import models
 import clipmd5
@@ -67,17 +67,6 @@ formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
-
-
-def control_check():
-    '''
-    Check that `downtime_control.json` has not indicated termination
-    '''
-    with open(os.path.join(LOG_PATH, 'downtime_control.json')) as control:
-        j = json.load(control)
-        if not j['split_control_ofcom']:
-            logger.info("Exit requested by downtime_control.json")
-            sys.exit('Exit requested by downtime_control.json')
 
 
 def get_duration(fullpath):
@@ -154,7 +143,9 @@ def main():
     print("----------------------------------------------------")
     print(files)
     for filepath in files:
-        control_check()
+        if not utils.check_control('split_control_ofcom'):
+            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
         f = os.path.basename(filepath)
         logger.info('=== Current file: %s Multi item: %s', filepath, MULTI_ITEMS)

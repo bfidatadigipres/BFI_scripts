@@ -345,8 +345,13 @@ def create_grouped_data(priref, grouping, field_pairs):
         mid = ''
         mid_fields = ''
         print("New group block:")
-        for grouped in lst:
-            for key, value in grouped.items():
+        if isinstance(lst, list):
+            for grouped in lst:
+                for key, value in grouped.items():
+                    xml_field = f'<{key}>{value}</{key}>'
+                    mid += xml_field
+        elif isinstance(lst, dict):
+            for key, value in lst.items():
                 xml_field = f'<{key}>{value}</{key}>'
                 mid += xml_field
         mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'

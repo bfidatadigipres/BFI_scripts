@@ -348,21 +348,6 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 # Check person record exists
                 pdata = cid_person_check(cast_id, session)
                 if pdata is None:
-                    continue
-                person_priref, person_name, person_act_type = pdata
-                if len(person_priref) > 5:
-                    for k_, v_ in contributors.items():
-                        if str(cast_type) == k_:
-                            activity_type = v_[1]
-                            if str(activity_type) in str(person_act_type):
-                                LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
-                            else:
-                                LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
-                                append_activity_type(person_priref, activity_type, person_act_type, session)
-                    print(f"** Person record already exists: {person_name} {person_priref}")
-                    LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
-                    LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
-                else:
                     # Create data for Person record creation
                     cast_dct_data = make_person_dct(val)
                     cast_dct_formatted = cast_dct_data[0]
@@ -386,7 +371,21 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                             print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
                         else:
                             LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
-                            print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
+                            print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")    
+
+                person_priref, person_name, person_act_type = pdata
+                if len(person_priref) > 1:
+                    for k_, v_ in contributors.items():
+                        if str(cast_type) == k_:
+                            activity_type = v_[1]
+                            if str(activity_type) in str(person_act_type):
+                                LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
+                            else:
+                                LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
+                                append_activity_type(person_priref, activity_type, person_act_type, session)
+                    print(f"** Person record already exists: {person_name} {person_priref}")
+                    LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
+                    LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
 
                 # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
                 for key_, val_ in contributors.items():
@@ -426,22 +425,6 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 # Check person record exists
                 pdata = cid_person_check(cred_id, session)
                 if pdata is None:
-                    continue
-                person_priref, person_name, person_act_type = pdata
-                if len(person_priref) > 5:
-                    LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
-                    for k_, v_ in production.items():
-                        if str(cred_type) == k_:
-                            activity_type_cred = v_[1]
-                            if str(activity_type_cred) in str(person_act_type):
-                                print(f"Matched activity type {activity_type_cred} : {person_act_type}")
-                            else:
-                                print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
-                                append_activity_type(person_priref, activity_type_cred, person_act_type, session)
-                    print(f"** Person record already exists: {person_name} {person_priref}")
-                    LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
-                    LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
-                else:
                     # Create data for Person record creation
                     cred_dct_data = make_person_dct(val)
                     cred_dct_formatted = cred_dct_data[0]
@@ -467,6 +450,21 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                         else:
                             LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
                             print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
+
+                person_priref, person_name, person_act_type = pdata
+                if len(person_priref) > 5:
+                    LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
+                    for k_, v_ in production.items():
+                        if str(cred_type) == k_:
+                            activity_type_cred = v_[1]
+                            if str(activity_type_cred) in str(person_act_type):
+                                print(f"Matched activity type {activity_type_cred} : {person_act_type}")
+                            else:
+                                print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
+                                append_activity_type(person_priref, activity_type_cred, person_act_type, session)
+                    print(f"** Person record already exists: {person_name} {person_priref}")
+                    LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
+                    LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
 
                 # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
                 for key_, val_ in production.items():

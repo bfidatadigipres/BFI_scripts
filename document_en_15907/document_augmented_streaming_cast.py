@@ -346,7 +346,10 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 name_list.append(cast_name)
 
                 # Check person record exists
-                person_priref, person_name, person_act_type = cid_person_check(cast_id, session)
+                pdata = cid_person_check(cast_id, session)
+                if pdata is None:
+                    continue
+                person_priref, person_name, person_act_type = pdata
                 if len(person_priref) > 5:
                     for k_, v_ in contributors.items():
                         if str(cast_type) == k_:
@@ -421,7 +424,10 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 name_list.append(cred_name)
 
                 # Check person record exists
-                person_priref, person_name, person_act_type = cid_person_check(cred_id, session)
+                pdata = cid_person_check(cred_id, session)
+                if pdata is None:
+                    continue
+                person_priref, person_name, person_act_type = pdata
                 if len(person_priref) > 5:
                     LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
                     for k_, v_ in production.items():

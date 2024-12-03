@@ -7,7 +7,7 @@
 code_pth="${CODE_BFI}document_en_15907/"
 date_FULL=$(date +'%Y-%m-%d  - %T')
 year=$(date +'%Y')
-last_year=$(date -d "$(date +%Y) -1 week" +'%Y')
+last_year=$(date -d "$(date +%Y) -6 week" +'%Y')
 log="${LOG_PATH}stora_housekeeping.log"
 
 function control {

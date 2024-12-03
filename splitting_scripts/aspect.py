@@ -21,7 +21,11 @@ October 2022
 # Public modules
 import os
 import re
+<<<<<<< HEAD
+import json
+=======
 import sys
+>>>>>>> 24919e5b80b32c2c6ca078af48f3f8fde4f6d6b4
 import shutil
 import logging
 import subprocess
@@ -45,13 +49,24 @@ LOGGER.setLevel(logging.INFO)
 
 FOLDERS = {
     f"{os.environ['QNAP_H22']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
-    f"{os.environ['ISILON_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_IS_VID']}ingest/proxy/video/adjust/",
+#    f"{os.environ['ISILON_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_IS_VID']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
     f"{os.environ['GRACK_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_H22']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_08']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP08']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_10']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP10']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP01']}ingest/proxy/video/adjust/"
 }
+
+
+def control_check():
+    '''
+    Check that `downtime_control.json` has not indicated termination
+    '''
+    with open(os.path.join(LOGS, 'downtime_control.json')) as control:
+        j = json.load(control)
+        if not j['split_control_delete']:
+            logger.info("Exit requested by downtime_control.json")
+            sys.exit('Exit requested by downtime_control.json')
 
 
 def get_dar(fullpath):
@@ -223,30 +238,31 @@ def fix_aspect_ratio(fpath, data):
         fpath
     ]
 
+    cv = []
     if 'mkv' in ext.lower():
         cv = [
-            '-c:v', 'copy'
+            "-c", "copy",
+            "-map", "0"
         ]
-    elif 'mov' in ext.lower():
+
+    else:
         cv = [
-            '-c:v', 'ffv1', '-level', '3',
-            '-g', '1', '-slicecrc', '1'
+            "-c:v", "ffv1", "-level", "3",
+            "-g", "1", "-slicecrc", "1",
+            "-color_primaries", f"{data[2]}",
+            "-color_trc", f"{data[1]}",
+            "-colorspace", f"{data[0]}",
+            "-color_range", "1",
+            "-c:a", "copy",
+            "-map", "0"
         ]
+
     aspect = [
-        '-aspect', '16:9'
-    ]
-    colour_build = [
-        "-color_primaries", f"{data[2]}",
-        "-color_trc", f"{data[1]}",
-        "-colorspace", f"{data[0]}",
-        "-color_range", "1"
-    ]
-    audio_map = [
-        '-c:a', 'copy',
-        '-map', '0',
+        "-aspect", "16:9",
         replace
     ]
-    command = launch + cv + colour_build + aspect + audio_map
+
+    command = launch + cv + aspect
 
     try:
         process = subprocess.run(command, shell=False, capture_output=True, text=True)            
@@ -286,6 +302,7 @@ def main():
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     for fol in FOLDERS:
+        control_check()
         LOGGER.info("Targeting folder: %s", fol)
         files = []
         for root, _, filenames in os.walk(fol):

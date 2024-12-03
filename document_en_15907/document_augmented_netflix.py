@@ -632,8 +632,16 @@ def main():
         foldertitle = get_folder_title(article, title)
         matched_folders = get_folder_match(foldertitle)
         if len(matched_folders) > 1:
-            print(f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}")
-            continue
+            title_count = len(title.split(" ")) + 1
+            if len(article) > 0:
+                title_count = title_count + 1
+            for fold in matched_folders:
+                folder_length = len(fold.split('_'))
+                if title_count == folder_length:
+                    matched_folders = [fold]
+            if len(matched_folders) != 1:
+                print(f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}")
+                continue
         if len(matched_folders) == 0:
             print(f"No match found: {article} {title}")
             # At some point initiate 'title' search in PATV data

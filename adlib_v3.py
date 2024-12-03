@@ -351,7 +351,7 @@ def create_grouped_data(priref, grouping, field_pairs):
                     xml_field = f'<{key}>{value}</{key}>'
                     mid += xml_field
         elif isinstance(lst, dict):
-            for key, value in grouped.items():
+            for key, value in lst.items():
                 xml_field = f'<{key}>{value}</{key}>'
                 mid += xml_field
         mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'

@@ -240,7 +240,7 @@ def get_video_xml(track):
         'ScanType_StoreMethod, scan_type_store_method',
         'Standard, standard',
         'StreamSize/String1, stream_size',
-        # 'StreamSize, stream_size.bytes',
+        'StreamSize, stream_size_bytes',
         'StreamOrder, stream_order',
         'Width, width',
         'Format_Profile, format_profile',
@@ -292,7 +292,6 @@ def get_image_xml(track):
     metadata required
     JMW - To complete when metadata source identified
     '''
-    return []
     data = [
         'Duration/String1, duration',
         'Duration, duration.milliseconds',
@@ -309,6 +308,8 @@ def get_image_xml(track):
         if cn:
             image_dict.append({'image.commercial_name.lref': cn})
 
+    return image_dict
+
 
 def get_audio_xml(track):
     '''
@@ -324,7 +325,7 @@ def get_audio_xml(track):
         'Duration, duration',
         'BitRate, bit_rate',
         'ChannelLayout, channel_layout',
-        # 'ChannelPositions, channel_positions',
+        'ChannelPositions, channel_position',
         'Compression_Mode, compression_mode',
         'Format_Settings_Endianness, format_settings_endianness',
         'Format_Settings_Sign, format_settings_sign',

@@ -344,7 +344,6 @@ def create_grouped_data(priref, grouping, field_pairs):
     for lst in field_pairs:
         mid = ''
         mid_fields = ''
-        print("New group block:")
         if isinstance(lst, list):
             for grouped in lst:
                 for key, value in grouped.items():
@@ -355,9 +354,8 @@ def create_grouped_data(priref, grouping, field_pairs):
                 xml_field = f'<{key}>{value}</{key}>'
                 mid += xml_field
         mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
-        print(mid_fields)
         payload_mid = payload_mid + mid_fields
-    
+
     if len(priref) > 0:
         payload = f"<adlibXML><recordList><record priref='{priref}'>"
         payload_end = "</record></recordList></adlibXML>"

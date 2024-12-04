@@ -73,7 +73,7 @@ def main():
     Write all mediainfo reports to header_tags. Populate fields with specific data.
     '''
     if len(sys.argv) < 2:
-        sys.exit()
+        sys.exit('Missing arguments')
     if not utils.cid_check(CID_API):
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical("* Cannot establish CID session, exiting script")
@@ -100,10 +100,11 @@ def main():
     json_path = make_paths(filename)[4]
     mdata_xml = build_metadata_xml(json_path, priref)
     print(mdata_xml)
-    sys.exit("Not writing to anywhere")
-    success = write_payload(priref, mdata_xml, 'container.duration')
+
+    success = write_payload(mdata_xml)
     if success:
         LOGGER.info("Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
+    sys.exit('Pausing here for multiple tries')
 
     # Write remaining metadata to header_tags and clean up
     header_payload = make_header_data(text_path, filename)
@@ -127,28 +128,41 @@ def build_metadata_xml(json_path, priref):
     text = []
 
     with open(json_path, 'r') as metadata:
-        mdata = json.loads(metadata)
+        mdata = json.load(metadata)
 
     for track in mdata['media']['track']:
         if track['@type'] == 'General':
+            print(track)
             gen_xml = get_general_xml(track)
         elif track['@type'] == 'Video':
             vid_xml = get_video_xml(track)
+            if len(videos) == 0:
+                videos = vid_xml
             videos = videos + vid_xml
         elif track['@type'] == 'Image':
             img_xml = get_image_xml(track)
+            if len(image) == 0:
+                image = img_xml
             image = image + img_xml
         elif track['@type'] == 'Audio':
             aud_xml = get_audio_xml(track)
+            if len(audio) == 0:
+                audio = aud_xml
             audio = audio + aud_xml
         elif track['@type'] == 'Other':
             oth_xml = get_other_xml(track)
+            if len(other) == 0:
+                other = oth_xml
             other = other + oth_xml
         elif track['@type'] == 'Text':
             txt_xml = get_text_xml(track)
+            if len(text) == 0:
+                text = txt_xml
             text = text + txt_xml
 
-    return gen_xml + videos + audio + other + text
+    payload = gen_xml + videos + audio + other + text
+    xml = adlib.create_record_data(CID_API, 'media', priref, payload)
+    return xml
 
 
 def match_lref(arg, matched_data):
@@ -178,7 +192,7 @@ def get_general_xml(track):
         'FrameCount, frame_count',
         'FrameRate, frame_rate',
         'OverallBitRate, overall_bit_rate',
-        'OverallBitRate_Mode, overall_bit_rate_mode',
+        # 'OverallBitRate_Mode, overall_bit_rate_mode',
         'Encoded_Application, writing_application',
         'Encoded_Library, writing_library',
         'FileExtension, file_extension',
@@ -188,26 +202,18 @@ def get_general_xml(track):
 
     general_dict = []
     for mdata in data:
+        print(f"*** {mdata} ***")
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
             general_dict.append({f'container.{cid}': track[minfo]})
-
-    # Manage lref look up for some items
     if track.get('Format_Commercial'):
-        cn = match_lref('container.commercial_name', track['Format_Commercial'])
-        if cn:
-            general_dict.append({'container.commercial_name.lref': cn})
+        general_dict.append({'container.commercial_name': track.get('Format_Commercial')})
     if track.get('Format'):
-        cn = match_lref('container.format', track['Format'])
-        if cn:
-            general_dict.append({'container.format.lref': cn})
+        general_dict.append({'container.format': track.get('Format')})
     if track.get('Audio_Codec_List'):
-        cn = match_lref('container.audio_codecs', track['Audio_Codec_List'])
-        if cn:
-            general_dict.append({'container.audio_codecs.lref': cn})
+        general_dict.append({'container.audio_codecs': track.get('Audio_Codec_List')})
 
-    general_xml = adlib.create_grouped_data('', 'container', general_dict)
-    return general_xml
+    return general_dict
 
 
 def get_video_xml(track):
@@ -234,64 +240,50 @@ def get_video_xml(track):
         'ScanType_StoreMethod, scan_type_store_method',
         'Standard, standard',
         'StreamSize/String1, stream_size',
-        'StreamSize, stream_size.bytes',
+        # 'StreamSize, stream_size.bytes',
         'StreamOrder, stream_order',
         'Width, width',
         'Format_Profile, format_profile',
-        'Width_CleanAperture, width_aperture'
+        'Width_CleanAperture, width_aperture',
         'Delay, delay',
-        'Format_settings_GOP', 'format_settings_GOP'
+        'Format_settings_GOP, format_settings_GOP'
     ]
 
     video_dict = []
     for mdata in data:
+        print(mdata)
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
             video_dict.append({f'video.{cid}': track[minfo]})
 
     # Handle items with thesaurus look up
     if track.get('CodecID'):
-        cn = match_lref('video.codec_id', track['CodecID'])
-        if cn:
-            video_dict.append({'video.codec_id.lref': cn})
+        video_dict.append({'video.codec_id': track.get('CodecID')})
     if track.get('ColorSpace'):
-        cn = match_lref('video.colour_space', track['ColorSpace'])
-        if cn:
-            video_dict.append({'video.colour_space.lref': cn})
+        video_dict.append({'video.colour_space': track.get('ColorSpace')})
     if track.get('Format_Commercial'):
-        cn = match_lref('video.commercial_name', track['Format_Commercial'])
-        if cn:
-            video_dict.append({'video.commercial_name.lref': cn})
+        video_dict.append({'video.commercial_name': track.get('Format_Commercial')})
     if track.get('DisplayAspectRatio'):
-        cn = match_lref('video.display_aspect_ratio', track['DisplayAspectRatio'])
-        if cn:
-            video_dict.append({'video.display_aspect_ratio.lref': cn})
-    if track.get('Format'):
-        cn = match_lref('video.format', track['Format'])
-        if cn:
-            video_dict.append({'video.format.lref': cn})
+        video_dict.append({'video.display_aspect_ratio': track.get('DisplayAspectRatio')})
+    # if track.get('Format'):
+        # video_dict.append({'video.format': track.get('Format')})
     if track.get('matrix_coefficients'):
-        cn = match_lref('video.matrix_coefficients', track['matrix_coefficients'])
-        if cn:
-            video_dict.append({'video.matrix_coefficients.lref': cn})
+        video_dict.append({'video.matrix_coefficients': track.get('matrix_coefficients')})
     if track.get('PixelAspectRatio'):
-        cn = match_lref('video.pixel_aspect_ratio', track['PixelAspectRatio'])
-        if cn:
-            video_dict.append({'video.pixel_aspect_ratio.lref': cn})
+        video_dict.append({'video.pixel_aspect_ratio': track.get('PixelAspectRatio')})
     if track.get('transfer_characteristics'):
-        cn = match_lref('video.transfer_characteristics', track['transfer_characteristics'])
-        if cn:
-            video_dict.append({'video.transfer_characteristics.lref': cn})
+        video_dict.append({'video.transfer_characteristics': track.get('transfer_characteristics')})
     if track.get('Encoded_Library'):
-        cn = match_lref('video.writing_library', track['Encoded_Library'])
-        if cn:
-            video_dict.append({'video.writing_library.lref': cn})
+        video_dict.append({'video.writing_library': track.get('Encoded_Library')})
 
     # Handle grouped items with no video prefix
-    if track['extra'].get('MaxSlicesCount'):
-        video_dict.append({'max_slice_count': track['extra'].get('MaxSlicesCount')})
+    if track.get('extra'):
+        if track.get('extra').get('MaxSlicesCount'):
+            video_dict.append({'max_slice_count': track.get('extra').get('MaxSlicesCount')})
     if track.get('colour_range'):
         video_dict.append({'colour_range': track.get('colour_range')})
+
+    return video_dict
 
 
 def get_image_xml(track):
@@ -300,10 +292,10 @@ def get_image_xml(track):
     metadata required
     JMW - To complete when metadata source identified
     '''
+    return []
     data = [
         'Duration/String1, duration',
         'Duration, duration.milliseconds',
-
     ]
 
     image_dict = []
@@ -332,7 +324,7 @@ def get_audio_xml(track):
         'Duration, duration',
         'BitRate, bit_rate',
         'ChannelLayout, channel_layout',
-        'ChannelPositions, channel_positions',
+        # 'ChannelPositions, channel_positions',
         'Compression_Mode, compression_mode',
         'Format_Settings_Endianness, format_settings_endianness',
         'Format_Settings_Sign, format_settings_sign',
@@ -350,24 +342,15 @@ def get_audio_xml(track):
 
     # Handle lref look up items
     if track.get('Format_Commercial'):
-        cn = match_lref('audio.commercial_name', track['Format_Commercial'])
-        if cn:
-            audio_dict.append({'audio.commercial_name.lref': cn})
+        audio_dict.append({'audio.commercial_name': track.get('Format_Commercial')})
     if track.get('Format'):
-        data = match_lref('audio.format', track['Format'])
-        if data:
-            audio_dict.append({'audio.format.lref': data})
+        audio_dict.append({'audio.format': track.get('Format')})
     if track.get('SamplingRate'):
-        data = match_lref('audio.sampling_rate', track['SamplingRate'])
-        if data:
-            audio_dict.append({'audio.sampling_rate.lref': data})
+        audio_dict.append({'audio.sampling_rate': track.get('SamplingRate')})
     if track.get('Language'):
-        data = match_lref('audio.language', track['SamplingRate'])
-        if data:
-            audio_dict.append({'audio.sampling_rate.lref': data})
+        audio_dict.append({'audio.language': track.get('Language')})
 
-    audio_xml = adlib.create_grouped_data('', 'container', audio_dict)
-    return audio_xml
+    return audio_dict
 
 
 def get_other_xml(track):
@@ -391,13 +374,11 @@ def get_other_xml(track):
 
     # Handle lref look up items
     if track.get('Format'):
-        data = match_lref('other.format', track['Format'])
-        if data:
-            other_dict.append({'audio.format.lref': data})
+        other_dict.append({'other.format': track.get('Format')})
     if track.get('Language'):
-        data = match_lref('other.language', track['Language'])
-        if data:
-            other_dict.append({'audio.language.lref': data})
+        other_dict.append({'other.language': track.get('Language')})
+
+    return other_dict
 
 
 def get_text_xml(track):
@@ -415,12 +396,12 @@ def get_text_xml(track):
     for mdata in data:
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
-            text_dict.append({f'audio.{cid}': track[minfo]})
+            text_dict.append({f'text.{cid}': track[minfo]})
 
     if track.get('CodecID'):
-        cn = match_lref('text.codec_id', track['CodecID'])
-        if cn:
-            text_dict.append({'text.codec_id.lref': cn})
+        text_dict.append({'text.codec_id': track.get('CodecID')})
+
+    return text_dict
 
 
 def clean_up(filename, text_path):
@@ -512,18 +493,15 @@ def make_header_data(text_path, filename):
     return payload_data
 
 
-def write_payload(priref, payload_data, arg):
+def write_payload(payload):
     '''
     Payload formatting per mediainfo output
     '''
-    payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_end = "</record></recordList></adlibXML>"
-    payload = payload_head + payload_data + payload_end
 
     record = adlib.post(CID_API, payload, 'media', 'updaterecord')
     if record is None:
         return False
-    elif arg in str(record):
+    elif 'priref' in str(record):
         return True
     else:
         return None

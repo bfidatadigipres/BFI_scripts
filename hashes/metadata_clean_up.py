@@ -293,7 +293,6 @@ def get_image_xml(track):
     metadata required
     JMW - To complete when metadata source identified
     '''
-    return []
     data = [
         'Duration/String1, duration',
         'Duration, duration.milliseconds',
@@ -309,6 +308,8 @@ def get_image_xml(track):
         cn = match_lref('image.commercial_name', track['Format_Commercial'])
         if cn:
             image_dict.append({'image.commercial_name.lref': cn})
+
+    return image_dict
 
 
 def get_audio_xml(track):

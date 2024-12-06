@@ -98,6 +98,7 @@ def main():
 
     print(f"Priref retrieved: {priref}. Writing metadata to record")
     json_path = make_paths(filename)[4]
+    '''
     mdata_xml = build_metadata_xml(json_path, priref)
     print(mdata_xml)
 
@@ -105,15 +106,15 @@ def main():
     if success:
         LOGGER.info("Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
     sys.exit('Pausing here for multiple tries')
-
+    '''
     # Write remaining metadata to header_tags and clean up
-    header_payload = make_header_data(text_path, filename)
+    header_payload = make_header_data(text_path, filename, priref)
     if not header_payload:
         sys.exit()
-    success = write_payload(priref, header_payload, "header_tags.parser")
+    success = write_payload(header_payload)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
-        clean_up(filename)
+        # clean_up(filename)
 
 
 def build_metadata_xml(json_path, priref):
@@ -192,7 +193,7 @@ def get_general_xml(track):
         'FrameCount, frame_count',
         'FrameRate, frame_rate',
         'OverallBitRate, overall_bit_rate',
-        # 'OverallBitRate_Mode, overall_bit_rate_mode',
+        'OverallBitRate_Mode, overall_bit_rate_mode',
         'Encoded_Application, writing_application',
         'Encoded_Library, writing_library',
         'FileExtension, file_extension',
@@ -208,8 +209,8 @@ def get_general_xml(track):
             general_dict.append({f'container.{cid}': track[minfo]})
     if track.get('Format_Commercial'):
         general_dict.append({'container.commercial_name': track.get('Format_Commercial')})
-    if track.get('Format'):
-        general_dict.append({'container.format': track.get('Format')})
+    # if track.get('Format'):
+        # general_dict.append({'container.format': track.get('Format')})
     if track.get('Audio_Codec_List'):
         general_dict.append({'container.audio_codecs': track.get('Audio_Codec_List')})
 
@@ -240,7 +241,7 @@ def get_video_xml(track):
         'ScanType_StoreMethod, scan_type_store_method',
         'Standard, standard',
         'StreamSize/String1, stream_size',
-        # 'StreamSize, stream_size.bytes',
+        'StreamSize, stream_size_bytes',
         'StreamOrder, stream_order',
         'Width, width',
         'Format_Profile, format_profile',
@@ -324,7 +325,7 @@ def get_audio_xml(track):
         'Duration, duration',
         'BitRate, bit_rate',
         'ChannelLayout, channel_layout',
-        # 'ChannelPositions, channel_positions',
+        'ChannelPositions, channel_position',
         'Compression_Mode, compression_mode',
         'Format_Settings_Endianness, format_settings_endianness',
         'Format_Settings_Sign, format_settings_sign',
@@ -343,8 +344,8 @@ def get_audio_xml(track):
     # Handle lref look up items
     if track.get('Format_Commercial'):
         audio_dict.append({'audio.commercial_name': track.get('Format_Commercial')})
-    if track.get('Format'):
-        audio_dict.append({'audio.format': track.get('Format')})
+    # if track.get('Format'):
+        # audio_dict.append({'audio.format': track.get('Format')})
     if track.get('SamplingRate'):
         audio_dict.append({'audio.sampling_rate': track.get('SamplingRate')})
     if track.get('Language'):
@@ -373,8 +374,8 @@ def get_other_xml(track):
             other_dict.append({f'other.{cid}': track[minfo]})
 
     # Handle lref look up items
-    if track.get('Format'):
-        other_dict.append({'other.format': track.get('Format')})
+    # if track.get('Format'):
+        # other_dict.append({'other.format': track.get('Format')})
     if track.get('Language'):
         other_dict.append({'other.language': track.get('Language')})
 
@@ -447,7 +448,7 @@ def make_paths(filename):
     return [text_full_path, ebu_path, pb_path, xml_path, json_path, exif_path]
 
 
-def make_header_data(text_path, filename):
+def make_header_data(text_path, filename, priref):
     '''
     Create the header tag data
     '''
@@ -490,7 +491,7 @@ def make_header_data(text_path, filename):
         exif = f"<Header_tags><header_tags.parser>Exiftool text</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
 
     payload_data = text + text_full + ebu + pb + xml + json + exif
-    return payload_data
+    return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
 
 
 def write_payload(payload):

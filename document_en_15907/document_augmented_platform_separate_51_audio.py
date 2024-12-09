@@ -159,10 +159,12 @@ def main():
             file_names = build_fname_dct(file_list, new_ob_num)
             print(file_names)
 
-            filename_dct = []
+            filename_dct = {}
             for key, value in file_names.items():
                 new_fname = key
                 old_fname = value
+                filename_dct[old_fname] = new_fname
+
                 if not old_fname.endswith(('.WAV', '.wav')):
                     LOGGER.warning("File contained in separate5_1 audio folder that is not WAV: %s", old_fname)
 
@@ -184,14 +186,13 @@ def main():
                     LOGGER.info("File successfully moved to %s ingest path: %s\n", platform, autoingest)
                 elif move_success == 'Path error':
                     LOGGER.warning("Path error: %s", new_fpath)
-                filename_dct.append({"digital.acquired_filename": f"{old_fname} - Renamed to: {new_fname}"})
-                filename_dct.append({"digital.acquired_filename.type": "FILE"})
 
-            # Append digital.acquired_filename and quality_comments to new CID item record
-            payload = adlib.create_record_data(CID_API, 'items', new_priref, filename_dct)
-            record = adlib.post(CID_API, payload, 'items', 'updaterecord')
-            if not record:
-                LOGGER.warning("Filename changes were not updated to digital.acquired_filename fields: %s", filename_dct)
+            # Write all dict names to digital.acquired_filename in CID item record
+            success = create_digital_original_filenames(priref, filename_dct)
+            if not success:
+                LOGGER.warning("Skipping further actions. Digital acquired filenames not written to CID item record: %s", priref)
+                continue
+            LOGGER.info("CID item record <%s> filenames appended to digital.acquired_filenamed field", priref)
             LOGGER.info("Digital Acquired Filename data added to CID item record %s", new_priref)
             qual_comm = "5.1 audio supplied separately as IMP contains Dolby Atmos IAB."
             success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
@@ -368,6 +369,38 @@ def make_item_record_dict(priref, record):
         item.append({'language.type': adlib.retrieve_field_name(record[0], 'language.type')[0]})
 
     return item
+
+
+def create_digital_original_filenames(priref, asset_list_dct):
+    '''
+    Create entries for digital.acquired_filename
+    and append to the CID item record.
+    '''
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    for key, val in asset_list_dct.items():
+        filename = f'{key} - Renamed to: {val}'
+        LOGGER.info("Writing to digital.acquired_filename: %s", filename)
+        pay_mid = f"<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
+        payload = payload + pay_mid
+
+    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Netflix automated digital acquired filename update</edit.notes></Edit>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload + pay_edit + payload_end
+
+    LOGGER.info("** Appending digital.acquired_filename data to item record now...")
+    LOGGER.info(payload)
+
+    try:
+        result = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        print(f"Item appended successful! {priref}\n{result}")
+        LOGGER.info("Successfully appended digital.acquired_filenames to Item record %s", priref)
+        print(result)
+        return True
+    except Exception as err:
+        print(err)
+        LOGGER.warning("Failed to append digital.acquired_filenames to Item record %s", priref)
+        print(f"CID item record append FAILED!! {priref}")
+        return False
 
 
 def create_new_item_record(priref, record):

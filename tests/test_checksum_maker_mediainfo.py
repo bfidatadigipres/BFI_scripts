@@ -16,7 +16,7 @@ def test_checksum_write(creating_checksum_path, checksum_value, filepath, filena
     '''
     Tests the checksum_write function.
 
-    This test checks the behaviour of the function that checks if the 
+    This test checks the behaviour of the function that checks if the
     checksum data in the file is the correctly written into
     a md5 file. It uses paramterized inputs to validate various of cases.
 
@@ -28,7 +28,7 @@ def test_checksum_write(creating_checksum_path, checksum_value, filepath, filena
     checksum_file = cmm.checksum_write(creating_checksum_path, checksum_value, filepath, filename)
     with open(checksum_file, 'r') as file_read:
         result = file_read.readlines()
-        
+
     assert result[0] == f'{checksum_value} - {filepath} - {TODAY}'
     assert checksum_file.exists()
 
@@ -41,7 +41,7 @@ def test_checksum_exist(mocker, filename, checksum, tmp_path):
     '''
     Tests the checksum_exist function.
 
-    This test checks the behaviour of the function that checks if the 
+    This test checks the behaviour of the function that checks if the
     checksum data in the file is the correctly written into
     a md5 file and returns a path. It uses paramterized inputs to validate various of cases.
     Mocker is also used to 'mock' the tenacity decorator behaviour.
@@ -50,7 +50,7 @@ def test_checksum_exist(mocker, filename, checksum, tmp_path):
     filepath = tmp_path / filename
 
     mocker.patch('tenacity.retry', lambda x : x)
-    checksum_file = cmm.checksum_exist(filename, checksum, filepath)
+    checksum_file = cmm.checksum_exist(tmp_path, filename, checksum, filepath)
 
     print(checksum_file)
 

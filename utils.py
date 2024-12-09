@@ -157,6 +157,17 @@ def read_csv(csv_path):
         return readme
 
 
+def read_extract(fpath):
+    '''
+    For reading metadata text files
+    and returning as a block
+    '''
+    with open(fpath, 'r') as data:
+        readme = data.read()
+
+    return readme
+
+
 def check_filename(fname):
     '''
     Run series of checks against BFI filenames

@@ -9,10 +9,11 @@ Python interface for Adlib API v3.7.17094.1+
 
 import json
 import datetime
-from requests import Session, exceptions
+import xmltodict
+from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
-import xmltodict
+from requests import Session, exceptions
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {
@@ -444,4 +445,5 @@ def recycle_api(api):
     triggers Powershell recycle
     '''
     search = 'title=recycle.application.pool.data.test'
-    return get(api, search)
+    get(api, search)
+    sleep(120)

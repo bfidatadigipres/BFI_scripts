@@ -690,7 +690,7 @@ def main():
     print(f"Found JSON file total: {len(file_list)}")
 
     for fullpath in file_list:
-        if FAILURE_COUNTER > 5:
+        if FAILURE_COUNTER > 2:
             logger.critical("Multiple CID item record creation failures. Script exiting.")
             sys.exit('Multiple CID item record creation failures detected. Script exiting.')
         if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
@@ -900,6 +900,7 @@ def main():
     logger.info('========== STORA documentation script END ===================================================\n')
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id):
     '''
     Call function series_check(series_id) and build all data needed
@@ -1036,6 +1037,9 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
+        recycle = check_response(work_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         print(f"create_series(): {work_rec}")
         try:
             series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
@@ -1050,7 +1054,6 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     except Exception as err:
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
         logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
-        raise
 
     if not series_work_id:
         return None
@@ -1068,6 +1071,9 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         genre_xml = adlib.create_grouped_data(series_work_id, 'Content_genre', series_content_genres)
         print(genre_xml)
         update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+        recycle = check_response(update_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         if 'Content_genre' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", series_work_id)
 
@@ -1084,6 +1090,9 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         subject_xml = adlib.create_grouped_data(series_work_id, 'Content_subject', series_content_subject)
         print(subject_xml)
         update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+        recycle = check_response(update_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         if 'Content_subject' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", series_work_id)
 
@@ -1106,6 +1115,9 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         label_xml = adlib.create_grouped_data(series_work_id, 'Label', label_fields)
         print(label_xml)
         update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+        recycle = check_response(update_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         if 'Label' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", series_work_id)
 
@@ -1217,6 +1229,7 @@ def build_webvtt_dct(old_webvtt):
     return webvtt_payload.replace("\'", "'")
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict):
     '''
     Create work records
@@ -1284,6 +1297,9 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         sleep(2)
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
+        recycle = check_response(work_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         print(f"create_work(): {work_rec}")
         try:
             print("Populating work_id and object_number variables")
@@ -1317,6 +1333,9 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         genre_xml = adlib.create_grouped_data(work_id, 'Content_genre', content_genres)
         print(genre_xml)
         update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+        recycle = check_response(update_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         if 'Content_genre' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", work_id)
 
@@ -1333,6 +1352,9 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         subject_xml = adlib.create_grouped_data(work_id, 'Content_subject', content_subject)
         print(subject_xml)
         update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+        recycle = check_response(update_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         if 'Content_subject' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", work_id)
 
@@ -1355,12 +1377,16 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         label_xml = adlib.create_grouped_data(work_id, 'Label', label_fields)
         print(label_xml)
         update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+        recycle = check_response(update_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         if 'Label' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", work_id)
 
     return work_id
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict):
     '''
     Create a manifestation record,
@@ -1397,6 +1423,9 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         sleep(2)
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
+        recycle = check_response(man_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         print(f"create_manifestation(): {man_rec}")
         try:
             manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
@@ -1414,6 +1443,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     return manifestation_id
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, epg_dict):
     '''
     Create CID Item record
@@ -1438,6 +1468,9 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         sleep(2)
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+        recycle = check_response(item_rec)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         print(f"create_cid_item_record(): {item_rec}")
         try:
             item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
@@ -1462,6 +1495,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     return item_object_number, item_id
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     '''
     Item record creation failed
@@ -1474,6 +1508,9 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     try:
         sleep(2)
         response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
+        recycle = check_response(response)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
         else:
@@ -1490,6 +1527,9 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         try:
             sleep(2)
             response = adlib.post(CID_API, payload, 'works', 'updaterecord')
+            recycle = check_response(response)
+            if recycle is True:
+                raise Exception("Recycle of API exception raised.")
             if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
             else:
@@ -1497,7 +1537,14 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         except Exception as err:
             logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion. Error: %s', fullpath, work_id, err)
 
-    # Rename JSON with .PROBLEM to prevent retry
+    success = mark_problem_json(fullpath)
+    logger.info("Successfully updated JSON with PROBLEM: %s", success)
+
+
+def mark_problem_json(fullpath):
+    '''
+    Rename JSON with .PROBLEM to prevent retry
+    '''
     problem = f'{fullpath}.PROBLEM'
     print(f'* Renaming {fullpath} to {problem}')
     logger.info('%s\t Renaming JSON to %s', fullpath, problem)
@@ -1508,11 +1555,11 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     except Exception as err:
         print(f'** PROBLEM: Could not rename {fullpath} to {problem}')
         logger.critical('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
-
     if os.path.exists(problem):
         return True
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def push_payload(item_id, webvtt_payload):
     '''
     DEPRECATED
@@ -1530,11 +1577,28 @@ def push_payload(item_id, webvtt_payload):
 
     try:
         post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        recycle = check_response(post_resp)
+        if recycle is True:
+            raise Exception("Recycle of API exception raised.")
         if post_resp:
             return True
     except Exception as err:
         logger.warning('push_payload()): Unable to write Webvtt to record %s \n%s', item_id, err)
     return False
+
+
+def check_response(rec):
+    '''
+    Search for failed response terms
+    in API reponses
+    '''
+    failures = [
+        'A severe error occurred on the current command. The results, if any, should be discarded'
+    ]
+    if any(failures) in str(rec):
+        adlib.recycle_api(CID_API)
+        logger.critical("CID API recycle requested")
+        return True
 
 
 if __name__ == '__main__':

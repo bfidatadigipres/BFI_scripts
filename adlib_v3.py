@@ -11,6 +11,7 @@ import json
 import requests
 import datetime
 import xmltodict
+from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
 from tenacity import retry, stop_after_attempt
@@ -430,4 +431,5 @@ def recycle_api(api):
     triggers Powershell recycle
     '''
     search = 'title=recycle.application.pool.data.test'
-    return get(api, search)
+    get(api, search)
+    sleep(120)

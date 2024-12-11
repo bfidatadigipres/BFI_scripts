@@ -437,3 +437,11 @@ def add_quality_comments(api, priref, comments, session=None):
     else:
         return True
 
+
+def recycle_api(api):
+    '''
+    Adds a search call to API which
+    triggers Powershell recycle
+    '''
+    search = 'title=recycle.application.pool.data.tes'
+    return get(api, search)

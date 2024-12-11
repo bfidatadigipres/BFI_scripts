@@ -159,7 +159,7 @@ def cid_series_query(series_id):
         series_priref = adlib.retrieve_field_name(series_query_result[0], 'priref')[0]
         print(f"cid_series_query(): Series priref: {series_priref}")
     else:
-        print(f"cid_series_query(): Unable to access series_priref")
+        print("cid_series_query(): Unable to access series_priref")
         return hit_count, ''
 
     return hit_count, series_priref
@@ -1308,7 +1308,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
             print(f'* Work record created with Priref {work_id} Object number {object_number}')
             logger.info('%s\tWork record created with priref %s', fullpath, work_id)
         except (IndexError, TypeError, KeyError) as err:
-            logger.critical(f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {epg_dict['title']}")
+            logger.critical("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", epg_dict['title'])
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f"* Unable to create Work record for <{epg_dict['title']}>")
@@ -1433,7 +1433,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
             print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
             logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
         except (IndexError, KeyError, TypeError) as err:
-            logger.critical(f"Failed to retrieve Priref from record created for - {title}")
+            logger.critical("Failed to retrieve Priref from record created for - %s", title)
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
@@ -1478,7 +1478,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
             print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
             logger.info('%s\tItem record created with priref %s', fullpath, item_id)
         except (IndexError, KeyError, TypeError) as err:
-            logger.critical(f"Failed to retrieve Priref from record created %s", err)
+            logger.critical("Failed to retrieve Priref from record created %s", err)
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
@@ -1502,7 +1502,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     Update manifestation records with deletion prompt in title
     '''
     payload_start = f"<adlibXML><recordList><record priref='{manifestation_id}'>"
-    payload_mid = f"<Title><title>DELETE - STORA record creation problem</title></Title>"
+    payload_mid = "<Title><title>DELETE - STORA record creation problem</title></Title>"
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_start + payload_mid + payload_end
     try:
@@ -1521,7 +1521,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     # Update work record with deletion prompt in title
     if new_work is True:
         payload_start = f"<adlibXML><recordList><record priref='{work_id}'>"
-        payload_mid = f"<Title><title>DELETE - STORA record creation problem</title></Title>"
+        payload_mid = "<Title><title>DELETE - STORA record creation problem</title></Title>"
         payload_end = "</record></recordList></adlibXML>"
         payload = payload_start + payload_mid + payload_end
         try:

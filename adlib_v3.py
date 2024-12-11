@@ -65,9 +65,9 @@ def retrieve_record(api, database, search, limit, fields=None):
     if not record:
         print(query)
         return None, None
-    elif record['adlibJSON']['diagnostic']['hits'] == 0:
+    if record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
-    elif 'recordList' not in str(record):
+    if 'recordList' not in str(record):
         try:
             hits = int(record['adlibJSON']['diagnostic']['hits'])
             return hits, record
@@ -92,16 +92,16 @@ def get(api, query):
         return dct
     except requests.exceptions.Timeout as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except requests.exceptions.ConnectionError as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except requests.exceptions.HTTPError as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except Exception as err:
         print(err)
-        raise Exception
+        raise Exception from err
 
 
 def post(api, payload, database, method):
@@ -121,32 +121,32 @@ def post(api, payload, database, method):
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except requests.exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except Exception as err:
             print(err)
-            raise Exception
+            raise Exception from err
 
     if method == 'updaterecord':
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except requests.exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except Exception as err:
             print(err)
-            raise Exception
+            raise Exception from err
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
@@ -200,7 +200,7 @@ def retrieve_facet_list(record, fname):
     facets = []
     for value in record['adlibJSON']['facetList'][0]['values']:
         facets.append(value[fname]['spans'][0]['text'])
-    
+
     return facets
 
 

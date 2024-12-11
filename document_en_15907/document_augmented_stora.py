@@ -697,7 +697,7 @@ def main():
             logger.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         if not utils.cid_check(CID_API):
-            logger.critical("* Cannot establish CID session, exiting script")
+            logger.warning("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
 
         root, file = os.path.split(fullpath)
@@ -1049,11 +1049,11 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
             logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
         except (IndexError, TypeError, KeyError) as err:
             print(f'* Unable to create Series Work record for <{series_title_full}>\n{err}')
-            logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+            logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
-        logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+        logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
 
     if not series_work_id:
         return None
@@ -1308,13 +1308,13 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
             print(f'* Work record created with Priref {work_id} Object number {object_number}')
             logger.info('%s\tWork record created with priref %s', fullpath, work_id)
         except (IndexError, TypeError, KeyError) as err:
-            logger.critical("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", epg_dict['title'])
+            logger.warning("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", epg_dict['title'])
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f"* Unable to create Work record for <{epg_dict['title']}>")
         print(err)
-        logger.critical('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
-        logger.critical(err)
+        logger.warning('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
+        logger.warning(err)
         raise
 
     if not work_id:
@@ -1433,11 +1433,11 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
             print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
             logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
         except (IndexError, KeyError, TypeError) as err:
-            logger.critical("Failed to retrieve Priref from record created for - %s", title)
+            logger.warning("Failed to retrieve Priref from record created for - %s", title)
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
-        logger.critical("Unable to write manifestation record <%s> %s", manifestation_id, err)
+        logger.warning("Unable to write manifestation record <%s> %s", manifestation_id, err)
         raise
 
     return manifestation_id
@@ -1478,15 +1478,15 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
             print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
             logger.info('%s\tItem record created with priref %s', fullpath, item_id)
         except (IndexError, KeyError, TypeError) as err:
-            logger.critical("Failed to retrieve Priref from record created %s", err)
+            logger.warning("Failed to retrieve Priref from record created %s", err)
             raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
-        logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
+        logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
         item_id = None
 
     if item_rec is None:
-        logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
+        logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath}")
         success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id)
         logger.warning("Data cleaned following failure of Item record creation: %s", success)
@@ -1554,7 +1554,7 @@ def mark_problem_json(fullpath):
         os.rename(fullpath, problem)
     except Exception as err:
         print(f'** PROBLEM: Could not rename {fullpath} to {problem}')
-        logger.critical('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
+        logger.warning('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
     if os.path.exists(problem):
         return True
 

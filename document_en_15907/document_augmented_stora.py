@@ -1595,10 +1595,11 @@ def check_response(rec):
     failures = [
         'A severe error occurred on the current command. The results, if any, should be discarded'
     ]
-    if any(failures) in str(rec):
-        adlib.recycle_api(CID_API)
-        logger.critical("CID API recycle requested")
-        return True
+    for warning in failures:
+        if warning in str(rec):
+            adlib.recycle_api(CID_API)
+            logger.critical("CID API recycle requested")
+            return True
 
 
 if __name__ == '__main__':

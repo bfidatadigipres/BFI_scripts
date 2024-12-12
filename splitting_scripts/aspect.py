@@ -382,8 +382,6 @@ def main():
                     LOGGER.warning('%s\tCould not move to target: %s\t', f, target)
                     raise
 
-            sys.exit("One pass per run")
-
     LOGGER.info("==== aspect.py END ===================\n")
 
 

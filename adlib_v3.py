@@ -11,6 +11,7 @@ import json
 import requests
 import datetime
 import xmltodict
+from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
 from tenacity import retry, stop_after_attempt
@@ -64,9 +65,9 @@ def retrieve_record(api, database, search, limit, fields=None):
     if not record:
         print(query)
         return None, None
-    elif record['adlibJSON']['diagnostic']['hits'] == 0:
+    if record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
-    elif 'recordList' not in str(record):
+    if 'recordList' not in str(record):
         try:
             hits = int(record['adlibJSON']['diagnostic']['hits'])
             return hits, record
@@ -91,16 +92,16 @@ def get(api, query):
         return dct
     except requests.exceptions.Timeout as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except requests.exceptions.ConnectionError as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except requests.exceptions.HTTPError as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except Exception as err:
         print(err)
-        raise Exception
+        raise Exception from err
 
 
 def post(api, payload, database, method):
@@ -120,32 +121,32 @@ def post(api, payload, database, method):
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except requests.exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except Exception as err:
             print(err)
-            raise Exception
+            raise Exception from err
 
     if method == 'updaterecord':
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except requests.exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except Exception as err:
             print(err)
-            raise Exception
+            raise Exception from err
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
@@ -199,7 +200,7 @@ def retrieve_facet_list(record, fname):
     facets = []
     for value in record['adlibJSON']['facetList'][0]['values']:
         facets.append(value[fname]['spans'][0]['text'])
-    
+
     return facets
 
 
@@ -344,7 +345,6 @@ def create_grouped_data(priref, grouping, field_pairs):
     for lst in field_pairs:
         mid = ''
         mid_fields = ''
-        print("New group block:")
         if isinstance(lst, list):
             for grouped in lst:
                 for key, value in grouped.items():
@@ -355,9 +355,8 @@ def create_grouped_data(priref, grouping, field_pairs):
                 xml_field = f'<{key}>{value}</{key}>'
                 mid += xml_field
         mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
-        print(mid_fields)
         payload_mid = payload_mid + mid_fields
-    
+
     if len(priref) > 0:
         payload = f"<adlibXML><recordList><record priref='{priref}'>"
         payload_end = "</record></recordList></adlibXML>"
@@ -424,3 +423,13 @@ def add_quality_comments(api, priref, comments):
         return False
     else:
         return True
+
+
+def recycle_api(api):
+    '''
+    Adds a search call to API which
+    triggers Powershell recycle
+    '''
+    search = 'title=recycle.application.pool.data.test'
+    get(api, search)
+    sleep(120)

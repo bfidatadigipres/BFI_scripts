@@ -156,7 +156,7 @@ def main():
             # Use object number to query CID and get existing / create new derived MKV Item
             note = 'autocreated'
             # New block to ensure correct grouping supplied for Item record creation
-            if '/mnt/qnap_10' in filepath or '/mnt/qnap_h22' in filepath:
+            if '/mnt/qnap_10' in filepath or '/mnt/qnap_02' in filepath:
                 grouping = '398385'
             else:
                 grouping = '397987'

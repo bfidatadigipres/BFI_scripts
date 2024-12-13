@@ -22,6 +22,7 @@ Python3.8+
 
 # Global packages
 import os
+import csv
 import sys
 import json
 import logging
@@ -35,8 +36,8 @@ import utils
 LOG_PATH = os.environ['LOG_PATH']
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
 CSV_PATH = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
-CONTROL_JSON = os.environ['CONTROL_JSON']
 CID_API = os.environ['CID_API4']
+ERROR_CSV = os.path.join(LOG_PATH, 'media_record_metadata_post_failures.csv')
 
 # Setup logging
 LOGGER = logging.getLogger('metadata_clean_up')
@@ -70,6 +71,7 @@ def main():
     '''
     Clean up scripts for checksum files that have been processed by autoingest.
     Write all mediainfo reports to header_tags. Populate fields with specific data.
+    Two POST strategy in place to manage development of thesaurus terms for linked fields
     '''
     if len(sys.argv) < 2:
         sys.exit('Missing arguments')
@@ -98,12 +100,24 @@ def main():
     print(f"Priref retrieved: {priref}. Writing metadata to record")
     json_path = make_paths(filename)[4]
 
-    mdata_xml = build_metadata_xml(json_path, priref)
+    mdata_xml, linkd_mdata_xml = build_metadata_xml(json_path, priref)
     print(mdata_xml)
+    print(linkd_mdata_xml)
+
     '''
     success = write_payload(mdata_xml)
     if success:
-        LOGGER.info("Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
+        LOGGER.info("** Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
+    else:
+        LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
+        write_to_errors_csv('media', CID_API, priref, mdata_xml)
+    success = write_payload(linkd_mdata_xml)
+    if success:
+        LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
+    else:
+        LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
+        write_to_errors_csv('media', CID_API, priref, linkd_mdata_xml)   
+
     sys.exit('Pausing here for multiple tries')
 
     # Write remaining metadata to header_tags and clean up
@@ -117,13 +131,26 @@ def main():
         # clean_up(filename)
     '''
 
+def build_exif_metadata_xml(exif_path, priref):
+    '''
+    Open text file for any EXIF data
+    and create XML for update record
+    '''
+    with open(exif_path, 'r') as metadata:
+        mdata = metadata.readlines()
+
+    img_xml = get_image_xml(mdata)
+    xml = adlib.create_record_data(CID_API, 'media', priref, img_xml)
+
+    return xml
+
+
 def build_metadata_xml(json_path, priref):
     '''
     Open JSON, dump to dict and create
     metadata XML for updaterecord
     '''
     videos = []
-    image = []
     audio = []
     other = []
     text = []
@@ -134,36 +161,34 @@ def build_metadata_xml(json_path, priref):
     for track in mdata['media']['track']:
         if track['@type'] == 'General':
             print(track)
-            gen_xml = get_general_xml(track)
+            gen_xml, gen_sec_xml = get_general_xml(track)
         elif track['@type'] == 'Video':
-            vid_xml = get_video_xml(track)
+            vid_xml, vid_sec_xml = get_video_xml(track)
             if len(videos) == 0:
                 videos = vid_xml
             videos = videos + vid_xml
-        elif track['@type'] == 'Image':
-            img_xml = get_image_xml(track)
-            if len(image) == 0:
-                image = img_xml
-            image = image + img_xml
         elif track['@type'] == 'Audio':
-            aud_xml = get_audio_xml(track)
+            aud_xml, aud_sec_xml = get_audio_xml(track)
             if len(audio) == 0:
                 audio = aud_xml
             audio = audio + aud_xml
         elif track['@type'] == 'Other':
-            oth_xml = get_other_xml(track)
+            oth_xml, oth_sec_xml = get_other_xml(track)
             if len(other) == 0:
                 other = oth_xml
             other = other + oth_xml
         elif track['@type'] == 'Text':
-            txt_xml = get_text_xml(track)
+            txt_xml, txt_sec_xml = get_text_xml(track)
             if len(text) == 0:
                 text = txt_xml
             text = text + txt_xml
 
-    payload = gen_xml + videos + audio + other + text
-    xml = adlib.create_record_data(CID_API, 'media', priref, payload)
-    return xml
+    payload1 = gen_xml + videos + audio + other + text
+    payload2 = gen_sec_xml + vid_sec_xml + aud_sec_xml + oth_sec_xml + txt_sec_xml
+    xml1 = adlib.create_record_data(CID_API, 'media', priref, payload1)
+    xml2 = adlib.create_record_data(CID_API, 'media', priref, payload2)
+
+    return xml1, xml2
 
 
 def get_general_xml(track):
@@ -192,20 +217,23 @@ def get_general_xml(track):
         'IsTruncated, truncated'
     ]
 
+    second_push = []
     general_dict = []
     for mdata in data:
         print(f"*** {mdata} ***")
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
-            general_dict.append({f'container.{cid}': track[minfo]})
-    if track.get('Format_Commercial'):
-        general_dict.append({'container.commercial_name': track.get('Format_Commercial')})
-    if track.get('Format'):
-        general_dict.append({'container.format': track.get('Format')})
-    if track.get('Audio_Codec_List'):
-        general_dict.append({'container.audio_codecs': track.get('Audio_Codec_List')})
+            general_dict.append({f'container.{cid}': track.get(minfo)})
 
-    return general_dict
+    # Handle thesaurus linked items
+    if track.get('Format_Commercial'):
+        second_push.append({'container.commercial_name': track.get('Format_Commercial')})
+    if track.get('Format'):
+        second_push.append({'container.format': track.get('Format')})
+    if track.get('Audio_Codec_List'):
+        second_push.append({'container.audio_codecs': track.get('Audio_Codec_List')})
+
+    return general_dict, second_push
 
 
 def get_video_xml(track):
@@ -220,7 +248,6 @@ def get_video_xml(track):
         'BitRate_Mode, bit_rate_mode',
         'BitRate, bit_rate',
         'ChromaSubsampling, chroma_subsampling',
-        'colour_primaries, colour_primaries',
         'Compression_Mode, compression_mode',
         'Format_Version, format_version',
         'FrameCount, frame_count',
@@ -240,42 +267,44 @@ def get_video_xml(track):
         'Delay, delay',
         'Format_settings_GOP, format_settings_GOP'
     ]
-
+    second_push = []
     video_dict = []
     for mdata in data:
         print(mdata)
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
-            video_dict.append({f'video.{cid}': track[minfo]})
+            video_dict.append({f'video.{cid}': track.get(minfo)})
 
     # Handle items with thesaurus look up
     if track.get('CodecID'):
-        video_dict.append({'video.codec_id': track.get('CodecID')})
+        second_push.append({'video.codec_id': track.get('CodecID')})
     if track.get('ColorSpace'):
-        video_dict.append({'video.colour_space': track.get('ColorSpace')})
+        second_push.append({'video.colour_space': track.get('ColorSpace')})
+    if track.get('colour_primaries'):
+        second_push.append({'video.colour_primaries': track.get('colour_primaries')})
     if track.get('Format_Commercial'):
-        video_dict.append({'video.commercial_name': track.get('Format_Commercial')})
+        second_push.append({'video.commercial_name': track.get('Format_Commercial')})
     if track.get('DisplayAspectRatio'):
-        video_dict.append({'video.display_aspect_ratio': track.get('DisplayAspectRatio')})
+        second_push.append({'video.display_aspect_ratio': track.get('DisplayAspectRatio')})
     if track.get('Format'):
-        video_dict.append({'video.format': track.get('Format')})
+        second_push.append({'video.format': track.get('Format')})
     if track.get('matrix_coefficients'):
-        video_dict.append({'video.matrix_coefficients': track.get('matrix_coefficients')})
+        second_push.append({'video.matrix_coefficients': track.get('matrix_coefficients')})
     if track.get('PixelAspectRatio'):
-        video_dict.append({'video.pixel_aspect_ratio': track.get('PixelAspectRatio')})
+        second_push.append({'video.pixel_aspect_ratio': track.get('PixelAspectRatio')})
     if track.get('transfer_characteristics'):
-        video_dict.append({'video.transfer_characteristics': track.get('transfer_characteristics')})
+        second_push.append({'video.transfer_characteristics': track.get('transfer_characteristics')})
     if track.get('Encoded_Library'):
-        video_dict.append({'video.writing_library': track.get('Encoded_Library')})
+        second_push.append({'video.writing_library': track.get('Encoded_Library')})
 
-    # Handle grouped items with no video prefix
+    # Handle grouped item/item with no video prefix
     if track.get('extra'):
         if track.get('extra').get('MaxSlicesCount'):
             video_dict.append({'max_slice_count': track.get('extra').get('MaxSlicesCount')})
     if track.get('colour_range'):
         video_dict.append({'colour_range': track.get('colour_range')})
 
-    return video_dict
+    return video_dict, second_push
 
 
 def get_image_xml(track):
@@ -284,6 +313,9 @@ def get_image_xml(track):
     metadata required
     JMW - To complete when metadata source identified
     '''
+    pass
+
+    """ 
     data = [
         'Duration/String1, duration',
         'Duration, duration.milliseconds',
@@ -298,7 +330,8 @@ def get_image_xml(track):
     if track.get('Forma_Commercial'):
         image_dict.append({'image.commercial_name', track['Format_Commercial']})
 
-    return image_dict
+    return image_dict 
+    """
 
 
 def get_audio_xml(track):
@@ -320,26 +353,27 @@ def get_audio_xml(track):
         'Format_Settings_Endianness, format_settings_endianness',
         'Format_Settings_Sign, format_settings_sign',
         'FrameCount, frame_count',
+        'Language, language',
         'StreamSize/String3, stream_size',
         'StreamSize, stream_size_bytes',
         'StreamOrder, stream_order'
     ]
-
+    second_push = []
     audio_dict = []
     for mdata in data:
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
             audio_dict.append({f'audio.{cid}': track[minfo]})
 
-    # Handle lref look up items
+    # Handle thesaurus linked items
     if track.get('Format_Commercial'):
-        audio_dict.append({'audio.commercial_name': track.get('Format_Commercial')})
+        second_push.append({'audio.commercial_name': track.get('Format_Commercial')})
     if track.get('Format'):
-        audio_dict.append({'audio.format': track.get('Format')})
+        second_push.append({'audio.format': track.get('Format')})
     if track.get('SamplingRate'):
-        audio_dict.append({'audio.sampling_rate': track.get('SamplingRate')})
+        second_push.append({'audio.sampling_rate': track.get('SamplingRate')})
     if track.get('Language'):
-        audio_dict.append({'audio.language': track.get('Language')})
+        second_push.append({'audio.codec_id': track.get('CodecID')})
 
     return audio_dict
 
@@ -352,24 +386,24 @@ def get_other_xml(track):
     data = [
         'Duration, duration',
         'FrameRate, frame_rate',
+        'Language, language',
         'Type, type',
         'TimeCode_FirstFrame, timecode_first_frame',
         'StreamOrder, stream_order'
     ]
 
+    second_push = []
     other_dict = []
     for mdata in data:
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
             other_dict.append({f'other.{cid}': track[minfo]})
 
-    # Handle lref look up items
+    # Handle thesaurus linked item
     if track.get('Format'):
-        other_dict.append({'other.format': track.get('Format')})
-    if track.get('Language'):
-        other_dict.append({'other.language': track.get('Language')})
+        second_push.append({'other.format': track.get('Format')})
 
-    return other_dict
+    return other_dict, second_push
 
 
 def get_text_xml(track):
@@ -383,45 +417,61 @@ def get_text_xml(track):
         'Format, format'
     ]
 
+    second_push = []
     text_dict = []
     for mdata in data:
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
             text_dict.append({f'text.{cid}': track[minfo]})
 
+    # Handle linked 
     if track.get('CodecID'):
-        text_dict.append({'text.codec_id': track.get('CodecID')})
+        second_push.append({'text.codec_id': track.get('CodecID')})
 
-    return text_dict
+    return text_dict, second_push
 
 
 def clean_up(filename, text_path):
     '''
     Clean up metadata
     '''
-    tfp, ep, pp, xp, jp, ep = make_paths(filename)
+    tfp, ep, pp, xp, jp, exfp = make_paths(filename)
 
-    if os.path.exists(text_path):
+    try:
         LOGGER.info("Deleting path: %s", text_path)
         os.remove(text_path)
-    if os.path.exists(tfp):
+    except Exception:
+        LOGGER.warning("Unable to delete file: %s", text_path)
+    try:
         LOGGER.info("Deleting path: %s", tfp)
         os.remove(tfp)
-    if os.path.exists(ep):
+    except Exception:
+        LOGGER.warning("Unable to delete file: %s", tfp)
+    try:
         LOGGER.info("Deleting path: %s", ep)
         os.remove(ep)
-    if os.path.exists(pp):
+    except Exception:
+        LOGGER.warning("Unable to delete file: %s", ep)
+    try:
         LOGGER.info("Deleting path: %s", pp)
         os.remove(pp)
-    if os.path.exists(xp):
+    except Exception:
+        LOGGER.warning("Unable to delete file: %s", pp)
+    try:
         LOGGER.info("Deleting path: %s", xp)
         os.remove(xp)
-    if os.path.exists(jp):
+    except Exception:
+        LOGGER.warning("Unable to delete file: %s", xp)
+    try:
         LOGGER.info("Deleting path: %s", jp)
         os.remove(jp)
-    if os.path.exists(ep):
-        LOGGER.info("Deleting path: %s", ep)
-        os.remove(ep)
+    except Exception:
+        LOGGER.warning("Unable to delete file: %s", jp)
+    try:
+        LOGGER.info("Deleting path: %s", exfp)
+        os.remove(exfp)
+    except Exception:
+        LOGGER.warning("Unable to delete file: %s", exfp)
 
 
 def make_paths(filename):
@@ -518,6 +568,19 @@ def write_payload(payload):
         return True
     else:
         return None
+
+
+def write_to_errors_csv(dbase, api, priref, xml_dump):
+    '''
+    Keep a tab of problem POSTs as we expand
+    thesaurus range for media record linked metadata
+    '''
+    data = f"{priref}\t{dbase}\t{api}\t{xml_dump}"
+
+    with open(ERROR_CSV, 'a+') as csvfile:
+        datawriter = csv.writer(csvfile)
+        print(f"Adding to CSV error logs:\n{data}")
+        datawriter.writerow(data)
 
 
 if __name__ == '__main__':

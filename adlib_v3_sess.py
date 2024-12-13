@@ -13,7 +13,7 @@ import xmltodict
 from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
-from requests import Session, exceptions
+from requests import request, Session, exceptions
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {
@@ -445,5 +445,6 @@ def recycle_api(api):
     triggers Powershell recycle
     '''
     search = 'title=recycle.application.pool.data.test'
-    get(api, search, None)
+    req = request('GET', api, headers=HEADERS, params=search)
+    print(f"Search to trigger recycle sent: {req}")
     sleep(120)

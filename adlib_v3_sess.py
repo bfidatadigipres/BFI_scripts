@@ -9,10 +9,11 @@ Python interface for Adlib API v3.7.17094.1+
 
 import json
 import datetime
-from requests import Session, exceptions
+import xmltodict
+from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
-import xmltodict
+from requests import Session, exceptions
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {
@@ -71,9 +72,9 @@ def retrieve_record(api, database, search, limit, session=None, fields=None):
     record = get(api, query, session)
     if not record:
         return None, None
-    elif record['adlibJSON']['diagnostic']['hits'] == 0:
+    if record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
-    elif 'recordList' not in str(record):
+    if 'recordList' not in str(record):
         try:
             hits = int(record['adlibJSON']['diagnostic']['hits'])
             return hits, record
@@ -100,16 +101,16 @@ def get(api, query, session):
         return dct
     except exceptions.Timeout as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except exceptions.ConnectionError as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except exceptions.HTTPError as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except Exception as err:
         print(err)
-        raise Exception
+        raise Exception from err
 
 
 def post(api, payload, database, method, session=None):
@@ -134,16 +135,16 @@ def post(api, payload, database, method, session=None):
                 raise Exception
         except exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except Exception as err:
             print(err)
-            raise Exception
+            raise Exception from err
 
     if method == 'updaterecord':
         try:
@@ -152,16 +153,16 @@ def post(api, payload, database, method, session=None):
                 raise Exception
         except exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except Exception as err:
             print(err)
-            raise Exception
+            raise Exception from err
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
@@ -444,4 +445,5 @@ def recycle_api(api):
     triggers Powershell recycle
     '''
     search = 'title=recycle.application.pool.data.test'
-    return get(api, search)
+    get(api, search, None)
+    sleep(120)

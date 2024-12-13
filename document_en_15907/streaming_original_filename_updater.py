@@ -197,16 +197,13 @@ def main():
                 LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
                 sys.exit("Script run prevented by downtime_control.json. Script exiting.")
             digital_filenames, edit_date = cid_check_filenames(priref, platform)
-            if edit_date not in date_range:
+            if edit_date not in str(date_range):
                 LOGGER.info("Skipping priref %s, out of date range: %s", priref, edit_date)
                 continue
             LOGGER.info("\n* Record found with edit date in range for processing: %s %s", priref, edit_date)
-
-            if '- Renamed to:' not in str(digital_filenames):
-                continue
             LOGGER.info("Digital filenames found for %s ingested items:", file_type)
             for fname in digital_filenames:
-                if ' - Renamed to: ' in fname:
+                if ' - Renamed to: ' in str(fname):
                     original_fname, ingest_name = fname.split(' - Renamed to: ')
                     mpriref, match = cid_check_media(priref, original_fname, ingest_name)
                     if not mpriref:

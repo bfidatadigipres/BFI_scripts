@@ -203,7 +203,7 @@ def main():
                 LOGGER.info("UHD HDR file found: %s", mov_file)
                 new_filename = f"{ob_num.replace('-', '_')}_01of01.{ext}"
                 new_fpath = os.path.join(fpath, new_filename)
-                digital_note = f'{mov_file}. Renamed to {new_filename}'
+                digital_note = f'{mov_file} - Renamed to: {new_filename}'
 
                 success = create_digital_original_filenames(priref, folder.strip(), digital_note)
                 if not success:
@@ -252,7 +252,7 @@ def main():
 
             new_filename = f"{new_ob_num.replace('-', '_')}_01of01.{ext}"
             new_fpath = os.path.join(fpath, new_filename)
-            digital_note = f'{mov_file}. Renamed to {new_filename}'
+            digital_note = f'{mov_file} - Renamed to: {new_filename}'
             success = create_digital_original_filenames(new_priref, folder.strip(), digital_note)
             if not success:
                 LOGGER.warning("Skipping further actions. Asset item list not written to CID item record: %s", new_priref)

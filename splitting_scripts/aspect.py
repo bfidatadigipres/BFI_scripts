@@ -21,11 +21,7 @@ October 2022
 # Public modules
 import os
 import re
-<<<<<<< HEAD
-import json
-=======
 import sys
->>>>>>> 24919e5b80b32c2c6ca078af48f3f8fde4f6d6b4
 import shutil
 import logging
 import subprocess
@@ -49,7 +45,6 @@ LOGGER.setLevel(logging.INFO)
 
 FOLDERS = {
     f"{os.environ['QNAP_H22']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
-#    f"{os.environ['ISILON_VID']}/processing/segmented/": f"{os.environ['AUTOINGEST_IS_VID']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
     f"{os.environ['GRACK_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_H22']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_08']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP08']}ingest/proxy/video/adjust/",
@@ -58,42 +53,14 @@ FOLDERS = {
 }
 
 
-def control_check():
-    '''
-    Check that `downtime_control.json` has not indicated termination
-    '''
-    with open(os.path.join(LOGS, 'downtime_control.json')) as control:
-        j = json.load(control)
-        if not j['split_control_delete']:
-            logger.info("Exit requested by downtime_control.json")
-            sys.exit('Exit requested by downtime_control.json')
-
-
 def get_dar(fullpath):
     '''
     Retrieves metadata DAR info and returns as string
+    trimmed to 5 spaces
     '''
-    cmd = [
-        'mediainfo',
-        '--Language=raw', '--Full',
-        '--Inform="Video;%DisplayAspectRatio%"',
-        fullpath
-    ]
-
-    cmd[3] = cmd[3].replace('"', '')
-    dar_setting = subprocess.check_output(cmd)
-    dar_setting = dar_setting.decode('utf-8')
-    dar = str(dar_setting).rstrip('\n')
-    return dar
-
-
-def get_aspect_ratio(fullpath):
-    '''
-    Retrieves metadata DAR info and returns as string
-    '''
-    ar = utils.get_metadata('Video', 'DisplayAspectRatio/String', fullpath)
-    if len(ar) > 0:
-        return ar
+    dar = utils.get_metadata('Video', 'DisplayAspectRatio', fullpath)
+    if len(dar) <= 5:
+        return dar[:5]
 
 
 def get_par(fullpath):
@@ -151,13 +118,13 @@ def check_parent_aspect_ratio(object_number):
     '''
     if not object_number.startswith('N_'):
         return None
-    
+
     search = f"object_number='{object_number}'"
     hits, record = adlib.retrieve_record(CID_API, 'media', search, '1', ['priref'])
     print(f"Check media record response: {hits} hits\n{record}")
     if hits is None or hits == 0:
         return None
-    
+
     priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     rec = adlib.retrieve_record(CID_API, 'media', f'priref="{priref}"', '1', ['source_item.lref'])[1]
     source_priref = adlib.retrieve_field_name(rec[0], 'priref')[0]
@@ -219,43 +186,32 @@ def adjust_par_metadata(filepath):
 
     new_dar = get_dar(filepath)
     if '1.29' in new_dar:
-        LOGGER.info("DAR converted from %s to %s", dar, new_dar)
         return True
 
 
-def fix_aspect_ratio(fpath, data):
+def fix_aspect_ratio(fpath):
     '''
     Change AR 4x3 to 16x9
     Crop not needed
-    Should always be MKV, but
-    re-encode to MKV if MOV found
+    Should always be MKV,
+    reject if MOV found
     '''
-    fpath_split, ext = os.path.splitext(fpath)
-    replace = f"{fpath_split}_4x3.mkv"
+    if not fpath.endswith(('.mkv', '.MKV')):
+       LOGGER.warning("Skipping: File that needs change to 16x9 is not an FFV1 Matroska: %s", fpath)
+       return False
+
+    fpath_split = os.path.splitext(fpath)[0]
+    replace = f"{fpath_split}_16x9.mkv"
 
     launch = [
         'ffmpeg', '-i',
         fpath
     ]
 
-    cv = []
-    if 'mkv' in ext.lower():
-        cv = [
-            "-c", "copy",
-            "-map", "0"
-        ]
-
-    else:
-        cv = [
-            "-c:v", "ffv1", "-level", "3",
-            "-g", "1", "-slicecrc", "1",
-            "-color_primaries", f"{data[2]}",
-            "-color_trc", f"{data[1]}",
-            "-colorspace", f"{data[0]}",
-            "-color_range", "1",
-            "-c:a", "copy",
-            "-map", "0"
-        ]
+    cv = [
+        "-c", "copy",
+        "-map", "0"
+    ]
 
     aspect = [
         "-aspect", "16:9",
@@ -265,10 +221,10 @@ def fix_aspect_ratio(fpath, data):
     command = launch + cv + aspect
 
     try:
-        process = subprocess.run(command, shell=False, capture_output=True, text=True)            
+        process = subprocess.run(command, shell=False, capture_output=True, text=True)
     except subprocess.CalledProcessError as err:
         LOGGER.warning(err)
-        return None
+        return False
 
     if process.returncode != 0:
         if os.path.exists(replace):
@@ -277,17 +233,20 @@ def fix_aspect_ratio(fpath, data):
             return False
     else:
         if os.path.exists(replace):
-            check_dar = get_aspect_ratio(replace)
-            if '16:9' in check_dar:
-                os.rename(fpath, f"{fpath}_DELETE")
-                os.rename(replace, fpath)
-                return True
+            check_dar = get_dar(replace)
+            if '1.77' in str(check_dar):
+                orig_size = utils.get_size(fpath)
+                new_size = utils.get_size(replace)
+                if orig_size == new_size:
+                    os.remove(fpath)
+                    os.rename(replace, fpath)
+                    return True
             else:
-                LOGGER.warning("Aspect ratio of new file is not 16:9, deleted failed transcode attempt")
+                LOGGER.warning("DAR incorrect OR file size mismatch, deleting failed transcode attempt")
                 os.remove(replace)
-                return False     
+                return False
         else:
-            LOGGER.info("Renaming of file that replaces %s failed: %s.", fpath, replace)
+            LOGGER.info("Reshape of 4x3 file to 16x9 failed: %s.", fpath)
             LOGGER.info("Manual fix needed to complete process.")
             return False
 
@@ -298,22 +257,22 @@ def main():
     extract metdata and filter to correct autoingest path
     '''
     LOGGER.info("==== aspect.py START =================")
-    if not utils.check_control("power_off_all"):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
     for fol in FOLDERS:
-        control_check()
         LOGGER.info("Targeting folder: %s", fol)
         files = []
         for root, _, filenames in os.walk(fol):
             files += [os.path.join(root, file) for file in filenames]
 
         for f in files:
+            if not utils.check_control("split_control_delete"):
+                LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
             fn = os.path.basename(f)
             # Require N-* <object_number>
             if not fn.startswith('N_'):
                 print(f'{f}\tFilename does not start with N_')
-                LOGGER.warning('%s\tFilename does not start with N_', f)
                 continue
 
             # Require partWhole
@@ -330,6 +289,7 @@ def main():
             ext = f.split('.')[-1]
 
             # Get height
+            LOGGER.info(f"** Checking file: {f}")
             height = get_height(f)
             print(f'Height: {height}')
 
@@ -338,24 +298,18 @@ def main():
                 print(f'{f}\tCould not fetch frame height (px)')
                 LOGGER.warning('%s\tCould not fetch frame height (px)', f)
                 continue
-            '''
-            colour_data = get_colour(fullpath)
-            color_primaries = colour_data[0]
-            color_trc = 'bt709'
-            colormatrix = colour_data[1]
-            colour = [colormatrix, color_trc, color_primaries]
-            
+
             # Check aspect ratio of CID item record
             ob_num = utils.get_object_number(fn)
             aspect = check_parent_aspect_ratio(ob_num)
             print(aspect)
             if '16:9' in str(aspect):
-                LOGGER.info("File requires transcode to aspect ratio 16x9")
-                if not fix_aspect_ratio(f, colour):
-                    LOGGER.warning("Unsuccessful attempt to change Aspect ratio to 4x3: %s", fn)
+                LOGGER.info("* Parent DAR: %s. File requires conversion to DAR 16:9", aspect)
+                if not fix_aspect_ratio(f):
+                    LOGGER.warning("Unsuccessful attempt to change DAR to 16:9 %s", fn)
                     continue
-                LOGGER.info("File metadata updated to 4x3 and file replaced with new version: %s", fn)
-            '''
+                LOGGER.info("File metadata updated to 16:9 and file replaced with new version: %s", fn)
+
             # Check PAR and DAR
             dar = get_dar(f)
             par = get_par(f)
@@ -402,6 +356,7 @@ def main():
 
                 try:
                     shutil.move(f, target)
+                    LOGGER.info('%s\tSuccessfully moved to target: %s\t', f, target)
                 except Exception:
                     LOGGER.warning('%s\tCould not move to target: %s\t', f, target)
                     raise

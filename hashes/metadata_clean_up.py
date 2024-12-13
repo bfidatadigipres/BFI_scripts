@@ -371,11 +371,11 @@ def get_image_xml(track):
     for mdata in track:
         field, value = mdata.split(':', 1)
         for d in data:
-            cid_field = d.split(', ')[0]
-            print(cid_field, field)
-            if cid_field == field.strip():
+            exif_field, cid_field = d.split(', ')
+            print(exif_field, field)
+            if exif_field == field.strip():
                 print("MATCH!")
-                image_dict.append({f'audio.{d}': value.strip()})
+                image_dict.append({f'audio.{cid_field}': value.strip()})
 
     return image_dict
 

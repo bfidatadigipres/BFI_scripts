@@ -373,7 +373,7 @@ def get_image_xml(track):
         for d in data:
             exif_field, cid_field = d.split(', ')
             if exif_field == field.strip():
-                image_dict.append({f'audio.{cid_field}': value.strip()})
+                image_dict.append({f'image.{cid_field}': value.strip()})
 
     return image_dict
 

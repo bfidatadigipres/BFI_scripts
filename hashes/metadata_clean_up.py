@@ -109,15 +109,15 @@ def main():
         if success:
             LOGGER.info("** Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
         else:
-            LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
+            LOGGER.warning("Failed to push regular metadata to the CID record. Writing to errors CSV")
             write_to_errors_csv('media', CID_API, priref, mdata_xml)
 
         success = write_payload(linkd_mdata_xml)
         if success:
             LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
         else:
-            LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
-            write_to_errors_csv('media', CID_API, priref, linkd_mdata_xml)   
+            LOGGER.warning("Failed to push linked metadata to the CID record. Writing to errors CSV")
+            write_to_errors_csv('media', CID_API, priref, linkd_mdata_xml)
 
     elif text_file.endswith('_EXIF.txt'):
         filename = text_file.split("_EXIF.txt")[0]
@@ -140,22 +140,25 @@ def main():
 
         success = write_payload(image_xml)
         if success:
-            LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
+            LOGGER.info("** Digital Media EXIF metadata from JSON successfully written to CID Media record: %s", priref)
         else:
-            LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
+            LOGGER.warning("Failed to push EXIF metadata to the CID record. Writing to errors CSV")
             write_to_errors_csv('media', CID_API, priref, image_xml)
 
     # Write remaining metadata to header_tags and clean up
     header_payload = make_header_data(text_path, filename, priref)
     print(header_payload)
     if not header_payload:
+        LOGGER.warning("Failed to compile header metadata tag. Writing to errors CSV")
         write_to_errors_csv('media', CID_API, priref, header_payload)
         sys.exit()
 
     success = write_payload(header_payload)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
-        clean_up(filename)
+    else:
+        LOGGER.warning("Failed to POST header tag data to CID record. Writing to errors CSV")
+        # clean_up(filename)
 
 
 def build_exif_metadata_xml(exif_path, priref):

@@ -85,51 +85,78 @@ def main():
 
     text_path = sys.argv[1]
     text_file = os.path.basename(text_path)
-    filename = text_file.split("_TEXT.txt")[0]
-    if len(filename) > 0 and filename.endswith((".ini", ".DS_Store", ".mhl", ".json")):
-        sys.exit('Incorrect media file detected.')
+    if text_file.endswith('_TEXT.txt'):
+        filename = text_file.split("_TEXT.txt")[0]
+        if len(filename) > 0 and filename.endswith((".ini", ".DS_Store", ".mhl", ".json")):
+            sys.exit('Incorrect media file detected.')
 
-    # Checking for existence of Digital Media record
-    print(text_path, filename)
-    priref = cid_retrieve(filename)
-    if priref is None:
-        sys.exit('Script exiting. Could not find matching Priref.')
-    if len(priref) == 0:
-        sys.exit('Script exiting. Priref could not be retrieved.')
+        # Checking for existence of Digital Media record
+        print(text_path, filename)
+        priref = cid_retrieve(filename)
+        if priref is None:
+            sys.exit('Script exiting. Could not find matching Priref.')
+        if len(priref) == 0:
+            sys.exit('Script exiting. Priref could not be retrieved.')
 
-    print(f"Priref retrieved: {priref}. Writing metadata to record")
-    json_path = make_paths(filename)[4]
+        print(f"Priref retrieved: {priref}. Writing metadata to record")
+        json_path = make_paths(filename)[4]
 
-    mdata_xml, linkd_mdata_xml = build_metadata_xml(json_path, priref)
-    print(mdata_xml)
-    print(linkd_mdata_xml)
+        mdata_xml, linkd_mdata_xml = build_metadata_xml(json_path, priref)
+        print(mdata_xml)
+        print(linkd_mdata_xml)
 
-    '''
-    success = write_payload(mdata_xml)
-    if success:
-        LOGGER.info("** Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
-    else:
-        LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
-        write_to_errors_csv('media', CID_API, priref, mdata_xml)
-    success = write_payload(linkd_mdata_xml)
-    if success:
-        LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
-    else:
-        LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
-        write_to_errors_csv('media', CID_API, priref, linkd_mdata_xml)   
+        success = write_payload(mdata_xml)
+        if success:
+            LOGGER.info("** Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
+        else:
+            LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
+            write_to_errors_csv('media', CID_API, priref, mdata_xml)
 
-    sys.exit('Pausing here for multiple tries')
+        success = write_payload(linkd_mdata_xml)
+        if success:
+            LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
+        else:
+            LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
+            write_to_errors_csv('media', CID_API, priref, linkd_mdata_xml)   
+
+    elif text_file.endswith('_EXIF.txt'):
+        filename = text_file.split("_EXIF.txt")[0]
+        if len(filename) > 0 and filename.endswith((".ini", ".DS_Store", ".mhl", ".json")):
+            sys.exit('Incorrect media file detected.')
+
+        # Checking for existence of Digital Media record
+        print(text_path, filename)
+        priref = cid_retrieve(filename)
+        if priref is None:
+            sys.exit('Script exiting. Could not find matching Priref.')
+        if len(priref) == 0:
+            sys.exit('Script exiting. Priref could not be retrieved.')
+
+        print(f"Priref retrieved: {priref}. Writing metadata to record")
+        exif_path = make_paths(filename)[5]
+
+        image_xml = build_exif_metadata_xml(exif_path, priref)
+        print(image_xml)
+
+        success = write_payload(image_xml)
+        if success:
+            LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
+        else:
+            LOGGER.warning("Failed to push this data to the CID record. Writing to errors CSV")
+            write_to_errors_csv('media', CID_API, priref, image_xml)
 
     # Write remaining metadata to header_tags and clean up
     header_payload = make_header_data(text_path, filename, priref)
     print(header_payload)
     if not header_payload:
+        write_to_errors_csv('media', CID_API, priref, header_payload)
         sys.exit()
+
     success = write_payload(header_payload)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
-        # clean_up(filename)
-    '''
+        clean_up(filename)
+
 
 def build_exif_metadata_xml(exif_path, priref):
     '''
@@ -267,6 +294,7 @@ def get_video_xml(track):
         'Delay, delay',
         'Format_settings_GOP, format_settings_GOP'
     ]
+
     second_push = []
     video_dict = []
     for mdata in data:
@@ -310,28 +338,40 @@ def get_video_xml(track):
 def get_image_xml(track):
     '''
     Create dictionary for Image
-    metadata required
-    JMW - To complete when metadata source identified
+    metadata from Exif data source
     '''
-    pass
 
-    """ 
+    if not isinstance(track, list):
+        return None
+
     data = [
-        'Duration/String1, duration',
-        'Duration, duration.milliseconds',
+        'File Size, file_size',
+        'Bits Per Sample, bits_per_sample',
+        'Color Components, colour_components', 
+        'Color Space, colour_space',
+        'Compression, compression',
+        'Encoding Process, encoding_process',
+        'Exif Byte Order, exif_byte_order',
+        'File Type, file_type',
+        'Exif Image Height, height',
+        'Exif Image Width, width',
+        'Orientation, orientation',
+        'Resolution Unit, resolution_unit',
+        'Software, software',
+        'X Resolution, x_resolution',
+        'Y Cb Cr Sub Sampling, y_cb_cr_sub_sampling',
+        'Y Resolution, y_resolution'
     ]
 
     image_dict = []
-    for mdata in data:
-        minfo, cid = mdata.split(', ')
-        if track.get(minfo):
-            image_dict.append({f'audio.{cid}': track[minfo]})
+    for mdata in track:
+        field, value = mdata.split(':', 1)
+        for d in data:
+            cid_field = d.split(', ')[1]
+            if cid_field == field.strip():
+                image_dict.append({f'audio.{d}': value.strip()})
 
-    if track.get('Forma_Commercial'):
-        image_dict.append({'image.commercial_name', track['Format_Commercial']})
-
-    return image_dict 
-    """
+    return image_dict
 
 
 def get_audio_xml(track):
@@ -358,6 +398,7 @@ def get_audio_xml(track):
         'StreamSize, stream_size_bytes',
         'StreamOrder, stream_order'
     ]
+
     second_push = []
     audio_dict = []
     for mdata in data:
@@ -493,8 +534,10 @@ def make_header_data(text_path, filename, priref):
     Create the header tag data
     '''
     tfp, ep, pp, xp, jp, exfp = make_paths(filename)
-
     text = text_full = ebu = pb = xml = json = exif = ''
+    if text_path.endswith('_EXIF.txt'):
+        text_path = text_path.replace('_EXIF.txt', '_TEXT.txt')
+        
     # Processing metadata output for text path
     try:
         text_dump = utils.read_extract(text_path)

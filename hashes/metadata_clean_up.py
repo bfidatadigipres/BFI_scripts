@@ -349,7 +349,7 @@ def get_image_xml(track):
         return None
 
     data = [
-        'File Size, file_size',
+        # 'File Size, file_size',
         'Bits Per Sample, bits_per_sample',
         'Color Components, colour_components', 
         'Color Space, colour_space',
@@ -372,9 +372,7 @@ def get_image_xml(track):
         field, value = mdata.split(':', 1)
         for d in data:
             exif_field, cid_field = d.split(', ')
-            print(exif_field, field)
             if exif_field == field.strip():
-                print("MATCH!")
                 image_dict.append({f'audio.{cid_field}': value.strip()})
 
     return image_dict

@@ -170,6 +170,7 @@ def build_exif_metadata_xml(exif_path, priref):
         mdata = metadata.readlines()
 
     img_xml = get_image_xml(mdata)
+    print(img_xml)
     xml = adlib.create_record_data(CID_API, 'media', priref, img_xml)
 
     return xml
@@ -369,8 +370,11 @@ def get_image_xml(track):
     image_dict = []
     for mdata in track:
         field, value = mdata.split(':', 1)
+        print(mdata, field, value)
         for d in data:
+            print(d)
             cid_field = d.split(', ')[1]
+            print(cid_field, field)
             if cid_field == field.strip():
                 image_dict.append({f'audio.{d}': value.strip()})
 
@@ -623,7 +627,7 @@ def write_to_errors_csv(dbase, api, priref, xml_dump):
     '''
     data = f"{priref}\t{dbase}\t{api}\t{xml_dump}"
 
-    with open(ERROR_CSV, 'a+') as csvfile:
+    with open(ERROR_CSV, 'w') as csvfile:
         datawriter = csv.writer(csvfile)
         print(f"Adding to CSV error logs:\n{data}")
         datawriter.writerow(data)

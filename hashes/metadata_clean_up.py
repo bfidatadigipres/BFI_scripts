@@ -370,12 +370,11 @@ def get_image_xml(track):
     image_dict = []
     for mdata in track:
         field, value = mdata.split(':', 1)
-        print(mdata, field, value)
         for d in data:
-            print(d)
-            cid_field = d.split(', ')[1]
+            cid_field = d.split(', ')[0]
             print(cid_field, field)
             if cid_field == field.strip():
+                print("MATCH!")
                 image_dict.append({f'audio.{d}': value.strip()})
 
     return image_dict

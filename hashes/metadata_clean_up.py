@@ -622,9 +622,9 @@ def write_to_errors_csv(dbase, api, priref, xml_dump):
     Keep a tab of problem POSTs as we expand
     thesaurus range for media record linked metadata
     '''
-    data = f"{priref}\t{dbase}\t{api}\t{xml_dump}"
+    data = [priref, dbase, api, xml_dump]
 
-    with open(ERROR_CSV, 'w') as csvfile:
+    with open(ERROR_CSV, 'a+', newline='') as csvfile:
         datawriter = csv.writer(csvfile)
         print(f"Adding to CSV error logs:\n{data}")
         datawriter.writerow(data)

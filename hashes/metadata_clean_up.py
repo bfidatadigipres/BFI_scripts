@@ -52,7 +52,6 @@ def cid_retrieve(fname):
     Retrieve priref for media record from imagen.media.original_filename
     '''
     try:
-        priref = ''
         search = f"imagen.media.original_filename='{fname}'"
         record = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
         if not record:
@@ -98,24 +97,25 @@ def main():
 
     print(f"Priref retrieved: {priref}. Writing metadata to record")
     json_path = make_paths(filename)[4]
-    '''
+
     mdata_xml = build_metadata_xml(json_path, priref)
     print(mdata_xml)
-
+    '''
     success = write_payload(mdata_xml)
     if success:
         LOGGER.info("Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
     sys.exit('Pausing here for multiple tries')
-    '''
+
     # Write remaining metadata to header_tags and clean up
     header_payload = make_header_data(text_path, filename, priref)
+    print(header_payload)
     if not header_payload:
         sys.exit()
     success = write_payload(header_payload)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
         # clean_up(filename)
-
+    '''
 
 def build_metadata_xml(json_path, priref):
     '''
@@ -166,15 +166,6 @@ def build_metadata_xml(json_path, priref):
     return xml
 
 
-def match_lref(arg, matched_data):
-    '''
-    Look up thesuarus data for argument supplied
-    and match the matched_data supplied
-    JMW -- to complete when understood better
-    '''
-    pass
-
-
 def get_general_xml(track):
     '''
     Create dictionary for General
@@ -209,8 +200,8 @@ def get_general_xml(track):
             general_dict.append({f'container.{cid}': track[minfo]})
     if track.get('Format_Commercial'):
         general_dict.append({'container.commercial_name': track.get('Format_Commercial')})
-    # if track.get('Format'):
-        # general_dict.append({'container.format': track.get('Format')})
+    if track.get('Format'):
+        general_dict.append({'container.format': track.get('Format')})
     if track.get('Audio_Codec_List'):
         general_dict.append({'container.audio_codecs': track.get('Audio_Codec_List')})
 
@@ -266,8 +257,8 @@ def get_video_xml(track):
         video_dict.append({'video.commercial_name': track.get('Format_Commercial')})
     if track.get('DisplayAspectRatio'):
         video_dict.append({'video.display_aspect_ratio': track.get('DisplayAspectRatio')})
-    # if track.get('Format'):
-        # video_dict.append({'video.format': track.get('Format')})
+    if track.get('Format'):
+        video_dict.append({'video.format': track.get('Format')})
     if track.get('matrix_coefficients'):
         video_dict.append({'video.matrix_coefficients': track.get('matrix_coefficients')})
     if track.get('PixelAspectRatio'):
@@ -304,10 +295,8 @@ def get_image_xml(track):
         if track.get(minfo):
             image_dict.append({f'audio.{cid}': track[minfo]})
 
-    if track.get('CodecID'):
-        cn = match_lref('image.commercial_name', track['Format_Commercial'])
-        if cn:
-            image_dict.append({'image.commercial_name.lref': cn})
+    if track.get('Forma_Commercial'):
+        image_dict.append({'image.commercial_name', track['Format_Commercial']})
 
     return image_dict
 
@@ -345,8 +334,8 @@ def get_audio_xml(track):
     # Handle lref look up items
     if track.get('Format_Commercial'):
         audio_dict.append({'audio.commercial_name': track.get('Format_Commercial')})
-    # if track.get('Format'):
-        # audio_dict.append({'audio.format': track.get('Format')})
+    if track.get('Format'):
+        audio_dict.append({'audio.format': track.get('Format')})
     if track.get('SamplingRate'):
         audio_dict.append({'audio.sampling_rate': track.get('SamplingRate')})
     if track.get('Language'):
@@ -375,8 +364,8 @@ def get_other_xml(track):
             other_dict.append({f'other.{cid}': track[minfo]})
 
     # Handle lref look up items
-    # if track.get('Format'):
-        # other_dict.append({'other.format': track.get('Format')})
+    if track.get('Format'):
+        other_dict.append({'other.format': track.get('Format')})
     if track.get('Language'):
         other_dict.append({'other.language': track.get('Language')})
 
@@ -440,8 +429,8 @@ def make_paths(filename):
     Make all possible paths
     '''
     text_full_path = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
-    ebu_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.txt")
-    pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.txt")
+    ebu_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.xml")
+    pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.xml")
     xml_path = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
     json_path = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
     exif_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
@@ -453,43 +442,64 @@ def make_header_data(text_path, filename, priref):
     '''
     Create the header tag data
     '''
-    tfp, ep, pp, xp, jp, ep = make_paths(filename)
+    tfp, ep, pp, xp, jp, exfp = make_paths(filename)
 
     text = text_full = ebu = pb = xml = json = exif = ''
     # Processing metadata output for text path
-    if os.path.exists(text_path):
+    try:
         text_dump = utils.read_extract(text_path)
         text = f"<Header_tags><header_tags.parser>MediaInfo text 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+    except Exception as err:
+        print(err)
+        LOGGER.warning("Failed to write Text dump to record %s: %s", priref, text_path)
 
     # Processing metadata output for text full path
-    if os.path.exists(tfp):
+    try:
         text_dump = utils.read_extract(tfp)
         text_full = f"<Header_tags><header_tags.parser>MediaInfo text 0 full</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+    except Exception as err:
+        print(err)
+        LOGGER.warning("Failed to write Text Full dump to record %s: %s", priref, tfp)
 
     # Processing metadata output for ebucore path
-    if os.path.exists(ep):
+    try:
         text_dump = utils.read_extract(ep)
         ebu = f"<Header_tags><header_tags.parser>MediaInfo ebucore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+    except Exception as err:
+        print(err)
+        LOGGER.warning("Failed to write EBUCore dump to record %s: %s", priref, ep)
 
     # Processing metadata output for pbcore path
-    if os.path.exists(pp):
+    try:
         text_dump = utils.read_extract(pp)
         pb = f"<Header_tags><header_tags.parser>MediaInfo pbcore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+    except Exception as err:
+        print(err)
+        LOGGER.warning("Failed to write PBCore dump to record %s: %s", priref, pb)
 
     # Processing metadata output for pbcore path
-    if os.path.exists(xp):
+    try:
         text_dump = utils.read_extract(xp)
         xml = f"<Header_tags><header_tags.parser>MediaInfo xml 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+    except Exception as err:
+        print(err)
+        LOGGER.warning("Failed to write XML dump to record %s: %s", priref, xp)
 
     # Processing metadata output for json path
-    if os.path.exists(jp):
+    try:
         text_dump = utils.read_extract(jp)
         json = f"<Header_tags><header_tags.parser>MediaInfo json 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+    except Exception as err:
+        print(err)
+        LOGGER.warning("Failed to write JSON dump to record %s: %s", priref, jp)
 
     # Processing metadata output for special collections exif data
-    if os.path.exists(ep):
-        text_dump = utils.read_extract(ep)
+    try:
+        text_dump = utils.read_extract(exfp)
         exif = f"<Header_tags><header_tags.parser>Exiftool text</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+    except Exception as err:
+        print(err)
+        LOGGER.warning("Failed to write Exif dump to record %s: %s", priref, exfp)
 
     payload_data = text + text_full + ebu + pb + xml + json + exif
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
@@ -501,6 +511,7 @@ def write_payload(payload):
     '''
 
     record = adlib.post(CID_API, payload, 'media', 'updaterecord')
+    print(record)
     if record is None:
         return False
     elif 'priref' in str(record):

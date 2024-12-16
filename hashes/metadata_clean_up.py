@@ -254,15 +254,15 @@ def get_general_xml(track):
         print(f"*** {mdata} ***")
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
-            general_dict.append({f'container.{cid}': track.get(minfo)})
+            general_dict.append({f'container.{cid}': track.get(minfo).strip()})
 
     # Handle thesaurus linked items
     if track.get('Format_Commercial'):
-        second_push.append({'container.commercial_name': track.get('Format_Commercial')})
+        second_push.append({'container.commercial_name': track.get('Format_Commercial').strip()})
     if track.get('Format'):
-        second_push.append({'container.format': track.get('Format')})
+        second_push.append({'container.format': track.get('Format').strip()})
     if track.get('Audio_Codec_List'):
-        second_push.append({'container.audio_codecs': track.get('Audio_Codec_List')})
+        second_push.append({'container.audio_codecs': track.get('Audio_Codec_List').strip()})
 
     return general_dict, second_push
 
@@ -305,36 +305,36 @@ def get_video_xml(track):
         print(mdata)
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
-            video_dict.append({f'video.{cid}': track.get(minfo)})
+            video_dict.append({f'video.{cid}': track.get(minfo).strip()})
 
     # Handle items with thesaurus look up
     if track.get('CodecID'):
-        second_push.append({'video.codec_id': track.get('CodecID')})
+        second_push.append({'video.codec_id': track.get('CodecID').strip()})
     if track.get('ColorSpace'):
-        second_push.append({'video.colour_space': track.get('ColorSpace')})
+        second_push.append({'video.colour_space': track.get('ColorSpace').strip()})
     if track.get('colour_primaries'):
-        second_push.append({'video.colour_primaries': track.get('colour_primaries')})
+        second_push.append({'video.colour_primaries': track.get('colour_primaries').strip()})
     if track.get('Format_Commercial'):
-        second_push.append({'video.commercial_name': track.get('Format_Commercial')})
+        second_push.append({'video.commercial_name': track.get('Format_Commercial').strip()})
     if track.get('DisplayAspectRatio'):
-        second_push.append({'video.display_aspect_ratio': track.get('DisplayAspectRatio')})
+        second_push.append({'video.display_aspect_ratio': track.get('DisplayAspectRatio').strip()})
     if track.get('Format'):
-        second_push.append({'video.format': track.get('Format')})
+        second_push.append({'video.format': track.get('Format').strip()})
     if track.get('matrix_coefficients'):
-        second_push.append({'video.matrix_coefficients': track.get('matrix_coefficients')})
+        second_push.append({'video.matrix_coefficients': track.get('matrix_coefficients').strip()})
     if track.get('PixelAspectRatio'):
-        second_push.append({'video.pixel_aspect_ratio': track.get('PixelAspectRatio')})
+        second_push.append({'video.pixel_aspect_ratio': track.get('PixelAspectRatio').strip()})
     if track.get('transfer_characteristics'):
-        second_push.append({'video.transfer_characteristics': track.get('transfer_characteristics')})
+        second_push.append({'video.transfer_characteristics': track.get('transfer_characteristics').strip()})
     if track.get('Encoded_Library'):
-        second_push.append({'video.writing_library': track.get('Encoded_Library')})
+        second_push.append({'video.writing_library': track.get('Encoded_Library').strip()})
 
     # Handle grouped item/item with no video prefix
     if track.get('extra'):
         if track.get('extra').get('MaxSlicesCount'):
-            video_dict.append({'max_slice_count': track.get('extra').get('MaxSlicesCount')})
+            video_dict.append({'max_slice_count': track.get('extra').get('MaxSlicesCount').strip()})
     if track.get('colour_range'):
-        video_dict.append({'colour_range': track.get('colour_range')})
+        video_dict.append({'colour_range': track.get('colour_range').strip()})
 
     return video_dict, second_push
 
@@ -349,9 +349,9 @@ def get_image_xml(track):
         return None
 
     data = [
-        # 'File Size, file_size',
+        'File Size, file_size',
         'Bits Per Sample, bits_per_sample',
-        'Color Components, colour_components', 
+        'Color Components, colour_components',
         'Color Space, colour_space',
         'Compression, compression',
         'Encoding Process, encoding_process',
@@ -408,17 +408,17 @@ def get_audio_xml(track):
     for mdata in data:
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
-            audio_dict.append({f'audio.{cid}': track[minfo]})
+            audio_dict.append({f'audio.{cid}': track.get(minfo).strip()})
 
     # Handle thesaurus linked items
     if track.get('Format_Commercial'):
-        second_push.append({'audio.commercial_name': track.get('Format_Commercial')})
+        second_push.append({'audio.commercial_name': track.get('Format_Commercial').strip()})
     if track.get('Format'):
-        second_push.append({'audio.format': track.get('Format')})
+        second_push.append({'audio.format': track.get('Format').strip()})
     if track.get('SamplingRate'):
-        second_push.append({'audio.sampling_rate': track.get('SamplingRate')})
+        second_push.append({'audio.sampling_rate': track.get('SamplingRate').strip()})
     if track.get('Language'):
-        second_push.append({'audio.codec_id': track.get('CodecID')})
+        second_push.append({'audio.codec_id': track.get('CodecID').strip()})
 
     return audio_dict
 
@@ -442,11 +442,11 @@ def get_other_xml(track):
     for mdata in data:
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
-            other_dict.append({f'other.{cid}': track[minfo]})
+            other_dict.append({f'other.{cid}': track.get(minfo).strip()})
 
     # Handle thesaurus linked item
     if track.get('Format'):
-        second_push.append({'other.format': track.get('Format')})
+        second_push.append({'other.format': track.get('Format').strip()})
 
     return other_dict, second_push
 
@@ -467,11 +467,11 @@ def get_text_xml(track):
     for mdata in data:
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
-            text_dict.append({f'text.{cid}': track[minfo]})
+            text_dict.append({f'text.{cid}': track.get(minfo).strip()})
 
-    # Handle linked 
+    # Handle linked
     if track.get('CodecID'):
-        second_push.append({'text.codec_id': track.get('CodecID')})
+        second_push.append({'text.codec_id': track.get('CodecID').strip()})
 
     return text_dict, second_push
 
@@ -541,7 +541,7 @@ def make_header_data(text_path, filename, priref):
     text = text_full = ebu = pb = xml = json = exif = ''
     if text_path.endswith('_EXIF.txt'):
         text_path = text_path.replace('_EXIF.txt', '_TEXT.txt')
-        
+
     # Processing metadata output for text path
     try:
         text_dump = utils.read_extract(text_path)

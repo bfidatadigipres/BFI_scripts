@@ -262,7 +262,6 @@ def get_general_xml(track):
         'Duration_String1, duration',
         'Duration, duration.milliseconds',
         'FileSize, file_size.total_bytes',
-        'FileSize_String4, file_size.total_gigabytes',
         'AudioCount, audio_stream_count',
         'VideoCount, video_stream_count',
         'Format_Profile, format_profile',
@@ -293,6 +292,13 @@ def get_general_xml(track):
         second_push.append({'container.format': track.get('Format').strip()})
     if track.get('Audio_Codec_List'):
         second_push.append({'container.audio_codecs': track.get('Audio_Codec_List').strip()})
+    if track.get('FileSize_String4'):
+        gib = track.get('FileSize_String4')
+        if 'GiB' in gib:
+            file_size = gib.split(' GiB')[0].strip()
+            second_push.append({'container.file_size.total_gigabytes', file_size})
+        else:
+            second_push.append({'container.file_size.total_gigabytes', track.get('FileSize_String4').strip()})
 
     return general_dict, second_push
 
@@ -319,7 +325,6 @@ def get_video_xml(track):
         'ScanType, scan_type',
         'ScanType_StoreMethod, scan_type_store_method',
         'Standard, standard',
-        'StreamSize_String1, stream_size',
         'StreamSize, stream_size_bytes',
         'StreamOrder, stream_order',
         'Width, width',
@@ -366,6 +371,13 @@ def get_video_xml(track):
             video_dict.append({'max_slice_count': track.get('extra').get('MaxSlicesCount').strip()})
     if track.get('colour_range'):
         video_dict.append({'colour_range': track.get('colour_range').strip()})
+    if track.get('StreamSize_String1'):
+        gib = track.get('StreamSize_String1')
+        if 'GiB' in gib:
+            file_size = gib.split(' GiB')[0].strip()
+            video_dict.append({'video.stream_size', file_size})
+        else:
+            video_dict.append({'video.stream_size', track.get('StreamSize_String1').strip()})
 
     return video_dict, second_push
 
@@ -429,7 +441,6 @@ def get_audio_xml(track):
         'Format_Settings_Sign, format_settings_sign',
         'FrameCount, frame_count',
         'Language_String, language',
-        'StreamSize_String5, stream_size',
         'StreamSize, stream_size_bytes',
         'StreamOrder, stream_order'
     ]
@@ -438,13 +449,17 @@ def get_audio_xml(track):
     audio_dict = []
     for mdata in data:
         minfo, cid = mdata.split(', ')
-        if minfo == 'Language':
-            if track.get(minfo).strip() == 'en':
-                audio_dict.append({f'audio.language': 'English'})
-            else:
-                audio_dict.append({f'audio.language': track.get(minfo).strip()})
-        elif track.get(minfo):
+        if track.get(minfo):
             audio_dict.append({f'audio.{cid}': track.get(minfo).strip()})
+
+    # Remove GiB from size
+    if track.get('StreamSize_String5'):
+        gib = track.get('StreamSize_String5')
+        if 'GiB' in gib:
+            file_size = gib.split(' GiB')[0].strip()
+            audio_dict.append({'audio.stream_size', file_size})
+        else:
+            audio_dict.append({'audio.stream_size', track.get('StreamSize_String5').strip()})
 
     # Handle thesaurus linked items
     if track.get('Format_Commercial'):

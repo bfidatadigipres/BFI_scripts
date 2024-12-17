@@ -182,61 +182,75 @@ def build_metadata_xml(json_path, priref):
     Open JSON, dump to dict and create
     metadata XML for updaterecord
     '''
-    videos = []
-    vid_sec_xml = []
-    audio = []
-    aud_sec_xml = []
-    other = []
-    oth_sec_xml = []
-    text = []
-    txt_sec_xml = []
-
+    videos = audio = other = text = ''
     with open(json_path, 'r') as metadata:
         mdata = json.load(metadata)
 
     for track in mdata['media']['track']:
         if track['@type'] == 'General':
             print(f"General track: {track}")
-            gen_xml, gen_sec_xml = get_general_xml(track)
-            gen_xml = f"<Container>{gen_xml}{gen_sec_xml}</Container>"
-            # gen_sec_xml = f"<Containeter>{gen_xml}</Container>"
+            gen, gen_sec = get_general_xml(track)
+            print(gen + gen_sec)
+            gen_xml = wrap_as_xml('Container', gen + gen_sec)
+            print(gen_xml)
         elif track['@type'] == 'Video':
             print(f"Video track: {track}")
-            vid_xml, vid_sec_xml = get_video_xml(track)
-            video_xml = f"<Video>{video_xml}{vid_sec_xml}</Video>"
-            # video_sec_xml = f"<Video>{video_sec_xml}</Video>"
-            if len(videos) == 0:
+            vid, vid_sec = get_video_xml(track)
+            vid_xml = wrap_as_xml('Video', vid + vid_sec)
+            print(vid_xml)
+            if len(videos) > 0:
+                videos += vid_xml
+            else:
                 videos = vid_xml
-            videos += video_xml
         elif track['@type'] == 'Audio':
             print(f"Audio track: {track}")
-            aud_xml, aud_sec_xml = get_audio_xml(track)
-            aud_xml = f"<Audio>{aud_xml}{aud_sec_xml}</Audio>"
-            # aud_sec_xml = f"<Audio>{aud_sec_xml}</Audio>"
-            if len(audio) == 0:
+            aud, aud_sec = get_audio_xml(track)
+            aud_xml = wrap_as_xml('Audio', aud + aud_sec)
+            print(aud_xml)
+            if len(audio) > 0:
+                audio += aud_xml
+            else:
                 audio = aud_xml
-            audio += aud_xml
         elif track['@type'] == 'Other':
-            oth_xml, oth_sec_xml = get_other_xml(track)
-            oth_xml = f"<Other>{oth_xml}{oth_sec_xml}</Other>"
-            # oth_sec_xml = f"<Other>{oth_sec_xml}</Other>"
-            if len(other) == 0:
+            oth, oth_sec = get_other_xml(track)
+            oth_xml = wrap_as_xml('Other', oth + oth_sec)
+            print(oth_xml)
+            if len(other) > 0:
+                other += oth_xml
+            else:
                 other = oth_xml
-            other += oth_xml
         elif track['@type'] == 'Text':
-            txt_xml, txt_sec_xml = get_text_xml(track)
-            txt_xml = f"<Other>{txt_xml}{txt_sec_xml}</Other>"
-            # txt_sec_xml = f"<Other>{txt_sec_xml}</Other>"
-            if len(text) == 0:
+            txt, txt_sec = get_text_xml(track)
+            txt_xml = wrap_as_xml('Text', txt + txt_sec)
+            print(txt_xml)
+            if len(text) > 0:
+                text += txt_xml
+            else:
                 text = txt_xml
-            text += txt_xml
 
     payload1 = gen_xml + videos + audio + other + text
+    print()
+    print(payload1)
+    print()
     # payload2 = gen_sec_xml + vid_sec_xml + aud_sec_xml + oth_sec_xml + txt_sec_xml
     payload = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_end = "</record></recordList></adlibXML>"
 
     return f"{payload}{payload1}{payload_end}"
+
+
+def wrap_as_xml(grouping, field_pairs):
+    '''
+    Borrwed from Adlib
+    but for specific need
+    '''
+    mid = mid_fields = ''
+    for grouped in field_pairs:
+        for key, val in grouped.items():
+            xml_field = f'<{key}>{val}</{key}>'
+            mid += xml_field
+
+    return f'<{grouping}>{mid}</{grouping}>'
 
 
 def get_general_xml(track):

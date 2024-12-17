@@ -182,9 +182,13 @@ def build_metadata_xml(json_path, priref):
     metadata XML for updaterecord
     '''
     videos = []
+    vid_sec_xml = []
     audio = []
+    aud_sec_xml = []
     other = []
+    oth_sec_xml = []
     text = []
+    txt_sec_xml = []
 
     with open(json_path, 'r') as metadata:
         mdata = json.load(metadata)
@@ -228,10 +232,10 @@ def get_general_xml(track):
     metadata required
     '''
     data = [
-        'Duration/String1, duration',
+        'Duration_String1, duration',
         'Duration, duration.milliseconds',
         'FileSize, file_size.total_bytes',
-        'FileSize/String4, file_size.total_gigabytes',
+        'FileSize_String4, file_size.total_gigabytes',
         'AudioCount, audio_stream_count',
         'VideoCount, video_stream_count',
         'Format_Profile, format_profile',
@@ -239,7 +243,7 @@ def get_general_xml(track):
         'Encoded_Date, encoded_date',
         'FrameCount, frame_count',
         'FrameRate, frame_rate',
-        'OverallBitRate, overall_bit_rate',
+        'OverallBitRate_String, overall_bit_rate',
         'OverallBitRate_Mode, overall_bit_rate_mode',
         'Encoded_Application, writing_application',
         'Encoded_Library, writing_library',
@@ -273,7 +277,7 @@ def get_video_xml(track):
     metadata required
     '''
     data = [
-        'Duration/String1, duration',
+        'Duration_String1, duration',
         'Duration, duration.milliseconds',
         'BitDepth, bit_depth',
         'BitRate_Mode, bit_rate_mode',
@@ -285,11 +289,11 @@ def get_video_xml(track):
         'FrameRate, frame_rate',
         'FrameRate_Mode, frame_rate_mode',
         'Height, height',
-        'ScanOrder, scan_order',
+        'ScanOrder_String, scan_order',
         'ScanType, scan_type',
         'ScanType_StoreMethod, scan_type_store_method',
         'Standard, standard',
-        'StreamSize/String1, stream_size',
+        'StreamSize_String1, stream_size',
         'StreamSize, stream_size_bytes',
         'StreamOrder, stream_order',
         'Width, width',
@@ -330,7 +334,9 @@ def get_video_xml(track):
         second_push.append({'video.writing_library': track.get('Encoded_Library').strip()})
 
     # Handle grouped item/item with no video prefix
-    if track.get('extra'):
+    if track.get('MaxSlicesCount'):
+        video_dict.append({'max_slice_count': track.get('MaxSlicesCount').strip()})
+    elif track.get('extra'):
         if track.get('extra').get('MaxSlicesCount'):
             video_dict.append({'max_slice_count': track.get('extra').get('MaxSlicesCount').strip()})
     if track.get('colour_range'):
@@ -397,8 +403,8 @@ def get_audio_xml(track):
         'Format_Settings_Endianness, format_settings_endianness',
         'Format_Settings_Sign, format_settings_sign',
         'FrameCount, frame_count',
-        'Language, language',
-        'StreamSize/String3, stream_size',
+        'Language_String, language',
+        'StreamSize_String5, stream_size',
         'StreamSize, stream_size_bytes',
         'StreamOrder, stream_order'
     ]
@@ -407,7 +413,12 @@ def get_audio_xml(track):
     audio_dict = []
     for mdata in data:
         minfo, cid = mdata.split(', ')
-        if track.get(minfo):
+        if minfo == 'Language':
+            if track.get(minfo).strip() == 'en':
+                audio_dict.append({f'audio.language': 'English'})
+            else:
+                audio_dict.append({f'audio.language': track.get(minfo).strip()})
+        elif track.get(minfo):
             audio_dict.append({f'audio.{cid}': track.get(minfo).strip()})
 
     # Handle thesaurus linked items
@@ -417,10 +428,8 @@ def get_audio_xml(track):
         second_push.append({'audio.format': track.get('Format').strip()})
     if track.get('SamplingRate'):
         second_push.append({'audio.sampling_rate': track.get('SamplingRate').strip()})
-    if track.get('Language'):
-        second_push.append({'audio.codec_id': track.get('CodecID').strip()})
 
-    return audio_dict
+    return audio_dict, second_push
 
 
 def get_other_xml(track):
@@ -441,7 +450,12 @@ def get_other_xml(track):
     other_dict = []
     for mdata in data:
         minfo, cid = mdata.split(', ')
-        if track.get(minfo):
+        if minfo == 'Langauge':
+            if track.get(minfo).strip() == 'en':
+                other_dict.append({f'other.language': 'English'})
+            else:
+                other_dict.append({f'other.language': track.get(minfo).strip()})
+        elif track.get(minfo):
             other_dict.append({f'other.{cid}': track.get(minfo).strip()})
 
     # Handle thesaurus linked item
@@ -457,7 +471,7 @@ def get_text_xml(track):
     metadata required
     '''
     data = [
-        'Duration/String1, duration',
+        'Duration_String1, duration',
         'StreamOrder, stream_order',
         'Format, format'
     ]

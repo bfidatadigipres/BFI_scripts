@@ -143,14 +143,14 @@ def main():
             if record is None:
                 LOGGER.warning("Skipping: Record could not be matched with object_number")
                 continue
-            priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-            if not priref:
+            source_priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+            if not source_priref:
                 continue
-            print(f"Priref matched with retrieved folder name: {priref}")
-            LOGGER.info("Priref matched with %s folder name: %s", platform, priref)
+            print(f"Priref matched with retrieved folder name: {source_priref}")
+            LOGGER.info("Priref matched with %s folder name: %s", platform, source_priref)
 
             # Create CID item record for batch of six audio files in folder
-            item_record = create_new_item_record(priref, platform, record)
+            item_record = create_new_item_record(source_priref, platform, record)
             if item_record is None:
                 continue
             print(item_record)
@@ -191,9 +191,9 @@ def main():
                     LOGGER.warning("Path error: %s", new_fpath)
 
             # Write all dict names to digital.acquired_filename in CID item record
-            success = create_digital_original_filenames(priref, filename_dct)
+            success = create_digital_original_filenames(new_priref, filename_dct)
             if not success:
-                LOGGER.warning("Skipping further actions. Digital acquired filenames not written to CID item record: %s", priref)
+                LOGGER.warning("Skipping further actions. Digital acquired filenames not written to CID item record: %s", new_priref)
                 continue
             LOGGER.info("Digital Acquired Filename data added to CID item record %s", new_priref)
             if platform == 'Netflix':

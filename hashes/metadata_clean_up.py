@@ -101,9 +101,9 @@ def main():
         print(f"Priref retrieved: {priref}. Writing metadata to record")
         json_path = make_paths(filename)[4]
 
-        mdata_xml, linkd_mdata_xml = build_metadata_xml(json_path, priref)
+        # mdata_xml, linkd_mdata_xml = build_metadata_xml(json_path, priref)
+        mdata_xml = build_metadata_xml(json_path, priref)
         print(mdata_xml)
-        print(linkd_mdata_xml)
 
         success = write_payload(mdata_xml)
         if success:
@@ -112,12 +112,13 @@ def main():
             LOGGER.warning("Failed to push regular metadata to the CID record. Writing to errors CSV")
             write_to_errors_csv('media', CID_API, priref, mdata_xml)
 
-        success = write_payload(linkd_mdata_xml)
-        if success:
-            LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
-        else:
-            LOGGER.warning("Failed to push linked metadata to the CID record. Writing to errors CSV")
-            write_to_errors_csv('media', CID_API, priref, linkd_mdata_xml)
+        # Testing posting all items in unison
+        #success = write_payload(linkd_mdata_xml)
+        #if success:
+        #    LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
+        #else:
+        #    LOGGER.warning("Failed to push linked metadata to the CID record. Writing to errors CSV")
+        #    write_to_errors_csv('media', CID_API, priref, linkd_mdata_xml)
 
     elif text_file.endswith('_EXIF.txt'):
         filename = text_file.split("_EXIF.txt")[0]
@@ -191,35 +192,47 @@ def build_metadata_xml(json_path, priref):
 
     for track in mdata['media']['track']:
         if track['@type'] == 'General':
-            print(track)
+            print(f"General track: {track}")
             gen_xml, gen_sec_xml = get_general_xml(track)
+            gen_xml = f"<Container>{gen_xml}{gen_sec_xml}</Container>"
+            # gen_sec_xml = f"<Containeter>{gen_xml}</Container>"
         elif track['@type'] == 'Video':
+            print(f"Video track: {track}")
             vid_xml, vid_sec_xml = get_video_xml(track)
+            video_xml = f"<Video>{video_xml}{vid_sec_xml}</Video>"
+            # video_sec_xml = f"<Video>{video_sec_xml}</Video>"
             if len(videos) == 0:
                 videos = vid_xml
-            videos = videos + vid_xml
+            videos += video_xml
         elif track['@type'] == 'Audio':
+            print(f"Audio track: {track}")
             aud_xml, aud_sec_xml = get_audio_xml(track)
+            aud_xml = f"<Audio>{aud_xml}{aud_sec_xml}</Audio>"
+            # aud_sec_xml = f"<Audio>{aud_sec_xml}</Audio>"
             if len(audio) == 0:
                 audio = aud_xml
-            audio = audio + aud_xml
+            audio += aud_xml
         elif track['@type'] == 'Other':
             oth_xml, oth_sec_xml = get_other_xml(track)
+            oth_xml = f"<Other>{oth_xml}{oth_sec_xml}</Other>"
+            # oth_sec_xml = f"<Other>{oth_sec_xml}</Other>"
             if len(other) == 0:
                 other = oth_xml
-            other = other + oth_xml
+            other += oth_xml
         elif track['@type'] == 'Text':
             txt_xml, txt_sec_xml = get_text_xml(track)
+            txt_xml = f"<Other>{txt_xml}{txt_sec_xml}</Other>"
+            # txt_sec_xml = f"<Other>{txt_sec_xml}</Other>"
             if len(text) == 0:
                 text = txt_xml
-            text = text + txt_xml
+            text += txt_xml
 
     payload1 = gen_xml + videos + audio + other + text
-    payload2 = gen_sec_xml + vid_sec_xml + aud_sec_xml + oth_sec_xml + txt_sec_xml
-    xml1 = adlib.create_record_data(CID_API, 'media', priref, payload1)
-    xml2 = adlib.create_record_data(CID_API, 'media', priref, payload2)
+    # payload2 = gen_sec_xml + vid_sec_xml + aud_sec_xml + oth_sec_xml + txt_sec_xml
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_end = "</record></recordList></adlibXML>"
 
-    return xml1, xml2
+    return f"{payload}{payload1}{payload_end}"
 
 
 def get_general_xml(track):
@@ -251,7 +264,6 @@ def get_general_xml(track):
     second_push = []
     general_dict = []
     for mdata in data:
-        print(f"*** {mdata} ***")
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
             general_dict.append({f'container.{cid}': track.get(minfo).strip()})
@@ -302,7 +314,6 @@ def get_video_xml(track):
     second_push = []
     video_dict = []
     for mdata in data:
-        print(mdata)
         minfo, cid = mdata.split(', ')
         if track.get(minfo):
             video_dict.append({f'video.{cid}': track.get(minfo).strip()})

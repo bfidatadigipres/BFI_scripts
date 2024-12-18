@@ -449,7 +449,7 @@ def check_response(rec, api):
     actions. Initiate recycle
     '''
     failures = [
-        'A severe error occurred on the current command. The results, if any, should be discarded'
+        'A severe error occurred on the current command.'
     ]
 
     for warning in failures:

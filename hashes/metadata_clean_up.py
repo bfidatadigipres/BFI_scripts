@@ -50,8 +50,8 @@ LOGGER.setLevel(logging.INFO)
 FIELDS = [
     {'container.duration': ['Duration_String1', 'Duration  ']},
     {'container.duration.milliseconds': ['Duration', '']},
-    {'container.file_size.total_bytes': ['FileSize', 'File size  ']}, # First entry in TEXT_FULL
-    {'container.file_size.total_gigabytes': ['FileSize_String4', 'File size  ']}, # Can return MiB? Numeric only
+    {'container.file_size.total_bytes': ['FileSize', 'File size  ']},
+    {'container.file_size.total_gigabytes': ['FileSize_String4', 'File size  ']},
     {'container.commercial_name': ['Format_Commercial', 'Commercial name  ']},
     {'container.format': ['Format', 'Format  ']},
     {'container.audio_codecs': ['Audio_Codec_List', 'Audio codecs ']},
@@ -69,7 +69,7 @@ FIELDS = [
     {'container.file_extension': ['FileExtension', 'File extension  ']},
     {'container.media_UUID': ['UniqueID', 'Unique ID  ']},
     {'container.truncated': ['IsTruncated','Is truncated  ']},
-    {'video.duration': ['Duration_String1','']},
+    {'video.duration': ['Duration_String1', '']},
     {'video.duration.milliseconds': ['Duration','Duration  ']}, 
     {'video.bit_depth': ['BitDepth', 'Bit depth  ']},
     {'video.bit_rate_mode': ['BitRate_Mode', 'Bit rate mode  ']},
@@ -376,19 +376,17 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             mdata = metadata.readlines()
 
     gen_rows = get_text_rows('General', mdata)
-    print(gen_rows)
     vid_rows = get_text_rows('Video', mdata)
-    print(vid_rows)
     aud_rows = get_text_rows('Audio', mdata)
-    print(aud_rows)
     oth_rows = get_text_rows('Other', mdata)
-    print(oth_rows)
     txt_rows = get_text_rows('Text', mdata)
-    print(txt_rows)
+
     payload = ''
     gen = vid = vid2 = aud = aud2 = aud3 = aud4 = oth = oth2 = txt = txt2 = []
     for field in FIELDS:
         for key, val in field.items():
+            if not val[1]:
+                continue
             matches = []
             if key.startswith('container.'):
                 for row in gen_rows:
@@ -415,6 +413,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 1:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('video.'):
                         collection = []
                         if row.startwith(val[1]):
@@ -435,6 +435,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('video.'):
                         collection = []
                         if row.startwith(val[1]):
@@ -467,6 +469,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 1:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('audio.'):
                         collection = []
                         if row.startwith(val[1]):
@@ -481,6 +485,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('audio.'):
                         collection = []
                         if row.startwith(val[1]):
@@ -495,6 +501,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 3:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('audio.'):
                         collection = []
                         if row.startwith(val[1]):
@@ -509,6 +517,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 4:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('audio.'):
                         collection = []
                         if row.startwith(val[1]):
@@ -543,6 +553,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 1:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('other.'):
                         collection = []
                         if row.startwith(val[1]):
@@ -551,6 +563,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('other.'):
                         collection = []
                         if row.startwith(val[1]):
@@ -573,6 +587,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 1:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('text.'):
                         collection = []
                         if row.startwith(val[1]):
@@ -581,6 +597,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
+                    if not val[1]:
+                        continue
                     if key.startswith('text.'):
                         collection = []
                         if row.startwith(val[1]):

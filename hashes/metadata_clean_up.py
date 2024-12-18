@@ -357,9 +357,9 @@ def get_text_rows(start, mdata):
         if row == '\n':
             capture = False
         if capture and ':' in row:
-            collection.append(row)
+            collection.append(row.strip())
         elif capture and start in row:
-            collection.append(row)
+            collection.append(row.strip())
             count += 1
     return collection
 

@@ -378,11 +378,9 @@ def iterate_text_rows(data, match, key):
             if 'MiB' in field_entry:
                 continue
             matches.append(field_entry)
-        if matches:
-            field_chosen = manipulate_data(sorted(matches, key=len)[-1])
-            return {f'{key}': field_chosen}
-        else:
-            return None
+    if matches:
+        field_chosen = manipulate_data(sorted(matches, key=len)[-1])
+        return {f'{key}': field_chosen}
 
 
 def get_stream_count(gen_rows):

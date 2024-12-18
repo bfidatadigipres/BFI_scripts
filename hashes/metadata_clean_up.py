@@ -378,7 +378,7 @@ def iterate_text_rows(arg, data, match, key):
             if 'MiB' in field_entry:
                 continue
             matches.append(field_entry)
-        print(f"{arg} {key}: {matches}")
+        print(f"{arg} {key} {match}: {matches}")
         if matches:
             field_chosen = manipulate_data(sorted(matches, key=len)[-1])
             return {f'{key}': field_chosen}

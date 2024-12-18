@@ -369,17 +369,14 @@ def iterate_text_rows(arg, data, match, key):
     '''
     if match == '':
         return None
-    print(data)
+
     matches = []
     for row in data:
-        print(row)
         if row.startswith(match):
-            print(row)
             field_entry = row.split(':', 1)[-1].strip()
             if 'MiB' in field_entry:
                 continue
             matches.append(field_entry)
-        print(f"{arg} {key} {match}: {matches}")
         if matches:
             field_chosen = manipulate_data(sorted(matches, key=len)[-1])
             return {f'{key}': field_chosen}
@@ -419,6 +416,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         for key, val in field.items():
             if key.startswith('container.'):
                 match = iterate_text_rows('General', gen_rows, val[1], key)
+                print(match)
                 if match:
                     gen.append(match)
     if len(gen) > 0:
@@ -438,6 +436,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for key, val in field.items():
                 if key.startswith('video.'):
                     match = iterate_text_rows(f'Video #{num}', vid_rows, val[1], key)
+                    print(match)
                     if match:
                         vid.append(match)
                 if key.startswith('colour_range'):

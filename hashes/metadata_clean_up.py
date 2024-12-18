@@ -385,22 +385,24 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     gen = vid = vid2 = aud = aud2 = aud3 = aud4 = oth = oth2 = txt = txt2 = []
     for field in FIELDS:
         for key, val in field.items():
+            matches = []
             if key.startswith('container.'):
-                matches = [x for x in gen_rows if val[1] in str(x)]
+                for row in gen_rows:
+                    if row.startwith(val[1]):
+                        field_entry = row.split(':', 1)[-1]
+                        if 'MiB' in field_entry:
+                            continue
+                        if 'GiB' in field_entry:
+                            field_entry = field_entry.split(' GiB')[0]
+                        matches.append(field_entry)
                 print(matches)
                 if matches:
-                    field_entry = sorted(matches, key=len)[-1]
-                    if 'MiB' in field_entry:
-                        continue
-                    if 'GiB' in field_entry:
-                        field_entry = field_entry.split(' GiB')[0]
-                    print(field_entry)
-                    gen.append({f'{key}': field_entry.strip()})
+                    longest_field = sorted(matches, key=len)[-1]
+                    gen.append({f'{key}': longest_field.strip()})
     if len(gen) > 0:
         xml = wrap_as_xml('Container', gen)
         payload += xml
 
-    collection = []
     for row in vid_rows:
         stream_count = 0
         if row.startswith(('Video\n', 'Video \#')):
@@ -410,6 +412,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('video.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         if collection:
@@ -429,6 +432,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('video.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         if collection:
@@ -460,6 +464,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('audio.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         if collection:
@@ -473,6 +478,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('audio.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         if collection:
@@ -486,6 +492,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('audio.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         if collection:
@@ -499,6 +506,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('audio.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         if collection:
@@ -532,6 +540,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('other.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         oth.append({f'{key}': sorted(collection, key=len)[-1]})
@@ -539,6 +548,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('other.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         oth2.append({f'{key}': sorted(collection, key=len)[-1]})
@@ -560,6 +570,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('text.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         txt.append({f'{key}': sorted(collection, key=len)[-1]})
@@ -567,6 +578,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('text.'):
+                        collection = []
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
                         txt2.append({f'{key}': sorted(collection, key=len)[-1]})

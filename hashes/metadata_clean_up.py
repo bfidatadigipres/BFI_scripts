@@ -351,7 +351,6 @@ def get_text_rows(start, mdata):
     collection = []
     capture = False
     for row in mdata:
-        print(row)
         if start in row:
             capture = True
             collection.append(row.strip())
@@ -370,7 +369,7 @@ def iterate_text_rows(arg, data, match, key):
     '''
     if match == '':
         return None
-
+    print(data)
     matches = []
     for row in data:
         print(row)

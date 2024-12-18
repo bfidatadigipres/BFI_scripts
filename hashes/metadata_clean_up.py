@@ -388,7 +388,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             if key.startswith('container.'):
                 matches = [x for x in gen_rows if val[1] in str(x)]
                 print(matches)
-                field_entry = sorted(matches, len=key)[-1]
+                field_entry = sorted(matches, key=len)[-1]
                 if 'MiB' in field_entry:
                     continue
                 if 'GiB' in field_entry:
@@ -411,7 +411,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('video.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, len=key)[-1]
+                            selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
@@ -420,18 +420,18 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('colour_range'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                        vid.append({f'{key}': sorted(collection, len=key)[-1]})
+                        vid.append({f'{key}': sorted(collection, key=len)[-1]})
                     if key.startswith('MaxSlicesCount'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                        vid.append({f'{key}': sorted(collection, len=key)[-1]})
+                        vid.append({f'{key}': sorted(collection, key=len)[-1]})
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('video.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, len=key)[-1]
+                            selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
@@ -440,7 +440,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('colour_range'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, len=key)[-1]
+                            selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
@@ -449,7 +449,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('MaxSlicesCount'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, len=key)[-1]
+                            selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
@@ -473,7 +473,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('audio.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, len=key)[-1]
+                            selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
@@ -485,7 +485,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('audio.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, len=key)[-1]
+                            selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
@@ -497,7 +497,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('audio.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, len=key)[-1]
+                            selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
@@ -509,7 +509,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('audio.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, len=key)[-1]
+                            selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
@@ -541,14 +541,14 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('other.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                        oth.append({f'{key}': sorted(collection, len=key)[-1]})
+                        oth.append({f'{key}': sorted(collection, key=len)[-1]})
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('other.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                        oth2.append({f'{key}': sorted(collection, len=key)[-1]})
+                        oth2.append({f'{key}': sorted(collection, key=len)[-1]})
         if stream_count > 2:
             break
     if len(oth) > 0:
@@ -569,14 +569,14 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('text.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                        txt.append({f'{key}': sorted(collection, len=key)[-1]})
+                        txt.append({f'{key}': sorted(collection, key=len)[-1]})
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('text.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
-                        txt2.append({f'{key}': sorted(collection, len=key)[-1]})
+                        txt2.append({f'{key}': sorted(collection, key=len)[-1]})
         if stream_count > 2:
             break
     if len(txt) > 0:

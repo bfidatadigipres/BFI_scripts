@@ -364,6 +364,46 @@ def get_text_rows(start, mdata):
     return collection
 
 
+def iterate_text_rows(arg, data, key):
+    '''
+    Receive key to match, sort and
+    clean data and return
+    '''
+    for row in data:
+        stream_count = 0
+        if row.startswith(arg):
+            stream_count += 1
+            print(stream_count)
+        if stream_count == 1:
+            matches = []
+            for row in data:
+                if row.startswith(key):
+                    field_entry = row.split(':', 1)[-1].strip()
+                    if 'MiB' in field_entry:
+                        continue
+                    matches.append(field_entry)
+            print(f"{arg} {key}: {matches}")
+            if matches:
+                field_chosen = manipulate_data(sorted(matches, key=len)[-1])
+                return {f'{key}': field_chosen}
+            else:
+                return None
+
+
+def get_stream_count(gen_rows):
+    '''
+    Get counts of streams
+    to isolate metadata
+    '''
+    for row in gen_rows:
+        if row.startwith('Count of audio streams  '):
+            aud_count = int(row.split(':')[-1].strip())
+        if row.startwith('Count of video streams  '):
+            vid_count = int(row.split(':')[-1].strip())
+
+    return vid_count, aud_count
+
+
 def build_metadata_text_xml(text_path, text_full_path, priref):
     '''
     Use supplied text file for metadata extraction
@@ -375,235 +415,93 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         with open(text_path, 'r') as metadata:
             mdata = metadata.readlines()
 
-    gen_rows = get_text_rows('General', mdata)
-    vid_rows = get_text_rows('Video', mdata)
-    aud_rows = get_text_rows('Audio', mdata)
-    oth_rows = get_text_rows('Other', mdata)
-    txt_rows = get_text_rows('Text', mdata)
-
+    gen = []
     payload = ''
-    gen = vid = vid2 = aud = aud2 = aud3 = aud4 = oth = oth2 = txt = txt2 = []
+    gen_rows = get_text_rows('General', mdata)
     for field in FIELDS:
         for key, val in field.items():
             if not val[1]:
                 continue
-            matches = []
             if key.startswith('container.'):
-                for row in gen_rows:
-                    if row.startswith(val[1]):
-                        field_entry = row.split(':', 1)[-1].strip()
-                        if 'MiB' in field_entry:
-                            continue
-                        field_entry_chosen = manipulate_data(field_entry)
-                        matches.append(field_entry_chosen)
-                print(matches)
-                if matches:
-                    longest_field = sorted(matches, key=len)[-1]
-                    gen.append({f'{key}': longest_field.strip()})
+                match = iterate_text_rows('Container', gen_rows, val[1])
+                if match:
+                    gen.append(match)
     if len(gen) > 0:
         xml = wrap_as_xml('Container', gen)
         payload += xml
 
-    for row in vid_rows:
-        stream_count = 0
-        if row.startswith(('Video\n', 'Video \#')):
-            stream_count += 1
-            print(stream_count)
-        if stream_count == 1:
-            for field in FIELDS:
-                for key, val in field.items():
-                    if not val[1]:
-                        continue
-                    if key.startswith('video.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        if collection:
-                            selection = sorted(collection, key=len)[-1]
-                            if 'MiB' in selection:
-                                continue
-                            selected = manipulate_data(selection)
-                            vid.append({f'{key}': selected})
-                    if key.startswith('colour_range'):
-                        if row.startwith(val[1]):
-                            vid.append({f'{key}': row.split(':')[-1].strip()})
-                    if key.startswith('MaxSlicesCount'):
-                        if row.startwith(val[1]):
-                            vid.append({f'{key}': row.split(':')[-1].strip()})
-        if stream_count == 2:
-            for field in FIELDS:
-                for key, val in field.items():
-                    if not val[1]:
-                        continue
-                    if key.startswith('video.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        if collection:
-                            selection = sorted(collection, key=len)[-1]
-                            if 'MiB' in selection:
-                                continue
-                            selected = manipulate_data(selection)
-                            vid2.append({f'{key}': selected})
-                    if key.startswith('colour_range'):
-                        if row.startwith(val[1]):
-                            vid.append({f'{key}': row.split(':')[-1].strip()})
-                    if key.startswith('MaxSlicesCount'):
-                        if row.startwith(val[1]):
-                            vid.append({f'{key}': row.split(':')[-1].strip()})
-    if len(vid) > 0:
-        xml = wrap_as_xml('Video', vid)
-        payload += xml
-    if len(vid2) > 0:
-        xml = wrap_as_xml('Video', vid2)
-        payload += xml
+    vid_count, aud_count = get_stream_count(gen_rows)
 
-    for row in aud_rows:
-        stream_count = 0
-        if row.startswith(('Audio\n', 'Audio \#')):
-            stream_count += 1
-            print(stream_count)
-        if stream_count == 1:
-            for field in FIELDS:
-                for key, val in field.items():
+    for num in range(1, vid_count+1):
+        if vid_count == 1:
+            vid_rows = get_text_rows('Video', mdata)
+        else:
+            vid_rows = get_text_rows(f'Video #{num}', mdata)
+        vid = []
+        for field in FIELDS:
+            for key, val in field.items():
+                if key.startswith('video.'):
                     if not val[1]:
                         continue
-                    if key.startswith('audio.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        if collection:
-                            selection = sorted(collection, key=len)[-1]
-                            if 'MiB' in selection:
-                                continue
-                            selected = manipulate_data(selection)
-                            aud.append({f'{key}': selected})
-        if stream_count == 2:
-            for field in FIELDS:
-                for key, val in field.items():
-                    if not val[1]:
-                        continue
-                    if key.startswith('audio.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        if collection:
-                            selection = sorted(collection, key=len)[-1]
-                            if 'MiB' in selection:
-                                continue
-                            selected = manipulate_data(selection)
-                            aud2.append({f'{key}': selected})
-        if stream_count == 3:
-            for field in FIELDS:
-                for key, val in field.items():
-                    if not val[1]:
-                        continue
-                    if key.startswith('audio.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        if collection:
-                            selection = sorted(collection, key=len)[-1]
-                            if 'MiB' in selection:
-                                continue
-                            selected = manipulate_data(selection)
-                            aud3.append({f'{key}': selected})
-        if stream_count == 4:
-            for field in FIELDS:
-                for key, val in field.items():
-                    if not val[1]:
-                        continue
-                    if key.startswith('audio.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        if collection:
-                            selection = sorted(collection, key=len)[-1]
-                            if 'MiB' in selection:
-                                continue
-                            selected = manipulate_data(selection)
-                            aud4.append({f'{key}': selected})
-        if stream_count > 4:
-            break
-    if len(aud) > 0:
-        xml = wrap_as_xml('Audio', aud)
-        payload += xml
-    if len(aud2) > 0:
-        xml = wrap_as_xml('Audio', aud2)
-        payload += xml
-    if len(aud3) > 0:
-        xml = wrap_as_xml('Audio', aud3)
-        payload += xml
-    if len(aud4) > 0:
-        xml = wrap_as_xml('Audio', aud4)
-        payload += xml
+                    match = iterate_text_rows(f'Video #{num}', vid_rows, val[1])
+                    if match:
+                        vid.append(match)
+                if key.startswith('colour_range'):
+                    match = iterate_text_rows(f'Video #{num}', vid_rows, val[1])
+                    if match:
+                        vid.append(match)
+                if key.startswith('MaxSlicesCount'):
+                    match = iterate_text_rows(f'Video #{num}', vid_rows, val[1])
+                    if match:
+                        vid.append(match)
+        if len(vid) > 0:
+            xml = wrap_as_xml('Video', vid)
+            payload += xml
 
-    for row in oth_rows:
-        stream_count = 0
-        if row.startswith(('Other\n', 'Other \#')):
-            stream_count += 1
-            print(stream_count)
-        if stream_count == 1:
-            for field in FIELDS:
-                for key, val in field.items():
+    for num in range(1, aud_count+1):
+        if aud_count == 1:
+            aud_rows = get_text_rows('Audio', mdata)
+        else:
+            aud_rows = get_text_rows(f'Audio #{num}', mdata)
+        aud = []
+        for field in FIELDS:
+            for key, val in field.items():
+                if key.startswith('audio.'):
                     if not val[1]:
                         continue
-                    if key.startswith('other.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        oth.append({f'{key}': sorted(collection, key=len)[-1]})
-        if stream_count == 2:
-            for field in FIELDS:
-                for key, val in field.items():
-                    if not val[1]:
-                        continue
-                    if key.startswith('other.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        oth2.append({f'{key}': sorted(collection, key=len)[-1]})
-        if stream_count > 2:
-            break
+                    match = iterate_text_rows(f'Audio #{num}', aud_rows, val[1])
+                    if match:
+                        aud.append(match)
+        if len(aud) > 0:
+            xml = wrap_as_xml('Audio', aud)
+            payload += xml
+
+    oth = []
+    oth_rows = get_text_rows('Other', mdata)
+    for field in FIELDS:
+        for key, val in field.items():
+            if not val[1]:
+                continue
+            if key.startswith('other.'):
+                match = iterate_text_rows('Other', oth_rows, val[1])
+                if match:
+                    oth.append(match)
     if len(oth) > 0:
         xml = wrap_as_xml('Other', oth)
         payload += xml
-    if len(oth2) > 0:
-        xml = wrap_as_xml('Other', oth2)
-        payload += xml
 
-    for row in txt_rows:
-        stream_count = 0
-        if row.startswith(('Text\n', 'Text \#')):
-            stream_count += 1
-            print(stream_count)
-        if stream_count == 1:
-            for field in FIELDS:
-                for key, val in field.items():
-                    if not val[1]:
-                        continue
-                    if key.startswith('text.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        txt.append({f'{key}': sorted(collection, key=len)[-1]})
-        if stream_count == 2:
-            for field in FIELDS:
-                for key, val in field.items():
-                    if not val[1]:
-                        continue
-                    if key.startswith('text.'):
-                        collection = []
-                        if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        txt2.append({f'{key}': sorted(collection, key=len)[-1]})
-        if stream_count > 2:
-            break
+    txt = []
+    txt_rows = get_text_rows('Text', mdata)
+    for field in FIELDS:
+        for key, val in field.items():
+            if not val[1]:
+                continue
+            if key.startswith('text.'):
+                match = iterate_text_rows('Text', txt_rows, val[1])
+                if match:
+                    txt.append(match)
     if len(txt) > 0:
         xml = wrap_as_xml('Text', txt)
-        payload += xml
-    if len(txt2) > 0:
-        xml = wrap_as_xml('Text', txt2)
         payload += xml
 
     payload_start = f"<adlibXML><recordList><record priref='{priref}'>"
@@ -616,14 +514,16 @@ def manipulate_data(selection):
     '''
     Sort and transform data where needed
     '''
-
+    if selection == 'Variable':
+        return 'VBR'
+    if selection == 'Constant':
+        return 'CBR'
     if 'GiB' in selection:
-        selection = selection.split(' GiB')[0]
+        return selection.split(' GiB')[0]
     if 'FPS' in selection:
-        selection = selection.split(' FPS')[0]
+        return selection.split(' FPS')[0]
     if selection == 'en':
-        selection = 'English'
-
+        return 'English'
     return selection
 
 

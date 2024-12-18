@@ -388,13 +388,14 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             if key.startswith('container.'):
                 matches = [x for x in gen_rows if val[1] in str(x)]
                 print(matches)
-                field_entry = sorted(matches, key=len)[-1]
-                if 'MiB' in field_entry:
-                    continue
-                if 'GiB' in field_entry:
-                    field_entry = field_entry.split(' GiB')[0]
-                print(field_entry)
-                gen.append({f'{key}': field_entry.strip()})
+                if matches:
+                    field_entry = sorted(matches, key=len)[-1]
+                    if 'MiB' in field_entry:
+                        continue
+                    if 'GiB' in field_entry:
+                        field_entry = field_entry.split(' GiB')[0]
+                    print(field_entry)
+                    gen.append({f'{key}': field_entry.strip()})
     if len(gen) > 0:
         xml = wrap_as_xml('Container', gen)
         payload += xml
@@ -411,50 +412,38 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('video.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
+                        if collection:
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
                                 selection = selection.split(' GiB')[0]
-                        vid.append({f'{key}': selection})
+                            vid.append({f'{key}': selection})
                     if key.startswith('colour_range'):
                         if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        vid.append({f'{key}': sorted(collection, key=len)[-1]})
+                            vid.append({f'{key}': row.split(':')[-1].strip()})
                     if key.startswith('MaxSlicesCount'):
                         if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                        vid.append({f'{key}': sorted(collection, key=len)[-1]})
+                            vid.append({f'{key}': row.split(':')[-1].strip()})
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('video.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
+                        if collection:
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
                                 selection = selection.split(' GiB')[0]
-                        vid2.append({f'{key}': selection})
+                            vid2.append({f'{key}': selection})
                     if key.startswith('colour_range'):
                         if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, key=len)[-1]
-                            if 'MiB' in selection:
-                                continue
-                            if 'GiB' in selection:
-                                selection = selection.split(' GiB')[0]
-                        vid2.append({f'{key}': selection})
+                            vid.append({f'{key}': row.split(':')[-1].strip()})
                     if key.startswith('MaxSlicesCount'):
                         if row.startwith(val[1]):
-                            collection.append(row.split(':')[-1].strip())
-                            selection = sorted(collection, key=len)[-1]
-                            if 'MiB' in selection:
-                                continue
-                            if 'GiB' in selection:
-                                selection = selection.split(' GiB')[0]
-                        vid2.append({f'{key}': selection})
+                            vid.append({f'{key}': row.split(':')[-1].strip()})
     if len(vid) > 0:
         xml = wrap_as_xml('Video', vid)
         payload += xml
@@ -473,48 +462,52 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                     if key.startswith('audio.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
+                        if collection:
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
                                 selection = selection.split(' GiB')[0]
-                        aud.append({f'{key}': selection})
+                            aud.append({f'{key}': selection})
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('audio.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
+                        if collection:
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
                                 selection = selection.split(' GiB')[0]
-                        aud2.append({f'{key}': selection})
+                            aud2.append({f'{key}': selection})
         if stream_count == 3:
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('audio.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
+                        if collection:
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
                                 selection = selection.split(' GiB')[0]
-                        aud3.append({f'{key}': selection})
+                            aud3.append({f'{key}': selection})
         if stream_count == 4:
             for field in FIELDS:
                 for key, val in field.items():
                     if key.startswith('audio.'):
                         if row.startwith(val[1]):
                             collection.append(row.split(':')[-1].strip())
+                        if collection:
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
                             if 'GiB' in selection:
                                 selection = selection.split(' GiB')[0]
-                        aud4.append({f'{key}': selection})
+                            aud4.append({f'{key}': selection})
         if stream_count > 4:
             break
     if len(aud) > 0:

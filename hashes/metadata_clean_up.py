@@ -500,10 +500,16 @@ def manipulate_data(key, selection):
         return 'CBR'
     if '.total_gigabytes' in key and 'GiB' in selection:
         return selection.split(' GiB')[0]
+    elif '.total_gigabytes' in key and 'MiB' in selection:
+        return None
     if 'FPS' in selection:
         return selection.split(' FPS')[0]
     if '.milliseconds' in key and selection.isnumeric():
         return selection
+    elif '.milliseconds' in key and ':' in selection:
+        return None
+    elif '.milliseconds' in key and 'min' in selection:
+        return None
     if '.bit_depth' in key and ' bits' in selection:
         return selection.split(' bits')[0]
     if selection == 'en':
@@ -540,7 +546,8 @@ def get_xml(arg, track):
             if k.startswith(f'{arg}.'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
-                    dict.append({f'{k}': selected})
+                    if selected:
+                        dict.append({f'{k}': selected})
 
     return dict
 
@@ -557,19 +564,24 @@ def get_video_xml(track):
             if k.startswith('video.'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
-                    video_dict.append({f'{k}': selected})
+                    if selected:
+                        video_dict.append({f'{k}': selected})
             if k.startswith('colour_range'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
-                    video_dict.append({f'{k}': selected})
+                    if selected:
+                        video_dict.append({f'{k}': selected})
             if k.startswith('max_slice_count'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
-                    video_dict.append({f'{k}': selected})
+                    if selected:
+                        video_dict.append({f'{k}': selected})
                 elif track.get('extra').get(v[0]):
                     selected = manipulate_data(k, track.get('extra').get(v[0]).strip())
-                    video_dict.append({f'{k}': selected})
-
+                    if selected:
+                        video_dict.append({f'{k}': selected})
+                else:
+                    pass
     return video_dict
 
 

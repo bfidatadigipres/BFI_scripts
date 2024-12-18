@@ -351,13 +351,13 @@ def get_text_rows(start, mdata):
     collection = []
     capture = False
     for row in mdata:
+        print(row)
         if start in row:
             capture = True
+            collection.append(row.strip())
         if row == '\n':
             capture = False
-        if capture and ':' in row:
-            collection.append(row.strip())
-        elif capture and start in row:
+        if capture and ':' in str(row):
             collection.append(row.strip())
 
     return collection

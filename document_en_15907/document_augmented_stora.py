@@ -1037,23 +1037,23 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
-        recycle = check_response(work_rec)
-        if recycle is True:
-            raise Exception("Recycle of API exception raised.")
-        print(f"create_series(): {work_rec}")
-        try:
-            series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
-            object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
-            print(f'* Series record created with Priref {series_work_id}')
-            print(f'* Series record created with Object number {object_number}')
-            logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
-        except (IndexError, TypeError, KeyError) as err:
-            print(f'* Unable to create Series Work record for <{series_title_full}>\n{err}')
-            logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
-            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
         logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+
+    if work_rec is False:
+        raise Exception("Recycle of API exception raised.")
+    print(f"create_series(): {work_rec}")
+    try:
+        series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+        object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+        print(f'* Series record created with Priref {series_work_id}')
+        print(f'* Series record created with Object number {object_number}')
+        logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
+    except (IndexError, TypeError, KeyError) as err:
+        print(f'* Unable to create Series Work record for <{series_title_full}>\n{err}')
+        logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+        raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
 
     if not series_work_id:
         return None
@@ -1071,8 +1071,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         genre_xml = adlib.create_grouped_data(series_work_id, 'Content_genre', series_content_genres)
         print(genre_xml)
         update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Content_genre' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", series_work_id)
@@ -1090,8 +1089,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         subject_xml = adlib.create_grouped_data(series_work_id, 'Content_subject', series_content_subject)
         print(subject_xml)
         update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Content_subject' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", series_work_id)
@@ -1115,8 +1113,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         label_xml = adlib.create_grouped_data(series_work_id, 'Label', label_fields)
         print(label_xml)
         update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Label' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", series_work_id)
@@ -1292,30 +1289,26 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
     work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None
-
     try:
         sleep(2)
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
-        recycle = check_response(work_rec)
-        if recycle is True:
-            raise Exception("Recycle of API exception raised.")
         print(f"create_work(): {work_rec}")
-        try:
-            print("Populating work_id and object_number variables")
-            work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
-            object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
-            print(f'* Work record created with Priref {work_id} Object number {object_number}')
-            logger.info('%s\tWork record created with priref %s', fullpath, work_id)
-        except (IndexError, TypeError, KeyError) as err:
-            logger.warning("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", epg_dict['title'])
-            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
-        print(f"* Unable to create Work record for <{epg_dict['title']}>")
-        print(err)
+        print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
         logger.warning('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
         logger.warning(err)
-        raise
+    if work_rec is False:
+        raise Exception("Recycle of API exception raised.")
+    try:
+        print("Populating work_id and object_number variables")
+        work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+        object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+        print(f'* Work record created with Priref {work_id} Object number {object_number}')
+        logger.info('%s\tWork record created with priref %s', fullpath, work_id)
+    except (IndexError, TypeError, KeyError) as err:
+        logger.warning("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", epg_dict['title'])
+        raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
 
     if not work_id:
         return None
@@ -1333,8 +1326,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         genre_xml = adlib.create_grouped_data(work_id, 'Content_genre', content_genres)
         print(genre_xml)
         update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Content_genre' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", work_id)
@@ -1352,8 +1344,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         subject_xml = adlib.create_grouped_data(work_id, 'Content_subject', content_subject)
         print(subject_xml)
         update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Content_subject' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", work_id)
@@ -1377,8 +1368,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         label_xml = adlib.create_grouped_data(work_id, 'Label', label_fields)
         print(label_xml)
         update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Label' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", work_id)
@@ -1423,22 +1413,20 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         sleep(2)
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
-        recycle = check_response(man_rec)
-        if recycle is True:
-            raise Exception("Recycle of API exception raised.")
         print(f"create_manifestation(): {man_rec}")
-        try:
-            manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
-            object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
-            print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
-            logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
-        except (IndexError, KeyError, TypeError) as err:
-            logger.warning("Failed to retrieve Priref from record created for - %s", title)
-            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
         logger.warning("Unable to write manifestation record <%s> %s", manifestation_id, err)
-        raise
+    if man_rec is False:
+            raise Exception("Recycle of API exception raised.")
+    try:
+        manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
+        object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
+        print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
+        logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
+    except (IndexError, KeyError, TypeError) as err:
+        logger.warning("Failed to retrieve Priref from record created for - %s", title)
+        raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
 
     return manifestation_id
 
@@ -1468,23 +1456,20 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         sleep(2)
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
-        recycle = check_response(item_rec)
-        if recycle is True:
-            raise Exception("Recycle of API exception raised.")
         print(f"create_cid_item_record(): {item_rec}")
-        try:
-            item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
-            item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
-            print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
-            logger.info('%s\tItem record created with priref %s', fullpath, item_id)
-        except (IndexError, KeyError, TypeError) as err:
-            logger.warning("Failed to retrieve Priref from record created %s", err)
-            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
-        item_id = None
-
+    if item_rec is False:
+        raise Exception("Recycle of API exception raised.")
+    try:
+        item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
+        item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
+        print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
+        logger.info('%s\tItem record created with priref %s', fullpath, item_id)
+    except (IndexError, KeyError, TypeError) as err:
+        logger.warning("Failed to retrieve Priref from record created %s", err)
+        raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     if item_rec is None:
         logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath}")
@@ -1508,9 +1493,6 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     try:
         sleep(2)
         response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
-        recycle = check_response(response)
-        if recycle is True:
-            raise Exception("Recycle of API exception raised.")
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
         else:
@@ -1527,9 +1509,6 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         try:
             sleep(2)
             response = adlib.post(CID_API, payload, 'works', 'updaterecord')
-            recycle = check_response(response)
-            if recycle is True:
-                raise Exception("Recycle of API exception raised.")
             if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
             else:
@@ -1577,29 +1556,14 @@ def push_payload(item_id, webvtt_payload):
 
     try:
         post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord')
-        recycle = check_response(post_resp)
-        if recycle is True:
-            raise Exception("Recycle of API exception raised.")
-        if post_resp:
-            return True
     except Exception as err:
         logger.warning('push_payload()): Unable to write Webvtt to record %s \n%s', item_id, err)
-    return False
-
-
-def check_response(rec):
-    '''
-    Search for failed response terms
-    in API reponses
-    '''
-    failures = [
-        'A severe error occurred on the current command. The results, if any, should be discarded'
-    ]
-    for warning in failures:
-        if warning in str(rec):
-            adlib.recycle_api(CID_API)
-            logger.critical("CID API recycle requested")
-            return True
+    if post_resp is False:
+        raise Exception("Recycle of API exception raised.")
+    if post_resp:
+        return True
+    else:
+        return False
 
 
 if __name__ == '__main__':

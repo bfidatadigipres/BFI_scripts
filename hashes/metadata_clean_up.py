@@ -357,7 +357,7 @@ def get_text_rows(start, mdata):
         if row == '\n':
             capture = False
         if capture and ':' in row:
-            collection.append({f'{row.split(':')[0].strip()}': f'{row.split(':', 1)[-1].strip()}'})
+            collection.append({f"{row.split(':')[0].strip()}": f"{row.split(':', 1)[-1].strip()}"})
         elif capture and start in row:
             collection.append({'Audio': count})
             count += 1

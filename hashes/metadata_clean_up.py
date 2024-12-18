@@ -379,12 +379,11 @@ def iterate_text_rows(arg, data, match, key):
             print(stream_count)
         if stream_count == 1:
             matches = []
-            for row in data:
-                if row.startswith(match):
-                    field_entry = row.split(':', 1)[-1].strip()
-                    if 'MiB' in field_entry:
-                        continue
-                    matches.append(field_entry)
+            if row.startswith(match):
+                field_entry = row.split(':', 1)[-1].strip()
+                if 'MiB' in field_entry:
+                    continue
+                matches.append(field_entry)
             print(f"{arg} {key}: {matches}")
             if matches:
                 field_chosen = manipulate_data(sorted(matches, key=len)[-1])
@@ -424,7 +423,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     for field in FIELDS:
         for key, val in field.items():
             if key.startswith('container.'):
-                match = iterate_text_rows('Container', gen_rows, val[1], key)
+                match = iterate_text_rows('General', gen_rows, val[1], key)
                 if match:
                     gen.append(match)
     if len(gen) > 0:

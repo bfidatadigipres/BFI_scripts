@@ -362,7 +362,7 @@ def get_text_rows(start, mdata):
     return collection
 
 
-def iterate_text_rows(arg, data, match, key):
+def iterate_text_rows(data, match, key):
     '''
     Receive key to match, sort and
     clean data and return
@@ -372,11 +372,12 @@ def iterate_text_rows(arg, data, match, key):
 
     matches = []
     for row in data:
-        if row.startswith(match):
+        if match in str(row):
             field_entry = row.split(':', 1)[-1].strip()
             if 'MiB' in field_entry:
                 continue
             matches.append(field_entry)
+        print(matches)
         if matches:
             field_chosen = manipulate_data(sorted(matches, key=len)[-1])
             return {f'{key}': field_chosen}
@@ -415,8 +416,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     for field in FIELDS:
         for key, val in field.items():
             if key.startswith('container.'):
-                match = iterate_text_rows('General', gen_rows, val[1], key)
-                print(match)
+                match = iterate_text_rows(gen_rows, val[1], key)
                 if match:
                     gen.append(match)
     if len(gen) > 0:
@@ -424,8 +424,6 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         payload += xml
 
     vid_count, aud_count = get_stream_count(gen_rows)
-    print(f"Video streams: {vid_count} / Audio streams: {aud_count}")
-
     for num in range(1, vid_count+1):
         if vid_count == 1:
             vid_rows = get_text_rows('Video', mdata)
@@ -435,16 +433,15 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         for field in FIELDS:
             for key, val in field.items():
                 if key.startswith('video.'):
-                    match = iterate_text_rows(f'Video #{num}', vid_rows, val[1], key)
-                    print(match)
+                    match = iterate_text_rows(vid_rows, val[1], key)
                     if match:
                         vid.append(match)
                 if key.startswith('colour_range'):
-                    match = iterate_text_rows(f'Video #{num}', vid_rows, val[1], key)
+                    match = iterate_text_rows(vid_rows, val[1], key)
                     if match:
                         vid.append(match)
                 if key.startswith('MaxSlicesCount'):
-                    match = iterate_text_rows(f'Video #{num}', vid_rows, val[1], key)
+                    match = iterate_text_rows(vid_rows, val[1], key)
                     if match:
                         vid.append(match)
         if len(vid) > 0:
@@ -460,7 +457,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         for field in FIELDS:
             for key, val in field.items():
                 if key.startswith('audio.'):
-                    match = iterate_text_rows(f'Audio #{num}', aud_rows, val[1], key)
+                    match = iterate_text_rows(aud_rows, val[1], key)
                     if match:
                         aud.append(match)
         if len(aud) > 0:
@@ -472,7 +469,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     for field in FIELDS:
         for key, val in field.items():
             if key.startswith('other.'):
-                match = iterate_text_rows('Other', oth_rows, val[1], key)
+                match = iterate_text_rows(oth_rows, val[1], key)
                 if match:
                     oth.append(match)
     if len(oth) > 0:
@@ -484,7 +481,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     for field in FIELDS:
         for key, val in field.items():
             if key.startswith('text.'):
-                match = iterate_text_rows('Text', txt_rows, val[1], key)
+                match = iterate_text_rows(txt_rows, val[1], key)
                 if match:
                     txt.append(match)
     if len(txt) > 0:

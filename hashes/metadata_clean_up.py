@@ -297,7 +297,7 @@ def build_metadata_xml(json_path, priref):
     for track in mdata['media']['track']:
         if track['@type'] == 'General':
             print(f"General track: {track}")
-            gen, gen_sec = get_general_xml(track)
+            gen, gen_sec = get_xml('container', track)
             print(gen + gen_sec)
             gen_xml = wrap_as_xml('Container', gen + gen_sec)
             print(gen_xml)
@@ -312,7 +312,7 @@ def build_metadata_xml(json_path, priref):
                 videos = vid_xml
         elif track['@type'] == 'Audio':
             print(f"Audio track: {track}")
-            aud, aud_sec = get_audio_xml(track)
+            aud, aud_sec = get_xml('audio', track)
             aud_xml = wrap_as_xml('Audio', aud + aud_sec)
             print(aud_xml)
             if len(audio) > 0:
@@ -320,7 +320,7 @@ def build_metadata_xml(json_path, priref):
             else:
                 audio = aud_xml
         elif track['@type'] == 'Other':
-            oth, oth_sec = get_other_xml(track)
+            oth, oth_sec = get_xml('other', track)
             oth_xml = wrap_as_xml('Other', oth + oth_sec)
             print(oth_xml)
             if len(other) > 0:
@@ -328,7 +328,7 @@ def build_metadata_xml(json_path, priref):
             else:
                 other = oth_xml
         elif track['@type'] == 'Text':
-            txt, txt_sec = get_text_xml(track)
+            txt, txt_sec = get_xml('text', track)
             txt_xml = wrap_as_xml('Text', txt + txt_sec)
             print(txt_xml)
             if len(text) > 0:
@@ -372,14 +372,13 @@ def iterate_text_rows(data, match, key):
 
     matches = []
     for row in data:
-        print(row, match)
         if match in str(row):
             field_entry = row.split(':', 1)[-1].strip()
             if 'MiB' in field_entry:
                 continue
             matches.append(field_entry)
     if matches:
-        field_chosen = manipulate_data(sorted(matches, key=len)[-1])
+        field_chosen = manipulate_data(key, sorted(matches, key=len)[-1])
         return {f'{key}': field_chosen}
 
 
@@ -492,7 +491,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     return f"{payload_start}{payload}{payload_end}"
 
 
-def manipulate_data(selection):
+def manipulate_data(key, selection):
     '''
     Sort and transform data where needed
     '''
@@ -500,12 +499,20 @@ def manipulate_data(selection):
         return 'VBR'
     if selection == 'Constant':
         return 'CBR'
-    if 'GiB' in selection:
+    if '.total_gigabytes' in key and 'GiB' in selection:
         return selection.split(' GiB')[0]
     if 'FPS' in selection:
         return selection.split(' FPS')[0]
+    if '.milliseconds' in key and selection.isnumeric():
+        return selection
+    if '.bit_depth' in key and ' bits' in selection:
+        return selection.split(' bits')[0]
     if selection == 'en':
         return 'English'
+    if '.height' in key and 'pixels' in selection:
+        return selection.split(' pixels')[0]
+    if '.width' in key and 'pixels' in selection:
+        return selection.split(' pixels')[0]
     return selection
 
 
@@ -523,54 +530,20 @@ def wrap_as_xml(grouping, field_pairs):
     return f'<{grouping}>{mid}</{grouping}>'
 
 
-def get_general_xml(track):
+def get_xml(arg, track):
     '''
     Create dictionary for General
     metadata required
     '''
-    data = [
-        'Duration_String1, duration',
-        'Duration, duration.milliseconds',
-        'FileSize, file_size.total_bytes',
-        'AudioCount, audio_stream_count',
-        'VideoCount, video_stream_count',
-        'Format_Profile, format_profile',
-        'Format_Version, format_version',
-        'Encoded_Date, encoded_date',
-        'FrameCount, frame_count',
-        'FrameRate, frame_rate',
-        'OverallBitRate_String, overall_bit_rate',
-        'OverallBitRate_Mode, overall_bit_rate_mode',
-        'Encoded_Application, writing_application',
-        'Encoded_Library, writing_library',
-        'FileExtension, file_extension',
-        'UniqueID, media_UUID',
-        'IsTruncated, truncated'
-    ]
+    dict = []
+    for field in FIELDS:
+        for k, v in field.items():
+            if k.startwith(f'{arg}.'):
+                if track.get(v[0]):
+                    selected = manipulate_data(k, track.get(v[0]).strip())
+                    dict.append({f'{k}': selected})
 
-    second_push = []
-    general_dict = []
-    for mdata in data:
-        minfo, cid = mdata.split(', ')
-        if track.get(minfo):
-            general_dict.append({f'container.{cid}': track.get(minfo).strip()})
-
-    # Remove GiB from file size
-    if track.get('FileSize_String4'):
-        gib = track.get('FileSize_String4')
-        if 'GiB' in gib:
-            file_size = gib.split(' GiB')[0].strip()
-            general_dict.append({'container.file_size.total_gigabytes': file_size})
-
-    # Handle thesaurus linked items
-    if track.get('Format_Commercial'):
-        second_push.append({'container.commercial_name': track.get('Format_Commercial').strip()})
-    if track.get('Format'):
-        second_push.append({'container.format': track.get('Format').strip()})
-    if track.get('Audio_Codec_List'):
-        second_push.append({'container.audio_codecs': track.get('Audio_Codec_List').strip()})
-
-    return general_dict, second_push
+    return dict
 
 
 def get_video_xml(track):
@@ -578,76 +551,27 @@ def get_video_xml(track):
     Create dictionary for Video
     metadata required
     '''
-    data = [
-        'Duration_String1, duration',
-        'Duration, duration.milliseconds',
-        'BitDepth, bit_depth',
-        'BitRate_Mode, bit_rate_mode',
-        'BitRate, bit_rate',
-        'ChromaSubsampling, chroma_subsampling',
-        'Compression_Mode, compression_mode',
-        'Format_Version, format_version',
-        'FrameCount, frame_count',
-        'FrameRate, frame_rate',
-        'FrameRate_Mode, frame_rate_mode',
-        'Height, height',
-        'ScanOrder_String, scan_order',
-        'ScanType, scan_type',
-        'ScanType_StoreMethod, scan_type_store_method',
-        'Standard, standard',
-        'StreamSize, stream_size_bytes',
-        'StreamOrder, stream_order',
-        'Width, width',
-        'Format_Profile, format_profile',
-        'Width_CleanAperture, width_aperture',
-        'Delay, delay',
-        'Format_Settings_GOP, format_settings_GOP'
-    ]
 
-    second_push = []
     video_dict = []
-    for mdata in data:
-        minfo, cid = mdata.split(', ')
-        if track.get(minfo):
-            video_dict.append({f'video.{cid}': track.get(minfo).strip()})
+    for field in FIELDS:
+        for k, v in field.items():
+            if k.startwith('video.'):
+                if track.get(v[0]):
+                    selected = manipulate_data(k, track.get(v[0]).strip())
+                    video_dict.append({f'{k}': selected})
+            if k.startswith('colour_range'):
+                if track.get(v[0]):
+                    selected = manipulate_data(k, track.get(v[0]).strip())
+                    video_dict.append({f'{k}': selected})
+            if k.startswith('max_slice_count'):
+                if track.get(v[0]):
+                    selected = manipulate_data(k, track.get(v[0]).strip())
+                    video_dict.append({f'{k}': selected})
+                elif track.get('extra').get(v[0]):
+                    selected = manipulate_data(k, track.get('extra').get(v[0]).strip())
+                    video_dict.append({f'{k}': selected})
 
-    # Handle items with thesaurus look up
-    if track.get('CodecID'):
-        second_push.append({'video.codec_id': track.get('CodecID').strip()})
-    if track.get('ColorSpace'):
-        second_push.append({'video.colour_space': track.get('ColorSpace').strip()})
-    if track.get('colour_primaries'):
-        second_push.append({'video.colour_primaries': track.get('colour_primaries').strip()})
-    if track.get('Format_Commercial'):
-        second_push.append({'video.commercial_name': track.get('Format_Commercial').strip()})
-    if track.get('DisplayAspectRatio'):
-        second_push.append({'video.display_aspect_ratio': track.get('DisplayAspectRatio').strip()})
-    if track.get('Format'):
-        second_push.append({'video.format': track.get('Format').strip()})
-    if track.get('matrix_coefficients'):
-        second_push.append({'video.matrix_coefficients': track.get('matrix_coefficients').strip()})
-    if track.get('PixelAspectRatio'):
-        second_push.append({'video.pixel_aspect_ratio': track.get('PixelAspectRatio').strip()})
-    if track.get('transfer_characteristics'):
-        second_push.append({'video.transfer_characteristics': track.get('transfer_characteristics').strip()})
-    if track.get('Encoded_Library'):
-        second_push.append({'video.writing_library': track.get('Encoded_Library').strip()})
-
-    # Handle grouped item/item with no video prefix
-    if track.get('MaxSlicesCount'):
-        video_dict.append({'max_slice_count': track.get('MaxSlicesCount').strip()})
-    elif track.get('extra'):
-        if track.get('extra').get('MaxSlicesCount'):
-            video_dict.append({'max_slice_count': track.get('extra').get('MaxSlicesCount').strip()})
-    if track.get('colour_range'):
-        video_dict.append({'colour_range': track.get('colour_range').strip()})
-    if track.get('StreamSize_String1'):
-        gib = track.get('StreamSize_String1')
-        if 'GiB' in gib:
-            file_size = gib.split(' GiB')[0].strip()
-            video_dict.append({'video.stream_size': file_size})
-
-    return video_dict, second_push
+    return video_dict
 
 
 def get_image_xml(track):
@@ -687,113 +611,6 @@ def get_image_xml(track):
                 image_dict.append({f'image.{cid_field}': value.strip()})
 
     return image_dict
-
-
-def get_audio_xml(track):
-    '''
-    If audio channel present,
-    extract available metadata
-    and XML format
-    '''
-    data = [
-        'BitDepth, bit_depth',
-        'BitRate_Mode, bit_rate_mode',
-        'Channels, channels',
-        'CodecID, codec_id',
-        'Duration, duration',
-        'BitRate, bit_rate',
-        'ChannelLayout, channel_layout',
-        'ChannelPositions, channel_position',
-        'Compression_Mode, compression_mode',
-        'Format_Settings_Endianness, format_settings_endianness',
-        'Format_Settings_Sign, format_settings_sign',
-        'FrameCount, frame_count',
-        'Language_String, language',
-        'StreamSize, stream_size_bytes',
-        'StreamOrder, stream_order'
-    ]
-
-    second_push = []
-    audio_dict = []
-    for mdata in data:
-        minfo, cid = mdata.split(', ')
-        if track.get(minfo):
-            audio_dict.append({f'audio.{cid}': track.get(minfo).strip()})
-
-    # Remove GiB from size
-    if track.get('StreamSize_String5'):
-        gib = track.get('StreamSize_String5')
-        if 'GiB' in gib:
-            file_size = gib.split(' GiB')[0].strip()
-            audio_dict.append({'audio.stream_size': file_size})
-
-    # Handle thesaurus linked items
-    if track.get('Format_Commercial'):
-        second_push.append({'audio.commercial_name': track.get('Format_Commercial').strip()})
-    if track.get('Format'):
-        second_push.append({'audio.format': track.get('Format').strip()})
-    if track.get('SamplingRate'):
-        second_push.append({'audio.sampling_rate': track.get('SamplingRate').strip()})
-
-    return audio_dict, second_push
-
-
-def get_other_xml(track):
-    '''
-    Create dictionary for Other
-    metadata required
-    '''
-    data = [
-        'Duration, duration',
-        'FrameRate, frame_rate',
-        'Language, language',
-        'Type, type',
-        'TimeCode_FirstFrame, timecode_first_frame',
-        'StreamOrder, stream_order'
-    ]
-
-    second_push = []
-    other_dict = []
-    for mdata in data:
-        minfo, cid = mdata.split(', ')
-        if minfo == 'Langauge':
-            if track.get(minfo).strip() == 'en':
-                other_dict.append({f'other.language': 'English'})
-            else:
-                other_dict.append({f'other.language': track.get(minfo).strip()})
-        elif track.get(minfo):
-            other_dict.append({f'other.{cid}': track.get(minfo).strip()})
-
-    # Handle thesaurus linked item
-    if track.get('Format'):
-        second_push.append({'other.format': track.get('Format').strip()})
-
-    return other_dict, second_push
-
-
-def get_text_xml(track):
-    '''
-    Create dictionary for Text
-    metadata required
-    '''
-    data = [
-        'Duration_String1, duration',
-        'StreamOrder, stream_order',
-        'Format, format'
-    ]
-
-    second_push = []
-    text_dict = []
-    for mdata in data:
-        minfo, cid = mdata.split(', ')
-        if track.get(minfo):
-            text_dict.append({f'text.{cid}': track.get(minfo).strip()})
-
-    # Handle linked
-    if track.get('CodecID'):
-        second_push.append({'text.codec_id': track.get('CodecID').strip()})
-
-    return text_dict, second_push
 
 
 def clean_up(filename, text_path):

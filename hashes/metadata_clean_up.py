@@ -297,14 +297,13 @@ def build_metadata_xml(json_path, priref):
     for track in mdata['media']['track']:
         if track['@type'] == 'General':
             print(f"General track: {track}")
-            gen, gen_sec = get_xml('container', track)
-            print(gen + gen_sec)
-            gen_xml = wrap_as_xml('Container', gen + gen_sec)
+            gen = get_xml('container', track)
+            gen_xml = wrap_as_xml('Container', gen)
             print(gen_xml)
         elif track['@type'] == 'Video':
             print(f"Video track: {track}")
-            vid, vid_sec = get_video_xml(track)
-            vid_xml = wrap_as_xml('Video', vid + vid_sec)
+            vid = get_video_xml(track)
+            vid_xml = wrap_as_xml('Video', vid)
             print(vid_xml)
             if len(videos) > 0:
                 videos += vid_xml
@@ -312,24 +311,24 @@ def build_metadata_xml(json_path, priref):
                 videos = vid_xml
         elif track['@type'] == 'Audio':
             print(f"Audio track: {track}")
-            aud, aud_sec = get_xml('audio', track)
-            aud_xml = wrap_as_xml('Audio', aud + aud_sec)
+            aud = get_xml('audio', track)
+            aud_xml = wrap_as_xml('Audio', aud)
             print(aud_xml)
             if len(audio) > 0:
                 audio += aud_xml
             else:
                 audio = aud_xml
         elif track['@type'] == 'Other':
-            oth, oth_sec = get_xml('other', track)
-            oth_xml = wrap_as_xml('Other', oth + oth_sec)
+            oth = get_xml('other', track)
+            oth_xml = wrap_as_xml('Other', oth)
             print(oth_xml)
             if len(other) > 0:
                 other += oth_xml
             else:
                 other = oth_xml
         elif track['@type'] == 'Text':
-            txt, txt_sec = get_xml('text', track)
-            txt_xml = wrap_as_xml('Text', txt + txt_sec)
+            txt = get_xml('text', track)
+            txt_xml = wrap_as_xml('Text', txt)
             print(txt_xml)
             if len(text) > 0:
                 text += txt_xml

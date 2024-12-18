@@ -606,7 +606,6 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         xml = wrap_as_xml('Text', txt2)
         payload += xml
 
-    print(payload)
     payload_start = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_end = "</record></recordList></adlibXML>"
 

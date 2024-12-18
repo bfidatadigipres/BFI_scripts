@@ -350,7 +350,6 @@ def get_text_rows(start, mdata):
     '''
     collection = []
     capture = False
-    count = 0
     for row in mdata:
         if start in row:
             capture = True
@@ -360,7 +359,7 @@ def get_text_rows(start, mdata):
             collection.append(row.strip())
         elif capture and start in row:
             collection.append(row.strip())
-            count += 1
+
     return collection
 
 
@@ -372,24 +371,19 @@ def iterate_text_rows(arg, data, match, key):
     if match == '':
         return None
 
+    matches = []
     for row in data:
-        stream_count = 0
-        if row.startswith(arg):
-            stream_count += 1
-            print(stream_count)
-        if stream_count == 1:
-            matches = []
-            if row.startswith(match):
-                field_entry = row.split(':', 1)[-1].strip()
-                if 'MiB' in field_entry:
-                    continue
-                matches.append(field_entry)
-            print(f"{arg} {key}: {matches}")
-            if matches:
-                field_chosen = manipulate_data(sorted(matches, key=len)[-1])
-                return {f'{key}': field_chosen}
-            else:
-                return None
+        if row.startswith(match):
+            field_entry = row.split(':', 1)[-1].strip()
+            if 'MiB' in field_entry:
+                continue
+            matches.append(field_entry)
+        print(f"{arg} {key}: {matches}")
+        if matches:
+            field_chosen = manipulate_data(sorted(matches, key=len)[-1])
+            return {f'{key}': field_chosen}
+        else:
+            return None
 
 
 def get_stream_count(gen_rows):

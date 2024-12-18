@@ -376,11 +376,15 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             mdata = metadata.readlines()
 
     gen_rows = get_text_rows('General', mdata)
+    print(gen_rows)
     vid_rows = get_text_rows('Video', mdata)
+    print(vid_rows)
     aud_rows = get_text_rows('Audio', mdata)
+    print(aud_rows)
     oth_rows = get_text_rows('Other', mdata)
+    print(oth_rows)
     txt_rows = get_text_rows('Text', mdata)
-
+    print(txt_rows)
     payload = ''
     gen = vid = vid2 = aud = aud2 = aud3 = aud4 = oth = oth2 = txt = txt2 = []
     for field in FIELDS:
@@ -388,7 +392,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             matches = []
             if key.startswith('container.'):
                 for row in gen_rows:
-                    if row.startwith(val[1]):
+                    if row.startswith(val[1]):
                         field_entry = row.split(':', 1)[-1]
                         if 'MiB' in field_entry:
                             continue

@@ -372,12 +372,12 @@ def iterate_text_rows(data, match, key):
 
     matches = []
     for row in data:
+        print(row, match)
         if match in str(row):
             field_entry = row.split(':', 1)[-1].strip()
             if 'MiB' in field_entry:
                 continue
             matches.append(field_entry)
-        print(matches)
         if matches:
             field_chosen = manipulate_data(sorted(matches, key=len)[-1])
             return {f'{key}': field_chosen}

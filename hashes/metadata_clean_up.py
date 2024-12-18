@@ -607,10 +607,10 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         payload += xml
 
     print(payload)
-    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_start = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_end = "</record></recordList></adlibXML>"
 
-    return f"{payload}{payload}{payload_end}"
+    return f"{payload_start}{payload}{payload_end}"
 
 
 def manipulate_data(selection):

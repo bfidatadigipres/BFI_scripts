@@ -47,30 +47,109 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-
 FIELDS = [
-    {'container.duration': ['Duration_String1', 'Duration']},
-    {'container.duration.milliseconds', ['Duration', 'Duration']},
-    {'container.file_size.total_bytes': ['FileSize', 'File size']},
-    {'container.commercial_name': ['Format_Commercial', '']},
-    {'container.format': ['Format', 'Format']},
-    {'container.audio_codecs': ['Audio_Codec_List', 'Audio codecs']},
-    {'container.file_size.total_gigabytes': }
-    {'container.audio_stream_count': ['AudioCount', '']},
-    {'container.video_stream_count': 'VideoCount'},
-    {'container.format_profile': 'Format_Profile'},
-    {'container.format_version': 'Format_Version'},
-    {'container.encoded_date': 'Encoded_Date'},
-    {'container.frame_count': 'FrameCount'},
-    {'container.frame_rate':'FrameRate'},
-    {'container.overall_bit_rate'}:'OverallBitRate_String,  ,
-    {'container.overall_bit_rate_mode'}: OverallBitRate_Mode, ,
-    {'container.writing_application'}: 'Encoded_Application, ,
-    {'container.writing_library'}: 'Encoded_Library,,
-    {'container.file_extension'}: 'FileExtension, ,
-    {'container.media_UUID'}: 'UniqueID, ,
-    {'container.truncated': 'IsTruncated'} 
+    {'container.duration': ['Duration_String1', 'Duration  ']},
+    {'container.duration.milliseconds': ['Duration', '']},
+    {'container.file_size.total_bytes': ['FileSize', 'File size  ']}, # First entry in TEXT_FULL
+    {'container.file_size.total_gigabytes': ['FileSize_String4', 'File size  ']}, # Can return MiB? Numeric only
+    {'container.commercial_name': ['Format_Commercial', 'Commercial name  ']},
+    {'container.format': ['Format', 'Format  ']},
+    {'container.audio_codecs': ['Audio_Codec_List', 'Audio codecs ']},
+    {'container.audio_stream_count': ['AudioCount', 'Count of audio streams  ']},
+    {'container.video_stream_count': ['VideoCount', 'Count of video streams  ']},
+    {'container.format_profile': ['Format_Profile','Format profile  ']},
+    {'container.format_version': ['Format_Version','Format version  ']},
+    {'container.encoded_date': ['Encoded_Date','Encoded date  ']},
+    {'container.frame_count': ['FrameCount', 'Frame count  ']},
+    {'container.frame_rate': ['FrameRate', 'Frame rate  ']},
+    {'container.overall_bit_rate': ['OverallBitRate_String', 'Overall bit rate  ']},
+    {'container.overall_bit_rate_mode': ['OverallBitRate_Mode', 'Overall bit rate mode  ']},
+    {'container.writing_application': ['Encoded_Application', 'Writing application  ']},
+    {'container.writing_library': ['Encoded_Library', 'Writing library  ']},
+    {'container.file_extension': ['FileExtension', 'File extension  ']},
+    {'container.media_UUID': ['UniqueID', 'Unique ID  ']},
+    {'container.truncated': ['IsTruncated','Is truncated  ']},
+    {'video.duration': ['Duration_String1','']},
+    {'video.duration.milliseconds': ['Duration','Duration  ']}, 
+    {'video.bit_depth': ['BitDepth', 'Bit depth  ']},
+    {'video.bit_rate_mode': ['BitRate_Mode', 'Bit rate mode  ']},
+    {'video.bit_rate': ['BitRate','Bit rate  ']},
+    {'video.chroma_subsampling': ['ChromaSubsampling', 'Chroma subsampling']},
+    {'video.compression_mode': ['Compression_Mode', 'Compression mode  ']},
+    {'video.format_version': ['Format_Version', 'Format version  ']},
+    {'video.frame_count': ['FrameCount', 'Frame count  ']},
+    {'video.frame_rate': ['FrameRate', 'Frame rate  ']},
+    {'video.frame_rate_mode': ['FrameRate_Mode', 'Frame rate mode  ']},
+    {'video.height': ['Height', 'Height  ']},
+    {'video.scan_order': ['ScanOrder_String', 'Scan order  ']},
+    {'video.scan_type': ['ScanType','Scan type  ']},
+    {'video.scan_type_store_method': ['ScanType_StoreMethod', 'Scan type, store method  ']},
+    {'video.standard': ['Standard', 'Standard  ']},
+    {'video.stream_size_bytes': ['StreamSize', 'Stream size  ']},
+    {'video.stream_order': ['StreamOrder', 'StreamOrder  ']},
+    {'video.width': ['Width', 'Width  ']},
+    {'video.format_profile': ['Format_Profile', 'Format profile  ']},
+    {'video.width_aperture': ['Width_CleanAperture', 'Width clean aperture  ']}, # Guessed second
+    {'video.delay': ['Delay','Delay  ']},
+    {'video.format_settings_GOP': ['Format_Settings_GOP', 'Format settings, GOP  ']},
+    {'video.codec_id': ['CodecID','Codec ID  ']},
+    {'video.colour_space': ['ColorSpace','Color space  ']},
+    {'video.colour_primaries': ['colour_primaries', 'Color primaries  ']},
+    {'video.commercial_name': ['Format_Commercial', 'Commercial name  ']},
+    {'video.display_aspect_ratio': ['DisplayAspectRatio','Display aspect ratio  ']},
+    {'video.format': ['Format', 'Format  ']},
+    {'video.matrix_coefficients': ['matrix_coefficients', 'Matrix coefficients  ']},
+    {'video.pixel_aspect_ratio': ['PixelAspectRatio', 'Pixel aspect ratio  ']},
+    {'video.transfer_characteristics': ['transfer_characteristics', 'Transfer characteristics  ']},
+    {'video.writing_library': ['Encoded_Library', 'Writing library  ']},
+    {'video.stream_size': ['StreamSize_String1', '']},
+    {'colour_range': ['colour_range', 'Color range  ']},
+    {'max_slice_count': ['MaxSlicesCount', 'MaxSlicesCount  ']},
+    {'audio.bit_depth': ['BitDepth', 'Bit depth  ']},
+    {'audio.bit_rate': ['BitRate', 'Bit rate  ']},
+    {'audio.bit_rate_mode': ['BitRate_Mode', 'Bit rate mode  ']},
+    {'audio.channels': ['Channels', 'Channel(s)  ']},
+    {'audio.codec_id': ['CodecID', 'Codec ID  ']},
+    {'audio.duration': ['Duration_String1', 'Duration  ']},
+    {'audio.channel_layout': ['ChannelLayout', 'Channel layout  ']},
+    {'audio.channel_position': ['ChannelPositions', 'Channel positions  ']},
+    {'audio.compression_mode': ['Compression_Mode', 'Compression mode  ']},
+    {'audio.format_settings_endianness': ['Format_Settings_Endianness', 'Format settings, Endianness  ']},
+    {'audio.format_settings_sign': ['Format_Settings_Sign', 'Format settings, Sign  ']},
+    {'audio.frame_count': ['FrameCount','Frame count  ']},
+    {'audio.language': ['Language_String', 'Language  ']},
+    {'audio.stream_size_bytes': ['StreamSize', 'Stream size  ']},
+    {'audio.stream_order': ['StreamOrder','StreamOrder  ']},
+    {'audio.stream_size': ['StreamSize_String5','']},
+    {'audio.commercial_name': ['Format_Commercial','Commercial name  ']},
+    {'audio.format': ['Format', 'Format  ']},
+    {'audio.sampling_rate': ['SamplingRate', 'Sampling rate  ']},
+    {'other.duration': ['Duration', 'Duration  ']},
+    {'other.frame_rate': ['FrameRate', 'Frame rate  ']},
+    {'other.language': ['Language', 'Language  ']},
+    {'other.type': ['Type', 'Type  ']},
+    {'other.timecode_first_frame': ['TimeCode_FirstFrame', 'Time code of first frame  ']},
+    {'other.stream_order': ['StreamOrder', 'StreamOrder  ']},
+    {'other.format': ['Format', 'Format  ']},
+    {'text.duration': ['Duration_String1', 'Duration  ']},
+    {'text.stream_order': ['StreamOrder', 'StreamOrder  ']},
+    {'text.format': ['Format', 'Format  ']},
+    {'text.codec_id': ['CodecID', 'Codec ID  ']}
 ]
+
+def make_paths(filename):
+    '''
+    Make all possible paths
+    '''
+    text_full_path = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
+    ebu_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.xml")
+    pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.xml")
+    xml_path = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
+    json_path = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
+    exif_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
+
+    return [text_full_path, ebu_path, pb_path, xml_path, json_path, exif_path]
+
 
 def cid_retrieve(fname):
     '''
@@ -138,7 +217,8 @@ def main():
             mdata_xml = build_metadata_xml(json_path, priref)
             print(mdata_xml)
         else:
-            mdata_xml = build_metadata_text_xml(text_path, priref)
+            text_full_path = make_paths(filename)[0]
+            mdata_xml = build_metadata_text_xml(text_path, text_full_path, priref)
             print(mdata_xml)
 
         success = write_payload(mdata_xml)
@@ -147,14 +227,6 @@ def main():
         else:
             LOGGER.warning("Failed to push regular metadata to the CID record. Writing to errors CSV")
             write_to_errors_csv('media', CID_API, priref, mdata_xml)
-
-        # Testing posting all items in unison
-        #success = write_payload(linkd_mdata_xml)
-        #if success:
-        #    LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
-        #else:
-        #    LOGGER.warning("Failed to push linked metadata to the CID record. Writing to errors CSV")
-        #    write_to_errors_csv('media', CID_API, priref, linkd_mdata_xml)
 
     elif text_file.endswith('_EXIF.txt'):
         filename = text_file.split("_EXIF.txt")[0]
@@ -264,15 +336,12 @@ def build_metadata_xml(json_path, priref):
             else:
                 text = txt_xml
 
-    payload1 = gen_xml + videos + audio + other + text
-    print()
-    print(payload1)
-    print()
-    # payload2 = gen_sec_xml + vid_sec_xml + aud_sec_xml + oth_sec_xml + txt_sec_xml
+    payload = gen_xml + videos + audio + other + text
+    print(payload)
     payload = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_end = "</record></recordList></adlibXML>"
 
-    return f"{payload}{payload1}{payload_end}"
+    return f"{payload}{payload}{payload_end}"
 
 
 def get_text_rows(start, mdata):
@@ -295,13 +364,16 @@ def get_text_rows(start, mdata):
     return collection
 
 
-def build_metadata_text_xml(text_path, priref)
+def build_metadata_text_xml(text_path, text_full_path, priref):
     '''
     Use supplied text file for metadata extraction
     '''
-    videos = audio = other = text = ''
-    with open(text_path, 'r') as metadata:
-        mdata = metadata.readlines()
+    if os.path.exists(text_full_path):
+        with open(text_full_path, 'r') as metadata:
+            mdata = metadata.readlines()
+    else:
+        with open(text_path, 'r') as metadata:
+            mdata = metadata.readlines()
 
     gen_rows = get_text_rows('General', mdata)
     vid_rows = get_text_rows('Video', mdata)
@@ -309,54 +381,172 @@ def build_metadata_text_xml(text_path, priref)
     oth_rows = get_text_rows('Other', mdata)
     txt_rows = get_text_rows('Text', mdata)
 
-    gen = []
-    for row in gen_rows:
-        for key, val in row.items():
-            if key == 'Unique ID':
-                {'container.commercial_name': track.get('Format_Commercial').strip()}
-            'Format'
-            'Format version'
-            'File size' cut off GiB
-            'Duration'
-            'Overall bit rate mode' == 'Variable' change to VBR 'Constant' CBR
-            'Overall bit rate'
-            'Writing application'
-            'Writing library'
+    payload = ''
+    gen = vid = vid2 = aud = aud2 = aud3 = aud4 = oth = oth2 = txt = txt2 = []
+    for field in FIELDS:
+        for key, val in field.items():
+            if key.startswith('container.'):
+                matches = [x for x in gen_rows if x.startswith(val[1])]
+                print(matches)
+                field_entry = matches.sort()[0]
+                print(field_entry)
+                gen.append({f'{key}': field_entry.strip()})
+    if len(gen) > 0:
+        xml = wrap_as_xml('Container', gen)
+        payload += xml
+    
+    collection = []
+    for row in vid_rows:
+        stream_count = 0
+        if row.startswith(('Video\n', 'Video #')):
+            stream_count += 1
+            print(stream_count)
+        if stream_count == 1:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('video.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        vid.append({f'{key}': sorted(collection, len=key)[-1]})
+                    if key.startswith('colour_range'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        vid.append({f'{key}': sorted(collection, len=key)[-1]})
+                    if key.startswith('MaxSlicesCount'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        vid.append({f'{key}': sorted(collection, len=key)[-1]})
+        if stream_count == 2:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('video.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        vid2.append({f'{key}': sorted(collection, len=key)[-1]})
+                    if key.startswith('colour_range'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        vid2.append({f'{key}': sorted(collection, len=key)[-1]})
+                    if key.startswith('MaxSlicesCount'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        vid2.append({f'{key}': sorted(collection, len=key)[-1]})
+    if len(vid) > 0:
+        xml = wrap_as_xml('Video', vid)
+        payload += xml
+    if len(vid2) > 0:
+        xml = wrap_as_xml('Video', vid2)
+        payload += xml
 
-    vid = []
-    for row in gen_rows:
-        for key, val in row.items():
-            if key == 'ID':
-                {'container.commercial_name': track.get('Format_Commercial').strip()}
-            'Format'
-            'Format version'
-            'Format settings, GOP'
-            'Codec ID'
-            'Duration'
-            'Bit rate mode' == 'Variable' map to VBR 'Constant' to CBR
-            'Bit rate'
-            'Height'
-            'Width'
-            'Display aspect ratio' 4:3
-            'Frame rate mode'
-            'Frame rate'
-            'Standard'
-            'Color space'
-            'Chroma subsampling'
-            'Bit depth'
-            'Scan type'
-            'Scan order'
-            'Compression mode'
-            'Stream size' cut off GiB
-            'Writing library'
-            'Language'
-            'Color range'
-            'Color primaries'
-            'Transfer characteristings'
-            'Matrix coefficients'
-            'MaxSlicesCount'
+    for row in aud_rows:
+        stream_count = 0
+        if row.startswith(('Audio\n', 'Audio #')):
+            stream_count += 1
+            print(stream_count)
+        if stream_count == 1:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('audio.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        aud.append({f'{key}': sorted(collection, len=key)[-1]})
+        if stream_count == 2:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('audio.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        aud2.append({f'{key}': sorted(collection, len=key)[-1]})
+        if stream_count == 3:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('audio.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        aud3.append({f'{key}': sorted(collection, len=key)[-1]})
+        if stream_count == 4:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('audio.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        aud4.append({f'{key}': sorted(collection, len=key)[-1]})
+        if stream_count > 4:
+            break
+    if len(aud) > 0:
+        xml = wrap_as_xml('Audio', aud)
+        payload += xml
+    if len(aud2) > 0:
+        xml = wrap_as_xml('Audio', aud2)
+        payload += xml
+    if len(aud3) > 0:
+        xml = wrap_as_xml('Audio', aud3)
+        payload += xml
+    if len(aud4) > 0:
+        xml = wrap_as_xml('Audio', aud4)
+        payload += xml
 
+    for row in oth_rows:
+        stream_count = 0
+        if row.startswith(('Other\n', 'Other #')):
+            stream_count += 1
+            print(stream_count)
+        if stream_count == 1:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('other.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        oth.append({f'{key}': sorted(collection, len=key)[-1]})
+        if stream_count == 2:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('other.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        oth2.append({f'{key}': sorted(collection, len=key)[-1]})
+        if stream_count > 2:
+            break
+    if len(oth) > 0:
+        xml = wrap_as_xml('Other', oth)
+        payload += xml
+    if len(oth2) > 0:
+        xml = wrap_as_xml('Other', oth2)
+        payload += xml
 
+    for row in txt_rows:
+        stream_count = 0
+        if row.startswith(('Text\n', 'Text #')):
+            stream_count += 1
+            print(stream_count)
+        if stream_count == 1:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('text.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        txt.append({f'{key}': sorted(collection, len=key)[-1]})
+        if stream_count == 2:
+            for field in FIELDS:
+                for key, val in field.items():
+                    if key.startswith('text.'):
+                        if row.startwith(val[1]):
+                            collection.append(row.split(':')[-1].strip())
+                        txt2.append({f'{key}': sorted(collection, len=key)[-1]})
+        if stream_count > 2:
+            break
+    if len(txt) > 0:
+        xml = wrap_as_xml('Text', txt)
+        payload += xml
+    if len(txt2) > 0:
+        xml = wrap_as_xml('Text', txt2)
+        payload += xml
+
+    print(payload)
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_end = "</record></recordList></adlibXML>"
+
+    return f"{payload}{payload}{payload_end}"
 
 
 def wrap_as_xml(grouping, field_pairs):
@@ -417,8 +607,6 @@ def get_general_xml(track):
         if 'GiB' in gib:
             file_size = gib.split(' GiB')[0].strip()
             second_push.append({'container.file_size.total_gigabytes', file_size})
-        else:
-            second_push.append({'container.file_size.total_gigabytes', track.get('FileSize_String4').strip()})
 
     return general_dict, second_push
 
@@ -496,8 +684,6 @@ def get_video_xml(track):
         if 'GiB' in gib:
             file_size = gib.split(' GiB')[0].strip()
             video_dict.append({'video.stream_size', file_size})
-        else:
-            video_dict.append({'video.stream_size', track.get('StreamSize_String1').strip()})
 
     return video_dict, second_push
 
@@ -578,8 +764,6 @@ def get_audio_xml(track):
         if 'GiB' in gib:
             file_size = gib.split(' GiB')[0].strip()
             audio_dict.append({'audio.stream_size', file_size})
-        else:
-            audio_dict.append({'audio.stream_size', track.get('StreamSize_String5').strip()})
 
     # Handle thesaurus linked items
     if track.get('Format_Commercial'):
@@ -691,20 +875,6 @@ def clean_up(filename, text_path):
         os.remove(exfp)
     except Exception:
         LOGGER.warning("Unable to delete file: %s", exfp)
-
-
-def make_paths(filename):
-    '''
-    Make all possible paths
-    '''
-    text_full_path = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
-    ebu_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.xml")
-    pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.xml")
-    xml_path = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
-    json_path = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
-    exif_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
-
-    return [text_full_path, ebu_path, pb_path, xml_path, json_path, exif_path]
 
 
 def make_header_data(text_path, filename, priref):

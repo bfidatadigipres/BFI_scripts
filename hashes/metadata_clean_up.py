@@ -391,12 +391,11 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             if key.startswith('container.'):
                 for row in gen_rows:
                     if row.startswith(val[1]):
-                        field_entry = row.split(':', 1)[-1]
+                        field_entry = row.split(':', 1)[-1].strip()
                         if 'MiB' in field_entry:
                             continue
-                        if 'GiB' in field_entry:
-                            field_entry = field_entry.split(' GiB')[0]
-                        matches.append(field_entry)
+                        field_entry_chosen = manipulate_data(field_entry)
+                        matches.append(field_entry_chosen)
                 print(matches)
                 if matches:
                     longest_field = sorted(matches, key=len)[-1]
@@ -423,9 +422,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
-                            if 'GiB' in selection:
-                                selection = selection.split(' GiB')[0]
-                            vid.append({f'{key}': selection})
+                            selected = manipulate_data(selection)
+                            vid.append({f'{key}': selected})
                     if key.startswith('colour_range'):
                         if row.startwith(val[1]):
                             vid.append({f'{key}': row.split(':')[-1].strip()})
@@ -445,9 +443,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
-                            if 'GiB' in selection:
-                                selection = selection.split(' GiB')[0]
-                            vid2.append({f'{key}': selection})
+                            selected = manipulate_data(selection)
+                            vid2.append({f'{key}': selected})
                     if key.startswith('colour_range'):
                         if row.startwith(val[1]):
                             vid.append({f'{key}': row.split(':')[-1].strip()})
@@ -479,9 +476,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
-                            if 'GiB' in selection:
-                                selection = selection.split(' GiB')[0]
-                            aud.append({f'{key}': selection})
+                            selected = manipulate_data(selection)
+                            aud.append({f'{key}': selected})
         if stream_count == 2:
             for field in FIELDS:
                 for key, val in field.items():
@@ -495,9 +491,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
-                            if 'GiB' in selection:
-                                selection = selection.split(' GiB')[0]
-                            aud2.append({f'{key}': selection})
+                            selected = manipulate_data(selection)
+                            aud2.append({f'{key}': selected})
         if stream_count == 3:
             for field in FIELDS:
                 for key, val in field.items():
@@ -511,9 +506,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
-                            if 'GiB' in selection:
-                                selection = selection.split(' GiB')[0]
-                            aud3.append({f'{key}': selection})
+                            selected = manipulate_data(selection)
+                            aud3.append({f'{key}': selected})
         if stream_count == 4:
             for field in FIELDS:
                 for key, val in field.items():
@@ -527,9 +521,8 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
                             selection = sorted(collection, key=len)[-1]
                             if 'MiB' in selection:
                                 continue
-                            if 'GiB' in selection:
-                                selection = selection.split(' GiB')[0]
-                            aud4.append({f'{key}': selection})
+                            selected = manipulate_data(selection)
+                            aud4.append({f'{key}': selected})
         if stream_count > 4:
             break
     if len(aud) > 0:
@@ -618,6 +611,21 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     payload_end = "</record></recordList></adlibXML>"
 
     return f"{payload}{payload}{payload_end}"
+
+
+def manipulate_data(selection):
+    '''
+    Sort and transform data where needed
+    '''
+
+    if 'GiB' in selection:
+        selection = selection.split(' GiB')[0]
+    if 'FPS' in selection:
+        selection = selection.split(' FPS')[0]
+    if selection == 'en':
+        selection = 'English'
+
+    return selection
 
 
 def wrap_as_xml(grouping, field_pairs):

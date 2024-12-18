@@ -538,7 +538,7 @@ def get_xml(arg, track):
     dict = []
     for field in FIELDS:
         for k, v in field.items():
-            if k.startwith(f'{arg}.'):
+            if k.startswith(f'{arg}.'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
                     dict.append({f'{k}': selected})
@@ -555,7 +555,7 @@ def get_video_xml(track):
     video_dict = []
     for field in FIELDS:
         for k, v in field.items():
-            if k.startwith('video.'):
+            if k.startswith('video.'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
                     video_dict.append({f'{k}': selected})

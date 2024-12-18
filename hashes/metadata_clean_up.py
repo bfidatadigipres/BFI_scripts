@@ -396,9 +396,9 @@ def get_stream_count(gen_rows):
     to isolate metadata
     '''
     for row in gen_rows:
-        if row.startwith('Count of audio streams  '):
+        if row.startswith('Count of audio streams  '):
             aud_count = int(row.split(':')[-1].strip())
-        if row.startwith('Count of video streams  '):
+        if row.startswith('Count of video streams  '):
             vid_count = int(row.split(':')[-1].strip())
 
     return vid_count, aud_count

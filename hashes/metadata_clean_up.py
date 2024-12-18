@@ -357,9 +357,9 @@ def get_text_rows(start, mdata):
         if row == '\n':
             capture = False
         if capture and ':' in row:
-            collection.append({f"{row.split(':')[0].strip()}": f"{row.split(':', 1)[-1].strip()}"})
+            collection.append(row.strip())
         elif capture and start in row:
-            collection.append({'Audio': count})
+            collection.append(row.strip())
             count += 1
     return collection
 
@@ -386,7 +386,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     for field in FIELDS:
         for key, val in field.items():
             if key.startswith('container.'):
-                matches = [x for x in gen_rows if x.startswith(val[1])]
+                matches = [x for x in gen_rows if val[1] in str(x)]
                 print(matches)
                 field_entry = sorted(matches, len=key)[-1]
                 if 'MiB' in field_entry:

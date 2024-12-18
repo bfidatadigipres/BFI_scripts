@@ -576,12 +576,13 @@ def get_video_xml(track):
                     selected = manipulate_data(k, track.get(v[0]).strip())
                     if selected:
                         video_dict.append({f'{k}': selected})
-                elif track.get('extra').get(v[0]):
-                    selected = manipulate_data(k, track.get('extra').get(v[0]).strip())
-                    if selected:
-                        video_dict.append({f'{k}': selected})
-                else:
-                    pass
+                elif track.get('extra'):
+                    try:
+                        selected = manipulate_data(k, track.get('extra').get(v[0]).strip())
+                        if selected:
+                            video_dict.append({f'{k}': selected})
+                    except (KeyError, AttributeError, TypeError):
+                        pass
     return video_dict
 
 

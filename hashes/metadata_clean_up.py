@@ -105,7 +105,7 @@ def main():
         mdata_xml = build_metadata_xml(json_path, priref)
         print(mdata_xml)
 
-        success = write_payload(mdata_xml)
+        success = write_payload(mdata_xml, priref)
         if success:
             LOGGER.info("** Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
         else:
@@ -113,7 +113,7 @@ def main():
             write_to_errors_csv('media', CID_API, priref, mdata_xml)
 
         # Testing posting all items in unison
-        #success = write_payload(linkd_mdata_xml)
+        #success = write_payload(linkd_mdata_xml, priref)
         #if success:
         #    LOGGER.info("** Digital Media Linked metadata from JSON successfully written to CID Media record: %s", priref)
         #else:
@@ -285,6 +285,15 @@ def get_general_xml(track):
         if track.get(minfo):
             general_dict.append({f'container.{cid}': track.get(minfo).strip()})
 
+    # Remove GiB from file size
+    if track.get('FileSize_String4'):
+        gib = track.get('FileSize_String4')
+        if 'GiB' in gib:
+            file_size = gib.split(' GiB')[0].strip()
+            general_dict.append({'container.file_size.total_gigabytes': file_size})
+        else:
+            general_dict.append({'container.file_size.total_gigabytes': gib.strip()})
+
     # Handle thesaurus linked items
     if track.get('Format_Commercial'):
         second_push.append({'container.commercial_name': track.get('Format_Commercial').strip()})
@@ -292,13 +301,6 @@ def get_general_xml(track):
         second_push.append({'container.format': track.get('Format').strip()})
     if track.get('Audio_Codec_List'):
         second_push.append({'container.audio_codecs': track.get('Audio_Codec_List').strip()})
-    if track.get('FileSize_String4'):
-        gib = track.get('FileSize_String4')
-        if 'GiB' in gib:
-            file_size = gib.split(' GiB')[0].strip()
-            second_push.append({'container.file_size.total_gigabytes', file_size})
-        else:
-            second_push.append({'container.file_size.total_gigabytes', track.get('FileSize_String4').strip()})
 
     return general_dict, second_push
 
@@ -331,7 +333,7 @@ def get_video_xml(track):
         'Format_Profile, format_profile',
         'Width_CleanAperture, width_aperture',
         'Delay, delay',
-        'Format_settings_GOP, format_settings_GOP'
+        'Format_Settings_GOP, format_settings_GOP'
     ]
 
     second_push = []
@@ -375,9 +377,9 @@ def get_video_xml(track):
         gib = track.get('StreamSize_String1')
         if 'GiB' in gib:
             file_size = gib.split(' GiB')[0].strip()
-            video_dict.append({'video.stream_size', file_size})
+            video_dict.append({'video.stream_size': file_size})
         else:
-            video_dict.append({'video.stream_size', track.get('StreamSize_String1').strip()})
+            video_dict.append({'video.stream_size': track.get('StreamSize_String1').strip()})
 
     return video_dict, second_push
 
@@ -457,9 +459,9 @@ def get_audio_xml(track):
         gib = track.get('StreamSize_String5')
         if 'GiB' in gib:
             file_size = gib.split(' GiB')[0].strip()
-            audio_dict.append({'audio.stream_size', file_size})
+            audio_dict.append({'audio.stream_size': file_size})
         else:
-            audio_dict.append({'audio.stream_size', track.get('StreamSize_String5').strip()})
+            audio_dict.append({'audio.stream_size': track.get('StreamSize_String5').strip()})
 
     # Handle thesaurus linked items
     if track.get('Format_Commercial'):
@@ -656,7 +658,7 @@ def make_header_data(text_path, filename, priref):
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
 
 
-def write_payload(payload):
+def write_payload(payload, priref):
     '''
     Payload formatting per mediainfo output
     '''
@@ -665,7 +667,9 @@ def write_payload(payload):
     print(record)
     if record is None:
         return False
-    elif 'priref' in str(record):
+    elif "'error': {'message':" in str(record):
+        return False
+    elif priref in str(record):
         return True
     else:
         return None

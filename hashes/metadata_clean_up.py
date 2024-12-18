@@ -48,6 +48,30 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
+FIELDS = [
+    {'container.duration': ['Duration_String1', 'Duration']},
+    {'container.duration.milliseconds', ['Duration', 'Duration']},
+    {'container.file_size.total_bytes': ['FileSize', 'File size']},
+    {'container.commercial_name': ['Format_Commercial', '']},
+    {'container.format': ['Format', 'Format']},
+    {'container.audio_codecs': ['Audio_Codec_List', 'Audio codecs']},
+    {'container.file_size.total_gigabytes': }
+    {'container.audio_stream_count': ['AudioCount', '']},
+    {'container.video_stream_count': 'VideoCount'},
+    {'container.format_profile': 'Format_Profile'},
+    {'container.format_version': 'Format_Version'},
+    {'container.encoded_date': 'Encoded_Date'},
+    {'container.frame_count': 'FrameCount'},
+    {'container.frame_rate':'FrameRate'},
+    {'container.overall_bit_rate'}:'OverallBitRate_String,  ,
+    {'container.overall_bit_rate_mode'}: OverallBitRate_Mode, ,
+    {'container.writing_application'}: 'Encoded_Application, ,
+    {'container.writing_library'}: 'Encoded_Library,,
+    {'container.file_extension'}: 'FileExtension, ,
+    {'container.media_UUID'}: 'UniqueID, ,
+    {'container.truncated': 'IsTruncated'} 
+]
+
 def cid_retrieve(fname):
     '''
     Retrieve priref for media record from imagen.media.original_filename
@@ -100,10 +124,22 @@ def main():
 
         print(f"Priref retrieved: {priref}. Writing metadata to record")
         json_path = make_paths(filename)[4]
-
-        # mdata_xml, linkd_mdata_xml = build_metadata_xml(json_path, priref)
-        mdata_xml = build_metadata_xml(json_path, priref)
-        print(mdata_xml)
+        json_use = True
+        if not json_path:
+            LOGGER.warning("JSON record is absent. Attempting recovery from TEXT data")
+            json_use = False
+        else:
+            with open(json_path, 'r') as f:
+                length = len(f.readlines())
+                if not length >= 10:
+                    LOGGER.warning("JSON record is absent. Attempting recovery from TEXT data")
+                    json_use = False
+        if json_use:
+            mdata_xml = build_metadata_xml(json_path, priref)
+            print(mdata_xml)
+        else:
+            mdata_xml = build_metadata_text_xml(text_path, priref)
+            print(mdata_xml)
 
         success = write_payload(mdata_xml)
         if success:
@@ -239,12 +275,96 @@ def build_metadata_xml(json_path, priref):
     return f"{payload}{payload1}{payload_end}"
 
 
+def get_text_rows(start, mdata):
+    '''
+    read lines and get data
+    '''
+    collection = []
+    capture = False
+    count = 0
+    for row in mdata:
+        if start in row:
+            capture = True
+        if row == '\n':
+            capture = False
+        if capture and ':' in row:
+            collection.append({f'{row.split(':')[0].strip()}': f'{row.split(':', 1)[-1].strip()}'})
+        elif capture and start in row:
+            collection.append({'Audio': count})
+            count += 1
+    return collection
+
+
+def build_metadata_text_xml(text_path, priref)
+    '''
+    Use supplied text file for metadata extraction
+    '''
+    videos = audio = other = text = ''
+    with open(text_path, 'r') as metadata:
+        mdata = metadata.readlines()
+
+    gen_rows = get_text_rows('General', mdata)
+    vid_rows = get_text_rows('Video', mdata)
+    aud_rows = get_text_rows('Audio', mdata)
+    oth_rows = get_text_rows('Other', mdata)
+    txt_rows = get_text_rows('Text', mdata)
+
+    gen = []
+    for row in gen_rows:
+        for key, val in row.items():
+            if key == 'Unique ID':
+                {'container.commercial_name': track.get('Format_Commercial').strip()}
+            'Format'
+            'Format version'
+            'File size' cut off GiB
+            'Duration'
+            'Overall bit rate mode' == 'Variable' change to VBR 'Constant' CBR
+            'Overall bit rate'
+            'Writing application'
+            'Writing library'
+
+    vid = []
+    for row in gen_rows:
+        for key, val in row.items():
+            if key == 'ID':
+                {'container.commercial_name': track.get('Format_Commercial').strip()}
+            'Format'
+            'Format version'
+            'Format settings, GOP'
+            'Codec ID'
+            'Duration'
+            'Bit rate mode' == 'Variable' map to VBR 'Constant' to CBR
+            'Bit rate'
+            'Height'
+            'Width'
+            'Display aspect ratio' 4:3
+            'Frame rate mode'
+            'Frame rate'
+            'Standard'
+            'Color space'
+            'Chroma subsampling'
+            'Bit depth'
+            'Scan type'
+            'Scan order'
+            'Compression mode'
+            'Stream size' cut off GiB
+            'Writing library'
+            'Language'
+            'Color range'
+            'Color primaries'
+            'Transfer characteristings'
+            'Matrix coefficients'
+            'MaxSlicesCount'
+
+
+
+
 def wrap_as_xml(grouping, field_pairs):
     '''
     Borrwed from Adlib
     but for specific need
     '''
-    mid = mid_fields = ''
+    mid = ''
     for grouped in field_pairs:
         for key, val in grouped.items():
             xml_field = f'<{key}>{val}</{key}>'

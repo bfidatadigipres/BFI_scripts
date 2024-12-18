@@ -1037,8 +1037,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
-        recycle = check_response(work_rec)
-        if recycle is True:
+        if work_rec is False:
             raise Exception("Recycle of API exception raised.")
         print(f"create_series(): {work_rec}")
         try:
@@ -1071,8 +1070,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         genre_xml = adlib.create_grouped_data(series_work_id, 'Content_genre', series_content_genres)
         print(genre_xml)
         update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Content_genre' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", series_work_id)
@@ -1090,8 +1088,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         subject_xml = adlib.create_grouped_data(series_work_id, 'Content_subject', series_content_subject)
         print(subject_xml)
         update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Content_subject' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", series_work_id)
@@ -1115,8 +1112,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         label_xml = adlib.create_grouped_data(series_work_id, 'Label', label_fields)
         print(label_xml)
         update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Label' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", series_work_id)
@@ -1297,8 +1293,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         sleep(2)
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
-        recycle = check_response(work_rec)
-        if recycle is True:
+        if work_rec is False:
             raise Exception("Recycle of API exception raised.")
         print(f"create_work(): {work_rec}")
         try:
@@ -1333,8 +1328,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         genre_xml = adlib.create_grouped_data(work_id, 'Content_genre', content_genres)
         print(genre_xml)
         update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Content_genre' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", work_id)
@@ -1352,8 +1346,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         subject_xml = adlib.create_grouped_data(work_id, 'Content_subject', content_subject)
         print(subject_xml)
         update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Content_subject' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", work_id)
@@ -1377,8 +1370,7 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         label_xml = adlib.create_grouped_data(work_id, 'Label', label_fields)
         print(label_xml)
         update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
-        recycle = check_response(update_rec)
-        if recycle is True:
+        if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if 'Label' in str(update_rec):
             logger.info("Label text successfully updated to Series Work %s", work_id)
@@ -1423,8 +1415,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         sleep(2)
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
-        recycle = check_response(man_rec)
-        if recycle is True:
+        if man_rec is False:
             raise Exception("Recycle of API exception raised.")
         print(f"create_manifestation(): {man_rec}")
         try:
@@ -1468,8 +1459,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         sleep(2)
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
-        recycle = check_response(item_rec)
-        if recycle is True:
+        if item_rec is False:
             raise Exception("Recycle of API exception raised.")
         print(f"create_cid_item_record(): {item_rec}")
         try:
@@ -1508,8 +1498,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     try:
         sleep(2)
         response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
-        recycle = check_response(response)
-        if recycle is True:
+        if response is False:
             raise Exception("Recycle of API exception raised.")
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
@@ -1527,8 +1516,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         try:
             sleep(2)
             response = adlib.post(CID_API, payload, 'works', 'updaterecord')
-            recycle = check_response(response)
-            if recycle is True:
+            if response is False:
                 raise Exception("Recycle of API exception raised.")
             if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
@@ -1577,29 +1565,13 @@ def push_payload(item_id, webvtt_payload):
 
     try:
         post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord')
-        recycle = check_response(post_resp)
-        if recycle is True:
+        if post_resp is False:
             raise Exception("Recycle of API exception raised.")
         if post_resp:
             return True
     except Exception as err:
         logger.warning('push_payload()): Unable to write Webvtt to record %s \n%s', item_id, err)
     return False
-
-
-def check_response(rec):
-    '''
-    Search for failed response terms
-    in API reponses
-    '''
-    failures = [
-        'A severe error occurred on the current command. The results, if any, should be discarded'
-    ]
-    for warning in failures:
-        if warning in str(rec):
-            adlib.recycle_api(CID_API)
-            logger.critical("CID API recycle requested")
-            return True
 
 
 if __name__ == '__main__':

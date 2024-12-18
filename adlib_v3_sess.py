@@ -167,6 +167,9 @@ def post(api, payload, database, method, session=None):
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
+    bool = check_response(response.text, api)
+    if bool is True:
+        return False
     if 'recordList' in response.text:
         record = json.loads(response.text)
         try:
@@ -439,6 +442,22 @@ def add_quality_comments(api, priref, comments, session=None):
         return True
 
 
+def check_response(rec, api):
+    '''
+    Collate list of received API failures
+    and check for these reponses from post
+    actions. Initiate recycle
+    '''
+    failures = [
+        'A severe error occurred on the current command. The results, if any, should be discarded'
+    ]
+
+    for warning in failures:
+        if warning in str(rec):
+            recycle_api(api)
+            return True
+
+
 def recycle_api(api):
     '''
     Adds a search call to API which
@@ -447,4 +466,5 @@ def recycle_api(api):
     search = 'title=recycle.application.pool.data.test'
     req = request('GET', api, headers=HEADERS, params=search)
     print(f"Search to trigger recycle sent: {req}")
+    print("Pausing for 2 minutes")
     sleep(120)

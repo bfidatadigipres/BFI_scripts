@@ -394,11 +394,11 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     if len(gen) > 0:
         xml = wrap_as_xml('Container', gen)
         payload += xml
-    
+
     collection = []
     for row in vid_rows:
         stream_count = 0
-        if row.startswith(('Video\n', 'Video #')):
+        if row.startswith(('Video\n', 'Video \#')):
             stream_count += 1
             print(stream_count)
         if stream_count == 1:
@@ -440,7 +440,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
 
     for row in aud_rows:
         stream_count = 0
-        if row.startswith(('Audio\n', 'Audio #')):
+        if row.startswith(('Audio\n', 'Audio \#')):
             stream_count += 1
             print(stream_count)
         if stream_count == 1:
@@ -488,7 +488,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
 
     for row in oth_rows:
         stream_count = 0
-        if row.startswith(('Other\n', 'Other #')):
+        if row.startswith(('Other\n', 'Other \#')):
             stream_count += 1
             print(stream_count)
         if stream_count == 1:
@@ -516,7 +516,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
 
     for row in txt_rows:
         stream_count = 0
-        if row.startswith(('Text\n', 'Text #')):
+        if row.startswith(('Text\n', 'Text \#')):
             stream_count += 1
             print(stream_count)
         if stream_count == 1:

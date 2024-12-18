@@ -337,10 +337,10 @@ def build_metadata_xml(json_path, priref):
 
     payload = gen_xml + videos + audio + other + text
     print(payload)
-    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_start = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_end = "</record></recordList></adlibXML>"
 
-    return f"{payload}{payload}{payload_end}"
+    return f"{payload_start}{payload}{payload_end}"
 
 
 def get_text_rows(start, mdata):

@@ -373,6 +373,7 @@ def iterate_text_rows(arg, data, match, key):
 
     matches = []
     for row in data:
+        print(row)
         if row.startswith(match):
             print(row)
             field_entry = row.split(':', 1)[-1].strip()

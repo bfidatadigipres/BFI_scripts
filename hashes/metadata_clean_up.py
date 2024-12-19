@@ -73,7 +73,7 @@ FIELDS = [
     {'video.duration.milliseconds': ['Duration','Duration  ']}, 
     {'video.bit_depth': ['BitDepth', 'Bit depth  ']},
     {'video.bit_rate_mode': ['BitRate_Mode', 'Bit rate mode  ']},
-    {'video.bit_rate': ['BitRate','Bit rate  ']},
+    {'video.bit_rate': ['BitRate_String','Bit rate  ']},
     {'video.chroma_subsampling': ['ChromaSubsampling', 'Chroma subsampling']},
     {'video.compression_mode': ['Compression_Mode', 'Compression mode  ']},
     {'video.format_version': ['Format_Version', 'Format version  ']},
@@ -83,7 +83,7 @@ FIELDS = [
     {'video.height': ['Height', 'Height  ']},
     {'video.scan_order': ['ScanOrder_String', 'Scan order  ']},
     {'video.scan_type': ['ScanType','Scan type  ']},
-    {'video.scan_type_store_method': ['ScanType_StoreMethod', 'Scan type, store method  ']},
+    {'video.scan_type_store_method': ['ScanType_StoreMethod_String', 'Scan type, store method  ']},
     {'video.standard': ['Standard', 'Standard  ']},
     {'video.stream_size_bytes': ['StreamSize', 'Stream size  ']},
     {'video.stream_order': ['StreamOrder', 'StreamOrder  ']},
@@ -102,11 +102,11 @@ FIELDS = [
     {'video.pixel_aspect_ratio': ['PixelAspectRatio', 'Pixel aspect ratio  ']},
     {'video.transfer_characteristics': ['transfer_characteristics', 'Transfer characteristics  ']},
     {'video.writing_library': ['Encoded_Library', 'Writing library  ']},
-    {'video.stream_size': ['StreamSize_String1', '']},
+    {'video.stream_size': ['StreamSize_String', 'Stream size  ']},
     {'colour_range': ['colour_range', 'Color range  ']},
     {'max_slice_count': ['MaxSlicesCount', 'MaxSlicesCount  ']},
     {'audio.bit_depth': ['BitDepth', 'Bit depth  ']},
-    {'audio.bit_rate': ['BitRate', 'Bit rate  ']},
+    {'audio.bit_rate': ['BitRate_String', 'Bit rate  ']},
     {'audio.bit_rate_mode': ['BitRate_Mode', 'Bit rate mode  ']},
     {'audio.channels': ['Channels', 'Channel(s)  ']},
     {'audio.codec_id': ['CodecID', 'Codec ID  ']},
@@ -119,14 +119,14 @@ FIELDS = [
     {'audio.frame_count': ['FrameCount','Frame count  ']},
     {'audio.language': ['Language_String', 'Language  ']},
     {'audio.stream_size_bytes': ['StreamSize', 'Stream size  ']},
-    {'audio.stream_order': ['StreamOrder','StreamOrder  ']},
-    {'audio.stream_size': ['StreamSize_String5','']},
-    {'audio.commercial_name': ['Format_Commercial','Commercial name  ']},
+    {'audio.stream_order': ['StreamOrder', 'StreamOrder  ']},
+    {'audio.stream_size': ['StreamSize_String', 'Stream size  ']},
+    {'audio.commercial_name': ['Format_Commercial', 'Commercial name  ']},
     {'audio.format': ['Format', 'Format  ']},
-    {'audio.sampling_rate': ['SamplingRate', 'Sampling rate  ']},
-    {'other.duration': ['Duration', 'Duration  ']},
+    {'audio.sampling_rate': ['SamplingRate_String', 'Sampling rate  ']},
+    {'other.duration': ['Duration_String1', 'Duration  ']},
     {'other.frame_rate': ['FrameRate', 'Frame rate  ']},
-    {'other.language': ['Language', 'Language  ']},
+    {'other.language': ['Language_String', 'Language  ']},
     {'other.type': ['Type', 'Type  ']},
     {'other.timecode_first_frame': ['TimeCode_FirstFrame', 'Time code of first frame  ']},
     {'other.stream_order': ['StreamOrder', 'StreamOrder  ']},
@@ -494,6 +494,14 @@ def manipulate_data(key, selection):
     '''
     Sort and transform data where needed
     '''
+    if '.sampling_rate' in key and selection.isnumeric():
+        return None
+    if '.stream_size_bytes' in key and selection.isnumeric():
+        return selection
+    if '.stream_size' in key and selection.isnumeric():
+        return None
+    if '.bit_rate' in key and selection.isnumeric():
+        return None
     if selection == 'Variable':
         return 'VBR'
     if selection == 'Constant':
@@ -518,6 +526,8 @@ def manipulate_data(key, selection):
         return selection.split(' pixels')[0]
     if '.width' in key and 'pixels' in selection:
         return selection.split(' pixels')[0]
+    if 'audio.channels' in key and 'channel' in selection:
+        return None
     return selection
 
 

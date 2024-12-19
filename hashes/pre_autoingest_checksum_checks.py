@@ -22,7 +22,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 LOCAL_LOGGER =  logging.getLogger('ingest_check')
-LOCAL_HDLR = logging.FileHandler(os.path.join('hashes/ingest_check', 'ingest_check.log'))
+LOCAL_HDLR = logging.FileHandler(os.path.join(sys.argv[1], 'Acquisitions/ingest_check/ingest_check.log'))
 LOCAL_FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 LOCAL_HDLR.setFormatter(FORMATTER)
 LOCAL_LOGGER.addHandler(LOCAL_HDLR)
@@ -64,9 +64,9 @@ def move_files(from_file, to_file):
         LOCAL_LOGGER.info(f"Error: {e}")
         return 'file doesnt exists'
     
-def move_file(file, move_to_files):
+def move_file(filepath,file, move_to_files):
     
-    path = Path(file).relative_to('hashes/ingest_check')
+    path = Path(file).relative_to(filepath)
 
     if len(path.parts) < 1:
         LOCAL_LOGGER.info('this file is in the root directory')
@@ -81,8 +81,8 @@ def move_file(file, move_to_files):
         
         move_files(file, destination_file)
 
-        current_path = Path('hashes/ingest_check') / path.parent
-        while current_path != Path('hashes/ingest_check'):
+        current_path = Path(filepath) / path.parent
+        while current_path != Path(filepath):
 
             if not os.listdir(current_path):
                 LOGGER.info(f'removing folder: {current_path}')
@@ -142,7 +142,7 @@ def main():
     #     sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     # the file path should refer to the ingest_check folder found in any qnap folders
-    filepath = sys.argv[1]
+    filepath = os.path.join(sys.argv[1], 'Acquisitions/ingest_check')
     file_dict = {}
     
     # seperate file from folder, dont process folders,full matrch partial match and no match
@@ -151,10 +151,16 @@ def main():
     LOGGER.info("Generating local hash file, starting checksum validation process")
     # consider folders containing files
     # 
+    print(filepath)
+    
+    for root, dirs, files in os.walk(filepath):
+        #print(root)
+       # print(dirs)
+        #print(files)
 
-    for root, dirs, files in os.walk('hashes/ingest_check'):
-        if root == 'hashes/ingest_check/ingest_failed' or root == 'hashes/ingest_check/ingest_approved' or root == 'hashes/ingest_check/ingest_parital' or root == 'hashes/ingest_check/checksum_folder':
+        if root == f'{filepath}/ingest_no_match' or root == f'{filepath}/ingest_full_match' or root == f'{filepath}/ingest_parital' or root == f'{filepath}/checksum_folder':
             continue
+            print('help')
         for file in files:
             if os.path.isfile(os.path.join(root, file)) and not file.endswith(('.log', '.txt', '.md5')):
                
@@ -162,15 +168,16 @@ def main():
                 hash_number = utils.create_md5_65536(os.path.join(root, file))
                 
                 checksum_path = os.path.join(CHECKSUM_PATH, f'{file}.md5')
-                cmm.checksum_write(checksum_path, hash_number, 'hashes/ingest_check', file)
-                matching = pygrep('hashes/ingest_check/checksum_folder', hash_number)
+                cmm.checksum_write(checksum_path, hash_number, 'filepath', file)
+                matching = pygrep(f'{filepath}/checksum_folder', hash_number)
+                print(matching)
 
 
                 for match in matching:
 
                     # if hash_number in str(match[1]) and file in str(match[1]):
                     #     file_dict[os.path.join(root, file)] = match
-                    
+                  
                     if hash_number in str(match[1]) and file not in str(match[1]):
                         file_dict[os.path.join(root, file)] = ('Miss match, not the same file, same checksum', match[1], match[2])
                     
@@ -184,22 +191,22 @@ def main():
                 if results == False:
                     LOGGER.info('=======local md5 and supplied md5 do not match at all============')
                     LOCAL_LOGGER.info('=======local md5 and supplied md5 do not match at all============')
-                    move_file(files, 'hashes/ingest_check/ingest_failed/')
+                    move_file(filepath, files, f'{filepath}/ingest_no_match/')
                 
                 elif results[0] == 'Miss match, not the same file, same checksum':
                     LOGGER.info(f'==== theres a missmatch between the file name, two or more file has the same checksum value: {results}')
                     LOCAL_LOGGER.info(f'==== theres a missmatch between the file name, two or more file has the same checksum value: {results}')
-                    move_file(files, 'hashes/ingest_check/ingest_partial/')
+                    move_file(filepath, files, f'{filepath}/ingest_partial/')
 
                 elif results[0] == 'Miss match, same file not the same checksum':
                     LOGGER.info(f'==== theres a missmatch, same checksum not the same file: {results}')
                     LOCAL_LOGGER.info(f'==== theres a missmatch, same checksum not the same file: {results}')
-                    move_file(files, 'hashes/ingest_check/ingest_partial/')
+                    move_file(filepath, files, f'{filepath}/ingest_partial/')
 
                 else:
                     LOGGER.info(f'=======local and supplied md5 file are the same============')
                     LOCAL_LOGGER.info(f'=======local and supplied md5 file are the same============')
-                    move_file(str(files), 'hashes/ingest_check/ingest_approved/')
+                    move_file(filepath, str(files), f'{filepath}/ingest_match/')
     LOGGER.info('======================pre autoingest checks End====================================')
 
     

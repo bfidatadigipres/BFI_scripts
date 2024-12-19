@@ -219,7 +219,7 @@ def main():
             text_full_path = make_paths(filename)[0]
             mdata_xml = build_metadata_text_xml(text_path, text_full_path, priref)
 
-        success = write_payload(mdata_xml)
+        success = write_payload(mdata_xml, priref)
         if success:
             LOGGER.info("** Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
         else:
@@ -244,7 +244,7 @@ def main():
 
         image_xml = build_exif_metadata_xml(exif_path, priref)
 
-        success = write_payload(image_xml)
+        success = write_payload(image_xml, priref)
         if success:
             LOGGER.info("** Digital Media EXIF metadata from JSON successfully written to CID Media record: %s", priref)
         else:
@@ -258,7 +258,7 @@ def main():
         write_to_errors_csv('media', CID_API, priref, header_payload)
         sys.exit()
 
-    success = write_payload(header_payload)
+    success = write_payload(header_payload, priref)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
     else:
@@ -760,7 +760,7 @@ def make_header_data(text_path, filename, priref):
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
 
 
-def write_payload(payload):
+def write_payload(payload, priref):
     '''
     Payload formatting per mediainfo output
     '''

@@ -558,7 +558,7 @@ def get_xml(arg, track):
             if k.startswith(f'{arg}.'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
-                    if selected:
+                    if selected is not None:
                         dict.append({f'{k}': selected})
 
     return dict
@@ -576,22 +576,22 @@ def get_video_xml(track):
             if k.startswith('video.'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
-                    if selected:
+                    if selected is not None:
                         video_dict.append({f'{k}': selected})
             if k.startswith('colour_range'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
-                    if selected:
+                    if selected is not None:
                         video_dict.append({f'{k}': selected})
             if k.startswith('max_slice_count'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]).strip())
-                    if selected:
+                    if selected is not None:
                         video_dict.append({f'{k}': selected})
                 elif track.get('extra'):
                     try:
                         selected = manipulate_data(k, track.get('extra').get(v[0]).strip())
-                        if selected:
+                        if selected is not None:
                             video_dict.append({f'{k}': selected})
                     except (KeyError, AttributeError, TypeError):
                         pass

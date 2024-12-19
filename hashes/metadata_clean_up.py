@@ -524,10 +524,10 @@ def manipulate_data(key, selection):
         return selection.split(' bits')[0]
     if selection == 'en':
         return 'English'
-    if '.height' in key and 'pixels' in selection:
-        return selection.split(' pixels')[0]
+    if '.height' in key and 'pixel' in selection:
+        return None
     if '.width' in key and 'pixels' in selection:
-        return selection.split(' pixels')[0]
+        return None
     if 'audio.channels' in key and 'channel' in selection:
         return None
     return selection

@@ -525,8 +525,10 @@ def manipulate_data(key, selection):
         return None
     if '.bit_depth' in key and ' bits' in selection:
         return selection.split(' bits')[0]
-    if selection == 'en':
+    if 'language' in key and selection == 'en':
         return 'English'
+    if 'language' in key and 'nar' in selection:
+        return None
     if '.height' in key and 'pixel' in selection:
         return None
     if '.width' in key and 'pixels' in selection:

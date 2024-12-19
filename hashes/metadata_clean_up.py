@@ -368,7 +368,10 @@ def iterate_text_rows(data, match, key):
                 continue
             matches.append(field_entry)
     if matches:
-        field_chosen = manipulate_data(key, sorted(matches, key=len)[-1])
+        if 'height' in key or 'width' in key:
+            field_chosen = manipulate_data(key, sorted(matches, key=len)[0])
+        else:
+            field_chosen = manipulate_data(key, sorted(matches, key=len)[-1])
         if field_chosen is None:
             return None
         return {f'{key}': field_chosen}

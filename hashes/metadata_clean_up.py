@@ -404,8 +404,9 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         for key, val in field.items():
             if key.startswith('container.'):
                 match = iterate_text_rows(gen_rows, val[1], key)
-                if match:
-                    gen.append(match)
+                if match is None:
+                    continue
+                gen.append(match)
     if len(gen) > 0:
         xml = wrap_as_xml('Container', gen)
         payload += xml
@@ -421,16 +422,19 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for key, val in field.items():
                 if key.startswith('video.'):
                     match = iterate_text_rows(vid_rows, val[1], key)
-                    if match:
-                        vid.append(match)
+                    if match is None:
+                        continue
+                    vid.append(match)
                 if key.startswith('colour_range'):
                     match = iterate_text_rows(vid_rows, val[1], key)
-                    if match:
-                        vid.append(match)
+                    if match is None:
+                        continue
+                    vid.append(match)
                 if key.startswith('MaxSlicesCount'):
                     match = iterate_text_rows(vid_rows, val[1], key)
-                    if match:
-                        vid.append(match)
+                    if match is None:
+                        continue
+                    vid.append(match)
         if len(vid) > 0:
             xml = wrap_as_xml('Video', vid)
             payload += xml
@@ -445,8 +449,9 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
             for key, val in field.items():
                 if key.startswith('audio.'):
                     match = iterate_text_rows(aud_rows, val[1], key)
-                    if match:
-                        aud.append(match)
+                    if match is None:
+                        continue
+                    aud.append(match)
         if len(aud) > 0:
             xml = wrap_as_xml('Audio', aud)
             payload += xml
@@ -457,8 +462,9 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         for key, val in field.items():
             if key.startswith('other.'):
                 match = iterate_text_rows(oth_rows, val[1], key)
-                if match:
-                    oth.append(match)
+                if match is None:
+                    continue
+                oth.append(match)
     if len(oth) > 0:
         xml = wrap_as_xml('Other', oth)
         payload += xml
@@ -469,8 +475,9 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         for key, val in field.items():
             if key.startswith('text.'):
                 match = iterate_text_rows(txt_rows, val[1], key)
-                if match:
-                    txt.append(match)
+                if match is None:
+                    continue
+                txt.append(match)
     if len(txt) > 0:
         xml = wrap_as_xml('Text', txt)
         payload += xml

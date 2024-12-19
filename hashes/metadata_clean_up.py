@@ -557,9 +557,9 @@ def get_xml(arg, track):
         for k, v in field.items():
             if k.startswith(f'{arg}.'):
                 if track.get(v[0]):
-                    selected = manipulate_data(k, track.get(v[0]).strip())
+                    selected = manipulate_data(k, track.get(v[0]))
                     if selected is not None:
-                        dict.append({f'{k}': selected})
+                        dict.append({f'{k}': selected.strip()})
 
     return dict
 
@@ -575,24 +575,24 @@ def get_video_xml(track):
         for k, v in field.items():
             if k.startswith('video.'):
                 if track.get(v[0]):
-                    selected = manipulate_data(k, track.get(v[0]).strip())
+                    selected = manipulate_data(k, track.get(v[0]))
                     if selected is not None:
-                        video_dict.append({f'{k}': selected})
+                        video_dict.append({f'{k}': selected.strip()})
             if k.startswith('colour_range'):
                 if track.get(v[0]):
-                    selected = manipulate_data(k, track.get(v[0]).strip())
+                    selected = manipulate_data(k, track.get(v[0]))
                     if selected is not None:
-                        video_dict.append({f'{k}': selected})
+                        video_dict.append({f'{k}': selected.strip()})
             if k.startswith('max_slice_count'):
                 if track.get(v[0]):
-                    selected = manipulate_data(k, track.get(v[0]).strip())
+                    selected = manipulate_data(k, track.get(v[0]))
                     if selected is not None:
-                        video_dict.append({f'{k}': selected})
+                        video_dict.append({f'{k}': selected.strip()})
                 elif track.get('extra'):
                     try:
-                        selected = manipulate_data(k, track.get('extra').get(v[0]).strip())
+                        selected = manipulate_data(k, track.get('extra').get(v[0]))
                         if selected is not None:
-                            video_dict.append({f'{k}': selected})
+                            video_dict.append({f'{k}': selected.strip()})
                     except (KeyError, AttributeError, TypeError):
                         pass
     return video_dict

@@ -83,7 +83,7 @@ FIELDS = [
     {'video.height': ['Height', 'Height  ']},
     {'video.scan_order': ['ScanOrder_String', 'Scan order  ']},
     {'video.scan_type': ['ScanType','Scan type  ']},
-    {'video.scan_type_store_method': ['ScanType_StoreMethod_String', 'Scan type, store method  ']},
+    {'video.scan_type.store_method': ['ScanType_StoreMethod_String', 'Scan type, store method  ']},
     {'video.standard': ['Standard', 'Standard  ']},
     {'video.stream_size_bytes': ['StreamSize', 'Stream size  ']},
     {'video.stream_order': ['StreamOrder', 'StreamOrder  ']},
@@ -182,9 +182,9 @@ def main():
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
-    if not utils.check_control('pause_scripts'):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+#    if not utils.check_control('pause_scripts'):
+#        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+#        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     text_path = sys.argv[1]
     text_file = os.path.basename(text_path)
@@ -218,8 +218,8 @@ def main():
         else:
             text_full_path = make_paths(filename)[0]
             mdata_xml = build_metadata_text_xml(text_path, text_full_path, priref)
-        
-        success = write_payload(mdata_xml, priref)
+
+        success = write_payload(mdata_xml)
         if success:
             LOGGER.info("** Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
         else:
@@ -760,7 +760,7 @@ def make_header_data(text_path, filename, priref):
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
 
 
-def write_payload(payload, priref):
+def write_payload(payload):
     '''
     Payload formatting per mediainfo output
     '''

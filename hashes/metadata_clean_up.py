@@ -215,12 +215,10 @@ def main():
                     json_use = False
         if json_use:
             mdata_xml = build_metadata_xml(json_path, priref)
-            print(mdata_xml)
         else:
             text_full_path = make_paths(filename)[0]
             mdata_xml = build_metadata_text_xml(text_path, text_full_path, priref)
-            print(mdata_xml)
-
+        
         success = write_payload(mdata_xml, priref)
         if success:
             LOGGER.info("** Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
@@ -245,7 +243,6 @@ def main():
         exif_path = make_paths(filename)[5]
 
         image_xml = build_exif_metadata_xml(exif_path, priref)
-        print(image_xml)
 
         success = write_payload(image_xml)
         if success:
@@ -256,7 +253,6 @@ def main():
 
     # Write remaining metadata to header_tags and clean up
     header_payload = make_header_data(text_path, filename, priref)
-    print(header_payload)
     if not header_payload:
         LOGGER.warning("Failed to compile header metadata tag. Writing to errors CSV")
         write_to_errors_csv('media', CID_API, priref, header_payload)
@@ -299,12 +295,11 @@ def build_metadata_xml(json_path, priref):
             print(f"General track: {track}")
             gen = get_xml('container', track)
             gen_xml = wrap_as_xml('Container', gen)
-            print(gen_xml)
+
         elif track['@type'] == 'Video':
             print(f"Video track: {track}")
             vid = get_video_xml(track)
             vid_xml = wrap_as_xml('Video', vid)
-            print(vid_xml)
             if len(videos) > 0:
                 videos += vid_xml
             else:
@@ -313,7 +308,6 @@ def build_metadata_xml(json_path, priref):
             print(f"Audio track: {track}")
             aud = get_xml('audio', track)
             aud_xml = wrap_as_xml('Audio', aud)
-            print(aud_xml)
             if len(audio) > 0:
                 audio += aud_xml
             else:
@@ -321,7 +315,6 @@ def build_metadata_xml(json_path, priref):
         elif track['@type'] == 'Other':
             oth = get_xml('other', track)
             oth_xml = wrap_as_xml('Other', oth)
-            print(oth_xml)
             if len(other) > 0:
                 other += oth_xml
             else:
@@ -329,14 +322,12 @@ def build_metadata_xml(json_path, priref):
         elif track['@type'] == 'Text':
             txt = get_xml('text', track)
             txt_xml = wrap_as_xml('Text', txt)
-            print(txt_xml)
             if len(text) > 0:
                 text += txt_xml
             else:
                 text = txt_xml
 
     payload = gen_xml + videos + audio + other + text
-    print(payload)
     payload_start = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_end = "</record></recordList></adlibXML>"
 
@@ -558,8 +549,9 @@ def get_xml(arg, track):
             if k.startswith(f'{arg}.'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]))
-                    if selected is not None:
-                        dict.append({f'{k}': selected.strip()})
+                    if selected is None:
+                        continue
+                    dict.append({f'{k}': selected.strip()})
 
     return dict
 
@@ -576,23 +568,28 @@ def get_video_xml(track):
             if k.startswith('video.'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]))
-                    if selected is not None:
-                        video_dict.append({f'{k}': selected.strip()})
+                    print(type(selected))
+                    if selected is None:
+                        continue
+                    video_dict.append({f'{k}': selected.strip()})
             if k.startswith('colour_range'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]))
-                    if selected is not None:
-                        video_dict.append({f'{k}': selected.strip()})
+                    if selected is None:
+                        continue
+                    video_dict.append({f'{k}': selected.strip()})
             if k.startswith('max_slice_count'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]))
-                    if selected is not None:
-                        video_dict.append({f'{k}': selected.strip()})
+                    if selected is None:
+                        continue
+                    video_dict.append({f'{k}': selected.strip()})
                 elif track.get('extra'):
                     try:
                         selected = manipulate_data(k, track.get('extra').get(v[0]))
-                        if selected is not None:
-                            video_dict.append({f'{k}': selected.strip()})
+                        if selected is None:
+                            continue
+                        video_dict.append({f'{k}': selected.strip()})
                     except (KeyError, AttributeError, TypeError):
                         pass
     return video_dict

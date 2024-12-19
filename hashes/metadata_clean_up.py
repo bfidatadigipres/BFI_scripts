@@ -510,6 +510,8 @@ def manipulate_data(key, selection):
         return selection.split(' GiB')[0]
     elif '.total_gigabytes' in key and 'MiB' in selection:
         return None
+    elif '.total_gigabytes' in key and selection.isnumeric():
+        return None
     if 'FPS' in selection:
         return selection.split(' FPS')[0]
     if '.milliseconds' in key and selection.isnumeric():

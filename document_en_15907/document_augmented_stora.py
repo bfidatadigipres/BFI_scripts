@@ -603,14 +603,11 @@ def fetch_lines(fullpath, lines):
         else:
             broadcast_company = None
 
-        if broadcast_company:
+        if epg_dict.get('broadcast_company'):
             epg_dict['broadcast_company'] = broadcast_company
-        else:
-            pass
-        if code_type:
+        if epg_dict.get('code_type'):
             epg_dict['code_type'] = code_type
-        else:
-            pass
+
 
         # Broadcast details
         for key, val in CHANNELS.items():

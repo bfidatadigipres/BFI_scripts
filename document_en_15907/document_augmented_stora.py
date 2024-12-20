@@ -591,8 +591,12 @@ def fetch_lines(fullpath, lines):
             code_type = 'MPEG-2'
             broadcast_company = '24404'
             print(f"Broadcast company set to Five in {fullpath}")
-        elif 'sky' in fullpath:
+        elif 'sky_news' in fullpath:
             code_type = 'MPEG-2'
+            broadcast_company = '78200'
+            print(f"Broadcast company set to Sky News in {fullpath}")
+        elif 'skyarts' in fullpath or 'skymixhd' in fullpath:
+            code_type = 'MPEG-4 AVC'
             broadcast_company = '78200'
             print(f"Broadcast company set to Sky News in {fullpath}")
         elif 'al_jazeera' in fullpath:

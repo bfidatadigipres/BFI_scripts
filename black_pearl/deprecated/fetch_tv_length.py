@@ -4,7 +4,7 @@
 To be run from a server where Spectra SDK installed
 and run from ENV3, so I'd suggest:
 BK-CI-DATA11:
-`source /home/datadigipres/code/ENV3/bin/activate`
+`source ENV3/bin/activate`
 `python3 fetch_tv_length.py`
 
 I think read/write from separate CSVs will be
@@ -21,8 +21,9 @@ import utils
 
 # Setup client/paths
 CLIENT = ds3.createClientFromEnv()
-CSV_PATH = '/mnt/qnap_imagen_storage/Public/Admin/code/filesize_extractor/ofcom_dpi_ingest_2.csv'
-NEW_CSV_PATH = '/mnt/qnap_imagen_storage/Public/Admin/code/filesize_extractor/ofcom_dpi_ingest_filesizes.csv'
+ADMIN = os.environ['ADMIN']
+CSV_PATH = os.path.join(ADMIN, 'code/filesize_extractor/ofcom_dpi_ingest_2.csv')
+NEW_CSV_PATH = os.path.join(ADMIN, 'code/filesize_extractor/ofcom_dpi_ingest_filesizes.csv')
 
 
 def read_csv(csv_path):

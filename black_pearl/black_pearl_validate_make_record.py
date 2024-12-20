@@ -196,12 +196,12 @@ def main():
     autoingest_list = []
     for host in hosts:
         # This path has own script
-        if 'qnap_imagen_storage/Public' in str(host):
+        if '/mnt/qnap_04' in str(host):
             continue
         # Build autoingest list for separate iteration
         for pth in host.keys():
             autoingest_list.append(os.path.join(pth, BPINGEST))
-            if '/mnt/qnap_digital_operations' in pth:
+            if '/mnt/qnap_09/' in pth:
                 autoingest_list.append(os.path.join(pth, BPINGEST_NETFLIX))
                 autoingest_list.append(os.path.join(pth, BPINGEST_AMAZON))
 

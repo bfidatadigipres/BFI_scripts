@@ -498,10 +498,10 @@ def manipulate_data(key, selection):
     '''
     Sort and transform data where needed
     '''
-    if '.format' in key and '/' in selection:
-        return selection.split('/')[0].strip()
-    if '.codec_id' in key and '/' in selection:
-        return selection.split('/')[0].strip()
+    if '.format' in key and ' / ' in selection:
+        return selection.split(' / ')[0].strip()
+    if '.codec_id' in key and ' / ' in selection:
+        return selection.split(' / ')[0].strip()
     if '.sampling_rate' in key and selection.isnumeric():
         return None
     if '.stream_size_bytes' in key and selection.isnumeric():

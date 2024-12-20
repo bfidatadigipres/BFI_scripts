@@ -103,7 +103,13 @@ CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's roll
             'al_jazeera': ["Al Jazeera", "Al Jazeera close", "This is a 24 hour broadcast news channel."],
             'gb_news': ["GB News", "GB News close", "This is a 24 hour broadcast news channel."],
             'sky_news': ["Sky News", "Sky News close", "This is a 24 hour broadcast news channel."],
-            'skyarts': ["Sky Arts", "Sky News close", "Programmes will resume shortly."]
+            'skyarts': ["Sky Arts", "Sky News close", "Programmes will resume shortly."],
+            'skymixhd': ["Sky Arts", "Sky News close", "Programmes will resume shortly."],
+            'qvc': ["QVC", "QVC close", "Programmes will resume shortly."],
+            'togethertv': ["Together TV", "Together TV close", "Programmes will resume shortly."],
+            'u_dave': ["U&Dave", "U & Dave close", "Programmes will resume shortly."],
+            'u_drama': ["U&Drama", "U & Drama close", "Programmes will resume shortly."],
+            'u_yesterday': ["U&Yesterday", "U & Yesterday close", "Programmes will resume shortly."]
 }
 
 
@@ -601,15 +607,24 @@ def fetch_lines(fullpath, lines):
             code_type = 'MPEG-4 AVC'
             broadcast_company = '999883795'
             print(f"Broadcast company set to Talk TV in {fullpath}")
-        elif 'u_' in fullpath:
+        elif '/u_' in fullpath:
+            code_type = 'MPEG-2'
+            broadcast_company = '94873'
+            print(f"Broadcast company set to UKTV in {fullpath}")
+        elif 'qvc' in fullpath:
             code_type = 'MPEG-4 AVC'
-            broadcast_company = ''
+            broadcast_company = '999360445'
+            print(f"Broadcast company set to QVC in {fullpath}")
+        elif 'togethertv' in fullpath:
+            code_type = 'MPEG-4 AVC'
+            broadcast_company = '999719796'
+            print(f"Broadcast company set to Community Channel in {fullpath}")
         else:
-            broadcast_company = ''
+            broadcast_company = None
 
-        if epg_dict.get('broadcast_company'):
+        if broadcast_company:
             epg_dict['broadcast_company'] = broadcast_company
-        if epg_dict.get('code_type'):
+        if code_type:
             epg_dict['code_type'] = code_type
 
 

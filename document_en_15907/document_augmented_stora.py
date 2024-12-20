@@ -1150,7 +1150,7 @@ def build_defaults(epg_dict):
     Get detailed information
     and build record_defaults dict
     '''
-
+    print(epg_dict)
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
@@ -1215,7 +1215,7 @@ def build_defaults(epg_dict):
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
              {'file_type': 'MPEG-TS'},
-             {'code_type': epg_dict['code_type']},
+             {'code_type': epg_dict.get('code_type')},
              {'source_device': 'STORA'},
              {'acquisition.method': 'Off-Air'}])
 

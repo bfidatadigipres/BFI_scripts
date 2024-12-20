@@ -102,7 +102,8 @@ CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's roll
             '5star': ["5STAR", "5STAR close", "Programmes will resume shortly."],
             'al_jazeera': ["Al Jazeera", "Al Jazeera close", "This is a 24 hour broadcast news channel."],
             'gb_news': ["GB News", "GB News close", "This is a 24 hour broadcast news channel."],
-            'sky_news': ["Sky News", "Sky News close", "This is a 24 hour broadcast news channel."]
+            'sky_news': ["Sky News", "Sky News close", "This is a 24 hour broadcast news channel."],
+            'skyarts': ["Sky Arts", "Sky News close", "Programmes will resume shortly."]
 }
 
 

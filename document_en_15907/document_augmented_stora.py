@@ -584,7 +584,7 @@ def fetch_lines(fullpath, lines):
             code_type = 'MPEG-2'
             broadcast_company = '24404'
             print(f"Broadcast company set to Five in {fullpath}")
-        elif 'sky_news' in fullpath:
+        elif 'sky' in fullpath:
             code_type = 'MPEG-2'
             broadcast_company = '78200'
             print(f"Broadcast company set to Sky News in {fullpath}")
@@ -600,8 +600,11 @@ def fetch_lines(fullpath, lines):
             code_type = 'MPEG-4 AVC'
             broadcast_company = '999883795'
             print(f"Broadcast company set to Talk TV in {fullpath}")
+        elif 'u_' in fullpath:
+            code_type = 'MPEG-4 AVC'
+            broadcast_company = ''
         else:
-            broadcast_company = None
+            broadcast_company = ''
 
         if epg_dict.get('broadcast_company'):
             epg_dict['broadcast_company'] = broadcast_company

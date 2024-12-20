@@ -182,9 +182,9 @@ def main():
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
-#    if not utils.check_control('pause_scripts'):
-#        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-#        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     text_path = sys.argv[1]
     text_file = os.path.basename(text_path)
@@ -219,12 +219,13 @@ def main():
             text_full_path = make_paths(filename)[0]
             mdata_xml = build_metadata_text_xml(text_path, text_full_path, priref)
 
-        success = write_payload(mdata_xml, priref)
+        print(mdata_xml)
+        success, rec = write_payload(mdata_xml, priref)
         if success:
             LOGGER.info("** Digital Media metadata from JSON successfully written to CID Media record: %s", priref)
         else:
             LOGGER.warning("Failed to push regular metadata to the CID record. Writing to errors CSV")
-            write_to_errors_csv('media', CID_API, priref, mdata_xml)
+            write_to_errors_csv('media', CID_API, priref, mdata_xml, rec)
 
     elif text_file.endswith('_EXIF.txt'):
         filename = text_file.split("_EXIF.txt")[0]
@@ -244,12 +245,12 @@ def main():
 
         image_xml = build_exif_metadata_xml(exif_path, priref)
 
-        success = write_payload(image_xml, priref)
+        success, rec = write_payload(image_xml, priref)
         if success:
             LOGGER.info("** Digital Media EXIF metadata from JSON successfully written to CID Media record: %s", priref)
         else:
             LOGGER.warning("Failed to push EXIF metadata to the CID record. Writing to errors CSV")
-            write_to_errors_csv('media', CID_API, priref, image_xml)
+            write_to_errors_csv('media', CID_API, priref, image_xml, rec)
 
     # Write remaining metadata to header_tags and clean up
     header_payload = make_header_data(text_path, filename, priref)
@@ -258,12 +259,12 @@ def main():
         write_to_errors_csv('media', CID_API, priref, header_payload)
         sys.exit()
 
-    success = write_payload(header_payload, priref)
+    success, _ = write_payload(header_payload, priref)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
+        clean_up(filename, text_path)
     else:
         LOGGER.warning("Failed to POST header tag data to CID record. Writing to errors CSV")
-        # clean_up(filename)
 
 
 def build_exif_metadata_xml(exif_path, priref):
@@ -421,7 +422,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if vid_count == 1:
             vid_rows = get_text_rows('Video', mdata)
         else:
-            vid_rows = get_text_rows(f'Video #{num}', mdata)
+            vid_rows = get_text_rows(f'Video \#{num}', mdata)
         vid = []
         for field in FIELDS:
             for key, val in field.items():
@@ -448,7 +449,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
         if aud_count == 1:
             aud_rows = get_text_rows('Audio', mdata)
         else:
-            aud_rows = get_text_rows(f'Audio #{num}', mdata)
+            aud_rows = get_text_rows(f'Audio \#{num}', mdata)
         aud = []
         for field in FIELDS:
             for key, val in field.items():
@@ -497,6 +498,10 @@ def manipulate_data(key, selection):
     '''
     Sort and transform data where needed
     '''
+    if '.format' in key and '/' in selection:
+        return selection.split('/')[0].strip()
+    if '.codec_id' in key and '/' in selection:
+        return selection.split('/')[0].strip()
     if '.sampling_rate' in key and selection.isnumeric():
         return None
     if '.stream_size_bytes' in key and selection.isnumeric():
@@ -582,7 +587,6 @@ def get_video_xml(track):
             if k.startswith('video.'):
                 if track.get(v[0]):
                     selected = manipulate_data(k, track.get(v[0]))
-                    print(type(selected))
                     if selected is None:
                         continue
                     video_dict.append({f'{k}': selected.strip()})
@@ -706,7 +710,7 @@ def make_header_data(text_path, filename, priref):
         text = f"<Header_tags><header_tags.parser>MediaInfo text 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
     except Exception as err:
         print(err)
-        LOGGER.warning("Failed to write Text dump to record %s: %s", priref, text_path)
+        LOGGER.warning("Failed to write Text dump to record %s", priref)
 
     # Processing metadata output for text full path
     try:
@@ -714,7 +718,7 @@ def make_header_data(text_path, filename, priref):
         text_full = f"<Header_tags><header_tags.parser>MediaInfo text 0 full</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
     except Exception as err:
         print(err)
-        LOGGER.warning("Failed to write Text Full dump to record %s: %s", priref, tfp)
+        LOGGER.warning("Failed to write Text Full dump to record %s", priref)
 
     # Processing metadata output for ebucore path
     try:
@@ -722,7 +726,7 @@ def make_header_data(text_path, filename, priref):
         ebu = f"<Header_tags><header_tags.parser>MediaInfo ebucore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
     except Exception as err:
         print(err)
-        LOGGER.warning("Failed to write EBUCore dump to record %s: %s", priref, ep)
+        LOGGER.warning("Failed to write EBUCore dump to record %s", priref)
 
     # Processing metadata output for pbcore path
     try:
@@ -730,7 +734,7 @@ def make_header_data(text_path, filename, priref):
         pb = f"<Header_tags><header_tags.parser>MediaInfo pbcore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
     except Exception as err:
         print(err)
-        LOGGER.warning("Failed to write PBCore dump to record %s: %s", priref, pb)
+        LOGGER.warning("Failed to write PBCore dump to record %s", priref)
 
     # Processing metadata output for pbcore path
     try:
@@ -738,7 +742,7 @@ def make_header_data(text_path, filename, priref):
         xml = f"<Header_tags><header_tags.parser>MediaInfo xml 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
     except Exception as err:
         print(err)
-        LOGGER.warning("Failed to write XML dump to record %s: %s", priref, xp)
+        LOGGER.warning("Failed to write XML dump to record %s", priref)
 
     # Processing metadata output for json path
     try:
@@ -746,7 +750,7 @@ def make_header_data(text_path, filename, priref):
         json = f"<Header_tags><header_tags.parser>MediaInfo json 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
     except Exception as err:
         print(err)
-        LOGGER.warning("Failed to write JSON dump to record %s: %s", priref, jp)
+        LOGGER.warning("Failed to write JSON dump to record %s", priref)
 
     # Processing metadata output for special collections exif data
     try:
@@ -754,7 +758,7 @@ def make_header_data(text_path, filename, priref):
         exif = f"<Header_tags><header_tags.parser>Exiftool text</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
     except Exception as err:
         print(err)
-        LOGGER.warning("Failed to write Exif dump to record %s: %s", priref, exfp)
+        LOGGER.warning("Failed to write Exif dump to record %s", priref)
 
     payload_data = text + text_full + ebu + pb + xml + json + exif
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
@@ -768,21 +772,21 @@ def write_payload(payload, priref):
     record = adlib.post(CID_API, payload, 'media', 'updaterecord')
     print(record)
     if record is None:
-        return False
+        return False, record
     elif "'error': {'message':" in str(record):
-        return False
+        return False, record
     elif priref in str(record):
-        return True
+        return True, record
     else:
-        return None
+        return None, record
 
 
-def write_to_errors_csv(dbase, api, priref, xml_dump):
+def write_to_errors_csv(dbase, api, priref, xml_dump, record_response):
     '''
     Keep a tab of problem POSTs as we expand
     thesaurus range for media record linked metadata
     '''
-    data = [priref, dbase, api, xml_dump]
+    data = [priref, dbase, api, xml_dump, record_responses]
 
     with open(ERROR_CSV, 'a+', newline='') as csvfile:
         datawriter = csv.writer(csvfile)

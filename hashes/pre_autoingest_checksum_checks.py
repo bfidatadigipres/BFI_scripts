@@ -68,13 +68,14 @@ def move_file(filepath,file, move_to_files):
     
     path = Path(file).relative_to(filepath)
 
-    if len(path.parts) < 1:
+    if len(path.parts) < 2:
         LOCAL_LOGGER.info('this file is in the root directory')
         
         move_file(file, move_to_files)
 
     else:
         LOGGER.info(f'this file has subdirectory: {file}')
+        LOCAL_LOGGER.info(f'this file has subdirectory: {file}')
         sub_dir = Path(f'{move_to_files}')/ path.parent
         destination_file = os.path.join(sub_dir, path.name)
         
@@ -92,6 +93,35 @@ def move_file(filepath,file, move_to_files):
 
             current_path = current_path.parent
 
+
+def finding_file_structure(file_dict):
+	'''
+	This function returns a dictonary containing the folder as well as the files inside the folders , retaining the file structure
+
+	Parameters:
+	----------
+	
+	file_dict: dict
+		the dictonary containing the media file with the corresponding checksum file , 
+		full file path and the supplied checksum file provided by the suppliers
+
+	Returns:
+	--------
+
+	folder_file_stuct: dict
+		the dictonary providing the folder path as its key and the media files inside the folder and the results of the checksum find as its value  
+	'''
+	folder_file_struct = {}
+	for file, value in file_dict.items():
+		folder_path = os.path.dirname(file)
+		# check if the folder path is either checksum_folder, ingest_full_match, ingest... and etc
+		if folder_path == os.path.join(sys.argv[1], 'Acquisitions/ingest_check/checksum_folder') or folder_path == os.path.join(sys.argv[1], 'Acquisitions/ingest_check/ingest_full_match') or  folder_path == os.path.join(sys.argv[1], 'Acquisitions/ingest_check/ingest_parital_match') or folder_path == os.path.join(sys.argv[1], 'Acquisitions/ingest_check/ingets_no_match') or folder_path == os.path.join(sys.argv[1], 'Acquisitions/ingest_check/ingest_check.log'):
+			continue
+		if folder_path not in folder_file_struct:
+			folder_file_struct[folder_path] = []
+		folder_file_struct[folder_path].append((file, value))
+
+	return folder_file_struct
         
 def pygrep(folder_name, hash_value):
     '''
@@ -125,9 +155,9 @@ def pygrep(folder_name, hash_value):
                     with open(filepath, 'r', encoding='utf-8') as f:
                         for line in f:
                             if re.search(hash_value, line):
-                                lists_of_files.append((True,line, os.path.join(root, file)))
+                                lists_of_files.append((line, os.path.join(root, file), True))
                             elif re.search(file_name, line):
-                                lists_of_files.append((True, line, os.path.join(root, file)))
+                                lists_of_files.append((line, os.path.join(root, file), True))
                 except Exception as e:
                     LOGGER.error(f"Error reading {filepath}: {e}")
     return lists_of_files
@@ -178,16 +208,20 @@ def main():
                     # if hash_number in str(match[1]) and file in str(match[1]):
                     #     file_dict[os.path.join(root, file)] = match
                   
-                    if hash_number in str(match[1]) and file not in str(match[1]):
-                        file_dict[os.path.join(root, file)] = ('Miss match, not the same file, same checksum', match[1], match[2])
+                    if hash_number in str(match[0]) and file not in str(match[0]):
+                        file_dict[os.path.join(root, file)] = (match[0], match[1], 'Miss match, same checksum not the same file')
                     
-                    elif file in str(match[-2]) and hash_number not in str(match[-2]):
-                        file_dict[os.path.join(root, file)] = ('Miss match, same file not the same checksum', match[1], match[2])
+                    elif file in str(match[0]) and hash_number not in str(match[0]):
+                        file_dict[os.path.join(root, file)] = (match[0], match[1], 'Miss match, same file but not the same checksum')
 
                     else:
                         file_dict[os.path.join(root, file)] = match
+
             print(file_dict)
-            for files, results in file_dict.items():
+            result = finding_file_structure(file_dict)
+            print(result)
+
+'''            for files, results in file_dict.items():
                 if results == False:
                     LOGGER.info('=======local md5 and supplied md5 do not match at all============')
                     LOCAL_LOGGER.info('=======local md5 and supplied md5 do not match at all============')
@@ -208,9 +242,9 @@ def main():
                     LOCAL_LOGGER.info(f'=======local and supplied md5 file are the same============')
                     move_file(filepath, str(files), f'{filepath}/ingest_match/')
     LOGGER.info('======================pre autoingest checks End====================================')
-
+'''
     
 if __name__ == "__main__":
     # print(move_files('hashes/ingest_check/folder_1/folder_2/167.mkv', 'hashes/ingest_check/ingest_failed/folder_1/folder_2'))
     main()
-    #print(move_file('hashes/ingest_check/folder_1/folder_2/126.mkv', 'hashes/ingest_check/ingest_partial/'))
+   # print(move_files('/mnt/qnap_11/digital_operations/Acquisitions/ingest_check/ingest_partial/MKV_sample.mkv', '/mnt/qnap_11/digital_operations/Acquisitions/ingest_check'))

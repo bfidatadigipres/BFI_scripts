@@ -595,10 +595,14 @@ def fetch_lines(fullpath, lines):
             code_type = 'MPEG-2'
             broadcast_company = '78200'
             print(f"Broadcast company set to Sky News in {fullpath}")
-        elif 'skyarts' in fullpath or 'skymixhd' in fullpath:
+        elif 'skyarts' in fullpath:
             code_type = 'MPEG-4 AVC'
-            broadcast_company = '78200'
-            print(f"Broadcast company set to Sky News in {fullpath}")
+            broadcast_company = '150001'
+            print(f"Broadcast company set to Sky Arts in {fullpath}")
+        elif 'skymixhd' in fullpath:
+            code_type = 'MPEG-4 AVC'
+            broadcast_company = '999939366'
+            print(f"Broadcast company set to Sky Mix in {fullpath}")
         elif 'al_jazeera' in fullpath:
             code_type = 'MPEG-4 AVC'
             broadcast_company = '125338'
@@ -611,18 +615,26 @@ def fetch_lines(fullpath, lines):
             code_type = 'MPEG-4 AVC'
             broadcast_company = '999883795'
             print(f"Broadcast company set to Talk TV in {fullpath}")
-        elif '/u_' in fullpath:
+        elif '/u_dave' in fullpath:
             code_type = 'MPEG-2'
-            broadcast_company = '94873'
-            print(f"Broadcast company set to UKTV in {fullpath}")
+            broadcast_company = '999929397'
+            print(f"Broadcast company set to U&Dave in {fullpath}")
+        elif '/u_drama' in fullpath:
+            code_type = 'MPEG-2'
+            broadcast_company = '999929393'
+            print(f"Broadcast company set to U&Drama in {fullpath}")
+        elif '/u_yesterday' in fullpath:
+            code_type = 'MPEG-2'
+            broadcast_company = '999929396'
+            print(f"Broadcast company set to U&Yesterday in {fullpath}")
         elif 'qvc' in fullpath:
             code_type = 'MPEG-4 AVC'
             broadcast_company = '999360445'
             print(f"Broadcast company set to QVC in {fullpath}")
         elif 'togethertv' in fullpath:
             code_type = 'MPEG-4 AVC'
-            broadcast_company = '999719796'
-            print(f"Broadcast company set to Community Channel in {fullpath}")
+            broadcast_company = '999939362'
+            print(f"Broadcast company set to Together TV in {fullpath}")
         else:
             broadcast_company = None
 

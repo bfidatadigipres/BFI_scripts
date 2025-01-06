@@ -59,7 +59,8 @@ ACCEPTED_EXT = [
     'dfxp',
     'dxfp',
     'csv',
-    'pdf'
+    'pdf',
+    'txt'
 ]
 
 
@@ -94,7 +95,8 @@ def accepted_file_type(ext):
              'dxfp': 'dxfp',
              'dfxp': 'dfxp',
              'csv': 'csv',
-             'pdf': 'pdf'}
+             'pdf': 'pdf',
+             'txt': 'txt'}
     ext = ext.lower()
     for key, val in ftype.items():
         if key == ext:

@@ -201,7 +201,7 @@ def main():
         # Build autoingest list for separate iteration
         for pth in host.keys():
             autoingest_list.append(os.path.join(pth, BPINGEST))
-            if '/mnt/qnap_09/' in pth:
+            if '/mnt/qnap_09' in pth:
                 autoingest_list.append(os.path.join(pth, BPINGEST_NETFLIX))
                 autoingest_list.append(os.path.join(pth, BPINGEST_AMAZON))
 

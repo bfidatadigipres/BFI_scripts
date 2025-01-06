@@ -362,9 +362,9 @@ def process_files(autoingest, job_id, bucket, bucket_list, session):
         duration_size_log(file, object_number, duration, byte_size, duration_ms)
 
         # Run series of BP checks here - any failures no CID media record made
-        confirmed, remote_md5, length = bp.get_object_list(file)
+        confirmed, remote_md5, length = bp.get_confirmation_length_md5(file, bucket, bucket_list)
         if confirmed is None:
-            logger.warning('Problem retrieving Black Pearl ObjectList. Skipping')
+            logger.warning('Problem retrieving Black Pearl TapeList. Skipping')
             continue
         elif confirmed is False:
             logger.warning("Assigned to storage domain is FALSE: %s", fpath)

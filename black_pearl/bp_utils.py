@@ -117,7 +117,7 @@ def get_bp_length(fname, bucket):
         return size.replace('"', '')
 
 
-def get_confirmation_length_md5(fname, bucket):
+def get_confirmation_length_md5(fname, bucket, bucket_list):
     '''
     Alternative retrieval for get_object_list
     avoiding full_details requests
@@ -127,15 +127,30 @@ def get_confirmation_length_md5(fname, bucket):
         object_flist = list([ds3.Ds3GetObject(name=fname) for fname in flist])
         res = ds3.GetPhysicalPlacementForObjectSpectraS3Request(bucket, object_flist)
         result = CLIENT.get_physical_placement_for_objects_spectra_s3(res)
+        data = result.result
     except Exception as err:
         print(err)
 
-    if not result.result['TapeList']:
+    if not data['TapeList']:
+        for buck in bucket_list:
+            try:
+                object_flist = list([ds3.Ds3GetObject(name=fname) for fname in flist])
+                res = ds3.GetPhysicalPlacementForObjectSpectraS3Request(buck, object_flist)
+                result = CLIENT.get_physical_placement_for_objects_spectra_s3(res)
+                if result.result('TapeList'):
+                    data = result.result
+            except Exception as err:
+                print(err)
+
+    if not data['TapeList']:
         return 'No tape list', None, None
     if result.result['TapeList'][0]['AssignedToStorageDomain'] == 'true':
         confirmed = True
-    else:
+    elif result.result['TapeList'][0]['AssignedToStorageDomain'] == 'false':
         confirmed = False
+    else:
+        return None, None, None
+
     md5 = get_bp_md5(fname, bucket)
     length = get_bp_length(fname, bucket)
     return confirmed, md5, length

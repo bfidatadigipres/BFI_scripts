@@ -126,7 +126,7 @@ def get_confirmation_length_md5(fname, bucket, bucket_list):
     data = []
     try:
         object_flist = list([ds3.Ds3GetObject(name=fname) for fname in flist])
-        res = ds3.GetPhysicalPlacementForObjectSpectraS3Request(bucket, object_flist)
+        res = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(bucket, object_flist)
         result = CLIENT.get_physical_placement_for_objects_spectra_s3(res)
         data = result.result
     except Exception as err:
@@ -136,7 +136,7 @@ def get_confirmation_length_md5(fname, bucket, bucket_list):
         for buck in bucket_list:
             try:
                 object_flist = list([ds3.Ds3GetObject(name=fname) for fname in flist])
-                res = ds3.GetPhysicalPlacementForObjectSpectraS3Request(buck, object_flist)
+                res = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(buck, object_flist)
                 result = CLIENT.get_physical_placement_for_objects_spectra_s3(res)
                 if result.result('TapeList'):
                     data = result.result

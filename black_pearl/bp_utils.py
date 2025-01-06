@@ -139,7 +139,7 @@ def get_confirmation_length_md5(fname, bucket, bucket_list):
                 res = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(buck, object_flist)
                 result = CLIENT.get_physical_placement_for_objects_spectra_s3(res)
                 print(result.result)
-                if result.result('TapeList'):
+                if len(result.result['TapeList'] > 0):
                     data = result.result
                     break
             except Exception as err:

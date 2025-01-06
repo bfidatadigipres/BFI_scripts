@@ -141,6 +141,7 @@ def get_confirmation_length_md5(fname, bucket, bucket_list):
                 print(result.result)
                 if len(result.result['TapeList']) > 0:
                     data = result.result
+                    bucket = buck
                     break
             except Exception as err:
                 data = None

@@ -629,8 +629,8 @@ def fetch_lines(fullpath, lines):
             print(f"Broadcast company set to U&Yesterday in {fullpath}")
         elif 'qvc' in fullpath:
             code_type = 'MPEG-4 AVC'
-            broadcast_company = '999360445'
-            print(f"Broadcast company set to QVC in {fullpath}")
+            broadcast_company = '999939374'
+            print(f"Broadcast company set to QVC UK in {fullpath}")
         elif 'togethertv' in fullpath:
             code_type = 'MPEG-4 AVC'
             broadcast_company = '999939362'

@@ -131,9 +131,9 @@ def get_confirmation_length_md5(fname, bucket, bucket_list):
         data = result.result
     except Exception as err:
         print(err)
-        return None, None, None
+        data = None
 
-    if not data['TapeList']:
+    if data is None:
         for buck in bucket_list:
             try:
                 object_flist = list([ds3.Ds3GetObject(name=fname) for fname in flist])

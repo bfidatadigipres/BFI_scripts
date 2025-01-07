@@ -23,7 +23,6 @@ Actions of the script:
 import os
 import sys
 import logging
-import subprocess
 import datetime
 import tenacity
 

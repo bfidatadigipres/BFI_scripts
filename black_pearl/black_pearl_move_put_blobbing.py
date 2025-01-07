@@ -120,7 +120,7 @@ def get_buckets(bucket_collection):
 
 def make_check_md5(fpath, dpath, fname):
     '''
-    Generate MD5 for fpath
+    Generate MD5/metadata docs for fpath
     Locate matching file in CID/checksum_md5 folder
     and see if checksums match. If not, write to log
     '''

@@ -125,11 +125,12 @@ def make_check_md5(fpath, dpath, fname):
     download_checksum = ''
     local_checksum = get_md5(fname)
     print(f"Local checksum found: {local_checksum}")
+    checksum_path = os.path.join(CHECKSUM_PATH, f"{fname}.md5")
     if not local_checksum:
         try:
             local_checksum = utils.create_md5_65536(fpath)
             print(f"Local checksum created: {local_checksum}")
-            checksum_write(fname, local_checksum, fpath)
+            utils.checksum_write(checksum_path, local_checksum, fpath, fname)
         except Exception as err:
             print(err)
     try:
@@ -142,32 +143,6 @@ def make_check_md5(fpath, dpath, fname):
         print(f"Created from download: {download_checksum} | Original file checksum: {local_checksum}")
         return download_checksum, local_checksum
     return None, None
-
-
-def checksum_write(filename, checksum, filepath):
-    '''
-    Create a new Checksum file and write MD5_checksum
-    Return checksum path where successfully written
-    '''
-    checksum_path = os.path.join(CHECKSUM_PATH, f"{filename}.md5")
-    if os.path.isfile(checksum_path):
-        try:
-            with open(checksum_path, 'w') as fname:
-                fname.write(f"{checksum} - {filepath} - {TODAY}")
-                fname.close()
-            return checksum_path
-        except Exception:
-            LOGGER.exception("%s - Unable to write checksum: %s", filename, checksum_path)
-    else:
-        try:
-            with open(checksum_path, 'x') as fnm:
-                fnm.close()
-            with open(checksum_path, 'w') as fname:
-                fname.write(f"{checksum} - {filepath} - {TODAY}")
-                fname.close()
-            return checksum_path
-        except Exception:
-            LOGGER.exception("%s Unable to write checksum to path: %s", filename, checksum_path)
 
 
 def get_md5(filename):
@@ -232,13 +207,11 @@ def main():
 
     if 'netflix' in str(sys.argv[1]):
         fullpath = os.environ['PLATFORM_INGEST_PTH']
-        upload_size = 559511627776
         autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST_NETFLIX']}/blobbing/")
         download_folder = os.path.join(autoingest, 'download_check/')
         bucket_collection = 'netflix'
     elif 'amazon' in str(sys.argv[1]):
         fullpath = os.environ['PLATFORM_INGEST_PTH']
-        upload_size = 559511627776
         autoingest = os.path.join(fullpath, f"{os.environ['BP_INGEST_AMAZON']}/blobbing/")
         download_folder = os.path.join(autoingest, 'download_check/')
         bucket_collection = 'amazon'

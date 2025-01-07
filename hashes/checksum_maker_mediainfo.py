@@ -51,35 +51,6 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def checksum_write(checksum_path, checksum, filepath, filename):
-    '''
-    This function writes the checksum into a file and returns the paths
-
-    Parameters:
-    -----------
-        checksum_path: string
-            the file directory to the checksum file
-
-        checksum: string
-            the checksum value generated from the video/film
-
-        filepath: string
-            the full file path from absolute to the file(film)
-
-    Returns:
-    --------
-        checksum_path: string
-            the file where the checksum is stored
-    '''
-    try:
-        with open(checksum_path, 'w') as fname:
-            fname.write(f"{checksum} - {filepath} - {TODAY}")
-            fname.close()
-        return checksum_path
-    except Exception as e:
-        LOGGER.exception(f"{filename} - Unable to write checksum: {checksum_path}")
-
-
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
 def checksum_exist(checksum_path_env, filename, checksum, filepath):
     '''
@@ -88,12 +59,12 @@ def checksum_exist(checksum_path_env, filename, checksum, filepath):
     '''
     checksum_path = os.path.join(checksum_path_env, f"{filename}.md5")
     if os.path.isfile(checksum_path):
-        checksum_path = checksum_write(checksum_path, checksum, filepath, filename)
+        checksum_path = utils.checksum_write(checksum_path, checksum, filepath, filename)
         return checksum_path
     else:
         with open(checksum_path, 'x') as fnm:
             fnm.close()
-        checksum_path = checksum_write(checksum_path, checksum, filepath, filename)
+        checksum_path = utils.checksum_write(checksum_path, checksum, filepath, filename)
         return checksum_path
 
 

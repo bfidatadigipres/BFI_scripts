@@ -12,12 +12,14 @@ import json
 import yaml
 import hashlib
 import logging
+import datetime
 import subprocess
 import adlib_v3 as adlib
 
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
+
 
 PREFIX = [
     'N',
@@ -51,6 +53,7 @@ ACCEPTED_EXT = [
     'ts',
     'm2ts',
     'rtf',
+    'ttf',
     'srt',
     'scc',
     'itt',
@@ -91,12 +94,14 @@ def accepted_file_type(ext):
              'itt': 'itt',
              'stl': 'stl',
              'rtf': 'rtf',
+             'ttf': 'ttf',
              'cap': 'cap',
              'dxfp': 'dxfp',
              'dfxp': 'dfxp',
              'csv': 'csv',
              'pdf': 'pdf',
              'txt': 'txt'}
+
     ext = ext.lower()
     for key, val in ftype.items():
         if key == ext:
@@ -445,3 +450,19 @@ def check_global_log(fname, check_str):
             if fname in str(row) and check_str in str(row):
                 print(row)
                 return row
+
+
+def checksum_write(checksum_path, checksum, filepath, filename):
+    '''
+    This function writes the checksum into a txt file with correct
+    formatting and returns the path to that document
+    '''
+    date_string = str(datetime.date.today())
+    try:
+        with open(checksum_path, 'w') as fname:
+            fname.write(f"{checksum} - {filepath} - {date_string}")
+            fname.close()
+        return checksum_path
+    except Exception as e:
+        print(f"{filename} - Unable to write checksum: {checksum_path}\n{e}")
+        raise Exception

@@ -54,9 +54,11 @@ INGEST_CONFIG = os.path.join(os.environ['CODE'], 'black_pearl/dpi_ingests.yaml')
 JSON_END = os.environ['JSON_END_POINT']
 DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
+MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
 CID_API = os.environ['CID_API4']
 TODAY = str(datetime.today())
+CODE = os.environ['CODE']
 
 # Setup logging
 LOGGER = logging.getLogger(f'black_pearl_move_put_blobbing_{sys.argv[1].replace("/", "_")}')
@@ -131,6 +133,7 @@ def make_check_md5(fpath, dpath, fname):
             local_checksum = utils.create_md5_65536(fpath)
             print(f"Local checksum created: {local_checksum}")
             utils.checksum_write(checksum_path, local_checksum, fpath, fname)
+            make_metadata(fpath, fname, MEDIAINFO_PATH)
         except Exception as err:
             print(err)
     try:
@@ -143,6 +146,21 @@ def make_check_md5(fpath, dpath, fname):
         print(f"Created from download: {download_checksum} | Original file checksum: {local_checksum}")
         return download_checksum, local_checksum
     return None, None
+
+
+def make_metadata(fpath, fname, mediainfo_path):
+    '''
+    Create mediainfo files
+    '''
+    # Run script from media files local directory
+    path1 = utils.mediainfo_create('-f', 'TEXT', fpath, mediainfo_path)
+    path2 = utils.mediainfo_create('', 'TEXT', fpath, mediainfo_path)
+    path3 = utils.mediainfo_create('', 'EBUCore', fpath, mediainfo_path)
+    path4 = utils.mediainfo_create('', 'PBCore2', fpath, mediainfo_path)
+    path5 = utils.mediainfo_create('', 'XML', fpath, mediainfo_path)
+    path6 = utils.mediainfo_create('-f', 'JSON', fpath, mediainfo_path)
+
+    LOGGER.info("Written %s metadata to paths:\n%s\n%s\n%s\n%s\n%s\n%s", fname, path1, path2, path3, path4, path5, path6)
 
 
 def get_md5(filename):

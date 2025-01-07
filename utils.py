@@ -466,3 +466,48 @@ def checksum_write(checksum_path, checksum, filepath, filename):
     except Exception as e:
         print(f"{filename} - Unable to write checksum: {checksum_path}\n{e}")
         raise Exception
+
+
+def mediainfo_create(arg, output_type, filepath, mediainfo_path):
+    '''
+    Output mediainfo data to text files
+    '''
+    filename = os.path.basename(filepath)
+    if arg == '-f':
+        if output_type == 'TEXT':
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}_FULL.txt")
+        elif output_type == 'JSON':
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.json")
+
+        command = [
+            'mediainfo',
+            arg,
+            '--Details=0',
+            f'--Output={output_type}',
+            f'--LogFile={out_path}',
+            filepath
+        ]
+    else:
+        if 'XML' in output_type:
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
+        elif 'EBUCore' in output_type:
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
+        elif 'PBCore' in output_type:
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
+        else:
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.txt")
+
+        command = [
+            'mediainfo',
+            '--Details=0',
+            f'--Output={output_type}',
+            f'--LogFile={out_path}',
+            filepath
+        ]
+
+    try:
+        subprocess.call(command)
+        return out_path
+    except Exception as e:
+        print(e)
+        return False

@@ -365,7 +365,7 @@ def iterate_text_rows(data, match, key):
     for row in data:
         if match in str(row):
             field_entry = row.split(':', 1)[-1].strip()
-            if 'MiB' in field_entry:
+            if 'MiB' in field_entry or 'KiB' in field_entry:
                 continue
             matches.append(field_entry)
     if matches:
@@ -518,6 +518,8 @@ def manipulate_data(key, selection):
         return selection.split(' GiB')[0]
     elif '.total_gigabytes' in key and 'MiB' in selection:
         return None
+    elif '.total_gigabytes' in key and 'KiB' in selection:
+        return None    
     elif '.total_gigabytes' in key and selection.isnumeric():
         return None
     if 'FPS' in selection:

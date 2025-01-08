@@ -403,7 +403,12 @@ def main():
                 # Download from BP
                 LOGGER.info("Beginning download of file %s to download path", fname)
                 update_table(user_id, 'Downloading')
-                download_job_id = bp.download_bp_object(fname, download_fpath, bucket)
+                try:
+                    download_job_id = bp.download_bp_object(fname, download_fpath, bucket)
+                except Exception as err:
+                    print(err)
+                    update_table(user_id, 'Download error')
+                    continue
                 if not download_job_id:
                     LOGGER.warning("Download of file %s failed. Resetting download status and script exiting.", fname)
                     update_table(user_id, 'Requested')

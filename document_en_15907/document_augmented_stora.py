@@ -71,7 +71,7 @@ TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=1)
 YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
 YEAR_PATH = YESTERDAY_CLEAN[:4]
-# YEAR_PATH = '2024'
+#YEAR_PATH = '2024'
 STORAGE_PATH = STORAGE + YEAR_PATH
 
 NEWS_CHANNELS = [

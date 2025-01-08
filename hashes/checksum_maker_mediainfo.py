@@ -23,7 +23,6 @@ Actions of the script:
 import os
 import sys
 import logging
-import subprocess
 import datetime
 import tenacity
 
@@ -51,35 +50,6 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def checksum_write(checksum_path, checksum, filepath, filename):
-    '''
-    This function writes the checksum into a file and returns the paths
-
-    Parameters:
-    -----------
-        checksum_path: string
-            the file directory to the checksum file
-
-        checksum: string
-            the checksum value generated from the video/film
-
-        filepath: string
-            the full file path from absolute to the file(film)
-
-    Returns:
-    --------
-        checksum_path: string
-            the file where the checksum is stored
-    '''
-    try:
-        with open(checksum_path, 'w') as fname:
-            fname.write(f"{checksum} - {filepath} - {TODAY}")
-            fname.close()
-        return checksum_path
-    except Exception as e:
-        LOGGER.exception(f"{filename} - Unable to write checksum: {checksum_path}")
-
-
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
 def checksum_exist(checksum_path_env, filename, checksum, filepath):
     '''
@@ -88,12 +58,12 @@ def checksum_exist(checksum_path_env, filename, checksum, filepath):
     '''
     checksum_path = os.path.join(checksum_path_env, f"{filename}.md5")
     if os.path.isfile(checksum_path):
-        checksum_path = checksum_write(checksum_path, checksum, filepath, filename)
+        checksum_path = utils.checksum_write(checksum_path, checksum, filepath, filename)
         return checksum_path
     else:
         with open(checksum_path, 'x') as fnm:
             fnm.close()
-        checksum_path = checksum_write(checksum_path, checksum, filepath, filename)
+        checksum_path = utils.checksum_write(checksum_path, checksum, filepath, filename)
         return checksum_path
 
 
@@ -109,52 +79,6 @@ def make_output_md5(filepath, filename):
     except Exception as e:
         LOGGER.exception(f"{filename} - Failed to make MD5 checksum for {filepath}")
         return None
-
-
-@tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def mediainfo_create(arg, output_type, filepath, mediainfo_path):
-    '''
-    Output mediainfo data to text files
-    '''
-    filename = os.path.basename(filepath)
-    if arg == '-f':
-        if output_type == 'TEXT':
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}_FULL.txt")
-        elif output_type == 'JSON':
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.json")
-
-        command = [
-            'mediainfo',
-            arg,
-            '--Details=0',
-            f'--Output={output_type}',
-            f'--LogFile={out_path}',
-            filepath
-        ]
-    else:
-        if 'XML' in output_type:
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
-        elif 'EBUCore' in output_type:
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
-        elif 'PBCore' in output_type:
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
-        else:
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.txt")
-
-        command = [
-            'mediainfo',
-            '--Details=0',
-            f'--Output={output_type}',
-            f'--LogFile={out_path}',
-            filepath
-        ]
-
-    try:
-        subprocess.call(command)
-        return out_path
-    except Exception as e:
-        LOGGER.info(e)
-        return False
 
 
 def checksum_test(CHECKSUM_PATH, check):
@@ -190,7 +114,7 @@ def main():
     filepath = sys.argv[1]
     path_split = os.path.split(filepath)
     filename = path_split[1]
-    path = path_split[0]
+    target_path = path_split[0]
 
     LOGGER.info("============ Python3 %s START =============", filepath)
 
@@ -211,7 +135,7 @@ def main():
 
     # Make metadata then write to checksum path as filename.ext.md5
     if 'None' not in str(md5_checksum):
-        make_metadata(path, filename, MEDIAINFO_PATH)
+        make_metadata(target_path, filename, MEDIAINFO_PATH)
         success = checksum_exist(CHECKSUM_PATH, filename, md5_checksum, filepath)
         LOGGER.info("%s Checksum written to: %s", filename, success)
 
@@ -219,18 +143,18 @@ def main():
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def make_metadata(fpath, fname, mediainfo_path):
+def make_metadata(target_path, fname, mediainfo_path):
     '''
     Create mediainfo files
     '''
     # Run script from media files local directory
-    os.chdir(fpath)
-    path1 = mediainfo_create('-f', 'TEXT', fname, mediainfo_path)
-    path2 = mediainfo_create('', 'TEXT', fname, mediainfo_path)
-    path3 = mediainfo_create('', 'EBUCore', fname,mediainfo_path)
-    path4 = mediainfo_create('', 'PBCore2', fname, mediainfo_path)
-    path5 = mediainfo_create('', 'XML', fname, mediainfo_path)
-    path6 = mediainfo_create('-f', 'JSON', fname,mediainfo_path)
+    os.chdir(target_path)
+    path1 = utils.mediainfo_create('-f', 'TEXT', fname, mediainfo_path)
+    path2 = utils.mediainfo_create('', 'TEXT', fname, mediainfo_path)
+    path3 = utils.mediainfo_create('', 'EBUCore', fname, mediainfo_path)
+    path4 = utils.mediainfo_create('', 'PBCore2', fname, mediainfo_path)
+    path5 = utils.mediainfo_create('', 'XML', fname, mediainfo_path)
+    path6 = utils.mediainfo_create('-f', 'JSON', fname, mediainfo_path)
 
     # Return path back to script directory
     os.chdir(os.path.join(CODE, 'hashes'))

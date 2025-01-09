@@ -78,7 +78,8 @@ NEWS_CHANNELS = [
     'Al Jazeera',
     'BBC NEWS HD',
     'Sky News',
-    'GB News'
+    'GB News',
+    'QVC'
 ]
 
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],

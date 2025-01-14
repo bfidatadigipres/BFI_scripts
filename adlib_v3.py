@@ -380,7 +380,6 @@ def get_fragments(obj):
 
     data = []
     for item in obj:
-
         if isinstance(item, str):
             sub_item = item
         else:

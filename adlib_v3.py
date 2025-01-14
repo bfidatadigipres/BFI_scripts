@@ -351,11 +351,11 @@ def create_grouped_data(priref, grouping, field_pairs):
         if isinstance(lst, list):
             for grouped in lst:
                 for key, value in grouped.items():
-                    xml_field = f'<{key}>{value}</{key}>'
+                    xml_field = f'<{key}><![CDATA[{value}]]></{key}>'
                     mid += xml_field
         elif isinstance(lst, dict):
             for key, value in lst.items():
-                xml_field = f'<{key}>{value}</{key}>'
+                xml_field = f'<{key}><![CDATA[{value}]]></{key}>'
                 mid += xml_field
         mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
         payload_mid = payload_mid + mid_fields

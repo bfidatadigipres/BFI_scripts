@@ -344,20 +344,23 @@ def create_grouped_data(priref, grouping, field_pairs):
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append
     '''
-    payload_mid = ''
+    if not priref:
+        return None
+
+    payload_mid = ""
     for lst in field_pairs:
-        mid = ''
-        mid_fields = ''
+        mid = ""
+        mid_fields = ""
         if isinstance(lst, list):
             for grouped in lst:
                 for key, value in grouped.items():
-                    xml_field = f'<{key}><![CDATA[{value}]]></{key}>'
+                    xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
                     mid += xml_field
         elif isinstance(lst, dict):
             for key, value in lst.items():
-                xml_field = f'<{key}><![CDATA[{value}]]></{key}>'
+                xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
                 mid += xml_field
-        mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
+        mid_fields = f"<{grouping}>" + mid + f"</{grouping}>"
         payload_mid = payload_mid + mid_fields
 
     if len(priref) > 0:

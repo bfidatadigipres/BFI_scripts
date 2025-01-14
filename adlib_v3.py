@@ -167,7 +167,7 @@ def post(api, payload, database, method):
         record = json.loads(response.text)
         return record
     elif 'error' in response.text:
-        return None
+        return record
 
     return None
 

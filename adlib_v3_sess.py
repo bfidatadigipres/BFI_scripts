@@ -449,7 +449,8 @@ def check_response(rec, api):
     actions. Initiate recycle
     '''
     failures = [
-        'A severe error occurred on the current command.'
+        'A severe error occurred on the current command.',
+        'Execution Timout Expired. The timeout period elapsed'
     ]
 
     for warning in failures:

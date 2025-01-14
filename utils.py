@@ -79,7 +79,7 @@ def accepted_file_type(ext):
              'mpeg': 'mpeg-1, mpeg-ps',
              'mp4': 'mp4',
              'mov': 'mov, prores',
-             'mkv': 'mkv, dpx',
+             'mkv': 'mkv, dpx, dcdm',
              'wav': 'wav',
              'wmv': 'wmv',
              'tif': 'tif, tiff',

@@ -58,6 +58,7 @@ CODE = os.environ.get('CODE')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API4')
+FORMAT = '%Y-%m-%d'
 
 # PATV API details including unique identifiers for Netflix catalogue
 URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
@@ -938,6 +939,14 @@ def build_defaults(data):
     Get detailed information
     and build record_defaults dict
     '''
+    start_date_str = data.get('title_date_start')
+    if '-' in start_date_str:
+        start_date = datetime.datetime.stprtime(start_date_str, FORMAT)
+    else:
+        start_date = datetime.date.today()
+    new_date = start_date + datetime.timedelta(days=2927)
+    date_restriction = new_date.strftime(FORMAT)
+
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
@@ -991,8 +1000,8 @@ def build_defaults(data):
                         {'application_restriction.date': str(datetime.datetime.now())[:10]},
                         {'application_restriction.reason': 'STRATEGIC'},
                         {'application_restriction.duration': 'PERM'},
-                        {'application_restriction.review_date': '2030-01-01'},
-                        {'application_restriction.authoriser': 'mcconnachies'},
+                        {'application_restriction.review_date': date_restriction},
+                        {'application_restriction.authoriser': 'kerriganl'},
                         {'application_restriction.notes': 'Netflix UK streaming content - pending discussion'}])
 
     manifestation = ([{'record_type': 'MANIFESTATION'},

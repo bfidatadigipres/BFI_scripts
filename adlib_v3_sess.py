@@ -364,22 +364,28 @@ def create_grouped_data(priref, grouping, field_pairs):
     if not priref:
         return None
 
-    payload = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_end = "</record></recordList></adlibXML>"
-    payload_mid = ''
+    payload_mid = ""
     for lst in field_pairs:
-        mid = ''
-        mid_fields = ''
-        print("New group block:")
-        for grouped in lst:
-            for key, value in grouped.items():
-                xml_field = f'<{key}>{value}</{key}>'
+        mid = ""
+        mid_fields = ""
+        if isinstance(lst, list):
+            for grouped in lst:
+                for key, value in grouped.items():
+                    xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
+                    mid += xml_field
+        elif isinstance(lst, dict):
+            for key, value in lst.items():
+                xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
                 mid += xml_field
-        mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
-        print(mid_fields)
+        mid_fields = f"<{grouping}>" + mid + f"</{grouping}>"
         payload_mid = payload_mid + mid_fields
     
-    return payload + payload_mid + payload_end
+    if len(priref) > 0:
+        payload = f"<adlibXML><recordList><record priref='{priref}'>"
+        payload_end = "</record></recordList></adlibXML>"
+        return payload + payload_mid + payload_end
+    else:
+        return payload_mid
 
 
 def get_fragments(obj):
@@ -449,7 +455,8 @@ def check_response(rec, api):
     actions. Initiate recycle
     '''
     failures = [
-        'A severe error occurred on the current command.'
+        'A severe error occurred on the current command.',
+        'Execution Timout Expired. The timeout period elapsed'
     ]
 
     for warning in failures:

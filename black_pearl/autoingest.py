@@ -153,7 +153,7 @@ def check_accepted_file_type(fpath):
     TAR accepted from DMS / ProRes all other paths
     '''
     if any(x in fpath for x in ['qnap_11', 'qnap_10']):
-        if fpath.endswith(('.tar', '.TAR')):
+        if fpath.endswith(('.tar', '.TAR', '.mkv', '.MKV')):
             return True
     if any(x in fpath for x in ['qnap_06', 'qnap_03']):
         if fpath.endswith(('.mkv', '.MKV', '.tar', '.TAR')):

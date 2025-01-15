@@ -6,46 +6,6 @@ Documents/ all actions are stored in ingest_check.log stored inside ingest_check
 
 This script is ran before running autoingest.py.
 
-main()
-
-1. checks if the correct amount of arguments is passed into the command line/crontab
-2. check if any of the system are down by looking into downtime_control.json
-3. goes through the ingest check folder
-  a. ignore all other folder such as checksum_folder and anything starting 
-     with ingest_xxxxx
-  b. goes through all the media files supplied in the ingest_check folder 
-     and checks if it doesnt start with .md5, .txt or .log
-  c. creates a dictonary(file_dict) where all the values are set to False 
-     and the key acts as the filepath to the media file,
-  d. use functon 'pygrep' that goes through the checksum folder to find 
-     any matching checksum or filename and get and store the line 
-     corresponding to the match as a tuple
-  e. if there's a mismatch between the locally generated and the supplier's 
-     checksum value/hash_number or the checksum is the same but doesnt have the correct file name, 
-     the values are amended to reflect the change
-  f. creates a new dictonary(file_results) where it would store the key as the 
-     path to the folders inside ingest_check and the value containing the file inside the folder 
-     to maintain the file structure. This is done using the function finding_file_structure
-  g. goes through each value inside file_results
-     a. if the first element in the tuple is set to False, move the file into the ingest_failed
-     b. if the tuple contains 'missmatch.....', the file is  move to ingest_partial
-     c. if a tuple contain a true, the file is moved to ingest_match
-     note: if these files resides in the folder, then it creates a folder 
-     (inside folder starting with ingest_xxxx) with the same name 
-     and input the file into that folder, 
-     you will have folders with the same name into different ingest folders. 
-     This is dealt with later. the folders inside ingest_check are then removed.
-4. the script then checks if there's mutiple folders with the same name in
-   multiple ingest_xxxxx folders. 
-   If found the results are stored into a set based on these scenatios:
-  a. folders with the same name can be found in ingest_match and ingest_failed
-  b. folders with the same name can be found in ingest_match and ingest_partial
-  c. folders with the same name can be found in ingest_partial and ingest_failed
-5. if the scenario falls into 4a or 4c, then the entire folder is moved to ingest_failed, 
-   the folder inside the source folder is removed
-6. if the scenario falls into 4b, then the entire folder is moved into ingest_partial. 
-   The folder inside the source folder is removed
-
 """
 
 import os
@@ -71,19 +31,36 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 IGNORED_EXTENSION = {".ini", ".DS_Store", ".mhl", ".tmp", ".dpx", ".DPX", ".log"}
+LOGGED_MESSAGES = set()
 
 
 def move_files(from_file, to_file):
     """
-    move files to folder
+    move files to folder from source to destination directory
 
+    Parameters:
+    -----------
+        from_file: string
+            source of the file
+
+        to_file: string
+            destination of the file
+
+    Raises:
+    -------
+        FileNotFoundError: if file does not exists
+        IOError: general input/output errors during file operations
+
+    Returns:
+    --------
+    str: a string is outputted if the file has been moved or not
     """
     try:
         if not os.path.exists(from_file):
             LOGGER.info(
                 "Potential error: Source file does not exists / the file has already been moved"
             )
-            return ""
+            return "Potential error: Source file does not exists / the file has already been moved"
 
         destination_dir = os.path.dirname(to_file)
 
@@ -103,9 +80,31 @@ def move_files(from_file, to_file):
         LOGGER.warning(f"Error: {e}")
         return "file doesnt exists"
 
+    return "process complete"
+
 
 def move_file_based_on_file_structure(filepath, file, move_to_files):
+    """
+    moves the files to the destination directory, perserving the relative file structure.
 
+    if the file  is nested in subdirectories, this function ensures that
+    the destination directory maintain the same subdirectory structure as the source
+    and remove the empty folders
+
+    Parameters:
+    -----------
+       filepath: str
+         the full path to the media file
+
+      file: str
+        media file e.g: N_1234_567.mkv or spirited_away.mkv
+
+      move_to_files: str
+          destination directory to move folder/file to
+    Returns:
+    --------
+    None
+    """
     path = Path(file).relative_to(filepath)
     destination_file = ""
 
@@ -125,6 +124,23 @@ def move_file_based_on_file_structure(filepath, file, move_to_files):
 
 
 def clean_up_empty_directory(filepath, path):
+    """
+    This function remove all empty directory after the file has been moved
+
+    Parameters:
+    -----------
+       filepath: str
+         the full path to the media file
+
+       path: str
+         the media file path
+
+
+    Returns:
+    --------
+    None
+
+    """
 
     current_path = Path(filepath) / path.parent
     while current_path != Path(filepath):
@@ -142,12 +158,32 @@ def clean_up_empty_directory(filepath, path):
 
 def finding_file_structure(file_dict):
     """
-    This function returns a dictonary containing the folder as well as the files inside the folders , retaining the file structure
+    This function returns a dictonary containing the folder as well as
+    the files inside the folders , retaining the file structure
+
+
+    Parameters:
+    ----------
+       file_dict: dictonary
+          the dictonary containing the media's full file path and tuple containing
+          if the checksum matches or not, with the corresponding line in the
+          checksum file (in checksum folder) and the checksum file full path
+
+
+    Returns:
+    --------
+       folder_file_struct: dict
+           dictonary containing the directory name of the file
+           as the key and all the files inside that directory
+           as the value
+
+
     """
     folder_file_struct = {}
     for file, value in file_dict.items():
         folder_path = os.path.dirname(file)
-        # check if the folder path is either checksum_folder, ingest_full_match, ingest... and etc ingest_check.log
+        # check if the folder path is either checksum_folder,
+        # ingest_full_match, ingest... and etc ingest_check.log
         if (
             "checksum_folder" in folder_path
             or "ingest_full_match" in folder_path
@@ -158,16 +194,60 @@ def finding_file_structure(file_dict):
         if folder_path not in folder_file_struct:
             folder_file_struct[folder_path] = []
         folder_file_struct[folder_path].append((file, value))
-
     return folder_file_struct
 
 
 def normalised_file(path):
+    """
+    replace the path that has \\ to / in order for the file to be processed.
+
+
+    Parameter:
+    ---------
+      path: str
+         path containing \\ to represent directory?
+
+    Return:
+    -------
+      path: str
+        the new path
+    """
 
     return path.replace("\\", "/")
 
 
 def process_file_for_match(filepath, hash_number, file_name):
+    """
+    Based on the filename or checksum, this function will find either inside 
+    the checksum folder and returns a tuple containing the line in 
+    checksum file, the checkusm file path and bool
+
+
+    Parameters:
+    ----------
+     filepath: str
+       the checksum filepath (in the checksum folder)
+
+     hash_number: str
+       the checksum value
+
+     file_name: str
+       the media filepath
+
+
+    Raises:
+    -------
+     FileNotFoundError: if the file is not found
+     IOError: general input/output errors during file operation
+     Exception : for general exception
+
+
+    Returns:
+    -------
+       lists_of_files: list
+          contain the list of tuples containing matches found inside checksum file
+    """
+
     lists_of_files = []
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -197,21 +277,24 @@ def process_file_for_match(filepath, hash_number, file_name):
 
 def pygrep(folder_name, hash_value, file_name):
     """
-    This function represent the python version of the linux command 'grep'
+     This function represent the python version of the linux command 'grep'
 
-    Parameters:
-    -----------
+     Parameters:
+     -----------
 
-    folder_name: string
-        the folder path to the checksum value.
+     folder_name: string
+         the folder path to the checksum value.
 
-    hash_value: string
-        the hash value from the hash function
+     hash_value: string
+         the hash value from the hash function
 
-    Returns:
-    --------
-    checker: (bool, result)
-        return true if the hash value is in the file with the corresponding line in the file
+    file_name: string
+         the media filename to match
+
+     Returns:
+     --------
+     lists_of_files: list
+         return a list of file matches
 
     """
     lists_of_files = []
@@ -223,13 +306,43 @@ def pygrep(folder_name, hash_value, file_name):
                 lists_of_files.extend(
                     process_file_for_match(filepath, hash_value, file_name)
                 )
-            # print(lists_of_files)
 
     return lists_of_files
 
 
-def handle_different_file_matches(match, root, file, hash_number, filepath, file_dict):
-    """Handles logic if local checkusm matches with supplied checksum values"""
+def handle_different_file_matches(
+    match, root, file, hash_number, filepath, file_dict
+):
+    """
+    Handles logic to compare local checkusm matches with supplied checksum values
+
+    Parameters:
+    -----------
+
+       match: list
+            lists of file matches based on file_name or hash value/checksum value
+
+       root: str
+           root directory
+
+       hash_number: str
+             checksum value of the media file
+
+       filepath: str
+               path to the ingest_check.log
+
+       file_dict: dict
+             empty dict to store the results
+
+     Return:
+     -------
+
+       file_dict: dict
+             resulting dict storing the comparison outcome with the file path as the key
+             and the tuple containing the supplied checksum, document location and
+             status as the value
+
+    """
 
     if hash_number in str(match[0]) and file not in str(match[0]):
 
@@ -252,11 +365,11 @@ def handle_different_file_matches(match, root, file, hash_number, filepath, file
 
         local_log(
             filepath,
-            f"The filename matches but the local and suppiled checksum does not match for file: {file}!",
+            f"The filename matches but the local and suppiled checksum does not match for file: {file}!", 
         )
         local_log(
             filepath,
-            f"Supplied checksum: {str(match[0]).split()[0]} found in document: {str(match[0]).split()[-1]}, local checksum: {hash_number}",
+            f"Supplied checksum: {str(match[0]).split()[0]} found in document: {str(match[0]).split()[-1]}, local checksum: {hash_number}", 
         )
         local_log(filepath, f"Found in document: {(match[1])}")
 
@@ -268,7 +381,7 @@ def handle_different_file_matches(match, root, file, hash_number, filepath, file
 
     else:
 
-        if hash_number in str(match[0]) and file in str(match[0]):
+        if hash_number in str(match[0]).lower() and file in str(match[0]):
             local_log(filepath, f"Checksum matches for file: {file}")
             local_log(filepath, f"Local checksum: {hash_number}")
             local_log(
@@ -287,47 +400,76 @@ def handle_different_file_matches(match, root, file, hash_number, filepath, file
     return file_dict
 
 
-def move_file_based_on_outcome(filepath, file_result):
-    for _, results in file_result.items():
+def move_file_based_on_outcome(filepath, file_result, unique_message):
+    """
+    Moves file to specific directory based on the outcome of their checksum and
+    file validation results.
+
+    Parameters:
+    -----------
+      filepath: str
+          root directory (i.e ingest_check)
+
+
+      file_result: dict
+            dictonary containing the comparison outcome with the file path as the key
+            and the tuple containing the supplied checksum, document location and
+            status as the value
+
+    Return:
+    -------
+    None
+    """
+    processed_files = set()
+    for results in file_result.values():
         for result in results:
-            if result[-1] is False:
+            file_path, checksum_val = result[0], result[1]
+
+            if file_path in processed_files:
+                continue
+            #print("\n")
+            #print(len(result))
+            #print(result[0][1])
+            #sys.exit()
+
+            if checksum_val[-1] is False:
                 move_file_based_on_file_structure(
-                    filepath, result[0], f"{filepath}/ingest_failed"
+                    filepath, file_path, f"{filepath}/ingest_failed"
                 )
                 local_log(
                     filepath,
-                    "Checks completed, Moving file: {result} to ingest_failed",
+                    "Checks completed, Moving file: {file_path} to ingest_failed", 
                 )
                 local_log(
                     filepath,
                     "------------------------------------------------------------------",
                 )
-            elif result[1][-1] == "Miss match, same file but not the same checksum":
+            elif checksum_val[-1] == "Miss match, same file but not the same checksum":
                 LOGGER.info(
-                    f"==== theres a missmatch between the file name, two or more file has the same checksum value: {result}"
+                    f"==== theres a missmatch between the file name, two or more file has the same checksum value: {file_path, checksum_val}"
                 )
-                local_log(
+                unique_message = local_log(
                     filepath,
-                    f"Checks completed, moving file: {result[0]} to ingest_partial",
+                    f"Checks completed, moving file: {file_path} to ingest_partial", 
                 )
                 move_file_based_on_file_structure(
-                    filepath, result[0], f"{filepath}/ingest_partial/"
+                    filepath, file_path, f"{filepath}/ingest_partial/"
                 )
                 local_log(
                     filepath,
                     "------------------------------------------------------------------",
                 )
 
-            elif result[1][-1] == "Miss match, same checksum not the same file":
+            elif checksum_val[-1] == "Miss match, same checksum not the same file":
                 LOGGER.info(
-                    f"==== theres a missmatch, same checksum not the same file: {result}"
+                    f"==== theres a missmatch, same checksum not the same file: {file_path, checksum_val}"
                 )
-                local_log(
+                unique_message = local_log(
                     filepath,
-                    f"Checks completed, moving file: {result[0]} to ingest_partial",
+                    f"Checks completed, moving file: {file_path} to ingest_partial", 
                 )
                 move_file_based_on_file_structure(
-                    filepath, result[0], f"{filepath}/ingest_partial/"
+                    filepath, file_path, f"{filepath}/ingest_partial/"
                 )
                 local_log(
                     filepath,
@@ -338,26 +480,48 @@ def move_file_based_on_outcome(filepath, file_result):
                     "=======local and supplied md5 file are the same============"
                 )
                 move_file_based_on_file_structure(
-                    filepath, result[0], f"{filepath}/ingest_match/"
+                    filepath, file_path, f"{filepath}/ingest_match/"
+                )
+                unique_message = local_log(
+                    filepath,
+                    f"Checks completed, Moving file: {file_path} to ingest_match, perserving the file structure",
+                    
                 )
                 local_log(
                     filepath,
-                    f"Checks completed, Moving file: {result[0]} to ingest_match, perserving the file structure",
-                )
-                local_log(
-                    filepath,
-                    "------------------------------------------------------------------",
+                    "------------------------------------------------------------------", 
                 )
 
+            processed_files.add(file_path)
 
-def local_log(full_path, data, unique_message=None):
 
-    unique_message = unique_message or set()
+def local_log(full_path, data):
+    """
+    Writes to local logs found in ingest_check folder, ensures that no duplicate messages are logged within the same session
 
-    if data in unique_message:
-        return unique_messages
+    Parameters:
+    ----------
+      fullpath: str
+         fullpath to local logs (ingest_check.log)
 
-    unique_message.add(data)
+      data: str
+         the message to be logged
+
+      unique_message: set() | None
+         A set of unique messages that have already been logged in current session
+         if not, a new set os initalised.
+
+    Returns:
+    -------
+    None | unique_message
+    """
+
+    global LOGGED_MESSAGES
+
+    if data in LOGGED_MESSAGES or data != "------------------------------------------------------------------":
+        return 
+
+    LOGGED_MESSAGES.add(data)
 
     local_log_path = os.path.join(full_path, "ingest_check.log")
     timestamp = str(datetime.datetime.now())
@@ -370,13 +534,33 @@ def local_log(full_path, data, unique_message=None):
         log_file.write(f"{data} - {timestamp[0:19]}\n")
         log_file.close()
 
-    # return unique_message | {data}
+    #return unique_message
 
 
 def rearrange_common_folders(common_folder, src_path, des_path):
+    """
+    Based on common folders found, this function will move all contents from source to destination directory,
+    maintain the file structure and remove empty directories
 
+    Parameters:
+    ----------
+
+      common_folder: set
+         unique list of folder found in more than one ingest_xxxx location
+
+      src_path: str
+         source path
+
+      des_path: str
+        destination path
+
+
+    Returns
+    -------
+    None
+    """
     LOGGER.info(
-        f"moving folder {src_path} to {des_path} as there's a common folder in both source and destination path"
+        f"moving folder {src_path} to {des_path} as there's a common folder in both source and destination path", 
     )
     for folder in common_folder:
         shutil.copytree(
@@ -400,6 +584,7 @@ def main():
     # the file path should refer to the ingest_check folder found in any qnap folders
     filepath = os.path.join(sys.argv[1], "Acquisitions/ingest_check")
     file_dict = {}
+    unique_message = set()
 
     # seperate file from folder, dont process folders,full matrch partial match and no match
     LOGGER.info(
@@ -407,7 +592,7 @@ def main():
     )
     local_log(
         filepath,
-        "======================Starting pre autoingest checks====================================",
+        "======================Starting pre autoingest checks===================================="
     )
 
     LOGGER.info("Generating local hash file, starting checksum validation process")
@@ -462,7 +647,7 @@ def main():
                 # location of the checksum value and if its a mismatch, full match or no match
                 file_result = finding_file_structure(file_dict)
                 print(file_result)
-                move_file_based_on_outcome(filepath, file_result)
+                move_file_based_on_outcome(filepath, file_result, unique_message)
 
     local_log(
         filepath,
@@ -505,7 +690,7 @@ def main():
         )
         local_log(
             filepath,
-            f"Common folders: {common_folder_in_failed_match} found!!! Moving folder contents to ingest_failed, keeping the file structure",
+            f"Common folders: {common_folder_in_failed_match} found!!! Moving folder contents to ingest_failed, keeping the file structure"
         )
 
     if common_folder_in_partial_match:
@@ -516,7 +701,7 @@ def main():
         )
         local_log(
             filepath,
-            f"Common folders: {common_folder_in_partial_match} found!!! Moving folder contents to ingest_partial, keeping the file structure",
+            f"Common folders: {common_folder_in_partial_match} found!!! Moving folder contents to ingest_partial, keeping the file structure"
         )
 
     LOGGER.info(

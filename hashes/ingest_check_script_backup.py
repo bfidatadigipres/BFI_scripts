@@ -15,15 +15,15 @@ import logging
 import datetime
 
 # Local import
-sys.path.append(os.environ["CODE"])
+sys.path.append(os.environ['CODE'])
 import utils
 
 # Global vars
 LOG_PATH = os.environ["LOG_PATH"]
 
 # Set up logging
-LOGGER = logging.getLogger("pre_autoingest_checksum_checks")
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, "pre_autoingest_checksum_checks.log"))
+LOGGER = logging.getLogger("pre_autoingest_checksum_checks_backup")
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, "ingest_check_script_backup.log"))
 FORMATTER = logging.Formatter("%(asctime)s \t %(levelname)s \t %(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -39,7 +39,7 @@ IGNORE_FOLDERS = {
 
 def read_doc_for_match(filepath, hash_number) -> list:
     """
-    Opens and reads checksum filepath supplied, uses hash to read 
+    Opens and reads checksum filepath supplied, uses hash to read
     all lines checking for match forced to anycase. Where found
     return list with full checksum line, checksum file path, True bool
     """
@@ -47,7 +47,6 @@ def read_doc_for_match(filepath, hash_number) -> list:
     match_list = []
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f.readlines():
-            # print(line)
             normalised_line = line.replace("\\", "/").rstrip('\n')
             if hash_number in normalised_line.upper():
                 print(hash_number, f" match found: {normalised_line}")
@@ -82,8 +81,8 @@ def local_log(full_path, data) -> None:
     local_log_path = os.path.join(full_path, "ingest_check.log")
     timestamp = str(datetime.datetime.now())
 
-    with open(local_log_path, "a+", encoding="utf-8") as log_file:
-        log_file.write(f"{data} - {timestamp[0:19]}\n")
+    with open(local_log_path, "a", encoding="utf-8") as log_file:
+        log_file.write(f"{timestamp[0:19]} - {data}\n")
         log_file.close()
 
 
@@ -94,6 +93,7 @@ def make_folder_inventory(dpath, filepath) -> dict:
     '''
     inventory = {}
     local_log(filepath, f"Processing files within folder {os.path.relpath(dpath, filepath)}:")
+    LOGGER.info("Processing files in folder %s:", os.path.relpath(dpath, filepath)
     for root, _, files in os.walk(dpath):
         for file in files:
             fpath = os.path.join(root, file)
@@ -101,6 +101,7 @@ def make_folder_inventory(dpath, filepath) -> dict:
             hash_number = utils.create_md5_65536(fpath)
             matching = pygrep(os.path.join(filepath, 'checksum_folder'), hash_number.upper())
             inventory[f"{file_relpath} - {hash_number}"] = matching
+            LOGGER.info("%s:\n - Local MD5: %s\n - Source checksum match: %s", file_relpath, hash_number, ' / '.join(matching))
             local_log(filepath, f"- {file_relpath}\n   - Local MD5: {hash_number}\n   - Source checksum matches: {' / '.join(matching)}")
 
     return inventory
@@ -125,11 +126,13 @@ def main() -> None:
     LOGGER.info("Starting checksum validation process")
     print(filepath)
 
-    file_list = [ x for x in os.listdir(filepath) if os.path.isfile(os.path.join(filepath, x) and x != 'ingest_check.log') ]
-    dir_list = [ x for x in os.listdir(filepath) if os.path.isdir(os.path.join(filepath, x) and x not in IGNORE_FOLDERS) ]
+    file_list = [ x for x in os.listdir(filepath) if os.path.isfile(os.path.join(filepath, x)) and x != 'ingest_check.log' ]
+    dir_list = [ x for x in os.listdir(filepath) if os.path.isdir(os.path.join(filepath, x)) and x not in IGNORE_FOLDERS ]
+
     if not file_list and not dir_list:
         sys.exit("No files/folders found for processing at this time.")
 
+    file_relpath = ''
     # Process files first, complex directories after
     LOGGER.info("======================Starting pre autoingest checks========================")
     local_log(filepath, "======================Starting pre autoingest checks===========================")
@@ -138,7 +141,7 @@ def main() -> None:
         file_relpath = os.path.relpath(fpath, filepath)
         if '.dstore' in file.lower():
             continue
-        local_log(filepath, f"** New file being processed: {file_relpath}")
+        local_log(filepath, f"*** New file being processed: {file_relpath}")
         LOGGER.info("File being processed: %s", file_relpath)
 
         # Make local hash for search
@@ -149,58 +152,58 @@ def main() -> None:
         # Assess file responses and move files accordingly
         if len(matching) == 0:
             LOGGER.warning("No checksum match made: %s. Moving to ingest_failed/", file)
-            local_log(filepath, " - No matching checksum found across checksum documentation")
-            local_log(filepath, f" - Local checksum generated: {hash_number.upper()}")
+            local_log(filepath, "\tNo matching checksum found across checksum documentation")
+            local_log(filepath, f"\tLocal checksum generated: {hash_number.upper()}")
             local_log(filepath, "Moving to ingest_failed/ folder")
             local_log(filepath, '--------------------------------------')
             shutil.move(fpath, os.path.join(filepath, f'ingest_failed/{file}'))
-            continue
         elif len(matching) == 1:
             LOGGER.info("Checksum match made for %s:\n%s", file, match)
             for match in matching:
                 checksum_line, checksum_match_path = match.split(',')
                 if file.upper() in checksum_line.upper():
-                    LOGGER.info("Checksum full match found in file: %s", checksum_match_path)        
-                    local_log(filepath, f"Match found in file: {checksum_match_path}\n - Source checksum file entry: {checksum_line}")
-                    move_path = 'ingest_match'  
+                    LOGGER.info("Checksum full match found in file: %s", checksum_match_path)
+                    local_log(filepath, f"Match found in file: {checksum_match_path}\n - Source checksum file entry: {checksum_line}\n - Local checksum generated: {hash_number.upper()}")
+                    move_path = 'ingest_match'
                 else:
-                    LOGGER.info("Checksum partial match found in file: %s", checksum_match_path)        
-                    local_log(filepath, f"Partial match found in file: {checksum_match_path}\n - Source checksum file entry: {checksum_line}")
+                    LOGGER.info("Checksum partial match found in file: %s", checksum_match_path)
+                    local_log(filepath, f"Partial match found in file: {checksum_match_path}\n - Source checksum file entry: {checksum_line}\n - Local checksum generated: {hash_number.upper()}")
                     move_path = 'ingest_partial'
-                local_log(filepath, f" - Local checksum generated: {hash_number.upper()}")
                 local_log(filepath, f"Moving to {move_path}/ folder")
                 local_log(filepath, '--------------------------------------')
                 shutil.move(fpath, os.path.join(filepath, move_path, file))
-        else:                       
+        else:
             LOGGER.info("Multiple checksum matches made for %s:\n%s", file, matching)
-            match_str = ''
+            match_str = []
             for match in matching:
                 checksum_line, checksum_match_path = match.split(',')
                 if file.upper() in checksum_line.upper():
-                    match_str = 'full match'
+                    match_str.append('full match')
                 else:
-                    match_str = 'partial match'
-            LOGGER.info("Checksum %s found in file: %s", match_str, checksum_match_path)        
-            local_log(filepath, f"{match_str.title()} found in file: {checksum_match_path}\nChecksum file entry: {checksum_line}")
-            local_log(filepath, f"Local checksum generated: {hash_number.upper()}")
+                    match_str.append('partial match')
+                LOGGER.info("Checksum %s found in file: %s", match_str, checksum_match_path)
+                local_log(filepath, f"{match_str.title()} found in file: {checksum_match_path}\n - Checksum file entry: {checksum_line}\n - Local checksum generated: {hash_number.upper()}")
 
-            if match_str == 'full match':
-                local_log(filepath, "Filename matched in checksum document. Moving to ingest_match/ folder")
+            if 'full match' in str(match_str):
+                local_log(filepath, "Filename matched in a checksum document. Moving to ingest_match/ folder")
+                local_log(filepath, "** Please investigate why this file has two checksum matches!")
                 local_log(filepath, '--------------------------------------')
                 LOGGER.info("Checksum match, filename match. Moving to ingest_match/")
                 shutil.move(fpath, os.path.join(filepath, f'ingest_match/{file}'))
             else:
                 local_log(filepath, "Filename not matched in checksum document. Moving to partial_match/ folder")
+                local_log(filepath, "** Please investigate why this file has two checksum matches!")
                 local_log(filepath, '--------------------------------------')
                 LOGGER.info("Checksum match, filename NO match. Moving to ingest_partial/")
-                shutil.move(fpath, os.path.join(filepath, f'ingest_partial/{file}'))             
+                shutil.move(fpath, os.path.join(filepath, f'ingest_partial/{file}'))
+        continue
 
     for directory in dir_list:
         dpath = os.path.join(filepath, directory)
         dir_relpath = os.path.relpath(dpath, filepath)
 
         local_log(filepath, f"** New complex folder being processed: {dir_relpath}")
-        LOGGER.info("** Folder being processed: %s", file_relpath)
+        LOGGER.info("*** New folder being processed: %s", file_relpath)
 
         # Make local hash for all files and update log
         hash_dict = make_folder_inventory(dpath, filepath)
@@ -234,7 +237,6 @@ def main() -> None:
             local_log(filepath, "Moving whole folder to ingest_failed/ folder for manual review")
             local_log(filepath, '--------------------------------------')
             shutil.move(dpath, os.path.join(filepath, f'ingest_failed/{directory}'))
-            continue
         elif partial_match is True:
             LOGGER.warning("One or more files in folder does not have clean match: %s", dir_relpath)
             LOGGER.info("File moved to: %s", os.path.join(filepath, 'ingest_partial'))
@@ -242,7 +244,6 @@ def main() -> None:
             local_log(filepath, "Moving whole folder to ingest_partial/ folder for manual review")
             local_log(filepath, '--------------------------------------')
             shutil.move(dpath, os.path.join(filepath, f'ingest_partial/{directory}'))
-            continue
         elif full_match is True:
             LOGGER.info("All files in folder have checksum and filename matched: %s", dir_relpath)
             LOGGER.info("File moved to: %s", os.path.join(filepath, 'ingest_match'))
@@ -250,7 +251,7 @@ def main() -> None:
             local_log(filepath, "Moving whole folder to ingest_match/")
             local_log(filepath, '--------------------------------------')
             shutil.move(dpath, os.path.join(filepath, f'ingest_match/{directory}'))
-            continue            
+        continue
 
     LOGGER.info(
         "======================pre autoingest checks End===================================="

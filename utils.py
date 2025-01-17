@@ -21,7 +21,7 @@ CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 
 
-PREFIX = [
+PREFIX = [c
     'N',
     'C',
     'PD',
@@ -69,7 +69,7 @@ ACCEPTED_EXT = [
 
 def accepted_file_type(ext):
     '''
-    Receive extension and return
+    Receive extension and returnc
     matching accepted file_type
     '''
     ftype = {'imp': 'mxf, xml',
@@ -243,7 +243,7 @@ def sort_ext(ext):
     mime_type = {'video': ['mxf', 'mkv', 'mov', 'wmv', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
-                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp', 'txt']}
+                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp', 'txt', 'ttf', 'rtf', 'csv', 'txt']}
 
     ext = ext.lower()
     for key, val in mime_type.items():

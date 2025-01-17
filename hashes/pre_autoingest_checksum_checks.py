@@ -6,46 +6,6 @@ Documents/ all actions are stored in ingest_check.log stored inside ingest_check
 
 This script is ran before running autoingest.py.
 
-main()
-
-1. checks if the correct amount of arguments is passed into the command line/crontab
-2. check if any of the system are down by looking into downtime_control.json
-3. goes through the ingest check folder
-  a. ignore all other folder such as checksum_folder and anything starting 
-     with ingest_xxxxx
-  b. goes through all the media files supplied in the ingest_check folder 
-     and checks if it doesnt start with .md5, .txt or .log
-  c. creates a dictonary(file_dict) where all the values are set to False 
-     and the key acts as the filepath to the media file,
-  d. use functon 'pygrep' that goes through the checksum folder to find 
-     any matching checksum or filename and get and store the line 
-     corresponding to the match as a tuple
-  e. if there's a mismatch between the locally generated and the supplier's 
-     checksum value/hash_number or the checksum is the same but doesnt have the correct file name, 
-     the values are amended to reflect the change
-  f. creates a new dictonary(file_results) where it would store the key as the 
-     path to the folders inside ingest_check and the value containing the file inside the folder 
-     to maintain the file structure. This is done using the function finding_file_structure
-  g. goes through each value inside file_results
-     a. if the first element in the tuple is set to False, move the file into the ingest_failed
-     b. if the tuple contains 'missmatch.....', the file is  move to ingest_partial
-     c. if a tuple contain a true, the file is moved to ingest_match
-     note: if these files resides in the folder, then it creates a folder 
-     (inside folder starting with ingest_xxxx) with the same name 
-     and input the file into that folder, 
-     you will have folders with the same name into different ingest folders. 
-     This is dealt with later. the folders inside ingest_check are then removed.
-4. the script then checks if there's mutiple folders with the same name in
-   multiple ingest_xxxxx folders. 
-   If found the results are stored into a set based on these scenatios:
-  a. folders with the same name can be found in ingest_match and ingest_failed
-  b. folders with the same name can be found in ingest_match and ingest_partial
-  c. folders with the same name can be found in ingest_partial and ingest_failed
-5. if the scenario falls into 4a or 4c, then the entire folder is moved to ingest_failed, 
-   the folder inside the source folder is removed
-6. if the scenario falls into 4b, then the entire folder is moved into ingest_partial. 
-   The folder inside the source folder is removed
-
 """
 
 import os
@@ -70,173 +30,125 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
+LOGGED_MESSAGES = set()
+
 IGNORED_EXTENSION = {".ini", ".DS_Store", ".mhl", ".tmp", ".dpx", ".DPX", ".log"}
+IGNORE_FOLDERS = {'checksum_folder', 'ingest_match' , 'ingest_failed', 'ingest_partial'}
 
 
-def move_files(from_file, to_file):
-    """
-    move files to folder
-
-    """
-    try:
-        if not os.path.exists(from_file):
-            LOGGER.info(
-                "Potential error: Source file does not exists / the file has already been moved"
-            )
-            return ""
-
-        destination_dir = os.path.dirname(to_file)
-
-        if not os.path.exists(destination_dir):
-            os.makedirs(destination_dir)
-
-        shutil.move(from_file, destination_dir)
-        LOGGER.info(
-            f"File successfully moved from source: {from_file} to destination: {to_file}"
-        )
-        return f"File successfully moved from source: {from_file} to destination: {to_file}"
-
-    except (FileNotFoundError, IOError) as e:
-        LOGGER.error(f"Error reading {from_file}: {e}")
-
-    except Exception as e:
-        LOGGER.warning(f"Error: {e}")
-        return "file doesnt exists"
-
-
-def move_file_based_on_file_structure(filepath, file, move_to_files):
-
-    path = Path(file).relative_to(filepath)
-    destination_file = ""
-
-    if len(path.parts) <= 1:
-        destination_file = Path(move_to_files) / path.name
-
-    else:
-        LOGGER.info(f"this file is a subdirectory: {file}")
-        sub_dir = Path(f"{move_to_files}") / path.parent
-        if not sub_dir.exists():
-            sub_dir.mkdir(parents=True, exist_ok=True)
-
-        destination_file = os.path.join(sub_dir, path.name)
-
-    move_files(file, destination_file)
-    clean_up_empty_directory(filepath, path)
-
-
-def clean_up_empty_directory(filepath, path):
-
-    current_path = Path(filepath) / path.parent
-    while current_path != Path(filepath):
-        if not current_path.exists():
-            break
-
-        if not os.listdir(current_path):
-            LOGGER.info(f"removing folder: {current_path}")
-            shutil.rmtree(current_path)
-        else:
-            break
-
-        current_path = current_path.parent
-
-
-def finding_file_structure(file_dict):
-    """
-    This function returns a dictonary containing the folder as well as the files inside the folders , retaining the file structure
-    """
-    folder_file_struct = {}
-    for file, value in file_dict.items():
-        folder_path = os.path.dirname(file)
-        # check if the folder path is either checksum_folder, ingest_full_match, ingest... and etc ingest_check.log
-        if (
-            "checksum_folder" in folder_path
-            or "ingest_full_match" in folder_path
-            or "ingest_failed" in folder_path
-            or "ingest_partial" in folder_path
-        ):
-            continue
-        if folder_path not in folder_file_struct:
-            folder_file_struct[folder_path] = []
-        folder_file_struct[folder_path].append((file, value))
-
-    return folder_file_struct
 
 
 def normalised_file(path):
+    """
+    replace the path that has \\ to / in order for the file to be processed.
+
+
+    Parameter:
+    ---------
+      path: str
+         path containing \\ to represent directory?
+
+    Return:
+    -------
+      path: str
+        the new path
+    """
 
     return path.replace("\\", "/")
 
 
 def process_file_for_match(filepath, hash_number, file_name):
+    """
+    Based on the filename or checksum, this function will find either inside
+    the checksum folder and returns a tuple containing the line in
+    checksum file, the checkusm file path and bool
+
+
+    Parameters:
+    ----------
+     filepath: str
+       the checksum filepath (in the checksum folder)
+
+     hash_number: str
+       the checksum value
+
+     file_name: str
+       the media filepath
+
+
+    Raises:
+    -------
+     FileNotFoundError: if the file is not found
+     IOError: general input/output errors during file operation
+     Exception : for general exception
+
+
+    Returns:
+    -------
+       lists_of_files: list
+          contain the list of tuples containing matches found inside checksum file
+    """
+
     lists_of_files = []
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             for line in f:
                 # print(line)
-                normalised_path = normalised_file(line)
+                normalised_line = normalised_file(line)
                 if (
-                    re.search(hash_number, normalised_path, re.IGNORECASE)
-                    or file_name in normalised_path
+                    re.search(hash_number.lower(), normalised_line, re.IGNORECASE)
+                    or file_name in normalised_line
                 ):
                     print(hash_number, " found")
-                    lists_of_files.append(
-                        (
-                            normalised_path,
-                            filepath,
-                            True,
-                        )
-                    )
-
+                    lists_of_files.append(f"{normalised_line}, {filepath}")
     except (FileNotFoundError, IOError) as e:
         LOGGER.error(f"Error reading {filepath}: {e}")
     except Exception as e:
         LOGGER.error(f"Unexpected error processing {filepath}: {e}")
-
     return lists_of_files
 
 
-def pygrep(folder_name, hash_value, file_name):
+def pygrep(checksum_folder, hash_value, file_name):
     """
-    This function represent the python version of the linux command 'grep'
+     This function represent the python version of the linux command 'grep'
 
-    Parameters:
-    -----------
+     Parameters:
+     -----------
 
-    folder_name: string
-        the folder path to the checksum value.
+     folder_name: string
+         the folder path to the checksum value.
 
-    hash_value: string
-        the hash value from the hash function
+     hash_value: string
+         the hash value from the hash function
 
-    Returns:
-    --------
-    checker: (bool, result)
-        return true if the hash value is in the file with the corresponding line in the file
+    file_name: string
+         the media filename to match
+
+     Returns:
+     --------
+     lists_of_files: list
+         return a list of file matches
 
     """
     lists_of_files = []
-    for root, _, files in os.walk(folder_name):
-        for file in files:
-            if not file.endswith(tuple(IGNORED_EXTENSION)):
-                filepath = os.path.join(root, file)
-                print(filepath)
-                lists_of_files.extend(
-                    process_file_for_match(filepath, hash_value, file_name)
-                )
-            # print(lists_of_files)
-
+    for checksum_file in os.listdir(checksum_folder):
+       # if not checksum_file.endswith(tuple(IGNORED_EXTENSION)):
+         print(checksum_file)
+         filepath = os.path.join(checksum_folder, checksum_file)
+         print(filepath)
+         lists_of_files.extend(process_file_for_match(filepath, hash_value, file_name))
+         print(lists_of_files)
     return lists_of_files
-
 
 def handle_different_file_matches(match, root, file, hash_number, filepath, file_dict):
     """Handles logic if local checkusm matches with supplied checksum values"""
+    doc_location = str(match).split(',')[-1]
+    supplied_checksum = str(match).split(",")[0].split(' ')[0]
 
-    if hash_number in str(match[0]) and file not in str(match[0]):
+    if hash_number in str(match) and file not in str(match):
 
         file_dict[os.path.join(root, file)] = (
-            match[0],
-            match[1],
-            "Miss match, same checksum not the same file",
+            match
         )
         local_log(
             filepath,
@@ -244,11 +156,12 @@ def handle_different_file_matches(match, root, file, hash_number, filepath, file
         )
         local_log(
             filepath,
-            f"Supplied checksum: {str(match[0]).split()[0]}, local checksum: {hash_number} the file found in checksum file: {str(match[0].split()[-1])}",
+            f"Supplied checksum: {supplied_checksum}, local checksum: {hash_number} the file found in checksum file: {doc_location}",
         )
-        local_log(filepath, f"Found in document: {(match[1])}")
+        local_log(filepath, f"Found in document: {doc_location}")
+        local_log(filepath, '--------------------------------------')
 
-    elif file in str(match[0]) and hash_number not in str(match[0]).lower():
+    elif file in str(match) and hash_number not in str(match).lower():
 
         local_log(
             filepath,
@@ -256,108 +169,164 @@ def handle_different_file_matches(match, root, file, hash_number, filepath, file
         )
         local_log(
             filepath,
-            f"Supplied checksum: {str(match[0]).split()[0]} found in document: {str(match[0]).split()[-1]}, local checksum: {hash_number}",
+            f"Supplied checksum: {supplied_checksum} found in document: {doc_location}, local checksum: {hash_number}",
         )
-        local_log(filepath, f"Found in document: {(match[1])}")
+        local_log(filepath, f"Found in document: {doc_location}")
 
         file_dict[os.path.join(root, file)] = (
-            match[0],
-            match[1],
-            "Miss match, same file but not the same checksum",
+            match
         )
+        local_log(filepath, '--------------------------------------')
 
     else:
-
-        if hash_number in str(match[0]) and file in str(match[0]):
+        print(f"hash: {hash_number in str(match).lower()}")
+        print(f"file: {file in str(match)}")
+        print(f"line: {str(match)}")
+        doc_location = str(match).split(',')[-1]
+        supplied_checksum = str(match).split(",")[0].split(' ')[0]
+        if hash_number in str(match).lower() and file in str(match):
             local_log(filepath, f"Checksum matches for file: {file}")
             local_log(filepath, f"Local checksum: {hash_number}")
-            local_log(
-                filepath,
-                f"Supplied checksum: {str(match[0]).split()[0]}, Found in document: {match[1]}",
-            )
+            local_log(filepath, f"Supplied checksum: {supplied_checksum}, Found in document: {doc_location}")
+            local_log(filepath, '--------------------------------------')
         else:
             local_log(
                 filepath,
                 f"Checksum is not found for file: {file}",
             )
             local_log(filepath, f"Local checksum: {hash_number}")
-
+            local_log(filepath, '--------------------------------------')
         file_dict[os.path.join(root, file)] = match
 
     return file_dict
 
+def move_file_based_on_outcome(filepath, dpath, dir, no_match, partial_match, full_match):
+    """
+    Moves file to specific directory based on the outcome of their checksum and
+    file validation results.
 
-def move_file_based_on_outcome(filepath, file_result):
-    for _, results in file_result.items():
-        for result in results:
-            if result[-1] is False:
-                move_file_based_on_file_structure(
-                    filepath, result[0], f"{filepath}/ingest_failed"
-                )
-                local_log(
-                    filepath,
-                    "Checks completed, Moving file: {result} to ingest_failed",
-                )
-                local_log(
-                    filepath,
-                    "------------------------------------------------------------------",
-                )
-            elif result[1][-1] == "Miss match, same file but not the same checksum":
-                LOGGER.info(
-                    f"==== theres a missmatch between the file name, two or more file has the same checksum value: {result}"
-                )
-                local_log(
-                    filepath,
-                    f"Checks completed, moving file: {result[0]} to ingest_partial",
-                )
-                move_file_based_on_file_structure(
-                    filepath, result[0], f"{filepath}/ingest_partial/"
-                )
-                local_log(
-                    filepath,
-                    "------------------------------------------------------------------",
-                )
+    Return:
+    -------
+    None
+    """
 
-            elif result[1][-1] == "Miss match, same checksum not the same file":
-                LOGGER.info(
-                    f"==== theres a missmatch, same checksum not the same file: {result}"
-                )
-                local_log(
-                    filepath,
-                    f"Checks completed, moving file: {result[0]} to ingest_partial",
-                )
-                move_file_based_on_file_structure(
-                    filepath, result[0], f"{filepath}/ingest_partial/"
-                )
-                local_log(
-                    filepath,
-                    "------------------------------------------------------------------",
-                )
-            else:
-                LOGGER.info(
-                    "=======local and supplied md5 file are the same============"
-                )
-                move_file_based_on_file_structure(
-                    filepath, result[0], f"{filepath}/ingest_match/"
-                )
-                local_log(
-                    filepath,
-                    f"Checks completed, Moving file: {result[0]} to ingest_match, perserving the file structure",
-                )
-                local_log(
-                    filepath,
-                    "------------------------------------------------------------------",
-                )
+    if dir:
+        if no_match is True:
+                LOGGER.warning("One or more files in folder does not have checksum match made: %s", dpath)
+                LOGGER.info("File moved to: %s", os.path.join(filepath, 'ingest_failed'))
+                local_log(filepath, f"Please see notes above. Not all files have matching checksums for {dpath}")
+                local_log(filepath, "Moving whole folder to ingest_failed/ folder for manual review")
+                local_log(filepath, '--------------------------------------')
+                shutil.move(dpath, os.path.join(filepath, f'ingest_failed/{dir}'))
+        elif partial_match is True:
+                LOGGER.warning("One or more files in folder does not have clean match: %s", dpath)
+                LOGGER.info("File moved to: %s", os.path.join(filepath, 'ingest_partial'))
+                local_log(filepath, f"Please see notes above. Not all files have cleanly matching checksums for {dpath}")
+                local_log(filepath, "Moving whole folder to ingest_partial/ folder for manual review")
+                local_log(filepath, '--------------------------------------')
+                shutil.move(dpath, os.path.join(filepath, f'ingest_partial/{dir}'))
+        elif full_match is True:
+                LOGGER.info("All files in folder have checksum and filename matched: %s", dpath)
+                LOGGER.info("File moved to: %s", os.path.join(filepath, 'ingest_match'))
+                local_log(filepath, f"All files have matching checksums and filenames for {dpath}")
+                local_log(filepath, "Moving whole folder to ingest_match/")
+                local_log(filepath, '--------------------------------------')
+                shutil.move(dpath, os.path.join(filepath, f'ingest_match/{dir}'))
+
+        return "dir moved"
+    else:
+        if no_match is True:
+                LOGGER.warning("This file doesn't have a checksum match: %s", dpath)
+                LOGGER.info('File moved to: %s', os.path.join(filepath, 'ingest_failed'))
+                local_log(filepath, f"Please see notes above. Not all files have matching checksums for {dpath}")
+                local_log(filepath, "Moving whole folder to ingest_failed/ folder for manual review")
+                local_log(filepath, '--------------------------------------')
+                shutil.move(dpath,  os.path.join(filepath, f'ingest_failed/'))
+
+        elif partial_match is True:
+                LOGGER.warning("One or more files in folder does not have clean match: %s", dpath)
+                LOGGER.info("File moved to: %s", os.path.join(filepath, 'ingest_partial'))
+                local_log(filepath, f"Please see notes above. Not all files have cleanly matching checksums for {dpath}")
+                local_log(filepath, "Moving whole folder to ingest_partial/ folder for manual review")
+                local_log(filepath, '--------------------------------------')
+                shutil.move(dpath, os.path.join(filepath, f'ingest_partial/'))
+
+        else:
+                LOGGER.info("All files in folder have checksum and filename matched: %s", dpath)
+                LOGGER.info("File moved to: %s", os.path.join(filepath, 'ingest_match'))
+                local_log(filepath, f"All files have matching checksums and filenames for {dpath}")
+                local_log(filepath, "Moving whole folder to ingest_match/")
+                local_log(filepath, '--------------------------------------')
+                shutil.move(dpath, os.path.join(filepath, f'ingest_match/'))
+        return "move file"
 
 
-def local_log(full_path, data, unique_message=None):
+def file_to_checksum_retrival(filepath, ignore_folders):
 
-    unique_message = unique_message or set()
+    file_dict = {}
 
-    if data in unique_message:
-        return unique_messages
+    for root, dirs, files in os.walk(filepath):
+        # for each file, generate a local checksum, checks if the local checksum value is found in the 'checksum folder'
+        # using the function pygrep
 
-    unique_message.add(data)
+        dirs[:] = [d for d in dirs if d not in ignore_folders]
+        print(dirs)
+
+        for file in files:
+            if os.path.isfile(os.path.join(root, file)) and not file.endswith(
+                (".log", ".txt", ".md5", ".swp")
+            ):
+                local_log(
+                    filepath,
+                    f"New file/folder being processed: {os.path.join(root, file)}",
+                )
+                file_dict[os.path.join(root, file)] = False
+                hash_number = utils.create_md5_65536(os.path.join(root, file))
+
+                #checksum_path = os.path.join(CHECKSUM_PATH, f"{file}.md5")
+                print(hash_number.upper(), os.path.join(root, file))
+
+                #utils.checksum_write(checksum_path, hash_number, filepath, file)
+
+                matching = pygrep(
+                    f"{filepath}/checksum_folder",
+                    hash_number.upper(),
+                    os.path.join(root, file),
+                )
+                print(matching)
+
+                # for each outcome, amend the key value in file_dict
+                
+                for match in matching:
+#
+                     file_dict = handle_different_file_matches(
+                       match, root, file, hash_number, filepath, file_dict
+                   )
+
+
+    return file_dict
+
+
+def local_log(full_path, data):
+    """
+    Writes to local logs found in ingest_check folder, ensures that no duplicate messages are logged within the same session
+
+    Parameters:
+    ----------
+      fullpath: str
+         fullpath to local logs (ingest_check.log)
+
+      data: str
+         the message to be logged
+
+      unique_message: set() | None
+         A set of unique messages that have already been logged in current session
+         if not, a new set os initalised.
+
+    Returns:
+    -------
+    None | unique_message
+    """
 
     local_log_path = os.path.join(full_path, "ingest_check.log")
     timestamp = str(datetime.datetime.now())
@@ -370,22 +339,7 @@ def local_log(full_path, data, unique_message=None):
         log_file.write(f"{data} - {timestamp[0:19]}\n")
         log_file.close()
 
-    # return unique_message | {data}
-
-
-def rearrange_common_folders(common_folder, src_path, des_path):
-
-    LOGGER.info(
-        f"moving folder {src_path} to {des_path} as there's a common folder in both source and destination path"
-    )
-    for folder in common_folder:
-        shutil.copytree(
-            f"{src_path}/{folder}", f"{des_path}/{folder}", dirs_exist_ok=True
-        )
-        shutil.rmtree(f"{src_path}/{folder}")
-    LOGGER.info(
-        f"moving folder {src_path} to {des_path}, moving the folder is now complete"
-    )
+    # return unique_message
 
 
 def main():
@@ -419,113 +373,84 @@ def main():
         "ingest_partial",
     }
 
-    for root, dirs, files in os.walk(filepath):
-        # for each file, generate a local checksum, checks if the local checksum value is found in the 'checksum folder'
-        # using the function pygrep
+    file_list = [ x for x in os.listdir(filepath) if os.path.isfile(os.path.join(filepath, x)) and not x.endswith((".log", ".txt", ".md5", ".swp")) ]
+    dir_list = [ x for x in os.listdir(filepath) if os.path.isdir(os.path.join(filepath, x)) and x not in ignore_folders ]
 
-        dirs[:] = [d for d in dirs if d not in ignore_folders]
-        print(dirs)
+    print(file_list)
+    print(dir_list)
 
-        for file in files:
-            if os.path.isfile(os.path.join(root, file)) and not file.endswith(
-                (".log", ".txt", ".md5", ".swp")
-            ):
-                local_log(
-                    filepath,
-                    f"New file/folder being processed: {os.path.join(root, file)}",
-                )
-                file_dict[os.path.join(root, file)] = False
-                hash_number = utils.create_md5_65536(os.path.join(root, file))
+    for dir in dir_list:
+ 
+        full_dir_path_to_examine = os.path.relpath(os.path.join(filepath, dir))
+        local_log(filepath, f'processing file: {full_dir_path_to_examine}')
+        file_dict = file_to_checksum_retrival(filepath, ignore_folders)
+        print(file_dict)
 
-                checksum_path = os.path.join(CHECKSUM_PATH, f"{file}.md5")
-                print(hash_number.upper(), os.path.join(root, file))
 
-                utils.checksum_write(checksum_path, hash_number, filepath, file)
+        result = []
+        partial_match = full_match = no_match = False
+        for key, value in file_dict.items():
+            # get file path
+              file = key.split("ingest_check/")[-1]
+              hash_number = utils.create_md5_65536(key)
+              print(hash_number)
+              if value is False:
+                  local_log(filepath, f"{key}: {value}")
+                  no_match = True
 
-                matching = pygrep(
-                    f"{filepath}/checksum_folder",
-                    hash_number.upper(),
-                    os.path.join(root, file),
-                )
-                # print(matching)
+              else:
+                  result = value.split(",")[0]
+                  checksum_found =  value.split(",")[-1]
+                  print(f"result: {result}, checksum_found")
 
-                # for each outcome, amend the key value in file_dict
-                for match in matching:
 
-                    file_dict = handle_different_file_matches(
-                        match, root, file, hash_number, filepath, file_dict
-                    )
+              if (file in result and hash_number not in result) or (hash_number in result and file not in result):
+                       partial_match = True
 
-                print(file_dict)
+              else:
+                       full_match = True
 
+        move_file_based_on_outcome(filepath, full_dir_path_to_examine, dir, no_match, partial_match, full_match)
+
+
+
+    for file in file_list:
+         dir = None
+         full_file_path_to_examine = os.path.relpath(os.path.join(filepath, file))
+         local_log(filepath, f'processing file: {full_file_path_to_examine}')
+         file_dict = file_to_checksum_retrival(filepath, ignore_folders)
+         print(file_dict)
+         result = []
+         partial_match = full_match = no_match = False
+         for key, value in file_dict.items():
+               # get file path
+              file = key.split("ingest_check/")[-1]
+              hash_number = utils.create_md5_65536(key)
+              print(hash_number)
+              if value is False:
+                  no_match = True
+
+              else:
+                  result = value.split(",")[0]
+                  checksum_found =  value.split(",")[-1]
+                  print(result, checksum_found)
+
+              if (file in result and hash_number not in result) or (hash_number in result and file not in result):
+                 partial_match = True
+
+              else:
+                 full_match = True
+
+
+         move_file_based_on_outcome(filepath, full_file_path_to_examine, dir, no_match, partial_match, full_match)
+
+'''
                 # generate a dictonary containing the file structure as well as the file and the tuple containing the the hash value,
                 # location of the checksum value and if its a mismatch, full match or no match
                 file_result = finding_file_structure(file_dict)
                 print(file_result)
                 move_file_based_on_outcome(filepath, file_result)
-
-    local_log(
-        filepath,
-        "Checking if the same folder can be found in multiple ingest folders",
-    )
-    list_of_failed_dirs = os.listdir(f"{filepath}/ingest_failed")
-    list_of_partial_dirs = os.listdir(f"{filepath}/ingest_partial")
-    list_of_match_dirs = os.listdir(f"{filepath}/ingest_match")
-
-    common_folder_in_failed_partial = set(list_of_failed_dirs).intersection(
-        list_of_partial_dirs
-    )
-    common_folder_in_failed_match = set(list_of_failed_dirs).intersection(
-        list_of_match_dirs
-    )
-    common_folder_in_partial_match = set(list_of_partial_dirs).intersection(
-        list_of_match_dirs
-    )
-
-    LOGGER.info(common_folder_in_failed_partial)
-    LOGGER.info(common_folder_in_failed_match)
-    LOGGER.info(common_folder_in_partial_match)
-
-    if common_folder_in_failed_partial:
-        rearrange_common_folders(
-            common_folder_in_failed_partial,
-            f"{filepath}/ingest_partial",
-            f"{filepath}/ingest_failed",
-        )
-        local_log(
-            filepath,
-            f"Common folders: {common_folder_in_failed_partial} found!!! Moving folder contents to ingest_failed, keeping the file structure",
-        )
-
-    if common_folder_in_failed_match:
-        rearrange_common_folders(
-            common_folder_in_failed_match,
-            f"{filepath}/ingest_match",
-            f"{filepath}/ingest_failed",
-        )
-        local_log(
-            filepath,
-            f"Common folders: {common_folder_in_failed_match} found!!! Moving folder contents to ingest_failed, keeping the file structure",
-        )
-
-    if common_folder_in_partial_match:
-        rearrange_common_folders(
-            common_folder_in_partial_match,
-            f"{filepath}/ingest_match",
-            f"{filepath}/ingest_partial",
-        )
-        local_log(
-            filepath,
-            f"Common folders: {common_folder_in_partial_match} found!!! Moving folder contents to ingest_partial, keeping the file structure",
-        )
-
-    LOGGER.info(
-        "======================pre autoingest checks End===================================="
-    )
-    local_log(
-        filepath,
-        "======================pre autoingest checks End====================================",
-    )
+'''
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ import json
 import yaml
 import hashlib
 import logging
+import datetime
 import subprocess
 import adlib_v3 as adlib
 
@@ -19,7 +20,8 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 
-PREFIX = [
+
+PREFIX = [c
     'N',
     'C',
     'PD',
@@ -51,6 +53,7 @@ ACCEPTED_EXT = [
     'ts',
     'm2ts',
     'rtf',
+    'ttf',
     'srt',
     'scc',
     'itt',
@@ -59,13 +62,14 @@ ACCEPTED_EXT = [
     'dfxp',
     'dxfp',
     'csv',
-    'pdf'
+    'pdf',
+    'txt'
 ]
 
 
 def accepted_file_type(ext):
     '''
-    Receive extension and return
+    Receive extension and returnc
     matching accepted file_type
     '''
     ftype = {'imp': 'mxf, xml',
@@ -75,7 +79,7 @@ def accepted_file_type(ext):
              'mpeg': 'mpeg-1, mpeg-ps',
              'mp4': 'mp4',
              'mov': 'mov, prores',
-             'mkv': 'mkv, dpx',
+             'mkv': 'mkv, dpx, dcdm',
              'wav': 'wav',
              'wmv': 'wmv',
              'tif': 'tif, tiff',
@@ -90,11 +94,14 @@ def accepted_file_type(ext):
              'itt': 'itt',
              'stl': 'stl',
              'rtf': 'rtf',
+             'ttf': 'ttf',
              'cap': 'cap',
              'dxfp': 'dxfp',
              'dfxp': 'dfxp',
              'csv': 'csv',
-             'pdf': 'pdf'}
+             'pdf': 'pdf',
+             'txt': 'txt'}
+
     ext = ext.lower()
     for key, val in ftype.items():
         if key == ext:
@@ -236,7 +243,7 @@ def sort_ext(ext):
     mime_type = {'video': ['mxf', 'mkv', 'mov', 'wmv', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
-                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}
+                 'document': ['docx', 'pdf', 'vtt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp', 'txt', 'ttf', 'rtf', 'csv', 'txt']}
 
     ext = ext.lower()
     for key, val in mime_type.items():
@@ -288,12 +295,12 @@ def get_mediaconch(dpath, policy):
         '-p', policy,
         dpath
     ]
-    
+
     meta = subprocess.check_output(cmd)
     meta = meta.decode('utf-8')
     if meta.startswith(f'pass! {dpath}'):
         return True, meta
-    
+
     return False, meta
 
 
@@ -316,7 +323,7 @@ def get_ms(filepath):
     except Exception as err:
         print(f"Unable to extract duration with FFprobe: {err}")
         retry = True
-    
+
     if retry:
         cmd = [
             'mediainfo',
@@ -443,3 +450,64 @@ def check_global_log(fname, check_str):
             if fname in str(row) and check_str in str(row):
                 print(row)
                 return row
+
+
+def checksum_write(checksum_path, checksum, filepath, filename):
+    '''
+    This function writes the checksum into a txt file with correct
+    formatting and returns the path to that document
+    '''
+    date_string = str(datetime.date.today())
+    try:
+        with open(checksum_path, 'w') as fname:
+            fname.write(f"{checksum} - {filepath} - {date_string}")
+            fname.close()
+        return checksum_path
+    except Exception as e:
+        print(f"{filename} - Unable to write checksum: {checksum_path}\n{e}")
+        raise Exception
+
+
+def mediainfo_create(arg, output_type, filepath, mediainfo_path):
+    '''
+    Output mediainfo data to text files
+    '''
+    filename = os.path.basename(filepath)
+    if arg == '-f':
+        if output_type == 'TEXT':
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}_FULL.txt")
+        elif output_type == 'JSON':
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.json")
+
+        command = [
+            'mediainfo',
+            arg,
+            '--Details=0',
+            f'--Output={output_type}',
+            f'--LogFile={out_path}',
+            filepath
+        ]
+    else:
+        if 'XML' in output_type:
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
+        elif 'EBUCore' in output_type:
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
+        elif 'PBCore' in output_type:
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
+        else:
+            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.txt")
+
+        command = [
+            'mediainfo',
+            '--Details=0',
+            f'--Output={output_type}',
+            f'--LogFile={out_path}',
+            filepath
+        ]
+
+    try:
+        subprocess.call(command)
+        return out_path
+    except Exception as e:
+        print(e)
+        return False

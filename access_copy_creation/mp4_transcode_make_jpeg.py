@@ -965,7 +965,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = hd_16x9_letterbox
     elif height == 720 and dar == '16:9':
         cmd_mid = hd_16x9
-    elif height == 720 and width >= 1200:
+    elif height == 720:
         cmd_mid = hd_16x9
     elif width == 1920 and aspect >= 1.778:
         cmd_mid = fhd_letters

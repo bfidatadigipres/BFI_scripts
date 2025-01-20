@@ -196,12 +196,12 @@ def main():
     autoingest_list = []
     for host in hosts:
         # This path has own script
-        if 'qnap_imagen_storage/Public' in str(host):
+        if '/mnt/qnap_04' in str(host):
             continue
         # Build autoingest list for separate iteration
         for pth in host.keys():
             autoingest_list.append(os.path.join(pth, BPINGEST))
-            if '/mnt/qnap_digital_operations' in pth:
+            if '/mnt/qnap_09' in pth:
                 autoingest_list.append(os.path.join(pth, BPINGEST_NETFLIX))
                 autoingest_list.append(os.path.join(pth, BPINGEST_AMAZON))
 
@@ -362,9 +362,9 @@ def process_files(autoingest, job_id, bucket, bucket_list, session):
         duration_size_log(file, object_number, duration, byte_size, duration_ms)
 
         # Run series of BP checks here - any failures no CID media record made
-        confirmed, remote_md5, length = bp.get_object_list(file)
+        confirmed, remote_md5, length = bp.get_confirmation_length_md5(file, bucket, bucket_list)
         if confirmed is None:
-            logger.warning('Problem retrieving Black Pearl ObjectList. Skipping')
+            logger.warning('Problem retrieving Black Pearl TapeList. Skipping')
             continue
         elif confirmed is False:
             logger.warning("Assigned to storage domain is FALSE: %s", fpath)

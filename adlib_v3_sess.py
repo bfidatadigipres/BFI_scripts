@@ -13,7 +13,7 @@ import xmltodict
 from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
-from requests import Session, exceptions
+from requests import request, Session, exceptions
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {
@@ -167,6 +167,9 @@ def post(api, payload, database, method, session=None):
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
+    bool = check_response(response.text, api)
+    if bool is True:
+        return False
     if 'recordList' in response.text:
         record = json.loads(response.text)
         try:
@@ -361,22 +364,28 @@ def create_grouped_data(priref, grouping, field_pairs):
     if not priref:
         return None
 
-    payload = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_end = "</record></recordList></adlibXML>"
-    payload_mid = ''
+    payload_mid = ""
     for lst in field_pairs:
-        mid = ''
-        mid_fields = ''
-        print("New group block:")
-        for grouped in lst:
-            for key, value in grouped.items():
-                xml_field = f'<{key}>{value}</{key}>'
+        mid = ""
+        mid_fields = ""
+        if isinstance(lst, list):
+            for grouped in lst:
+                for key, value in grouped.items():
+                    xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
+                    mid += xml_field
+        elif isinstance(lst, dict):
+            for key, value in lst.items():
+                xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
                 mid += xml_field
-        mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
-        print(mid_fields)
+        mid_fields = f"<{grouping}>" + mid + f"</{grouping}>"
         payload_mid = payload_mid + mid_fields
     
-    return payload + payload_mid + payload_end
+    if len(priref) > 0:
+        payload = f"<adlibXML><recordList><record priref='{priref}'>"
+        payload_end = "</record></recordList></adlibXML>"
+        return payload + payload_mid + payload_end
+    else:
+        return payload_mid
 
 
 def get_fragments(obj):
@@ -439,11 +448,30 @@ def add_quality_comments(api, priref, comments, session=None):
         return True
 
 
+def check_response(rec, api):
+    '''
+    Collate list of received API failures
+    and check for these reponses from post
+    actions. Initiate recycle
+    '''
+    failures = [
+        'A severe error occurred on the current command.',
+        'Execution Timout Expired. The timeout period elapsed'
+    ]
+
+    for warning in failures:
+        if warning in str(rec):
+            recycle_api(api)
+            return True
+
+
 def recycle_api(api):
     '''
     Adds a search call to API which
     triggers Powershell recycle
     '''
     search = 'title=recycle.application.pool.data.test'
-    get(api, search, None)
+    req = request('GET', api, headers=HEADERS, params=search)
+    print(f"Search to trigger recycle sent: {req}")
+    print("Pausing for 2 minutes")
     sleep(120)

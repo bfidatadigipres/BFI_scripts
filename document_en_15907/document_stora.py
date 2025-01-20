@@ -52,7 +52,7 @@ TODAY = datetime.date.today()
 YEST = TODAY - datetime.timedelta(days=1)
 YEST_CLEAN = YEST.strftime('%Y-%m-%d')
 YEAR = YEST_CLEAN[0:4]
-#YEAR = '2023'
+#YEAR = '2024'
 STORAGE_PATH = os.path.join(STORAGE, YEAR)
 
 
@@ -119,6 +119,27 @@ def generate_variables(data):
     if 'Talk TV' in channel:
         code_type = 'MPEG-4 AVC'
         broadcast_company = '999883795'
+    if 'Sky Arts' in channel:
+        code_type = 'MPEG-4 AVC'
+        broadcast_company = '150001'
+    if 'Sky Mix HD' in channel:
+        code_type = 'MPEG-4 AVC'
+        broadcast_company = '999939366'
+    if 'U&Dave' in channel:
+        code_type = 'MPEG-2'
+        broadcast_company = '999929397'
+    if 'U&Drama' in channel:
+        code_type = 'MPEG-2'
+        broadcast_company = '999929393'
+    if 'U&Yesterday' in channel:
+        code_type = 'MPEG-2'
+        broadcast_company = '999929396'
+    if 'QVC' in channel:
+        code_type = 'MPEG-4 AVC'
+        broadcast_company = '999939374'
+    if 'TogetherTV' in channel:
+        code_type = 'MPEG-4 AVC'
+        broadcast_company = '999939362'
 
     duration = data['duration']
     duration_hours, duration_minutes = duration.split(':')[:2]

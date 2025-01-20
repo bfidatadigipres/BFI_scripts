@@ -152,11 +152,11 @@ def check_accepted_file_type(fpath):
     Retrieve codec and ensure file is accepted type
     TAR accepted from DMS / ProRes all other paths
     '''
-    if any(x in fpath for x in ['qnap_access_renditions', 'qnap_10']):
-        if fpath.endswith(('tar', 'TAR')):
+    if any(x in fpath for x in ['qnap_11', 'qnap_10']):
+        if fpath.endswith(('.tar', '.TAR', '.mkv', '.MKV')):
             return True
-    if any(x in fpath for x in ['qnap_06', 'film_operations', 'qnap_film']):
-        if fpath.endswith(('mkv', 'MKV')):
+    if any(x in fpath for x in ['qnap_06', 'qnap_03']):
+        if fpath.endswith(('.mkv', '.MKV', '.tar', '.TAR')):
             return True
     formt = utils.get_metadata('Video', 'Format', fpath)
     print(f"utils.get_metadata: {formt}")
@@ -483,7 +483,7 @@ def get_mappings(pth, mappings):
     Get files within config.yaml mappings
     Path limitations for slow storage
     '''
-    if '/mnt/qnap_video/' in pth:
+    if '/mnt/qnap_01/Public/F47' in pth:
         max_ = 1000
     else:
         max_ = 2000
@@ -707,7 +707,7 @@ def main():
                 print(f"utils.get_size: {size}")
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
                 if int(size) > 1099511627776:
-                    logger.info('%s\tFile is larger than 1TB. Checking file is ProRes', log_paths)
+                    logger.info('%s\tFile is larger than 1TB. Checking file is ProRes or TAR', log_paths)
                     accepted_file_type = check_accepted_file_type(fpath)
                     if accepted_file_type is True:
                         try:
@@ -775,17 +775,6 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
                         logger.warning('%s\tFailed to delete file', log_paths)
                 else:
                     print('* File already absent from path. Check problem with persistence message')
-    '''
-    # Temporary step to delete completed items whose logging failed early August 2024 (QNAP-01 drive failure)
-    if '/mnt/isilon/film_operations/Finished/autoingest/completed' in fpath:
-        if media_check is True:
-            logger.info("Ingested during QNAP-01 drive failure impacting Logs/ writes (August 2024). No deletion confirmation in global.log but CID Media record present. Deleting.")
-            os.remove(fpath)
-            logger.info('%s\tSuccessfully deleted file', log_paths)
-            log_delete_message(fpath, 'Successfully deleted file', fname)
-            print('* successfully deleted QNAP-04 item based on CID Media record...')
-            return True
-    '''
     return False
 
 

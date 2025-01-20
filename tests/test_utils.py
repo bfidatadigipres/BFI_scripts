@@ -18,29 +18,29 @@ def test_check_control(input, expected_output):
     '''
     Tests the check control function.
 
-    This test checks the behaviour of the function that verifies the ability to retrieve 
-    the correct value associated with a given key.  
+    This test checks the behaviour of the function that verifies the ability to retrieve
+    the correct value associated with a given key.
     It uses paramterized inputs to validate various of cases where:
     - the key exists and return the value
 
     '''
     json_response = utils.check_control(input)
-    assert json_response is expected_output 
+    assert json_response is expected_output
 
 
 @pytest.mark.skip(reason='no api credentials')
 def test_check_cid():
-    true_response = utils.cid_check(os.environ['CID_DATA3'])
+    true_response = utils.cid_check(os.environ['CID_DATA4'])
     assert true_response is True
 
 
 
 @pytest.mark.parametrize("file_extension, expected_output",  [
-    ('imp', 'mxf, xml'), ('tar', 'dpx, dcp, dcdm, wav'), 
-    ('mxf', 'mxf, 50i, imp'), ('mpg', 'mpeg-1, mpeg-ps'), 
-    ('mpeg', 'mpeg-1, mpeg-ps'), ('mp4', 'mp4'), ('mov', 'mov, prores'), 
-    ('mkv', 'mkv, dpx'), ('wav', 'wav'), ('tif', 'tif, tiff'), 
-    ('tiff', 'tif, tiff'), ('jpg', 'jpg, jpeg'), ('jpeg', 'jpg, jpeg'), 
+    ('imp', 'mxf, xml'), ('tar', 'dpx, dcp, dcdm, wav'),
+    ('mxf', 'mxf, 50i, imp'), ('mpg', 'mpeg-1, mpeg-ps'),
+    ('mpeg', 'mpeg-1, mpeg-ps'), ('mp4', 'mp4'), ('mov', 'mov, prores'),
+    ('mkv', 'mkv, dpx'), ('wav', 'wav'), ('tif', 'tif, tiff'),
+    ('tiff', 'tif, tiff'), ('jpg', 'jpg, jpeg'), ('jpeg', 'jpg, jpeg'),
     ('ts', 'mpeg-ts'), ('srt', 'srt'), ('xml', 'xml, imp'), ('scc', 'scc'),
     ('itt', 'itt'), ('stl', 'stl'), ('cap', 'cap'), ('dxfp', 'dxfp'),
     ('dfxp', 'dfxp'), ('csv', 'csv'), ('pdf', 'pdf'),

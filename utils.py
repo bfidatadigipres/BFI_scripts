@@ -96,6 +96,7 @@ def accepted_file_type(ext):
              'stl': 'stl',
              'rtf': 'rtf',
              'ttf': 'ttf',
+             'vtt': 'vtt',
              'cap': 'cap',
              'dxfp': 'dxfp',
              'dfxp': 'dfxp',

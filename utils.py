@@ -21,7 +21,7 @@ CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 
 
-PREFIX = [c
+PREFIX = [
     'N',
     'C',
     'PD',
@@ -63,7 +63,8 @@ ACCEPTED_EXT = [
     'dxfp',
     'csv',
     'pdf',
-    'txt'
+    'txt',
+    'vtt'
 ]
 
 

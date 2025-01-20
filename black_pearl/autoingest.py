@@ -172,7 +172,7 @@ def check_mime_type(fpath, log_paths):
     '''
     if fpath.lower().endswith(('.mxf', '.ts', '.mpg', '.m2ts')):
         mime = 'video'
-    elif fpath.lower().endswith(('.csv', '.pdf', '.srt', '.rtf', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml')):
+    elif fpath.lower().endswith(('.csv', '.pdf', '.srt', '.rtf', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml', '.ttf', '.txt')):
         mime = 'application'
     else:
         mime = magic.from_file(fpath, mime=True)

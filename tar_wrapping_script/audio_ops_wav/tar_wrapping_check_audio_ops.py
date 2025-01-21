@@ -40,9 +40,9 @@ import adlib_v3 as adlib
 
 # Global paths
 AUTO_TAR = os.environ['AUTOMATION_WAV']
-AUTOINGEST = os.path.join(os.environ['AUDIO_OPS_FIN'], os.environ['AUTOINGEST_STORE'])
+AUTOINGEST = os.path.join(os.environ['QNAP_08'], os.environ['AUTOINGEST_STORE'])
 LOG = os.path.join(os.environ['LOG_PATH'], 'tar_wrapping_check_audio_ops.log')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 
 # Logging config
 LOGGER = logging.getLogger('tar_wrapping_check_audio_ops')

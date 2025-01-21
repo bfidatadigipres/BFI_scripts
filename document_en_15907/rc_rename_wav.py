@@ -40,7 +40,7 @@ import adlib_v3 as adlib
 WAV_ARCHIVE_PATH = os.environ['WAV_ARCHIVE_RC']
 WAV_POLICY = os.environ['POLICY_WAV']
 FAILED_PATH = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename/')
-AUTOINGEST = os.path.join(os.environ['AUDIO_OPS_FIN'], os.environ['AUTOINGEST_AUD'])
+AUTOINGEST = os.path.join(os.environ['QNAP_08'], os.environ['AUTOINGEST_AUD'])
 LOCAL_LOG = os.path.join(WAV_ARCHIVE_PATH, 'rc_audio_renaming.log')
 LOG_PATH = os.environ['LOG_PATH']
 RC = os.environ['RC']

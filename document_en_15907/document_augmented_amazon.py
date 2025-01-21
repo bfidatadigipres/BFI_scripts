@@ -57,6 +57,7 @@ CODE = os.environ.get('CODE_PATH')
 GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
 CID_API = os.environ.get('CID_API4')
+FORMAT = '%Y-%m-%d'
 
 # PATV API details including unique identifiers for Amazon catalogue
 URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
@@ -884,6 +885,14 @@ def build_defaults(data):
     Get detailed information
     and build record_defaults dict
     '''
+    start_date_str = data.get('title_date_start')
+    if '-' in start_date_str:
+        start_date = datetime.datetime.stprtime(start_date_str, FORMAT)
+    else:
+        start_date = datetime.date.today()
+    new_date = start_date + datetime.timedelta(days=2927)
+    date_restriction = new_date.strftime(FORMAT)
+
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
@@ -937,8 +946,8 @@ def build_defaults(data):
                         {'application_restriction.date': str(datetime.datetime.now())[:10]},
                         {'application_restriction.reason': 'STRATEGIC'},
                         {'application_restriction.duration': 'PERM'},
-                        {'application_restriction.review_date': '2030-01-01'},
-                        {'application_restriction.authoriser': 'mcconnachies'},
+                        {'application_restriction.review_date': date_restriction},
+                        {'application_restriction.authoriser': 'kerriganl'},
                         {'application_restriction.notes': 'Amazon UK streaming content - pending discussion'}])
 
     manifestation = ([{'record_type': 'MANIFESTATION'},
@@ -997,21 +1006,6 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
     if len('patv_id') > 0:
         series_work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
         series_work_values.append({'alternative_number': patv_id})
-    if 'd_short' in series_dct:
-        series_work_values.append({'label.type': 'EPGSHORT'})
-        series_work_values.append({'label.text': series_dct['d_short']})
-        series_work_values.append({'label.source': 'EBS augmented EPG supply'})
-        series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-    if 'd_medium' in series_dct:
-        series_work_values.append({'label.type': 'EPGMEDIUM'})
-        series_work_values.append({'label.text': series_dct['d_medium']})
-        series_work_values.append({'label.source': 'EBS augmented EPG supply'})
-        series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-    if 'd_long' in series_dct:
-        series_work_values.append({'label.type': 'EPGLONG'})
-        series_work_values.append({'label.text': series_dct['d_long']})
-        series_work_values.append({'label.source': 'EBS augmented EPG supply'})
-        series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
     if 'description' in series_dct:
         series_work_values.append({'description': series_dct['description']})
         series_work_values.append({'description.type': 'Synopsis'})
@@ -1020,7 +1014,6 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
 
     # Start creating CID Work Series record
     series_work_xml = adlib.create_record_data(CID_API, 'works', '', series_work_values)
-
     try:
         print("Attempting to create CID record")
         work_rec = adlib.post(CID_API, series_work_xml, 'works', 'insertrecord')
@@ -1040,24 +1033,46 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
         LOGGER.critical('Unable to create Work record for <%s>', title)
         return None
     
+    # Append Content genres to record
     series_genres = []
     if 'genres' in series_dct:
         extracted = series_dct['genres']
         for genr in extracted:
             series_genres.append({'content.genre.lref': genr})
+    if len(series_genres) > 0:
+        genre_xml = adlib.create_grouped_data(series_work_id, 'Content_genre', series_genres)
+        print(genre_xml)
+        update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+        if 'Content_genre' in str(update_rec):
+            LOGGER.info("Label text successfully updated to Series Work %s", series_work_id)
+
+    # Append Content subject to record
+    series_subjects = []
     if 'subjects' in series_dct:
         subs = series_dct['subjects']
         for sub in subs:
-            series_genres.append({'content.subject.lref': sub})
-    series_genres_filter = [i for n, i in enumerate(series_genres) if i not in series_genres[n + 1:]]
-    if series_genres_filter:
-        print(series_genres, series_genres_filter)
-        print("**** Attempting to write work genres to records ****")
-        series_genres_xml = adlib.create_record_data(CID_API, 'works', series_work_id, series_genres_filter)
-        success = adlib.post(CID_API, series_genres_xml, 'works', 'updaterecord')
-        if success is None:
-            LOGGER.info("Failed to update genres to Series Work record: %s", series_work_id)
-        LOGGER.info("Series genres updated to work: %s", series_work_id)
+            series_subjects.append({'content.subject.lref': sub})
+    if len(series_subjects) > 0:
+        subject_xml = adlib.create_grouped_data(series_work_id, 'Content_subject', series_subjects)
+        print(subject_xml)
+        update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+        if 'Content_subject' in str(update_rec):
+            LOGGER.info("Label text successfully updated to Series Work %s", series_work_id)
+
+    # Append Label grouped data to record
+    label_fields = []
+    if 'd_short' in series_dct:
+        label_fields.append([{'label.type': 'EPGSHORT'},{'label.text': series_dct['d_short']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+    if 'd_medium' in series_dct:
+        label_fields.append([{'label.type': 'EPGMEDIUM'},{'label.text': series_dct['d_medium']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+    if 'd_long' in series_dct:
+        label_fields.append([{'label.type': 'EPGLONG'},{'label.text': series_dct['d_long']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+    if len(label_fields) > 0:
+        label_xml = adlib.create_grouped_data(series_work_id, 'Label', label_fields)
+        print(label_xml)
+        update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+        if 'Label' in str(update_rec):
+            LOGGER.info("Label text successfully updated to Series Work %s", series_work_id)
 
     return series_work_id
 
@@ -1115,21 +1130,6 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
     if 'production_year' in work_dict:
         work_values.append({'title_date_start': work_dict['production_year']})
         work_values.append({'title_date.type': '02_P'})
-    if 'd_short' in work_dict:
-        work_values.append({'label.type': 'EPGSHORT'})
-        work_values.append({'label.text': work_dict['d_short']})
-        work_values.append({'label.source': 'EBS augmented EPG supply'})
-        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-    if 'd_medium' in work_dict:
-        work_values.append({'label.type': 'EPGMEDIUM'})
-        work_values.append({'label.text': work_dict['d_medium']})
-        work_values.append({'label.source': 'EBS augmented EPG supply'})
-        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-    if 'd_long' in work_dict:
-        work_values.append({'label.type': 'EPGLONG'})
-        work_values.append({'label.text': work_dict['d_long']})
-        work_values.append({'label.source': 'EBS augmented EPG supply'})
-        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
     if 'description' in work_dict:
         work_values.append({'description': work_dict['description']})
         work_values.append({'description.type': 'Synopsis'})
@@ -1157,23 +1157,52 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
         LOGGER.critical('** Unable to create Work record for <%s>', work_dict['title'])
         return None
 
+    # Append Content genres to record
     work_genres = []
     if 'genres' in work_dict:
         extracted = work_dict['genres']
         for genr in extracted:
             work_genres.append({'content.genre.lref': genr})
+    if len(work_genres) > 0:
+        genre_xml = adlib.create_grouped_data(work_id, 'Content_genre', work_genres)
+        print(genre_xml)
+        update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+        if update_rec is None:
+            LOGGER.info("Failed to update genres to Work record: %s", work_id)
+        elif 'Content_genre' in str(update_rec):
+            LOGGER.info("Label text successfully updated to Series Work %s", work_id)
+
+    # Append Content subject to record
+    work_subjects = []
     if 'subjects' in work_dict:
         subs = work_dict['subjects']
         for sub in subs:
-            work_genres.append({'content.subject.lref': sub})
-    work_genres_filter = [i for n, i in enumerate(work_genres) if i not in work_genres[n + 1:]]
-    if work_genres_filter:
-        print(f"**** Attempting to write work genres to records {work_genres_filter} ****")
-        work_genres_xml = adlib.create_record_data(CID_API, 'works', work_id, work_genres_filter)
-        success = adlib.post(CID_API, work_genres_xml, 'works', 'updaterecord')
-        if success is None:
-            LOGGER.info("Failed to update genres to Series Work record: %s", work_id)
-        LOGGER.info("Series genres updated to work: %s", work_id)
+            work_subjects.append({'content.subject.lref': sub})
+    if len(work_subjects) > 0:
+        subject_xml = adlib.create_grouped_data(work_id, 'Content_subject', work_subjects)
+        print(subject_xml)
+        update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+        if update_rec is None:
+            LOGGER.info("Failed to update subjects to Work record: %s", work_id)
+        elif 'Content_subject' in str(update_rec):
+            LOGGER.info("Label text successfully updated to Series Work %s", work_id)
+
+    # Append Label grouped data to record
+    label_fields = []
+    if 'd_short' in work_dict:
+        label_fields.append([{'label.type': 'EPGSHORT'},{'label.text': work_dict['d_short']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+    if 'd_medium' in work_dict:
+        label_fields.append([{'label.type': 'EPGMEDIUM'},{'label.text': work_dict['d_medium']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+    if 'd_long' in work_dict:
+        label_fields.append([{'label.type': 'EPGLONG'},{'label.text': work_dict['d_long']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+    if len(label_fields) > 0:
+        label_xml = adlib.create_grouped_data(work_id, 'Label', label_fields)
+        print(label_xml)
+        update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+        if update_rec is None:
+            LOGGER.info("Failed to update Labels to Work record: %s", work_id)
+        elif 'Label' in str(update_rec):
+            LOGGER.info("Label text successfully updated to Work %s", work_id)
 
     return work_id
 
@@ -1234,7 +1263,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
                 object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
                 print(f'* Manifestation record created with Priref {manifestation_id}')
                 print(f'* Manifestation record created with Object number {object_number}')
-                LOGGER.info('Manifestation record created with priref %s', manifestation_id)
+                LOGGER.info('Manifestation record created with priref %s %s', manifestation_id, title)
             except Exception as err:
                 print("Unable to create Manifestation record", err)
                 return None

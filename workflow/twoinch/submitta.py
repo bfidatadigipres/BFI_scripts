@@ -14,7 +14,6 @@ Dependencies:
 import os
 import sys
 import csv
-import json
 import yaml
 import numpy as np
 import pandas as pd
@@ -23,23 +22,14 @@ from datetime import datetime, timedelta
 # Local imports
 sys.path.append(os.environ['WORKFLOW'])
 import workflow
+sys.path.append(os.environ['CODE'])
+import utils
 
 # Global variables
 LOGS = os.environ['LOG_PATH']
 TWOINCH = os.path.join(os.environ['WORKFLOW'], 'twoinch/')
 NOW = datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
-
-
-def check_control():
-    '''
-    Check downtime control and stop script of False
-    '''
-    with open(os.path.join(LOGS, 'downtime_control.json')) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            write_to_log(f'Script run prevented by downtime_control.json. Script exiting. {DT_STR}\n')
-            sys.exit('Exit requested by downtime_control.json')
 
 
 def get_csv(csv_path):
@@ -61,7 +51,8 @@ def main():
     '''
     Process all items found in CSV
     '''
-    check_control()
+    if not utils.check_control('pause_scripts'):
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     write_to_log(f'=== Processing Items in 2inch selections.csv === {DT_STR}\n')
 
     # Load configuration variables

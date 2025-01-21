@@ -11,6 +11,7 @@ import json
 import requests
 import datetime
 import xmltodict
+from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
 from tenacity import retry, stop_after_attempt
@@ -64,9 +65,9 @@ def retrieve_record(api, database, search, limit, fields=None):
     if not record:
         print(query)
         return None, None
-    elif record['adlibJSON']['diagnostic']['hits'] == 0:
+    if record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
-    elif 'recordList' not in str(record):
+    if 'recordList' not in str(record):
         try:
             hits = int(record['adlibJSON']['diagnostic']['hits'])
             return hits, record
@@ -85,23 +86,22 @@ def get(api, query):
     '''
     try:
         req = requests.request('GET', api, headers=HEADERS, params=query)
-        print(req.status_code)
         if req.status_code != 200:
             raise Exception
         dct = json.loads(req.text)
         return dct
     except requests.exceptions.Timeout as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except requests.exceptions.ConnectionError as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except requests.exceptions.HTTPError as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except Exception as err:
         print(err)
-        raise Exception
+        raise Exception from err
 
 
 def post(api, payload, database, method):
@@ -121,36 +121,39 @@ def post(api, payload, database, method):
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except requests.exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except Exception as err:
             print(err)
-            raise Exception
+            raise Exception from err
 
     if method == 'updaterecord':
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except requests.exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except requests.exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except Exception as err:
             print(err)
-            raise Exception
+            raise Exception from err
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
+    bool = check_response(response.text, api)
+    if bool is True:
+        return False
     if 'recordList' in response.text:
         record = json.loads(response.text)
         try:
@@ -164,7 +167,7 @@ def post(api, payload, database, method):
         record = json.loads(response.text)
         return record
     elif 'error' in response.text:
-        return None
+        return record
 
     return None
 
@@ -200,7 +203,7 @@ def retrieve_facet_list(record, fname):
     facets = []
     for value in record['adlibJSON']['facetList'][0]['values']:
         facets.append(value[fname]['spans'][0]['text'])
-    
+
     return facets
 
 
@@ -268,6 +271,7 @@ def get_grouped_items(api, database):
 
     result = requests.request('GET', api, headers=HEADERS, params=query)
     metadata = xmltodict.parse(result.text)
+
     if not isinstance(metadata, dict):
         return None, None
 
@@ -343,22 +347,28 @@ def create_grouped_data(priref, grouping, field_pairs):
     if not priref:
         return None
 
-    payload = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_end = "</record></recordList></adlibXML>"
-    payload_mid = ''
+    payload_mid = ""
     for lst in field_pairs:
-        mid = ''
-        mid_fields = ''
-        print("New group block:")
-        for grouped in lst:
-            for key, value in grouped.items():
-                xml_field = f'<{key}>{value}</{key}>'
+        mid = ""
+        mid_fields = ""
+        if isinstance(lst, list):
+            for grouped in lst:
+                for key, value in grouped.items():
+                    xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
+                    mid += xml_field
+        elif isinstance(lst, dict):
+            for key, value in lst.items():
+                xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
                 mid += xml_field
-        mid_fields = f'<{grouping}>' + mid + f'</{grouping}>'
-        print(mid_fields)
+        mid_fields = f"<{grouping}>" + mid + f"</{grouping}>"
         payload_mid = payload_mid + mid_fields
-    
-    return payload + payload_mid + payload_end
+
+    if len(priref) > 0:
+        payload = f"<adlibXML><recordList><record priref='{priref}'>"
+        payload_end = "</record></recordList></adlibXML>"
+        return payload + payload_mid + payload_end
+    else:
+        return payload_mid
 
 
 def get_fragments(obj):
@@ -373,7 +383,6 @@ def get_fragments(obj):
 
     data = []
     for item in obj:
-
         if isinstance(item, str):
             sub_item = item
         else:
@@ -415,7 +424,40 @@ def add_quality_comments(api, priref, comments):
         params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
         data=payload,
         timeout=1200)
+
+    bool = check_response(response.text, api)
+    if bool is True:
+        return False
     if "error" in str(response.text):
         return False
     else:
         return True
+
+
+def check_response(rec, api):
+    '''
+    Collate list of received API failures
+    and check for these reponses from post
+    actions. Initiate recycle
+    '''
+    failures = [
+        'A severe error occurred on the current command.',
+        'Execution Timout Expired. The timeout period elapsed'
+    ]
+
+    for warning in failures:
+        if warning in str(rec):
+            recycle_api(api)
+            return True
+
+
+def recycle_api(api):
+    '''
+    Adds a search call to API which
+    triggers Powershell recycle
+    '''
+    search = 'title=recycle.application.pool.data.test'
+    req = requests.request('GET', api, headers=HEADERS, params=search)
+    print(f"Search to trigger recycle sent: {req}")
+    print("Pausing for 2 minutes")
+    sleep(120)

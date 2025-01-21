@@ -11,6 +11,18 @@ source_path="${QNAP_09_OSH}"
 dump_to="${CODE}document_en_15907/"
 log_path="${LOG_PATH}curatorial_donor_acquisition_rename_osh.log"
 
+function control {
+    boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      echo 'Control json requests script exit immediately'
+      exit 0
+    fi
+}
+
+# Control check inserted into code
+control
+
 # Directory path change just to run shell find commands
 cd "${dump_to}"
 

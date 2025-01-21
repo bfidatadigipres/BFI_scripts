@@ -617,7 +617,7 @@ def get_width(fullpath):
         return '1920'
     if width.isdigit():
         return str(width)
-    
+
     width = width.split(' p', maxsplit=1)[0]
     return re.sub("[^0-9]", "", width)
 
@@ -861,6 +861,11 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1,blackdetect=d=0.05:pix_th=0.10"
     ]
 
+    hd_16x9_letterbox = [
+        "-vf",
+        "yadif,scale=1280:-1:flags=lanczos,pad=1280:720:-1:-1,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
     fhd_all = [
         "-vf",
         "yadif,scale=-1:1080:flags=lanczos,pad=1920:1080:-1:-1,blackdetect=d=0.05:pix_th=0.10"
@@ -898,14 +903,14 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         map_audio = [
             "-map", "0:a?", "-c:a", "aac",
             "-ac", "2", "-dn"
-        ] 
+        ]
     elif default and audio:
         print(f"Default {default}, Audio {audio}")
         map_audio = [
             "-map", "0:a?", "-c:a", "aac",
             f"-disposition:a:{default}",
             "default", "-dn"
-        ]       
+        ]
     else:
         map_audio = [
             "-map", "0:a?",
@@ -956,7 +961,11 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = scale_sd_16x9
     elif height < 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
+    elif width == 1280 and height <= 720:
+        cmd_mid = hd_16x9_letterbox
     elif height == 720 and dar == '16:9':
+        cmd_mid = hd_16x9
+    elif height == 720:
         cmd_mid = hd_16x9
     elif width == 1920 and aspect >= 1.778:
         cmd_mid = fhd_letters

@@ -181,7 +181,7 @@ def main():
     not starting with 'ingest_'. When found, check in json path for
     matching folder names to json filename
     '''
-    if not utils.check_control('black_pearl'):
+    if not utils.check_control('black_pearl') or not utils.check_control('pause_scripts'):
         logger.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     if not utils.cid_check(CID_API):
@@ -194,14 +194,11 @@ def main():
     autoingest_list = []
     for host in hosts:
         # This path has own script
-        if not 'qnap_imagen_storage/Public' in str(host):
+        if not '/mnt/qnap_04' in str(host):
             continue
         # Build autoingest list for separate iteration
         for pth in host.keys():
             autoingest_list.append(os.path.join(pth, BPINGEST))
-            if '/mnt/qnap_digital_operations' in pth:
-                autoingest_list.append(os.path.join(pth, BPINGEST_NETFLIX))
-                autoingest_list.append(os.path.join(pth, BPINGEST_AMAZON))
 
     print(autoingest_list)
     for autoingest in autoingest_list:
@@ -360,9 +357,9 @@ def process_files(autoingest, job_id, bucket, bucket_list, session):
         duration_size_log(file, object_number, duration, byte_size, duration_ms)
 
         # Run series of BP checks here - any failures no CID media record made
-        confirmed, remote_md5, length = bp.get_object_list(file)
+        confirmed, remote_md5, length = bp.get_confirmation_length_md5(file, bucket, bucket_list)
         if confirmed is None:
-            logger.warning('Problem retrieving Black Pearl ObjectList. Skipping')
+            logger.warning('Problem retrieving Black Pearl TapeList. Skipping')
             continue
         elif confirmed is False:
             logger.warning("Assigned to storage domain is FALSE: %s", fpath)
@@ -370,7 +367,7 @@ def process_files(autoingest, job_id, bucket, bucket_list, session):
             continue
         elif confirmed is True:
             logger.info("Retrieved BP data: Confirmed %s BP MD5: %s Length: %s", confirmed, remote_md5, length)
-        elif 'No object list' in confirmed:
+        elif 'No object list' in confirmed or 'No tape list' in confirmed:
             logger.warning("ObjectList could not be extracted from BP for file: %s", fpath)
             persistence_log_message("No BlackPearl ObjectList returned from BlackPearl API query", fpath, wpath, file)
             # Move file back to black_pearl_ingest folder

@@ -21,6 +21,10 @@ import logging
 import datetime
 import requests
 
+# Local packages
+sys.path.append(os.environ['CODE'])
+import utils
+
 # Setup logging
 logger = logging.getLogger('fetch_series_stora_augmented')
 hdlr = logging.FileHandler(os.path.join(os.environ['LOG_PATH'], 'fetch_series_stora_augmented.log'))
@@ -36,14 +40,14 @@ YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
 START = '{}T00:00:00'.format(YESTERDAY_CLEAN)
 END = '{}T23:59:00'.format(YESTERDAY_CLEAN)
 # IF other date is required
-#START = '2023-01-18T00:00:00'
-#END = '2023-01-18T23:59:00'
+#START = '2023-12-31T00:00:00'
+#END = '2023-12-31T23:59:00'
 
 # API variables to access Press Association metadata
 URL = os.environ['PATV_FETCH']
 QUERYSTRING = {"aliases": "true"}
 HEADERS = {
-    "Accept": "application/json",
+    "accept": "application/json",
     "apikey": os.environ['PATV_KEY']}
 
 # Global variables
@@ -73,6 +77,10 @@ def main():
     '''
 
     check_control()
+    if not utils.check_control('power_off_all'):
+        logger.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        
     logger.info('========== Series Cache fetch metadata script STARTED ===============================================')
 
     for root, _, files in os.walk(PATHS):

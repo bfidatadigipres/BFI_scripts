@@ -55,7 +55,6 @@ Joanna White
 # Python packages
 import os
 import sys
-import json
 import logging
 import itertools
 from datetime import datetime
@@ -103,20 +102,6 @@ def check_elasticsearch():
     else:
         LOGGER.info('Connection to Elasticsearch not found. Script exiting.')
         sys.exit('Connection to Elasticsearch not found. Script exiting.')
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['black_pearl']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
 
 def get_media_original_filename(fname):
@@ -353,7 +338,9 @@ def main():
 
     LOGGER.info("================ DPI DOWNLOAD REQUESTS RETRIEVED: %s. Date: %s =================", len(data), datetime.now().strftime(FMT)[:19])
     for row in data:
-        check_control()
+        if not utils.check_control('pause_scripts') or not utils.check_control('black_pearl'):
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         check_elasticsearch()
         username = row[0].strip()
         email = row[1].strip()
@@ -416,7 +403,12 @@ def main():
                 # Download from BP
                 LOGGER.info("Beginning download of file %s to download path", fname)
                 update_table(user_id, 'Downloading')
-                download_job_id = bp.download_bp_object(fname, download_fpath, bucket)
+                try:
+                    download_job_id = bp.download_bp_object(fname, download_fpath, bucket)
+                except Exception as err:
+                    print(err)
+                    update_table(user_id, 'Download error')
+                    continue
                 if not download_job_id:
                     LOGGER.warning("Download of file %s failed. Resetting download status and script exiting.", fname)
                     update_table(user_id, 'Requested')

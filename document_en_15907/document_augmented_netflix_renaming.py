@@ -131,7 +131,7 @@ def walk_netflix_folders():
         print(rename_folder)
         folders = os.listdir(rename_folder)
         if not folders:
-            LOGGER.info("Netflix IMP renaming script. Skipping as rename folder empty: %s", rename_folder)
+            print(f"Skipping, rename folder empty: {rename_folder}")
             continue
         for folder in folders:
             print(folder)
@@ -373,7 +373,7 @@ def xml_item_append(priref, xml_data):
     payload_end = "</record></recordList></adlibXML>"
     payload = payload + payload_end
 
-    LOGGER.info("** Appending Labe text data to item record now...")
+    LOGGER.info("** Appending Label text data to item record now...")
     LOGGER.info(payload)
 
     try:

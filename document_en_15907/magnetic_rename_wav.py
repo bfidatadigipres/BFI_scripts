@@ -20,7 +20,7 @@ Script functions:
 5. All actions logged human readable for Mike, and placed in audio ops
    folder, at top level.
 
-NOTE: Updated to work with Adlib V3      
+NOTE: Updated to work with Adlib V3
 
 2023
 '''
@@ -43,7 +43,7 @@ import utils
 WAV_ARCHIVE_PATH = os.environ['WAV_ARCHIVE_MAG']
 WAV_POLICY = os.environ['POLICY_WAV']
 FAILED_PATH = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename/')
-AUTOINGEST = os.path.join(os.environ['AUDIO_OPS_FIN'], os.environ['AUTOINGEST_AUD'])
+AUTOINGEST = os.path.join(os.environ['QNAP_08'], os.environ['AUTOINGEST_AUD'])
 LOCAL_LOG = os.path.join(WAV_ARCHIVE_PATH, 'magnetic_preservation_renaming.log')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')

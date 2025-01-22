@@ -30,7 +30,11 @@ PATHS = [
 
 
 def main():
-    
+    '''
+    Counts total number of files to move
+    sorts into even amounts and moves to
+    numbered subfolders
+    '''
     if not utils.check_control('power_off_all'):
         sys.exit('Exit requested by downtime_control.json')
     move_folders = []

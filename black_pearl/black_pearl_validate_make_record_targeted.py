@@ -221,7 +221,7 @@ def main():
             if not utils.check_control('black_pearl'):
                 logger.info('Script run prevented by downtime_control.json. Script exiting.')
                 sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-            if folder.startswith(('ingest_', 'error_', 'blob')):
+            if folder.startswith(('ingest_', 'error_', 'blob', '.')):
                 continue
             logger.info("======== START Black Pearl validate/CID Media record START ========")
             logger.info("Folder found that is not an ingest folder, or has failed or errored files within: %s", folder)

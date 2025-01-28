@@ -94,7 +94,9 @@ LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
              os.environ['QNAP_09']: os.environ['L_QNAP09'],
              os.environ['QNAP_11']: os.environ['L_QNAP11'],
              os.environ['QNAP_TEMP']: os.environ['L_QNAP_TEMP'],
-             os.environ['EDITSHARE']: os.environ['L_EDITSHARE']
+             os.environ['EDITSHARE']: os.environ['L_EDITSHARE'],
+             os.environ['BP_VIDEO']: os.environ['L_BP_VIDEO'],
+             os.environ['BP_AUDIO']: os.environ['L_BP_AUDIO']
 }
 
 
@@ -226,7 +228,7 @@ def main():
             if not utils.check_control('black_pearl'):
                 logger.info('Script run prevented by downtime_control.json. Script exiting.')
                 sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-            if folder.startswith(('ingest_', 'error_', 'blob')):
+            if folder.startswith(('ingest_', 'error_', 'blob', '.')):
                 continue
             logger.info("======== START Black Pearl validate/CID Media record START ========")
             logger.info("Folder found that is not an ingest folder, or has failed or errored files within: %s", folder)

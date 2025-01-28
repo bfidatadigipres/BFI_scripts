@@ -35,7 +35,7 @@ echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_p
 echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
 
 # Command to build file list to supply to Python
-find "${transcode_path1}" -maxdepth 1 -mindepth 1 -type f -mmin +30 >> "${dump_to}"
+find "${transcode_path1}" -maxdepth 1 -mindepth 1 -type f -mmin +1 >> "${dump_to}"
 
 echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
 grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" --timeout 86400 "$PYENV311 $python_script {}"

@@ -192,7 +192,7 @@ def main():
     Iterate list and build asset_dict of TV items, then process
     any new items placing in programme led folder structures
     '''
-    if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
+    if not utils.check_control('stora'):
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 

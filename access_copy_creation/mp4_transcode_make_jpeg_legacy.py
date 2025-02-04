@@ -35,6 +35,7 @@ import datetime
 import subprocess
 import pytz
 import tenacity
+from typing import Optional
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -60,7 +61,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def local_time():
+def local_time() -> str:
     '''
     Return strftime object formatted
     for London time (includes BST adjustment)
@@ -251,7 +252,7 @@ def main():
     log_output(log_build)
 
 
-def log_output(log_build):
+def log_output(log_build: str) -> None:
     '''
     Collect up log list and output to log in one block
     '''
@@ -259,7 +260,7 @@ def log_output(log_build):
         LOGGER.info(log)
 
 
-def adjust_seconds(duration, data):
+def adjust_seconds(duration: float, data: Optional[bytes]) -> float:
     '''
     Adjust second durations within
     FFmpeg detected blackspace
@@ -290,7 +291,7 @@ def adjust_seconds(duration, data):
     return duration // 2
 
 
-def retrieve_blackspaces(data):
+def retrieve_blackspaces(data: Optional[bytes]) -> list[str]:
     '''
     Retrieve black detect log and check if
     second variable falls in blocks of blackdetected
@@ -310,7 +311,7 @@ def retrieve_blackspaces(data):
     return time_range
 
 
-def check_seconds(blackspace, seconds):
+def check_seconds(blackspace: list[str], seconds: float) -> bool | None:
     '''
     Create range and check for second within
     '''
@@ -326,7 +327,7 @@ def check_seconds(blackspace, seconds):
         return True
 
 
-def get_jpeg(seconds, fullpath, outpath):
+def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
     '''
     Retrieve JPEG from MP4
     Seconds accepted as float
@@ -352,7 +353,7 @@ def get_jpeg(seconds, fullpath, outpath):
         return False
 
 
-def check_item(ob_num, database):
+def check_item(ob_num: str, database: str) -> tuple[str, str, str]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
@@ -374,7 +375,7 @@ def check_item(ob_num, database):
     return priref, source, groupings
 
 
-def get_media_priref(fname):
+def get_media_priref(fname: str) -> tuple[str, str, str, str, str]:
     '''
     Retrieve priref from Digital record
     '''
@@ -402,7 +403,7 @@ def get_media_priref(fname):
     return priref, input_date, largeimage_umid, thumbnail_umid, access_rendition
 
 
-def get_dar(fullpath):
+def get_dar(fullpath: str) -> str:
     '''
     Retrieves metadata DAR info and returns as string
     '''
@@ -421,7 +422,7 @@ def get_dar(fullpath):
     return str(dar_setting)
 
 
-def get_par(fullpath):
+def get_par(fullpath: str) -> str:
     '''
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
@@ -435,7 +436,7 @@ def get_par(fullpath):
         return par_full[:5]
 
 
-def get_height(fullpath):
+def get_height(fullpath: str) -> str:
     '''
     Retrieves height information via mediainfo
     Using sampled height where original
@@ -473,7 +474,7 @@ def get_height(fullpath):
         return re.sub("[^0-9]", "", height)
 
 
-def get_width(fullpath):
+def get_width(fullpath: str) -> str:
     '''
     Retrieves height information using mediainfo
     '''
@@ -498,7 +499,7 @@ def get_width(fullpath):
             return re.sub("[^0-9]", "", width)
 
 
-def get_duration(fullpath):
+def get_duration(fullpath: str) -> tuple[str | int, str]:
     '''
     Retrieves duration information via mediainfo
     where more than two returned, file longest of
@@ -535,7 +536,7 @@ def get_duration(fullpath):
             return (second_duration, '1')
 
 
-def check_audio(fullpath):
+def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str]]:
     '''
     Mediainfo command to retrieve channels, identify
     stereo or mono, returned as 2 or 1 respectively
@@ -582,7 +583,7 @@ def check_audio(fullpath):
         return ('Audio', None)
 
 
-def create_transcode(fullpath):
+def create_transcode(fullpath: str) -> list[str]:
     '''
     Builds FFmpeg command for blackdetect
     '''
@@ -609,7 +610,7 @@ def create_transcode(fullpath):
     return ffmpeg_program_call + input_video_file + blackdetect + output
 
 
-def make_jpg(filepath, arg, transcode_pth, percent):
+def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str]) -> str:
     '''
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.
@@ -661,7 +662,7 @@ def make_jpg(filepath, arg, transcode_pth, percent):
         return outfile
 
 
-def conformance_check(file):
+def conformance_check(file: str) -> str:
     '''
     Checks file against MP4 mediaconch policy
     Looks for essential items to ensure that
@@ -690,7 +691,7 @@ def conformance_check(file):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))
-def cid_media_append(fname, priref, data):
+def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]:
     '''
     Receive data and priref and append to CID media record
     '''

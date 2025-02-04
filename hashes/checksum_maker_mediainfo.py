@@ -25,21 +25,22 @@ import sys
 import logging
 import datetime
 import tenacity
+import typing 
 
 # Custom Libraries
 sys.path.append(os.environ['CODE'])
 import utils
 
 # Global variables
-LOG_PATH = os.environ['LOG_PATH']
-CODE_PTH = os.environ['CODE_DDP']
-CODE = os.environ['CODE']
-TODAY = str(datetime.date.today())
-CONTROL_JSON = os.environ['CONTROL_JSON']
-CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
-CHECKSUM_PATH2 = os.path.join(CODE_PTH, 'Logs', 'checksum_md5')
-MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
-MEDIAINFO_PATH2 = os.path.join(CODE_PTH, 'Logs', 'cid_mediainfo')
+LOG_PATH: typing.Final = os.environ['LOG_PATH']
+CODE_PTH: typing.Final = os.environ['CODE_DDP']
+CODE: typing.Final = os.environ['CODE']
+TODAY: typing.Final = str(datetime.date.today())
+CONTROL_JSON: typing.Final = os.environ['CONTROL_JSON']
+CHECKSUM_PATH: typing.Final = os.path.join(LOG_PATH, 'checksum_md5')
+CHECKSUM_PATH2: typing.Final = os.path.join(CODE_PTH, 'Logs', 'checksum_md5')
+MEDIAINFO_PATH: typing.Final = os.path.join(LOG_PATH, 'cid_mediainfo')
+MEDIAINFO_PATH2: typing.Final = os.path.join(CODE_PTH, 'Logs', 'cid_mediainfo')
 
 # Setup logging
 LOGGER = logging.getLogger('checksum_maker_mediainfo')
@@ -51,12 +52,12 @@ LOGGER.setLevel(logging.INFO)
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def checksum_exist(checksum_path_env, filename, checksum, filepath):
+def checksum_exist(checksum_path_env: str, filename: str, checksum, filepath) -> str:
     '''
     Create a new Checksum file and write MD5_checksum
     Return checksum path where successfully written
     '''
-    checksum_path = os.path.join(checksum_path_env, f"{filename}.md5")
+    checksum_path: str = os.path.join(checksum_path_env, f"{filename}.md5")
     if os.path.isfile(checksum_path):
         checksum_path = utils.checksum_write(checksum_path, checksum, filepath, filename)
         return checksum_path
@@ -68,12 +69,12 @@ def checksum_exist(checksum_path_env, filename, checksum, filepath):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def make_output_md5(filepath, filename):
+def make_output_md5(filepath: str, filename: str) -> typing.Optional[str] :
     '''
     Runs checksum generation/output to file as separate function allowing for easier retries
     '''
     try:
-        md5_checksum = utils.create_md5_65536(filepath)
+        md5_checksum: Optional[str] = utils.create_md5_65536(filepath)
         LOGGER.info(f"{filename} - MD5 sum generated: {md5_checksum}")
         return md5_checksum
     except Exception as e:
@@ -81,16 +82,16 @@ def make_output_md5(filepath, filename):
         return None
 
 
-def checksum_test(CHECKSUM_PATH, check):
+def checksum_test(CHECKSUM_PATH: str, check: str) -> typing.Optional[bool]:
     '''
     Check for 'None' where checksum should be
     '''
     try:
         if os.path.exists(os.path.join(CHECKSUM_PATH, check)):
-            checksum_pth = os.path.join(CHECKSUM_PATH, check)
+            checksum_pth: str = os.path.join(CHECKSUM_PATH, check)
 
         with open(checksum_pth, 'r') as file:
-            line = file.readline()
+            line: str = file.readline()
             if line.startswith('None'):
                 LOGGER.info(f"None entry found: {check}")
                 return True
@@ -111,25 +112,25 @@ def main():
     if not utils.check_control('power_off_all'):
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-    filepath = sys.argv[1]
-    path_split = os.path.split(filepath)
-    filename = path_split[1]
-    target_path = path_split[0]
+    filepath: str = sys.argv[1]
+    path_split: list[str] = os.path.split(filepath)
+    filename: str = path_split[1]
+    target_path: str = path_split[0]
 
     LOGGER.info("============ Python3 %s START =============", filepath)
 
     # Check if MD5 already generated for file using list comprehension
-    check = [f for f in os.listdir(CHECKSUM_PATH) if f.startswith(filename) and not f.endswith(('.ini', '.DS_Store', '.mhl', '.json', '.tmp', '.dpx', '.DPX'))]
+    check: list = [f for f in os.listdir(CHECKSUM_PATH) if f.startswith(filename) and not f.endswith(('.ini', '.DS_Store', '.mhl', '.json', '.tmp', '.dpx', '.DPX'))]
     if len(check) > 1:
         sys.exit(f'More than one checksum found with {filename}')
 
     # Check if existing MD5 starts with 'None'
     if len(check) == 1:
-        checksum_present = checksum_test(CHECKSUM_PATH, check[0])
+        checksum_present: bool = checksum_test(CHECKSUM_PATH, check[0])
         if checksum_present:
             sys.exit('Checksum already exists for this file, exiting.')
 
-    md5_checksum = make_output_md5(filepath, filename)
+    md5_checksum: Optional[str] = make_output_md5(filepath, filename)
     if 'None' in str(md5_checksum):
         md5_checksum = make_output_md5(filepath, filename)
 

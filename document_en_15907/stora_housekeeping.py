@@ -11,20 +11,17 @@ Script to handle clean up of the completed folders in STORA_PATH/*YEAR*
    This folder can me moved to ARCHIVE_PATH
 5. Clean up of folders at day, month (if last day of month) and year level (if last day of year).
 
+Joanna White
 Python 3.7 +
 2021
 '''
 
 # Python packages
 import os
-import sys
 import shutil
 import logging
 import datetime
 import itertools
-
-sys.path.append(os.environ['CODE'])
-import utils
 
 # Global paths
 STORA_PATH = os.environ['STORA_PATH']
@@ -101,10 +98,6 @@ def main():
     Only move/clean up folders in target date range, protecting
     empty folders created ahead of today for future recordings
     '''
-    if not utils.check_control('power_off_all'):
-        logger.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-        
     logger.info("=========== stora_housekeeping.py START ===========")
     period = []
     date_range = []

@@ -10,6 +10,7 @@ encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
 and transcode.
 
+Joanna White
 2023
 '''
 
@@ -107,9 +108,6 @@ def transcode_mp4(fpath):
         logger.warning("%s\tWARNING\tSCRIPT EXITING: Error with file path supplied, not a file: %s", local_time(), fullpath)
         return 'failed transcode'
 
-    if not utils.check_control('pause_scripts'):
-        logger.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     log_build = []
 
     filepath, file = os.path.split(fullpath)
@@ -828,6 +826,11 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
     ]
 
+    sd_downscale_16x9 = [
+        "-vf",
+        "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
     sd_downscale_4x3 = [
         "-vf",
         "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
@@ -909,10 +912,8 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = scale_sd_4x3
     elif height == 576 and width == 703 and dar == '4:3':
         cmd_mid = scale_sd_4x3
-    elif height == 576 and width == 1024:
-        cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '16:9':
-        cmd_mid = scale_sd_16x9
+        cmd_mid = sd_downscale_16x9
     elif height < 576 and width > 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
     elif height <= 576 and dar == '16:9':
@@ -930,7 +931,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     elif height == 576 and dar == '1.85:1':
         cmd_mid = crop_sd_16x9
     elif height < 720 and dar == '16:9':
-        cmd_mid = scale_sd_16x9
+        cmd_mid = sd_downscale_16x9
     elif height < 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
     elif height == 720 and dar == '16:9':

@@ -6,18 +6,6 @@
 # Date variable for use in log
 DATE_NOW=$(date +%F\ %T)
 
-function control {
-    boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')
-    if [ "$boole" = false, ] ; then
-      echo "Control json requests script exit immediately" >> "${LOG}"
-      echo 'Control json requests script exit immediately'
-      exit 0
-    fi
-}
-
-# Control check inserted into code
-control
-
 # Ensure only one instance of script is running
 for pid in $(pidof -x seek.sh); do
     if [ $pid != $$ ]; then

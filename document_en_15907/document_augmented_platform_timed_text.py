@@ -20,6 +20,7 @@ CID Item record object_number.
 
 NOTES: Updated to work with adlib_v3
 
+Joanna White
 2024
 '''
 

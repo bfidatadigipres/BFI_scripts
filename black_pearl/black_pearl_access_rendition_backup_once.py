@@ -10,6 +10,7 @@ run with an open modification time but
 later to be set to a given amount of
 days that matches script run frequency.
 
+Joanna White
 2024
 '''
 
@@ -62,6 +63,17 @@ START_FOLDERS = {
     'wfsa': '201605',
     'yfa': '201605'
 }
+
+
+def check_control():
+    '''
+    Check control json for downtime requests
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['black_pearl']:
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
 
 def get_size(fpath):
@@ -183,10 +195,7 @@ def main():
         file_list = []
         replace_list = []
         for folder in folder_list:
-            if not utils.check_control('black_pearl'):
-                LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-                sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-            
+            check_control()
             LOGGER.info("** Working with access path date folder: %s", folder)
             files = os.listdir(os.path.join(access_path, folder))
             for file in files:

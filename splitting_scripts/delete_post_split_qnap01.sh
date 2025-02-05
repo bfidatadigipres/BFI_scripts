@@ -3,16 +3,6 @@
 # Launcher for delete_post_split.py script which moves F47 and H22 whole-tape
 # digitisations where all parts have been persisted to
 # a backup folder on the server for deletion by a second script
-function control {
-    boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')
-    if [ "$boole" = false, ] ; then
-      echo "Control json requests script exit immediately" >> "${LOG}"
-      exit 0
-    fi
-}
-
-# Control check inserted into code
-control
 
 # Log script start
 echo "Start delete_post_split_qnap01.py: $(date)" >> "${LOG_PATH}delete_post_split_qnap01.log"

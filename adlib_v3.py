@@ -4,6 +4,7 @@
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
+Joanna White
 2024
 '''
 
@@ -11,7 +12,6 @@ import json
 import requests
 import datetime
 import xmltodict
-from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
 from tenacity import retry, stop_after_attempt
@@ -38,21 +38,9 @@ def retrieve_record(api, database, search, limit, fields=None):
     '''
     Retrieve data from CID using new API
     '''
-    if search.startswith('priref='):
-        search_new = search
-    else:
-        if database == 'items':
-            search_new = f'(record_type=ITEM) and {search}'
-        elif database == 'works':
-            search_new = f'(record_type=WORK) and {search}'
-        elif database == 'manifestations':
-            search_new = f'(record_type=MANIFESTATION) and {search}'
-        else:
-            search_new = search
-
     query = {
         'database': database,
-        'search': search_new,
+        'search': search,
         'limit': limit,
         'output': 'jsonv1'
     }
@@ -63,19 +51,18 @@ def retrieve_record(api, database, search, limit, fields=None):
 
     record = get(api, query)
     if not record:
-        print(query)
         return None, None
-    if record['adlibJSON']['diagnostic']['hits'] == 0:
+    elif record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
-    if 'recordList' not in str(record):
+    elif 'recordList' not in str(record):
         try:
-            hits = int(record['adlibJSON']['diagnostic']['hits'])
+            hits = record['adlibJSON']['diagnostic']['hits']
             return hits, record
         except (IndexError, KeyError, TypeError) as err:
             print(err)
             return 0, record
 
-    hits = int(record['adlibJSON']['diagnostic']['hits'])
+    hits = record['adlibJSON']['diagnostic']['hits']
     return hits, record['adlibJSON']['recordList']['record']
 
 
@@ -92,16 +79,13 @@ def get(api, query):
         return dct
     except requests.exceptions.Timeout as err:
         print(err)
-        raise Exception from err
+        raise Exception
     except requests.exceptions.ConnectionError as err:
         print(err)
-        raise Exception from err
+        raise Exception
     except requests.exceptions.HTTPError as err:
         print(err)
-        raise Exception from err
-    except Exception as err:
-        print(err)
-        raise Exception from err
+        raise Exception
 
 
 def post(api, payload, database, method):
@@ -121,39 +105,30 @@ def post(api, payload, database, method):
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except requests.exceptions.Timeout as err:
             print(err)
-            raise Exception from err
+            raise Exception
         except requests.exceptions.ConnectionError as err:
             print(err)
-            raise Exception from err
+            raise Exception
         except requests.exceptions.HTTPError as err:
             print(err)
-            raise Exception from err
-        except Exception as err:
-            print(err)
-            raise Exception from err
+            raise Exception
 
     if method == 'updaterecord':
         try:
             response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
         except requests.exceptions.Timeout as err:
             print(err)
-            raise Exception from err
+            raise Exception
         except requests.exceptions.ConnectionError as err:
             print(err)
-            raise Exception from err
+            raise Exception
         except requests.exceptions.HTTPError as err:
             print(err)
-            raise Exception from err
-        except Exception as err:
-            print(err)
-            raise Exception from err
+            raise Exception
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
-    bool = check_response(response.text, api)
-    if bool is True:
-        return False
     if 'recordList' in response.text:
         record = json.loads(response.text)
         try:
@@ -167,7 +142,7 @@ def post(api, payload, database, method):
         record = json.loads(response.text)
         return record
     elif 'error' in response.text:
-        return record
+        return None
 
     return None
 
@@ -203,7 +178,7 @@ def retrieve_facet_list(record, fname):
     facets = []
     for value in record['adlibJSON']['facetList'][0]['values']:
         facets.append(value[fname]['spans'][0]['text'])
-
+    
     return facets
 
 
@@ -271,7 +246,6 @@ def get_grouped_items(api, database):
 
     result = requests.request('GET', api, headers=HEADERS, params=query)
     metadata = xmltodict.parse(result.text)
-
     if not isinstance(metadata, dict):
         return None, None
 
@@ -307,10 +281,10 @@ def create_record_data(api, database, priref, data=None):
             for k in item.keys():
                 if k in value:
                     if key in new_grouping.keys():
-                        new_grouping[key].append(item)
+                        new_grouping[key].update(item)
                         remove_list.append(item)
                     else:
-                        new_grouping[key] = [item]
+                        new_grouping[key] = item
                         remove_list.append(item)
         if new_grouping:
             print(f"Adjusted grouping data: {new_grouping}")
@@ -320,6 +294,7 @@ def create_record_data(api, database, priref, data=None):
         for rm in remove_list:
             if rm in data:
                 data.remove(rm)
+
     frag = get_fragments(data)
     if not frag:
         return False
@@ -339,38 +314,6 @@ def create_record_data(api, database, priref, data=None):
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
-def create_grouped_data(priref, grouping, field_pairs):
-    '''
-    Handle repeated groups of fields pairs, suppied as list of dcts per group
-    along with grouping known in advance and priref for append
-    '''
-    if not priref:
-        return None
-
-    payload_mid = ""
-    for lst in field_pairs:
-        mid = ""
-        mid_fields = ""
-        if isinstance(lst, list):
-            for grouped in lst:
-                for key, value in grouped.items():
-                    xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
-                    mid += xml_field
-        elif isinstance(lst, dict):
-            for key, value in lst.items():
-                xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
-                mid += xml_field
-        mid_fields = f"<{grouping}>" + mid + f"</{grouping}>"
-        payload_mid = payload_mid + mid_fields
-
-    if len(priref) > 0:
-        payload = f"<adlibXML><recordList><record priref='{priref}'>"
-        payload_end = "</record></recordList></adlibXML>"
-        return payload + payload_mid + payload_end
-    else:
-        return payload_mid
-
-
 def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
@@ -383,13 +326,12 @@ def get_fragments(obj):
 
     data = []
     for item in obj:
+
         if isinstance(item, str):
             sub_item = item
         else:
             sub_item = dicttoxml(item, root=False, attr_type=False)
-            if '<item>' in str(sub_item):
-                ss = str(sub_item).lstrip("b'").rstrip("'").replace("<item>","").replace("</item>", "")
-                sub_item = ss.encode()
+
         # Append valid XML fragments to `data`
         try:
             list_item = html.fragments_fromstring(sub_item, parser=etree.XMLParser(remove_blank_text=True))
@@ -424,40 +366,8 @@ def add_quality_comments(api, priref, comments):
         params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
         data=payload,
         timeout=1200)
-
-    bool = check_response(response.text, api)
-    if bool is True:
-        return False
     if "error" in str(response.text):
         return False
     else:
         return True
 
-
-def check_response(rec, api):
-    '''
-    Collate list of received API failures
-    and check for these reponses from post
-    actions. Initiate recycle
-    '''
-    failures = [
-        'A severe error occurred on the current command.',
-        'Execution Timout Expired. The timeout period elapsed'
-    ]
-
-    for warning in failures:
-        if warning in str(rec):
-            recycle_api(api)
-            return True
-
-
-def recycle_api(api):
-    '''
-    Adds a search call to API which
-    triggers Powershell recycle
-    '''
-    search = 'title=recycle.application.pool.data.test'
-    req = requests.request('GET', api, headers=HEADERS, params=search)
-    print(f"Search to trigger recycle sent: {req}")
-    print("Pausing for 2 minutes")
-    sleep(120)

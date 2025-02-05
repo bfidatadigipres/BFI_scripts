@@ -6,7 +6,7 @@ Python interface for [Adlib API]
 Edward Anderson, 2017
 
 Converted for Python3
-2021
+Joanna White, 2021
 '''
 
 import re

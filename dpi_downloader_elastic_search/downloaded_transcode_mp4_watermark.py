@@ -11,6 +11,7 @@ encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
 and transcode. Deletes source if successful.
 
+Joanna White
 2023
 '''
 
@@ -18,13 +19,10 @@ import os
 import re
 import sys
 import time
+import json
 import logging
 import subprocess
 import magic
-
-# Local imports
-sys.path.append(os.environ['CODE'])
-import utils
 
 # Global paths from server environmental variables
 MP4_POLICY = os.environ['MP4_POLICY']
@@ -39,6 +37,18 @@ formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
+
+
+def check_control():
+    '''
+    Check control json for downtime requests
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            return False
+        else:
+            return True
 
 
 def check_mime_type(fpath):
@@ -354,7 +364,7 @@ def create_watermark_command(fullpath, output):
     input_watermark = [
         "-i", WATERMARK,
     ]
-    '''
+
     # Top left
     filter_graph1 = [
         "-filter_complex",
@@ -366,7 +376,7 @@ def create_watermark_command(fullpath, output):
         "-filter_complex",
         "[1]format=rgba,colorchannelmixer=aa=0.3[logo];[logo][0]scale2ref=oh*mdar:ih[logo][video];[video][logo]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2"
     ]
-    '''
+
     # Top right
     filter_graph3 = [
         "-filter_complex",
@@ -612,9 +622,10 @@ def transcode_mp4_access(fpath, arg):
     if not mime_true:
         logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", fullpath)
         return 'not video'
-    if not utils.check_control('pause_scripts'):
-        logger.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    running = check_control()
+    if not running:
+        logger.warning('Script run prevented by downtime_control.json. Script exiting.')
+        return 'False'
 
     logger.info("================== START DPI download transcode to MP4 watermark START ==================")
     if watermark:

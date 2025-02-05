@@ -20,6 +20,7 @@ CID Item record object_number.
 
 NOTES: Updated to work with adlib_v3
 
+Joanna White
 2024
 '''
 
@@ -85,9 +86,7 @@ def main():
     Check for contents and create new CID item record
     for each timed text within. Rename and move for ingest.
     '''
-    if not utils.check_control('power_off_all'):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
@@ -99,7 +98,6 @@ def main():
     LOGGER.info("== Document augmented Film Fund timed text start ===================")
     session = adlib.create_session()
     for fpath in folder_list:
-        print(fpath)
         if not utils.check_control('pause_scripts'):
             LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
@@ -115,7 +113,6 @@ def main():
 
         # Check object number valid
         record = cid_check_ob_num(object_number, session)
-        print(record)
         if record is None:
             LOGGER.warning("Skipping: Record could not be matched with object_number")
             continue
@@ -128,7 +125,6 @@ def main():
         for file in file_list:
             if file.lower().endswith('.md5'):
                 continue
-            print(f"File found: {file}")
             ext = file.split('.')[-1]
             item_record = create_new_item_record(priref, file, record, session)
             if item_record is None:
@@ -223,8 +219,6 @@ def make_item_record_dict(priref, file, record):
     if 'Acquisition_source' in str(record):
         platform = adlib.retrieve_field_name(record[0], 'acquisition.source')[0]
         record_default = build_record_defaults(platform)
-        if not platform:
-            platform = ''
     else:
         platform = ''
         record_default = build_record_defaults('Film Fund')
@@ -282,10 +276,8 @@ def create_new_item_record(priref, fname, record, session):
     '''
     Build new CID item record from existing data and make CID item record
     '''
-
     item_dct = make_item_record_dict(priref, fname, record)
-    print(item_dct)
-    item_xml = adlib.create_record_data(CID_API, 'items', session, '', item_dct)
+    item_xml = adlib.create_record_data(CID_API, 'items', '', item_dct)
     print(item_xml)
     LOGGER.info(item_xml)
     new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord', session)

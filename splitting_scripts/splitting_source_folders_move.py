@@ -8,35 +8,24 @@ Iterates through each of list paths:
 4. Return these in list 'move_folders' comma separated, ordered emptiest path first
 5. Iterates 'move1' through 'move7' file by file passing file name and 'new_path' to move():
 
+Joanna White
 2020
 '''
 
 import os
-import sys
 import shutil
-
-# Private imports
-sys.path.append(os.environ['CODE'])
-import utils
 
 # List with paths, folder names for counts
 PATHS = [
     os.path.join(os.environ['QNAP_08'], 'processing/source/'),
-    os.path.join(os.environ['QNAP_08'], 'memnon_processing/source/'),
     os.path.join(os.environ['QNAP_10'], 'processing/source/'),
     os.path.join(os.environ['QNAP_H22'], 'processing/source/'),
+#    os.path.join(os.environ['ISILON_VID'],'processing/source/'),
     os.path.join(os.environ['QNAP_VID'], 'processing/source/')
 ]
 
 
 def main():
-    '''
-    Counts total number of files to move
-    sorts into even amounts and moves to
-    numbered subfolders
-    '''
-    if not utils.check_control('power_off_all'):
-        sys.exit('Exit requested by downtime_control.json')
     move_folders = []
     # Iterate through path list, searching top folder only for files to move
     for pth in PATHS:

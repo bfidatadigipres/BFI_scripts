@@ -25,6 +25,7 @@ Follow up script to document_artifax_record_creation.py
 
 NOTE: Updated for Adlib V3
 
+Joanna White
 2021
 '''
 

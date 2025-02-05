@@ -7,6 +7,9 @@ siblings, cousins, partWholes,
 package, can data, segments etc.
 
 Refactored for Python3
+Updated to Adlib V3
+
+Joanna White
 2022
 '''
 

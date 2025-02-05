@@ -2,6 +2,7 @@
 Consolidate all BP activities
 to one utility module
 
+Joanna White
 2024
 '''
 
@@ -95,70 +96,8 @@ def get_bp_md5(fname, bucket):
         md5 = result.response.msg['ETag']
     except Exception as err:
         print(err)
-        return None
     if md5:
         return md5.replace('"', '')
-
-
-def get_bp_length(fname, bucket):
-    '''
-    Fetch BP checksum to compare
-    to new local MD5
-    '''
-    size = ''
-    query = ds3.HeadObjectRequest(bucket, fname)
-    result = CLIENT.head_object(query)
-    try:
-        size = result.response.msg['Content-Length']
-    except Exception as err:
-        print(err)
-        return None
-    if size:
-        return size.replace('"', '')
-
-
-def get_confirmation_length_md5(fname, bucket, bucket_list):
-    '''
-    Alternative retrieval for get_object_list
-    avoiding full_details requests
-    '''
-    flist = [fname]
-    try:
-        object_flist = list([ds3.Ds3GetObject(name=fname) for fname in flist])
-        res = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(bucket, object_flist)
-        result = CLIENT.get_physical_placement_for_objects_spectra_s3(res)
-        data = result.result
-    except Exception as err:
-        print(err)
-        data = None
-
-    if data is None:
-        for buck in bucket_list:
-            try:
-                object_flist = list([ds3.Ds3GetObject(name=fname) for fname in flist])
-                res = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(buck, object_flist)
-                result = CLIENT.get_physical_placement_for_objects_spectra_s3(res)
-                print(result.result)
-                if len(result.result['TapeList']) > 0:
-                    data = result.result
-                    bucket = buck
-                    break
-            except Exception as err:
-                data = None
-                print(err)
-
-    if not data['TapeList']:
-        return 'No tape list', None, None
-    if result.result['TapeList'][0]['AssignedToStorageDomain'] == 'true':
-        confirmed = True
-    elif result.result['TapeList'][0]['AssignedToStorageDomain'] == 'false':
-        confirmed = False
-    else:
-        return None, None, None
-
-    md5 = get_bp_md5(fname, bucket)
-    length = get_bp_length(fname, bucket)
-    return confirmed, md5, length
 
 
 def get_object_list(fname):

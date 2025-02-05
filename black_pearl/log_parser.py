@@ -4,6 +4,7 @@
 Parse `global.log` and report on files with outstanding
 WARNING alerts issued for the given day.
 
+Joanna White
 2022
 '''
 
@@ -11,13 +12,10 @@ WARNING alerts issued for the given day.
 import os
 import sys
 import csv
+import json
 import shutil
 import datetime
 csv.field_size_limit(10000000)
-
-# Local imports
-sys.path.append(os.environ['CODE'])
-import utils
 
 # Date variable for use in ordering error outputs
 TODAY = datetime.date.today()
@@ -33,13 +31,23 @@ CURRENT_ERRORS = os.path.join(CURRENT_ERROR_FOLD, 'current_errors.csv')
 CURRENT_ERRORS_NEW = os.path.join(CURRENT_ERROR_FOLD, 'current_errors_new.csv')
 
 
+def check_control():
+    '''
+    Check control_json isn't False
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['autoingest']:
+            print('* Exit requested by downtime_control.json. Script exiting')
+            sys.exit('Exit requested by downtime_control.json. Script exiting')
+
+
 def main():
     '''
     For standalone use of log_parser
     not, launched from autoingest
     '''
-    if not utils.check_control('autoingest'):
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    check_control()
     create_current_errors_logs()
 
 
@@ -117,56 +125,25 @@ def create_current_errors_logs():
         shutil.move(CURRENT_ERRORS_NEW, CURRENT_ERRORS)
 
     print('* Creating versions of error log in all in-scope autoingest NAS shares')
-    if os.path.exists(os.environ['AUTOINGEST_EDITSHARE']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_EDITSHARE'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_H22']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_H22'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP01']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP01'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP02']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP02'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP03']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP03'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP04']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP04'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP05']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP05'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP06']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP06'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP07']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP07'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP08']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP09']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP09'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP10']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP10'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP11']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP11'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP08_OSH']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08_OSH'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['AUTOINGEST_QNAP_TEMP']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP_TEMP'], 'current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_VIDEO']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_VIDEO'], 'autoingest/current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_AUDIO']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_AUDIO'], 'autoingest/current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_DIGITAL']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_DIGITAL'], 'autoingest/current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_SC']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_SC'], 'autoingest/current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_FILM1']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM1'], 'autoingest/current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_FILM2']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM2'], 'autoingest/current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_FILM3']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM3'], 'autoingest/current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_FILM4']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM4'], 'autoingest/current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_FILM5']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM5'], 'autoingest/current_errors/current_errors.csv'))
-    if os.path.exists(os.environ['BP_FILM6']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM6'], 'autoingest/current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_DIG'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_FILM'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_AUD'], 'current_errors/current_errors.csv'))
+    # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_VID'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_ING'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_IS_SPEC'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_H22'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP01'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP02'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP03'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP04'], 'current_errors/current_errors.csv'))
+    # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP05'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP06'], 'current_errors/current_errors.csv'))
+    # shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP07'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP09'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP10'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP11'], 'current_errors/current_errors.csv'))
+    shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08_OSH'], 'current_errors/current_errors.csv'))
 
 
 if __name__ == '__main__':

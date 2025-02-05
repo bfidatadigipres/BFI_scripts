@@ -23,7 +23,8 @@ Curatorial Donor Acquisition Rename:
    - Where not found leave in place and append warning about CID failure to local log.
 
 NOTE: DMS may want to alter accepted filetypes over time.
-2022
+
+Joanna White 2022
 Python 3.6+
 '''
 
@@ -107,8 +108,6 @@ def sort_ext(ext):
     '''
     Decide on file type
     '''
-    if ext.startswith('.'):
-        ext = ext[1:]
     mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg', 'mpg'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
@@ -129,9 +128,6 @@ def main():
     Rename and move to successful_rename/ folder
     '''
     LOGGER.info("=========== START Curatorial Donor Acquisition rename OSH script START ==========")
-    if not utils.check_control('power_off_all'):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exit')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting')
     if not utils.check_control('pause_scripts'):
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')

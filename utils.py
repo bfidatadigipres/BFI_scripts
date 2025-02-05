@@ -2,6 +2,7 @@
 Consolidate all repeat modules
 to one utils.py document
 
+Joanna White
 2024
 '''
 
@@ -12,14 +13,12 @@ import json
 import yaml
 import hashlib
 import logging
-import datetime
 import subprocess
 import adlib_v3 as adlib
 
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
-
 
 PREFIX = [
     'N',
@@ -42,35 +41,26 @@ ACCEPTED_EXT = [
     'mpg',
     'mpeg',
     'mp4',
-    'm2ts',
     'mov',
     'mkv',
-    'wmv',
     'tif',
     'tiff',
     'jpg',
     'jpeg',
     'ts',
-    'm2ts',
-    'rtf',
-    'ttf',
     'srt',
     'scc',
     'itt',
     'stl',
     'cap',
     'dfxp',
-    'dxfp',
-    'csv',
-    'pdf',
-    'txt',
-    'vtt'
+    'dxfp'
 ]
 
 
 def accepted_file_type(ext):
     '''
-    Receive extension and returnc
+    Receive extension and return
     matching accepted file_type
     '''
     ftype = {'imp': 'mxf, xml',
@@ -80,30 +70,21 @@ def accepted_file_type(ext):
              'mpeg': 'mpeg-1, mpeg-ps',
              'mp4': 'mp4',
              'mov': 'mov, prores',
-             'mkv': 'mkv, dpx, dcdm',
+             'mkv': 'mkv, dpx',
              'wav': 'wav',
-             'wmv': 'wmv',
              'tif': 'tif, tiff',
              'tiff': 'tif, tiff',
              'jpg': 'jpg, jpeg',
              'jpeg': 'jpg, jpeg',
              'ts': 'mpeg-ts',
-             'm2ts': 'mpeg-ts',
              'srt': 'srt',
              'xml': 'xml, imp',
              'scc': 'scc',
              'itt': 'itt',
              'stl': 'stl',
-             'rtf': 'rtf',
-             'ttf': 'ttf',
-             'vtt': 'vtt',
              'cap': 'cap',
              'dxfp': 'dxfp',
-             'dfxp': 'dfxp',
-             'csv': 'csv',
-             'pdf': 'pdf',
-             'txt': 'txt'}
-
+             'dfxp': 'dfxp'}
     ext = ext.lower()
     for key, val in ftype.items():
         if key == ext:
@@ -139,7 +120,6 @@ def cid_check(cid_api):
     '''
     try:
         dct = adlib.check(cid_api)
-        print(dct)
         if isinstance(dct, dict):
             return True
     except KeyError:
@@ -164,17 +144,6 @@ def read_csv(csv_path):
     with open(csv_path, 'r') as csvread:
         readme = csv.DictReader(csvread)
         return readme
-
-
-def read_extract(fpath):
-    '''
-    For reading metadata text files
-    and returning as a block
-    '''
-    with open(fpath, 'r') as data:
-        readme = data.read()
-
-    return readme
 
 
 def check_filename(fname):
@@ -242,10 +211,10 @@ def sort_ext(ext):
     '''
     Decide on file type
     '''
-    mime_type = {'video': ['mxf', 'mkv', 'mov', 'wmv', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'mpg', 'avi', 'ts', 'mpeg'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
-                 'document': ['docx', 'pdf', 'vtt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp', 'txt', 'ttf', 'rtf', 'csv', 'txt']}
+                 'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}
 
     ext = ext.lower()
     for key, val in mime_type.items():
@@ -297,12 +266,12 @@ def get_mediaconch(dpath, policy):
         '-p', policy,
         dpath
     ]
-
+    
     meta = subprocess.check_output(cmd)
     meta = meta.decode('utf-8')
     if meta.startswith(f'pass! {dpath}'):
         return True, meta
-
+    
     return False, meta
 
 
@@ -325,7 +294,7 @@ def get_ms(filepath):
     except Exception as err:
         print(f"Unable to extract duration with FFprobe: {err}")
         retry = True
-
+    
     if retry:
         cmd = [
             'mediainfo',
@@ -452,64 +421,3 @@ def check_global_log(fname, check_str):
             if fname in str(row) and check_str in str(row):
                 print(row)
                 return row
-
-
-def checksum_write(checksum_path, checksum, filepath, filename):
-    '''
-    This function writes the checksum into a txt file with correct
-    formatting and returns the path to that document
-    '''
-    date_string = str(datetime.date.today())
-    try:
-        with open(checksum_path, 'w') as fname:
-            fname.write(f"{checksum} - {filepath} - {date_string}")
-            fname.close()
-        return checksum_path
-    except Exception as e:
-        print(f"{filename} - Unable to write checksum: {checksum_path}\n{e}")
-        raise Exception
-
-
-def mediainfo_create(arg, output_type, filepath, mediainfo_path):
-    '''
-    Output mediainfo data to text files
-    '''
-    filename = os.path.basename(filepath)
-    if arg == '-f':
-        if output_type == 'TEXT':
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}_FULL.txt")
-        elif output_type == 'JSON':
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.json")
-
-        command = [
-            'mediainfo',
-            arg,
-            '--Details=0',
-            f'--Output={output_type}',
-            f'--LogFile={out_path}',
-            filepath
-        ]
-    else:
-        if 'XML' in output_type:
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
-        elif 'EBUCore' in output_type:
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
-        elif 'PBCore' in output_type:
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.xml")
-        else:
-            out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.txt")
-
-        command = [
-            'mediainfo',
-            '--Details=0',
-            f'--Output={output_type}',
-            f'--LogFile={out_path}',
-            filepath
-        ]
-
-    try:
-        subprocess.call(command)
-        return out_path
-    except Exception as e:
-        print(e)
-        return False

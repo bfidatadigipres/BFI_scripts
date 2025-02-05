@@ -11,6 +11,7 @@ Content class is out of use in
 post-Imagen DPI workflows
 
 Refactored for Python3
+Joanna White
 June 2022
 '''
 

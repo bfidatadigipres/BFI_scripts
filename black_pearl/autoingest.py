@@ -55,6 +55,7 @@ main():
 9. The file is moved from the autoingest/ingest path into
    the black_pearl_ingest folder where it is ingested to DPI.
 
+Joanna White
 2022
 '''
 
@@ -152,11 +153,11 @@ def check_accepted_file_type(fpath):
     Retrieve codec and ensure file is accepted type
     TAR accepted from DMS / ProRes all other paths
     '''
-    if any(x in fpath for x in ['qnap_11', 'qnap_10']):
-        if fpath.endswith(('.tar', '.TAR', '.mkv', '.MKV')):
+    if any(x in fpath for x in ['qnap_access_renditions', 'qnap_10']):
+        if fpath.endswith(('tar', 'TAR')):
             return True
-    if any(x in fpath for x in ['qnap_06', 'qnap_03']):
-        if fpath.endswith(('.mkv', '.MKV', '.tar', '.TAR')):
+    if any(x in fpath for x in ['qnap_06', 'film_operations', 'qnap_film']):
+        if fpath.endswith(('mkv', 'MKV')):
             return True
     formt = utils.get_metadata('Video', 'Format', fpath)
     print(f"utils.get_metadata: {formt}")
@@ -170,9 +171,9 @@ def check_mime_type(fpath, log_paths):
     Checks the mime type of the file
     and if stream media checks ffprobe
     '''
-    if fpath.lower().endswith(('.mxf', '.ts', '.mpg', '.m2ts')):
+    if fpath.endswith(('.mxf', '.ts', '.mpg')):
         mime = 'video'
-    elif fpath.lower().endswith(('.csv', '.pdf', '.srt', '.rtf', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml', '.ttf', '.txt')):
+    elif fpath.endswith(('.srt', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml')):
         mime = 'application'
     else:
         mime = magic.from_file(fpath, mime=True)
@@ -277,20 +278,19 @@ def check_media_record(fname, session):
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
+        if hits is None:
+            logger.exception('"CID API was unreachable for Media search: %s', search)
+            raise Exception(f"CID API was unreachable for Media search: {search}")
+        print(f"check_media_record(): AdlibV3 record for hits: {hits}")
+        if hits == 0:
+            return False
+        elif hits == 1:
+            return True
+        elif hits > 1:
+            return f'Hits exceed 1: {hits}'
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
         return False
-
-    if hits is None:
-        logger.exception('"CID API was unreachable for Media search: %s', search)
-        raise Exception(f"CID API was unreachable for Media search: {search}")
-    print(f"check_media_record(): AdlibV3 record for hits: {hits}")
-    if int(hits) == 1:
-        return True
-    elif int(hits) == 0:
-        return False
-    if int(hits) > 1:
-        return f'Hits exceed 1: {hits}'
 
 
 def get_buckets(bucket_collection):
@@ -313,7 +313,7 @@ def get_buckets(bucket_collection):
     return bucket_list
 
 
-def ext_in_file_type(ext, priref, log_paths, ob_num, session):
+def ext_in_file_type(ext, priref, log_paths, session):
     '''
     Check if ext matches file_type
     '''
@@ -326,20 +326,14 @@ def ext_in_file_type(ext, priref, log_paths, ob_num, session):
 
     ftype = ftype.split(', ')
     print(ftype)
-    if ob_num.startswith('CA-'):
-        logger.info("Collections Asset item file type check with 'asset_file_type' field")
-        retrieved_fields = ['asset_file_type']
-    else:
-        retrieved_fields = ['file_type']
-
     search = f'priref={priref}'
-    record = adlib.retrieve_record(CID_API, 'collect', search, '1', session, retrieved_fields)[1]
+    record = adlib.retrieve_record(CID_API, 'collect', search, '1', session, ['file_type'])[1]
     if record is None:
         return False
 
     print(f"ext_in_file_type(): AdlibV3 record returned:\n{record}")
     try:
-        file_type = adlib.retrieve_field_name(record[0], retrieved_fields[0])
+        file_type = adlib.retrieve_field_name(record[0], 'file_type')
         print(f"ext_in_file_type(): AdlibV3 file type: {file_type}")
     except (IndexError, KeyError):
         logger.warning('%s\tInvalid <file_type> in Collect record', log_paths)
@@ -483,7 +477,7 @@ def get_mappings(pth, mappings):
     Get files within config.yaml mappings
     Path limitations for slow storage
     '''
-    if '/mnt/qnap_01/Public/F47' in pth:
+    if '/mnt/qnap_video/' in pth:
         max_ = 1000
     else:
         max_ = 2000
@@ -616,7 +610,7 @@ def main():
             print(f"* CID item record found with object number {object_number}: priref {priref}")
 
             # Ext in file_type and file_type validity in Collect database
-            confirmed = ext_in_file_type(ext, priref, log_paths, object_number, sess)
+            confirmed = ext_in_file_type(ext, priref, log_paths, sess)
             if not confirmed:
                 continue
 
@@ -707,7 +701,7 @@ def main():
                 print(f"utils.get_size: {size}")
                 print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
                 if int(size) > 1099511627776:
-                    logger.info('%s\tFile is larger than 1TB. Checking file is ProRes or TAR', log_paths)
+                    logger.info('%s\tFile is larger than 1TB. Checking file is ProRes', log_paths)
                     accepted_file_type = check_accepted_file_type(fpath)
                     if accepted_file_type is True:
                         try:
@@ -775,6 +769,17 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
                         logger.warning('%s\tFailed to delete file', log_paths)
                 else:
                     print('* File already absent from path. Check problem with persistence message')
+    '''
+    # Temporary step to delete completed items whose logging failed early August 2024 (QNAP-01 drive failure)
+    if 'qnap_imagen_storage/Public/autoingest/completed' in fpath:
+        if media_check is True:
+            logger.info("Ingested during QNAP-01 drive failure impacting Logs/ writes (August 2024). No deletion confirmation in global.log but CID Media record present. Deleting.")
+            os.remove(fpath)
+            logger.info('%s\tSuccessfully deleted file', log_paths)
+            log_delete_message(fpath, 'Successfully deleted file', fname)
+            print('* successfully deleted QNAP-04 item based on CID Media record...')
+            return True
+    '''
     return False
 
 

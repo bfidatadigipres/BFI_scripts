@@ -25,6 +25,7 @@ Fetch metadata from Artifax
 
 NOTE: Updated to Adlib V3
 
+Joanna White
 2021
 '''
 

@@ -14,6 +14,7 @@ Young Audience Content Fund rename and move to autoingest:
 
 NOTE: Supports use of adlib_v3.py
 
+Joanna White
 2021
 '''
 
@@ -28,7 +29,6 @@ import datetime
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-import utils
 
 # Global path variables
 YACF_PATH = os.environ['YACF_COMPLETE']
@@ -52,6 +52,29 @@ TODAY = str(datetime.datetime.now())
 TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
 DATE_TIME = (f"{TODAY_DATE} = {TODAY_TIME}")
+
+
+def check_control():
+    '''
+    Check control json for downtime requests
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
+
+def cid_check():
+    '''
+    Tests if CID active before all other operations commence
+    '''
+    try:
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
 
 
 def cid_retrieve(filename):
@@ -98,14 +121,8 @@ def main():
     Move file to autoingest path
     '''
     LOGGER.info("=========== YACF script start ==========")
-    if not utils.cid_check(CID_API):
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
-    if not utils.check_control('pause_scripts'):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
+    check_control()
+    cid_check()
     for root, _, files in os.walk(YACF_PATH):
         for file in files:
             filepath = os.path.join(root, file)

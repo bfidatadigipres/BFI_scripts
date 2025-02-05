@@ -15,6 +15,7 @@ Dependencies:
 import os
 import sys
 import csv
+import json
 import uuid
 import datetime
 from tenacity import retry, stop_after_attempt
@@ -22,7 +23,6 @@ from tenacity import retry, stop_after_attempt
 # Local imports
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-import utils
 sys.path.append(os.environ['WORKFLOW'])
 import tape_model
 import selections
@@ -32,6 +32,29 @@ CID_API = os.environ['CID_API4']
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 SELECTIONS = os.path.join(os.environ['WORKFLOW'], 'f47/selections.csv')
+
+
+def check_control():
+    '''
+    Check downtime control and stop script of False
+    '''
+    with open(os.path.join(LOGS, 'downtime_control.json')) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            write_to_log(f'Script run prevented by downtime_control.json. Script exiting. {DT_STR}\n')
+            sys.exit('Exit requested by downtime_control.json')
+
+
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        adlib.check(CID_API)
+    except KeyError:
+        write_to_log("* Cannot establish CID session, exiting script\n")
+        print("* Cannot establish CID session, exiting script")
+        sys.exit()
 
 
 def get_candidates():
@@ -68,14 +91,8 @@ def get_object_number(priref):
 
 
 def main():
-    '''
-    Selections script, write to CSV
-    '''
-    if not utils.check_control('pause_scripts'):
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-    if not utils.cid_check(CID_API):
-        print("* Cannot establish CID session, exiting script")
-        sys.exit()
+    check_control()
+    cid_check()
 
     write_to_log(f'=== Processing Items in F47 Pointer File === {DT_STR}\n')
     write_to_log('Fetching csv data, building selected items list and fetching candidates.\n')

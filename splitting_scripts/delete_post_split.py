@@ -16,12 +16,15 @@ Note: this script requires the BlackPearl creds loaded as
 
 Refactored for Python3
 Updated for Adlib V3
+
+Joanna White
 2023
 '''
 
 # Public packages
 import os
 import sys
+import json
 import shutil
 import logging
 from ds3 import ds3
@@ -29,7 +32,6 @@ from ds3 import ds3
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-import utils
 import models
 
 # Global variables
@@ -53,6 +55,29 @@ formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
+
+
+def check_control():
+    '''
+    Check control json for downtime requests
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['black_pearl'] or not j['split_control_delete']:
+            logger.info('Script run prevented by downtime_control.json. Script exiting.')
+            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+
+
+def cid_check():
+    '''
+    Tests if CID active before all other operations commence
+    '''
+    try:
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        logger.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
 
 
 def get_object_list(fname):
@@ -89,13 +114,8 @@ def main():
     to process.
     '''
     for media_target in TARGETS:
-        if not utils.check_control('split_control_delete') or not utils.check_control('black_pearl'):
-            logger.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-        if not utils.cid_check(CID_API):
-            print("* Cannot establish CID session, exiting script")
-            logger.critical("* Cannot establish CID session, exiting script")
-            sys.exit()
+        check_control()
+        cid_check()
 
         # Path to source media
         root = os.path.join(media_target, 'source')

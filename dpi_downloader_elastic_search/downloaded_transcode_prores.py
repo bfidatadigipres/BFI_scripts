@@ -11,6 +11,7 @@ encoded file path to the downloader app script, which sends
 an email notification of the file's completed download
 and transcode.
 
+Joanna White
 2023
 '''
 
@@ -22,10 +23,6 @@ import json
 import logging
 import subprocess
 import magic
-
-# Private packages
-sys.path.append(os.environ['CODE'])
-import utils
 
 # Global paths from server environmental variables
 PATH_POLICY = os.environ['MEDIACONCH']
@@ -42,12 +39,24 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
+def check_control():
+    '''
+    Check control json for downtime requests
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            return False
+        else:
+            return True
+
+
 def check_mime_type(fpath):
     '''
     Checks the mime type is video
     and if stream media checks ffprobe
     '''
-    if fpath.lower().endswith(('.ts', '.mxf', '.mpg')):
+    if fpath.endswith(('.ts', '.mxf', '.mpg')):
         mime = 'video'
     else:
         mime = magic.from_file(fpath, mime=True)
@@ -479,8 +488,9 @@ def transcode_mov(fpath):
     if not mime_true:
         logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", sys.argv)
         return 'not video'
-    if not utils.check_control('pause_scripts'):
-        logger.info('Script run prevented by downtime_control.json. Script exiting.')
+    running = check_control()
+    if not running:
+        logger.warning('Script run prevented by downtime_control.json. Script exiting.')
         return False
 
     logger.info("================== START DPI download transcode to prores START ==================")

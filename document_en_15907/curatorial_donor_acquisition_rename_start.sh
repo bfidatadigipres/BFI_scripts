@@ -7,23 +7,10 @@
 date_FULL=$(date +'%Y-%m-%d - %T')
 
 # Local variables from environmental vars
-curatorial_path="${CURATORIAL}"
+curatorial_path="${IS_CURATORIAL}"
+curatorial_path2="{QNAP_CURATORIAL}Curatorial"
 dump_to="${CODE}document_en_15907/"
 log_path="${LOG_PATH}curatorial_donor_acquisition_rename.log"
-
-
-function control {
-    boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')
-    if [ "$boole" = false, ] ; then
-      echo "Control json requests script exit immediately" >> "${LOG}"
-      echo 'Control json requests script exit immediately'
-      exit 0
-    fi
-}
-
-# Control check inserted into code
-control
-
 
 # Directory path change just to run shell find commands
 cd "${dump_to}"
@@ -37,6 +24,7 @@ echo " == Shell script creating curatorial_donor_acquisition.txt for parallel la
 
 # Return full list of paths depth 2 to dump_text
 find "${curatorial_path}" -mindepth 2 -maxdepth 2 -type d -name 'Workflow_*' >> "${dump_to}curatorial_donor_acquisition.txt"
+#find "${curatorial_path2}" -mindepth 2 -maxdepth 2 -type d -name 'Workflow_*' >> "${dump_to}curatorial_donor_acquisition.txt"
 
 echo " == Launching GNU parallel to run multiple Python3 scripts for renaming == " >> "${log_path}"
 grep '/mnt/' "${dump_to}curatorial_donor_acquisition.txt" | parallel --jobs 1 "${PYENV311} curatorial_donor_acquisition_rename.py {}"

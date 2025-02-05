@@ -5,7 +5,7 @@ Assign a gender to any uncatalogued people agents if the given name(s)
 extracted from the <name> and <used_for> fields appear unambigiously
 in the ONS baby names dataset.
 
-Updated fro Py3.11 2024 / Adlib V3
+Updated fro Py3.11 / Adlib V3
 '''
 
 # Public packages
@@ -19,7 +19,6 @@ import datetime
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
-import utils
 
 # Global variables
 LOGS = os.environ['LOG_PATH']
@@ -34,6 +33,29 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
+
+
+def check_control():
+    '''
+    Check for downtime control
+    '''
+    with open(CONTROL_JSON) as control:
+        j = json.load(control)
+        if not j['pause_scripts']:
+            LOGGER.info("Script run prevented by downtime_control.json. Script exiting")
+            sys.exit("Script run prevented by downtime_control.json. Script exiting")
+
+
+def cid_check():
+    '''
+    Test if CID API online
+    '''
+    try:
+        adlib.check(CID_API)
+    except KeyError:
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
 
 
 def load_names():
@@ -75,13 +97,8 @@ def main():
     Download uncatalogued people from cid
     Check for name match, and updated estimated gender
     '''
-    if not utils.check_control('pause_scripts'):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.cid_check(CID_API):
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
+    check_control()
+    cid_check()
 
     LOGGER.info("------------ Gender script start -------------------------")
     LOGGER.info('* Downloading <people> records in scope...')

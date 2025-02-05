@@ -378,7 +378,7 @@ def main():
     print(log_build)
 
 
-def log_output(log_build: list[str?]) -> None:
+def log_output(log_build: list[str]) -> None:
     '''
     Collect up log list and output to log in one block
     '''
@@ -914,7 +914,7 @@ def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]
     '''
     payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_mid = ''.join(data)
-    payload_end = f"</record></recordList></adlibXML>"
+    payload_end = "</record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
 
     rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
@@ -924,7 +924,7 @@ def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]
     print("**************************************************************")
     print(data)
     print("**************************************************************")
-    
+
     data = get_media_priref(fname)
     file = fname.split('.')[0]
     if file == data[4] or file in str(data[2]):

@@ -21,16 +21,13 @@ RC DPX renaming script
 10. All details of movements are written to Isilon log and human readable log in QNAP-06.
 
 NOTE: Updated for Adlib V3
-      Presently ununsed
-
-Joanna White 2022
+2022
 '''
 
 # Public packages
 import datetime
 import logging
 import shutil
-import json
 import sys
 import os
 import re
@@ -38,6 +35,7 @@ import re
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 QNAP_PATH = os.environ['QNAP_FILMOPS']
@@ -60,29 +58,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def cid_list_retrieve(database, search):
@@ -115,39 +90,45 @@ def cid_retrieve(database, search):
     Receive filename and search in CID records
     Return all available data to main
     '''
-    query = {'database': database,
-             'search': search,
-             'limit': '0',
-             'output': 'json'}
-    try:
-        query_result = CID.get(query)
-    except Exception:
-        LOGGER.exception("cid_retrieve(): Unable to retrieve data: %s", search)
-        query_result = None
+    fields = [
+        'object_number',
+        'priref',
+        'title',
+        'file_type',
+        'production.notes',
+        'derived_item'
+    ]
 
     try:
-        object_number = query_result.records[0]['object_number'][0]
-    except (KeyError, IndexError):
+        record = adlib.retrieve_record(CID_API, database, search, '0', fields)[1]
+    except Exception:
+        LOGGER.exception("cid_retrieve(): Unable to retrieve data: %s", search)
+        record = None
+    if 'object_number' in str(record):
+        object_number = adlib.retrieve_field_name(record[0], 'object_number')[0]
+    else:
         object_number = ''
-    try:
-        priref = query_result.records[0]['priref'][0]
-    except (KeyError, IndexError):
-        priref = ""
-    try:
-        title = query_result.records[0]['Title'][0]['title'][0]
-    except (KeyError, IndexError):
-        title = ""
-    try:
-        file_type = query_result.records[0]['file_type'][0]
-    except (KeyError, IndexError):
-        file_type = ""
-    try:
-        prod_notes = query_result.records[0]['production.notes'][0]
-    except (KeyError, IndexError):
+    if 'priref' in str(record):
+        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    else:
+        priref = ''
+    if 'title' in str(record):
+        priref = adlib.retrieve_field_name(record[0], 'title')[0]
+    else:
+        title = ''
+    if 'file_type' in str(record):
+        file_type = adlib.retrieve_field_name(record[0], 'file_type')[0]
+    else:
+        file_type = ''
+    if 'production.notes' in str(record):
+        prod_notes = adlib.retrieve_field_name(record[0], 'production.notes')[0]
+    else:
         prod_notes = ''
+
+    # UNSURE HOW THIS WILL WORK - NEEDS TESTING
     try:
         derived_items = []
-        derived_items = query_result.records[0]['Derived_item']
+        derived_items = adlib.retrieve_field_name(record[0], 'derived_item')
     except (KeyError, IndexError):
         derived_items = ''
 
@@ -168,8 +149,13 @@ def main():
     Rename and move to successful_rename/ folder
     '''
     LOGGER.info("======= Python launch RC DPX rename script START ======")
-    check_control()
-    cid_check()
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     if not os.geteuid() == 0:
         sys.exit("\nOnly root can run this script\n")

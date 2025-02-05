@@ -14,7 +14,6 @@ move():
 folder_check():
 7. Called by move(): looks for folders without .json files in. If found renames the csv to end '.stora'
 
-Stephen McConnachie / Joanna White
 2020
 '''
 
@@ -44,8 +43,8 @@ YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
 START = f'{YESTERDAY_CLEAN}T00:00:00'
 END = f'{YESTERDAY_CLEAN}T23:59:00'
 # If a different date period needs targeting use:
-#START = '2024-01-03T00:00:00'
-#END = '2024-01-03T23:59:00'
+#START = '2024-10-19T00:00:00'
+#END = '2024-10-19T23:59:00'
 DATE_PATH = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
@@ -105,6 +104,7 @@ def check_api(value):
     '''
     params = {"channelId": f"{value}", "start": START, "end": END, "aliases": "True"}
     req = requests.request("GET", URL, headers=HEADERS, params=params, timeout=120)
+    print(req)
     if req.status_code == 200:
         return True
     logger.info("PATV API return status code: %s", req.status_code)
@@ -182,6 +182,7 @@ def main():
     fails = 0
     for item in CHANNEL.keys():
         item_path = os.path.join(PATH, item)
+        print(item_path)
         if not os.path.exists(item_path):
             fails += 1
             make_path(CHANNEL, item)
@@ -189,7 +190,7 @@ def main():
             print("Updating new path to channel dictionary")
             new_channel = f"NO_RECORDING_{item}"
             old_channel = item
-            # New block to manage up to 3 missing channels - TEST
+            # New block to manage up to 3 missing channels
             if fails == 1:
                 channel1 = dict(CHANNEL)
                 channel1[new_channel] = channel1.pop(old_channel)
@@ -199,7 +200,11 @@ def main():
             if fails == 3:
                 channel3 = dict(channel2)
                 channel3[new_channel] = channel3.pop(old_channel)
+            if fails == 4:
+                channel4 = dict(channel3)
+                channel4[new_channel] = channel4.pop(old_channel)
 
+    print(fails)
     # If metadata cannot be retrieved the script exits
     logger.info("Requests will now attempt to retrieve the EPG channel metadata from start=%s to end=%s", START, END)
 
@@ -256,6 +261,20 @@ def main():
             jdct = fetch(value)
             retrieve_dct_data(key, value, jdct)
         for item in channel3.keys():
+            path_move = os.path.join(STORAGE_PATH, DATE_PATH, item)
+            logger.info("Path for move actions: %s", path_move)
+            move(path_move, item)
+            folder_check(path_move)
+    elif fails == 4:
+        print(f"Four channels missing, using channel4 dictionary: {channel4}")
+        for key, value in channel4.items():
+            result = check_api(value)
+            if not result:
+                logger.warning("Unable to establish contact with PATV API for channel %s. Script exitings", key)
+                sys.exit()
+            jdct = fetch(value)
+            retrieve_dct_data(key, value, jdct)
+        for item in channel4.keys():
             path_move = os.path.join(STORAGE_PATH, DATE_PATH, item)
             logger.info("Path for move actions: %s", path_move)
             move(path_move, item)

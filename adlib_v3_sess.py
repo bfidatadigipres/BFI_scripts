@@ -4,16 +4,16 @@
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
-Joanna White
 2024
 '''
 
 import json
 import datetime
-from requests import Session, exceptions
+import xmltodict
+from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
-import xmltodict
+from requests import request, Session, exceptions
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {
@@ -40,15 +40,27 @@ def create_session():
     '''
     session = Session()
     return session
-    
+
 
 def retrieve_record(api, database, search, limit, session=None, fields=None):
     '''
     Retrieve data from CID using new API
     '''
+    if search.startswith('priref='):
+        search_new = search
+    else:
+        if database == 'items':
+            search_new = f'(record_type=ITEM) and {search}'
+        elif database == 'works':
+            search_new = f'(record_type=WORK) and {search}'
+        elif database == 'manifestations':
+            search_new = f'(record_type=MANIFESTATION) and {search}'
+        else:
+            search_new = search
+
     query = {
         'database': database,
-        'search': search,
+        'search': search_new,
         'limit': limit,
         'output': 'jsonv1'
     }
@@ -60,17 +72,17 @@ def retrieve_record(api, database, search, limit, session=None, fields=None):
     record = get(api, query, session)
     if not record:
         return None, None
-    elif record['adlibJSON']['diagnostic']['hits'] == 0:
+    if record['adlibJSON']['diagnostic']['hits'] == 0:
         return 0, None
-    elif 'recordList' not in str(record):
+    if 'recordList' not in str(record):
         try:
-            hits = record['adlibJSON']['diagnostic']['hits']
+            hits = int(record['adlibJSON']['diagnostic']['hits'])
             return hits, record
         except (IndexError, KeyError, TypeError) as err:
             print(err)
             return 0, record
 
-    hits = record['adlibJSON']['diagnostic']['hits']
+    hits = int(record['adlibJSON']['diagnostic']['hits'])
     return hits, record['adlibJSON']['recordList']['record']
 
 
@@ -89,13 +101,16 @@ def get(api, query, session):
         return dct
     except exceptions.Timeout as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except exceptions.ConnectionError as err:
         print(err)
-        raise Exception
+        raise Exception from err
     except exceptions.HTTPError as err:
         print(err)
-        raise Exception
+        raise Exception from err
+    except Exception as err:
+        print(err)
+        raise Exception from err
 
 
 def post(api, payload, database, method, session=None):
@@ -116,32 +131,45 @@ def post(api, payload, database, method, session=None):
     if method == 'insertrecord':
         try:
             response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+            if response.status_code != 200:
+                raise Exception
         except exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
+        except Exception as err:
+            print(err)
+            raise Exception from err
 
     if method == 'updaterecord':
         try:
             response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+            if response.status_code != 200:
+                raise Exception
         except exceptions.Timeout as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except exceptions.ConnectionError as err:
             print(err)
-            raise Exception
+            raise Exception from err
         except exceptions.HTTPError as err:
             print(err)
-            raise Exception
+            raise Exception from err
+        except Exception as err:
+            print(err)
+            raise Exception from err
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
+    bool = check_response(response.text, api)
+    if bool is True:
+        return False
     if 'recordList' in response.text:
         record = json.loads(response.text)
         try:
@@ -328,6 +356,38 @@ def create_record_data(api, database, session, priref, data=None):
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
+def create_grouped_data(priref, grouping, field_pairs):
+    '''
+    Handle repeated groups of fields pairs, suppied as list of dcts per group
+    along with grouping known in advance and priref for append
+    '''
+    if not priref:
+        return None
+
+    payload_mid = ""
+    for lst in field_pairs:
+        mid = ""
+        mid_fields = ""
+        if isinstance(lst, list):
+            for grouped in lst:
+                for key, value in grouped.items():
+                    xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
+                    mid += xml_field
+        elif isinstance(lst, dict):
+            for key, value in lst.items():
+                xml_field = f"<{key}><![CDATA[{value}]]></{key}>"
+                mid += xml_field
+        mid_fields = f"<{grouping}>" + mid + f"</{grouping}>"
+        payload_mid = payload_mid + mid_fields
+    
+    if len(priref) > 0:
+        payload = f"<adlibXML><recordList><record priref='{priref}'>"
+        payload_end = "</record></recordList></adlibXML>"
+        return payload + payload_mid + payload_end
+    else:
+        return payload_mid
+
+
 def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
@@ -387,3 +447,31 @@ def add_quality_comments(api, priref, comments, session=None):
     else:
         return True
 
+
+def check_response(rec, api):
+    '''
+    Collate list of received API failures
+    and check for these reponses from post
+    actions. Initiate recycle
+    '''
+    failures = [
+        'A severe error occurred on the current command.',
+        'Execution Timout Expired. The timeout period elapsed'
+    ]
+
+    for warning in failures:
+        if warning in str(rec):
+            recycle_api(api)
+            return True
+
+
+def recycle_api(api):
+    '''
+    Adds a search call to API which
+    triggers Powershell recycle
+    '''
+    search = 'title=recycle.application.pool.data.test'
+    req = request('GET', api, headers=HEADERS, params=search)
+    print(f"Search to trigger recycle sent: {req}")
+    print("Pausing for 2 minutes")
+    sleep(120)

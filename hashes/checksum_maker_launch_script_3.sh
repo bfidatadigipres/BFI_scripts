@@ -16,14 +16,24 @@ LOG_LEAD="$LOG_PATH"
 CODE_LEAD="$CODE"
 PY3_LAUNCH="$PYENV311"
 LOG="${LOG_LEAD}checksum_maker${PATH_INSERT}launch.log"
-AUTOINGEST="${PTH}autoingest/black_pearl_ingest/"
+AUTOINGEST="${PTH}autoingest/black_pearl_ingest/pending_*"
 HASHES="$HASH_PATH"
-DUMP_FOLDER="${HASHES}${PATH_INSERT}autoingest_folder_list.txt"
 DUMP_TO="${HASHES}${PATH_INSERT}autoingest_file_list.txt"
 
+function control {
+    boole=$(cat "${CONTROL_JSON}" | grep "power_off_all" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      exit 0
+    fi
+}
+
+# Control check inserted into code
+control
+
 # replace list to ensure clean data
+rm "${DUMP_TO}"
 touch "${DUMP_TO}"
-touch "${DUMP_FOLDER}"
 
 # Directory path to run shell script
 cd "${CODE_LEAD}hashes/"
@@ -33,8 +43,7 @@ echo " == Start checksum_maker scripts in AUTOINGEST == " >> "${LOG}"
 echo " == Shell script creating autoingest file list for parallel launch of Python scripts == " >> "${LOG}"
 
 # Command to build file list from autoingest folder ingest/ contents
-find "${AUTOINGEST}" -name 'N_*' -mmin +10 >> "${DUMP_FOLDER}"
-cat "${DUMP_FOLDER}" | grep 'pending_' >> "${DUMP_TO}"
+find "${AUTOINGEST}" -name 'N_*' -mmin +10 >> "${DUMP_TO}"
 list=$(cat "${DUMP_TO}" | tr " " "\n")
 echo "${PTH} files to have checksum's generated *if not already created*:" >> "${LOG}"
 echo "${list}" >> "${LOG}"
@@ -43,6 +52,5 @@ echo "${list}" >> "${LOG}"
 echo " == Launching GNU parallel to run multiple Python3 scripts for MD5 generation == " >> "${LOG}"
 grep '/mnt/' "${DUMP_TO}" | parallel --jobs "$JOBS" "$PY3_LAUNCH checksum_maker_mediainfo.py {}"
 
-rm "${DUMP_TO}" "${DUMP_FOLDER}"
 DATE_CLOSE=$(date +'%Y-%m-%d - %T')
 echo " ========================================== SHELL SCRIPT END ============================================= $DATE_CLOSE" >> "${LOG}"

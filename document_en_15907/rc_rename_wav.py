@@ -17,10 +17,7 @@ Script functions:
 5. All actions logged human readable for Mike, and placed in audio ops
    folder, at top level.
 
-NOTE: Not in use
-      Updated for Adlib V3
 
-Joanna White
 2022
 '''
 
@@ -28,8 +25,6 @@ Joanna White
 import os
 import re
 import sys
-import json
-import time
 import shutil
 import logging
 import datetime
@@ -38,12 +33,13 @@ import subprocess
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global paths/vars
 WAV_ARCHIVE_PATH = os.environ['WAV_ARCHIVE_RC']
 WAV_POLICY = os.environ['POLICY_WAV']
 FAILED_PATH = os.path.join(WAV_ARCHIVE_PATH, 'failed_rename/')
-AUTOINGEST = os.path.join(os.environ['AUDIO_OPS_FIN'], os.environ['AUTOINGEST_AUD'])
+AUTOINGEST = os.path.join(os.environ['QNAP_08'], os.environ['AUTOINGEST_AUD'])
 LOCAL_LOG = os.path.join(WAV_ARCHIVE_PATH, 'rc_audio_renaming.log')
 LOG_PATH = os.environ['LOG_PATH']
 RC = os.environ['RC']
@@ -60,29 +56,6 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control():
-    '''
-    Check control json for downtime requests
-    '''
-    with open(CONTROL_JSON) as control:
-        j = json.load(control)
-        if not j['pause_scripts']:
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-
-
-def cid_check():
-    '''
-    Tests if CID active before all other operations commence
-    '''
-    try:
-        adlib.check(CID_API)
-    except KeyError:
-        print("* Cannot establish CID session, exiting script")
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit()
 
 
 def fname_split(filename):
@@ -276,8 +249,13 @@ def main():
     and move to autoingest path in audio isilon share.
     '''
     LOGGER.info("========== rc_rename_wav.py START ============")
-    check_control()
-    cid_check()
+    if not utils.cid_check(CID_API):
+        print("* Cannot establish CID session, exiting script")
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit()
+    if not utils.check_control('pause_scripts'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     wav_files = [f for f in os.listdir(WAV_ARCHIVE_PATH) if f.endswith(('.wav', '.WAV'))]
     if len(wav_files) == 0:

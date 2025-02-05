@@ -24,7 +24,7 @@ Curatorial Donor Acquisition Rename:
 
 NOTE: DMS may want to alter accepted filetypes over time.
 
-Joanna White 2022
+2022
 Python 3.6+
 '''
 
@@ -42,11 +42,10 @@ import adlib_v3 as adlib
 import utils
 
 # Global path variables
-CURATORIAL_PATH = os.environ['IS_CURATORIAL']
+CURATORIAL_PATH = os.environ['CURATORIAL']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 DIGIOPS_PATH = os.path.join(os.environ['QNAP_11_DIGIOPS'], 'Acquisitions/Curatorial/')
-# DIGIOPS_PATH = os.path.join(os.environ['QNAP_09'], 'Acquisitions/Curatorial/')
 RSYNC_LOG = os.path.join(DIGIOPS_PATH, 'transfer_logs')
 CID_API = os.environ['CID_API4']
 
@@ -75,6 +74,8 @@ def cid_retrieve(itemname, search):
         print(f"cid_retrieve(): Unable to retrieve data for {itemname}")
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", itemname)
         query_result = None
+    if query_result is None:
+        return None
     try:
         acquired1 = []
         all_filenames = len(query_result[0]['Acquired_filename'])
@@ -209,6 +210,9 @@ def main():
         # Retrieve CID data
         search = f'digital.acquired_filename="{item}"'
         cid_data = cid_retrieve(item, search)
+        if cid_data is None:
+            LOGGER.info("Skipping: No name match found for %s", item)
+            continue
         priref = cid_data[0]
         ob_num = cid_data[1]
         title = cid_data[2]

@@ -28,7 +28,7 @@ to determine correct transcode paths (RNA or BFI).
 13. Moves source file to completed folder for deletion.
 14. Maintain log of all actions against file and dump in one lot to avoid log overlaps.
 
-Joanna White 2022
+2022
 Python 3.6+
 '''
 
@@ -61,7 +61,7 @@ CID_API = os.environ['CID_API4']
 HOST = os.uname()[1]
 
 # Setup logging
-if LOG_PREFIX != '_mnt_qnap_04_':
+if LOG_PREFIX != '_mnt_qnap_imagen_storage_Public':
     sys.exit(f"Incorrect filepath received: {LOG_PREFIX}")
 LOGGER = logging.getLogger('mp4_transcode_make_jpeg')
 HDLR = logging.FileHandler(LOG_FILE)
@@ -723,6 +723,11 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos"
     ]
 
+    scale_sd_16x9 = [
+        "-vf",
+        "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
     hd_16x9 = [
         "-vf",
         "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1"
@@ -785,6 +790,8 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         cmd_mid = crop_sd_16x9
     elif height <= 576 and width == 768:
         cmd_mid = no_stretch_4x3
+    elif height <= 576 and width == 1024:
+        cmd_mid = scale_sd_16x9
     elif height <= 576 and par == '1.000':
         cmd_mid = no_stretch_4x3
     elif height <= 576 and dar == '4:3':

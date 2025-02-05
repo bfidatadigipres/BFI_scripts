@@ -40,7 +40,6 @@ The script should be agnostic to name types and possibly match N 123456 01of01 a
 Files not to be handled via the regular autoingest/black_pearl scripting
 and therefore not to use the autoingest folder structures.
 
-Joanna White
 2024
 '''
 
@@ -60,6 +59,7 @@ from ds3 import ds3, ds3Helpers
 # Private imports
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global paths
 QNAP = os.environ['QNAP_REND1']
@@ -270,7 +270,7 @@ def correct_filename(fname):
 
     if len(name_data) == 1 and 'of' not in fname:
         part_whole = '01of01'
-        new_fname = f'{name_data[0].replace('-', '_')}_{part_whole}'
+        new_fname = f"{name_data[0].replace('-', ' ')}_{part_whole}"
         return new_fname
 
     if len(name_data) == 2:
@@ -322,6 +322,9 @@ def main():
 
     LOGGER.info("============== Legacy filename updater START ==================")
     LOGGER.info("Files located in filename_updated/ folder: %s", ', '.join(files))
+    if not utils.check_control('power_off_all'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     for file in files:
         LOGGER.info("Processing file: %s", file)

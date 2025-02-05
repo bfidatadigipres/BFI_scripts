@@ -1,5 +1,4 @@
-
-#!/usr/bin/env/python3
+#!/usr/bin/env python3
 
 '''
 THIS SCRIPT DEPENDS ON PYTHON ENV PATH
@@ -13,8 +12,7 @@ using STORA created csv metadata source and traversing filesystem paths to files
     4. Rename the subtitles.vtt file with the Item object number, move to Isilon folder
     5. Identify the folder as completed by renaming the csv with .documented suffix
 
-Stephen McConnachie / Joanna White
-Refactored Py3 2023
+Refactored 2023
 '''
 
 # Public packages
@@ -24,7 +22,7 @@ import csv
 import shutil
 import logging
 import datetime
-from lxml import etree
+from time import sleep
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -39,6 +37,7 @@ LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH2']
 CID_API = os.environ['CID_API4']
+FAILURE_COUNTER = 0
 
 # Setup logging
 logger = logging.getLogger('document_stora')
@@ -53,7 +52,7 @@ TODAY = datetime.date.today()
 YEST = TODAY - datetime.timedelta(days=1)
 YEST_CLEAN = YEST.strftime('%Y-%m-%d')
 YEAR = YEST_CLEAN[0:4]
-#YEAR = '2023'
+#YEAR = '2024'
 STORAGE_PATH = os.path.join(STORAGE, YEAR)
 
 
@@ -120,6 +119,27 @@ def generate_variables(data):
     if 'Talk TV' in channel:
         code_type = 'MPEG-4 AVC'
         broadcast_company = '999883795'
+    if 'Sky Arts' in channel:
+        code_type = 'MPEG-4 AVC'
+        broadcast_company = '150001'
+    if 'Sky Mix HD' in channel:
+        code_type = 'MPEG-4 AVC'
+        broadcast_company = '999939366'
+    if 'U&Dave' in channel:
+        code_type = 'MPEG-2'
+        broadcast_company = '999929397'
+    if 'U&Drama' in channel:
+        code_type = 'MPEG-2'
+        broadcast_company = '999929393'
+    if 'U&Yesterday' in channel:
+        code_type = 'MPEG-2'
+        broadcast_company = '999929396'
+    if 'QVC' in channel:
+        code_type = 'MPEG-4 AVC'
+        broadcast_company = '999939374'
+    if 'TogetherTV' in channel:
+        code_type = 'MPEG-4 AVC'
+        broadcast_company = '999939362'
 
     duration = data['duration']
     duration_hours, duration_minutes = duration.split(':')[:2]
@@ -221,6 +241,9 @@ def main():
     # Iterate through all info.csv.redux/.stora creating CID records
     for root, _, files in os.walk(STORAGE_PATH):
         for file in files:
+            if FAILURE_COUNTER > 5:
+                logger.critical("Multiple CID item record creation failures. Script exiting.")
+                sys.exit('Multiple CID item record creation failures detected. Script exiting.')
             # Check control json for STORA false
             if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
                 logger.info('Script run prevented by downtime_control.json. Script exiting.')
@@ -266,6 +289,14 @@ def main():
             # create a Work-Manifestation CID record hierarchy
             work_id = create_work(fullpath, title, session, record, work, work_restricted)
             man_id = create_manifestation(work_id, fullpath, title, session, record, manifestation)
+            if work_id is None or man_id is None:
+                print('* Work or Manifestation record failed to create. Marking with DELETE warning')
+                mark_for_deletion(work_id, man_id, fullpath, session)
+                continue
+            if len(work_id) == 0 or len(man_id) == 0:
+                print('* Work or Manifestation record failed to create. Marking with DELETE warning')
+                mark_for_deletion(work_id, man_id, fullpath, session)
+                continue
 
             # Create CID record for Item, first managing subtitles text if present
             old_webvtt = os.path.join(root, "subtitles.vtt")
@@ -333,36 +364,37 @@ def create_work(fullpath, title, session, record_defaults, work_defaults, work_r
     work_values.extend(record_defaults)
     work_values.extend(work_defaults)
     work_values.extend(work_restricted_defaults)
-
-    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
+    print(work_values)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', session, '', work_values)
     if work_values_xml is None:
         return None
     print("***************************")
     print(work_values_xml)
 
     try:
+        sleep(2)
         logger.info("Attempting to create Work record for item %s", title)
         data = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord', session)
-        if data:
+        try:
             work_id = adlib.retrieve_field_name(data, 'priref')[0]
             object_number = adlib.retrieve_field_name(data, 'object_number')[0]
-            print(f'* Work record created with Priref {work_id} Object number {object_number}')
+            print(f'* Work record created with Priref <{work_id}> Object number <{object_number}>')
             logger.info('%s\tWork record created with priref %s', fullpath, work_id)
-        else:
-            print(f"Creation of record failed using method Requests: 'works', 'insertrecord'\n{work_values_xml}")
-            return None
+        except (IndexError, TypeError, KeyError) as err:
+            logger.critical(f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {title}")
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
+
     except Exception as err:
         print(f"* Unable to create Work record for <{title}>")
         print(err)
         logger.critical('%s\tUnable to create Work record for <%s>', fullpath, title)
         logger.critical(err)
-        return None
+        raise Exception('Unable to write Work record.').with_traceback(err.__traceback__)
 
     return work_id
 
 
 def create_manifestation(work_id, fullpath, title, session, record_defaults, manifestation_defaults):
-
     '''
     Create CID record for Manifestation
     '''
@@ -372,29 +404,32 @@ def create_manifestation(work_id, fullpath, title, session, record_defaults, man
     manifestation_values.extend(manifestation_defaults)
     manifestation_values.append({'part_of_reference.lref': work_id})
 
-    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', session, '', manifestation_values)
     if man_values_xml is None:
         return None
     print("***************************")
     print(man_values_xml)
 
     try:
+        sleep(2)
         logger.info("Attempting to create Manifestation record for item %s", title)
         data = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord', session)
-        if data:
+        try:
             manifestation_id = adlib.retrieve_field_name(data, 'priref')[0]
             object_number = adlib.retrieve_field_name(data, 'object_number')[0]
             print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
             logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
-
+        except (IndexError, TypeError, KeyError) as err:
+            logger.critical(f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {title}")
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         if 'bool' in str(err):
             logger.critical("Unable to write manifestation record <%s>", manifestation_id)
             print(f"Unable to write manifestation record - error: {err}")
-            return None
+            raise Exception('Unable to write manifestation record.').with_traceback(err.__traceback__)
         print(f"*** Unable to write manifestation record: {err}")
         logger.critical("Unable to write manifestation record <%s> %s", manifestation_id, err)
-        raise
+        raise Exception('Unable to write manifestation record.').with_traceback(err.__traceback__)
 
     return manifestation_id
 
@@ -439,24 +474,28 @@ def create_item(manifestation_id, fullpath, title, session, acquired_filename, r
     item_values.append({'part_of_reference.lref': manifestation_id})
     item_values.append({'digital.acquired_filename': acquired_filename})
 
-    item_values_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
+    item_values_xml = adlib.create_record_data(CID_API, 'items', session, '', item_values)
     if item_values_xml is None:
         return None
     print("***************************")
     print(item_values_xml)
 
     try:
+        sleep(2)
         logger.info("Attempting to create CID item record for item %s", title)
         data = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord', session)
-        if data:
+        try:
             item_id = adlib.retrieve_field_name(data, 'priref')[0]
             item_object_number = adlib.retrieve_field_name(data, 'object_number')[0]
             print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
             logger.info('%s\tItem record created with priref %s', fullpath, item_id)
-
+        except (TypeError, IndexError, KeyError) as err:
+            logger.critical(f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {title}")
+            raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     except Exception as err:
         print(f'** PROBLEM: Unable to create Item record for <{title}> {err}')
         logger.critical('%s\tPROBLEM: Unable to create Item record for <%s>, marking Work and Manifestation records for deletion', fullpath, title)
+        raise Exception('Unable to write Item record.').with_traceback(err.__traceback__)
 
     return item_id, item_object_number
 
@@ -465,13 +504,12 @@ def mark_for_deletion(work_id, manifestation_id, fullpath, session):
     '''
     Update work and manifestation records with deletion prompt in title
     '''
-    work = f'''<record>
-               <priref>{work_id}</priref>
-               <title>DELETE - STORA record creation problem</title>
-               </record>
-            '''
-    payload = etree.tostring(etree.fromstring(work))
-
+    global FAILURE_COUNTER
+    FAILURE_COUNTER += 1
+    payload_start = f"<adlibXML><recordList><record priref='{work_id}'>"
+    payload_mid = f"<Title><title>DELETE - STORA record creation problem</title></Title>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload_start + payload_mid + payload_end
     try:
         response = adlib.post(CID_API, payload, 'works', 'updaterecord', session)
         if response:
@@ -479,14 +517,12 @@ def mark_for_deletion(work_id, manifestation_id, fullpath, session):
         else:
             logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
     except Exception as err:
-        logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion. Error: %s', fullpath, work, err)
+        logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion. Error: %s', fullpath, work_id, err)
 
-    manifestation = f'''<record>
-                        <priref>{manifestation_id}</priref>
-                        <title>DELETE - Redux record creation problem</title>
-                        </record>
-                     '''
-    payload = etree.tostring(etree.fromstring(manifestation))
+    payload_start = f"<adlibXML><recordList><record priref='{manifestation_id}'>"
+    payload_mid = f"<Title><title>DELETE - STORA record creation problem</title></Title>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload_start + payload_mid + payload_end
     try:
         response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord', session)
         if response:
@@ -494,7 +530,7 @@ def mark_for_deletion(work_id, manifestation_id, fullpath, session):
         else:
             logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
     except Exception as err:
-        logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title. Error: %s', fullpath, manifestation, err)
+        logger.warning('%s\tUnable to rename Manifestation %s with deletion prompt in title. Error: %s', fullpath, manifestation_id, err)
 
 
 def push_payload(item_id, session, webvtt_payload):
@@ -517,7 +553,7 @@ def push_payload(item_id, session, webvtt_payload):
         if post_resp:
             return True
     except Exception as err:
-        logger.warning('push_payload(): Error returned from requests post: %s %s', item_id, payload)
+        logger.warning('push_payload(): Error returned from requests post: %s %s %s', item_id, payload, err)
         return False
 
 

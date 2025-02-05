@@ -20,7 +20,6 @@ NOTES: Can in time be used for other streaming platforms
        with update to input note check for non-platform specific name
        Updated for Adlib V3
 
-Joanna White
 2023
 '''
 
@@ -233,7 +232,7 @@ def cid_person_check(credit_id, session):
     Retrieve if Person record with priref already exist for credit_entity_id
     '''
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
-    record = adlib.retrieve_record(CID_API, 'people', search, '0', ['priref', 'name', 'activity_type'], session)[1]
+    record = adlib.retrieve_record(CID_API, 'people', search, '0', session, ['priref', 'name', 'activity_type'])[1]
     if not record:
         LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
         return None
@@ -260,7 +259,7 @@ def cid_work_check(search, platform, session):
     edit_names = []
     platform = platform.title()
 
-    records = adlib.retrieve_record(CID_API, 'works', search, '0', ['priref', 'input.notes', 'edit.name'], session)
+    records = adlib.retrieve_record(CID_API, 'works', search, '0', session, ['priref', 'input.notes', 'edit.name'])
     if not records:
         LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
         return '', ''
@@ -268,13 +267,13 @@ def cid_work_check(search, platform, session):
     print(records)
     for record in records:
         try:
-            priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-            input_note = adlib.retrieve_field_name(record[0], 'input.notes')[0]
+            priref = adlib.retrieve_field_name(record, 'priref')[0]
+            input_note = adlib.retrieve_field_name(record, 'input.notes')[0]
         except (KeyError, IndexError):
             priref = ''
             input_note = ''
         try:
-            edit_name = adlib.retrieve_field_name(record[0], 'edit.name')[0]
+            edit_name = adlib.retrieve_field_name(record, 'edit.name')[0]
         except (KeyError, IndexError):
             edit_name = ''
 
@@ -290,7 +289,7 @@ def cid_manifestation_check(priref, session):
     Retrieve Manifestation transmission start time from parent priref
     '''
     search = f"(part_of_reference.lref='{priref}')"
-    record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', ['transmission_start_time'], session)[1]
+    record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', session, ['transmission_start_time'])[1]
     if not record:
         LOGGER.exception("cid_manifestation_check(): Unable to check for record with priref: %s", priref)
         return ''
@@ -347,20 +346,8 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 name_list.append(cast_name)
 
                 # Check person record exists
-                person_priref, person_name, person_act_type = cid_person_check(cast_id)
-                if len(person_priref) > 5:
-                    for k_, v_ in contributors.items():
-                        if str(cast_type) == k_:
-                            activity_type = v_[1]
-                            if str(activity_type) in str(person_act_type):
-                                LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
-                            else:
-                                LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
-                                append_activity_type(person_priref, activity_type, person_act_type, session)
-                    print(f"** Person record already exists: {person_name} {person_priref}")
-                    LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
-                    LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
-                else:
+                pdata = cid_person_check(cast_id, session)
+                if pdata is None:
                     # Create data for Person record creation
                     cast_dct_data = make_person_dct(val)
                     cast_dct_formatted = cast_dct_data[0]
@@ -384,7 +371,21 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                             print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
                         else:
                             LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
-                            print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
+                            print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")    
+                else:
+                    person_priref, person_name, person_act_type = pdata
+                    if len(person_priref) > 1:
+                        for k_, v_ in contributors.items():
+                            if str(cast_type) == k_:
+                                activity_type = v_[1]
+                                if str(activity_type) in str(person_act_type):
+                                    LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
+                                else:
+                                    LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
+                                    append_activity_type(person_priref, activity_type, person_act_type, session)
+                        print(f"** Person record already exists: {person_name} {person_priref}")
+                        LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
+                        LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
 
                 # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
                 for key_, val_ in contributors.items():
@@ -396,11 +397,17 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 cast_data = ([int(cast_seq_sort), int(cast_sort), person_priref, cast_credit_type, screen_name])
                 cast_list.append(cast_data)
 
+        cast_list.sort()
+        cast_dct_sorted = sort_cast_dct(cast_list)
+        # Append cast/credit and edit name blocks to work_append_dct
+        LOGGER.info("** Appending cast data to work record now...")
+        cast_xml = adlib.create_grouped_data(priref, 'cast', cast_dct_sorted)
+        print(cast_xml)
+        update_rec = adlib.post(CID_API, cast_xml, 'works', 'updaterecord', session)
+        if 'cast' in str(update_rec):
+            LOGGER.info("Cast data successfully updated to Work %s", priref)
     else:
         LOGGER.info("No Cast dictionary information for supplied contributors")
-
-    cast_list.sort()
-    cast_dct_sorted = sort_cast_dct(cast_list)
 
     person_priref, person_name, person_act_type = '', '', ''
     # Create credit data records
@@ -416,21 +423,8 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 name_list.append(cred_name)
 
                 # Check person record exists
-                person_priref, person_name, person_act_type = cid_person_check(cred_id)
-                if len(person_priref) > 5:
-                    LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
-                    for k_, v_ in production.items():
-                        if str(cred_type) == k_:
-                            activity_type_cred = v_[1]
-                            if str(activity_type_cred) in str(person_act_type):
-                                print(f"Matched activity type {activity_type_cred} : {person_act_type}")
-                            else:
-                                print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
-                                append_activity_type(person_priref, activity_type_cred, person_act_type, session)
-                    print(f"** Person record already exists: {person_name} {person_priref}")
-                    LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
-                    LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
-                else:
+                pdata = cid_person_check(cred_id, session)
+                if pdata is None:
                     # Create data for Person record creation
                     cred_dct_data = make_person_dct(val)
                     cred_dct_formatted = cred_dct_data[0]
@@ -456,6 +450,21 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                         else:
                             LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
                             print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
+                else:
+                    person_priref, person_name, person_act_type = pdata
+                    if len(person_priref) > 5:
+                        LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
+                        for k_, v_ in production.items():
+                            if str(cred_type) == k_:
+                                activity_type_cred = v_[1]
+                                if str(activity_type_cred) in str(person_act_type):
+                                    print(f"Matched activity type {activity_type_cred} : {person_act_type}")
+                                else:
+                                    print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
+                                    append_activity_type(person_priref, activity_type_cred, person_act_type, session)
+                        print(f"** Person record already exists: {person_name} {person_priref}")
+                        LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
+                        LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
 
                 # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
                 for key_, val_ in production.items():
@@ -467,38 +476,18 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                 cred_data = ([int(seq_sort), int(cred_sort), person_priref, credit_type])
                 cred_list.append(cred_data)
 
+        cred_list.sort()
+        cred_dct_sorted = sort_cred_dct(cred_list)
+        LOGGER.info("** Appending credit data to work record now...")
+        cred_xml = adlib.create_grouped_data(priref, 'credits', cred_dct_sorted)
+        print(cred_xml)
+        update_rec = adlib.post(CID_API, cred_xml, 'works', 'updaterecord', session)
+        if 'credits' in str(update_rec):
+            LOGGER.info("Credit data successfully updated to Work %s", priref)
     else:
-        LOGGER.info("No Credit dictionary information for supplied creditors")
+        LOGGER.info("No Credit dictionary information for supplied contributors")
 
-    cred_list.sort()
-    cred_dct_sorted = sort_cred_dct(cred_list)
-
-    # Append cast/credit and edit name blocks to work_append_dct
-    work_append_dct = []
-    work_append_dct.extend(cast_dct_sorted)
-    work_append_dct.extend(cred_dct_sorted)
-    work_edit_data = ([{'edit.name': 'datadigipres'},
-                       {'edit.date': str(datetime.datetime.now())[:10]},
-                       {'edit.time': str(datetime.datetime.now())[11:19]},
-                       {'edit.notes': 'Automated cast and credit update from PATV augmented EPG metadata'}])
-    work_append_dct.extend(work_edit_data)
-    LOGGER.info("** Appending data to work record now...")
-    print(work_append_dct)
-
-    work_append(priref, session, work_append_dct)
-    LOGGER.info("Checking work_append_dct written to CID Work record")
-
-    edit_name = cid_work_check(f"priref='{priref}'", platform, session)[1]
-    if 'datadigipres' in str(edit_name):
-        print(f"Work appended successful! {priref}")
-        LOGGER.info("Successfully appended additional cast credit EPG metadata to Work record %s\n", priref)
-        LOGGER.info("=============== END document_augmented_streaming_castcred script END ===============\n")
-        return (cast_dct, cred_dct)
-    else:
-        LOGGER.warning("Writing EPG cast credit metadata to Work %s failed\n", priref)
-        print(f"Work append FAILED!! {priref}")
-        LOGGER.info("=============== END document_augmented_streaming_castcred script END ===============\n")
-        return False
+    return (cast_dct, cred_dct)
 
 
 def sort_cast_dct(cast_list):
@@ -506,14 +495,14 @@ def sort_cast_dct(cast_list):
     Make up new cast dct ordered
     '''
     cast_dct_update = []
-
     for item in cast_list:
-        cast_dct_update.append({'cast.name.lref': item[2]})
-        cast_dct_update.append({'cast.credit_type': item[3]})
-        cast_dct_update.append({'cast.credit_on_screen': item[4]})
-        cast_dct_update.append({'cast.sequence': str(item[1])})
-        cast_dct_update.append({'cast.sequence.sort': str(item[0])})
-        cast_dct_update.append({'cast.section': '[normal cast]'})
+        cast_dct_update.append([
+            {'cast.name.lref': item[2]},
+            {'cast.credit_type': item[3]},
+            {'cast.credit_on_screen': item[4]},
+            {'cast.sequence': str(item[1])},
+            {'cast.sequence.sort': str(item[0])},
+            {'cast.section': '[normal cast]'}])
 
     return cast_dct_update
 
@@ -523,13 +512,13 @@ def sort_cred_dct(cred_list):
     Make up new credit dct ordered
     '''
     cred_dct_update = []
-
     for item in cred_list:
-        cred_dct_update.append({'credit.name.lref': item[2]})
-        cred_dct_update.append({'credit.type': item[3]})
-        cred_dct_update.append({'credit.sequence': str(item[1])})
-        cred_dct_update.append({'credit.sequence.sort': str(item[0])})
-        cred_dct_update.append({'credit.section': '[normal credit]'})
+        cred_dct_update.append([
+            {'credit.name.lref': item[2]},
+            {'credit.type': item[3]},
+            {'credit.sequence': str(item[1])},
+            {'credit.sequence.sort': str(item[0])},
+            {'credit.section': '[normal credit]'}])
 
     return cred_dct_update
 
@@ -542,7 +531,7 @@ def append_activity_type(person_priref, activity_type, existing_types, session):
     for act_type in existing_types:
         data.extend([{'activity_type': act_type}])
     print(data)
-    act_xml = adlib.create_record_data(CID_API, 'people', person_priref, data)
+    act_xml = adlib.create_record_data(CID_API, 'people', session, person_priref, data)
     print(act_xml)
     try:
         record = adlib.post(CID_API, act_xml, 'people', 'updaterecord', session)
@@ -621,25 +610,6 @@ def make_person_dct(dct=None):
     return (credit_dct, known_for, early_life, biography, trivia)
 
 
-def work_append(priref, session, work_dct=None):
-    '''
-    Items passed in work_dct for amending to Work record
-    '''
-    print(work_dct)
-    if work_dct is None:
-        LOGGER.warning("work_append(): work_update_dct passed to function as None")
-        return False
-    work_dct_xml = adlib.create_record_data(CID_API, 'works', priref, work_dct)
-    record = adlib.post(CID_API, work_dct_xml, 'works', 'updaterecord', session)
-    if record:
-        print("*** Work append result:")
-        print(record)
-        return True
-    else:
-        LOGGER.warning("work_append(): Unable to append work data to CID work record %s", record)
-        return False
-
-
 def make_person_record(session, credit_dct=None):
     '''
     Where person record does not exist create new one
@@ -650,7 +620,7 @@ def make_person_record(session, credit_dct=None):
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = adlib.create_record_data(CID_API, 'people', '', credit_dct)
+    credit_xml = adlib.create_record_data(CID_API, 'people', session, '', credit_dct)
     if not credit_xml:
         LOGGER.warning("Credit data failed to create XML: %s", credit_dct)
         return None

@@ -1,4 +1,4 @@
-#/usr/bin/env python3
+#!/usr/bin/env python3
 
 '''
 THIS SCRIPT DEPENDS ON PYTHON ENV PATH
@@ -22,7 +22,6 @@ using augmented metadata supply (JSON via API) and traversing filesystem paths t
     for each programme from the API and place it in paths to be used here. Where none is matched
     document_stora.py will update to CID from the info.csv generated from the STORA TS file metadata.
 
-Stephen McConnachie / Joanna White
 Refactored Py3 2023
 '''
 
@@ -37,12 +36,12 @@ import logging
 import datetime
 import yaml
 import tenacity
-from lxml import etree
+from time import sleep
 
 # Private packages
 from series_retrieve import retrieve
 sys.path.append(os.environ['CODE'])
-import adlib_v3_sess2 as adlib
+import adlib_v3 as adlib
 import utils
 
 # Global variables
@@ -57,6 +56,7 @@ CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 SUBS_PTH = os.environ['SUBS_PATH2']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
 CID_API = os.environ['CID_API4']
+FAILURE_COUNTER = 0
 
 # Setup logging
 logger = logging.getLogger('document_augmented_stora')
@@ -71,14 +71,15 @@ TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=1)
 YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
 YEAR_PATH = YESTERDAY_CLEAN[:4]
-# YEAR_PATH = '2023'
+#YEAR_PATH = '2024'
 STORAGE_PATH = STORAGE + YEAR_PATH
 
 NEWS_CHANNELS = [
     'Al Jazeera',
     'BBC NEWS HD',
     'Sky News',
-    'GB News'
+    'GB News',
+    'QVC'
 ]
 
 CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's rolling news channel for a night of news [S][HD]"],
@@ -102,7 +103,14 @@ CHANNELS = {'bbconehd': ["BBC One HD", "BBC News", "BBC One joins the BBC's roll
             '5star': ["5STAR", "5STAR close", "Programmes will resume shortly."],
             'al_jazeera': ["Al Jazeera", "Al Jazeera close", "This is a 24 hour broadcast news channel."],
             'gb_news': ["GB News", "GB News close", "This is a 24 hour broadcast news channel."],
-            'sky_news': ["Sky News", "Sky News close", "This is a 24 hour broadcast news channel."]
+            'sky_news': ["Sky News", "Sky News close", "This is a 24 hour broadcast news channel."],
+            'skyarts': ["Sky Arts", "Sky Arts close", "Programmes will resume shortly."],
+            'skymixhd': ["Sky Mix HD", "Sky Mix HD close", "Programmes will resume shortly."],
+            'qvc': ["QVC", "QVC close", "Programmes will resume shortly."],
+            'togethertv': ["Together TV", "Together TV close", "Programmes will resume shortly."],
+            'u_dave': ["U&Dave", "U & Dave close", "Programmes will resume shortly."],
+            'u_drama': ["U&Drama", "U & Drama close", "Programmes will resume shortly."],
+            'u_yesterday': ["U&Yesterday", "U & Yesterday close", "Programmes will resume shortly."]
 }
 
 
@@ -136,16 +144,16 @@ def look_up_series_list(alternative_num):
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def cid_series_query(series_id, session):
+def cid_series_query(series_id):
     '''
     Sends CID request for series_id data
     '''
 
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
-
+    sleep(2)
     try:
-        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1', session)
+        hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
     except Exception as err:
         print(err)
         raise Exception
@@ -155,39 +163,38 @@ def cid_series_query(series_id, session):
         print(f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id}")
         print("cid_series_query(): Series hit count and series priref will return empty strings")
         return hit_count, ''
-
     if 'priref' in str(series_query_result):
         series_priref = adlib.retrieve_field_name(series_query_result[0], 'priref')[0]
         print(f"cid_series_query(): Series priref: {series_priref}")
     else:
-        print(f"cid_series_query(): Unable to access series_priref")
+        print("cid_series_query(): Unable to access series_priref")
         return hit_count, ''
 
     return hit_count, series_priref
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def find_repeats(asset_id, session):
+def find_repeats(asset_id):
     '''
     Use asset_id to check in CID for duplicate
     PATV showings of a manifestation
     '''
 
     search = f'alternative_number="{asset_id}"'
-    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1', session, ['priref', 'alternative_number.type', 'part_of_reference.lref'])
+    sleep(2)
+    hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1')
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
         print(f'CID API could not be reached for Manifestations search: {search}')
         return None
     if hits == 0:
         return 0
-
     try:
-        priref = adlib.retrieve_field_name(result[0], 'priref')[0]
+        man_priref = adlib.retrieve_field_name(result[0], 'priref')[0]
     except (IndexError, TypeError, KeyError):
         return None
-
-    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{priref}"', '1', session, ['alternative_number.type', 'part_of_reference.lref'])[1]
+    sleep(2)
+    full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{man_priref}"', '1', ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
     try:
@@ -195,7 +202,6 @@ def find_repeats(asset_id, session):
         alt_num_type = adlib.retrieve_field_name(full_result[0], 'alternative_number.type')[0]
     except (IndexError, TypeError, KeyError):
         alt_num_type = ''
-
     try:
         ppriref = adlib.retrieve_field_name(full_result[0], 'part_of_reference.lref')[0]
     except (IndexError, TypeError, KeyError):
@@ -203,12 +209,12 @@ def find_repeats(asset_id, session):
 
     print(f"********** Alternative number types: {alt_num_type} ************")
     if 'Amazon' in alt_num_type:
-        logger.warning("Matching episode work found to be an Amazon work record: %s", priref)
+        logger.warning("Matching episode work found to be an Amazon work record: %s", man_priref)
     if 'Netflix' in alt_num_type:
-        logger.warning("Matching episode work found to be a Netflix work record: %s", priref)
+        logger.warning("Matching episode work found to be a Netflix work record: %s", man_priref)
     if ppriref is None:
         return None
-    print(f"Priref with matching asset_id in CID: {priref} / Parent Work: {ppriref}")
+    print(f"Priref with matching asset_id in CID: {man_priref} / Parent Work: {ppriref}")
     if len(ppriref) > 1:
         return ppriref
 
@@ -305,7 +311,7 @@ def genre_retrieval(category_code, description, title):
                             genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
                         genre_one_priref = ''
                     else:
-                        for key, val in genre_one.items():
+                        for _, val in genre_one.items():
                             genre_one_priref = val
                         print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
                 except (IndexError, TypeError, KeyError):
@@ -319,14 +325,14 @@ def genre_retrieval(category_code, description, title):
                     genre_two_priref = ''
                 try:
                     subject_one = data['genres'][category_code.strip('u')]['Subject']
-                    for key, val in subject_one.items():
+                    for _, val in subject_one.items():
                         subject_one_priref = val
                     print(f"genre_retrieval(): Key value for subject_one_priref: {subject_one_priref}")
                 except (IndexError, TypeError, KeyError):
                     subject_one_priref = ''
                 try:
                     subject_two = data['genres'][category_code.strip('u')]['Subject2']
-                    for key, val in subject_two.items():
+                    for _, val in subject_two.items():
                         subject_two_priref = val
                     print(f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}")
                 except (IndexError, TypeError, KeyError):
@@ -590,6 +596,14 @@ def fetch_lines(fullpath, lines):
             code_type = 'MPEG-2'
             broadcast_company = '78200'
             print(f"Broadcast company set to Sky News in {fullpath}")
+        elif 'skyarts' in fullpath:
+            code_type = 'MPEG-4 AVC'
+            broadcast_company = '150001'
+            print(f"Broadcast company set to Sky Arts in {fullpath}")
+        elif 'skymixhd' in fullpath:
+            code_type = 'MPEG-4 AVC'
+            broadcast_company = '999939366'
+            print(f"Broadcast company set to Sky Mix in {fullpath}")
         elif 'al_jazeera' in fullpath:
             code_type = 'MPEG-4 AVC'
             broadcast_company = '125338'
@@ -602,6 +616,26 @@ def fetch_lines(fullpath, lines):
             code_type = 'MPEG-4 AVC'
             broadcast_company = '999883795'
             print(f"Broadcast company set to Talk TV in {fullpath}")
+        elif '/u_dave' in fullpath:
+            code_type = 'MPEG-2'
+            broadcast_company = '999929397'
+            print(f"Broadcast company set to U&Dave in {fullpath}")
+        elif '/u_drama' in fullpath:
+            code_type = 'MPEG-2'
+            broadcast_company = '999929393'
+            print(f"Broadcast company set to U&Drama in {fullpath}")
+        elif '/u_yesterday' in fullpath:
+            code_type = 'MPEG-2'
+            broadcast_company = '999929396'
+            print(f"Broadcast company set to U&Yesterday in {fullpath}")
+        elif 'qvc' in fullpath:
+            code_type = 'MPEG-4 AVC'
+            broadcast_company = '999939374'
+            print(f"Broadcast company set to QVC UK in {fullpath}")
+        elif 'togethertv' in fullpath:
+            code_type = 'MPEG-4 AVC'
+            broadcast_company = '999939362'
+            print(f"Broadcast company set to Together TV in {fullpath}")
         else:
             broadcast_company = None
 
@@ -609,6 +643,7 @@ def fetch_lines(fullpath, lines):
             epg_dict['broadcast_company'] = broadcast_company
         if code_type:
             epg_dict['code_type'] = code_type
+
 
         # Broadcast details
         for key, val in CHANNELS.items():
@@ -691,16 +726,20 @@ def main():
     file_list.sort()
     print(f"Found JSON file total: {len(file_list)}")
 
-    session = adlib.create_session()
     for fullpath in file_list:
+        if FAILURE_COUNTER > 2:
+            logger.critical("Multiple CID item record creation failures. Script exiting.")
+            sys.exit('Multiple CID item record creation failures detected. Script exiting.')
         if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
             logger.info('Script run prevented by downtime_control.json. Script exiting.')
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
         if not utils.cid_check(CID_API):
-            logger.critical("* Cannot establish CID session, exiting script")
+            logger.warning("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
 
         root, file = os.path.split(fullpath)
+        if not os.path.exists(fullpath):
+            continue
         if not file.endswith('.json') or not file.startswith('info_'):
             continue
         new_work = False
@@ -752,9 +791,10 @@ def main():
         work_priref = ''
         if 'asset_id' in epg_dict:
             print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
-            work_priref = find_repeats(epg_dict['asset_id'], session)
+            work_priref = find_repeats(epg_dict['asset_id'])
+            print(work_priref)
         if work_priref is None:
-            print("Cannot access dB via API. Skipping")
+            print("Cannot retrieve Work parent data. Maybe missing in CID or problems accessing dB via API. Skipping")
             logger.warning("Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s", epg_dict['asset_id'])
             continue
         elif work_priref == 0:
@@ -786,7 +826,7 @@ def main():
                     series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
                     logger.info("Series found for annual refresh: %s", series_chck)
 
-                series_return = cid_series_query(series_id, session)
+                series_return = cid_series_query(series_id)
                 if series_return[0] is None:
                     print(f"CID Series data not retrieved: {epg_dict['series_id']}")
                     logger.warning("Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s", epg_dict['series_id'])
@@ -797,7 +837,7 @@ def main():
                 if hit_count == 0:
                     print("This Series does not exist yet in CID - attempting creation now")
                     # Launch create series function
-                    series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict, series_id, session)
+                    series_work_id = create_series(fullpath, ser_def, work_res_def, epg_dict, series_id)
                     if not series_work_id:
                         logger.warning("Skipping further actions: Creation of series failed as no series_work_id found: \n%s", epg_dict['series_id'])
                         continue
@@ -807,7 +847,7 @@ def main():
             work_values.extend(rec_def)
             work_values.extend(work_def)
             work_values.extend(work_res_def)
-            work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict, session)
+            work_priref = create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict)
 
         if not work_priref:
             print(f"Work error, priref not numeric from new file creation: {work_priref}")
@@ -820,7 +860,7 @@ def main():
         manifestation_values = []
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
-        manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict, session)
+        manifestation_priref = create_manifestation(fullpath, work_priref, manifestation_values, epg_dict)
 
         if not manifestation_priref:
             print(f"CID Manifestation priref not retrieved for manifestation: {manifestation_priref}")
@@ -836,7 +876,7 @@ def main():
         item_values = []
         item_values.extend(rec_def)
         item_values.extend(item_def)
-        item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict, session)
+        item_data = create_cid_item_record(work_priref, manifestation_priref, acquired_filename, fullpath, file, new_work, item_values, epg_dict)
         print(f"item_object_number: {item_data}")
 
         if item_data is None:
@@ -859,7 +899,7 @@ def main():
         '''
         # Build webvtt payload [deprecated]
         if webvtt_payload:
-            success = push_payload(item_data[1], webvtt_payload, session)
+            success = push_payload(item_data[1], webvtt_payload)
             if not success:
                 logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
         '''
@@ -899,7 +939,8 @@ def main():
     logger.info('========== STORA documentation script END ===================================================\n')
 
 
-def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id, session):
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
+def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id):
     '''
     Call function series_check(series_id) and build all data needed
     to make new series. Return boole for success/fail
@@ -990,7 +1031,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         nfa_category = ''
 
     # Series work value extensions for missing series data
-    series_work_genres = series_work_values = []
+    series_work_values = []
     series_work_values.extend(series_work_defaults)
     series_work_values.extend(work_restricted_def)
 
@@ -1008,30 +1049,6 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         series_work_values.append({'alternative_number': series_id})
     except (IndexError, TypeError, KeyError):
         print("series_id will not be added to series_work_values")
-    if len(series_short) > 0:
-        try:
-            series_work_values.append({'label.type': 'EPGSHORT'})
-            series_work_values.append({'label.text': series_short})
-            series_work_values.append({'label.source': 'EBS augmented EPG supply'})
-            series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-        except (IndexError, TypeError, KeyError):
-            print("Series description short will not be added to series_work_values")
-    if len(series_medium) > 0:
-        try:
-            series_work_values.append({'label.type': 'EPGMEDIUM'})
-            series_work_values.append({'label.text': series_medium})
-            series_work_values.append({'label.source': 'EBS augmented EPG supply'})
-            series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-        except (IndexError, TypeError, KeyError):
-            print("Series description medium will not be added to series_work_values")
-    if len(series_long) > 0:
-        try:
-            series_work_values.append({'label.type': 'EPGLONG'})
-            series_work_values.append({'label.text': series_long})
-            series_work_values.append({'label.source': 'EBS augmented EPG supply'})
-            series_work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-        except (IndexError, TypeError, KeyError):
-            print("Series description long will not be added to series_work_values")
 
     if new_series_list is True:
         if len(series_description) > 0:
@@ -1051,47 +1068,94 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
             except (IndexError, TypeError, KeyError):
                 print("Series description LONGEST will not be added to series_work_values")
 
-
-    series_work_genres = []
-    if len(str(series_genre_one)) > 0:
-        series_work_genres.append({'content.genre.lref': str(series_genre_one)})
-    if len(str(series_genre_two)) > 0:
-        series_work_genres.append({'content.genre.lref': str(series_genre_two)})
-    if len(str(series_subject_one)) > 0:
-        series_work_genres.append({'content.subject.lref': str(series_subject_one)})
-    if len(str(series_subject_two)) > 0:
-        series_work_genres.append({'content.subject.lref': str(series_subject_two)})
-
-    print(f"Attempting to write series work genres and subjects to records {series_work_genres}")
-    if 'content.' in str(series_work_genres):
-        logger.warning("Appending series genres to CID work record:\n%s", series_work_genres)
-        series_work_values.extend(series_work_genres)
-
-    # Start creating CID Work Series record
-    series_values_xml = adlib.create_record_data(CID_API, 'works', session, '', series_work_values)
+    # Start creating CID Work Series record with no nested groups
+    series_values_xml = adlib.create_record_data(CID_API, 'works', '', series_work_values)
     if series_values_xml is None:
         return None
-
+    sleep(2)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
-        work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord', session)
-        print(f"create_series(): {work_rec}")
-        if 'priref' in str(work_rec):
-            try:
-                series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
-                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
-                print(f'* Series record created with Priref {series_work_id}')
-                print(f'* Series record created with Object number {object_number}')
-                logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
-            except (IndexError, TypeError, KeyError) as err:
-                print(f'* Unable to create Series Work record for <{series_title_full}>\n{err}')
-                logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
-                return None
-
+        work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
     except Exception as err:
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
-        logger.critical('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
-        raise
+        logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+
+    if work_rec is False:
+        raise Exception("Recycle of API exception raised.")
+    print(f"create_series(): {work_rec}")
+    try:
+        series_work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+        object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+        print(f'* Series record created with Priref {series_work_id}')
+        print(f'* Series record created with Object number {object_number}')
+        logger.info('%s\tWork record created with priref %s', fullpath, series_work_id)
+    except (IndexError, TypeError, KeyError) as err:
+        print(f'* Unable to create Series Work record for <{series_title_full}>\n{err}')
+        logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+        raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
+
+    if not series_work_id:
+        return None
+
+    # Append Content genres to record
+    series_content_genres = []
+    genre = False
+    if len(str(series_genre_one)) > 0:
+        genre = True
+        series_content_genres.append([{'content.genre.lref': series_genre_one}])
+    if len(str(series_genre_two)) > 0:
+        genre = True
+        series_content_genres.append([{'content.genre.lref': series_genre_two}])
+    if genre is True:
+        genre_xml = adlib.create_grouped_data(series_work_id, 'Content_genre', series_content_genres)
+        print(genre_xml)
+        update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+        if update_rec is False:
+            raise Exception("Recycle of API exception raised.")
+        if 'Content_genre' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", series_work_id)
+
+    # Append Content subject to record
+    series_content_subject = []
+    content = False
+    if len(str(series_subject_one)) > 0:
+        content = True
+        series_content_subject.append([{'content.subject.lref': series_subject_one}])
+    if len(str(series_subject_two)) > 0:
+        content = True
+        series_content_subject.append([{'content.subject.lref': series_subject_two}])
+    if content is True:
+        subject_xml = adlib.create_grouped_data(series_work_id, 'Content_subject', series_content_subject)
+        print(subject_xml)
+        update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+        if update_rec is False:
+            raise Exception("Recycle of API exception raised.")
+        if 'Content_subject' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", series_work_id)
+
+    # Append group data contents to record
+    label_fields = []
+    labels = False
+    if len(series_short) > 0:
+        labels = True
+        label_fields.append([{'label.type': 'EPGSHORT'},{'label.text': series_short},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Series description short will not be added to series_work_values")
+    if len(series_medium) > 0:
+        labels = True
+        label_fields.append([{'label.type': 'EPGMEDIUM'},{'label.text': series_medium},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Series description medium will not be added to series_work_values")
+    if len(series_long) > 0:
+        labels = True
+        label_fields.append([{'label.type': 'EPGLONG'},{'label.text': series_long},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Series description long will not be added to series_work_values")
+    if labels is True:
+        label_xml = adlib.create_grouped_data(series_work_id, 'Label', label_fields)
+        print(label_xml)
+        update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+        if update_rec is False:
+            raise Exception("Recycle of API exception raised.")
+        if 'Label' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", series_work_id)
 
     return series_work_id
 
@@ -1101,7 +1165,7 @@ def build_defaults(epg_dict):
     Get detailed information
     and build record_defaults dict
     '''
-
+    print(epg_dict)
     record = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
@@ -1166,7 +1230,7 @@ def build_defaults(epg_dict):
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
              {'file_type': 'MPEG-TS'},
-             {'code_type': epg_dict['code_type']},
+             {'code_type': epg_dict.get('code_type')},
              {'source_device': 'STORA'},
              {'acquisition.method': 'Off-Air'}])
 
@@ -1201,11 +1265,11 @@ def build_webvtt_dct(old_webvtt):
     return webvtt_payload.replace("\'", "'")
 
 
-def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict, session):
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
+def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict):
     '''
     Create work records
     '''
-    work_genres = []
     if 'title_article' in epg_dict:
         work_values.append({'title.article': epg_dict['title_article']})
     if series_work_id:
@@ -1244,24 +1308,6 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         else:
             print("Series number isn't present, skipping.")
 
-    if 'd_short' in epg_dict:
-        d_short = epg_dict['d_short']
-        work_values.append({'label.type': 'EPGSHORT'})
-        work_values.append({'label.text': d_short})
-        work_values.append({'label.source': 'EBS augmented EPG supply'})
-        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-    if 'd_medium' in epg_dict:
-        d_medium = epg_dict['d_medium']
-        work_values.append({'label.type': 'EPGMEDIUM'})
-        work_values.append({'label.text': d_medium})
-        work_values.append({'label.source': 'EBS augmented EPG supply'})
-        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
-    if 'd_long' in epg_dict:
-        d_long = epg_dict['d_long']
-        work_values.append({'label.type': 'EPGLONG'})
-        work_values.append({'label.text': d_long})
-        work_values.append({'label.source': 'EBS augmented EPG supply'})
-        work_values.append({'label.date': str(datetime.datetime.now())[:10]})
     if 'description' in epg_dict:
         description = epg_dict['description']
         work_values.append({'description': description})
@@ -1276,50 +1322,101 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
             work_values.append({'utb.fieldname': 'Freeview EPG'})
             work_values.append({'utb.content': csv_dump})
 
-    work_genres = []
-    if 'work_genre_one' in epg_dict:
-        work_genres.append({'content.genre.lref': epg_dict['work_genre_one']})
-    if 'work_genre_two' in epg_dict:
-        work_genres.append({'content.genre.lref': epg_dict['work_genre_two']})
-    if 'work_subject_one' in epg_dict:
-        work_genres.append({'content.subject.lref': epg_dict['work_subject_one']})
-    if 'work_subject_two' in epg_dict:
-        work_genres.append({'content.subject.lref': epg_dict['work_subject_two']})
-    if 'content.' in str(work_genres):
-        logger.info("Adding work genres to CID work record: \n%s", work_genres)
-        work_values.extend(work_genres)
-
     work_id = ''
     # Start creating CID Work record
-    work_values_xml = adlib.create_record_data(CID_API, 'works', session, '', work_values)
+    sleep(3)
+    work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None
-
     try:
+        sleep(2)
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
-        work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord', session)
+        work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         print(f"create_work(): {work_rec}")
-        if 'priref' in str(work_rec):
-            try:
-                print("Populating work_id and object_number variables")
-                work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
-                object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
-                print(f'* Work record created with Priref {work_id} Object number {object_number}')
-                logger.info('%s\tWork record created with priref %s', fullpath, work_id)
-            except (IndexError, TypeError, KeyError) as err:
-                print(f"Creation of record failed using adlib_v3: 'works', 'insertrecord' for {epg_dict['title']}")
-                return None
     except Exception as err:
-        print(f"* Unable to create Work record for <{epg_dict['title']}>")
-        print(err)
-        logger.critical('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
-        logger.critical(err)
-        raise
+        print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
+        logger.warning('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
+        logger.warning(err)
+    if work_rec is False:
+        raise Exception("Recycle of API exception raised.")
+    try:
+        print("Populating work_id and object_number variables")
+        work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
+        object_number = adlib.retrieve_field_name(work_rec, 'object_number')[0]
+        print(f'* Work record created with Priref {work_id} Object number {object_number}')
+        logger.info('%s\tWork record created with priref %s', fullpath, work_id)
+    except (IndexError, TypeError, KeyError) as err:
+        logger.warning("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", epg_dict['title'])
+        raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
+
+    if not work_id:
+        return None
+
+    # Append Content genres to record
+    content_genres = []
+    genre = False
+    if 'work_genre_one' in epg_dict:
+        genre = True
+        content_genres.append([{'content.genre.lref': epg_dict['work_genre_one']}])
+    if 'work_genre_two' in epg_dict:
+        genre = True
+        content_genres.append([{'content.genre.lref': epg_dict['work_genre_two']}])
+    if genre is True:
+        genre_xml = adlib.create_grouped_data(work_id, 'Content_genre', content_genres)
+        print(genre_xml)
+        update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
+        if update_rec is False:
+            raise Exception("Recycle of API exception raised.")
+        if 'Content_genre' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", work_id)
+
+    # Append Content subject to record
+    content_subject = []
+    content = False
+    if 'work_subject_one' in epg_dict:
+        content = True
+        content_subject.append([{'content.subject.lref': epg_dict['work_subject_one']}])
+    if 'work_subject_two' in epg_dict:
+        content = True
+        content_subject.append([{'content.subject.lref': epg_dict['work_subject_two']}])
+    if content is True:
+        subject_xml = adlib.create_grouped_data(work_id, 'Content_subject', content_subject)
+        print(subject_xml)
+        update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
+        if update_rec is False:
+            raise Exception("Recycle of API exception raised.")
+        if 'Content_subject' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", work_id)
+
+    # Append group data contents to record
+    label_fields = []
+    labels = False
+    if 'd_short' in epg_dict:
+        labels = True
+        label_fields.append([{'label.type': 'EPGSHORT'},{'label.text': epg_dict['d_short']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Work description short will not be added to series_work_values")
+    if 'd_medium' in epg_dict:
+        labels = True
+        label_fields.append([{'label.type': 'EPGMEDIUM'},{'label.text': epg_dict['d_medium']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Work description medium will not be added to series_work_values")
+    if 'd_long' in epg_dict:
+        labels = True
+        label_fields.append([{'label.type': 'EPGLONG'},{'label.text': epg_dict['d_long']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
+        print("Work description long will not be added to series_work_values")
+    if labels is True:
+        label_xml = adlib.create_grouped_data(work_id, 'Label', label_fields)
+        print(label_xml)
+        update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
+        if update_rec is False:
+            raise Exception("Recycle of API exception raised.")
+        if 'Label' in str(update_rec):
+            logger.info("Label text successfully updated to Series Work %s", work_id)
 
     return work_id
 
 
-def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict, session):
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
+def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict):
     '''
     Create a manifestation record,
     linked to work_priref
@@ -1344,7 +1441,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         manifestation_values.append({'transmission_duration': epg_dict['duration_total']})
         manifestation_values.append({'runtime': epg_dict['duration_total']})
 
-    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', session, '', manifestation_values)
+    man_values_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     print("=================================")
     print(manifestation_values)
     print(man_values_xml)
@@ -1352,27 +1449,29 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     if man_values_xml is None:
         return None
     try:
+        sleep(2)
         logger.info("Attempting to create Manifestation record for item %s", title)
-        man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord', session)
+        man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
         print(f"create_manifestation(): {man_rec}")
-        if 'priref' in str(man_rec):
-            try:
-                manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
-                object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
-                print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
-                logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
-            except (IndexError, KeyError, TypeError) as err:
-                print(f"Unable to write manifestation record - {title}")
-                return None
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
-        logger.critical("Unable to write manifestation record <%s> %s", manifestation_id, err)
-        raise
+        logger.warning("Unable to write manifestation record <%s> %s", manifestation_id, err)
+    if man_rec is False:
+            raise Exception("Recycle of API exception raised.")
+    try:
+        manifestation_id = adlib.retrieve_field_name(man_rec, 'priref')[0]
+        object_number = adlib.retrieve_field_name(man_rec, 'object_number')[0]
+        print(f'* Manifestation record created with Priref {manifestation_id} Object number {object_number}')
+        logger.info('%s\tManifestation record created with priref %s', fullpath, manifestation_id)
+    except (IndexError, KeyError, TypeError) as err:
+        logger.warning("Failed to retrieve Priref from record created for - %s", title)
+        raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
 
     return manifestation_id
 
 
-def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, epg_dict, session):
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
+def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpath, file, new_work, item_values, epg_dict):
     '''
     Create CID Item record
     '''
@@ -1388,52 +1487,51 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     except (KeyError, IndexError, TypeError):
         print("Title article is not present")
 
-    item_values_xml = adlib.create_record_data(CID_API, 'items', session, '', item_values)
+    item_values_xml = adlib.create_record_data(CID_API, 'items', '', item_values)
     if item_values_xml is None:
         return None
 
     try:
+        sleep(2)
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
-        item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord', session)
+        item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
         print(f"create_cid_item_record(): {item_rec}")
-        if 'priref' in str(item_rec):
-            try:
-                item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
-                item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
-                print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
-                logger.info('%s\tItem record created with priref %s', fullpath, item_id)
-            except (IndexError, KeyError, TypeError) as err:
-                print("Unable to create Item record", err)
-                return None
     except Exception as err:
-        logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
+        logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
-        item_id = None
-
+    if item_rec is False:
+        raise Exception("Recycle of API exception raised.")
+    try:
+        item_id = adlib.retrieve_field_name(item_rec, 'priref')[0]
+        item_object_number = adlib.retrieve_field_name(item_rec, 'object_number')[0]
+        print(f'* Item record created with Priref {item_id} Object number {item_object_number}')
+        logger.info('%s\tItem record created with priref %s', fullpath, item_id)
+    except (IndexError, KeyError, TypeError) as err:
+        logger.warning("Failed to retrieve Priref from record created %s", err)
+        raise Exception('Failed to retrieve Priref/Object Number from record creation.').with_traceback(err.__traceback__)
     if item_rec is None:
-        logger.critical('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
+        logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath}")
-
-        success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session)
+        success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id)
         logger.warning("Data cleaned following failure of Item record creation: %s", success)
         return None
 
     return item_object_number, item_id
 
 
-def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
+def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     '''
     Item record creation failed
     Update manifestation records with deletion prompt in title
     '''
-    manifestation = f'''<record>
-                        <priref>{int(manifestation_id)}</priref>
-                        <title>DELETE - STORA record creation problem</title>
-                        </record>'''
-    payload = etree.tostring(etree.fromstring(manifestation))
-
+    payload_start = f"<adlibXML><recordList><record priref='{manifestation_id}'>"
+    payload_mid = "<Title><title>DELETE - STORA record creation problem</title></Title>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload_start + payload_mid + payload_end
     try:
-        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord', session)
+        sleep(2)
+        response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
         else:
@@ -1443,14 +1541,13 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
 
     # Update work record with deletion prompt in title
     if new_work is True:
-        work = f'''<record>
-                   <priref>{int(work_id)}</priref>
-                   <title>DELETE - STORA record creation problem</title>
-                   </record>'''
-        payload = etree.tostring(etree.fromstring(work))
-
+        payload_start = f"<adlibXML><recordList><record priref='{work_id}'>"
+        payload_mid = "<Title><title>DELETE - STORA record creation problem</title></Title>"
+        payload_end = "</record></recordList></adlibXML>"
+        payload = payload_start + payload_mid + payload_end
         try:
-            response = adlib.post(CID_API, payload, 'works', 'updaterecord', session)
+            sleep(2)
+            response = adlib.post(CID_API, payload, 'works', 'updaterecord')
             if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
             else:
@@ -1458,22 +1555,32 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, session):
         except Exception as err:
             logger.warning('%s\tUnable to rename Work %s with deletion prompt in title, for bulk deletion. Error: %s', fullpath, work_id, err)
 
-    # Rename JSON with .PROBLEM to prevent retry
+    success = mark_problem_json(fullpath)
+    logger.info("Successfully updated JSON with PROBLEM: %s", success)
+
+
+def mark_problem_json(fullpath):
+    '''
+    Rename JSON with .PROBLEM to prevent retry
+    '''
     problem = f'{fullpath}.PROBLEM'
     print(f'* Renaming {fullpath} to {problem}')
     logger.info('%s\t Renaming JSON to %s', fullpath, problem)
+    global FAILURE_COUNTER
+    FAILURE_COUNTER += 1
     try:
         os.rename(fullpath, problem)
     except Exception as err:
         print(f'** PROBLEM: Could not rename {fullpath} to {problem}')
-        logger.critical('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
-
+        logger.warning('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
     if os.path.exists(problem):
         return True
 
 
-def push_payload(item_id, webvtt_payload, session):
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
+def push_payload(item_id, webvtt_payload):
     '''
+    DEPRECATED
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     '''
@@ -1487,12 +1594,15 @@ def push_payload(item_id, webvtt_payload, session):
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     try:
-        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord', session)
-        if post_resp:
-            return True
+        post_resp = adlib.post(CID_API, payload, 'items', 'updaterecord')
     except Exception as err:
         logger.warning('push_payload()): Unable to write Webvtt to record %s \n%s', item_id, err)
-    return False
+    if post_resp is False:
+        raise Exception("Recycle of API exception raised.")
+    if post_resp:
+        return True
+    else:
+        return False
 
 
 if __name__ == '__main__':

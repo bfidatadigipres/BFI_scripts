@@ -1170,13 +1170,8 @@ def manifestation_create(start_date, event_type, priref, manifestation_dct=None,
 
     man_priref = ''
     # Create CID record for Manifestation
-<<<<<<< HEAD
-    man_values_xml = adlib.create_record_data('', manifestation_values)
-    print("----- manifestation values XML ----------------------")
-=======
     man_values_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     print("---------------------------")
->>>>>>> d1f4f18d761288aa6310530cde14a81b40a9d245
     print(man_values_xml)
     print("---------------------------")
     try:

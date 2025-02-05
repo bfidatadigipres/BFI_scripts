@@ -61,7 +61,7 @@ CID_API = os.environ['CID_API4']
 HOST = os.uname()[1]
 
 # Setup logging
-if LOG_PREFIX != '_mnt_qnap_imagen_storage_Public':
+if LOG_PREFIX != '_mnt_qnap_04':
     sys.exit(f"Incorrect filepath received: {LOG_PREFIX}")
 LOGGER = logging.getLogger('mp4_transcode_make_jpeg')
 HDLR = logging.FileHandler(LOG_FILE)

@@ -26,6 +26,7 @@ import csv
 import sys
 import json
 import logging
+from typing import Final, Optional
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -33,11 +34,11 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-LOG_PATH = os.environ['LOG_PATH']
-MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
-CSV_PATH = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
-CID_API = os.environ['CID_API4']
-ERROR_CSV = os.path.join(LOG_PATH, 'media_record_metadata_post_failures.csv')
+LOG_PATH: Final = os.environ['LOG_PATH']
+MEDIAINFO_PATH: Final = os.path.join(LOG_PATH, 'cid_mediainfo')
+CSV_PATH: Final = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
+CID_API: Final = os.environ['CID_API4']
+ERROR_CSV: Final = os.path.join(LOG_PATH, 'media_record_metadata_post_failures.csv')
 
 # Setup logging
 LOGGER = logging.getLogger('metadata_clean_up')
@@ -47,7 +48,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-FIELDS = [
+FIELDS: Final = [
     {'container.duration': ['Duration_String1', 'Duration  ']},
     {'container.duration.milliseconds': ['Duration', '']},
     {'container.file_size.total_bytes': ['FileSize', 'File size  ']},
@@ -137,31 +138,31 @@ FIELDS = [
     {'text.codec_id': ['CodecID', 'Codec ID  ']}
 ]
 
-def make_paths(filename):
+def make_paths(filename: str) -> list[str]:
     '''
     Make all possible paths
     '''
-    text_full_path = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
-    ebu_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.xml")
-    pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.xml")
-    xml_path = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
-    json_path = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
-    exif_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
+    text_full_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
+    ebu_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.xml")
+    pb_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.xml")
+    xml_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
+    json_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
+    exif_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
 
     return [text_full_path, ebu_path, pb_path, xml_path, json_path, exif_path]
 
-
-def cid_retrieve(fname):
+# Union[str, NoReturn]
+def cid_retrieve(fname: str) -> Optional[str]:
     '''
     Retrieve priref for media record from imagen.media.original_filename
     '''
     try:
-        search = f"imagen.media.original_filename='{fname}'"
-        record = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
+        search: str = f"imagen.media.original_filename='{fname}'"
+        record: str = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
         if not record:
             return ''
         if 'priref' in str(record):
-            priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+            priref: str = adlib.retrieve_field_name(record[0], 'priref')[0]
             return priref
         return ''
     except Exception as e:
@@ -186,16 +187,16 @@ def main():
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
-    text_path = sys.argv[1]
-    text_file = os.path.basename(text_path)
+    text_path: str = sys.argv[1]
+    text_file: str = os.path.basename(text_path)
     if text_file.endswith('_TEXT.txt'):
-        filename = text_file.split("_TEXT.txt")[0]
+        filename: str = text_file.split("_TEXT.txt")[0]
         if len(filename) > 0 and filename.endswith((".ini", ".DS_Store", ".mhl", ".json")):
             sys.exit('Incorrect media file detected.')
 
         # Checking for existence of Digital Media record
         print(text_path, filename)
-        priref = cid_retrieve(filename)
+        priref: Optional[str] = cid_retrieve(filename)
         if priref is None:
             sys.exit('Script exiting. Could not find matching Priref.')
         if len(priref) == 0:
@@ -267,22 +268,22 @@ def main():
         LOGGER.warning("Failed to POST header tag data to CID record. Writing to errors CSV")
 
 
-def build_exif_metadata_xml(exif_path, priref):
+def build_exif_metadata_xml(exif_path: str, priref: str) -> str | bool:
     '''
     Open text file for any EXIF data
     and create XML for update record
     '''
     with open(exif_path, 'r') as metadata:
-        mdata = metadata.readlines()
+        mdata: list[str] = metadata.readlines()
 
-    img_xml = get_image_xml(mdata)
+    img_xml  = get_image_xml(mdata)
     print(img_xml)
-    xml = adlib.create_record_data(CID_API, 'media', priref, img_xml)
+    xml= adlib.create_record_data(CID_API, 'media', priref, img_xml)
 
     return xml
 
 
-def build_metadata_xml(json_path, priref):
+def build_metadata_xml(json_path: str, priref: str) -> str:
     '''
     Open JSON, dump to dict and create
     metadata XML for updaterecord
@@ -335,7 +336,7 @@ def build_metadata_xml(json_path, priref):
     return f"{payload_start}{payload}{payload_end}"
 
 
-def get_text_rows(start, mdata):
+def get_text_rows(start, mdata: list[str]) -> list[str]:
     '''
     read lines and get data
     '''
@@ -353,7 +354,7 @@ def get_text_rows(start, mdata):
     return collection
 
 
-def iterate_text_rows(data, match, key):
+def iterate_text_rows(data: list[str], match: str, key: str) -> Optional[dict[str, str]]:
     '''
     Receive key to match, sort and
     clean data and return
@@ -378,7 +379,7 @@ def iterate_text_rows(data, match, key):
         return {f'{key}': field_chosen}
 
 
-def get_stream_count(gen_rows):
+def get_stream_count(gen_rows: list[str]) -> tuple[float, float]:
     '''
     Get counts of streams
     to isolate metadata
@@ -392,7 +393,7 @@ def get_stream_count(gen_rows):
     return vid_count, aud_count
 
 
-def build_metadata_text_xml(text_path, text_full_path, priref):
+def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) -> Optional[str]:
     '''
     Use supplied text file for metadata extraction
     '''
@@ -494,7 +495,7 @@ def build_metadata_text_xml(text_path, text_full_path, priref):
     return f"{payload_start}{payload}{payload_end}"
 
 
-def manipulate_data(key, selection):
+def manipulate_data(key: str, selection: str) -> str:
     '''
     Sort and transform data where needed
     '''
@@ -546,8 +547,8 @@ def manipulate_data(key, selection):
         return None
     return selection
 
-
-def wrap_as_xml(grouping, field_pairs):
+###
+def wrap_as_xml(grouping: str, field_pairs: list[str]) -> str:
     '''
     Borrwed from Adlib
     but for specific need
@@ -560,8 +561,8 @@ def wrap_as_xml(grouping, field_pairs):
 
     return f'<{grouping}>{mid}</{grouping}>'
 
-
-def get_xml(arg, track):
+## what is track
+def get_xml(arg: str, track: dict[str,str]) -> list[str]:
     '''
     Create dictionary for General
     metadata required
@@ -578,8 +579,8 @@ def get_xml(arg, track):
 
     return dict
 
-
-def get_video_xml(track):
+###
+def get_video_xml(track: dict[str, str]) -> list[str]:
     '''
     Create dictionary for Video
     metadata required
@@ -616,8 +617,8 @@ def get_video_xml(track):
                         pass
     return video_dict
 
-
-def get_image_xml(track):
+##
+def get_image_xml(track: list[str]) -> Optional[str]:
     '''
     Create dictionary for Image
     metadata from Exif data source
@@ -656,7 +657,7 @@ def get_image_xml(track):
     return image_dict
 
 
-def clean_up(filename, text_path):
+def clean_up(filename: str, text_path: str) -> None:
     '''
     Clean up metadata
     '''
@@ -699,7 +700,7 @@ def clean_up(filename, text_path):
         LOGGER.warning("Unable to delete file: %s", exfp)
 
 
-def make_header_data(text_path, filename, priref):
+def make_header_data(text_path: str, filename: str, priref: str) -> str:
     '''
     Create the header tag data
     '''
@@ -767,8 +768,8 @@ def make_header_data(text_path, filename, priref):
     payload_data = text + text_full + ebu + pb + xml + json + exif
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
 
-
-def write_payload(payload, priref):
+###
+def write_payload(payload: str, priref: str) -> tuple[Optional[str], str | list[str] | dict[str, Any]]:
     '''
     Payload formatting per mediainfo output
     '''
@@ -784,8 +785,8 @@ def write_payload(payload, priref):
     else:
         return None, record
 
-
-def write_to_errors_csv(dbase, api, priref, xml_dump, record_response):
+####
+def write_to_errors_csv(dbase: str, api: str, priref: str, xml_dump: Optional[str], record_response: Optional[str] | tuple[Optional[str], str | list[str] | dict[str, Any]]) -> None:
     '''
     Keep a tab of problem POSTs as we expand
     thesaurus range for media record linked metadata

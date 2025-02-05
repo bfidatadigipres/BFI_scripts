@@ -147,6 +147,27 @@ def create_current_errors_logs():
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP08_OSH'], 'current_errors/current_errors.csv'))
     if os.path.exists(os.environ['AUTOINGEST_QNAP_TEMP']):
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_QNAP_TEMP'], 'current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_VIDEO']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_VIDEO'], 'autoingest/current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_AUDIO']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_AUDIO'], 'autoingest/current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_DIGITAL']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_DIGITAL'], 'autoingest/current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_SC']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_SC'], 'autoingest/current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_FILM1']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM1'], 'autoingest/current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_FILM2']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM2'], 'autoingest/current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_FILM3']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM3'], 'autoingest/current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_FILM4']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM4'], 'autoingest/current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_FILM5']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM5'], 'autoingest/current_errors/current_errors.csv'))
+    if os.path.exists(os.environ['BP_FILM6']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM6'], 'autoingest/current_errors/current_errors.csv'))
+
 
 if __name__ == '__main__':
     main()

@@ -43,6 +43,7 @@ from datetime import datetime, timezone
 import subprocess
 import pytz
 import tenacity
+from typing import Final, Tuple, Optional
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -50,18 +51,18 @@ import adlib_v3 as adlib
 import utils
 
 # Global paths from environment vars
-MP4_POLICY = os.environ['MP4_POLICY']
-LOG_PATH = os.environ['LOG_PATH']
-FLLPTH = sys.argv[1].split('/')[:4]
-LOG_PREFIX = '_'.join(FLLPTH)
+MP4_POLICY: Final = os.environ['MP4_POLICY']
+LOG_PATH: Final = os.environ['LOG_PATH']
+FLLPTH: Final = sys.argv[1].split('/')[:4]
+LOG_PREFIX: Final = '_'.join(FLLPTH)
 LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
-TRANSCODE = os.environ['TRANSCODING']
+TRANSCODE: Final = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
-CID_API = os.environ['CID_API4']
-HOST = os.uname()[1]
+CID_API: Final = os.environ['CID_API4']
+HOST: Final = os.uname()[1]
 
 # Setup logging
-if LOG_PREFIX != '_mnt_qnap_imagen_storage_Public':
+if LOG_PREFIX != '_mnt_qnap_04':
     sys.exit(f"Incorrect filepath received: {LOG_PREFIX}")
 LOGGER = logging.getLogger('mp4_transcode_make_jpeg')
 HDLR = logging.FileHandler(LOG_FILE)
@@ -70,7 +71,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-SUPPLIERS = {"East Anglian Film Archive": "eafa",
+SUPPLIERS: Final = {"East Anglian Film Archive": "eafa",
              "Imperial War Museum": "iwm",
              "London's Screen Archive": "lsa",
              "MACE": "mace",
@@ -85,7 +86,7 @@ SUPPLIERS = {"East Anglian Film Archive": "eafa",
              "Yorkshire Film Archive": "yfa"}
 
 
-def local_time():
+def local_time() -> str:
     '''
     Return strftime object formatted
     for London time (includes BST adjustment)
@@ -377,7 +378,7 @@ def main():
     print(log_build)
 
 
-def log_output(log_build):
+def log_output(log_build: list[str]) -> None:
     '''
     Collect up log list and output to log in one block
     '''
@@ -385,14 +386,14 @@ def log_output(log_build):
         LOGGER.info(log)
 
 
-def adjust_seconds(duration):
+def adjust_seconds(duration: float) -> int:
     '''
     Adjust second duration one third in
     '''
     return duration // 3
 
 
-def get_jpeg(seconds, fullpath, outpath):
+def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
     '''
     Retrieve JPEG from MP4
     Seconds accepted as float
@@ -418,7 +419,7 @@ def get_jpeg(seconds, fullpath, outpath):
         return False
 
 
-def check_item(ob_num, database):
+def check_item(ob_num: str, database) -> Optional[Tuple[str, str, str]]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
@@ -442,7 +443,7 @@ def check_item(ob_num, database):
     return priref, source, groupings
 
 
-def get_media_priref(fname):
+def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
     '''
     Retrieve priref from Digital record
     '''
@@ -470,7 +471,7 @@ def get_media_priref(fname):
     return priref, input_date, largeimage_umid, thumbnail_umid, access_rendition
 
 
-def get_dar(fullpath):
+def get_dar(fullpath: str) -> str:
     '''
     Retrieves metadata DAR info and returns as string
     '''
@@ -484,7 +485,7 @@ def get_dar(fullpath):
         return '4:3'
 
 
-def get_par(fullpath):
+def get_par(fullpath: str) -> str:
     '''
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
@@ -497,7 +498,7 @@ def get_par(fullpath):
     return par_full[:5]
 
 
-def get_height(fullpath):
+def get_height(fullpath: str) -> str:
     '''
     Retrieves height information via mediainfo
     '''
@@ -533,7 +534,7 @@ def get_height(fullpath):
     return re.sub("[^0-9]", "", height)
 
 
-def get_width(fullpath):
+def get_width(fullpath: str) -> str:
     '''
     Retrieves height information via ffprobe
     '''
@@ -553,7 +554,7 @@ def get_width(fullpath):
     return re.sub("[^0-9]", "", width)
 
 
-def get_duration(fullpath):
+def get_duration(fullpath: str) -> tuple[str | int, str]:
     '''
     Retrieves duration information via mediainfo
     where more than two returned, find longest of
@@ -595,7 +596,7 @@ def get_duration(fullpath):
             return (second_duration, '1')
 
 
-def check_audio(fullpath):
+def check_audio(fullpath: str) -> tuple[str, Optional[str]] | None:
     '''
     Checking if audio in mov file ahead of transcode
     '''
@@ -651,7 +652,7 @@ def check_audio(fullpath):
     return ('Audio', None)
 
 
-def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs, retry):
+def create_transcode(fullpath: str, output_path: str, height: str, width: str, dar: str, par: str, audio: str, default: Optional[str], vs: str, retry: bool) -> list[str]:
     '''
     Builds FFmpeg command based on height/dar input
     '''
@@ -819,7 +820,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
     return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + cmd_mid + max_mux + fast_start + output
 
 
-def make_jpg(filepath, arg, transcode_pth, percent):
+def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str]) -> str:
     '''
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.
@@ -872,7 +873,7 @@ def make_jpg(filepath, arg, transcode_pth, percent):
         return outfile
 
 
-def conformance_check(file):
+def conformance_check(file: str) -> str:
     '''
     Checks file against MP4 mediaconch policy
     Looks for essential items to ensure that
@@ -885,7 +886,7 @@ def conformance_check(file):
         return f"FAIL! This policy has failed {success[1]}"
 
 
-def check_mod_time(fpath):
+def check_mod_time(fpath: str) -> bool:
     '''
     See if mod time over 5 hrs old
     '''
@@ -907,13 +908,13 @@ def check_mod_time(fpath):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))
-def cid_media_append(fname, priref, data):
+def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]:
     '''
     Receive data and priref and append to CID media record
     '''
     payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_mid = ''.join(data)
-    payload_end = f"</record></recordList></adlibXML>"
+    payload_end = "</record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
 
     rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
@@ -923,7 +924,7 @@ def cid_media_append(fname, priref, data):
     print("**************************************************************")
     print(data)
     print("**************************************************************")
-    
+
     data = get_media_priref(fname)
     file = fname.split('.')[0]
     if file == data[4] or file in str(data[2]):

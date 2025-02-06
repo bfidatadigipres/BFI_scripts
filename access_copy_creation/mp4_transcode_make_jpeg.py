@@ -427,7 +427,7 @@ def retrieve_blackspaces(data: str) -> list[str]:
     return time_range
 
 
-def check_seconds(blackspace: list[str], seconds: float) -> Optional[bool]:
+def check_seconds(blackspace: list[str], seconds: float) -> bool:
     '''
     Create range and check for second within
     '''
@@ -469,7 +469,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         return False
 
 
-def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, str]]:
+def check_item(ob_num: str, database: str) -> tuple[str, str, str]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
@@ -622,7 +622,7 @@ def get_width(fullpath: str) -> str:
     return re.sub("[^0-9]", "", width)
 
 
-def check_for_mixed_audio(fpath: str) -> Optional[dict[str, int]]:
+def check_for_mixed_audio(fpath: str) -> dict[str, int]:
     '''
     For use where audio channels 6+ exist
     check for 'DL' and 'DR' and build different
@@ -715,7 +715,7 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
             return (second_duration, '1')
 
 
-def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
+def check_audio(fullpath: str) -> tuple[str, str, str]:
     '''
     Mediainfo command to retrieve channels, identify
     stereo or mono, returned as 2 or 1 respectively
@@ -773,7 +773,8 @@ def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[s
         return ('Audio', None, streams)
 
 
-def create_transcode(fullpath: str, output_path: str, height: str, width: str, dar: str, par: str, audio: Optional[str], default: Optional[str], vs: str, mixed_dict: dict[str, int], fl_fr: bool) -> Optional[list[str]]:
+def create_transcode(fullpath: str, output_path: str, height: str, width: str, dar: str, par: str, audio: str, default: str, vs: str, mixed_dict: dict[str, int], fl_fr: bool) -> list[str]:
+
     '''
     Builds FFmpeg command based on height/dar input
     '''
@@ -985,7 +986,7 @@ def create_transcode(fullpath: str, output_path: str, height: str, width: str, d
         return ffmpeg_program_call + input_video_file + map_video + video_settings + pix + cmd_mid + map_audio + fast_start + output
 
 
-def make_jpg(filepath: str, arg: str, transcode_pth:Optional[str], percent: Optional[str]) -> Optional[str]:
+def make_jpg(filepath: str, arg: str, transcode_pth: str, percent: str) -> str:
     '''
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.
@@ -1072,7 +1073,7 @@ def conformance_check(file: str) -> str:
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))
-def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]:
+def cid_media_append(fname: str, priref: str, data: list[str]) -> bool:
     '''
     Receive data and priref and append to CID media record
     '''
@@ -1089,7 +1090,7 @@ def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]
     print("**************************************************************")
     print(data)
     print("**************************************************************")
-    
+
     data = get_media_priref(fname)
     file = fname.split('.')[0]
     if file == data[4] or file in str(data[2]):

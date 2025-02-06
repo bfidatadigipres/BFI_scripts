@@ -22,6 +22,7 @@ import logging
 from datetime import datetime
 from time import sleep
 from ds3 import ds3, ds3Helpers
+from typing import Final, Optional
 
 # Local imports
 import bp_utils
@@ -47,7 +48,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-START_FOLDERS = {
+START_FOLDERS: Final = {
     'eafa': '201605',
     'iwm': '201605',
     'lsa': '201605',
@@ -64,7 +65,7 @@ START_FOLDERS = {
 }
 
 
-def get_size(fpath):
+def get_size(fpath: str) -> float:
     '''
     Check the size of given folder path
     return size in kb
@@ -81,7 +82,7 @@ def get_size(fpath):
     return byte_size
 
 
-def check_mod_time(fpath):
+def check_mod_time(fpath: str) -> bool:
     '''
     Compare modification times to ensure
     within mod max limit
@@ -94,7 +95,7 @@ def check_mod_time(fpath):
     return True
 
 
-def check_bp_status(fname):
+def check_bp_status(fname: str) -> bool:
     '''
     Look up filename in BP buckets
     to avoid multiple ingest of files
@@ -110,7 +111,7 @@ def check_bp_status(fname):
     return True
 
 
-def move_to_ingest_folder(new_path, file_list):
+def move_to_ingest_folder(new_path: str, file_list: list[str]) -> list[str]:
     '''
     File list to be formatted structured:
     'bfi/202402/filename1', 'bfi/202402/filename2'
@@ -138,7 +139,7 @@ def move_to_ingest_folder(new_path, file_list):
     return ingest_list
 
 
-def delete_existing_proxy(file_list):
+def delete_existing_proxy(file_list: list[str]) -> list[str]:
     '''
     A proxy is being replaced so the
     existing version should be cleared
@@ -281,7 +282,7 @@ def main():
     LOGGER.info("====== BP Access Renditions back up script end ====================")
 
 
-def put_dir(directory_pth):
+def put_dir(directory_pth: str) -> list[str]:
     '''
     Add the directory to black pearl using helper (no MD5)
     Retrieve job number and launch json notification
@@ -300,7 +301,7 @@ def put_dir(directory_pth):
     return job_list
 
 
-def move_items_back(ingest_list):
+def move_items_back(ingest_list: list[str]) -> bool:
     '''
     Receive PUT file list and move items back after
     confirmation of job PUT okay

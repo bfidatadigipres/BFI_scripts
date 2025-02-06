@@ -70,6 +70,7 @@ import logging
 import datetime
 import subprocess
 import magic
+from typing import Final, Optional
 
 # Private packages
 import bp_utils as bp
@@ -78,13 +79,13 @@ import adlib_v3_sess as adlib
 import utils
 
 # Global paths
-LOGS = os.environ['LOG_PATH']
-GLOBAL_LOG = os.path.join(LOGS, 'autoingest/global.log')
-PERS_LOG = os.path.join(LOGS, 'persistence_confirmation.log')
-PERS_QUEUE = os.path.join(LOGS, 'autoingest/persistence_queue.csv')
-PERS_QUEUE2 = os.path.join(LOGS, 'autoingest/persistence_queue2.csv')
-CONFIG = os.environ['CONFIG_YAML']
-DPI_BUCKETS = os.environ['DPI_BUCKET']
+LOGS: Final = os.environ['LOG_PATH']
+GLOBAL_LOG: Final = os.path.join(LOGS, 'autoingest/global.log')
+PERS_LOG: Final = os.path.join(LOGS, 'persistence_confirmation.log')
+PERS_QUEUE: Final = os.path.join(LOGS, 'autoingest/persistence_queue.csv')
+PERS_QUEUE2: Final = os.path.join(LOGS, 'autoingest/persistence_queue2.csv')
+CONFIG: Final = os.environ['CONFIG_YAML']
+DPI_BUCKETS: Final = os.environ['DPI_BUCKET']
 
 # Setup logging
 logger = logging.getLogger('autoingest')
@@ -95,9 +96,9 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
-CID_API = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API4']
 
-PREFIX = [
+PREFIX: Final = [
     'N',
     'C',
     'PD',
@@ -110,7 +111,7 @@ PREFIX = [
 ]
 
 
-def log_delete_message(pth, message, file):
+def log_delete_message(pth: str, message: str, file: str) -> None:
     '''
     Save deletion message to persistence_confirmation.log
     '''
@@ -120,7 +121,7 @@ def log_delete_message(pth, message, file):
         out_file.write(data)
 
 
-def get_persistence_messages():
+def get_persistence_messages() -> dict[str, str]:
     '''
     Collect current persistence messages
     '''
@@ -147,7 +148,7 @@ def get_persistence_messages():
     return messages
 
 
-def check_accepted_file_type(fpath):
+def check_accepted_file_type(fpath: str) -> bool:
     '''
     Retrieve codec and ensure file is accepted type
     TAR accepted from DMS / ProRes all other paths
@@ -165,7 +166,7 @@ def check_accepted_file_type(fpath):
     return False
 
 
-def check_mime_type(fpath, log_paths):
+def check_mime_type(fpath: str, log_paths: str) -> bool:
     '''
     Checks the mime type of the file
     and if stream media checks ffprobe
@@ -203,7 +204,7 @@ def check_mime_type(fpath, log_paths):
     return True
 
 
-def process_image_archive(fname, log_paths):
+def process_image_archive(fname: str, log_paths: str) -> tuple[Optional[str], Optional[int], Optional[int], Optional[str]]:
     '''
     Process special collections image
     archive filename structure
@@ -251,7 +252,7 @@ def process_image_archive(fname, log_paths):
     return object_number, int(part), int(whole), ext
 
 
-def get_item_priref(ob_num, session):
+def get_item_priref(ob_num: str, session: str) -> str:
     '''
     Retrieve item priref, title from CID
     '''
@@ -268,7 +269,7 @@ def get_item_priref(ob_num, session):
     return priref
 
 
-def check_media_record(fname, session):
+def check_media_record(fname: str, session: str) -> Optional[str] | bool:
     '''
     Check if CID media record
     already created for filename
@@ -293,7 +294,7 @@ def check_media_record(fname, session):
         return f'Hits exceed 1: {hits}'
 
 
-def get_buckets(bucket_collection):
+def get_buckets(bucket_collection: str) -> dict[str, str]:
     '''
     Read JSON list return
     key_value and list of others
@@ -313,7 +314,7 @@ def get_buckets(bucket_collection):
     return bucket_list
 
 
-def ext_in_file_type(ext, priref, log_paths, ob_num, session):
+def ext_in_file_type(ext: str, priref: str, log_paths: str, ob_num: str, session: str) -> bool:
     '''
     Check if ext matches file_type
     '''
@@ -367,7 +368,7 @@ def ext_in_file_type(ext, priref, log_paths, ob_num, session):
         return False
 
 
-def get_media_ingests(object_number, session):
+def get_media_ingests(object_number: str, session: str) -> list[str]:
     '''
     Use object_number to retrieve all media records
     '''
@@ -393,7 +394,7 @@ def get_media_ingests(object_number, session):
     return original_filenames
 
 
-def get_ingests_from_log(fname):
+def get_ingests_from_log(fname: str) -> list[str]:
     '''
     Iterate global.log looking for
     filename and message match
@@ -414,7 +415,7 @@ def get_ingests_from_log(fname):
     return ingest_files
 
 
-def asset_is_next_ingest(fname, previous_fname, black_pearl_folder):
+def asset_is_next_ingest(fname: str, previous_fname: str, black_pearl_folder: str) -> bool:
     '''
     New function that checks partWhole ingest order
     and looks for previous part in black_pearl_folder
@@ -430,7 +431,7 @@ def asset_is_next_ingest(fname, previous_fname, black_pearl_folder):
         return False
 
 
-def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder, session):
+def asset_is_next(fname: str, ext: str, object_number: str, part: int, whole: int, black_pearl_folder: str, session: str) -> str:
     '''
     Check which files have persisted already and
     if this file is next in queue
@@ -478,7 +479,7 @@ def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder, se
         return 'False'
 
 
-def get_mappings(pth, mappings):
+def get_mappings(pth: str, mappings: str) -> list[str]:
     '''
     Get files within config.yaml mappings
     Path limitations for slow storage
@@ -512,7 +513,7 @@ def main():
     navigate all autoingest paths and sort files for ingest
     or deletion.
     '''
-    messages = {}
+    messages: dict = {}
     messages = get_persistence_messages()
     print('* Finished collecting persistence_queue messages...')
 

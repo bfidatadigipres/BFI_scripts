@@ -45,6 +45,7 @@ import logging
 from xml.sax.saxutils import escape
 from datetime import datetime, timedelta
 from tenacity import retry, stop_after_attempt
+from typing import Optional
 
 # Local package
 import bp_utils as bp
@@ -77,7 +78,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def fetch_workflow_jobs():
+def fetch_workflow_jobs() -> Optional[dict[str, list[str]]]:
     '''
     Search for in target workflow jobs, compile into a
     dictionary and return to main()
@@ -127,7 +128,7 @@ def fetch_workflow_jobs():
     return workflow_jobs
 
 
-def get_date_range():
+def get_date_range() -> tuple[str, str]:
     '''
     Return CHECK_RANGE day from today's date
     '''
@@ -139,7 +140,7 @@ def get_date_range():
     return todays_date, end_date
 
 
-def fetch_item_list(priref):
+def fetch_item_list(priref: str) -> str | list[str]:
     '''
     Fetch a workflow job's items list
     '''
@@ -159,7 +160,7 @@ def fetch_item_list(priref):
         return children
 
 
-def get_child_ob_num(priref):
+def get_child_ob_num(priref: str) -> Optional[int]:
     '''
     Retrieve the child's object number from workflow
     '''
@@ -177,7 +178,7 @@ def get_child_ob_num(priref):
 
 
 @retry(stop=stop_after_attempt(10))
-def get_media_original_filename(search):
+def get_media_original_filename(search: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     '''
     Retrieve the first returned media record
     for a match against object.object_number
@@ -207,7 +208,7 @@ def get_media_original_filename(search):
     return orig_fname, ref_num, bucket
 
 
-def bucket_check(bucket, filename):
+def bucket_check(bucket: str, filename: str) -> str:
     '''
     Check CID media record that bucket
     matches for all parts
@@ -229,7 +230,7 @@ def bucket_check(bucket, filename):
         return bucket
 
 
-def get_missing_part_names(filename):
+def get_missing_part_names(filename: str) -> list[str]:
     '''
     Extract range from part 01of*
     call up Digital Media record for
@@ -268,7 +269,7 @@ def get_missing_part_names(filename):
     return fname_list
 
 
-def make_check_md5(fpath, fname, bucket):
+def make_check_md5(fpath: str, fname: str, bucket: str) ->tuple[str, str]:
     '''
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
@@ -290,7 +291,7 @@ def make_check_md5(fpath, fname, bucket):
     return str(download_checksum), str(local_checksum)
 
 
-def checksum_log(message):
+def checksum_log(message: str) -> None:
     '''
     Append checksum message to checksum
     log where no match found
@@ -302,7 +303,7 @@ def checksum_log(message):
         out_file.write(data)
 
 
-def check_csv(fname):
+def check_csv(fname: str) -> dict[str, str]:
     '''
     Check CSV for evidence that fname already
     downloaded. Extract download date and return
@@ -487,7 +488,7 @@ def main():
     LOGGER.info("=========== Digital Pick script end =============\n")
 
 
-def build_payload(priref, data, today):
+def build_payload(priref: str, data: str, today: str) -> str:
     '''
     Build payload info to write to Workflow record
     '''
@@ -499,7 +500,7 @@ def build_payload(priref, data, today):
     return payload_head + payload_addition + payload_edit + payload_end
 
 
-def write_payload(priref, payload):
+def write_payload(priref: str, payload: str) -> bool:
     '''
     Recieve header, payload and priref and write
     to CID workflow record
@@ -515,7 +516,7 @@ def write_payload(priref, payload):
         return True
 
 
-def write_to_csv(data):
+def write_to_csv(data: str) -> None:
     '''
     Write all file data to CSV as confirmation
     of successful download.

@@ -45,7 +45,9 @@ import glob
 import json
 import shutil
 import logging
+import requests
 from datetime import datetime
+from typing import Optional
 
 # Local import
 import bp_utils as bp
@@ -107,7 +109,7 @@ LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
 }
 
 
-def retrieve_json_data(foldername):
+def retrieve_json_data(foldername: str) -> str:
     '''
     Look for matching JSON file
     '''
@@ -116,7 +118,7 @@ def retrieve_json_data(foldername):
         return os.path.join(JSON_PATH, json_file[0])
 
 
-def json_check(json_pth):
+def json_check(json_pth: str) -> Optional[str]:
     '''
     Open json and return value for ObjectsNotPersisted
     Has to be a neater way than this!
@@ -132,7 +134,7 @@ def json_check(json_pth):
                                 return val
 
 
-def get_md5(filename):
+def get_md5(filename: str) -> Optional[str]:
     '''
     Retrieve the local_md5 from checksum_md5 folder
     '''
@@ -160,7 +162,7 @@ def get_md5(filename):
         return local_md5
 
 
-def check_for_media_record(fname, session):
+def check_for_media_record(fname: str, session: str) -> tuple[str, str]:
     '''
     Check if media record already exists
     In which case the file may be a duplicate
@@ -328,7 +330,7 @@ def main():
     logger.info("======== END Black Pearl validate/CID media record END ========")
 
 
-def process_files(autoingest, job_id, bucket, bucket_list, session):
+def process_files(autoingest: str, job_id: str, bucket: str, bucket_list: list[str], session: requests.Session) -> list[str]:
     '''
     Receive ingest fpath then JSON has confirmed files ingested to tape
     and this function handles CID media record check/creation and move
@@ -509,7 +511,7 @@ def persistence_log_message(message, path, wpath, file):
             of.write(f"{datestamp} INFO\t{path}\t{wpath}\t{file}\t{message}\n")
 
 
-def duration_size_log(filename, ob_num, duration, size, ms):
+def duration_size_log(filename: str, ob_num: str, duration: str, size: int, ms: int) -> None:
     '''
     Save outcome message to duration_size_media_records.csv
     '''
@@ -528,7 +530,7 @@ def duration_size_log(filename, ob_num, duration, size, ms):
             writer.writerow([filename, ob_num, str(duration), str(size), datestamp, str(ms)])
 
 
-def create_media_record(ob_num, duration, byte_size, filename, bucket, session):
+def create_media_record(ob_num: str, duration, byte_size,: int filename: str, bucket: str, session: requests.Session) -> Optional[str]:
     '''
     Media record creation for BP ingested file
     '''

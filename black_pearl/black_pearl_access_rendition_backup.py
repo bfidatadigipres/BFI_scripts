@@ -48,12 +48,12 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-START_FOLDERS = {
+START_FOLDERS: Final = {
     'bfi': '201605'
 }
 
 
-def check_mod_time(fpath):
+def check_mod_time(fpath: str) -> bool:
     '''
     Compare modification times to ensure
     within mod max limit
@@ -66,7 +66,7 @@ def check_mod_time(fpath):
     return True
 
 
-def move_to_ingest_folder(new_path, file_list):
+def move_to_ingest_folder(new_path: str, file_list: list[str]):
     '''
     File list to be formatted structured:
     'bfi/202402/filename1', 'bfi/202402/filename2'
@@ -94,7 +94,7 @@ def move_to_ingest_folder(new_path, file_list):
     return ingest_list
 
 
-def delete_existing_proxy(file_list):
+def delete_existing_proxy(file_list: list[str]) -> list[str]:
     '''
     A proxy is being replaced so the
     existing version should be cleared
@@ -130,7 +130,7 @@ def main():
 
     LOGGER.info("====== BP Access Renditions back up script start ==================")
     for key, value in START_FOLDERS.items():
-        access_path = os.path.join(STORAGE, key)
+        access_path: str = os.path.join(STORAGE, key)
         LOGGER.info("** Access path selected: %s", access_path)
         folder_list = os.listdir(access_path)
         folder_list.sort()
@@ -246,7 +246,7 @@ def main():
     LOGGER.info("====== BP Access Renditions back up script end ====================")
 
 
-def move_items_back(ingest_list):
+def move_items_back(ingest_list: list[str]) -> bool:
     '''
     Receive PUT file list and move items back after
     confirmation of job PUT okay

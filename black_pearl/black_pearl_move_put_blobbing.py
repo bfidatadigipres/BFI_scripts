@@ -90,7 +90,7 @@ LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
 }
 
 
-def get_buckets(bucket_collection):
+def get_buckets(bucket_collection: str) -> str:
     '''
     Read JSON list return
     key_value and list of others
@@ -118,7 +118,7 @@ def get_buckets(bucket_collection):
     return key_bucket
 
 
-def make_check_md5(fpath, dpath, fname):
+def make_check_md5(fpath: str, dpath: str, fname: str) -> None:
     '''
     Generate MD5/metadata docs for fpath
     Locate matching file in CID/checksum_md5 folder
@@ -148,7 +148,7 @@ def make_check_md5(fpath, dpath, fname):
     return None, None
 
 
-def make_metadata(fpath, fname, mediainfo_path):
+def make_metadata(fpath: str, fname: str, mediainfo_path: str) -> None:
     '''
     Create mediainfo files
     '''
@@ -163,7 +163,7 @@ def make_metadata(fpath, fname, mediainfo_path):
     LOGGER.info("Written %s metadata to paths:\n%s\n%s\n%s\n%s\n%s\n%s", fname, path1, path2, path3, path4, path5, path6)
 
 
-def get_md5(filename):
+def get_md5(filename: str) -> Optional[str]:
     '''
     Retrieve the local_md5 from checksum_md5 folder
     '''
@@ -190,7 +190,7 @@ def get_md5(filename):
         return local_md5
 
 
-def check_for_media_record(fname):
+def check_for_media_record(fname: str) -> tuple[Optional[str], Optional[str]]:
     '''
     Check if media record already exists
     In which case the file may be a duplicate
@@ -416,7 +416,7 @@ def main():
     LOGGER.info(f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========")
 
 
-def persistence_log_message(message, path, wpath, file):
+def persistence_log_message(message: str, path: str, wpath: str, file: str) -> None:
     '''
     Output confirmation to persistence_queue.csv
     '''
@@ -431,7 +431,7 @@ def persistence_log_message(message, path, wpath, file):
             of.write(f"{datestamp} INFO\t{path}\t{wpath}\t{file}\t{message}\n")
 
 
-def duration_size_log(filename, ob_num, duration, size, ms):
+def duration_size_log(filename: str, ob_num: str, duration: str, size: int, ms: str) -> None:
     '''
     Save outcome message to duration_size_media_records.csv
     '''
@@ -449,8 +449,8 @@ def duration_size_log(filename, ob_num, duration, size, ms):
             writer = csv.writer(doc)
             writer.writerow([filename, ob_num, str(duration), str(size), datestamp, str(ms)])
 
-
-def create_media_record(ob_num, duration, byte_size, filename, bucket):
+##
+def create_media_record(ob_num: str, duration: str, byte_size: str, filename: str, bucket: str) -> Optional[str]:
     '''
     Media record creation for BP ingested file
     duration, and byte_size waiting for new fields

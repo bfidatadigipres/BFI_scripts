@@ -54,12 +54,15 @@ def check_no_bp_status(fname, bucket_list):
     '''
 
     for bucket in bucket_list:
-        query = ds3.HeadObjectRequest(bucket, fname)
-        result = CLIENT.head_object(query)
-        # Only return false if DOESNTEXIST is missing, eg file found
-        if 'DOESNTEXIST' in str(result.result):
-            print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
-            return True
+        try:
+            query = ds3.HeadObjectRequest(bucket, fname)
+            result = CLIENT.head_object(query)
+            # Only return false if DOESNTEXIST is missing, eg file found
+            if 'DOESNTEXIST' in str(result.result):
+                print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                return True
+        except Exception as err:
+            print(err)
 
     return False
 

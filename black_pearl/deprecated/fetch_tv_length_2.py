@@ -9,9 +9,9 @@ import utils
 
 # Setup client/paths
 CLIENT = ds3.createClientFromEnv()
-ADMIN = os.environ['ADMIN']
-CSV_PATH = os.path.join(ADMIN, 'code/filesize_extractor/ofcom_dpi_ingest_2.csv')
-NEW_CSV_PATH = os.path.join(ADMIN, 'code/filesize_extractor/ofcom_dpi_ingest_filesizes.csv')
+ADMIN = os.path.join(os.environ['QNAP_FILM'], 'test/')
+CSV_PATH = os.path.join(ADMIN, 'ofcom_dpi_ingest_2.csv')
+NEW_CSV_PATH = os.path.join(ADMIN, 'ofcom_dpi_ingest_filesizes.csv')
 
 
 def read_csv(csv_path):

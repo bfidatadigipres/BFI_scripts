@@ -52,19 +52,34 @@ def check_no_bp_status(fname, bucket_list):
     Look up filename in BP to avoid
     multiple ingests of files
     '''
-
+    exist_across_buckets = []
     for bucket in bucket_list:
         try:
             query = ds3.HeadObjectRequest(bucket, fname)
             result = CLIENT.head_object(query)
-            # Only return false if DOESNTEXIST is missing, eg file found
-            if 'DOESNTEXIST' in str(result.result):
+            # Return false if EXISTS is present in list
+            if str(result.result) == 'DOESNTEXIST':
                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
-                return True
+                exist_across_buckets.append('DOENSTEXIST')
+            elif str(result.result) == 'EXISTS':
+                print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                exist_across_buckets.append('EXISTS')
         except Exception as err:
             print(err)
 
-    return False
+    if exist_across_buckets == []:
+        # Skip precaution, search failed
+        return False
+    if 'EXISTS' in exist_across_buckets:
+        # Exists, return False to prevent dupe ingest
+        return False
+    elif 'EXISTS' not in exist_across_buckets:
+        if 'DOESNTEXIST' in exist_across_buckets:
+            # Confirmed not to exist, return True to allow ingest
+            return True
+        else:
+            # Skip precaution, search possibly failed
+            return False
 
 
 def get_job_status(job_id):

@@ -26,7 +26,7 @@ import csv
 import sys
 import json
 import logging
-from typing import Final, Optional
+from typing import Optional
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -34,11 +34,11 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-LOG_PATH: Final = os.environ['LOG_PATH']
-MEDIAINFO_PATH: Final = os.path.join(LOG_PATH, 'cid_mediainfo')
-CSV_PATH: Final = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
-CID_API: Final = os.environ['CID_API4']
-ERROR_CSV: Final = os.path.join(LOG_PATH, 'media_record_metadata_post_failures.csv')
+LOG_PATH = os.environ['LOG_PATH']
+MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
+CSV_PATH = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
+CID_API = os.environ['CID_API4']
+ERROR_CSV = os.path.join(LOG_PATH, 'media_record_metadata_post_failures.csv')
 
 # Setup logging
 LOGGER = logging.getLogger('metadata_clean_up')
@@ -48,7 +48,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-FIELDS: Final = [
+FIELDS = [
     {'container.duration': ['Duration_String1', 'Duration  ']},
     {'container.duration.milliseconds': ['Duration', '']},
     {'container.file_size.total_bytes': ['FileSize', 'File size  ']},
@@ -142,16 +142,16 @@ def make_paths(filename: str) -> list[str]:
     '''
     Make all possible paths
     '''
-    text_full_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
-    ebu_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.xml")
-    pb_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.xml")
-    xml_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
-    json_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
-    exif_path: str = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
+    text_full_path = os.path.join(MEDIAINFO_PATH, f"{filename}_TEXT_FULL.txt")
+    ebu_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EBUCore.xml")
+    pb_path = os.path.join(MEDIAINFO_PATH, f"{filename}_PBCore2.xml")
+    xml_path = os.path.join(MEDIAINFO_PATH, f"{filename}_XML.xml")
+    json_path = os.path.join(MEDIAINFO_PATH, f"{filename}_JSON.json")
+    exif_path = os.path.join(MEDIAINFO_PATH, f"{filename}_EXIF.txt")
 
     return [text_full_path, ebu_path, pb_path, xml_path, json_path, exif_path]
 
-# Union[str, NoReturn]
+
 def cid_retrieve(fname: str) -> Optional[str]:
     '''
     Retrieve priref for media record from imagen.media.original_filename
@@ -393,7 +393,7 @@ def get_stream_count(gen_rows: list[str]) -> tuple[float, float]:
     return vid_count, aud_count
 
 
-def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) -> Optional[str]:
+def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) -> str:
     '''
     Use supplied text file for metadata extraction
     '''
@@ -495,7 +495,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
     return f"{payload_start}{payload}{payload_end}"
 
 
-def manipulate_data(key: str, selection: str) -> str:
+def manipulate_data(key: str, selection: str) -> str | bool:
     '''
     Sort and transform data where needed
     '''
@@ -522,7 +522,7 @@ def manipulate_data(key: str, selection: str) -> str:
     elif '.total_gigabytes' in key and 'KiB' in selection:
         return None
     elif '.total_gigabytes' in key and 'TiB' in selection:
-        return None  
+        return None
     elif '.total_gigabytes' in key and selection.isnumeric():
         return None
     if 'FPS' in selection:
@@ -547,7 +547,7 @@ def manipulate_data(key: str, selection: str) -> str:
         return None
     return selection
 
-###
+
 def wrap_as_xml(grouping: str, field_pairs: list[str]) -> str:
     '''
     Borrwed from Adlib
@@ -561,13 +561,13 @@ def wrap_as_xml(grouping: str, field_pairs: list[str]) -> str:
 
     return f'<{grouping}>{mid}</{grouping}>'
 
-## what is track
-def get_xml(arg: str, track: dict[str,str]) -> list[str]:
+
+def get_xml(arg: str, track: dict[str]) -> list[dict]:
     '''
     Create dictionary for General
     metadata required
     '''
-    dict = []
+    dct = []
     for field in FIELDS:
         for k, v in field.items():
             if k.startswith(f'{arg}.'):
@@ -575,12 +575,12 @@ def get_xml(arg: str, track: dict[str,str]) -> list[str]:
                     selected = manipulate_data(k, track.get(v[0]))
                     if selected is None:
                         continue
-                    dict.append({f'{k}': selected.strip()})
+                    dct.append({f'{k}': selected.strip()})
 
-    return dict
+    return dct
 
-###
-def get_video_xml(track: dict[str, str]) -> list[str]:
+
+def get_video_xml(track: dict[str, str]) -> list[dict]:
     '''
     Create dictionary for Video
     metadata required
@@ -617,8 +617,8 @@ def get_video_xml(track: dict[str, str]) -> list[str]:
                         pass
     return video_dict
 
-##
-def get_image_xml(track: list[str]) -> Optional[str]:
+
+def get_image_xml(track: list[str]) -> list[dict]:
     '''
     Create dictionary for Image
     metadata from Exif data source
@@ -768,8 +768,8 @@ def make_header_data(text_path: str, filename: str, priref: str) -> str:
     payload_data = text + text_full + ebu + pb + xml + json + exif
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
 
-###
-def write_payload(payload: str, priref: str) -> tuple[Optional[str], str | list[str] | dict[str, Any]]:
+
+def write_payload(payload: str, priref: str) -> tuple[bool, dict[str]]:
     '''
     Payload formatting per mediainfo output
     '''
@@ -785,8 +785,8 @@ def write_payload(payload: str, priref: str) -> tuple[Optional[str], str | list[
     else:
         return None, record
 
-####
-def write_to_errors_csv(dbase: str, api: str, priref: str, xml_dump: Optional[str], record_response: Optional[str] | tuple[Optional[str], str | list[str] | dict[str, Any]]) -> None:
+
+def write_to_errors_csv(dbase: str, api: str, priref: str, xml_dump: str, record_response: dict[str]) -> None:
     '''
     Keep a tab of problem POSTs as we expand
     thesaurus range for media record linked metadata

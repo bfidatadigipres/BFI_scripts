@@ -555,6 +555,9 @@ def main():
             if fname.endswith(('.txt', '.md5', '.log', '.mhl', '.ini', '.json')):
                 continue
             ext = fname.split('.')[-1]
+            if ext.lower() == 'avi' and 'qnap08_osh' not in host:
+                print("** AVI FILE - Not in QNAP-08 OSH path. Skipping")
+                continue
 
             print(f'\n====== CURRENT FILE: {fpath} ===========================')
 

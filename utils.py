@@ -34,6 +34,7 @@ PREFIX = [
 ]
 
 ACCEPTED_EXT = [
+    'avi',
     'mxf',
     'xml',
     'tar',
@@ -73,7 +74,8 @@ def accepted_file_type(ext):
     Receive extension and returnc
     matching accepted file_type
     '''
-    ftype = {'imp': 'mxf, xml',
+    ftype = {'avi': 'avi',
+             'imp': 'mxf, xml',
              'tar': 'dpx, dcp, dcdm, wav',
              'mxf': 'mxf, 50i, imp',
              'mpg': 'mpeg-1, mpeg-ps',

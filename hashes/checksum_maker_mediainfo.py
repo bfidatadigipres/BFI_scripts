@@ -25,7 +25,7 @@ import sys
 import logging
 import datetime
 import tenacity
-import typing 
+import typing
 
 # Custom Libraries
 sys.path.append(os.environ['CODE'])
@@ -144,7 +144,7 @@ def main():
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def make_metadata(target_path, fname, mediainfo_path):
+def make_metadata(target_path: str, fname: str, mediainfo_path: str) -> None:
     '''
     Create mediainfo files
     '''

@@ -43,7 +43,7 @@ from datetime import datetime, timezone
 import subprocess
 import pytz
 import tenacity
-from typing import Final, Tuple, Optional
+from typing import Tuple, Optional
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -51,18 +51,18 @@ import adlib_v3 as adlib
 import utils
 
 # Global paths from environment vars
-MP4_POLICY: Final = os.environ['MP4_POLICY']
-LOG_PATH: Final = os.environ['LOG_PATH']
-FLLPTH: Final = sys.argv[1].split('/')[:4]
-LOG_PREFIX: Final = '_'.join(FLLPTH)
+MP4_POLICY = os.environ['MP4_POLICY']
+LOG_PATH = os.environ['LOG_PATH']
+FLLPTH = sys.argv[1].split('/')[:4]
+LOG_PREFIX = '_'.join(FLLPTH)
 LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
-TRANSCODE: Final = os.environ['TRANSCODING']
+TRANSCODE = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
-CID_API: Final = os.environ['CID_API4']
-HOST: Final = os.uname()[1]
+CID_API = os.environ['CID_API4']
+HOST = os.uname()[1]
 
 # Setup logging
-if LOG_PREFIX != '_mnt_qnap_imagen_storage_Public':
+if LOG_PREFIX != '_mnt_qnap_04_autoingest':
     sys.exit(f"Incorrect filepath received: {LOG_PREFIX}")
 LOGGER = logging.getLogger('mp4_transcode_make_jpeg')
 HDLR = logging.FileHandler(LOG_FILE)
@@ -71,7 +71,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-SUPPLIERS: Final = {"East Anglian Film Archive": "eafa",
+SUPPLIERS = {"East Anglian Film Archive": "eafa",
              "Imperial War Museum": "iwm",
              "London's Screen Archive": "lsa",
              "MACE": "mace",
@@ -378,7 +378,7 @@ def main():
     print(log_build)
 
 
-def log_output(log_build: list[str?]) -> None:
+def log_output(log_build: list[str]) -> None:
     '''
     Collect up log list and output to log in one block
     '''
@@ -914,7 +914,7 @@ def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]
     '''
     payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_mid = ''.join(data)
-    payload_end = f"</record></recordList></adlibXML>"
+    payload_end = "</record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
 
     rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
@@ -924,7 +924,7 @@ def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]
     print("**************************************************************")
     print(data)
     print("**************************************************************")
-    
+
     data = get_media_priref(fname)
     file = fname.split('.')[0]
     if file == data[4] or file in str(data[2]):

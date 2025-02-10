@@ -279,7 +279,7 @@ def check_media_record(fname, session):
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
-        return True
+        return None
 
     if hits is None:
         logger.exception('"CID API was unreachable for Media search: %s', search)
@@ -629,6 +629,9 @@ def main():
 
             # CID media record check
             media_check = check_media_record(fname, sess)
+            if media_check is None:
+                print("Skipping. Exceptionion raised for call to CID API")
+                continue
             if media_check is True:
                 print(f'* Filename {fname} already has a CID Media record. Manual clean up needed.')
                 logger.warning('%s\tFilename already has a CID Media record: %s', log_paths, fname)
@@ -745,8 +748,11 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
 
     # Check if CID media record exists
     media_check = check_media_record(fname, session)
+    if media_check is None:
+        print("** Exception raised for API request. Skipping this deletion.")
+        return False
     if media_check is False:
-        print(f'*********** Filename {fname} has no CID Media record. Leaving for manual checks. (cid_media_record returned False)')
+        print(f'** Filename {fname} has no CID Media record. Leaving for manual checks. (cid_media_record returned False)')
         logger.warning('%s\tCompleted file has no CID Media record: %s', log_paths, fname)
         return False
 

@@ -279,11 +279,12 @@ def check_media_record(fname, session):
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
-        return False
+        return True
 
     if hits is None:
         logger.exception('"CID API was unreachable for Media search: %s', search)
         raise Exception(f"CID API was unreachable for Media search: {search}")
+
     print(f"check_media_record(): AdlibV3 record for hits: {hits}")
     if int(hits) == 1:
         return True

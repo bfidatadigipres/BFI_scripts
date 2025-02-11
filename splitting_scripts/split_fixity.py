@@ -117,13 +117,19 @@ def check_media_record(fname):
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-    hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
-    print(f"Check media record response: {hits} hits")
+    try:
+        hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+        print(f"Check media record response: {hits} hits")
+    except Exception as err:
+        print(f"Skipping: Unable to retrieve CID Media record {err}")
+        return None
+
     if hits is None:
-        raise SystemExit(f'Could not retrieve data from API: {search}')
-    if hits >= 1:
+        print(f"Skipping: Unable to retrieve CID Media confirmation")
+        return None
+    if int(hits) >= 1:
         return True
-    elif hits == 0:
+    elif int(hits) == 0:
         return False
 
 
@@ -248,12 +254,13 @@ def main():
                     print(f"Checking if first part has already been created or has persisted to DPI: {firstpart_check}")
                     check_result = check_media_record(firstpart_check)
                     firstpart = False
-                    if check_result is True:
-                        print(f"First part {firstpart_check} exists in CID, proceeding to check for {check_filename}")
-                        firstpart = True
                     if check_result is None:
                         logger.warning("Skipping: Unable to retrieve CID Media hit information, try again next pass")
                         continue
+                    if check_result is True:
+                        print(f"First part {firstpart_check} exists in CID, proceeding to check for {check_filename}")
+                        firstpart = True
+
                     print(f"**** AUTOINGEST: {AUTOINGEST}")
                     match_path = glob.glob(f"{AUTOINGEST}/**/*/{firstpart_check}", recursive=True)
                     print(f"****** MATCH PATH {match_path}")

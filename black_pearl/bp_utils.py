@@ -60,26 +60,20 @@ def check_no_bp_status(fname, bucket_list):
             # Return false if EXISTS is present in list
             if str(result.result) == 'DOESNTEXIST':
                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
-                exist_across_buckets.append('DOENSTEXIST')
+                exist_across_buckets.append('DOESNTEXIST')
             elif str(result.result) == 'EXISTS':
                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
-                exist_across_buckets.append('EXISTS')
+                exist_across_buckets.append('PRESENT')
         except Exception as err:
             print(err)
-
+    print(exist_across_buckets)
     if exist_across_buckets == []:
-        # Skip precaution, search failed
         return False
-    if 'EXISTS' in exist_across_buckets:
-        # Exists, return False to prevent dupe ingest
+    if 'PRESENT' in str(exist_across_buckets):
         return False
-    elif 'EXISTS' not in exist_across_buckets:
-        if 'DOESNTEXIST' in exist_across_buckets:
-            # Confirmed not to exist, return True to allow ingest
-            return True
-        else:
-            # Skip precaution, search possibly failed
-            return False
+    if 'DOESNTEXIST' in str(exist_across_buckets):
+        return True
+    return False
 
 
 def get_job_status(job_id):

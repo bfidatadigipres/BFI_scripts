@@ -279,11 +279,12 @@ def check_media_record(fname, session):
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
-        return False
+        return None
 
     if hits is None:
         logger.exception('"CID API was unreachable for Media search: %s', search)
         raise Exception(f"CID API was unreachable for Media search: {search}")
+
     print(f"check_media_record(): AdlibV3 record for hits: {hits}")
     if int(hits) == 1:
         return True
@@ -554,6 +555,12 @@ def main():
             if fname.endswith(('.txt', '.md5', '.log', '.mhl', '.ini', '.json')):
                 continue
             ext = fname.split('.')[-1]
+            if ext.lower() == 'avi':
+                if 'qnap08_osh' in str(fpath):
+                    pass
+                else:
+                    print("** AVI FILE - Not in QNAP-08 OSH path. Skipping")
+                    continue
 
             print(f'\n====== CURRENT FILE: {fpath} ===========================')
 
@@ -622,6 +629,9 @@ def main():
 
             # CID media record check
             media_check = check_media_record(fname, sess)
+            if media_check is None:
+                print("Skipping. Exceptionion raised for call to CID API")
+                continue
             if media_check is True:
                 print(f'* Filename {fname} already has a CID Media record. Manual clean up needed.')
                 logger.warning('%s\tFilename already has a CID Media record: %s', log_paths, fname)
@@ -738,8 +748,11 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
 
     # Check if CID media record exists
     media_check = check_media_record(fname, session)
+    if media_check is None:
+        print("** Exception raised for API request. Skipping this deletion.")
+        return False
     if media_check is False:
-        print(f'*********** Filename {fname} has no CID Media record. Leaving for manual checks. (cid_media_record returned False)')
+        print(f'** Filename {fname} has no CID Media record. Leaving for manual checks. (cid_media_record returned False)')
         logger.warning('%s\tCompleted file has no CID Media record: %s', log_paths, fname)
         return False
 

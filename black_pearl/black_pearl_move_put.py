@@ -67,8 +67,8 @@ def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_
             logger.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
             break
         status = bp.check_no_bp_status(file, bucket_list)
-        print(f"bp.check_no_bp_status: {status}")
         if status is False:
+            print(f"bp.check_no_bp_status: {status}")
             logger.warning("move_to_ingest_folder(): Skipping. File already found in Black Pearl: %s", file)
             continue
         fpath = os.path.join(autoingest, file)

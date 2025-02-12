@@ -322,7 +322,7 @@ def main():
     logger.info("======== END Black Pearl validate/CID media record END ========")
 
 
-def process_files(autoingest: str, job_id: str, bucket: str, bucket_list: list[str], session: requests.Session) -> list[str]:
+def process_files(autoingest: str, job_id: str, bucket: str, bucket_list: list[str], session: requests.Session) -> str | list[str]:
     '''
     Receive ingest fpath then JSON has confirmed files ingested to tape
     and this function handles CID media record check/creation and move
@@ -522,7 +522,7 @@ def duration_size_log(filename: str, ob_num: str, duration: str, size: int, ms: 
             writer.writerow([filename, ob_num, str(duration), str(size), datestamp, str(ms)])
 
 
-def create_media_record(ob_num: str, duration, byte_size,: int filename: str, bucket: str, session: requests.Session) -> Optional[str]:
+def create_media_record(ob_num: Optional[str], duration: Optional[str], byte_size: int, filename: Optional[str], bucket: Optional[str], session: requests.Session) -> Optional[str]:
     '''
     Media record creation for BP ingested file
     '''

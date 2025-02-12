@@ -115,8 +115,8 @@ def log_delete_message(pth: str, message: str, file: str) -> None:
     '''
     Save deletion message to persistence_confirmation.log
     '''
-    datestamp = datetime.datetime.now()
-    data = f"{datestamp} INFO\t{pth}\t{pth}\t{file}\t{message}\n"
+    datestamp: datetime.datetime = datetime.datetime.now()
+    data: str = f"{datestamp} INFO\t{pth}\t{pth}\t{file}\t{message}\n"
     with open(PERS_LOG, 'a+') as out_file:
         out_file.write(data)
 
@@ -125,8 +125,8 @@ def get_persistence_messages() -> dict[str, str]:
     '''
     Collect current persistence messages
     '''
-    csv_reader = []
-    messages = {}
+    csv_reader: list = []
+    messages: dict[str, str] = {}
     with open(PERS_QUEUE, 'r') as pq:
         csv_reader = list(csv.reader(pq))
 
@@ -159,7 +159,7 @@ def check_accepted_file_type(fpath: str) -> bool:
     if any(x in fpath for x in ['qnap_06', 'qnap_03']):
         if fpath.endswith(('.mkv', '.MKV', '.tar', '.TAR')):
             return True
-    formt = utils.get_metadata('Video', 'Format', fpath)
+    formt: str = utils.get_metadata('Video', 'Format', fpath)
     print(f"utils.get_metadata: {formt}")
     if 'ProRes' in str(formt):
         return True
@@ -269,7 +269,7 @@ def get_item_priref(ob_num: str, session: str) -> str:
     return priref
 
 
-def check_media_record(fname: str, session: str) -> Optional[str] | bool:
+def check_media_record(fname: str, session: str) -> str | bool:
     '''
     Check if CID media record
     already created for filename
@@ -294,7 +294,7 @@ def check_media_record(fname: str, session: str) -> Optional[str] | bool:
         return f'Hits exceed 1: {hits}'
 
 
-def get_buckets(bucket_collection: str) -> dict[str, str]:
+def get_buckets(bucket_collection: str) -> list[str]:
     '''
     Read JSON list return
     key_value and list of others
@@ -431,7 +431,7 @@ def asset_is_next_ingest(fname: str, previous_fname: str, black_pearl_folder: st
         return False
 
 
-def asset_is_next(fname: str, ext: str, object_number: str, part: int, whole: int, black_pearl_folder: str, session: str) -> str:
+def asset_is_next(fname: str, ext: str, object_number: str, part: int, whole: Optional[int], black_pearl_folder: str, session: str) -> str:
     '''
     Check which files have persisted already and
     if this file is next in queue

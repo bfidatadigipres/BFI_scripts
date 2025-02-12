@@ -28,6 +28,7 @@ import pytz
 import shutil
 import logging
 from datetime import datetime
+from typing import Optional
 
 # Local import
 import bp_utils as bp
@@ -110,7 +111,7 @@ def format_dt() -> str:
     return now.strftime('%Y-%m-%d_%H-%M-%S')
 
 
-def check_folder_age(fname: str) -> str:
+def check_folder_age(fname: str) -> int:
     '''
     Retrieve date time stamp from folder
     Returns days in integer using timedelta days
@@ -299,7 +300,7 @@ def put_dir(directory_pth: str, bucket_choice: str) -> list[str]:
     Retrieve job number and launch json notification
     '''
     try:
-        job_list: list() = bp.put_directory(directory_pth, bucket_choice)
+        job_list: list[str] = bp.put_directory(directory_pth, bucket_choice)
         print(f"bp.put_directory: {job_list}")
     except Exception as err:
         logger.error('Exception: %s', err)
@@ -314,7 +315,7 @@ def put_dir(directory_pth: str, bucket_choice: str) -> list[str]:
     return job_list
 
 
-def pth_rename(folderpth: str, job_list: list[str]) -> str:
+def pth_rename(folderpth: str, job_list: list[str]) -> Optional[str]:
     '''
     Take folder path and change name for job_list
     '''

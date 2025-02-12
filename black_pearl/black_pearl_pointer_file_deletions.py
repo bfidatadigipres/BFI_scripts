@@ -91,7 +91,7 @@ def get_prirefs(pointer: str) ->  Optional[str]:
     return result['adlibJSON']['recordList']['record'][0]['hitlist']
 
 
-def get_dictionary(priref_list: list[str]) -> dict[str, list[str]]:
+def get_dictionary(priref_list: list[str]) -> dict[str, Optional[list[str]]]:
     '''
     Iterate list of prirefs and
     collate data
@@ -106,7 +106,7 @@ def get_dictionary(priref_list: list[str]) -> dict[str, list[str]]:
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(15))
-def get_media_record_data(priref: str) -> list[str, str, str, str, str, str]:
+def get_media_record_data(priref: str) -> Optional[list[str]]:
     '''
     Get CID media record details
     '''

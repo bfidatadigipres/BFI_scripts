@@ -25,6 +25,7 @@ import shutil
 import logging
 from datetime import datetime
 from time import sleep
+from typing import Final
 
 # Local imports
 import bp_utils
@@ -72,19 +73,19 @@ def move_to_ingest_folder(new_path: str, file_list: list[str]):
     'bfi/202402/filename1', 'bfi/202402/filename2'
     Runs while loop and moves upto 1TB folder size
     '''
-    ingest_list = []
+    ingest_list: list[str] = []
     LOGGER.info("move_to_ingest_folder(): %s", INGEST_POINT)
 
-    folder_size = utils.get_size(INGEST_POINT)
-    max_fill_size = UPLOAD_MAX - folder_size
+    folder_size: int = utils.get_size(INGEST_POINT)
+    max_fill_size: int = UPLOAD_MAX - folder_size
 
     for fname in file_list:
-        fpath = os.path.join(STORAGE, fname)
+        fpath: str = os.path.join(STORAGE, fname)
         if not max_fill_size >= 0:
             LOGGER.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
             break
 
-        file_size = utils.get_size(fpath)
+        file_size: str = utils.get_size(fpath)
         max_fill_size -= file_size
         print(f"Moving file {fname} to {new_path}")
         shutil.move(fpath, new_path)
@@ -103,10 +104,10 @@ def delete_existing_proxy(file_list: list[str]) -> list[str]:
         LOGGER.info("No files being replaced at this time")
         return []
     for file in file_list:
-        confirmed = bp_utils.delete_black_pearl_object(file, None, BUCKET)
+        confirmed: Optional[ds3.DeleteObjectReponse] = bp_utils.delete_black_pearl_object(file, None, BUCKET)
         if confirmed:
             sleep(10)
-            success = bp_utils.check_no_bp_status(file, [BUCKET])
+            success: bool = bp_utils.check_no_bp_status(file, [BUCKET])
             if success is False:
                 LOGGER.info("File %s deleted successfully", file)
                 file_list.remove(file)
@@ -140,8 +141,8 @@ def main():
             continue
 
         # Iterate folders building lists
-        file_list = []
-        replace_list = []
+        file_list: list[str] = []
+        replace_list: list[str] = []
         for folder in folder_list:
             if not utils.check_control('black_pearl'):
                 LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
@@ -151,7 +152,7 @@ def main():
             new_path = os.path.join(INGEST_POINT, key, folder)
             os.makedirs(new_path, mode=0o777, exist_ok=True)
 
-            files = os.listdir(os.path.join(access_path, folder))
+            files: list[str] = os.listdir(os.path.join(access_path, folder))
             for file in files:
                 old_fpath = os.path.join(access_path, folder, file)
                 if file.endswith(('.mp4', '.MP4')):
@@ -169,7 +170,7 @@ def main():
 
             # Checking for matching MD5 within replace list
             print(len(replace_list))
-            remove_list = []
+            remove_list: list = []
             if replace_list:
                 for item in replace_list:
                     local_md5 = utils.create_md5_65536(os.path.join(STORAGE, item))
@@ -215,11 +216,11 @@ def main():
                     sys.exit("See logs for exit reason")
 
                 # Returns list of ingested items and PUTs to BP before moving ingest items back to original path
-                ingest_list = []
+                ingest_list: list = []
                 ingest_list = move_to_ingest_folder(new_path, file_list)
                 LOGGER.info("** Moving new set of PUT items:\n%s", ingest_list)
 
-                job_list = bp_utils.put_directory(INGEST_POINT, BUCKET)
+                job_list: Optional[list[str]] = bp_utils.put_directory(INGEST_POINT, BUCKET)
                 if not job_list:
                     LOGGER.warning("Exiting: Failed to PUT data to Black Pearl. Clean up work needed")
                     sys.exit("Failed to PUT data to BP. See logs")
@@ -227,8 +228,8 @@ def main():
                 LOGGER.info("Moving files back to original qnap_access_renditions folders: %s", ingest_list)
                 success = move_items_back(ingest_list)
                 if success:
-                    new_file_list = []
-                    set_ingest_list = set(ingest_list)
+                    new_file_list: list[str] = []
+                    set_ingest_list: set = set(ingest_list)
                     new_file_list = [ x for x in file_list if x not in set_ingest_list ]
                     LOGGER.info("Files successfully moved back to original path.\n")
                     if len(file_list) != (len(ingest_list) + len(new_file_list)):
@@ -265,7 +266,7 @@ def move_items_back(ingest_list: list[str]) -> bool:
         if not os.path.isfile(os.path.join(STORAGE, entry)):
             LOGGER.warning("Failed to move file back to STORAGE path. Script exiting!")
 
-    empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
+    empty_check: list[str] = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
     if len(empty_check) != 0:
         return False
     else:

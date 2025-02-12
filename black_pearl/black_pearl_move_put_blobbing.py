@@ -39,6 +39,7 @@ import time
 import shutil
 import logging
 from datetime import datetime
+from typing import Optional
 
 # Local import
 import bp_utils as bp
@@ -118,7 +119,7 @@ def get_buckets(bucket_collection: str) -> str:
     return key_bucket
 
 
-def make_check_md5(fpath: str, dpath: str, fname: str) -> None:
+def make_check_md5(fpath: str, dpath: str, fname: str) -> Optional[tuple[Optional[str], Optional[str]]]:
     '''
     Generate MD5/metadata docs for fpath
     Locate matching file in CID/checksum_md5 folder

@@ -65,7 +65,7 @@ START_FOLDERS: Final = {
 }
 
 
-def get_size(fpath: str) -> float:
+def get_size(fpath: str) -> Optional[int] :
     '''
     Check the size of given folder path
     return size in kb
@@ -74,7 +74,7 @@ def get_size(fpath: str) -> float:
         return os.path.getsize(fpath)
 
     try:
-        byte_size = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
+        byte_size: Optional[int] = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
     except OSError as err:
         LOGGER.warning("get_size(): Cannot reach folderpath for size check: %s\n%s", fpath, err)
         byte_size = None
@@ -101,8 +101,8 @@ def check_bp_status(fname: str) -> bool:
     to avoid multiple ingest of files
     '''
 
-    query = ds3.HeadObjectRequest(BUCKET, fname)
-    result = CLIENT.head_object(query)
+    query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(BUCKET, fname)
+    result: ds3.HeadObjectRequest = CLIENT.head_object(query)
 
     # DOESNTEXIST means file not found
     if 'DOESNTEXIST' in str(result.result):
@@ -117,10 +117,13 @@ def move_to_ingest_folder(new_path: str, file_list: list[str]) -> list[str]:
     'bfi/202402/filename1', 'bfi/202402/filename2'
     Runs while loop and moves upto 1TB folder size
     '''
-    ingest_list = []
+    ingest_list: list = []
     LOGGER.info("move_to_ingest_folder(): %s", INGEST_POINT)
 
     folder_size = get_size(INGEST_POINT)
+    # temp fix
+    if folder_size is None:
+        folder_size = 0
     max_fill_size = UPLOAD_MAX - folder_size
 
     for fname in file_list:
@@ -130,6 +133,9 @@ def move_to_ingest_folder(new_path: str, file_list: list[str]) -> list[str]:
             break
 
         file_size = get_size(fpath)
+        # temp fix
+        if file_size is None:
+            file_size = 0
         max_fill_size -= file_size
         print(f"Moving file {fname} to {new_path}")
         shutil.move(fpath, new_path)
@@ -172,17 +178,17 @@ def main():
 
     LOGGER.info("====== BP Access Renditions back up script start ==================")
     for key, value in START_FOLDERS.items():
-        access_path = os.path.join(STORAGE, key)
+        access_path: str = os.path.join(STORAGE, key)
         LOGGER.info("** Access path selected: %s", access_path)
-        folder_list = os.listdir(access_path)
+        folder_list: list[str] = os.listdir(access_path)
         folder_list.sort()
         if folder_list[0] != value:
             LOGGER.warning('SKIPPING: First retrieved folder is not %s:\n%s', value, folder_list[0])
             continue
 
         # Iterate folders building lists
-        file_list = []
-        replace_list = []
+        file_list: list = []
+        replace_list: list = []
         for folder in folder_list:
             if not utils.check_control('black_pearl'):
                 LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
@@ -202,11 +208,11 @@ def main():
 
             # Checking for matching MD5 within replace list
             print(len(replace_list))
-            remove_list = []
+            remove_list: list = []
             if replace_list:
                 for item in replace_list:
-                    local_md5 = utils.create_md5_65536(os.path.join(access_path, folder, file))
-                    bp_md5 = bp_utils.get_bp_md5(item, BUCKET)
+                    local_md5: str = utils.create_md5_65536(os.path.join(access_path, folder, file))
+                    bp_md5: str = bp_utils.get_bp_md5(item, BUCKET)
                     print(f"Local {local_md5} - {item}")
                     print(f"Remote {bp_md5} - {item}")
                     if local_md5 == bp_md5:
@@ -247,7 +253,7 @@ def main():
                     sys.exit("See logs for exit reason")
 
                 # Returns list of ingested items and PUTs to BP before moving ingest items back to original path
-                ingest_list = []
+                ingest_list: list[str] = []
                 ingest_list = move_to_ingest_folder(new_path, file_list)
                 LOGGER.info("** Moving new set of PUT items:\n%s", ingest_list)
 
@@ -260,7 +266,7 @@ def main():
                     LOGGER.warning("Exiting: Failed to PUT data to Black Pearl. Clean up work needed")
                     sys.exit("Failed to PUT data to BP. See logs")
                 if success:
-                    new_file_list = []
+                    new_file_list: list[str] = []
                     set_ingest_list = set(ingest_list)
                     new_file_list = [ x for x in file_list if x not in set_ingest_list ]
                     LOGGER.info("Files successfully moved back to original path.\n")
@@ -290,12 +296,12 @@ def put_dir(directory_pth: str) -> list[str]:
     are maintained, eg bfi/202402/<file>
     '''
     try:
-        put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=BUCKET, objects_per_bp_job=5000, max_threads=3)
+        put_job_ids: list[str] = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=BUCKET, objects_per_bp_job=5000, max_threads=3)
     except Exception as err:
         LOGGER.error('Exception: %s', err)
         print('Exception: %s', err)
     LOGGER.info("PUT COMPLETE - JOB ID retrieved: %s", put_job_ids)
-    job_list = []
+    job_list: list = []
     for job_id in put_job_ids:
         job_list.append(job_id)
     return job_list
@@ -320,7 +326,7 @@ def move_items_back(ingest_list: list[str]) -> bool:
         if not os.path.isfile(os.path.join(STORAGE, entry)):
             LOGGER.warning("Failed to move file back to STORAGE path. Script exiting!")
 
-    empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
+    empty_check: list[str] = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
     if len(empty_check) != 0:
         return False
     else:

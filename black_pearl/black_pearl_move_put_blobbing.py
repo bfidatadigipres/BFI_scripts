@@ -458,7 +458,7 @@ def create_media_record(ob_num: str, duration: str, byte_size: str, filename: st
     '''
 
     part, whole = utils.check_part_whole(filename)
-    record_data = ([{'input.name': 'datadigipres'},
+    record_data: list[dict[str, str]] = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},
                     {'input.time': str(datetime.now())[11:19]},
                     {'input.notes': 'Digital preservation ingest - automated bulk documentation.'},
@@ -473,7 +473,7 @@ def create_media_record(ob_num: str, duration: str, byte_size: str, filename: st
     record = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
     if record:
         try:
-            media_priref = adlib.retrieve_field_name(record, 'priref')[0]
+            media_priref: Optional[str] = adlib.retrieve_field_name(record, 'priref')[0]
             print(f'** CID media record created with Priref {media_priref}')
             LOGGER.info('CID media record created with priref %s', media_priref)
             return media_priref

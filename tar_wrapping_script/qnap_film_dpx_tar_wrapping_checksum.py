@@ -96,7 +96,7 @@ def get_tar_checksums(tar_path, folder):
         if item.isdir():
             continue
         pth, file = os.path.split(item.name)
-        if fname in ['ASSETMAP','VOLINDEX']:
+        if file in ['ASSETMAP','VOLINDEX']:
             folder_prefix = os.path.basename(pth)
             file = f'{folder_prefix}_{file}'
         try:

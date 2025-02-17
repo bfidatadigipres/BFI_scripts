@@ -53,15 +53,27 @@ def check_no_bp_status(fname: str, bucket_list: list[str]) -> bool:
     Look up filename in BP to avoid
     multiple ingests of files
     '''
-
+    exist_across_buckets: list[str] = []
     for bucket in bucket_list:
-        query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
-        result: ds3.HeadObjectReponse = CLIENT.head_object(query)
-        # Only return false if DOESNTEXIST is missing, eg file found
-        if 'DOESNTEXIST' in str(result.result):
-            print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
-            return True
-
+        try:
+            query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
+            result: ds3.HeadObjectReponse = CLIENT.head_object(query)
+            # Only return false if DOESNTEXIST is missing, eg file found
+            if 'DOESNTEXIST' in str(result.result):
+                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                 exist_across_buckets.append('DOESNTEXIST')
+            elif str(result.result) == 'EXISTS':
+                print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                exist_across_buckets.append('PRESENT')
+        except Exception as err:
+            print(err)
+    print(exist_across_buckets)
+    if exist_across_buckets == []:
+        return False
+    if 'PRESENT' in str(exist_across_buckets):
+        return False
+    if 'DOESNTEXIST' in str(exist_across_buckets):
+        return True
     return False
 
 

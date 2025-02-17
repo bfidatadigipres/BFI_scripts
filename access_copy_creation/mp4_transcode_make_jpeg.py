@@ -52,15 +52,15 @@ import adlib_v3 as adlib
 import utils
 
 # Global paths from environment vars
-MP4_POLICY = os.environ['MP4_POLICY']
-LOG_PATH = os.environ['LOG_PATH']
-FLLPTH = sys.argv[1].split('/')[:4]
-LOG_PREFIX = '_'.join(FLLPTH)
-LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
-CID_API = os.environ['CID_API4']
-TRANSCODE = os.environ['TRANSCODING']
+MP4_POLICY: Final = os.environ['MP4_POLICY']
+LOG_PATH: Final = os.environ['LOG_PATH']
+FLLPTH: Final = sys.argv[1].split('/')[:4]
+LOG_PREFIX: Final = '_'.join(FLLPTH)
+LOG_FILE: Final = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
+CID_API: Final = os.environ['CID_API4']
+TRANSCODE: Final = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
-HOST = os.uname()[1]
+HOST: Final = os.uname()[1]
 
 # Setup logging
 LOGGER = logging.getLogger('mp4_transcode_make_jpeg')
@@ -70,7 +70,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-SUPPLIERS = {"East Anglian Film Archive": "eafa",
+SUPPLIERS: Final = {"East Anglian Film Archive": "eafa",
              "Imperial War Museum": "iwm",
              "London's Screen Archive": "lsa",
              "MACE": "mace",
@@ -103,12 +103,12 @@ def main():
     if len(sys.argv) < 2:
         sys.exit("EXIT: Not enough arguments")
 
-    fullpath = sys.argv[1]
+    fullpath: str = sys.argv[1]
     if not os.path.isfile(fullpath):
         sys.exit("EXIT: Supplied path is not a file")
 
     # Multiple instances of script so collection logs for one burst output
-    log_build = []
+    log_build: list[str] = []
     if not utils.check_control('mp4_transcode'):
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
@@ -470,7 +470,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         return False
 
 
-def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, str]]:
+def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, list[str]]]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
@@ -494,7 +494,7 @@ def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, str]]:
     return priref, source, groupings
 
 
-def get_media_priref(fname: str) -> tuple[str, str, str, str, str] | None:
+def get_media_priref(fname: str) -> tuple[str, str, str, str, str]:
     '''
     Retrieve priref from Digital record
     '''

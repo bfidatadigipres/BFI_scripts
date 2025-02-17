@@ -34,6 +34,7 @@ import logging
 import shutil
 import sys
 import os
+from typing import Final, Optional
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -41,12 +42,12 @@ import adlib_v3 as adlib
 import utils
 
 # Global path variables
-CURATORIAL_PATH = os.environ['QNAP_09_OSH']
-LOG_PATH = os.environ['LOG_PATH']
-CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-DIGIOPS_PATH = os.environ['QNAP_08_OSH']
-RSYNC_LOG = os.path.join(DIGIOPS_PATH, 'transfer_logs')
-CID_API = os.environ['CID_API4']
+CURATORIAL_PATH: Final = os.environ['QNAP_09_OSH']
+LOG_PATH: Final = os.environ['LOG_PATH']
+CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
+DIGIOPS_PATH: Final = os.environ['QNAP_08_OSH']
+RSYNC_LOG: Final = os.path.join(DIGIOPS_PATH, 'transfer_logs')
+CID_API: Final = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('curatorial_donor_acquisition_rename_osh.log')
@@ -62,7 +63,7 @@ TODAY_DATE = TODAY[:10]
 TODAY_TIME = TODAY[11:19]
 
 
-def cid_retrieve(itemname, search):
+def cid_retrieve(itemname: str, search: str) -> tuple[str, str, str, list[str]]:
     '''
     Receive filename and search in CID items
     Return object number to main
@@ -74,7 +75,7 @@ def cid_retrieve(itemname, search):
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", itemname)
         query_result = None
     try:
-        acquired1 = []
+        acquired1: list[str] = []
         all_filenames = len(query_result[0]['Acquired_filename'])
         for num in range(0, all_filenames):
             acq = adlib.retrieve_field_name(query_result[0]['Acquired_filename'][num], 'digital.acquired_filename')[0]
@@ -103,13 +104,13 @@ def cid_retrieve(itemname, search):
     return (priref, ob_num, title, acquired1)
 
 
-def sort_ext(ext):
+def sort_ext(ext: str) -> str:
     '''
     Decide on file type
     '''
     if ext.startswith('.'):
         ext = ext[1:]
-    mime_type = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg', 'mpg'],
+    mime_type: dict[str, list[str]] = {'video': ['mxf', 'mkv', 'mov', 'mp4', 'avi', 'ts', 'mpeg', 'mpg'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'txt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp']}
@@ -121,7 +122,7 @@ def sort_ext(ext):
                 return key
 
 
-def main():
+def main() -> None:
     '''
     Retrieve file items only, excepting those with unwanted extensions
     search in CID Item for digital.acquired_filename
@@ -149,8 +150,8 @@ def main():
         sys.exit(f"Incorrect folderpath supplied. Error in name: {fullpath}")
 
     # Get files and subfolders in Workflow folder
-    files = [x for x in os.listdir(fullpath) if os.path.isfile(os.path.join(fullpath, x)) and not x.startswith('donor_acquisition_data')]
-    dirs = [d for d in os.listdir(fullpath) if os.path.isdir(os.path.join(fullpath, d))]
+    files: list[str] = [x for x in os.listdir(fullpath) if os.path.isfile(os.path.join(fullpath, x)) and not x.startswith('donor_acquisition_data')]
+    dirs: list[str] = [d for d in os.listdir(fullpath) if os.path.isdir(os.path.join(fullpath, d))]
     if not dirs and not files:
         LOGGER.info("SKIPPING: Folder path empty of files and directories: %s", fullpath)
         local_logger(f"Skipping as path is empty {fullpath}", fullpath)
@@ -163,7 +164,7 @@ def main():
                 continue
             if 'workflow_' in directory.lower():
                 continue
-            dirpath = os.path.join(fullpath, directory)
+            dirpath: str = os.path.join(fullpath, directory)
             LOGGER.info("SKIPPING: %s Folder found, passing information to local log.\n", directory)
             folder_found(dirpath)
 
@@ -196,7 +197,9 @@ def main():
         if itempath.endswith(('.ini', '.json', '.document', '.edl', '.doc', '.docx', '.txt', '.mhl', '.DS_Store', '.log', '.md5')):
             continue
         LOGGER.info("Item found checking file validity: %s", itempath)
-        cid_data, priref, ob_num, title, acquired1 = '', '', '', '', ''
+        priref, ob_num, title = '', '', ''
+        cid_data: tuple[(str, str, str, list[str])] = ()
+        acquired1: list[str] = []
         print(f"Item path found to process: {itempath}")
         LOGGER.info("** File okay to process: %s", item)
         LOGGER.info("Looking in CID item records for filename match...")
@@ -231,7 +234,7 @@ def main():
             if not filename:
                 LOGGER.warning("Problem creating new number for %s", item)
                 local_logger(f"ERROR CREATING NEW FILENAME: {itempath}", fullpath)
-                local_logger(f"Skipping: Please check file has no permissions limitations and the name matches the CID Acquired_filename field: {fullpath}")
+                local_logger(f"Skipping: Please check file has no permissions limitations and the name matches the CID Acquired_filename field: {fullpath}", fullpath)
                 continue
             LOGGER.info("Older filename %s to be replaced with new filename %s", item, filename)
             local_logger(f"Old filename: {item}\nNew filename: {filename}", fullpath)
@@ -280,16 +283,16 @@ def main():
     LOGGER.info("============= END Curatorial Donor Acquisition rename OSH script END ============")
 
 
-def check_path(root, spath):
+def check_path(root: str, spath: str) -> str:
     '''
     Check in directories for path starts
     with spath. If exists, extract last two digits
     and add 1. If not, return spath with _01 on end.
     '''
 
-    pth = os.path.basename(spath)
-    dir_list = []
-    dirs = os.listdir(root)
+    pth: str = os.path.basename(spath)
+    dir_list: list[str] = []
+    dirs: list[str] = os.listdir(root)
     for directory in dirs:
         if pth in directory:
             dir_list.append(directory)
@@ -304,13 +307,13 @@ def check_path(root, spath):
     return f"{spath}_{number}"
 
 
-def make_filename(ob_num, item_list, item):
+def make_filename(ob_num: str, item_list: list[str] | str, item: str) -> Optional[str]:
     '''
     Take individual elements and calculate part whole
     '''
     print(item_list)
-    extension = False
-    file = ob_num.replace('-', '_')
+    extension: bool = False
+    file: str = ob_num.replace('-', '_')
     try:
         ext = os.path.splitext(item)
     except (ValueError, IndexError, KeyError):
@@ -320,10 +323,10 @@ def make_filename(ob_num, item_list, item):
     # Might break here if CID name differs from file
     part = item_list.index(item)
     whole = len(item_list)
-    part_ = int(part) + 1
+    part_: int | str = int(part) + 1
     part_ = str(part_).zfill(2)
-    whole_ = str(whole).zfill(2)
-    part_whole = f"_{part_}of{whole_}"
+    whole_: str = str(whole).zfill(2)
+    part_whole: str = f"_{part_}of{whole_}"
     if extension:
         filename = f"{file}{part_whole}{ext[1]}"
     else:
@@ -331,12 +334,12 @@ def make_filename(ob_num, item_list, item):
     return filename
 
 
-def rsync(file_path1, file_path2, folder):
+def rsync(file_path1: str, file_path2: str, folder: str) -> None:
     '''
     Move workflow folder from Curatorial/QNAP-11
     '''
-    log_path = os.path.join(RSYNC_LOG, f"{folder}.log")
-    rsync_cmd = [
+    log_path: str = os.path.join(RSYNC_LOG, f"{folder}.log")
+    rsync_cmd: list[str] = [
         'rsync',
         '--info=FLIST2,COPY2,PROGRESS2,NAME2,BACKUP2,STATS2',
         '-acvvh',
@@ -353,13 +356,13 @@ def rsync(file_path1, file_path2, folder):
         LOGGER.exception("rsync(): Move command failure: %s to %s", file_path1, file_path2)
 
 
-def folder_found(fullpath):
+def folder_found(fullpath: str) -> None:
     '''
     Possibly check within folder for file types, update
     log with instructions to contact DigiOps team?
     '''
-    path = os.path.split(fullpath)[0]
-    image_seq = ''
+    path: str = os.path.split(fullpath)[0]
+    image_seq: str = ''
     for root, _, files in os.walk(fullpath):
         for file in files:
             filepath = os.path.join(root, file)
@@ -382,12 +385,12 @@ def folder_found(fullpath):
         local_logger(f"\n{fullpath}:\nContains {image_seq} media files. Please contact digitalmediaspecialists@bfi.org.uk who will advise best method for preservation", path)
 
 
-def rename_pth(filepath, new_filename):
+def rename_pth(filepath: str, new_filename: str) -> str:
     '''
     Receive original file path and rename filename
     based on object number, return new filepath, filename
     '''
-    new_filepath = ''
+    new_filepath: str = ''
     path, old_filename = os.path.split(filepath)
     new_filepath = os.path.join(path, new_filename)
     print(f"Renaming {old_filename} to {new_filename}")
@@ -400,7 +403,7 @@ def rename_pth(filepath, new_filename):
     return new_filepath
 
 
-def local_logger(data, write_path):
+def local_logger(data: str, write_path: str) -> None:
     '''
     Output local log data for team to monitor renaming process
     '''

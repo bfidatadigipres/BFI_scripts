@@ -33,6 +33,7 @@ import shutil
 import logging
 import datetime
 import subprocess
+from typing import Optional
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -70,7 +71,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
-def get_duration(fullpath):
+def get_duration(fullpath: str) -> Optional[int]:
     '''
     Retrieve file duration using ffprobe
     '''
@@ -112,7 +113,7 @@ def get_duration(fullpath):
     return None
 
 
-def check_media_record(fname):
+def check_media_record(fname: str) -> bool:
     '''
     Check if CID media record
     already created for filename

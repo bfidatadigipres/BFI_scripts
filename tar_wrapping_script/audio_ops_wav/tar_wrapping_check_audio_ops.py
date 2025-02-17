@@ -34,15 +34,16 @@ import tarfile
 import logging
 import hashlib
 import datetime
+from typing import Final, Optional
 
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
 # Global paths
-AUTO_TAR = os.environ['AUTOMATION_WAV']
-AUTOINGEST = os.path.join(os.environ['QNAP_08'], os.environ['AUTOINGEST_STORE'])
-LOG = os.path.join(os.environ['LOG_PATH'], 'tar_wrapping_check_audio_ops.log')
-CID_API = os.environ['CID_API4']
+AUTO_TAR: Final = os.environ['AUTOMATION_WAV']
+AUTOINGEST: Final = os.path.join(os.environ['QNAP_08'], os.environ['AUTOINGEST_STORE'])
+LOG: Final = os.path.join(os.environ['LOG_PATH'], 'tar_wrapping_check_audio_ops.log')
+CID_API: Final = os.environ['CID_API4']
 
 # Logging config
 LOGGER = logging.getLogger('tar_wrapping_check_audio_ops')
@@ -53,7 +54,7 @@ LOGGER.addHandler(hdlr)
 LOGGER.setLevel(logging.INFO)
 
 
-def get_cid_data(fname):
+def get_cid_data(fname: str) -> Optional[tuple[str, str, str]]:
     '''
     Use requests to retrieve priref for associated item object number
     '''
@@ -87,7 +88,7 @@ def get_cid_data(fname):
     return priref, file_type, input_note
 
 
-def tar_file(fpath):
+def tar_file(fpath: str) -> Optional[str]:
     '''
     Make tar path from supplied filepath
     Use tarfile to create TAR
@@ -111,7 +112,7 @@ def tar_file(fpath):
         return None
 
 
-def get_tar_checksums(tar_path, folder):
+def get_tar_checksums(tar_path: str, folder: str) -> dict[str, str]:
     '''
     Open tar file and read/generate MD5 sums
     and return dct {filename: hex}
@@ -146,7 +147,7 @@ def get_tar_checksums(tar_path, folder):
     return data
 
 
-def get_checksum(fpath):
+def get_checksum(fpath: str) -> dict[str, str]:
     '''
     Using file path, generate file checksum
     return as list with filename
@@ -162,7 +163,7 @@ def get_checksum(fpath):
     return data
 
 
-def make_manifest(tar_path, md5_dct):
+def make_manifest(tar_path: str, md5_dct: dict[str, str]) -> str:
     '''
     Output md5 to JSON file format and add to TAR file
     '''
@@ -372,7 +373,7 @@ def main():
     LOGGER.info("==== TAR Wrapping Check script END =================================")
 
 
-def local_logs(fullpath, data):
+def local_logs(fullpath: str, data: str) -> None:
     '''
     Output local log data for team
     to monitor TAR wrap process
@@ -389,7 +390,7 @@ def local_logs(fullpath, data):
         log.close()
 
 
-def write_to_cid(priref, fname):
+def write_to_cid(priref: str, fname: str) -> bool:
     '''
     Make payload and write to CID
     '''

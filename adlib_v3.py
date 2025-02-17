@@ -104,6 +104,55 @@ def get(api: str, query: dict[str, str]) -> dict[Any, Any]:
         print(err)
         raise Exception from err
 
+def group_check(record, fname):
+    '''
+    Get group that contains field key
+    '''
+    group_check = dict([ (k, v) for k, v in record.items() if f'{fname}' in str(v) ])
+    fieldnames = []
+    if len(group_check) == 1:
+        first_key = next(iter(group_check))
+        for entry in group_check[f'{first_key}']:
+            for key, val in entry.items():
+                if str(key) == str(fname):
+                    if '@lang' in str(val):
+                        try:
+                            fieldnames.append(val[0]['value'][0]['spans'][0]['text'])
+                        except (IndexError, KeyError):
+                            pass
+                    else:
+                        try:
+                            fieldnames.append(val[0]['spans'][0]['text'])
+                        except (IndexError, KeyError):
+                            pass
+        if fieldnames:
+            return fieldnames
+
+    elif len(group_check) > 1:
+        all_vals = []
+        for kname in group_check:
+            for key, val in group_check[f'{kname}'][0].items():
+                if key == fname:
+                    dictionary = {}
+                    dictionary[fname] = val
+                    all_vals.append(dictionary)
+        if len(all_vals) == 1:
+            if '@lang' in str(all_vals):
+                try:
+                    return all_vals[0][fname][0]['value'][0]['spans'][0]['text']
+                except KeyError:
+                    print(f"Failed to extract value: {all_vals}")
+                    return None
+            else:
+                try:
+                    return all_vals[0][fname][0]['spans'][0]['text']
+                except KeyError:
+                    print(f"Failed to extract value: {all_vals}")
+                    return None
+        else:
+            return all_vals
+    else:
+        return None
 
 def post(api: str, payload: str, database: str, method: str):
     '''

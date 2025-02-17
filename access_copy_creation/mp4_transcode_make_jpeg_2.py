@@ -386,7 +386,7 @@ def log_output(log_build: list[str]) -> None:
         LOGGER.info(log)
 
 
-def adjust_seconds(duration: float) -> int:
+def adjust_seconds(duration: float) -> float:
     '''
     Adjust second duration one third in
     '''
@@ -419,7 +419,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         return False
 
 
-def check_item(ob_num: str, database) -> Optional[Tuple[str, str, str]]:
+def check_item(ob_num, database ) -> Optional[Tuple[str, str, str]]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
@@ -652,7 +652,7 @@ def check_audio(fullpath: str) -> tuple[str, Optional[str]] | None:
     return ('Audio', None)
 
 
-def create_transcode(fullpath: str, output_path: str, height: str, width: str, dar: str, par: str, audio: str, default: Optional[str], vs: str, retry: bool) -> list[str]:
+def create_transcode(fullpath: str, output_path: str, height: int | str, width: int | str, dar: str, par: str, audio: str, default: Optional[str], vs: str, retry: bool) -> list[str]:
     '''
     Builds FFmpeg command based on height/dar input
     '''

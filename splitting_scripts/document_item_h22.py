@@ -10,17 +10,18 @@ June 2022
 import os
 import sys
 import datetime
+from typing import Final, Optional, Any
 
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
 # Configure adlib
-CID_API = os.environ['CID_API4']
-CODE_PATH = os.environ['CODE']
+CID_API: Final = os.environ['CID_API4']
+CODE_PATH: Final = os.environ['CODE']
 
 
-def log_print(data):
+def log_print(data: str) -> None:
     '''
     Temp func to track failures in
     CID item record creation
@@ -31,7 +32,7 @@ def log_print(data):
         file.write("--------------------------------\n")
 
 
-def fetch_existing_object_number(source_object_number):
+def fetch_existing_object_number(source_object_number: str) -> str:
     ''' Retrieve the Object Number for an existing MKV record, for use in renaming
         the existing Matroska (single Item) or naming the segment'''
 
@@ -46,7 +47,7 @@ def fetch_existing_object_number(source_object_number):
         raise Exception('Unable to retrieve data from Item record')
 
 
-def new_or_existing(source_object_number, segments, duration, extension, note=None):
+def new_or_existing(source_object_number, segments, duration, extension, note=None) -> str:
     ''' Create a new item record for multi-reeler if one doesn't already exist,
         otherwise return the ID of the existing record '''
 
@@ -69,7 +70,7 @@ def new_or_existing(source_object_number, segments, duration, extension, note=No
         return destination_object
 
 
-def already_exists(source_object_number):
+def already_exists(source_object_number) -> tuple[int, ]:
     ''' Has an MKV record already been created for source? '''
 
     search = f'(grouping.lref=398385 and source_item->(object_number="{source_object_number}"))'
@@ -83,7 +84,7 @@ def already_exists(source_object_number):
         return hits, None
 
 
-def new(source_object_number, segments, duration, extension, note=None):
+def new(source_object_number: str, segments: list[str], duration: int, extension: str, note=None):
     ''' Create a new item record '''
 
     # Fetch source item data

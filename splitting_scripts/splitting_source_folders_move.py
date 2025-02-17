@@ -14,13 +14,14 @@ Iterates through each of list paths:
 import os
 import sys
 import shutil
+from typing import Final, Optional, Any
 
 # Private imports
 sys.path.append(os.environ['CODE'])
 import utils
 
 # List with paths, folder names for counts
-PATHS = [
+PATHS: Final = [
     os.path.join(os.environ['QNAP_08'], 'processing/source/'),
     os.path.join(os.environ['QNAP_08'], 'memnon_processing/source/'),
     os.path.join(os.environ['QNAP_10'], 'processing/source/'),
@@ -165,7 +166,7 @@ def main():
                 move(pth, lines, new_path)
 
 
-def move(pth, lines, new_path):
+def move(pth: str, lines: str, new_path: str) -> None:
     old_path = os.path.join(pth, lines)
     try:
         shutil.move(old_path, new_path)
@@ -174,16 +175,16 @@ def move(pth, lines, new_path):
         print("Unable to move file {} to folder {}".format(lines, new_path))
 
 
-def splitter(arr, count):
+def splitter(arr: list[str], count: int) -> list[list[str]]:
     return [arr[i::count] for i in range(count)]
 
 
-def count(pth):
+def count(pth: str) -> list[str]:
     '''
     counts folder contents
     Writes data to new list in order of emptiest
     '''
-    folder_count = []
+    folder_count: list[str] = []
     try:
         count1 = (len(os.listdir(pth + '1')))
         folder_count.append(str(count1).zfill(3) + ',' + pth + '1')

@@ -35,7 +35,7 @@ import datetime
 import subprocess
 import pytz
 import tenacity
-from typing import Optional
+from typing import Optional, Final
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -43,14 +43,14 @@ import adlib_v3 as adlib
 import utils
 
 # Global paths from environment vars
-MP4_POLICY = os.environ['MP4_POLICY']
-LOG_PATH = os.environ['LOG_PATH']
-FLLPTH = sys.argv[1].split('/')[:4]
-LOG_PREFIX = '_'.join(FLLPTH)
-LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode_make_jpeg_legacy.log')
-CID_API = os.environ['CID_API3']
-TRANSCODE = os.environ['TRANSCODING']
-HOST = os.uname()[1]
+MP4_POLICY: Final = os.environ['MP4_POLICY']
+LOG_PATH: Final = os.environ['LOG_PATH']
+FLLPTH: Final = sys.argv[1].split('/')[:4]
+LOG_PREFIX: Final = '_'.join(FLLPTH)
+LOG_FILE: Final = os.path.join(LOG_PATH, f'mp4_transcode_make_jpeg_legacy.log')
+CID_API: Final = os.environ['CID_API3']
+TRANSCODE: Final = os.environ['TRANSCODING']
+HOST: Final = os.uname()[1]
 
 # Setup logging
 LOGGER = logging.getLogger('mp4_transcode_make_jpeg_legacy')
@@ -79,7 +79,7 @@ def main():
     if len(sys.argv) < 2:
         sys.exit("EXIT: Not enough arguments")
 
-    fullpath = sys.argv[1]
+    fullpath: str = sys.argv[1]
     if not os.path.isfile(fullpath):
         sys.exit("EXIT: Supplied path is not a file")
 
@@ -90,7 +90,7 @@ def main():
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
-    log_build = []
+    log_build: list[str] = []
 
     filepath, file = os.path.split(fullpath)
     fname, ext = os.path.splitext(file)
@@ -101,10 +101,10 @@ def main():
 
     outpath, outpath2 = "", ""
 
-    ext = ext.lstrip('.')
+    ext: str = ext.lstrip('.')
     print(file, fname, ext)
     # Check CID for Item record and extract transcode path
-    object_number = utils.get_object_number(fname)
+    object_number: str = utils.get_object_number(fname)
     if object_number.startswith('CA_'):
         priref, source, groupings = check_item(object_number, 'collectionsassets')
     else:
@@ -123,8 +123,8 @@ def main():
         log_output(log_build)
         sys.exit(f"EXITING: Unable to retrieve item details from CID: {object_number}")
 
-    date_pth = input_date.replace('-', '')[:6]
-    transcode_pth = os.path.join(TRANSCODE, 'bfi', date_pth)
+    date_pth: str = input_date.replace('-', '')[:6]
+    transcode_pth: str = os.path.join(TRANSCODE, 'bfi', date_pth)
 
     # Check if transcode already completed
     if fname in access and thumbnail and largeimage:
@@ -153,7 +153,7 @@ def main():
             log_build.append(f"{local_time()}\tWARNING\tCID UMIDs exist but no transcoding. Allowing files to proceed.")
 
     # Get file type, video or audio etc.
-    ftype = utils.sort_ext(ext)
+    ftype: str = utils.sort_ext(ext)
     if ftype != 'video':
         log_build.append(f"{local_time()}\tINFO\tItem is not a video file. Skipping.")
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
@@ -166,20 +166,20 @@ def main():
         os.makedirs(transcode_pth, mode=0o777, exist_ok=True)
 
     # Mediaconch conformance check file
-    policy_check = conformance_check(outpath)
+    policy_check: str = conformance_check(outpath)
     if 'PASS!' in policy_check:
         log_build.append(f"{local_time()}\tINFO\tMediaconch pass! MP4 transcode complete. Beginning JPEG image generation.")
     else:
         log_build.append(f"{local_time()}\tINFO\tWARNING: MP4 failed policy check: {policy_check}")
 
     # CID transcode paths
-    outpath = os.path.join(transcode_pth, f"{fname}.mp4")
-    outpath2 = os.path.join(transcode_pth, fname)
+    outpath: str = os.path.join(transcode_pth, f"{fname}.mp4")
+    outpath2: str = os.path.join(transcode_pth, fname)
     log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
     # Build FFmpeg command based on dar/height
-    ffmpeg_cmd = create_transcode(fullpath)
-    ffmpeg_call_neat = " ".join(ffmpeg_cmd)
+    ffmpeg_cmd: list[str] = create_transcode(fullpath)
+    ffmpeg_call_neat: str = " ".join(ffmpeg_cmd)
     log_build.append(f"{local_time()}\tINFO\tFFmpeg call created:\n{ffmpeg_call_neat}")
 
     # Capture blackdetect info
@@ -195,13 +195,13 @@ def main():
     time.sleep(5)
 
     # Start JPEG extraction
-    jpeg_location = os.path.join(transcode_pth, f'{fname}.jpg')
+    jpeg_location: str = os.path.join(transcode_pth, f'{fname}.jpg')
     print(f"JPEG output to go here: {jpeg_location}")
 
     # Calculate seconds mark to grab screen
     seconds = adjust_seconds(duration, data)
     print(f"Seconds for JPEG cut: {seconds}")
-    success = get_jpeg(seconds, outpath, jpeg_location)
+    success: bool = get_jpeg(seconds, outpath, jpeg_location)
     if not success:
         log_build.append(f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file")
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
@@ -209,8 +209,8 @@ def main():
         sys.exit("Exiting: JPEG not created from MP4 file")
 
     # Generate Full size 600x600, thumbnail 300x300
-    full_jpeg = make_jpg(jpeg_location, 'full', None, None)
-    thumb_jpeg = make_jpg(jpeg_location, 'thumb', None, None)
+    full_jpeg: str = make_jpg(jpeg_location, 'full', None, None)
+    thumb_jpeg: str = make_jpg(jpeg_location, 'thumb', None, None)
     log_build.append(f"{local_time()}\tINFO\tNew images created at {seconds} seconds into video:\n - {full_jpeg}\n - {thumb_jpeg}")
     if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
         os.remove(jpeg_location)
@@ -221,7 +221,7 @@ def main():
     os.replace(outpath, outpath2)
 
     # Post MPEG/JPEG creation updates to Media record
-    media_data = []
+    media_data: list[str] = []
     if full_jpeg:
         full_jpeg_file = os.path.splitext(full_jpeg)[0]
         print(full_jpeg, full_jpeg_file)
@@ -238,7 +238,7 @@ def main():
         os.chmod(outpath2, 0o777)
     log_build.append(f"{local_time()}\tINFO\tWriting UMID data to CID Media record: {media_priref}")
 
-    success = cid_media_append(file, media_priref, media_data)
+    success: Optional[bool] = cid_media_append(file, media_priref, media_data)
     if success:
         log_build.append(f"{local_time()}\tINFO\tJPEG/HLS filename data updated to CID media record")
         log_build.append(f"{local_time()}\tINFO\tMoving preservation file to completed path: {completed_pth}")
@@ -260,23 +260,23 @@ def log_output(log_build: str) -> None:
         LOGGER.info(log)
 
 
-def adjust_seconds(duration: float, data: Optional[bytes]) -> float:
+def adjust_seconds(duration: int, data: Optional[bytes]) -> int:
     '''
     Adjust second durations within
     FFmpeg detected blackspace
     '''
-    blist = retrieve_blackspaces(data)
+    blist: list[str] = retrieve_blackspaces(data)
     print(f"*** BLACK GAPS: {blist}")
     if not blist:
         return duration // 2
 
-    secs = duration // 4
-    clash = check_seconds(blist, secs)
+    secs: int = duration // 4
+    clash: Optional[bool] = check_seconds(blist, secs)
     if not clash:
         return secs
 
     for num in range(2, 5):
-        frame_secs = duration // num
+        frame_secs: int = duration // num
         clash = check_seconds(blist, frame_secs)
         if not clash:
             return frame_secs
@@ -291,7 +291,7 @@ def adjust_seconds(duration: float, data: Optional[bytes]) -> float:
     return duration // 2
 
 
-def retrieve_blackspaces(data: Optional[bytes]) -> list[str]:
+def retrieve_blackspaces(data: Optional[bytes | str]) -> list[str]:
     '''
     Retrieve black detect log and check if
     second variable falls in blocks of blackdetected
@@ -311,11 +311,11 @@ def retrieve_blackspaces(data: Optional[bytes]) -> list[str]:
     return time_range
 
 
-def check_seconds(blackspace: list[str], seconds: float) -> bool | None:
+def check_seconds(blackspace: list[str], seconds: int) -> Optional[bool]:
     '''
     Create range and check for second within
     '''
-    clash = []
+    clash: list[int] = []
     for item in blackspace:
         start, end = item.split(" - ")
         st = int(start) - 1
@@ -332,7 +332,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
     Retrieve JPEG from MP4
     Seconds accepted as float
     '''
-    cmd = [
+    cmd: list[str] = [
         "ffmpeg",
         "-ss", str(seconds),
         "-i", fullpath,
@@ -341,7 +341,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         outpath
     ]
 
-    command = " ".join(cmd)
+    command: str = " ".join(cmd)
     print("***********************")
     print(command)
     print("***********************")
@@ -353,11 +353,11 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         return False
 
 
-def check_item(ob_num: str, database: str) -> tuple[str, str, str]:
+def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, str]]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
-    search = f"(object_number='{ob_num}')"
+    search: str = f"(object_number='{ob_num}')"
     record = adlib.retrieve_record(CID_API, database, search, '1')[1]
     if not record:
         return None
@@ -375,7 +375,7 @@ def check_item(ob_num: str, database: str) -> tuple[str, str, str]:
     return priref, source, groupings
 
 
-def get_media_priref(fname: str) -> tuple[str, str, str, str, str]:
+def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
     '''
     Retrieve priref from Digital record
     '''
@@ -384,19 +384,19 @@ def get_media_priref(fname: str) -> tuple[str, str, str, str, str]:
     if not record:
         return None
 
-    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    priref: str = adlib.retrieve_field_name(record[0], 'priref')[0]
     if not priref:
         priref = ''
-    input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
+    input_date: str = adlib.retrieve_field_name(record[0], 'input.date')[0]
     if not input_date:
         input_date = ''
-    largeimage_umid = adlib.retrieve_field_name(record[0], 'access_rendition.largeimage')[0]
+    largeimage_umid: str = adlib.retrieve_field_name(record[0], 'access_rendition.largeimage')[0]
     if not largeimage_umid:
         largeimage_umid = ''
-    thumbnail_umid = adlib.retrieve_field_name(record[0], 'access_rendition.thumbnail')[0]
+    thumbnail_umid: str = adlib.retrieve_field_name(record[0], 'access_rendition.thumbnail')[0]
     if not thumbnail_umid:
         thumbnail_umid = ''
-    access_rendition = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
+    access_rendition: str = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
     if not access_rendition:
         access_rendition = ''
 
@@ -428,7 +428,7 @@ def get_par(fullpath: str) -> str:
     Checks if multiples from multi video tracks
     '''
 
-    par_full = utils.get_metadata('Video', 'PixelAspectRatio', fullpath)
+    par_full: str = utils.get_metadata('Video', 'PixelAspectRatio', fullpath)
 
     if len(par_full) <= 5:
         return par_full
@@ -507,7 +507,7 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
     for update to ffmpeg map command
     '''
 
-    duration = utils.get_metadata('Video', 'Duration', fullpath)
+    duration: str = utils.get_metadata('Video', 'Duration', fullpath)
     if not duration:
         return ('', '')
     if '.' in duration:
@@ -542,7 +542,7 @@ def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str]]:
     stereo or mono, returned as 2 or 1 respectively
     '''
 
-    cmd0 = [
+    cmd0: list[str] = [
         'ffprobe', '-v',
         'error', '-select_streams', 'a:0',
         '-show_entries', 'stream=index:stream_tags=language',
@@ -550,7 +550,7 @@ def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str]]:
         fullpath
     ]
 
-    cmd1 = [
+    cmd1: list[str] = [
         'ffprobe', '-v',
         'error', '-select_streams', 'a:1',
         '-show_entries', 'stream=index:stream_tags=language',
@@ -558,7 +558,7 @@ def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str]]:
         fullpath
     ]
 
-    audio = utils.get_metadata('Audio', 'Format', fullpath)
+    audio: str = utils.get_metadata('Audio', 'Format', fullpath)
     if len(audio) == 0:
         return None, None
 
@@ -588,20 +588,20 @@ def create_transcode(fullpath: str) -> list[str]:
     Builds FFmpeg command for blackdetect
     '''
 
-    ffmpeg_program_call = [
+    ffmpeg_program_call: list[str] = [
         "ffmpeg"
     ]
 
-    input_video_file = [
+    input_video_file: list[str] = [
         "-i", fullpath
     ]
 
-    blackdetect = [
+    blackdetect: list[str] = [
         "-vf",
         "blackdetect=d=0.05:pix_th=0.1"
     ]
 
-    output = [
+    output: list[str] = [
         "-an", "-f",
         "null", "-",
         "2>&1"
@@ -616,31 +616,31 @@ def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Opt
     These command work. For full size don't use resize.
     '''
 
-    start_reduce = [
+    start_reduce: list[str] = [
         "gm", "convert",
         "-density", "300x300",
         filepath, "-strip"
     ]
 
-    start = [
+    start: list[str] = [
         "gm", "convert",
         "-density", "600x600",
         filepath, "-strip"
     ]
 
-    thumb = [
+    thumb: list[str] = [
         "-resize", "x180",
     ]
 
-    oversize = [
+    oversize: list[str] = [
         "-resize", f"{percent}%x{percent}%",
     ]
 
     if not transcode_pth:
         out = os.path.splitext(filepath)[0]
     else:
-        fname = os.path.split(filepath)[1]
-        file = os.path.splitext(fname)[0]
+        fname: str = os.path.split(filepath)[1]
+        file: str = os.path.splitext(fname)[0]
         out = os.path.join(transcode_pth, file)
 
     if 'thumb' in arg:
@@ -669,15 +669,14 @@ def conformance_check(file: str) -> str:
     the transcode was successful
     '''
 
-    mediaconch_cmd = [
+    mediaconch_cmd: list[str] = [
         'mediaconch', '--force',
         '-p', MP4_POLICY,
         file
     ]
 
     try:
-        success = subprocess.check_output(mediaconch_cmd)
-        success = str(success)
+        success = str(subprocess.check_output(mediaconch_cmd))
     except Exception as err:
         success = ""
         LOGGER.warning("%s\tWARNING\tMediaconch policy retrieval failure for %s\n%s", local_time(), file, err)
@@ -695,10 +694,10 @@ def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]
     '''
     Receive data and priref and append to CID media record
     '''
-    payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_mid = ''.join(data)
-    payload_end = f"</record></recordList></adlibXML>"
-    payload = payload_head + payload_mid + payload_end
+    payload_head: str = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_mid: str = ''.join(data)
+    payload_end: str = f"</record></recordList></adlibXML>"
+    payload: str = payload_head + payload_mid + payload_end
 
     rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
     if not rec:

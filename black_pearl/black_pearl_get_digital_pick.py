@@ -45,6 +45,7 @@ import logging
 from xml.sax.saxutils import escape
 from datetime import datetime, timedelta
 from tenacity import retry, stop_after_attempt
+from typing import Optional, Any, Final
 
 # Local package
 import bp_utils as bp
@@ -53,20 +54,20 @@ import adlib_v3 as adlib
 import utils
 
 # GLOBAL VARIABLES
-PICK_FOLDER = os.environ['DIGITAL_PICK']
-PICK_CSV = os.path.join(PICK_FOLDER, 'digital_pick.csv')
-PICK_TEXT = os.path.join(PICK_FOLDER, 'checksum_failures.txt')
-LOG_PATH = os.environ['LOG_PATH']
-CHECKSUM_PATH = os.path.join(LOG_PATH, 'checksum_md5')
-CHECK_RANGE = 14
-SEARCH_TERM = 'DPIDL'
-USERNAME = os.environ['USERNAME']
-FMT = "%Y-%m-%d"
-FORMAT = "%Y-%m-%d %H:%M:%S"
-TODAY = datetime.strftime(datetime.now(), FORMAT)
-CONTROL_JSON = os.environ['CONTROL_JSON']
-HEADERS = {'Content-Type': 'text/xml'}
-CID_API = os.environ['CID_API4']
+PICK_FOLDER: Final = os.environ['DIGITAL_PICK']
+PICK_CSV: Final = os.path.join(PICK_FOLDER, 'digital_pick.csv')
+PICK_TEXT: Final = os.path.join(PICK_FOLDER, 'checksum_failures.txt')
+LOG_PATH: Final = os.environ['LOG_PATH']
+CHECKSUM_PATH: Final = os.path.join(LOG_PATH, 'checksum_md5')
+CHECK_RANGE: Final = 14
+SEARCH_TERM: Final = 'DPIDL'
+USERNAME: Final = os.environ['USERNAME']
+FMT: Final = "%Y-%m-%d"
+FORMAT: Final = "%Y-%m-%d %H:%M:%S"
+TODAY: Final = datetime.strftime(datetime.now(), FORMAT)
+CONTROL_JSON: Final = os.environ['CONTROL_JSON']
+HEADERS: Final = {'Content-Type': 'text/xml'}
+CID_API: Final = os.environ['CID_API4']
 
 # Set up logging
 LOGGER = logging.getLogger('bp_get_digital_pick')
@@ -77,13 +78,13 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def fetch_workflow_jobs():
+def fetch_workflow_jobs() -> Optional[dict[str, list[str]]]:
     '''
     Search for in target workflow jobs, compile into a
     dictionary and return to main()
     '''
     todayd, endd = get_date_range()
-    search = f"request.details='*{SEARCH_TERM}*' and completion.date>'{todayd}' and completion.date<'{endd}' and status=InProgress sort completion.date ascending"
+    search: str = f"request.details='*{SEARCH_TERM}*' and completion.date>'{todayd}' and completion.date<'{endd}' and status=InProgress sort completion.date ascending"
     hits, records = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['priref', 'jobnumber', 'contact_person', 'request.details', 'request.from.name'])
     if hits is None:
         LOGGER.exception('"CID API was unreachable for Workflow search:\n%s', search)
@@ -95,7 +96,7 @@ def fetch_workflow_jobs():
         LOGGER.exception("fetch_workflow_jobs: No workflow data found")
         return None
 
-    workflow_jobs = {}
+    workflow_jobs: dict[str, list[str]] = {}
     for num in range(0, hits):
         try:
             priref = adlib.retrieve_field_name(records[num], 'priref')[0]
@@ -127,7 +128,7 @@ def fetch_workflow_jobs():
     return workflow_jobs
 
 
-def get_date_range():
+def get_date_range() -> tuple[str, str]:
     '''
     Return CHECK_RANGE day from today's date
     '''
@@ -139,12 +140,12 @@ def get_date_range():
     return todays_date, end_date
 
 
-def fetch_item_list(priref):
+def fetch_item_list(priref: str) -> Optional[str] | Optional[list[str]]:
     '''
     Fetch a workflow job's items list
     '''
-    search = f"parent_record={priref} and recordType=ObjectList"
-    records = adlib.retrieve_record(CID_API, 'workflow', search, '0')[1]
+    search: str = f"parent_record={priref} and recordType=ObjectList"
+    records: str = adlib.retrieve_record(CID_API, 'workflow', search, '0')[1]
     if not records:
         LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s", priref)
         return None
@@ -159,17 +160,17 @@ def fetch_item_list(priref):
         return children
 
 
-def get_child_ob_num(priref):
+def get_child_ob_num(priref: str) -> Optional[int]:
     '''
     Retrieve the child's object number from workflow
     '''
-    search = f"priref={priref}"
-    records = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['description'])[1]
+    search: str = f"priref={priref}"
+    records: str = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['description'])[1]
     if not records:
         LOGGER.exception("get_child_ob_num: Unable to retrieve workflow data")
         return None
     try:
-        ob_num = adlib.retrieve_field_name(records[0], 'description')[0]
+        ob_num: int = adlib.retrieve_field_name(records[0], 'description')[0]
         print(ob_num)
         return ob_num
     except (IndexError, TypeError, KeyError):
@@ -177,7 +178,7 @@ def get_child_ob_num(priref):
 
 
 @retry(stop=stop_after_attempt(10))
-def get_media_original_filename(search):
+def get_media_original_filename(search: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     '''
     Retrieve the first returned media record
     for a match against object.object_number
@@ -207,7 +208,7 @@ def get_media_original_filename(search):
     return orig_fname, ref_num, bucket
 
 
-def bucket_check(bucket, filename):
+def bucket_check(bucket: str, filename: str) -> Optional[str]:
     '''
     Check CID media record that bucket
     matches for all parts
@@ -229,16 +230,16 @@ def bucket_check(bucket, filename):
         return bucket
 
 
-def get_missing_part_names(filename):
+def get_missing_part_names(filename: str) -> Optional[list[str]]:
     '''
     Extract range from part 01of*
     call up Digital Media record for
     each part retrieve ref number
     return "ref_name:filename"
     '''
-    fname_list = []
+    fname_list: list[str] = []
     filename, ext = os.path.splitext(filename)
-    fname_split = filename.split('_')
+    fname_split: str = filename.split('_')
     part_whole = fname_split[-1]
     fname = '_'.join(fname_split[:-1])
     if 'of' not in part_whole:
@@ -268,13 +269,13 @@ def get_missing_part_names(filename):
     return fname_list
 
 
-def make_check_md5(fpath, fname, bucket):
+def make_check_md5(fpath: str, fname: str, bucket: str) ->tuple[str, str]:
     '''
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
     and see if checksums match. If not, write to log
     '''
-    download_checksum = ''
+    download_checksum: str = ''
 
     try:
         hash_md5 = hashlib.md5()
@@ -290,19 +291,19 @@ def make_check_md5(fpath, fname, bucket):
     return str(download_checksum), str(local_checksum)
 
 
-def checksum_log(message):
+def checksum_log(message: str) -> None:
     '''
     Append checksum message to checksum
     log where no match found
     '''
-    datestamp = datetime.now()
-    data = f"{datestamp}, {message}\n"
+    datestamp: datetimr = datetime.now()
+    data: str = f"{datestamp}, {message}\n"
 
     with open(PICK_TEXT, 'a+') as out_file:
         out_file.write(data)
 
 
-def check_csv(fname):
+def check_csv(fname: str) -> str | Any:
     '''
     Check CSV for evidence that fname already
     downloaded. Extract download date and return
@@ -487,19 +488,19 @@ def main():
     LOGGER.info("=========== Digital Pick script end =============\n")
 
 
-def build_payload(priref, data, today):
+def build_payload(priref: str, data: str, today: str) -> str:
     '''
     Build payload info to write to Workflow record
     '''
     cleaned_data = escape(data)
-    payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_addition = f"<request.details>DPI Download completed {today}. {cleaned_data}</request.details>"
-    payload_edit = f"<edit.name>{USERNAME}</edit.name><edit.date>{today[:10]}</edit.date><edit.time>{today[11:]}</edit.time>"
-    payload_end = "</record></recordList></adlibXML>"
+    payload_head: str = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_addition: str = f"<request.details>DPI Download completed {today}. {cleaned_data}</request.details>"
+    payload_edit: str = f"<edit.name>{USERNAME}</edit.name><edit.date>{today[:10]}</edit.date><edit.time>{today[11:]}</edit.time>"
+    payload_end: str = "</record></recordList></adlibXML>"
     return payload_head + payload_addition + payload_edit + payload_end
 
 
-def write_payload(priref, payload):
+def write_payload(priref: str, payload: str) -> bool:
     '''
     Recieve header, payload and priref and write
     to CID workflow record
@@ -515,7 +516,7 @@ def write_payload(priref, payload):
         return True
 
 
-def write_to_csv(data):
+def write_to_csv(data: str) -> None:
     '''
     Write all file data to CSV as confirmation
     of successful download.

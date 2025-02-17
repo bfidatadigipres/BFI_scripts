@@ -54,7 +54,9 @@ import logging
 import requests
 import datetime
 import subprocess
+import re
 from ds3 import ds3, ds3Helpers
+from typing import Final, Optional
 
 # Private imports
 sys.path.append(os.environ['CODE'])
@@ -62,20 +64,20 @@ import adlib_v3 as adlib
 import utils
 
 # Global paths
-QNAP = os.environ['QNAP_REND1']
-PROXY_QNAP = os.environ['MP4_ACCESS2']
-FILE_PATH = os.path.join(QNAP, 'filename_updater/')
-COMPLETED = os.path.join(FILE_PATH, 'completed/')
-INGEST = os.path.join(FILE_PATH, 'for_ingest/')
-PROXY_CREATE = os.path.join(FILE_PATH, 'proxy_create/')
-CSV_PATH = os.path.join(os.environ['ADMIN'], 'legacy_MP4_file_list.csv')
-LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API4']
-DPI_BUCKETS = os.environ.get('DPI_BUCKET')
-CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
-JSON_END = os.environ['JSON_END_POINT']
+QNAP: Final = os.environ['QNAP_REND1']
+PROXY_QNAP: Final = os.environ['MP4_ACCESS2']
+FILE_PATH: Final = os.path.join(QNAP, 'filename_updater/')
+COMPLETED: Final = os.path.join(FILE_PATH, 'completed/')
+INGEST: Final = os.path.join(FILE_PATH, 'for_ingest/')
+PROXY_CREATE: Final = os.path.join(FILE_PATH, 'proxy_create/')
+CSV_PATH: Final = os.path.join(os.environ['ADMIN'], 'legacy_MP4_file_list.csv')
+LOG_PATH: Final = os.environ['LOG_PATH']
+CID_API: Final = os.environ['CID_API4']
+DPI_BUCKETS: Final = os.environ.get('DPI_BUCKET')
+CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
+CLIENT: Final = ds3.createClientFromEnv()
+HELPER: Final = ds3Helpers.Helper(client=CLIENT)
+JSON_END: Final = os.environ['JSON_END_POINT']
 
 # Setup logging
 LOGGER = logging.getLogger('legacy_filename_updater')
@@ -86,18 +88,18 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def check_control():
+def check_control() -> None:
     '''
     Check control_json isn't False
     '''
     with open(CONTROL_JSON) as control:
-        j = json.load(control)
+        j: dict[str, str] = json.load(control)
         if not j['autoingest']:
             print('* Exit requested by downtime_control.json. Script exiting')
             sys.exit('Exit requested by downtime_control.json. Script exiting')
 
 
-def read_csv_match_file(file):
+def read_csv_match_file(file: str) -> tuple[str, str]:
     '''
     Make set of all entries
     with title as key, and value
@@ -105,31 +107,31 @@ def read_csv_match_file(file):
     as a list (use pandas)
     '''
 
-    data = pandas.read_csv(CSV_PATH)
-    data_dct = data.to_dict(orient='list')
-    length = len(data_dct['fname'])
+    data: pandas.DataFrame = pandas.read_csv(CSV_PATH)
+    data_dct: dict[str, str] = data.to_dict(orient='list')
+    length: int = len(data_dct['fname'])
 
     for num in range(1, length):
         if file in data_dct['fname'][num]:
             return data_dct['priref'][num], data_dct['ob_num'][num]
 
 
-def check_cid_record(priref, file):
+def check_cid_record(priref: str, file: str) -> tuple[str, str, str, str, str]:
     '''
     Search for ob_num of file name
     and check MP4 in file_type for
     returned record
     '''
 
-    search = f"priref='{priref}'"
-    fields = [
+    search: str = f"priref='{priref}'"
+    fields: list[str] = [
         'item_type',
         'file_type',
         'imagen.media.original_filename',
         'reference_number',
         'code_type'
     ]
-    record = adlib.retrieve_record(CID_API, 'items', search, '0', fields)[1]
+    record: str = adlib.retrieve_record(CID_API, 'items', search, '0', fields)[1]
     if not record:
         print(f"Unable to retrieve CID Item record {priref}")
 
@@ -148,18 +150,18 @@ def check_cid_record(priref, file):
     return item_type, file_type, original_fname, ref_num, code_type
 
 
-def check_media_record(fname):
+def check_media_record(fname: str) -> tuple[str, str, str, str]:
     '''
     Check if CID media record
     already created for filename
     '''
-    search = f"imagen.media.original_filename='{fname}'"
-    fields = [
+    search: str = f"imagen.media.original_filename='{fname}'"
+    fields: list[str] = [
         'imagen.media.hls_umid',
         'access_rendition.mp4',
         'input.date'
     ]
-    record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
+    record: str = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
     if not record: 
         print(f"Unable to retrieve CID Media record for item {fname}")
 
@@ -176,38 +178,38 @@ def check_media_record(fname):
     return priref, media_hls, access_mp4, input_date
 
 
-def check_bp_status(fname, bucket_list, local_md5):
+def check_bp_status(fname: str, bucket_list: list[str], local_md5: str) -> Optional[bool]:
     '''
     Look up filename in BP to avoid
     multiple ingests of files
     '''
 
     for bucket in bucket_list:
-        query = ds3.HeadObjectRequest(bucket, fname)
-        result = CLIENT.head_object(query)
+        query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
+        result: ds3.HeadObjectReponse = CLIENT.head_object(query)
 
         if 'DOESNTEXIST' in str(result.result):
             continue
 
         try:
-            md5 = result.response.msg['ETag']
-            length = result.response.msg['Content-Length']
+            md5: str = result.response.msg['ETag']
+            length: int | str = result.response.msg['Content-Length']
             if int(length) > 1 and md5.strip() == local_md5:
                 return True
         except (IndexError, TypeError, KeyError) as err:
             print(err)
 
 
-def get_buckets(bucket_collection):
+def get_buckets(bucket_collection: str) -> tuple[str, list[str]]:
     '''
     Read JSON list return
     key_value and list of others
     '''
-    bucket_list = []
-    key_bucket = ''
+    bucket_list: list[str] = []
+    key_bucket: str = ''
 
     with open(DPI_BUCKETS) as data:
-        bucket_data = json.load(data)
+        bucket_data: dict[str, str] = json.load(data)
     if bucket_collection == 'netflix':
         for key, value in bucket_data.items():
             if bucket_collection in key and 'bucket' not in key:
@@ -227,16 +229,16 @@ def get_buckets(bucket_collection):
     return key_bucket, bucket_list
 
 
-def get_media_ingests(object_number):
+def get_media_ingests(object_number: str) -> Optional[list[str]]:
     '''
     Use object_number to retrieve all media records
     '''
-    search = f'object.object_number="{object_number}"'
-    record = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])[1]
+    search: str = f'object.object_number="{object_number}"'
+    record: str = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])[1]
     if not record:
         return None
 
-    original_filenames = []
+    original_filenames: list[str] = []
     for rec in record:
         if 'imagen.media.original_filename' in str(rec):
             filename = adlib.retrieve_field_name(rec, 'imagen.media.original_filename')[0]
@@ -246,31 +248,30 @@ def get_media_ingests(object_number):
     return original_filenames
 
 
-def check_codec(fpath):
+def check_codec(fpath: str) -> str | bytes:
     '''
     Check MP4 file codec is supported
     otherwise initiate transcode
     '''
-    cmd = [
+    cmd: list[str] = [
         'mediainfo', '--Language=raw',
         '--Output=Video;%CodecID%',
         fpath
     ]
-    codec_id = subprocess.check_output(cmd)
-    codec_id = codec_id.decode('utf-8')
+    codec_id = subprocess.check_output(cmd).decode('utf-8')
 
     return codec_id
 
 
-def correct_filename(fname):
+def correct_filename(fname: str) -> Optional[str]:
     '''
     Correct any strange filename anomalies
     '''
-    name_data = fname.split('_')
+    name_data: list[str] = fname.split('_')
 
     if len(name_data) == 1 and 'of' not in fname:
-        part_whole = '01of01'
-        new_fname = f"{name_data[0].replace('-', ' ')}_{part_whole}"
+        part_whole: str = '01of01'
+        new_fname: str = f"{name_data[0].replace('-', ' ')}_{part_whole}"
         return new_fname
 
     if len(name_data) == 2:
@@ -293,12 +294,12 @@ def correct_filename(fname):
     return None
 
 
-def md5_65536(fpath):
+def md5_65536(fpath: str) -> Optional[str]:
     '''
     Hashlib md5 generation, return as 32 character hexdigest
     '''
     try:
-        hash_md5 = hashlib.md5()
+        hash_md5: hashlib._hashlib.HASH = hashlib.md5()
         with open(fpath, "rb") as fname:
             for chunk in iter(lambda: fname.read(65536), b""):
                 hash_md5.update(chunk)
@@ -316,7 +317,7 @@ def main():
     need ingesting or access copy work
     '''
 
-    files = [ x for x in os.listdir(FILE_PATH) if os.path.isfile(os.path.join(FILE_PATH, x)) ]
+    files: list[str] = [ x for x in os.listdir(FILE_PATH) if os.path.isfile(os.path.join(FILE_PATH, x)) ]
     if not files:
         sys.exit()
 
@@ -328,11 +329,11 @@ def main():
 
     for file in files:
         LOGGER.info("Processing file: %s", file)
-        fpath = os.path.join(FILE_PATH, file)
-        fname = file.split('.')[0]
+        fpath: str = os.path.join(FILE_PATH, file)
+        fname: str = file.split('.')[0]
 
         # Find match in CSV
-        match_dict = read_csv_match_file(file)
+        match_dict: tuple[str] = read_csv_match_file(file)
         if match_dict is None:
             LOGGER.warning("File not found in CSV: %s", file)
             continue
@@ -395,7 +396,7 @@ def main():
 
         # JMW to ask: We will always force underscore at start N-123456_01of01.mp4
         # Prepare new filename and path formatting (N_123456_01of01, from N-123456)
-        new_file = correct_filename(fname)
+        new_file: Optional[str] = correct_filename(fname)
         if not new_file:
             LOGGER.warning("Could not parse file name. Skipping this item %", fpath)
             continue
@@ -494,7 +495,7 @@ def main():
     LOGGER.info("============== Legacy filename updater END ====================")
 
 
-def get_duration(fullpath):
+def get_duration(fullpath: str) -> str | int | tuple[int, str]:
     '''
     Retrieves duration information via mediainfo
     where more than two returned, file longest of
@@ -502,18 +503,16 @@ def get_duration(fullpath):
     for update to ffmpeg map command
     '''
 
-    cmd = [
+    cmd: list[str] = [
         'mediainfo', '--Language=raw',
         '--Full', '--Inform="Video;%Duration%"',
         fullpath
     ]
 
     cmd[3] = cmd[3].replace('"', '')
-    duration = subprocess.check_output(cmd)
+    duration = subprocess.check_output(cmd).decode('utf-8').rstrip('\n')
     if not duration:
         return ''
-
-    duration = duration.decode('utf-8').rstrip('\n')
     print(f"Mediainfo seconds: {duration}")
 
     if '.' in duration:
@@ -540,7 +539,7 @@ def get_duration(fullpath):
             return (second_duration, '1')
 
 
-def get_blackdetect(fpath):
+def get_blackdetect(fpath: str) -> Optional[str]:
     '''
     Capture black sections of MP4 file
     to dictionary and avoid in JPEG creation
@@ -560,7 +559,7 @@ def get_blackdetect(fpath):
         print(err)
 
 
-def adjust_seconds(duration, data):
+def adjust_seconds(duration: float, data: str) -> float:
     '''
     Adjust second durations within
     FFmpeg detected blackspace
@@ -591,7 +590,7 @@ def adjust_seconds(duration, data):
     return duration // 2
 
 
-def check_seconds(blackspace, seconds):
+def check_seconds(blackspace: list[str], seconds: int | float) -> Optional[bool]:
     '''
     Create range and check for second within
     '''
@@ -607,13 +606,13 @@ def check_seconds(blackspace, seconds):
         return True
 
 
-def retrieve_blackspaces(data):
+def retrieve_blackspaces(data: str) -> list[str]:
     '''
     Retrieve black detect log and check if
     second variable falls in blocks of blackdetected
     '''
-    data_list = data.splitlines()
-    time_range = []
+    data_list: list[str] = data.splitlines()
+    time_range: list = []
     for line in data_list:
         if 'black_start' in line:
             split_line = line.split(":")
@@ -627,14 +626,14 @@ def retrieve_blackspaces(data):
     return time_range
 
 
-def put_file(fpath, ref_num, bucket_name):
+def put_file(fpath: str, ref_num: str, bucket_name: str) -> Optional[str]:
     '''
     Add the file to black pearl using helper (no MD5)
     Retrieve job number and launch json notification
     Untested: do we to bulk PUT or individually?
     '''
-    file_size = os.path.getsize(fpath)
-    put_obj = [ds3Helpers.HelperPutObject(object_name=ref_num, file_path=fpath, size=file_size)]
+    file_size: int = os.path.getsize(fpath)
+    put_obj: ds3Helpers.HelperPutObject = [ds3Helpers.HelperPutObject(object_name=ref_num, file_path=fpath, size=file_size)]
     try:
         put_job_id = HELPER.put_objects(put_objects=put_obj, bucket=bucket_name)
         print(put_job_id)
@@ -646,12 +645,12 @@ def put_file(fpath, ref_num, bucket_name):
         return None
 
 
-def get_jpeg(seconds, fullpath, outpath):
+def get_jpeg(seconds: int, fullpath: str, outpath: str) -> bool:
     '''
     Retrieve JPEG from MP4
     Seconds accepted as float
     '''
-    cmd = [
+    cmd: list[str] = [
         "ffmpeg",
         "-ss", str(seconds),
         "-i", fullpath,
@@ -672,28 +671,28 @@ def get_jpeg(seconds, fullpath, outpath):
         return False
 
 
-def make_jpg(filepath, arg, transcode_pth, percent):
+def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str]) -> Optional[str]:
     '''
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.
     '''
-    start_reduce = [
+    start_reduce: list[str] = [
         "gm", "convert",
         "-density", "300x300",
         filepath, "-strip"
     ]
 
-    start = [
+    start: list[str] = [
         "gm", "convert",
         "-density", "600x600",
         filepath, "-strip"
     ]
 
-    thumb = [
+    thumb: list[str] = [
         "-resize", "x180",
     ]
 
-    oversize = [
+    oversize: list[str] = [
         "-resize", f"{percent}%x{percent}%",
     ]
 
@@ -723,12 +722,12 @@ def make_jpg(filepath, arg, transcode_pth, percent):
         return outfile
 
 
-def get_part_whole(fname):
+def get_part_whole(fname: str) -> Optional[tuple[str, str]]:
     '''
     Receive a filename extract part whole from end
     Return items split up
     '''
-    name = os.path.splitext(fname)[0]
+    name: str = os.path.splitext(fname)[0]
     name_split = name.split('_')
     if len(name_split) == 3:
         part_whole = name_split[2]
@@ -747,16 +746,16 @@ def get_part_whole(fname):
     return (part, whole)
 
 
-def create_media_record(ob_num, duration, byte_size, filename, bucket):
+def create_media_record(ob_num: str, duration: str, byte_size: str, filename: str, bucket: str) -> str:
     '''
     Media record creation for BP ingested file
     '''
-    record_data = []
+    record_data: list[dict[str, str]] = []
     part, whole = get_part_whole(filename)
 
     record_data = ([{'input.name': 'datadigipres'},
-                    {'input.date': str(datetime.now())[:10]},
-                    {'input.time': str(datetime.now())[11:19]},
+                    {'input.date': str(datetime.datetime.now())[:10]},
+                    {'input.time': str(datetime.datetime.now())[11:19]},
                     {'input.notes': 'Digital preservation ingest - automated bulk documentation.'},
                     {'reference_number': filename},
                     {'imagen.media.original_filename': filename},
@@ -766,7 +765,8 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
                     {'preservation_bucket': bucket}])
 
     print(f"Using CUR create_record: database='media', data, output='json', write=True")
-    record_data_xml = adlib.retrieve_record_data('', record_data)
+    # maybe its just retrieve_record? im unsure about the parameters
+    record_data_xml = adlib.retrieve_record(CID_API, 'items', '', record_data)
     record = adlib.post(CID_API, record_data_xml, 'media', 'insertrecord')
     if not record:
         print(f"\nUnable to create CID media record for {ob_num}")
@@ -783,14 +783,14 @@ def create_media_record(ob_num, duration, byte_size, filename, bucket):
     return media_priref
 
 
-def cid_media_append(fname, priref, data):
+def cid_media_append(fname: str, priref: str, data: str) -> bool:
     '''
     Receive data and priref and append to CID media record
     '''
-    payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_mid = ''.join(data)
-    payload_end = f"</record></recordList></adlibXML>"
-    payload = payload_head + payload_mid + payload_end
+    payload_head: str = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_mid: str = ''.join(data)
+    payload_end: str = f"</record></recordList></adlibXML>"
+    payload: str = payload_head + payload_mid + payload_end
     date_supplied = datetime.datetime.now().strftime('%Y-%m-%d')
 
     rec = adlib.post(CID_API, payload, 'media', 'updaterecord')

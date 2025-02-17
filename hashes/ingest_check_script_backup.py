@@ -37,14 +37,14 @@ IGNORE_FOLDERS = {
 }
 
 
-def read_doc_for_match(cpath, checksum_file, hash_number) -> list:
+def read_doc_for_match(cpath: str, checksum_file: str, hash_number: str) -> list[str]:
     """
     Opens and reads checksum filepath supplied, uses hash to read
     all lines checking for match forced to anycase. Where found
     return list with full checksum line, checksum file path, True bool
     """
 
-    match_list = []
+    match_list: list[str] = []
     filepath = os.path.join(cpath, checksum_file)
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f.readlines():
@@ -56,13 +56,13 @@ def read_doc_for_match(cpath, checksum_file, hash_number) -> list:
     return match_list
 
 
-def pygrep(checksum_folder, hash_value) -> list:
+def pygrep(checksum_folder: str, hash_value: str) -> list[str]:
     """
     Read all checksum documents for match to hash value,
     iterate checksum documents available and feed to read_doc_for_match
     """
-    list_of_files = []
-    checksum_list = os.listdir(checksum_folder)
+    list_of_files: list[str] = []
+    checksum_list: list[str] = os.listdir(checksum_folder)
     for checksum_doc in checksum_list:
         try:
             match = read_doc_for_match(checksum_folder, checksum_doc, hash_value)
@@ -74,7 +74,7 @@ def pygrep(checksum_folder, hash_value) -> list:
     return list_of_files
 
 
-def local_log(full_path, data) -> None:
+def local_log(full_path: str, data: str) -> None:
     """
     Writes to local logs found in ingest_check folder
     """
@@ -87,17 +87,17 @@ def local_log(full_path, data) -> None:
         log_file.close()
 
 
-def make_folder_inventory(dpath, filepath) -> dict:
+def make_folder_inventory(dpath: str, filepath: str) -> dict[str, list[str]]:
     '''
     Build dict key filename and value local checksum
     plus any matching line in checksum matches
     '''
-    inventory = {}
+    inventory: dict[str, list[str]] = {}
     local_log(filepath, f"Processing files within folder {os.path.relpath(dpath, filepath)}:")
     LOGGER.info("Processing files in folder %s:", os.path.relpath(dpath, filepath))
     for root, _, files in os.walk(dpath):
         for file in files:
-            fpath = os.path.join(root, file)
+            fpath: str = os.path.join(root, file)
             file_relpath = os.path.relpath(fpath, filepath)
             hash_number = utils.create_md5_65536(fpath)
             matching = pygrep(os.path.join(filepath, 'checksum_folder'), hash_number.upper())
@@ -127,13 +127,13 @@ def main() -> None:
     LOGGER.info("Starting checksum validation process")
     print(filepath)
 
-    file_list = [ x for x in os.listdir(filepath) if os.path.isfile(os.path.join(filepath, x)) and x != 'ingest_check.log' ]
-    dir_list = [ x for x in os.listdir(filepath) if os.path.isdir(os.path.join(filepath, x)) and x not in IGNORE_FOLDERS ]
+    file_list: list[str] = [ x for x in os.listdir(filepath) if os.path.isfile(os.path.join(filepath, x)) and x != 'ingest_check.log' ]
+    dir_list: list[str] = [ x for x in os.listdir(filepath) if os.path.isdir(os.path.join(filepath, x)) and x not in IGNORE_FOLDERS ]
 
     if not file_list and not dir_list:
         sys.exit("No files/folders found for processing at this time.")
 
-    file_relpath = ''
+    file_relpath: str = ''
     # Process files first, complex directories after
     LOGGER.info("======================Starting pre autoingest checks========================")
     local_log(filepath, "======================Starting pre autoingest checks===========================")
@@ -147,7 +147,7 @@ def main() -> None:
 
         # Make local hash for search
         hash_number = utils.create_md5_65536(fpath)
-        matching = pygrep(os.path.join(filepath, 'checksum_folder'), hash_number.upper())
+        matching: list[str] = pygrep(os.path.join(filepath, 'checksum_folder'), hash_number.upper())
         print(f"{len(matching)} matched: {matching}")
 
         # Assess file responses and move files accordingly
@@ -172,7 +172,7 @@ def main() -> None:
                 shutil.move(fpath, os.path.join(filepath, move_path, file))
         else:
             LOGGER.info("Multiple checksum matches made for %s:\n%s", file, matching)
-            match_str = []
+            match_str: list[str] = []
             for match in matching:
                 checksum_line, checksum_match_path = match.split(',')
                 if file.upper() in checksum_line.upper():
@@ -196,8 +196,8 @@ def main() -> None:
         continue
 
     for directory in dir_list:
-        dpath = os.path.join(filepath, directory)
-        dir_relpath = os.path.relpath(dpath, filepath)
+        dpath: str = os.path.join(filepath, directory)
+        dir_relpath: str = os.path.relpath(dpath, filepath)
 
         local_log(filepath, f"** New complex folder being processed: {dir_relpath}")
         LOGGER.info("*** New folder being processed: %s", file_relpath)
@@ -210,7 +210,7 @@ def main() -> None:
         full_match = partial_match = no_match = False
         for key, value in hash_dict.items():
             file_relpath = key.split(' - ')[0]
-            fname = os.path.basename(file_relpath)
+            fname: str = os.path.basename(file_relpath)
             if len(value) == 0:
                 no_match = True
             for match in value:

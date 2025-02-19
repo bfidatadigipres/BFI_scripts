@@ -25,6 +25,7 @@ import sys
 import shutil
 import logging
 from ds3 import ds3
+from typing import Final, Optional, Any
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -33,12 +34,12 @@ import models
 import utils
 
 # Global variables
-LOG_PATH = os.environ['LOG_PATH']
-CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API4']
-CLIENT = ds3.createClientFromEnv()
+LOG_PATH: Final = os.environ['LOG_PATH']
+CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
+CID_API: Final = os.environ['CID_API4']
+CLIENT: Final = ds3.createClientFromEnv()
 
-TARGETS = [
+TARGETS: Final = [
    f"{os.environ['QNAP_08']}/memnon_processing/"
 ]
 
@@ -51,11 +52,11 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
-def get_object_list(fname):
+def get_object_list(fname: str) -> list[ds3.Ds3GetObject]:
     '''
     Build a DS3 object list for some SDK queries
     '''
-    file_list = [fname]
+    file_list: list[str] = [fname]
     return [ds3.Ds3GetObject(name=x) for x in file_list]
 
 
@@ -225,7 +226,7 @@ def main():
                 logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath, len(preserved_objects), total_objects_expected)
 
 
-def get_results(filepath, grouping, object_number):
+def get_results(filepath: str, grouping: str, object_number: str) -> Optional[dict[str, str] | Any]:
     '''
     Checks for cross-over period between 'datadigipres'
     and 'collectionssystems' in CID media record

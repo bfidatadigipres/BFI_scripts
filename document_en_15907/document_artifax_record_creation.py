@@ -45,6 +45,7 @@ import title_article
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 import utils
+from typing import Final, Optional
 
 # Local date vars for script comparison/activation
 TODAY_TIME = str(datetime.datetime.now())
@@ -102,7 +103,7 @@ FESTIVALS = {
 }
 
 
-def date_gen(date_str):
+def date_gen(date_str: str) -> int:
     '''
     Attributed to Ayman Hourieh, Stackoverflow question 993358
     Python 3.7+ only for this function - fromisoformat()
@@ -113,12 +114,12 @@ def date_gen(date_str):
         from_date = from_date - datetime.timedelta(days=1)
 
 
-def get_country(code):
+def get_country(code: str) -> str:
     '''
     Use language.yaml to extract Country name from ISO code
     '''
-    country = ''
-    code = code.lower()
+    country: str = ''
+    code: str = code.lower()
     with open(LANGUAGE_MAP, 'r') as files:
         data = (yaml.load(files, Loader=yaml.FullLoader))
         for _ in data.items():
@@ -127,7 +128,7 @@ def get_country(code):
     return country
 
 
-def fetch_season():
+def fetch_season() -> str:
     '''
     Retrieve season json from Artifax for season_id selection
     '''
@@ -384,7 +385,7 @@ def main():
     logger.info('========== Python3 end - script completed =========\n')
 
 
-def work_extraction(season_num, dct=None):
+def work_extraction(season_num: str, dct=None) -> tuple[str]:
     '''
     Extract work data from dct, compare with season_num
     '''
@@ -452,7 +453,7 @@ def work_extraction(season_num, dct=None):
     return (title, title2, language, language2, work_id, priref, accepted, art_form)
 
 
-def create_work(work_data_dct=None):
+def create_work(work_data_dct=None) -> tuple[str, str]:
     '''
     Uses work_data_dct, work_default and work_restricted_defaults to generate Work record in CID
     '''
@@ -537,11 +538,11 @@ def create_work(work_data_dct=None):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def push_priref_artifax(object_id, priref):
+def push_priref_artifax(object_id: str, priref: str) -> Optional[bool]:
     '''
     Script to push back priref to Artifax
     '''
-    dct = []
+    dct: dict[str, str] = []
     data = {'object_id': object_id,
             'object_type_id': '69',
             'custom_form_element_id': '1004',
@@ -572,7 +573,7 @@ def push_ob_num_artifax(object_id, object_number):
         return True
 
 
-def remove_json(completed_path):
+def remove_json(completed_path: str) -> None:
     '''
     Clear files moved into completed/ folder to prevent congestion
     When over 48 hours/2 days old. utcnow() depracated Py3.12

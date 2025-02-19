@@ -38,6 +38,7 @@ import datetime
 import requests
 import yaml
 import tenacity
+from typing import Final, Optional, Any
 
 # Local packages
 import title_article
@@ -46,18 +47,17 @@ import adlib_v3 as adlib
 import utils
 
 # Local date vars for script comparison/activation
-TODAY = datetime.date.today()
-TODAY = str(TODAY)
+TODAY = str(datetime.date.today())
 TODAY_TIME = str(datetime.datetime.now())
 TIME = TODAY_TIME[11:19]
 
 # Global variables
-STORAGE_PATH = os.environ['SEASONS_PATH']
-LANGUAGE_MAP = os.environ['LANGUAGE_YAML']
-JSON_COMPLETED = os.environ['COMPLETED_PATH']
-LOG_PATH = os.environ['LOG_PATH']
-CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API4']
+STORAGE_PATH: Final = os.environ['SEASONS_PATH']
+LANGUAGE_MAP: Final = os.environ['LANGUAGE_YAML']
+JSON_COMPLETED: Final = os.environ['COMPLETED_PATH']
+LOG_PATH: Final = os.environ['LOG_PATH']
+CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
+CID_API: Final = os.environ['CID_API4']
 
 # Setup logging (running from bk-qnap-video)
 LOGGER = logging.getLogger('document_artifax_record_population')
@@ -68,10 +68,10 @@ LOGGER.addHandler(hdlr)
 LOGGER.setLevel(logging.INFO)
 
 # Artifax url paths and header data
-WORK_URL = os.environ['ARTIFAX_WORK']
-WORK_COPY_URL = os.environ['ARTIFAX_WORK_COPY']
-WORK_SEASON_URL = os.environ['ARTIFAX_WORK_SEASON']
-CUSTOM_URL = os.environ['ARTIFAX_CUSTOM']
+WORK_URL: Final = os.environ['ARTIFAX_WORK']
+WORK_COPY_URL: Final = os.environ['ARTIFAX_WORK_COPY']
+WORK_SEASON_URL: Final = os.environ['ARTIFAX_WORK_SEASON']
+CUSTOM_URL: Final = os.environ['ARTIFAX_CUSTOM']
 HEADERS = {
     "X-API-KEY": f"{os.environ['ARTIFAX_API_KEY']}"
 }
@@ -113,7 +113,7 @@ FORMATS = {'DVD': ['DVD (Digital Versatile Disc)', '73390'],
            }
 
 
-def get_country(code):
+def get_country(code: str) -> Optional[str]:
     '''
     Use language.yaml to extract Country name from ISO code
     '''
@@ -126,17 +126,17 @@ def get_country(code):
                 return str(val)
 
 
-def firstname_split(person):
+def firstname_split(person: str) -> str:
     '''
     Splits 'firstname surname' and returns 'surname, firstname'
     '''
     person = person.title()
-    name_list = person.split()
-    count = len(person.split())
+    name_list: list[str] = person.split()
+    count: int = len(person.split())
     if count > 2:
         firstname, *rest, surname = name_list
-        rest = ' '.join(rest)
-        return surname + ", " + firstname + " " + rest
+        rest_names = ' '.join(rest)
+        return surname + ", " + firstname + " " + rest_names
     elif count > 1:
         firstname, surname = name_list
         return surname + ", " + firstname
@@ -144,11 +144,11 @@ def firstname_split(person):
         return person
 
 
-def fetch_work_copy(work_id):
+def fetch_work_copy(work_id: str) -> str:
     '''
     Retrieve the work_copy for individual work_id returns path of downloaded file
     '''
-    params = {"work_id": work_id}
+    params: dict[str, str] = {"work_id": work_id}
     dct = requests.request("GET", WORK_COPY_URL, headers=HEADERS, params=params)
     fname = os.path.join(STORAGE_PATH, f"{work_id}_work_copy.json")
     # Outputs response files to storage_path, named as work_id_work_copy
@@ -157,7 +157,7 @@ def fetch_work_copy(work_id):
     return fname
 
 
-def fetch_work_season(work_id):
+def fetch_work_season(work_id: str) -> str:
     '''
     Retrieve the work_season for individual work_id returns path of downloaded file
     '''
@@ -170,7 +170,7 @@ def fetch_work_season(work_id):
     return fname
 
 
-def return_mins(secs):
+def return_mins(secs: int | str) -> str:
     '''
     Convert seconds to minutes
     '''
@@ -178,15 +178,15 @@ def return_mins(secs):
     return str(minutes)
 
 
-def json_name_split(file):
+def json_name_split(file: str) -> tuple[str, str]:
     '''
     Splits name of work record downloaded with prefix season_code in title
     '''
-    filename = os.path.splitext(file)[0]
-    split = filename.split('_', 3)
+    filename: str = os.path.splitext(file)[0]
+    split: list[str] = filename.split('_', 3)
     try:
-        season_code = split[0]
-        season_id = split[1]
+        season_code: str = split[0]
+        season_id: str = split[1]
     except (KeyError, IndexError):
         LOGGER.warning("Unable to split json file %s", file)
         season_code = ''
@@ -195,7 +195,7 @@ def json_name_split(file):
     return (season_code, season_id)
 
 
-def move_file(fname):
+def move_file(fname: str) -> None:
     '''
     Move json files dealt with to completed/ folder
     '''
@@ -209,7 +209,7 @@ def move_file(fname):
             LOGGER.warning("Unable to move %s to completed folder %s\n%s", fname, file_completed, err)
 
 
-def cid_retrieve(search):
+def cid_retrieve(search: str) -> Optional[tuple[str | list, str, str]]:
     '''
     Retrieve grouping data abd title using priref of work dictionary
     '''

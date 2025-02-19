@@ -28,6 +28,7 @@ import pytz
 import shutil
 import logging
 from datetime import datetime
+from typing import Optional
 
 # Local import
 import bp_utils as bp
@@ -49,7 +50,7 @@ logger.addHandler(HDLR)
 logger.setLevel(logging.INFO)
 
 
-def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_list):
+def move_to_ingest_folder(folderpth: str, upload_size: int, autoingest: str, file_list: list[str], bucket_list: list[str]) -> list[str]:
     '''
     Runs while loop and moves upto 2TB folder size
     End when 2TB reached or files run out
@@ -86,7 +87,7 @@ def move_to_ingest_folder(folderpth, upload_size, autoingest, file_list, bucket_
     return file_list
 
 
-def create_folderpth(autoingest):
+def create_folderpth(autoingest: str) -> str:
     '''
     Create new folderpth for ingest
     '''
@@ -102,7 +103,7 @@ def create_folderpth(autoingest):
     return folderpth
 
 
-def format_dt():
+def format_dt() -> str:
     '''
     Return date correctly formatted
     '''
@@ -110,7 +111,7 @@ def format_dt():
     return now.strftime('%Y-%m-%d_%H-%M-%S')
 
 
-def check_folder_age(fname):
+def check_folder_age(fname: str) -> int:
     '''
     Retrieve date time stamp from folder
     Returns days in integer using timedelta days
@@ -293,13 +294,13 @@ def main():
     logger.info(f"======== END Black Pearl ingest %s END ========", sys.argv[1])
 
 
-def put_dir(directory_pth, bucket_choice):
+def put_dir(directory_pth: str, bucket_choice: str) -> list[str]:
     '''
     Add the directory to black pearl using helper (no MD5)
     Retrieve job number and launch json notification
     '''
     try:
-        job_list = bp.put_directory(directory_pth, bucket_choice)
+        job_list: list[str] = bp.put_directory(directory_pth, bucket_choice)
         print(f"bp.put_directory: {job_list}")
     except Exception as err:
         logger.error('Exception: %s', err)
@@ -314,7 +315,7 @@ def put_dir(directory_pth, bucket_choice):
     return job_list
 
 
-def pth_rename(folderpth, job_list):
+def pth_rename(folderpth: str, job_list: list[str]) -> Optional[str]:
     '''
     Take folder path and change name for job_list
     '''

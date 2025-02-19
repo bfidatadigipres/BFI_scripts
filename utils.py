@@ -15,13 +15,14 @@ import logging
 import datetime
 import subprocess
 import adlib_v3 as adlib
+from typing import Final, Optional, Iterator, Any
 
-LOG_PATH = os.environ['LOG_PATH']
-CONTROL_JSON = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
-GLOBAL_LOG = os.path.join(LOG_PATH, 'autoingest', 'global.log')
+LOG_PATH: Final = os.environ['LOG_PATH']
+CONTROL_JSON: Final = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
+GLOBAL_LOG: Final = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 
 
-PREFIX = [
+PREFIX: Final = [
     'N',
     'C',
     'PD',
@@ -33,7 +34,7 @@ PREFIX = [
     'CA'
 ]
 
-ACCEPTED_EXT = [
+ACCEPTED_EXT: Final = [
     'avi',
     'mxf',
     'xml',
@@ -69,12 +70,12 @@ ACCEPTED_EXT = [
 ]
 
 
-def accepted_file_type(ext):
+def accepted_file_type(ext: str) -> Optional[str]:
     '''
     Receive extension and returnc
     matching accepted file_type
     '''
-    ftype = {'avi': 'avi',
+    ftype: dict[str, str]= {'avi': 'avi',
              'imp': 'mxf, xml',
              'tar': 'dpx, dcp, dcdm, wav',
              'mxf': 'mxf, 50i, imp',
@@ -114,7 +115,7 @@ def accepted_file_type(ext):
     return None
 
 
-def check_control(arg):
+def check_control(arg: str) -> bool:
     '''
     Check control json for downtime requests
     based on passed argument
@@ -125,14 +126,14 @@ def check_control(arg):
         arg = str(arg)
 
     with open(CONTROL_JSON) as control:
-        j = json.load(control)
+        j: dict[str, str] = json.load(control)
         if j[arg]:
             return True
         else:
             return False
 
 
-def cid_check(cid_api):
+def cid_check(cid_api: str) -> bool:
     '''
     Tests if CID API operational before
     all other operations commence
@@ -140,7 +141,7 @@ def cid_check(cid_api):
         sys.exit(message)
     '''
     try:
-        dct = adlib.check(cid_api)
+        dct: dict[str, str] = adlib.check(cid_api)
         print(dct)
         if isinstance(dct, dict):
             return True
@@ -148,7 +149,7 @@ def cid_check(cid_api):
         return False
 
 
-def read_yaml(file):
+def read_yaml(file: str) -> dict[str, str]:
     '''
     Safe open yaml and return as dict
     '''
@@ -157,7 +158,7 @@ def read_yaml(file):
         return d
 
 
-def read_csv(csv_path):
+def read_csv(csv_path: str) -> Iterator[dict[Any, Any]]:
     '''
     Check CSV for evidence that fname already
     downloaded. Extract download date and return
@@ -168,18 +169,18 @@ def read_csv(csv_path):
         return readme
 
 
-def read_extract(fpath):
+def read_extract(fpath: str) -> str:
     '''
     For reading metadata text files
     and returning as a block
     '''
     with open(fpath, 'r') as data:
-        readme = data.read()
+        readme: str = data.read()
 
     return readme
 
 
-def check_filename(fname):
+def check_filename(fname: str) -> bool:
     '''
     Run series of checks against BFI filenames
     check accepted prefixes, and extensions
@@ -189,7 +190,7 @@ def check_filename(fname):
     if not re.search("^[A-Za-z0-9_.]*$", fname):
         return False
 
-    sname = fname.split('_')
+    sname: list[str] = fname.split('_')
     if len(sname) > 4 or len(sname) < 3:
         return False
     if len(sname) == 4 and len(sname[2]) != 1:
@@ -205,17 +206,17 @@ def check_filename(fname):
     return True
 
 
-def check_part_whole(fname):
+def check_part_whole(fname: str) -> tuple[Optional[int], Optional[int]]:
     '''
     Check part whole well formed
     '''
-    match = re.search(r'(?:_)(\d{2,4}of\d{2,4})(?:\.)', fname)
+    match: Optional[re.Match[str]] = re.search(r'(?:_)(\d{2,4}of\d{2,4})(?:\.)', fname)
     if not match:
         print('* Part-whole has illegal charcters...')
         return None, None
     part, whole = [int(i) for i in match.group(1).split('of')]
-    len_check = fname.split('_')
-    len_check = len_check[-1].split('.')[0]
+    len_check = fname.split('_')[-1].split('.')[0]
+    #len_check = len_check[-1].split('.')[0]
     str_part, str_whole = len_check.split('of')
     if len(str_part) != len(str_whole):
         return None, None
@@ -225,7 +226,7 @@ def check_part_whole(fname):
     return part, whole
 
 
-def get_object_number(fname):
+def get_object_number(fname: str) -> str | bool | None:
     '''
     Extract object number from name formatted
     with partWhole, eg N_123456_01of03.ext
@@ -233,18 +234,18 @@ def get_object_number(fname):
     if not any(fname.startswith(px) for px in PREFIX):
         return False
     try:
-        splits = fname.split('_')
-        object_number = '-'.join(splits[:-1])
+        splits: list[str] = fname.split('_')
+        object_number: str = '-'.join(splits[:-1])
     except Exception:
         object_number = None
     return object_number
 
 
-def sort_ext(ext):
+def sort_ext(ext: str) -> Optional[str]:
     '''
     Decide on file type
     '''
-    mime_type = {'video': ['mxf', 'mkv', 'mov', 'wmv', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
+    mime_type: dict[str, list[str]] = {'video': ['mxf', 'mkv', 'mov', 'wmv', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'vtt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp', 'txt', 'ttf', 'rtf', 'csv', 'txt']}
@@ -255,7 +256,7 @@ def sort_ext(ext):
             return key
 
 
-def exif_data(dpath):
+def exif_data(dpath: str) -> str:
     '''
     Retrieve exiftool data
     return match to field if available
@@ -265,19 +266,18 @@ def exif_data(dpath):
         'exiftool',
         dpath
     ]
-    data = subprocess.check_output(cmd)
-    data = data.decode('latin-1')
+    data = subprocess.check_output(cmd).decode('latin-1')
 
     return data
 
 
-def get_metadata(stream, arg, dpath):
+def get_metadata(stream: str, arg: str, dpath: str) -> str:
     '''
     Retrieve metadata with subprocess
     for supplied stream/field arg
     '''
 
-    cmd = [
+    cmd: list[str] = [
         'mediainfo', '--Full',
         '--Language=raw',
         f'--Output={stream};%{arg}%',
@@ -288,33 +288,32 @@ def get_metadata(stream, arg, dpath):
     return meta.decode('utf-8').rstrip('\n')
 
 
-def get_mediaconch(dpath, policy):
+def get_mediaconch(dpath: str, policy: str) -> tuple[bool, str]:
     '''
     Check for 'pass! {path}' in mediaconch reponse
     for supplied file path and policy
     '''
 
-    cmd = [
+    cmd: list[str] = [
         'mediaconch', '--force',
         '-p', policy,
         dpath
     ]
 
-    meta = subprocess.check_output(cmd)
-    meta = meta.decode('utf-8')
+    meta = subprocess.check_output(cmd).decode('utf-8')
     if meta.startswith(f'pass! {dpath}'):
         return True, meta
 
     return False, meta
 
 
-def get_ms(filepath):
+def get_ms(filepath: str) -> Optional[str | bytes]:
     '''
     Retrieve duration as milliseconds if possible
     '''
-    retry = False
-    duration = ''
-    cmd = [
+    retry: bool = False
+    duration: str = ''
+    cmd: list[str] = [
         'ffprobe',
         '-v', 'error',
         '-show_entries', 'format=duration',
@@ -341,18 +340,17 @@ def get_ms(filepath):
         except Exception as err:
             print(f"Unable to extract duration with MediaInfo: {err}")
     if duration:
-        duration = duration.decode('utf-8')
-        return duration.rstrip('\n')
+        return duration.decode('utf-8').rstrip('\n')
     return None
 
 
-def get_duration(filepath):
+def get_duration(filepath: str) -> Optional[str | bytes]:
     '''
     Retrieve duration field if possible
     '''
-    retry = False
-    duration = ''
-    cmd = [
+    retry: bool = False
+    duration: str | bytes = ''
+    cmd: list[str] = [
         'ffprobe',
         '-v', 'error',
         '-show_entries', 'format=duration',
@@ -379,12 +377,11 @@ def get_duration(filepath):
         except Exception as err:
             print(f"Unable to extract duration with MediaInfo: {err}")
     if duration:
-        duration = duration.decode('utf-8')
-        return duration.rstrip('\n')
+        return duration.decode('utf-8').rstrip('\n')
     return None
 
 
-def logger(log_path, level, message):
+def logger(log_path: str, level: str, message: str) -> None:
     '''
     Configure and handle logging
     of file events
@@ -409,7 +406,7 @@ def logger(log_path, level, message):
         LOGGER.exception(message)
 
 
-def get_size(fpath):
+def get_size(fpath: str) -> Optional[int]:
     '''
     Check the size of given folder path
     return size in kb
@@ -418,14 +415,14 @@ def get_size(fpath):
         return os.path.getsize(fpath)
 
     try:
-        byte_size = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
+        byte_size: Optional[int] = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
         return byte_size
     except OSError as err:
         print(f"get_size(): Cannot reach folderpath for size check: {fpath}\n{err}")
         return None
 
 
-def create_md5_65536(fpath):
+def create_md5_65536(fpath: str):
     '''
     Hashlib md5 generation, return as 32 character hexdigest
     '''
@@ -441,7 +438,7 @@ def create_md5_65536(fpath):
         return None
 
 
-def check_global_log(fname, check_str):
+def check_global_log(fname: str, check_str: str) -> Optional[list[str]]:
     '''
     Read global log lines and look for a
     confirmation of deletion from autoingest
@@ -456,12 +453,12 @@ def check_global_log(fname, check_str):
                 return row
 
 
-def checksum_write(checksum_path, checksum, filepath, filename):
+def checksum_write(checksum_path: str, checksum: str, filepath: str, filename: str) -> str:
     '''
     This function writes the checksum into a txt file with correct
     formatting and returns the path to that document
     '''
-    date_string = str(datetime.date.today())
+    date_string: str = str(datetime.date.today())
     try:
         with open(checksum_path, 'w') as fname:
             fname.write(f"{checksum} - {filepath} - {date_string}")
@@ -472,18 +469,18 @@ def checksum_write(checksum_path, checksum, filepath, filename):
         raise Exception
 
 
-def mediainfo_create(arg, output_type, filepath, mediainfo_path):
+def mediainfo_create(arg: str, output_type: str, filepath: str, mediainfo_path: str) -> str | bool:
     '''
     Output mediainfo data to text files
     '''
-    filename = os.path.basename(filepath)
+    filename: str = os.path.basename(filepath)
     if arg == '-f':
         if output_type == 'TEXT':
             out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}_FULL.txt")
         elif output_type == 'JSON':
             out_path = os.path.join(mediainfo_path, f"{filename}_{output_type}.json")
 
-        command = [
+        command: list[str] = [
             'mediainfo',
             arg,
             '--Details=0',

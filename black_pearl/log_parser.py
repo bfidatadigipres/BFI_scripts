@@ -13,6 +13,7 @@ import sys
 import csv
 import shutil
 import datetime
+from typing import Final
 csv.field_size_limit(10000000)
 
 # Local imports
@@ -20,17 +21,17 @@ sys.path.append(os.environ['CODE'])
 import utils
 
 # Date variable for use in ordering error outputs
-TODAY = datetime.date.today()
-YEST = TODAY - datetime.timedelta(days=1)
-YEST2 = TODAY - datetime.timedelta(days=2)
-DATE_VAR = YEST.strftime('%Y-%m-%d')
-DATE_VAR2 = YEST2.strftime('%Y-%m-%d')
-LOGS = os.environ['LOG_PATH']
-CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-GLOBAL_LOG = os.path.join(LOGS, 'autoingest/global.log')
-CURRENT_ERROR_FOLD = os.environ['CURRENT_ERRORS']
-CURRENT_ERRORS = os.path.join(CURRENT_ERROR_FOLD, 'current_errors.csv')
-CURRENT_ERRORS_NEW = os.path.join(CURRENT_ERROR_FOLD, 'current_errors_new.csv')
+TODAY: Final = datetime.date.today()
+YEST:Final = TODAY - datetime.timedelta(days=1)
+YEST2:Final = TODAY - datetime.timedelta(days=2)
+DATE_VAR:Final = YEST.strftime('%Y-%m-%d')
+DATE_VAR2:Final = YEST2.strftime('%Y-%m-%d')
+LOGS:Final = os.environ['LOG_PATH']
+CONTROL_JSON:Final = os.path.join(LOGS, 'downtime_control.json')
+GLOBAL_LOG:Final = os.path.join(LOGS, 'autoingest/global.log')
+CURRENT_ERROR_FOLD:Final = os.environ['CURRENT_ERRORS']
+CURRENT_ERRORS:Final = os.path.join(CURRENT_ERROR_FOLD, 'current_errors.csv')
+CURRENT_ERRORS_NEW:Final = os.path.join(CURRENT_ERROR_FOLD, 'current_errors_new.csv')
 
 
 def main():
@@ -43,11 +44,11 @@ def main():
     create_current_errors_logs()
 
 
-def create_current_errors_logs():
+def create_current_errors_logs() -> None:
     '''
     Parse global.log entries
     '''
-    data = {}
+    data: dict = {}
     with open(GLOBAL_LOG, 'r') as file:
         rows = csv.reader(file, delimiter='\n')
         for row in rows:
@@ -86,7 +87,7 @@ def create_current_errors_logs():
                     data[file_] = {timedate : (status, message, local_p, remote_p)}
 
     print(data)
-    append_rows = []
+    append_rows: list = []
     for file_ in data.items():
         # This section removes duplicates entries, writing just last entry to csv
         latest_timedate = sorted(data[file_[0]].keys())[-1]

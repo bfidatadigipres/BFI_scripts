@@ -25,6 +25,7 @@ import glob
 import logging
 from datetime import datetime, timezone
 import pytz
+from typing import Final, Optional, Any
 
 # Private imports
 sys.path.append(os.environ['CODE'])
@@ -34,8 +35,8 @@ import document_item
 import models
 
 # Logging
-LOGS = os.environ['SCRIPT_LOG']
-CID_API = os.environ['CID_API4']
+LOGS: Final = os.environ['SCRIPT_LOG']
+CID_API: Final = os.environ['CID_API4']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('split_mopup_segmented')
@@ -46,7 +47,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Targets (will look for 'segmented' subdirectory)
-TARGETS = [
+TARGETS: Final = [
     '/mnt/qnap_10/processing/',
     '/mnt/qnap_02/processing/',
     '/mnt/qnap_08/processing/',
@@ -55,7 +56,7 @@ TARGETS = [
 ]
 
 
-def check_for_parts(ob_num):
+def check_for_parts(ob_num: str) -> bool:
     '''
     Call up CID for hits against
     part_of_reference for ob_num
@@ -75,7 +76,7 @@ def check_for_parts(ob_num):
         return False
 
 
-def check_media_record(fname):
+def check_media_record(fname: str) -> bool:
     '''
     Check if CID media record
     already created for filename

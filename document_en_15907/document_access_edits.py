@@ -15,6 +15,7 @@ import os
 import sys
 import logging
 import datetime
+from typing import Final, Optional
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -22,13 +23,13 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-INGEST = os.environ.get('AUTOINGEST_QNAP10')
-STORAGE = os.path.join(INGEST, 'access_edits')
-LOCAL_LOG = os.path.join(STORAGE, 'access_edits_renamed.log')
-AUTOINGEST = os.path.join(INGEST, 'ingest/autodetect')
-LOGS = os.environ.get('LOG_PATH')
-CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API4')
+INGEST: Final = os.environ.get('AUTOINGEST_QNAP10')
+STORAGE: Final = os.path.join(INGEST, 'access_edits')
+LOCAL_LOG: Final = os.path.join(STORAGE, 'access_edits_renamed.log')
+AUTOINGEST: Final = os.path.join(INGEST, 'ingest/autodetect')
+LOGS: Final = os.environ.get('LOG_PATH')
+CONTROL_JSON: Final = os.path.join(LOGS, 'downtime_control.json')
+CID_API: Final = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_access_edits')
@@ -39,13 +40,13 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def get_source_record(file):
+def get_source_record(file: str) -> list[dict[str, str]]:
     '''
     Get source Item record ob_num from filename
     '''
 
     source_ob_num = file.split('EDIT_')[1].split('.')[0]
-    search = f"object_number='{source_ob_num}'"
+    search: str = f"object_number='{source_ob_num}'"
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
     if hits is None:
         raise Exception(f"CID API was unreachable for Items search: {search}")
@@ -114,7 +115,7 @@ def main():
     LOGGER.info("======== Document Access Edits scripts end =======================")
 
 
-def create_new_item_record(source_priref, file, source_record):
+def create_new_item_record(source_priref: str, file: str, source_record: list[dict[str, str]]) -> None:
     '''
     Build new CID item record from existing data and make CID item record
     '''
@@ -129,7 +130,7 @@ def create_new_item_record(source_priref, file, source_record):
     return new_record
 
 
-def make_item_record_dict(priref, file, record):
+def make_item_record_dict(priref: str, file: str, record: str) -> list[dict[str, str]]:
     '''
     Get CID item record for source and borrow data
     for creation of new CID item record
@@ -169,7 +170,7 @@ def make_item_record_dict(priref, file, record):
     return item
 
 
-def defaults():
+def defaults() -> list[dict[str, str]]:
     '''
     Build defaults for new CID item records
     '''
@@ -194,7 +195,7 @@ def defaults():
     return record
 
 
-def local_log(data):
+def local_log(data: str) -> str:
     '''
     Write collected data actions list of items
     to local log in audio_operations

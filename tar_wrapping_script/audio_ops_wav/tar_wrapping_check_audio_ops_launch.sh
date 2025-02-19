@@ -11,7 +11,7 @@ function control {
     boole=$(cat "${LOG_PATH}downtime_control.json" | grep "rawcooked" | awk -F': ' '{print $2}')
     if [ "$boole" = false, ] ; then
       log "Control json requests script exit immediately"
-      log "===================== DPX assessment workflow ENDED ====================="
+      log "===================== TAR WRAPPING CHECKSUM SCRIPT ENDED ====================="
       exit 0
     fi
 }

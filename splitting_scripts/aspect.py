@@ -25,6 +25,7 @@ import sys
 import shutil
 import logging
 import subprocess
+from typing import Final, Optional
 
 # Public packages
 sys.path.append(os.environ['CODE'])
@@ -32,7 +33,7 @@ import adlib_v3 as adlib
 import utils
 
 # Configure adlib
-CID_API = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('aspect_ratio_triage')
@@ -43,7 +44,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-FOLDERS = {
+FOLDERS: Final = {
     f"{os.environ['QNAP_H22']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
     f"{os.environ['GRACK_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_H22']}ingest/proxy/video/adjust/",
@@ -54,7 +55,7 @@ FOLDERS = {
 }
 
 
-def get_dar(fullpath):
+def get_dar(fullpath: str) -> str:
     '''
     Retrieves metadata DAR info and returns as string
     trimmed to 5 spaces
@@ -64,26 +65,26 @@ def get_dar(fullpath):
         return dar[:5]
 
 
-def get_par(fullpath):
+def get_par(fullpath: str) -> str:
     '''
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
     '''
-    par_full = utils.get_metadata('Video', 'PixelAspectRatio', fullpath)
+    par_full: str = utils.get_metadata('Video', 'PixelAspectRatio', fullpath)
     if len(par_full) <= 5:
         return par_full
     return par_full[:5]
 
 
-def get_height(fullpath):
+def get_height(fullpath: str) -> str:
     '''
     Retrieves height information via mediainfo
     Using sampled height where original
     height and stored height differ (MXF samples)
     '''
 
-    sheight = utils.get_metadata('Video', 'Sampled_height', fullpath)
-    rheight = utils.get_metadata('Video', 'Height', fullpath)
+    sheight: int | str = utils.get_metadata('Video', 'Sampled_height', fullpath)
+    rheight: int | str = utils.get_metadata('Video', 'Height', fullpath)
 
     try:
         int(sheight)
@@ -91,28 +92,28 @@ def get_height(fullpath):
         sheight = 0
 
     if sheight:
-        height = [str(sheight) if int(sheight) > int(rheight) else str(rheight)]
+        height: str | list[str] = [str(sheight) if int(sheight) > int(rheight) else str(rheight)]
     else:
         height = str(rheight)
 
-    if '480' == height:
+    if '480' in height:
         return '480'
-    if '486' == height:
+    if '486' in height:
         return '486'
-    if '576' == height:
+    if '576' in height:
         return '576'
-    if '608' == height:
+    if '608' in height:
         return '608'
-    if '720' == height:
+    if '720' in height:
         return '720'
-    if '1080' == height or '1 080' == height:
+    if '1080' in height or '1 080' in height:
         return '1080'
 
     height = height.split(' pixel', maxsplit=1)[0]
     return re.sub("[^0-9]", "", height)
 
 
-def check_parent_aspect_ratio(object_number):
+def check_parent_aspect_ratio(object_number: str) -> Optional[str]:
     '''
     Retrieve the DAR from the parent item record
     object_number supplied
@@ -133,7 +134,7 @@ def check_parent_aspect_ratio(object_number):
     return adlib.retrieve_field_name(source_rec[0], 'aspect_ratio')[0]
 
 
-def get_colour(fullpath):
+def get_colour(fullpath: str) -> tuple[str, str]:
     '''
     Retrieves colour information via mediainfo and returns in correct FFmpeg format
     '''
@@ -162,7 +163,7 @@ def get_colour(fullpath):
     return (color_primaries, colormatrix)
 
 
-def adjust_par_metadata(filepath):
+def adjust_par_metadata(filepath: str) -> bool:
     '''
     Use MKVToolNix MKVPropEdit to
     adjust the metadata for PAR output
@@ -170,7 +171,7 @@ def adjust_par_metadata(filepath):
     '''
     dar = get_dar(filepath)
 
-    cmd = [
+    cmd: list[str] = [
         'mkvpropedit', filepath,
         '--edit', 'track:v1',
         '--set', 'display-width=295',
@@ -190,7 +191,7 @@ def adjust_par_metadata(filepath):
         return True
 
 
-def fix_aspect_ratio(fpath):
+def fix_aspect_ratio(fpath: str) -> Optional[bool]:
     '''
     Change AR 4x3 to 16x9
     Crop not needed
@@ -201,25 +202,25 @@ def fix_aspect_ratio(fpath):
        LOGGER.warning("Skipping: File that needs change to 16x9 is not an FFV1 Matroska: %s", fpath)
        return False
 
-    fpath_split = os.path.splitext(fpath)[0]
-    replace = f"{fpath_split}_16x9.mkv"
+    fpath_split: str = os.path.splitext(fpath)[0]
+    replace: str = f"{fpath_split}_16x9.mkv"
 
-    launch = [
+    launch: list[str] = [
         'ffmpeg', '-i',
         fpath
     ]
 
-    cv = [
+    cv: list[str] = [
         "-c", "copy",
         "-map", "0"
     ]
 
-    aspect = [
+    aspect: list[str] = [
         "-aspect", "16:9",
         replace
     ]
 
-    command = launch + cv + aspect
+    command: list[str] = launch + cv + aspect
 
     try:
         process = subprocess.run(command, shell=False, capture_output=True, text=True)
@@ -301,7 +302,7 @@ def main():
                 continue
 
             # Check aspect ratio of CID item record
-            ob_num = utils.get_object_number(fn)
+            ob_num: str = utils.get_object_number(fn)
             aspect = check_parent_aspect_ratio(ob_num)
             print(aspect)
             if '16:9' in str(aspect):

@@ -204,7 +204,7 @@ def retrieve_facet_list(record: dict, fname: str) -> dict[any, any]:
     facets = []
     for value in record['adlibJSON']['facetList'][0]['values']:
         facets.append(value[fname]['spans'][0]['text'])
-    print("retrieve_facet_list(): " + type(facets))
+    print(f"retrieve_facet_list(): {type(facets)}")
 
     return facets
 
@@ -231,7 +231,7 @@ def group_check(record: dict, fname: str) -> list[str]:
                         except (IndexError, KeyError):
                             pass
         if fieldnames:
-            print("group_check(): " + type(fieldnames))
+            print(f"group_check(): {type(fieldnames)}")
             return fieldnames
 
     elif len(group_check) > 1:

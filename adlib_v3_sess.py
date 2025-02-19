@@ -167,8 +167,8 @@ def post(api, payload, database, method, session=None):
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
-    bool = check_response(response.text, api)
-    if bool is True:
+    boolean = check_response(response.text, api)
+    if boolean is True:
         return False
     if 'recordList' in response.text:
         record = json.loads(response.text)
@@ -219,7 +219,7 @@ def retrieve_facet_list(record, fname):
     facets = []
     for value in record['adlibJSON']['facetList'][0]['values']:
         facets.append(value[fname]['spans'][0]['text'])
-    
+
     return facets
 
 
@@ -379,7 +379,7 @@ def create_grouped_data(priref, grouping, field_pairs):
                 mid += xml_field
         mid_fields = f"<{grouping}>" + mid + f"</{grouping}>"
         payload_mid = payload_mid + mid_fields
-    
+
     if len(priref) > 0:
         payload = f"<adlibXML><recordList><record priref='{priref}'>"
         payload_end = "</record></recordList></adlibXML>"

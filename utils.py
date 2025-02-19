@@ -13,6 +13,7 @@ import yaml
 import hashlib
 import logging
 import datetime
+import tenacity
 import subprocess
 import adlib_v3 as adlib
 from typing import Final, Optional, Iterator, Any
@@ -469,6 +470,7 @@ def checksum_write(checksum_path: str, checksum: str, filepath: str, filename: s
         raise Exception
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(4))
 def mediainfo_create(arg: str, output_type: str, filepath: str, mediainfo_path: str) -> str | bool:
     '''
     Output mediainfo data to text files
@@ -508,7 +510,15 @@ def mediainfo_create(arg: str, output_type: str, filepath: str, mediainfo_path: 
 
     try:
         subprocess.call(command)
-        return out_path
     except Exception as e:
         print(e)
-        return False
+        raise Exception
+
+    # Check file created has contents
+    file_stats = os.stat(out_path)
+    file_size = file_stats.st_size
+    if file_size > 0:
+        return out_path
+    else:
+        raise Exception
+

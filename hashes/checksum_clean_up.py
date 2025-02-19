@@ -92,6 +92,7 @@ def cid_retrieve(fname: str) -> tuple[str, str]:
     '''
     priref = ''
     search = f"imagen.media.original_filename='{fname}'"
+    print(f"Media record search: {search}")
     record = adlib.retrieve_record(CID_API, 'media', search, '0', ['priref', 'checksum.value'])[1]
     if not record:
         return '', ''
@@ -150,7 +151,7 @@ def main():
     LOGGER.info("%s -- Processing checksum", fname)
     priref, checksum_val = cid_retrieve(fname)
     if priref == '':
-        LOGGER.info("Failed to match data to a CID Media record. Skipping this file.", fname)
+        LOGGER.info("Failed to match data to a CID Media record. Skipping this file.")
         sys.exit()
     if len(checksum_val) == 0:
         LOGGER.info("%s Media record found for associated checksum. Checksum no longer required.", fname)

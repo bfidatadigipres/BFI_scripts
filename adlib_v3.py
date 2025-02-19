@@ -152,8 +152,8 @@ def post(api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
-    bool = check_response(response.text, api)
-    if bool is True:
+    boolean = check_response(response.text, api)
+    if boolean is True:
         return False
     if 'recordList' in response.text:
         record = json.loads(response.text)

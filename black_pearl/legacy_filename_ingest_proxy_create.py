@@ -186,7 +186,7 @@ def check_bp_status(fname: str, bucket_list: list[str], local_md5: str) -> Optio
 
     for bucket in bucket_list:
         query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
-        result: ds3.HeadObjectReponse = CLIENT.head_object(query)
+        result: ds3.HeadObjectResponse = CLIENT.head_object(query)
 
         if 'DOESNTEXIST' in str(result.result):
             continue

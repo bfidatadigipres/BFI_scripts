@@ -60,8 +60,8 @@ def check_no_bp_status(fname: str, bucket_list: list[str]) -> bool:
             result: ds3.HeadObjectResponse = CLIENT.head_object(query)
             # Only return false if DOESNTEXIST is missing, eg file found
             if 'DOESNTEXIST' in str(result.result):
-                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
-                 exist_across_buckets.append('DOESNTEXIST')
+                print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                exist_across_buckets.append('DOESNTEXIST')
             elif str(result.result) == 'EXISTS':
                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
                 exist_across_buckets.append('PRESENT')
@@ -302,7 +302,7 @@ def delete_black_pearl_object(ref_num: str, version: Optional[str], bucket: str)
     '''
     try:
         request = ds3.DeleteObjectRequest(bucket, ref_num, version_id=version)
-        job_deletion: ds3.DeleteObjectResponse = CLIENT.delete_object(request)
+        job_deletion: str = CLIENT.delete_object(request)
         return job_deletion
     except Exception as exc:
         print(exc)
@@ -341,4 +341,3 @@ def get_version_id(ref_num: str) -> Optional[str]:
     except (IndexError, TypeError, KeyError):
         version_id = None
     return version_id
-

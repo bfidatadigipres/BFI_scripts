@@ -1,4 +1,4 @@
-#!/usr/bin/ python3c
+#!/usr/bin/ python3
 
 '''
 Script to frequently back up
@@ -25,7 +25,7 @@ import shutil
 import logging
 from datetime import datetime
 from time import sleep
-from typing import Final
+from typing import Final, Optional
 
 # Local imports
 import bp_utils
@@ -104,7 +104,8 @@ def delete_existing_proxy(file_list: list[str]) -> list[str]:
         LOGGER.info("No files being replaced at this time")
         return []
     for file in file_list:
-        confirmed: Optional[ds3.DeleteObjectReponse] = bp_utils.delete_black_pearl_object(file, None, BUCKET)
+        confirmed = bp_utils.delete_black_pearl_object(file, None, BUCKET)
+        print(type(confirmed))
         if confirmed:
             sleep(10)
             success: bool = bp_utils.check_no_bp_status(file, [BUCKET])

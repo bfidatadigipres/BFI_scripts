@@ -145,6 +145,7 @@ def already_exists_grouping(source_object_number, grouping_lref):
 
     search = f'(source_item->(object_number="{source_object_number}")) and grouping.lref={grouping_lref}'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
+    print(f"already_exists_grouping() hits: {hits}\n{record}")
     if hits is None:
         raise Exception('Unable to retrieve data from Item record')
     elif hits >= 1:

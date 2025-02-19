@@ -424,8 +424,8 @@ def add_quality_comments(api: str, priref: str, comments: str) -> bool:
         data=payload,
         timeout=1200)
 
-    bool = check_response(response.text, api)
-    if bool is True:
+    boolean = check_response(response.text, api)
+    if boolean is True:
         return False
     if "error" in str(response.text):
         return False

@@ -455,7 +455,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                     milliseconds = match[key]
                     seconds = f"{float(milliseconds) / 1000:.9f}"
                     print(f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***")
-                    vid.append({f'{key}': seconds})
+                    vid.append({f'{key}': float(seconds)})
                 if key.startswith('video.'):
                     match = iterate_text_rows(vid_rows, val[1], key)
                     if match is None:

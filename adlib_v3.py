@@ -15,13 +15,14 @@ from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
 from tenacity import retry, stop_after_attempt
+from typing import Final, Optional, Any
 
 HEADERS = {
     'Content-Type': 'text/xml'
 }
 
 
-def check(api):
+def check(api: str) -> dict[Any, Any]:
     '''
     Check API responds
     '''
@@ -33,8 +34,8 @@ def check(api):
 
     return get(api, query)
 
-
-def retrieve_record(api, database, search, limit, fields=None):
+# -> tuple[int, list[dict[str, str]]]
+def retrieve_record(api: str, database: str, search: str, limit: str, fields=None) -> tuple[Optional[int],Optional[list[dict[str, Any]]]]:
     '''
     Retrieve data from CID using new API
     '''
@@ -80,7 +81,7 @@ def retrieve_record(api, database, search, limit, fields=None):
 
 
 @retry(stop=stop_after_attempt(10))
-def get(api, query):
+def get(api: str, query: dict[str, str]) -> dict[Any, Any]:
     '''
     Send a GET request
     '''
@@ -104,7 +105,7 @@ def get(api, query):
         raise Exception from err
 
 
-def post(api, payload, database, method):
+def post(api: str, payload: str, database: str, method: str):
     '''
     Send a POST request
     '''
@@ -172,7 +173,7 @@ def post(api, payload, database, method):
     return None
 
 
-def retrieve_field_name(record, fieldname):
+def retrieve_field_name(record, fieldname) -> list[str]:
     '''
     Retrieve record, check for language data
     Alter retrieval method. record ==
@@ -203,6 +204,7 @@ def retrieve_facet_list(record, fname):
     facets = []
     for value in record['adlibJSON']['facetList'][0]['values']:
         facets.append(value[fname]['spans'][0]['text'])
+    print("retrieve_facet_list(): " + type(facets))
 
     return facets
 
@@ -229,6 +231,7 @@ def group_check(record, fname):
                         except (IndexError, KeyError):
                             pass
         if fieldnames:
+            print("group_check(): " + type(fieldnames))
             return fieldnames
 
     elif len(group_check) > 1:
@@ -256,39 +259,6 @@ def group_check(record, fname):
             return all_vals
     else:
         return None
-
-
-def get_grouped_items(api, database):
-    '''
-    Check dB for groupings and ensure
-    these are added to XML configuration
-    '''
-    query = {
-        'command': 'getmetadata',
-        'database': database,
-        'limit': 0
-    }
-
-    result = requests.request('GET', api, headers=HEADERS, params=query)
-    metadata = xmltodict.parse(result.text)
-
-    if not isinstance(metadata, dict):
-        return None, None
-
-    grouped = {}
-    mdata = metadata['adlibXML']['recordList']['record']
-    for num in range(0, len(mdata)):
-        try:
-            group = mdata[num]['group']
-            field_name = mdata[num]['fieldName']['value'][0]['#text']
-            if group in grouped.keys():
-                grouped[group].append(field_name)
-            else:
-                grouped[group] = [field_name]
-        except KeyError:
-            pass
-
-    return grouped
 
 
 def create_record_data(api, database, priref, data=None):
@@ -457,7 +427,7 @@ def recycle_api(api):
     triggers Powershell recycle
     '''
     search = 'title=recycle.application.pool.data.test'
-    req = requests.request('GET', api, headers=HEADERS, params=search)
+    req = requests.request('retrieve_record', api, headers=HEADERS, params=search)
     print(f"Search to trigger recycle sent: {req}")
     print("Pausing for 2 minutes")
     sleep(120)

@@ -34,6 +34,7 @@ import shutil
 import logging
 import datetime
 import subprocess
+from typing import Final, Optional, Any
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -44,8 +45,8 @@ import clipmd5
 
 # GLOBAL PATHS FROM SYS.ARGV
 try:
-    TARGET = str(sys.argv[1])
-    MULTI_ITEMS = True if sys.argv[2] == 'multi' else False
+    TARGET: Final = str(sys.argv[1])
+    MULTI_ITEMS: Final = True if sys.argv[2] == 'multi' else False
 except IndexError:
     MULTI_ITEMS = False
 
@@ -54,17 +55,17 @@ if not os.path.exists(TARGET):
 
 # Path to split files destination
 SOURCE, NUM = os.path.split(TARGET)
-OUTPUT_08 = os.path.join(os.path.split(SOURCE)[0], 'segmented')
-OUTPUT_01 = os.environ['QNAP01_SEGMENTED']
-MEDIA_TARGET = os.path.split(OUTPUT_08)[0]  # Processing folder
-AUTOINGEST_01 = os.environ['AUTOINGEST_QNAP01']
-AUTOINGEST_08 = os.environ['AUTOINGEST_QNAP08']
-LOG_PATH = os.environ['LOG_PATH']
+OUTPUT_08: Final = os.path.join(os.path.split(SOURCE)[0], 'segmented')
+OUTPUT_01: Final = os.environ['QNAP01_SEGMENTED']
+MEDIA_TARGET: Final = os.path.split(OUTPUT_08)[0]  # Processing folder
+AUTOINGEST_01: Final = os.environ['AUTOINGEST_QNAP01']
+AUTOINGEST_08: Final = os.environ['AUTOINGEST_QNAP08']
+LOG_PATH: Final = os.environ['LOG_PATH']
 
 # Setup CID
-CID_API = os.environ['CID_API4']
-CID = adlib.Database(url=CID_API)
-CUR = adlib.Cursor
+CID_API: Final = os.environ['CID_API4']
+CID: Final = adlib.Database(url=CID_API)
+CUR: Final = adlib.Cursor
 
 # Setup logging, overwrite each time
 logger = logging.getLogger(f'split_fixity_{NUM}')
@@ -76,7 +77,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
-def control_check():
+def control_check() -> None:
     '''
     Check that `downtime_control.json` has not indicated termination
     '''
@@ -87,20 +88,19 @@ def control_check():
             sys.exit('Exit requested by downtime_control.json')
 
 
-def get_duration(fullpath):
+def get_duration(fullpath: str) -> int:
     '''
     Retrieve file duration using ffprobe
     '''
 
-    cmd = [
+    cmd: list[str] = [
         'mediainfo', '--Language=raw',
         '--Full', '--Inform="Video;%Duration%"',
         fullpath
     ]
 
     cmd[3] = cmd[3].replace('"', '')
-    duration = subprocess.check_output(cmd)
-    duration = duration.decode('utf-8').rstrip('\n')
+    duration = subprocess.check_output(cmd).decode('utf-8').rstrip('\n')
     if len(duration) <= 1:
         return None
     print(len(duration), duration)
@@ -129,13 +129,13 @@ def get_duration(fullpath):
     return None
 
 
-def check_media_record(fname):
+def check_media_record(fname: str) -> bool:
     '''
     Check if CID media record
     already created for filename
     '''
-    search = f"imagen.media.original_filename='{fname}'"
-    query = {
+    search: str = f"imagen.media.original_filename='{fname}'"
+    query: dict[str, str] = {
         'database': 'media',
         'search': search,
         'limit': '0',
@@ -151,7 +151,7 @@ def check_media_record(fname):
     return False
 
 
-def match_in_autoingest(fname, autoingest):
+def match_in_autoingest(fname: str, autoingest: str) -> list[str]:
     '''
     Run a glob check of path
     '''

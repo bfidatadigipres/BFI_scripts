@@ -43,7 +43,7 @@ from datetime import datetime, timezone
 import subprocess
 import pytz
 import tenacity
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Final
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -51,15 +51,15 @@ import adlib_v3 as adlib
 import utils
 
 # Global paths from environment vars
-MP4_POLICY = os.environ['MP4_POLICY']
-LOG_PATH = os.environ['LOG_PATH']
-FLLPTH = sys.argv[1].split('/')[:4]
-LOG_PREFIX = '_'.join(FLLPTH)
-LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
-TRANSCODE = os.environ['TRANSCODING']
+MP4_POLICY: Final = os.environ['MP4_POLICY']
+LOG_PATH: Final = os.environ['LOG_PATH']
+FLLPTH: Final = sys.argv[1].split('/')[:4]
+LOG_PREFIX: Final = '_'.join(FLLPTH)
+LOG_FILE: Final = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
+TRANSCODE: Final = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
-CID_API = os.environ['CID_API4']
-HOST = os.uname()[1]
+CID_API: Final = os.environ['CID_API4']
+HOST: Final = os.uname()[1]
 
 # Setup logging
 if LOG_PREFIX != '_mnt_qnap_04_autoingest':
@@ -71,7 +71,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-SUPPLIERS = {"East Anglian Film Archive": "eafa",
+SUPPLIERS: Final = {"East Anglian Film Archive": "eafa",
              "Imperial War Museum": "iwm",
              "London's Screen Archive": "lsa",
              "MACE": "mace",
@@ -104,7 +104,7 @@ def main():
     if len(sys.argv) < 2:
         sys.exit("EXIT: Not enough arguments")
 
-    fullpath = sys.argv[1]
+    fullpath: str = sys.argv[1]
     if not os.path.isfile(fullpath):
         sys.exit("EXIT: Supplied path is not a file")
 
@@ -115,7 +115,7 @@ def main():
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
-    log_build = []
+    log_build: list[str] = []
 
     filepath, file = os.path.split(fullpath)
     fname, ext = os.path.splitext(file)
@@ -126,10 +126,10 @@ def main():
 
     outpath, outpath2 = "", ""
 
-    ext = ext.lstrip('.')
+    ext: str = ext.lstrip('.')
     print(file, fname, ext)
     # Check CID for Item record and extract transcode path
-    object_number = utils.get_object_number(fname)
+    object_number: str = utils.get_object_number(fname)
     if object_number.startswith('CA_'):
         priref, source, groupings = check_item(object_number, 'collectionsassets')
     else:
@@ -148,19 +148,19 @@ def main():
         log_output(log_build)
         sys.exit(f"EXITING: Unable to retrieve item details from CID: {object_number}")
 
-    date_pth = input_date.replace('-', '')[:6]
+    date_pth: str = input_date.replace('-', '')[:6]
     if 'H22: Video Digitisation: Item Outcomes' in str(groupings) and source:
         log_build.append(f"{local_time()}\tINFO\t** Source for H22 video: {source} ****")
         rna_pth = 'bfi'
         for key, val in SUPPLIERS.items():
             if key in str(source):
                 rna_pth = val
-        transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
+        transcode_pth: str = os.path.join(TRANSCODE, rna_pth, date_pth)
     else:
         transcode_pth = os.path.join(TRANSCODE, 'bfi', date_pth)
 
     # Check to ensure that the file isn't already being processed
-    check_name = os.path.join(transcode_pth, fname)
+    check_name: str = os.path.join(transcode_pth, fname)
     if os.path.exists(f"{check_name}.mp4"):
         delete_confirm = check_mod_time(f"{check_name}.mp4")
         if delete_confirm is True:
@@ -183,7 +183,7 @@ def main():
             log_build.append(f"{local_time()}\tWARNING\tCID UMIDs exist but no transcoding. Allowing files to proceed.")
 
     # Get file type, video or audio etc.
-    ftype = utils.sort_ext(ext)
+    ftype: str = utils.sort_ext(ext)
     if ftype == 'audio':
         log_build.append(f"{local_time()}\tINFO\tItem is an audio file. No actions required at this time.")
         log_build.append(f"{local_time()}\tINFO\tMoving {file} to Autoingest completed folder: {completed_pth}")
@@ -207,19 +207,19 @@ def main():
             os.makedirs(transcode_pth, mode=0o777, exist_ok=True)
 
         audio, stream_default = check_audio(fullpath)
-        dar = get_dar(fullpath)
-        par = get_par(fullpath)
-        height = get_height(fullpath)
-        width = get_width(fullpath)
+        dar: str = get_dar(fullpath)
+        par: str = get_par(fullpath)
+        height: str = get_height(fullpath)
+        width: str = get_width(fullpath)
         duration, vs = get_duration(fullpath)
         log_build.append(f"{local_time()}\tINFO\tData retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs")
 
         # CID transcode paths
-        outpath = os.path.join(transcode_pth, f"{fname}.mp4")
-        outpath2 = os.path.join(transcode_pth, fname)
+        outpath: str = os.path.join(transcode_pth, f"{fname}.mp4")
+        outpath2: str = os.path.join(transcode_pth, fname)
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
-        retry = False
+        retry: bool = False
         # Build FFmpeg command based on dar/height
         ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, retry)
         if not ffmpeg_cmd:
@@ -239,12 +239,12 @@ def main():
             log_build.append("MP4 transcode completed successfully")
         else:
             retry = True
-            ffmpeg_cmd_retry = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, retry)
+            ffmpeg_cmd_retry: list[str] = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, retry)
             if not ffmpeg_cmd_retry:
                 log_build.append(f"{local_time()}\tWARNING\tFailed to build FFmpeg command for FFmpeg retry: {fullpath}\nHeight {height} Width {width} DAR {dar}")
                 log_output(log_build)
                 sys.exit("EXIT: Failure to create FFmpeg command. Please see logs")
-            ffmpeg_call_neat2 = " ".join(ffmpeg_cmd_retry)
+            ffmpeg_call_neat2: str = " ".join(ffmpeg_cmd_retry)
             log_build.append(f"{local_time()}\tINFO\tFFmpeg retry call created with video filters:\n{ffmpeg_call_neat2}")
             try:
                 subprocess.run(ffmpeg_cmd_retry, shell=False, check=True, universal_newlines=True, stderr=subprocess.PIPE).stderr
@@ -257,7 +257,7 @@ def main():
 
         time.sleep(2)
         # Mediaconch conformance check file
-        policy_check = conformance_check(outpath)
+        policy_check: str = conformance_check(outpath)
         if 'PASS!' in policy_check:
             log_build.append(f"{local_time()}\tINFO\tMediaconch pass! MP4 transcode complete. Beginning JPEG image generation.")
         else:
@@ -273,7 +273,7 @@ def main():
         print(f"JPEG output to go here: {jpeg_location}")
 
         # Calculate seconds mark to grab screen
-        seconds = adjust_seconds(duration)
+        seconds: float = adjust_seconds(duration)
         log_build.append(f"{local_time()}\tINFO\tSeconds for JPEG cut: {seconds}")
         success = get_jpeg(seconds, outpath, jpeg_location)
         if not os.path.isfile(outpath):
@@ -287,8 +287,8 @@ def main():
                 sys.exit("Exiting: JPEG not created from MP4 file")
 
         # Generate Full size 600x600, thumbnail 300x300
-        full_jpeg = make_jpg(jpeg_location, 'full', None, None)
-        thumb_jpeg = make_jpg(jpeg_location, 'thumb', None, None)
+        full_jpeg: str = make_jpg(jpeg_location, 'full', None, None)
+        thumb_jpeg: str = make_jpg(jpeg_location, 'thumb', None, None)
         print(full_jpeg, thumb_jpeg)
         log_build.append(f"{local_time()}\tINFO\tNew images created at {seconds} seconds into video:\n - {full_jpeg}\n - {thumb_jpeg}")
         if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
@@ -301,7 +301,7 @@ def main():
 
     elif ftype == 'image':
 
-        oversize = False
+        oversize: bool = False
         log_build.append(f"{local_time()}\tINFO\tItem is image. Generating large (full size copy) and thumbnail jpeg images.")
         size = os.path.getsize(fullpath)
         if 104857600 <= int(size) <= 209715200:
@@ -347,7 +347,7 @@ def main():
         sys.exit("Exiting as script does not recognised file type")
 
     # Post MPEG/JPEG creation updates to Media record
-    media_data = []
+    media_data: list[str] = []
     if full_jpeg:
         full_jpeg_file = os.path.splitext(full_jpeg)[0]
         print(full_jpeg, full_jpeg_file)
@@ -386,7 +386,7 @@ def log_output(log_build: list[str]) -> None:
         LOGGER.info(log)
 
 
-def adjust_seconds(duration: float) -> int:
+def adjust_seconds(duration: float) -> float:
     '''
     Adjust second duration one third in
     '''
@@ -398,7 +398,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
     Retrieve JPEG from MP4
     Seconds accepted as float
     '''
-    cmd = [
+    cmd: list[str] = [
         "ffmpeg",
         "-ss", str(seconds),
         "-i", fullpath,
@@ -407,7 +407,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         outpath
     ]
 
-    command = " ".join(cmd)
+    command: str = " ".join(cmd)
     print("***********************")
     print(command)
     print("***********************")
@@ -419,11 +419,11 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         return False
 
 
-def check_item(ob_num: str, database) -> Optional[Tuple[str, str, str]]:
+def check_item(ob_num: str, database:str) -> Optional[Tuple[str, str, str]]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
-    search = f"(object_number='{ob_num}')"
+    search: str = f"(object_number='{ob_num}')"
     record = adlib.retrieve_record(CID_API, database, search, '1')[1]
     if not record:
         record = adlib.retrieve_record(CID_API, 'collect', search, '1')[1]
@@ -447,7 +447,7 @@ def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
     '''
     Retrieve priref from Digital record
     '''
-    search = f"(imagen.media.original_filename='{fname}')"
+    search: str = f"(imagen.media.original_filename='{fname}')"
     record = adlib.retrieve_record(CID_API, 'media', search, '1')[1]
     if not record:
         return None
@@ -652,134 +652,134 @@ def check_audio(fullpath: str) -> tuple[str, Optional[str]] | None:
     return ('Audio', None)
 
 
-def create_transcode(fullpath: str, output_path: str, height: str, width: str, dar: str, par: str, audio: str, default: Optional[str], vs: str, retry: bool) -> list[str]:
+def create_transcode(fullpath: str, output_path: str, height: int | str, width: int | str, dar: str, par: str, audio: str, default: Optional[str], vs: str, retry: bool) -> list[str]:
     '''
     Builds FFmpeg command based on height/dar input
     '''
     print(f"Received {dar} {par} {height} {width} {audio} {default}")
 
-    ffmpeg_program_call = [
+    ffmpeg_program_call: list[str] = [
         "ffmpeg"
     ]
 
-    input_video_file = [
+    input_video_file: list[str] = [
         "-i", fullpath
     ]
 
-    video_settings = [
+    video_settings: list[str] = [
         "-c:v", "libx264",
         "-crf", "28"
     ]
 
-    pix = [
+    pix: list[str] = [
        "-pix_fmt", "yuv420p"
     ]
 
-    fast_start = [
+    fast_start: list[str] = [
         "-movflags", "faststart"
     ]
 
-    deinterlace = [
+    deinterlace: list[str] = [
         "-vf",
         "yadif"
     ]
 
-    crop_sd_608 = [
+    crop_sd_608: list[str] = [
         "-vf",
         "yadif,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1"
     ]
 
-    no_stretch_4x3 = [
+    no_stretch_4x3: list[str] = [
         "-vf",
         "yadif,pad=768:576:-1:-1"
     ]
 
-    crop_sd_4x3 = [
+    crop_sd_4x3: list[str] = [
         "-vf",
         "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1"
     ]
 
-    crop_sd_15x11 = [
+    crop_sd_15x11: list[str] = [
         "-vf",
         "yadif,crop=704:572,scale=768:576:flags=lanczos,pad=768:576:-1:-1"
     ]
 
-    crop_ntsc_486 = [
+    crop_ntsc_486: list[str] = [
         "-vf",
         "yadif,crop=672:480,scale=734:486:flags=lanczos,pad=768:486:-1:-1"
     ]
 
-    crop_ntsc_486_16x9 = [
+    crop_ntsc_486_16x9: list[str] = [
         "-vf",
         "yadif,crop=672:480,scale=1024:486:flags=lanczos"
     ]
 
-    crop_ntsc_640x480 = [
+    crop_ntsc_640x480: list[str] = [
         "-vf",
         "yadif,pad=768:480:-1:-1"
     ]
 
-    crop_sd_16x9 = [
+    crop_sd_16x9: list[str] = [
         "-vf",
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos"
     ]
 
-    scale_sd_16x9 = [
+    scale_sd_16x9: list[str] = [
         "-vf",
         "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
     ]
 
-    hd_16x9 = [
+    hd_16x9: list[str] = [
         "-vf",
         "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1"
     ]
 
-    fhd_all = [
+    fhd_all: list[str] = [
         "-vf",
         "yadif,scale=-1:1080:flags=lanczos,pad=1920:1080:-1:-1"
     ]
 
-    fhd_letters = [
+    fhd_letters: list[str] = [
         "-vf",
         "yadif,scale=1920:-1:flags=lanczos,pad=1920:1080:-1:-1,blackdetect=d=0.05:pix_th=0.10"
     ]
 
-    max_mux = [
+    max_mux: list[str] = [
         "-max_muxing_queue_size",
         "9999"
     ]
 
-    output = [
+    output: list[str] = [
         "-nostdin", "-y",
         output_path, "-f",
         "null", "-"
     ]
 
     if vs:
-        map_video = [
+        map_video: list[str] = [
             "-map", f"0:v:{vs}",
         ]
     else:
-        map_video = [
+        map_video: list[str] = [
             "-map", "0:v:0",
         ]
 
     if default and audio:
-        map_audio = [
+        map_audio: list[str] = [
             "-map", "0:a?", "-c:a", "aac",
             f"-disposition:a:{default}",
             "default", "-dn"
         ]
     else:
-        map_audio = [
+        map_audio: list[str] = [
             "-map", "0:a?",
              "-c:a", "aac","-dn"
         ]
 
-    height = int(height)
-    width = int(width)
-    aspect = round(height / width, 3)
-    cmd_mid = []
+    height: int = int(height)
+    width: int = int(width)
+    aspect: int = round(height / width, 3)
+    cmd_mid: list[str] = []
 
     if height <= 486 and dar == '16:9':
         cmd_mid = crop_ntsc_486_16x9
@@ -826,35 +826,35 @@ def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Opt
     These command work. For full size don't use resize.
     '''
 
-    start_reduce = [
+    start_reduce: list[str] = [
         "gm", "convert",
         "-density", "300x300",
         filepath, "-strip"
     ]
 
-    start = [
+    start: list[str] = [
         "gm", "convert",
         "-density", "600x600",
         filepath, "-strip"
     ]
 
-    thumb = [
+    thumb: list[str] = [
         "-resize", "x180",
     ]
 
-    oversize = [
+    oversize: list[str] = [
         "-resize", f"{percent}%x{percent}%",
     ]
 
     if not transcode_pth:
         out = os.path.splitext(filepath)[0]
     else:
-        fname = os.path.split(filepath)[1]
-        file = os.path.splitext(fname)[0]
-        out = os.path.join(transcode_pth, file)
+        fname: str = os.path.split(filepath)[1]
+        file: str = os.path.splitext(fname)[0]
+        out: str = os.path.join(transcode_pth, file)
 
     if 'thumb' in arg:
-        outfile = f"{out}_thumbnail.jpg"
+        outfile: str = f"{out}_thumbnail.jpg"
         cmd = start_reduce + thumb + [f"{outfile}"]
     elif 'oversize' in arg:
         outfile = f"{out}_largeimage.jpg"
@@ -879,7 +879,7 @@ def conformance_check(file: str) -> str:
     Looks for essential items to ensure that
     the transcode was successful
     '''
-    success = utils.get_mediaconch(file, MP4_POLICY)
+    success: tuple[bool, str] = utils.get_mediaconch(file, MP4_POLICY)
     if success[0] is True:
         return "PASS!"
     else:
@@ -912,10 +912,10 @@ def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]
     '''
     Receive data and priref and append to CID media record
     '''
-    payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_mid = ''.join(data)
-    payload_end = "</record></recordList></adlibXML>"
-    payload = payload_head + payload_mid + payload_end
+    payload_head: str = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_mid: str = ''.join(data)
+    payload_end: str = "</record></recordList></adlibXML>"
+    payload: str = payload_head + payload_mid + payload_end
 
     rec = adlib.post(CID_API, payload, 'media', 'updaterecord')
     if not rec:

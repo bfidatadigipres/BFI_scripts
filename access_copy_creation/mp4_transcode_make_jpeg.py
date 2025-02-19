@@ -44,6 +44,7 @@ from datetime import datetime, timezone
 import pytz
 import subprocess
 import tenacity
+from typing import Optional, Final
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -51,15 +52,15 @@ import adlib_v3 as adlib
 import utils
 
 # Global paths from environment vars
-MP4_POLICY = os.environ['MP4_POLICY']
-LOG_PATH = os.environ['LOG_PATH']
-FLLPTH = sys.argv[1].split('/')[:4]
-LOG_PREFIX = '_'.join(FLLPTH)
-LOG_FILE = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
-CID_API = os.environ['CID_API4']
-TRANSCODE = os.environ['TRANSCODING']
+MP4_POLICY: Final = os.environ['MP4_POLICY']
+LOG_PATH: Final = os.environ['LOG_PATH']
+FLLPTH: Final = sys.argv[1].split('/')[:4]
+LOG_PREFIX: Final = '_'.join(FLLPTH)
+LOG_FILE: Final = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
+CID_API: Final = os.environ['CID_API4']
+TRANSCODE: Final = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
-HOST = os.uname()[1]
+HOST: Final = os.uname()[1]
 
 # Setup logging
 LOGGER = logging.getLogger('mp4_transcode_make_jpeg')
@@ -69,7 +70,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-SUPPLIERS = {"East Anglian Film Archive": "eafa",
+SUPPLIERS: Final = {"East Anglian Film Archive": "eafa",
              "Imperial War Museum": "iwm",
              "London's Screen Archive": "lsa",
              "MACE": "mace",
@@ -102,12 +103,12 @@ def main():
     if len(sys.argv) < 2:
         sys.exit("EXIT: Not enough arguments")
 
-    fullpath = sys.argv[1]
+    fullpath: str = sys.argv[1]
     if not os.path.isfile(fullpath):
         sys.exit("EXIT: Supplied path is not a file")
 
     # Multiple instances of script so collection logs for one burst output
-    log_build = []
+    log_build: list[str] = []
     if not utils.check_control('mp4_transcode'):
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
@@ -469,7 +470,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         return False
 
 
-def check_item(ob_num: str, database: str) -> tuple[str, str, str]:
+def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, list[str]]]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
@@ -493,7 +494,7 @@ def check_item(ob_num: str, database: str) -> tuple[str, str, str]:
     return priref, source, groupings
 
 
-def get_media_priref(fname: str) -> tuple[str, str, str, str, str] | None:
+def get_media_priref(fname: str) -> tuple[str, str, str, str, str]:
     '''
     Retrieve priref from Digital record
     '''
@@ -622,7 +623,7 @@ def get_width(fullpath: str) -> str:
     return re.sub("[^0-9]", "", width)
 
 
-def check_for_mixed_audio(fpath: str) -> dict[str, int]:
+def check_for_mixed_audio(fpath: str) -> Optional[dict[str, int]]:
     '''
     For use where audio channels 6+ exist
     check for 'DL' and 'DR' and build different
@@ -634,8 +635,8 @@ def check_for_mixed_audio(fpath: str) -> dict[str, int]:
         '-of', 'csv=p=0', fpath
     ]
     audio = subprocess.check_output(cmd)
-    audio = audio.decode('utf-8').lstrip('\n').rstrip('\n')
-    audio_channels = audio.split('\n')
+    audio = str(audio.decode('utf-8').lstrip('\n').rstrip('\n'))
+    audio_channels = str(audio).split('\n')
     if len(audio_channels) > 1:
         audio_downmix = {}
         for num in range(0, len(audio_channels)):
@@ -660,7 +661,7 @@ def check_for_fl_fr(fpath: str) -> bool:
         '-of', 'csv=p=0', fpath
     ]
     audio = subprocess.check_output(cmd)
-    audio = audio.decode('utf-8').lstrip('\n').rstrip('\n')
+    audio = str(audio.decode('utf-8')).lstrip('\n').rstrip('\n')
     audio_channels = audio.split('\n')
     if '5.1(side)' in audio_channels:
         return True
@@ -715,7 +716,7 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
             return (second_duration, '1')
 
 
-def check_audio(fullpath: str) -> tuple[str, str, str]:
+def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[bytes | list[str]]]:
     '''
     Mediainfo command to retrieve channels, identify
     stereo or mono, returned as 2 or 1 respectively
@@ -757,7 +758,7 @@ def check_audio(fullpath: str) -> tuple[str, str, str]:
     except Exception:
         lang1 = ''
     try:
-        streams = subprocess.check_output(cmd2)
+        streams: bytes = subprocess.check_output(cmd2)
         streams = streams.decode('utf-8').lstrip('\n').rstrip('\n').split('\n')
     except Exception:
         streams = None
@@ -773,7 +774,7 @@ def check_audio(fullpath: str) -> tuple[str, str, str]:
         return ('Audio', None, streams)
 
 
-def create_transcode(fullpath: str, output_path: str, height: str, width: str, dar: str, par: str, audio: str, default: str, vs: str, mixed_dict: dict[str, int], fl_fr: bool) -> list[str]:
+def create_transcode(fullpath: str, output_path: str, height: int, width: int, dar: str, par: str, audio: str, default: str, vs: str, mixed_dict: dict[str, int], fl_fr: bool) -> list[str]:
 
     '''
     Builds FFmpeg command based on height/dar input
@@ -936,8 +937,10 @@ def create_transcode(fullpath: str, output_path: str, height: str, width: str, d
         cmd_mid = crop_ntsc_640x480
     elif height < 576 and width == 720 and dar == '4:3':
         cmd_mid = scale_sd_4x3
-    elif height == 576 and width == 703 and dar == '4:3':
+    elif height == 576 and width == 703 and dar != '16:9':
         cmd_mid = scale_sd_4x3
+    elif height == 576 and width === 703 and dar == '16:9':
+        cmd_mid == scale_sd_16x9
     elif height == 576 and width == 1024:
         cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '16:9':
@@ -1073,7 +1076,7 @@ def conformance_check(file: str) -> str:
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))
-def cid_media_append(fname: str, priref: str, data: list[str]) -> bool:
+def cid_media_append(fname: str, priref: str, data: tuple[str, str, str, str, str]) -> bool:
     '''
     Receive data and priref and append to CID media record
     '''

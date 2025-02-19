@@ -45,6 +45,7 @@ import sys
 import time
 import logging
 import tenacity
+from typing import Optional
 
 # Private package
 import bp_utils as bp
@@ -69,7 +70,7 @@ LOGGER.setLevel(logging.INFO)
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(15))
-def get_prirefs(pointer):
+def get_prirefs(pointer: str) ->  Optional[str]:
     '''
     User pointer number and look up
     for list of prirefs in CID
@@ -90,7 +91,7 @@ def get_prirefs(pointer):
     return result['adlibJSON']['recordList']['record'][0]['hitlist']
 
 
-def get_dictionary(priref_list):
+def get_dictionary(priref_list: list[str]) -> dict[str, Optional[list[str]]]:
     '''
     Iterate list of prirefs and
     collate data
@@ -105,7 +106,7 @@ def get_dictionary(priref_list):
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(15))
-def get_media_record_data(priref):
+def get_media_record_data(priref: str) -> Optional[list[str]]:
     '''
     Get CID media record details
     '''
@@ -315,7 +316,7 @@ def main():
     LOGGER.info("----------- Black Pearl pointer file deletions script END --------------\n")
 
 
-def get_mp4_paths(input_date, access_mp4):
+def get_mp4_paths(input_date: str, access_mp4: str) -> tuple[str, str]:
     '''
     Create two possible MP4 paths for deletion
     of associated MP4 asset
@@ -326,7 +327,7 @@ def get_mp4_paths(input_date, access_mp4):
     return mp4_path1, mp4_path2
 
 
-def cid_media_append(priref, data):
+def cid_media_append(priref: str, data: str) -> bool:
     '''
     Receive data and priref and append to CID media record
     '''

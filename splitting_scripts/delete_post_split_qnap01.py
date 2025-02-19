@@ -24,6 +24,7 @@ import sys
 import shutil
 import logging
 from ds3 import ds3
+from typing import Final, Optional, Any
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -49,7 +50,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
-def get_object_list(fname):
+def get_object_list(fname: str) -> list[ds3.Ds3GetObject]:
     '''
     Build a DS3 object list for some SDK queries
     '''
@@ -57,13 +58,13 @@ def get_object_list(fname):
     return [ds3.Ds3GetObject(name=x) for x in file_list]
 
 
-def bp_physical_placement(fname, bucket):
+def bp_physical_placement(fname: str, bucket: str) -> bool:
     '''
     Retrieve the physical placement with object_list
     '''
-    object_list = get_object_list(fname)
-    query = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(bucket, object_list)
-    result = CLIENT.get_physical_placement_for_objects_spectra_s3(query)
+    object_list: list[ds3.Ds3GetObject] = get_object_list(fname)
+    query: ds3.GetPhysicalPlacementForObjectsSpectraS3Request  = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(bucket, object_list)
+    result: ds3.GetPhysicalPlacementForObjectsSpectraS3Response = CLIENT.get_physical_placement_for_objects_spectra_s3(query)
     data = result.result
 
     if not data['TapeList']:
@@ -226,7 +227,7 @@ def main():
                 logger.warning('%s\tIgnored because not all Items are persisted: %s persisted, %s expected', filepath, len(preserved_objects), total_objects_expected)
 
 
-def get_results(filepath, grouping, object_number):
+def get_results(filepath: str, grouping: str, object_number: str) -> dict[str, str]:
     '''
     Checks for cross-over period between 'datadigipres'
     and 'collectionssystems' in CID media record

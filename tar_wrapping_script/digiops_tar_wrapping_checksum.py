@@ -39,14 +39,15 @@ import tarfile
 import logging
 import hashlib
 import datetime
+from typing import Final, Optional
 
 sys.path.append(os.environ['CODE'])
 import utils
 
 # Global paths
-LOCAL_PATH = os.environ['QNAP_DIGIOPS']
-AUTOINGEST = os.path.join(LOCAL_PATH, os.environ['AUTOINGEST_STORE'])
-LOG_PATH = os.path.join(LOCAL_PATH, os.environ['DPX_SCRIPT_LOG'])
+LOCAL_PATH: Final = os.environ['QNAP_DIGIOPS']
+AUTOINGEST: Final = os.path.join(LOCAL_PATH, os.environ['AUTOINGEST_STORE'])
+LOG_PATH: Final = os.path.join(LOCAL_PATH, os.environ['DPX_SCRIPT_LOG'])
 
 # Logging config
 LOGGER = logging.getLogger('tar_wrap_check')
@@ -57,7 +58,7 @@ LOGGER.addHandler(hdlr)
 LOGGER.setLevel(logging.INFO)
 
 
-def tar_file(fpath):
+def tar_file(fpath: str) -> Optional[str]:
     '''
     Make tar path from supplied filepath
     Use tarfile to create TAR. Use add()
@@ -84,7 +85,7 @@ def tar_file(fpath):
         return None
 
 
-def get_tar_checksums(tar_path, folder):
+def get_tar_checksums(tar_path: str, folder: str) -> dict[str, str]:
     '''
     Open tar file and read/generate MD5 sums
     and return dct {filename: hex}
@@ -96,7 +97,7 @@ def get_tar_checksums(tar_path, folder):
         if item.isdir():
             continue
         pth, file = os.path.split(item.name)
-        if fname in ['ASSETMAP','VOLINDEX']:
+        if file in ['ASSETMAP','VOLINDEX']:
             folder_prefix = os.path.basename(pth)
             file = f'{folder_prefix}_{file}'
         try:
@@ -115,7 +116,7 @@ def get_tar_checksums(tar_path, folder):
     return data
 
 
-def get_checksum(fpath, source):
+def get_checksum(fpath: str, source: str) -> dict[str, str]:
     '''
     Using file path, generate file checksum
     return as list with filename
@@ -140,7 +141,7 @@ def get_checksum(fpath, source):
     return data
 
 
-def make_manifest(tar_path, md5_dct):
+def make_manifest(tar_path: str, md5_dct: dict[str, str]) -> str:
     '''
     Output md5 to JSON file format and add to TAR file
     using sorted keys to maintain DPX order
@@ -299,13 +300,13 @@ def main():
     LOGGER.info("==== TAR Wrapping Check script END =================================")
 
 
-def local_log(fullpath, data):
+def local_log(fullpath: str, data: str) -> None:
     '''
     Output local log data for team
     to monitor TAR wrap process
     '''
-    local_log = os.path.join(fullpath, 'python_tar_wrapping_checksum.log')
-    timestamp = str(datetime.datetime.now())
+    local_log: str = os.path.join(fullpath, 'python_tar_wrapping_checksum.log')
+    timestamp: str = str(datetime.datetime.now())
 
     if not os.path.isfile(local_log):
         with open(local_log, 'x') as log:

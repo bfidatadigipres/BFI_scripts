@@ -71,7 +71,7 @@ FIELDS = [
     {'container.media_UUID': ['UniqueID', 'Unique ID  ']},
     {'container.truncated': ['IsTruncated','Is truncated  ']},
     {'video.duration': ['Duration_String1', '']},
-    {'video.duration.milliseconds': ['Duration','Duration  ']}, 
+    {'video.duration.milliseconds': ['Duration','Duration  ']},
     {'video.bit_depth': ['BitDepth', 'Bit depth  ']},
     {'video.bit_rate_mode': ['BitRate_Mode', 'Bit rate mode  ']},
     {'video.bit_rate': ['BitRate_String','Bit rate  ']},
@@ -409,6 +409,15 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
     gen_rows = get_text_rows('General', mdata)
     for field in FIELDS:
         for key, val in field.items():
+            # Temporarily convert text returned milliseconds to seconds
+            if key.endswith('duration.milliseconds'):
+                match = iterate_text_rows(gen_rows, val[1], key)
+                if match is None:
+                    continue
+                milliseconds = match.get(key)
+                seconds = f"{float(milliseconds) / 1000:.9f}"
+                print(f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***")
+                gen.append({f'{key}': seconds})
             if key.startswith('container.'):
                 match = iterate_text_rows(gen_rows, val[1], key)
                 if match is None:
@@ -427,6 +436,15 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         vid = []
         for field in FIELDS:
             for key, val in field.items():
+                # Temporarily convert text returned milliseconds to seconds
+                if key.endswith('duration.milliseconds'):
+                    match = iterate_text_rows(vid_rows, val[1], key)
+                    if match is None:
+                        continue
+                    milliseconds = match[key]
+                    seconds = f"{float(milliseconds) / 1000:.9f}"
+                    print(f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***")
+                    vid.append({f'{key}': seconds})
                 if key.startswith('video.'):
                     match = iterate_text_rows(vid_rows, val[1], key)
                     if match is None:
@@ -454,6 +472,15 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         aud = []
         for field in FIELDS:
             for key, val in field.items():
+                # Temporarily convert text returned milliseconds to seconds
+                if key.endswith('duration.milliseconds'):
+                    match = iterate_text_rows(aud_rows, val[1], key)
+                    if match is None:
+                        continue
+                    milliseconds = match[key]
+                    seconds = f"{float(milliseconds) / 1000:.9f}"
+                    print(f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***")
+                    aud.append({f'{key}': seconds})
                 if key.startswith('audio.'):
                     match = iterate_text_rows(aud_rows, val[1], key)
                     if match is None:

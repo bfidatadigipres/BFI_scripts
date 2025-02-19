@@ -20,7 +20,7 @@ sys.path.append(os.environ['CODE'])
 import utils
 
 
-def framemd5_manifest(cmd):
+def framemd5_manifest(cmd: list[str]) -> bytes:
     ''' Generate a manifest of MD5 checksums: a list per stream '''
 
     # Append framemd5 arguments to given command
@@ -34,7 +34,7 @@ def framemd5_manifest(cmd):
         raise RuntimeError(f"Command {err.cmd} returned with error (code {err.returncode}): {err.output}") from err
 
 
-def segment(cmd):
+def segment(cmd: list[str]):
     ''' Trim a new file from the given source '''
 
     command = ' '.join(cmd)
@@ -43,7 +43,7 @@ def segment(cmd):
         return True
 
 
-def error_message(message):
+def error_message(message: str) -> None:
     ''' Print and close '''
 
     sys.stderr.write(message + '\n')
@@ -51,7 +51,7 @@ def error_message(message):
     sys.exit(1)
 
 
-def create_clip(cmd):
+def create_clip(cmd: list[str]) -> bool:
     ''' Trim a clip from source given timecodes (hh:mm:ss) and compare its framemd5 with source '''
 
     # Generate framemd5s for source
@@ -92,13 +92,13 @@ def create_clip(cmd):
     return False
 
 
-def framemd5_cut(framemd5):
+def framemd5_cut(framemd5: bytes) -> str:
     '''
     This function to chop up framemd5 so only checksum remain for comparison
     avoiding errors with non-matching duration columns, split on comma
     '''
 
-    new_manifest = []
+    new_manifest: list[str] = []
     framemd5_decode = framemd5.decode('utf-8')
     lines = framemd5_decode.split('\n')
 
@@ -108,7 +108,7 @@ def framemd5_cut(framemd5):
     return ''.join(new_manifest)
 
 
-def clipmd5(in_file, start, out_file, end=None, ffmpeg=None):
+def clipmd5(in_file: str, start: str, out_file: str, end=None, ffmpeg=None) -> bool:
     ''' Wrapper '''
 
     cmd = construct_command(in_file, start, out_file, end, ffmpeg)
@@ -116,10 +116,10 @@ def clipmd5(in_file, start, out_file, end=None, ffmpeg=None):
     return status
 
 
-def construct_command(in_file, start, out_file, end=None, ffmpeg=None):
+def construct_command(in_file: str, start: str, out_file: str, end=None, ffmpeg=None) -> list[str]:
     ''' Assemble an FFmpeg command as a list of parameters '''
 
-    cmd = ['ffmpeg', '-ss', start, '-i', in_file]
+    cmd: list[str] = ['ffmpeg', '-ss', start, '-i', in_file]
 
     # Pass end str as [--to] or int as [-t]
     if end:

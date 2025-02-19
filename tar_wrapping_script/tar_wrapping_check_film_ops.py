@@ -31,15 +31,16 @@ import tarfile
 import logging
 import hashlib
 import datetime
+from typing import Final, Optional
 
 sys.path.append(os.environ['CODE'])
 import utils
 
 # Global paths
-LOCAL_PATH = os.environ['FILM_OPS']
-AUTO_TAR = os.path.join(LOCAL_PATH, 'automation_tar')
-AUTOINGEST = os.path.join(LOCAL_PATH, 'Finished', os.environ['AUTOINGEST_STORE'])
-LOG = os.path.join(os.environ['LOG_PATH'], 'tar_wrapping_check_film_ops.log')
+LOCAL_PATH: Final = os.environ['FILM_OPS']
+AUTO_TAR: Final = os.path.join(LOCAL_PATH, 'automation_tar')
+AUTOINGEST: Final = os.path.join(LOCAL_PATH, 'Finished', os.environ['AUTOINGEST_STORE'])
+LOG: Final = os.path.join(os.environ['LOG_PATH'], 'tar_wrapping_check_film_ops.log')
 
 # Logging config
 LOGGER = logging.getLogger('tar_wrapping_check_film_ops')
@@ -50,7 +51,7 @@ LOGGER.addHandler(hdlr)
 LOGGER.setLevel(logging.INFO)
 
 
-def tar_file(fpath):
+def tar_file(fpath: str) -> Optional[str]:
     '''
     Make tar path from supplied filepath
     Use tarfile to create TAR
@@ -74,7 +75,7 @@ def tar_file(fpath):
         return None
 
 
-def get_tar_checksums(tar_path, folder):
+def get_tar_checksums(tar_path: str, folder) -> dict[str, str]:
     '''
     Open tar file and read/generate MD5 sums
     and return dct {filename: hex}
@@ -112,7 +113,7 @@ def get_tar_checksums(tar_path, folder):
     return data
 
 
-def get_checksum(fpath):
+def get_checksum(fpath: str) -> dict[str, str]:
     '''
     Using file path, generate file checksum
     return as list with filename
@@ -131,7 +132,7 @@ def get_checksum(fpath):
     return data
 
 
-def make_manifest(tar_path, md5_dct):
+def make_manifest(tar_path: str, md5_dct: dict[str, str]) -> str:
     '''
     Output md5 to JSON file format and add to TAR file
     '''
@@ -295,7 +296,7 @@ def main():
     LOGGER.info("==== TAR Wrapping Check script END =================================")
 
 
-def local_logs(fullpath, data):
+def local_logs(fullpath: str, data: str) -> None:
     '''
     Output local log data for team
     to monitor TAR wrap process

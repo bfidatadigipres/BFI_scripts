@@ -69,7 +69,7 @@ def checksum_exist(checksum_path_env: str, filename: str, checksum, filepath) ->
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def make_output_md5(filepath: str, filename: str) -> typing.Optional[str] :
+def make_output_md5(filepath: str, filename: str) -> typing.Optional[str]:
     '''
     Runs checksum generation/output to file as separate function allowing for easier retries
     '''

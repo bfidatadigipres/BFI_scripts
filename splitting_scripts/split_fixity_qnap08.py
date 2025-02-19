@@ -70,12 +70,12 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
-def get_duration(fullpath):
+def get_duration(fullpath: str) -> int:
     '''
     Retrieve file duration using ffprobe
     '''
 
-    cmd = [
+    cmd: list[str] = [
         'mediainfo', '--Language=raw',
         '--Full', '--Inform="Video;%Duration%"',
         fullpath
@@ -112,7 +112,7 @@ def get_duration(fullpath):
     return None
 
 
-def check_media_record(fname):
+def check_media_record(fname: str) -> bool:
     '''
     Check if CID media record
     already created for filename
@@ -141,7 +141,7 @@ def main():
     '''
 
     # List files in recursive sub-directories
-    files = []
+    files: list = []
     for root, _, filenames in os.walk(TARGET):
         for filename in [f for f in filenames if f.endswith(('.mov', '.mxf', '.mkv', '.MOV', '.MXF', '.MKV'))]:
             files.append(os.path.join(root, filename))

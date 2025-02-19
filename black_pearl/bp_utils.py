@@ -8,6 +8,7 @@ to one utility module
 import os
 import json
 from ds3 import ds3, ds3Helpers
+from typing import Optional
 
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
@@ -15,16 +16,16 @@ DPI_BUCKETS = os.environ['DPI_BUCKET']
 JSON_END = os.environ['JSON_END_POINT']
 
 
-def get_buckets(bucket_collection):
+def get_buckets(bucket_collection: str) -> tuple[str, list[str]]:
     '''
     Read JSON list return
     key_value and list of others
     '''
-    bucket_list = []
-    key_bucket = ''
+    bucket_list: list[str] = []
+    key_bucket: str = ''
 
     with open(DPI_BUCKETS) as data:
-        bucket_data = json.load(data)
+        bucket_data: dict[str, str] = json.load(data)
     if bucket_collection == 'bfi':
         for key, value in bucket_data.items():
             if 'preservationblobbing' in str(key.lower()):
@@ -47,48 +48,42 @@ def get_buckets(bucket_collection):
     return key_bucket, bucket_list
 
 
-def check_no_bp_status(fname, bucket_list):
+def check_no_bp_status(fname: str, bucket_list: list[str]) -> bool:
     '''
     Look up filename in BP to avoid
     multiple ingests of files
     '''
-    exist_across_buckets = []
+    exist_across_buckets: list[str] = []
     for bucket in bucket_list:
         try:
-            query = ds3.HeadObjectRequest(bucket, fname)
-            result = CLIENT.head_object(query)
-            # Return false if EXISTS is present in list
-            if str(result.result) == 'DOESNTEXIST':
-                print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
-                exist_across_buckets.append('DOENSTEXIST')
+            query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
+            result: ds3.HeadObjectReponse = CLIENT.head_object(query)
+            # Only return false if DOESNTEXIST is missing, eg file found
+            if 'DOESNTEXIST' in str(result.result):
+                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                 exist_across_buckets.append('DOESNTEXIST')
             elif str(result.result) == 'EXISTS':
                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
-                exist_across_buckets.append('EXISTS')
+                exist_across_buckets.append('PRESENT')
         except Exception as err:
             print(err)
-
+    print(exist_across_buckets)
     if exist_across_buckets == []:
-        # Skip precaution, search failed
         return False
-    if 'EXISTS' in exist_across_buckets:
-        # Exists, return False to prevent dupe ingest
+    if 'PRESENT' in str(exist_across_buckets):
         return False
-    elif 'EXISTS' not in exist_across_buckets:
-        if 'DOESNTEXIST' in exist_across_buckets:
-            # Confirmed not to exist, return True to allow ingest
-            return True
-        else:
-            # Skip precaution, search possibly failed
-            return False
+    if 'DOESNTEXIST' in str(exist_across_buckets):
+        return True
+    return False
 
 
-def get_job_status(job_id):
+def get_job_status(job_id: str) -> tuple[str, str]:
     '''
     Fetch job status for specific ID
     '''
     cached = status = ''
 
-    job_status = CLIENT.get_job_spectra_s3(
+    job_status: ds3.GetJobSpectraS3Request = CLIENT.get_job_spectra_s3(
                    ds3.GetJobSpectraS3Request(job_id.strip()))
 
     if job_status.result['CachedSizeInBytes']:
@@ -101,14 +96,14 @@ def get_job_status(job_id):
     return status, cached
 
 
-def get_bp_md5(fname, bucket):
+def get_bp_md5(fname: str, bucket: str) -> Optional[str]:
     '''
     Fetch BP checksum to compare
     to new local MD5
     '''
-    md5 = ''
-    query = ds3.HeadObjectRequest(bucket, fname)
-    result = CLIENT.head_object(query)
+    md5: str = ''
+    query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
+    result: ds3.HeadObjectReponse = CLIENT.head_object(query)
     try:
         md5 = result.response.msg['ETag']
     except Exception as err:
@@ -118,14 +113,14 @@ def get_bp_md5(fname, bucket):
         return md5.replace('"', '')
 
 
-def get_bp_length(fname, bucket):
+def get_bp_length(fname: str, bucket: str) -> Optional[str]:
     '''
     Fetch BP checksum to compare
     to new local MD5
     '''
-    size = ''
-    query = ds3.HeadObjectRequest(bucket, fname)
-    result = CLIENT.head_object(query)
+    size: str = ''
+    query: ds3.HeadObjectReques = ds3.HeadObjectRequest(bucket, fname)
+    result: ds3.HeadObjectReponse = CLIENT.head_object(query)
     try:
         size = result.response.msg['Content-Length']
     except Exception as err:
@@ -135,14 +130,14 @@ def get_bp_length(fname, bucket):
         return size.replace('"', '')
 
 
-def get_confirmation_length_md5(fname, bucket, bucket_list):
+def get_confirmation_length_md5(fname: str, bucket: str, bucket_list: list[str]) -> Optional[tuple[Optional[bool | str], Optional[str], Optional[str]]]:
     '''
     Alternative retrieval for get_object_list
     avoiding full_details requests
     '''
-    flist = [fname]
+    flist: list[str] = [fname]
     try:
-        object_flist = list([ds3.Ds3GetObject(name=fname) for fname in flist])
+        object_flist: list[ds3.Ds3GetObject] = list([ds3.Ds3GetObject(name=fname) for fname in flist])
         res = ds3.GetPhysicalPlacementForObjectsSpectraS3Request(bucket, object_flist)
         result = CLIENT.get_physical_placement_for_objects_spectra_s3(res)
         data = result.result
@@ -179,7 +174,7 @@ def get_confirmation_length_md5(fname, bucket, bucket_list):
     return confirmed, md5, length
 
 
-def get_object_list(fname):
+def get_object_list(fname: str) -> Optional[tuple[bool | str, Optional[str], Optional[str] ]]:
     '''
     Get all details to check file persisted
     '''
@@ -210,13 +205,13 @@ def get_object_list(fname):
     return confirmed, md5, length
 
 
-def put_directory(directory_pth, bucket):
+def put_directory(directory_pth: str, bucket: str) -> Optional[list[str]]:
     '''
     Add the directory to black pearl using helper (no MD5)
     Retrieve job number and launch json notification
     '''
     try:
-        put_job_ids = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=bucket, objects_per_bp_job=5000, max_threads=3)
+        put_job_ids: list[str] = HELPER.put_all_objects_in_directory(source_dir=directory_pth, bucket=bucket, objects_per_bp_job=5000, max_threads=3)
     except Exception as err:
         print('Exception: %s', err)
         return None
@@ -227,9 +222,9 @@ def put_directory(directory_pth, bucket):
     return job_list
 
 
-def put_notification(job_id):
+def put_notification(job_id: str) -> str:
     '''
-    Ensure job notification is sent to Isilon
+    Ensure job notification is sent to Isilon/ BP NAS
     '''
     job_completed_registration = CLIENT.put_job_completed_notification_registration_spectra_s3(
             ds3.PutJobCompletedNotificationRegistrationSpectraS3Request(notification_end_point=JSON_END, format='JSON', job_id=job_id))
@@ -237,7 +232,7 @@ def put_notification(job_id):
     return job_completed_registration.result['NotificationEndPoint']
 
 
-def download_bp_object(fname, outpath, bucket):
+def download_bp_object(fname: str, outpath: str, bucket: str) -> str:
     '''
     Download the BP object from SpectraLogic
     tape library and save to outpath
@@ -245,10 +240,10 @@ def download_bp_object(fname, outpath, bucket):
     if bucket == '':
         bucket = 'imagen'
 
-    file_path = os.path.join(outpath, fname)
-    get_objects = [ds3Helpers.HelperGetObject(fname, file_path)]
+    file_path: str = os.path.join(outpath, fname)
+    get_objects: list[ds3Helpers.HelperGetObject] = [ds3Helpers.HelperGetObject(fname, file_path)]
     try:
-        get_job_id = HELPER.get_objects(get_objects, bucket)
+        get_job_id: str = HELPER.get_objects(get_objects, bucket)
         print(f"BP get job ID: {get_job_id}")
     except Exception as err:
         raise Exception(f"Unable to retrieve file {fname} from Black Pearl: {err}")
@@ -256,15 +251,15 @@ def download_bp_object(fname, outpath, bucket):
     return get_job_id
 
 
-def get_buckets_blob(bucket_collection):
+def get_buckets_blob(bucket_collection: str) -> str:
     '''
     Read JSON list return
     key_value and list of others
     '''
-    key_bucket = ''
+    key_bucket: str = ''
 
     with open(DPI_BUCKETS) as data:
-        bucket_data = json.load(data)
+        bucket_data: dict[str, str] = json.load(data)
     if bucket_collection == 'netflix':
         for key, value in bucket_data.items():
             if 'netflixblobbing' in key.lower():
@@ -284,55 +279,54 @@ def get_buckets_blob(bucket_collection):
     return key_bucket
 
 
-def put_single_file(fpath, ref_num, bucket_name, check=False):
+def put_single_file(fpath: str, ref_num, bucket_name, check=False) -> Optional[str]:
     '''
     Add the file to black pearl using helper
     Fine for < or > 1TB
     '''
-    file_size = os.path.getsize(fpath)
-    put_obj = [ds3Helpers.HelperPutObject(object_name=ref_num, file_path=fpath, size=file_size)]
+    file_size: int = os.path.getsize(fpath)
+    put_obj: ds3Helpers.HelperPutObject = [ds3Helpers.HelperPutObject(object_name=ref_num, file_path=fpath, size=file_size)]
     try:
-        put_job_id = HELPER.put_objects(put_objects=put_obj, bucket=bucket_name, calculate_checksum=bool(check))
+        put_job_id: str = HELPER.put_objects(put_objects=put_obj, bucket=bucket_name, calculate_checksum=bool(check))
         print(f"PUT COMPLETE - JOB ID retrieved: {put_job_id}")
         return put_job_id
     except Exception as err:
         print('Exception: %s', err)
         return None
 
-
-def delete_black_pearl_object(ref_num, version, bucket):
+def delete_black_pearl_object(ref_num: str, version: Optional[str], bucket: str) -> Optional[ds3.DeleteObjectReponse]:
     '''
     Receive reference number and initiate
     deletion of object
     '''
     try:
         request = ds3.DeleteObjectRequest(bucket, ref_num, version_id=version)
-        job_deletion = CLIENT.delete_object(request)
+        job_deletion: ds3.DeleteObjectReponse = CLIENT.delete_object(request)
         return job_deletion
     except Exception as exc:
         print(exc)
         return None
 
 
-def etag_deletion_confirmation(ref_num, bucket):
+def etag_deletion_confirmation(ref_num: str, bucket: str) -> Optional[str]:
     '''
     Get confirmation of deletion
     '''
     resp = ds3.HeadObjectRequest(bucket, ref_num)
-    result = CLIENT.head_object(resp)
+    result: ds3.HeadObjectReponse = CLIENT.head_object(resp)
     etag = result.response.msg['ETag']
     if etag is None:
         return 'Deleted'
     return etag
 
 
-def get_version_id(ref_num):
+def get_version_id(ref_num: str) -> Optional[str]:
     '''
     Call up Black Pearl ObjectList for each item
     using reference_number, and retrieve version_id
     ['ObjectList'][0]['Blobs']['ObjectList'][0]['VersionId']
     '''
-    resp = ds3.GetObjectsWithFullDetailsSpectraS3Request(name=ref_num, include_physical_placement=True)
+    resp: ds3.GetObjectsWithFullDetailsSpectraS3Request = ds3.GetObjectsWithFullDetailsSpectraS3Request(name=ref_num, include_physical_placement=True)
     result = CLIENT.get_objects_with_full_details_spectra_s3(resp)
     obj = result.result
 
@@ -342,7 +336,7 @@ def get_version_id(ref_num):
         return None
 
     try:
-        version_id = obj['ObjectList'][0]['Blobs']['ObjectList'][0]['VersionId']
+        version_id: Optional[str] = obj['ObjectList'][0]['Blobs']['ObjectList'][0]['VersionId']
     except (IndexError, TypeError, KeyError):
         version_id = None
     return version_id

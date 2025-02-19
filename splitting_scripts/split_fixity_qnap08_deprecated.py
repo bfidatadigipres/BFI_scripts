@@ -62,7 +62,7 @@ AUTOINGEST_08 = os.environ['AUTOINGEST_QNAP08']
 LOG_PATH = os.environ['LOG_PATH']
 
 # Setup CID
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor
 

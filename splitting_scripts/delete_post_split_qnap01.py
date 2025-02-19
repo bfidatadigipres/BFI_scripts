@@ -35,7 +35,7 @@ import models
 LOG_PATH = os.environ.get('LOG_PATH')
 LOG = os.path.join(LOG_PATH, 'delete_post_split_qnap01.log')
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
+CID_API = os.environ['CID_API4']
 CLIENT = ds3.createClientFromEnv()
 
 TARGETS = [f"{os.environ['QNAP_VID']}/processing/"]

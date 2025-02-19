@@ -165,10 +165,10 @@ def cid_retrieve(fname: str) -> Optional[str]:
             priref: str = adlib.retrieve_field_name(record[0], 'priref')[0]
             return priref
         return ''
-    except Exception as e:
-        print(e)
     except AttributeError:
         print('Priref return None type')
+    except Exception as e:
+        print(e)
 
 
 def main():

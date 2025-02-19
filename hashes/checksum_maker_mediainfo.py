@@ -74,7 +74,7 @@ def make_output_md5(filepath: str, filename: str) -> typing.Optional[str]:
     Runs checksum generation/output to file as separate function allowing for easier retries
     '''
     try:
-        md5_checksum: Optional[str] = utils.create_md5_65536(filepath)
+        md5_checksum: typing.Optional[str] = utils.create_md5_65536(filepath)
         LOGGER.info(f"{filename} - MD5 sum generated: {md5_checksum}")
         return md5_checksum
     except Exception as e:
@@ -130,7 +130,7 @@ def main():
         if checksum_present:
             sys.exit('Checksum already exists for this file, exiting.')
 
-    md5_checksum: Optional[str] = make_output_md5(filepath, filename)
+    md5_checksum: typing.Optional[str] = make_output_md5(filepath, filename)
     if 'None' in str(md5_checksum):
         md5_checksum = make_output_md5(filepath, filename)
 

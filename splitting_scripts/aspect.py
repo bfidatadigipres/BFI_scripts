@@ -199,8 +199,8 @@ def fix_aspect_ratio(fpath: str) -> Optional[bool]:
     reject if MOV found
     '''
     if not fpath.endswith(('.mkv', '.MKV')):
-       LOGGER.warning("Skipping: File that needs change to 16x9 is not an FFV1 Matroska: %s", fpath)
-       return False
+        LOGGER.warning("Skipping: File that needs change to 16x9 is not an FFV1 Matroska: %s", fpath)
+        return False
 
     fpath_split: str = os.path.splitext(fpath)[0]
     replace: str = f"{fpath_split}_16x9.mkv"

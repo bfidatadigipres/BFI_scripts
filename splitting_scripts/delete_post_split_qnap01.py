@@ -24,7 +24,7 @@ import sys
 import shutil
 import logging
 from ds3 import ds3
-from typing import Final, Optional, Any
+from typing import Final
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -39,7 +39,7 @@ CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API = os.environ['CID_API4']
 CLIENT = ds3.createClientFromEnv()
 
-TARGETS = [f"{os.environ['QNAP_VID']}/processing/"]
+TARGETS: Final = [f"{os.environ['QNAP_VID']}/processing/"]
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('delete_post_split_qnap01')

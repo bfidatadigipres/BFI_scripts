@@ -274,7 +274,7 @@ def check_media_record(fname: str, session: str) -> str | bool:
     Check if CID media record
     already created for filename
     '''
-    search = f"imagen.media.original_filename='{fname}'"
+    search = f"(imagen.media.original_filename='{fname}') or (reference_number='{fname}')"
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]

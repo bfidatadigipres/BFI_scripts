@@ -324,10 +324,12 @@ def build_metadata_xml(json_path: str, priref: str) -> str:
         elif track['@type'] == 'Other':
             oth = get_xml('other', track)
             oth_xml = wrap_as_xml('Other', oth)
-            if len(other) > 0:
-                other += oth_xml
-            else:
+            # Only pass one set of Other data to XML at this time
+            if len(other) == 0:
                 other = oth_xml
+            else:
+                # other += other_xml
+                pass
         elif track['@type'] == 'Text':
             txt = get_xml('text', track)
             txt_xml = wrap_as_xml('Text', txt)
@@ -386,20 +388,21 @@ def iterate_text_rows(data: list[str], match: str, key: str) -> Optional[dict[st
         return {f'{key}': field_chosen}
 
 
-def get_stream_count(gen_rows: list[str]) -> tuple[float, float]:
+def get_stream_count(gen_rows: list[str]) -> tuple[int, int, int]:
     '''
     Get counts of streams
     to isolate metadata
     '''
-    vid_count = aud_count = 0
+    vid_count = aud_count = oth_count = 0
     for row in gen_rows:
         print(row)
         if row.startswith('Count of audio streams  '):
             aud_count = int(row.split(':')[-1].strip())
         if row.startswith('Count of video streams  '):
             vid_count = int(row.split(':')[-1].strip())
-
-    return vid_count, aud_count
+        if row.startswith('OtherCount '):
+            oth_count = int(row.split(':')[-1].strip())
+    return vid_count, aud_count, oth_count
 
 
 def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) -> str:
@@ -438,7 +441,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         xml = wrap_as_xml('Container', gen)
         payload += xml
     print(gen)
-    vid_count, aud_count = get_stream_count(gen_rows)
+    vid_count, aud_count, oth_count = get_stream_count(gen_rows)
     for num in range(1, vid_count+1):
         if vid_count == 1:
             vid_rows = get_text_rows('Video', mdata)
@@ -502,7 +505,11 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
             payload += xml
 
     oth = []
-    oth_rows = get_text_rows('Other', mdata)
+    # Other tracks not repeatable in CID yet. Managing multiple Other tracks
+    if oth_count <= 1:
+        oth_rows = get_text_rows('Other', mdata)
+    else:
+        oth_rows = get_text_rows(f'Other \#1', mdata)
     for field in FIELDS:
         for key, val in field.items():
             if key.startswith('other.'):

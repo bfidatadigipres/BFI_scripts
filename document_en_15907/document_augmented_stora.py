@@ -955,7 +955,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         print("Attempting to retrieve series data from EPG API using retrieve(fullpath)")
         retrieve(fullpath)
         series_data = series_check(epg_dict['series_id'])
-    if not series_data[4]:
+    if series_data[4] is None:
         print("No series data found in CID or in cache")
         return None
 

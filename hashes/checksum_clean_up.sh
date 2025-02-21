@@ -25,7 +25,7 @@ control
 
 # Build list of MD5 files and output to log for reference
 echo " ===================== SHELL SCRIPT LAUNCH CHECKSUM_CLEAN_UP =========================== " >> "${LOG}"
-find "$CHECKSUM_PATH" -name '*.md5' | sort -R | head -500 | sort -n -k10.12 > "${CHECKSUM_LIST}"
+find "$CHECKSUM_PATH" -name '*.md5' | sort -R |  sort -n -k10.12 > "${CHECKSUM_LIST}"
 echo "List of MD5 files to be processed:" >> "$LOG"
 cat "$CHECKSUM_LIST" >> "$LOG"
 

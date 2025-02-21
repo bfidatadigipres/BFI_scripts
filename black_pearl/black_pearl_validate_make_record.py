@@ -252,7 +252,7 @@ def main():
                 if len(folders[0]) != 36 or len(folders[1]) != 36:
                     success = None
                     continue
-                
+
                 # Iterate through JOB IDs
                 for fld in folders:
                     fpath = os.path.join(autoingest, fld)

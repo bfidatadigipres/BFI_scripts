@@ -117,37 +117,20 @@ def post(api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
     }
     payload = payload.encode('utf-8')
 
-    if method == 'insertrecord':
-        try:
-            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
-        except requests.exceptions.Timeout as err:
-            print(err)
-            raise Exception from err
-        except requests.exceptions.ConnectionError as err:
-            print(err)
-            raise Exception from err
-        except requests.exceptions.HTTPError as err:
-            print(err)
-            raise Exception from err
-        except Exception as err:
-            print(err)
-            raise Exception from err
-
-    if method == 'updaterecord':
-        try:
-            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
-        except requests.exceptions.Timeout as err:
-            print(err)
-            raise Exception from err
-        except requests.exceptions.ConnectionError as err:
-            print(err)
-            raise Exception from err
-        except requests.exceptions.HTTPError as err:
-            print(err)
-            raise Exception from err
-        except Exception as err:
-            print(err)
-            raise Exception from err
+    try:
+        response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
+    except requests.exceptions.Timeout as err:
+        print(err)
+        raise Exception from err
+    except requests.exceptions.ConnectionError as err:
+        print(err)
+        raise Exception from err
+    except requests.exceptions.HTTPError as err:
+        print(err)
+        raise Exception from err
+    except Exception as err:
+        print(err)
+        raise Exception from err
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
@@ -416,18 +399,12 @@ def add_quality_comments(api: str, priref: str, comments: str) -> bool:
     p_end: str = "</quality_comments></record></recordList></adlibXML>"
     payload: str = p_start + p_comm + p_date + p_writer + p_end
 
-    response = requests.request(
-        'POST',
-        api,
-        headers={'Content-Type': 'text/xml'},
-        params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
-        data=payload,
-        timeout=1200)
+    print(payload)
 
-    boolean = check_response(response.text, api)
-    if boolean is True:
+    rec = post(api, payload, 'items', 'updaterecord')
+    if rec is None:
         return False
-    if "error" in str(response.text):
+    if "error" in str(rec):
         return False
     else:
         return True

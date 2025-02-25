@@ -9,14 +9,16 @@ import re
 import os
 import csv
 import json
-import yaml
 import hashlib
 import logging
 import datetime
-import tenacity
 import subprocess
-import adlib_v3 as adlib
 from typing import Final, Optional, Iterator, Any
+import yaml
+import tenacity
+
+# BFI library
+import adlib_v3 as adlib
 
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: Final = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
@@ -522,3 +524,14 @@ def mediainfo_create(arg: str, output_type: str, filepath: str, mediainfo_path: 
     else:
         raise Exception
 
+
+def local_file_search(fpath, fname):
+    '''
+    To assist potential for localised
+    file movements within folders -
+    checksums/metadata creation
+    '''
+    for root, _, files in os.walk(fpath):
+        for file in files:
+            if file == fname:
+                return os.path.join(root, file)

@@ -1080,6 +1080,15 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
         logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
 
+    # Allow for retry if record priref creation crash:
+    if "Duplicate key in unique index 'invno':" in str(work_rec):
+        try:
+            logger.info("Attempting to create CID series record for %s", series_title_full)
+            work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
+        except Exception as err:
+            print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
+            logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+
     if work_rec is False:
         raise Exception("Recycle of API exception raised.")
     print(f"create_series(): {work_rec}")
@@ -1337,6 +1346,19 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
         logger.warning('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
         logger.warning(err)
+
+    # Allow for retry if record priref creation crash:
+    if "Duplicate key in unique index 'invno':" in str(work_rec):
+        try:
+            sleep(2)
+            logger.info("Attempting to create Work record for item %s", epg_dict['title'])
+            work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
+            print(f"create_work(): {work_rec}")
+        except Exception as err:
+            print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
+            logger.warning('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
+            logger.warning(err)
+
     if work_rec is False:
         raise Exception("Recycle of API exception raised.")
     try:
@@ -1456,6 +1478,18 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
         logger.warning("Unable to write manifestation record <%s> %s", manifestation_id, err)
+
+    # Allow for retry if record priref creation crash:
+    if "Duplicate key in unique index 'invno':" in str(man_rec):
+        try:
+            sleep(2)
+            logger.info("Attempting to create Manifestation record for item %s", title)
+            man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
+            print(f"create_manifestation(): {man_rec}")
+        except Exception as err:
+            print(f"*** Unable to write manifestation record: {err}")
+            logger.warning("Unable to write manifestation record <%s> %s", manifestation_id, err)
+
     if man_rec is False:
             raise Exception("Recycle of API exception raised.")
     try:
@@ -1499,6 +1533,18 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     except Exception as err:
         logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
+
+    # Allow for retry if record priref creation crash:
+    if "Duplicate key in unique index 'invno':" in str(item_rec):
+        try:
+            sleep(2)
+            logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
+            item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+            print(f"create_cid_item_record(): {item_rec}")
+        except Exception as err:
+            logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
+            print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
+
     if item_rec is False:
         raise Exception("Recycle of API exception raised.")
     try:

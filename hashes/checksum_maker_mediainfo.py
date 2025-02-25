@@ -57,15 +57,17 @@ def checksum_exist(checksum_path_env: str, filename: str, checksum, filepath) ->
     Create a new Checksum file and write MD5_checksum
     Return checksum path where successfully written
     '''
-    checksum_path: str = os.path.join(checksum_path_env, f"{filename}.md5")
-    if os.path.isfile(checksum_path):
-        checksum_path = utils.checksum_write(checksum_path, checksum, filepath, filename)
-        return checksum_path
+    cpath: str = os.path.join(checksum_path_env, f"{filename}.md5")
+    if os.path.isfile(checksum_pth):
+        checksum_pth = utils.checksum_write(cpath, checksum, filepath, filename)
     else:
-        with open(checksum_path, 'x') as fnm:
+        with open(cpath, 'x') as fnm:
             fnm.close()
-        checksum_path = utils.checksum_write(checksum_path, checksum, filepath, filename)
-        return checksum_path
+        checksum_pth = utils.checksum_write(cpath, checksum, filepath, filename)
+    if not os.path.isfile(checksum_pth):
+        return None
+    else:
+        return checksum_pth
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
@@ -75,14 +77,18 @@ def make_output_md5(filepath: str, filename: str) -> typing.Optional[str]:
     '''
     try:
         md5_checksum: typing.Optional[str] = utils.create_md5_65536(filepath)
-        LOGGER.info(f"{filename} - MD5 sum generated: {md5_checksum}")
+        LOGGER.info("%s - MD5 sum generated: %s", filename, md5_checksum)
+        if 'None' in str(md5_checksum):
+            raise Exception
         return md5_checksum
     except Exception as e:
-        LOGGER.exception(f"{filename} - Failed to make MD5 checksum for {filepath}")
+        LOGGER.exception("%s - Failed to make MD5 checksum for %s\n%s", filename, filepath, e)
+        raise Exception
+    else:
         return None
 
 
-def checksum_test(CHECKSUM_PATH: str, check: str) -> typing.Optional[bool]:
+def checksum_test(check: str) -> typing.Optional[bool]:
     '''
     Check for 'None' where checksum should be
     '''
@@ -93,7 +99,7 @@ def checksum_test(CHECKSUM_PATH: str, check: str) -> typing.Optional[bool]:
         with open(checksum_pth, 'r') as file:
             line: str = file.readline()
             if line.startswith('None'):
-                LOGGER.info(f"None entry found: {check}")
+                LOGGER.info("None entry found: %s", check)
                 return True
 
     except Exception as e:
@@ -113,53 +119,92 @@ def main():
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     filepath: str = sys.argv[1]
-    path_split: list[str] = os.path.split(filepath)
-    filename: str = path_split[1]
-    target_path: str = path_split[0]
+    filename: str = os.path.split(filepath)[-1]
 
     LOGGER.info("============ Python3 %s START =============", filepath)
-
     # Check if MD5 already generated for file using list comprehension
-    check: list = [f for f in os.listdir(CHECKSUM_PATH) if f.startswith(filename) and not f.endswith(('.ini', '.DS_Store', '.mhl', '.json', '.tmp', '.dpx', '.DPX'))]
+    check: list = [f for f in os.listdir(CHECKSUM_PATH) if f.startswith(filename) and not f.endswith(('.ini', '.DS_Store', '.mhl', '.json', '.tmp', '.dpx', '.DPX', '.swp'))]
     if len(check) > 1:
         sys.exit(f'More than one checksum found with {filename}')
 
     # Check if existing MD5 starts with 'None'
     if len(check) == 1:
-        checksum_present: bool = checksum_test(CHECKSUM_PATH, check[0])
+        checksum_present: bool = checksum_test(check[0])
         if checksum_present:
             sys.exit('Checksum already exists for this file, exiting.')
 
+    # Make metadata then write checksum to path as filename.ext.md5
+    bpi_path: str = get_bpi_folder(filepath)
+    LOGGER.info("Black Pearl Ingest folder identified: %s", bpi_path)
+    if not os.path.isfile(filepath):
+        filepath: str = utils.local_file_search(bpi_path, fname)
+
     md5_checksum: typing.Optional[str] = make_output_md5(filepath, filename)
-    if 'None' in str(md5_checksum):
+    if md5_checksum is None:
+        md5_checksum = make_output_md5(filepath, filename)
+    elif 'None' in str(md5_checksum):
         md5_checksum = make_output_md5(filepath, filename)
 
-    # Make metadata then write to checksum path as filename.ext.md5
-    if 'None' not in str(md5_checksum):
-        make_metadata(target_path, filename, MEDIAINFO_PATH)
+    if os.path.isfile(filepath):
+        LOGGER.info("Attempting to make metadata file dumps")
+        make_metadata(bpi_path, filepath, filename, MEDIAINFO_PATH)
         success = checksum_exist(CHECKSUM_PATH, filename, md5_checksum, filepath)
-        LOGGER.info("%s Checksum written to: %s", filename, success)
+        if not success:
+            LOGGER.warning("Failed to write checksum to filepath: %s", filepath)
+        else:
+            LOGGER.info("%s Checksum written to: %s", filename, success)
+    else:
+        LOGGER.warning("Metadata cannot be made - file absent from path: %s", filepath)
 
     LOGGER.info("=============== Python3 %s END ==============", filename)
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def make_metadata(target_path: str, fname: str, mediainfo_path: str) -> None:
+def make_metadata(bpi_path: str, fpath: str, fname: str, mediainfo_path: str) -> None:
     '''
     Create mediainfo files
+    Check before each run that file is still
+    in same path, otherwise search in local
+    black_pearl_ingest path for new path
     '''
     # Run script from media files local directory
-    os.chdir(target_path)
-    path1 = utils.mediainfo_create('-f', 'TEXT', fname, mediainfo_path)
-    path2 = utils.mediainfo_create('', 'TEXT', fname, mediainfo_path)
-    path3 = utils.mediainfo_create('', 'EBUCore', fname, mediainfo_path)
-    path4 = utils.mediainfo_create('', 'PBCore2', fname, mediainfo_path)
-    path5 = utils.mediainfo_create('', 'XML', fname, mediainfo_path)
-    path6 = utils.mediainfo_create('-f', 'JSON', fname, mediainfo_path)
+
+    if not os.path.isfile(fpath):
+        fpath = utils.local_file_search(bpi_path, fname)
+    path1 = utils.mediainfo_create('-f', 'TEXT', fpath, mediainfo_path)
+    if not os.path.isfile(fpath):
+        fpath = utils.local_file_search(bpi_path, fname)
+    path2 = utils.mediainfo_create('', 'TEXT', fpath, mediainfo_path)
+    if not os.path.isfile(fpath):
+        fpath = utils.local_file_search(bpi_path, fname)
+    path3 = utils.mediainfo_create('', 'EBUCore', fpath, mediainfo_path)
+    if not os.path.isfile(fpath):
+        fpath = utils.local_file_search(bpi_path, fname)
+    path4 = utils.mediainfo_create('', 'PBCore2', fpath, mediainfo_path)
+    if not os.path.isfile(fpath):
+        fpath = utils.local_file_search(bpi_path, fname)
+    path5 = utils.mediainfo_create('', 'XML', fpath, mediainfo_path)
+    if not os.path.isfile(fpath):
+        fpath = utils.local_file_search(bpi_path, fname)
+    path6 = utils.mediainfo_create('-f', 'JSON', fpath, mediainfo_path)
 
     # Return path back to script directory
-    os.chdir(os.path.join(CODE, 'hashes'))
     LOGGER.info("Written metadata to paths:\n%s\n%s\n%s\n%s\n%s\n%s", path1, path2, path3, path4, path5, path6)
+
+
+def get_bpi_folder(filepath):
+    '''
+    Identify and return the base
+    black_pearl_ingest folder to
+    aid finding of moved files
+    '''
+    fpath = os.path.split(filepath)[0]
+    if 'black_pearl_' in fpath.split('/')[-1]:
+        return fpath
+    else:
+        fpath2 = os.path.split(fpath)[0]
+        if 'black_pearl_' in fpath2.split('/')[-1]:
+            return fpath2
 
 
 if __name__ == '__main__':

@@ -939,7 +939,6 @@ def main():
     logger.info('========== STORA documentation script END ===================================================\n')
 
 
-@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id):
     '''
     Call function series_check(series_id) and build all data needed
@@ -952,10 +951,11 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     series_work_id = ''
     series_data = series_check(epg_dict['series_id'])
     if series_data is None:
-        print("Attempting to retrieve series data from EPG API using retrieve(fullpath)")
+        print(f"Attempting to retrieve series data from EPG API using function 'retrieve({fullpath})'")
         retrieve(fullpath)
-        series_data = series_check(epg_dict['series_id'])
-    if series_data[4] is None:
+    series_data = series_check(epg_dict['series_id'])
+    print(series_data)
+    if series_data is None:
         print("No series data found in CID or in cache")
         return None
 

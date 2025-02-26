@@ -57,9 +57,11 @@ import os
 import sys
 import logging
 import itertools
+from typing import Optional, Any, Final
 from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError
+
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -72,17 +74,17 @@ from downloaded_transcode_mp4 import transcode_mp4
 from downloaded_transcode_mp4_watermark import transcode_mp4_access
 
 # GLOBAL VARIABLES
-CID_API = os.environ['CID_API4']
-LOG_PATH = os.environ['LOG_PATH']
-CONTROL_JSON = os.environ['CONTROL_JSON']
-CODEPTH = os.environ['CODE']
-ES_SEARCH = os.environ['ES_SEARCH_PATH']
-EMAIL_SENDER=os.environ['EMAIL_SEND']
-EMAIL_PSWD=os.environ['EMAIL_PASS']
-FMT = '%Y-%m-%d %H:%M:%s'
+CID_API: Final = os.environ['CID_API4']
+LOG_PATH: Final = os.environ['LOG_PATH']
+CONTROL_JSON: Final = os.environ['CONTROL_JSON']
+CODEPTH: Final = os.environ['CODE']
+ES_SEARCH: Final = os.environ['ES_SEARCH_PATH']
+EMAIL_SENDER: Final=os.environ['EMAIL_SEND']
+EMAIL_PSWD: Final =os.environ['EMAIL_PASS']
+FMT: Final = '%Y-%m-%d %H:%M:%s'
 
 # CONNECT TO ES
-ES = Elasticsearch([ES_SEARCH])
+ES: Final = Elasticsearch([ES_SEARCH])
 
 # Set up logging
 LOGGER = logging.getLogger('schedule_database_downloader_transcode')
@@ -93,7 +95,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def check_elasticsearch():
+def check_elasticsearch() -> Optional[bool]:
     '''
     Check ES index connected
     '''
@@ -104,7 +106,7 @@ def check_elasticsearch():
         sys.exit('Connection to Elasticsearch not found. Script exiting.')
 
 
-def get_media_original_filename(fname):
+def get_media_original_filename(fname: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     '''
     Retrieve the reference_number from CID media record
     '''
@@ -139,7 +141,7 @@ def get_media_original_filename(fname):
     return media_priref, orig_fname, bucket
 
 
-def get_prirefs(pointer):
+def get_prirefs(pointer: str) -> list[str]:
     '''
     User pointer number and look up
     for list of prirefs in CID
@@ -162,7 +164,7 @@ def get_prirefs(pointer):
     return prirefs
 
 
-def get_dictionary(priref_list):
+def get_dictionary(priref_list: list[str]) -> dict[str, list[dict[str, list[str]]]]:
     '''
     Iterate list of prirefs and
     collate data
@@ -176,7 +178,7 @@ def get_dictionary(priref_list):
     return data_dict
 
 
-def get_media_record_data(priref):
+def get_media_record_data(priref: str) -> list[dict[str, list[str]]]:
     '''
     Get CID media record details
     '''
@@ -224,7 +226,7 @@ def get_media_record_data(priref):
     return all_files
 
 
-def make_check_md5(fpath, fname, bucket):
+def make_check_md5(fpath: str, fname: str, bucket: str) -> tuple[str, str]:
     '''
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
@@ -237,7 +239,7 @@ def make_check_md5(fpath, fname, bucket):
     return str(download_checksum).strip(), str(bp_checksum).strip()
 
 
-def retrieve_requested():
+def retrieve_requested() -> list[tuple[str, str]]:
     '''
     Pull data from ES index, Requested status only
     Remove duplicates and sort for oldest first
@@ -251,8 +253,8 @@ def retrieve_requested():
         requested_data.append(all_items)
     return remove_duplicates(requested_data)
 
-
-def check_for_cancellation(user_id):
+######
+def check_for_cancellation(user_id: str):
     '''
     Pull data from ES index for user ID being processed
     Return status update
@@ -264,7 +266,7 @@ def check_for_cancellation(user_id):
     return search_results['hits']['hits'][0]['_source']['status']
 
 
-def remove_duplicates(list_data):
+def remove_duplicates(list_data: list[str]) -> list[str]:
     '''
     Sort and remove duplicates
     using itertools
@@ -277,7 +279,7 @@ def remove_duplicates(list_data):
     return unique
 
 
-def update_table(user_id, new_status):
+def update_table(user_id: str, new_status: str) -> bool:
     '''
     Update specific ES index with new
     data, for fname match
@@ -300,7 +302,7 @@ def update_table(user_id, new_status):
         return False
 
 
-def check_download_exists(download_fpath, orig_fname, fname, transcode):
+def check_download_exists(download_fpath: str, orig_fname: str, fname: str, transcode: str) -> tuple[Optional[str], Optional[bool]]:
     '''
     Check if download already exists
     in path, return new filepath and bool
@@ -570,7 +572,7 @@ def main():
     LOGGER.info("================ DPI DOWNLOAD REQUESTS COMPLETED. Date: %s =================\n", datetime.now().strftime(FMT)[:19])
 
 
-def create_transcode(new_fpath, transcode, fname, user_id):
+def create_transcode(new_fpath: str, transcode: str, fname: str, user_id: str) -> Tuple[str, bool]:
     '''
     Transcode files depending on supplied
     transcode preference. Output result of attempt
@@ -646,7 +648,7 @@ def create_transcode(new_fpath, transcode, fname, user_id):
     return trans, failed_trans
 
 
-def send_email_update(email, fname, download_fpath, tran_status):
+def send_email_update(email: str, fname: str, download_fpath: str, tran_status: str) -> None:
     '''
     Update user that their item has been
     downloaded, with path, folder and
@@ -713,7 +715,7 @@ Digital Preservation team'''
             LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
 
 
-def send_email_update_bulk(email, download_fpath, files_processed, failure_list):
+def send_email_update_bulk(email: str, download_fpath: str, files_processed: dict[str, str], failure_list: list[str]) -> list[str]:
     '''
     Update user that their item has been
     downloaded, with path, folder and
@@ -785,7 +787,7 @@ Digital Preservation team'''
             LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
 
 
-def send_email_failures_bulk(email, download_fpath, failed_downloads):
+def send_email_failures_bulk(email: list[str], download_fpath: list[str], failed_downloads: list[str]) -> None:
     '''
     Update user that their item has failed
     to download, with path, folder and

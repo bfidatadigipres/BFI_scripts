@@ -42,7 +42,7 @@ HEADERS = {
 }
 
 
-def retrieve(fullpath):
+def retrieve(fullpath: str) -> None:
     # Opening log statement
     LOGGER.info('========== Fetch series_retrieve.py script STARTED ===============================================')
     with open(fullpath, 'r') as inf:
@@ -66,7 +66,7 @@ def retrieve(fullpath):
     LOGGER.info('========== Fetch series_retrieve.py script ENDED ================================================')
 
 
-def get_asset(series_id, title):
+def get_asset(series_id: str, title: str) -> None:
     series_url = os.path.join(URL, series_id)
     dct = requests.request("GET", series_url, headers=HEADERS, params=QUERY, timeout=1200)
     try:

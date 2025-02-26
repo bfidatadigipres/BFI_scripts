@@ -10,7 +10,9 @@ Where found returns Title/Title article, where not found returns None
 2021
 '''
 
-TITLE_ARTICLES = {'af': ["Die ", "'N ", "DIE ", "'N "],
+from typing import Final
+
+TITLE_ARTICLES: Final = {'af': ["Die ", "'N ", "DIE ", "'N "],
                   'sq': ["Nji ", "Një ", "NJI ", "NJË "],
                   'ar': ["El-", "Ad-", "Ag-", "Ak-", "An-", "Ar-", "As-", "At-", "Az-", "EL-", "AD-", "AG-", "AK-", "AN-", "AR-", "AS-", "AT-", "AZ-"],
                   'da': ["Den ", "Det ", "De ", "En ", "Et ", "DEN ", "DET ", "DE ", "EN ", "ET "],
@@ -36,18 +38,18 @@ TITLE_ARTICLES = {'af': ["Die ", "'N ", "DIE ", "'N "],
 }
 
 
-def splitter(title_supplied, language):
+def splitter(title_supplied: str, language: str) -> tuple[str, str]:
     '''
     Checks for article prefix in supplied title
     and given language code. Splits if match found
     '''
 
-    title = ''
-    title_art = ''
+    title: str = ''
+    title_art: str = ''
 
     # Counts words in the supplied title:
-    title_strip = title_supplied.strip()
-    count = 1 + title_strip.count(" ")
+    title_strip: str = title_supplied.strip()
+    count: int = 1 + title_strip.count(" ")
 
     # Prepares title, splitting into title and title_art
     language = language.lower()

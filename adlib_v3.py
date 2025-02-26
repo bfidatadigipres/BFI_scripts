@@ -15,7 +15,7 @@ from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
 from tenacity import retry, stop_after_attempt
-from typing import Final, Optional, Any
+from typing import Final, Optional, Any, Iterable, Mapping
 
 HEADERS = {
     'Content-Type': 'text/xml'
@@ -35,7 +35,8 @@ def check(api: str) -> dict[Any, Any]:
     return get(api, query)
 
 # -> tuple[int, list[dict[str, str]]]
-def retrieve_record(api: str, database: str, search: str, limit: str, fields=None) -> tuple[Optional[int],Optional[list[dict[str, Any]]]]:
+# tuple[Optional[int],Optional[Sequence[dict[str, Any]]]]
+def retrieve_record(api: str, database: str, search: str, limit: str, fields=None) -> tuple[Optional[int], Optional[dict[Any,Any]]]:
     '''
     Retrieve data from CID using new API
     '''
@@ -81,7 +82,7 @@ def retrieve_record(api: str, database: str, search: str, limit: str, fields=Non
 
 
 @retry(stop=stop_after_attempt(10))
-def get(api: str, query: dict[str, str]) -> dict[Any, Any]:
+def get(api: str, query: Mapping[str, object]) -> dict[Any, Any]:
     '''
     Send a GET request
     '''
@@ -104,7 +105,7 @@ def get(api: str, query: dict[str, str]) -> dict[Any, Any]:
         print(err)
         raise Exception from err
 
-def group_check(record, fname):
+def group_check(record: Any, fname: str) -> Optional[list[dict[Any, Any]]]:
     '''
     Get group that contains field key
     '''
@@ -154,7 +155,7 @@ def group_check(record, fname):
     else:
         return None
 
-def post(api: str, payload: str, database: str, method: str):
+def post(api: str, payload: Optional[str | bytes], database: str, method: str):
     '''
     Send a POST request
     '''
@@ -165,6 +166,7 @@ def post(api: str, payload: str, database: str, method: str):
         'output': 'jsonv1'
     }
     payload = payload.encode('utf-8')
+    record = {}
 
     if method == 'insertrecord':
         try:
@@ -222,7 +224,7 @@ def post(api: str, payload: str, database: str, method: str):
     return None
 
 
-def retrieve_field_name(record, fieldname) -> list[str]:
+def retrieve_field_name(record, fieldname: str) -> list[str]:
     '''
     Retrieve record, check for language data
     Alter retrieval method. record ==
@@ -246,7 +248,7 @@ def retrieve_field_name(record, fieldname) -> list[str]:
     return field_list
 
 
-def retrieve_facet_list(record, fname):
+def retrieve_facet_list(record: list[dict[Any, Any]], fname: str) -> list[str]:
     '''
     Retrieve list of facets
     '''
@@ -256,10 +258,36 @@ def retrieve_facet_list(record, fname):
 
     return facets
 
-
+def get_grouped_items(api: str, database: str) -> dict[str, list[str]] | tuple[None, None]:
+    '''
+    Check dB for groupings and ensure
+    these are added to XML configuration
+    '''
+    query = {
+        'command': 'getmetadata',
+        'database': database,
+        'limit': 0
+    }
+    result = requests.request('GET', api, headers=HEADERS, params=query)
+    metadata = xmltodict.parse(result.text)
+    if not isinstance(metadata, dict):
+        return None, None
+    grouped: dict[str, list[str]] = {}
+    mdata = metadata['adlibXML']['recordList']['record']
+    for num in range(0, len(mdata)):
+        try:
+            group = mdata[num]['group']
+            field_name = mdata[num]['fieldName']['value'][0]['#text']
+            if group in grouped.keys():
+                grouped[group].append(field_name)
+            else:
+                grouped[group] = [field_name]
+        except KeyError:
+            pass
+    return grouped
  
 
-def create_record_data(api, database, priref, data=None):
+def create_record_data(api: str, database: str, priref: str, data: Optional[list[Any]]=None) -> bool | str:
     '''
     Create a record from supplied dictionary (or list of dictionaries)
     '''
@@ -270,7 +298,7 @@ def create_record_data(api, database, priref, data=None):
     grouped = get_grouped_items(api, database)
     remove_list = []
     for key, value in grouped.items():
-        new_grouping = {}
+        new_grouping: dict[str, list[Any]] = {}
         for item in data:
             for k in item.keys():
                 if k in value:
@@ -307,7 +335,7 @@ def create_record_data(api, database, priref, data=None):
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
-def create_grouped_data(priref, grouping, field_pairs):
+def create_grouped_data(priref: str, grouping: str, field_pairs: list[list[dict[Any, Any]]]) -> Optional[str]:
     '''
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append
@@ -339,7 +367,7 @@ def create_grouped_data(priref, grouping, field_pairs):
         return payload_mid
 
 
-def get_fragments(obj):
+def get_fragments(obj: Iterable[Any]) -> list[str]:
     '''
     Validate given XML string(s), or create valid XML
     fragment from dictionary / list of dictionaries
@@ -370,7 +398,7 @@ def get_fragments(obj):
     return data
 
 
-def add_quality_comments(api, priref, comments):
+def add_quality_comments(api: str, priref: str, comments: str) -> bool:
     '''
     Receive comments string
     convert to XML quality comments
@@ -419,7 +447,7 @@ def check_response(rec, api):
             return True
 
 
-def recycle_api(api):
+def recycle_api(api: str) -> None:
     '''
     Adds a search call to API which
     triggers Powershell recycle

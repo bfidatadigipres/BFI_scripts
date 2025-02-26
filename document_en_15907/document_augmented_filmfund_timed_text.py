@@ -29,6 +29,9 @@ import sys
 import shutil
 import logging
 import datetime
+import requests
+from typing import Optional, Final, Any, Sequence, Iterable
+
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -36,10 +39,10 @@ import adlib_v3_sess as adlib
 import utils
 
 # Global variables
-LOGS = os.environ.get('LOG_PATH')
-STORAGE = os.path.join(os.environ.get('QNAP_11'), 'timed_text')
-AUTOINGEST = os.path.join(os.environ.get('AUTOINGEST_QNAP11'), 'ingest/autodetect/')
-CID_API = os.environ.get('CID_API4')
+LOGS: Final = os.environ.get('LOG_PATH')
+STORAGE: Final = os.path.join(os.environ.get('QNAP_11'), 'timed_text')
+AUTOINGEST: Final = os.path.join(os.environ.get('AUTOINGEST_QNAP11'), 'ingest/autodetect/')
+CID_API: Final = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_filmfund_timed_text')
@@ -50,12 +53,12 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def cid_check_ob_num(object_number, session):
+def cid_check_ob_num(object_number: str, session: requests.Session) -> Optional[Iterable[dict[str, Any]]]:
     '''
     Looks up object_number and retrieves title
     and other data for new timed text record
     '''
-    search = f"object_number='{object_number}'"
+    search: str = f"object_number='{object_number}'"
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '1', session, fields=None)
     if hits is None:
         raise Exception(f"CID API was unreachable for Items search: {search}")
@@ -64,7 +67,7 @@ def cid_check_ob_num(object_number, session):
     return record
 
 
-def walk_folders(storage):
+def walk_folders(storage: str) -> list[str]:
     '''
     Collect list of folderpaths
     for files named rename_<platform>
@@ -92,12 +95,12 @@ def main():
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
 
-    folder_list = walk_folders(STORAGE)
+    folder_list: list[str] = walk_folders(STORAGE)
     if len(folder_list) == 0:
         sys.exit('No folders found at this time.')
 
     LOGGER.info("== Document augmented Film Fund timed text start ===================")
-    session = adlib.create_session()
+    session: requests.Session = adlib.create_session()
     for fpath in folder_list:
         print(fpath)
         if not utils.check_control('pause_scripts'):
@@ -106,21 +109,21 @@ def main():
         if not os.path.exists(fpath):
             LOGGER.warning("Folder path is not valid: %s", fpath)
             continue
-        object_number = os.path.basename(fpath)
-        file_list = os.listdir(fpath)
+        object_number: str = os.path.basename(fpath)
+        file_list: list[str] = os.listdir(fpath)
         if not file_list:
             LOGGER.warning("Skipping. No files found in folderpath: %s", fpath)
             continue
         LOGGER.info("Files found in target folder %s: %s", object_number, ', '.join(file_list))
 
         # Check object number valid
-        record = cid_check_ob_num(object_number, session)
+        record: Optional[Iterable[dict[str, Any]]] = cid_check_ob_num(object_number, session)
         print(record)
         if record is None:
             LOGGER.warning("Skipping: Record could not be matched with object_number")
             continue
 
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        priref: str = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"Priref matched with retrieved folder name: {priref}")
         LOGGER.info("Priref matched with folder name: %s", priref)
 
@@ -134,14 +137,14 @@ def main():
             if item_record is None:
                 continue
 
-            tt_priref = adlib.retrieve_field_name(item_record, 'priref')[0]
-            tt_ob_num = adlib.retrieve_field_name(item_record, 'object_number')[0]
+            tt_priref: str = adlib.retrieve_field_name(item_record, 'priref')[0]
+            tt_ob_num: str = adlib.retrieve_field_name(item_record, 'object_number')[0]
             LOGGER.info("** CID Item record created: %s", tt_priref)
             print(f"CID Item record created: {tt_priref}, {tt_ob_num}")
 
             # Rename file to new filename from object-number
-            new_fname = f"{tt_ob_num.replace('-', '_')}_01of01.{ext}"
-            new_fpath = os.path.join(fpath, new_fname)
+            new_fname: str = f"{tt_ob_num.replace('-', '_')}_01of01.{ext}"
+            new_fpath: str = os.path.join(fpath, new_fname)
             LOGGER.info("%s to be renamed %s", file, new_fname)
             rename_success = rename_or_move('rename', os.path.join(fpath, file), new_fpath)
             if rename_success is False:
@@ -171,7 +174,7 @@ def main():
     LOGGER.info("== Document augmented Film Fund timed text end =====================\n")
 
 
-def build_record_defaults(platform):
+def build_record_defaults(platform: str) ->  Iterable[dict[str, str]]:
     '''
     Return all record defaults
     '''
@@ -183,7 +186,7 @@ def build_record_defaults(platform):
     return record
 
 
-def rename_or_move(arg, file_a, file_b):
+def rename_or_move(arg: str, file_a: str, file_b: str) -> str | bool:
     '''
     Use shutil or os to move/rename
     from file a to file b. Verify change
@@ -278,7 +281,7 @@ def make_item_record_dict(priref, file, record):
     return item
 
 
-def create_new_item_record(priref, fname, record, session):
+def create_new_item_record(priref: str, fname: str, record: Optional[Iterable[dict[str, Any]]], session: requests.Session) -> Optional[str]:
     '''
     Build new CID item record from existing data and make CID item record
     '''

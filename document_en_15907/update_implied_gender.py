@@ -15,6 +15,7 @@ import csv
 import json
 import logging
 import datetime
+from typing import Final
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -22,10 +23,10 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-LOGS = os.environ['LOG_PATH']
-CSV = os.path.join(LOGS, 'gendered_names.csv')
-CID_API = os.environ['CID_API4']
-CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
+LOGS: Final = os.environ['LOG_PATH']
+CSV: Final  = os.path.join(LOGS, 'gendered_names.csv')
+CID_API: Final  = os.environ['CID_API4']
+CONTROL_JSON: Final  = os.path.join(LOGS, 'downtime_control.json')
 
 # Setup logging
 LOGGER = logging.getLogger('update_implied_gender')
@@ -36,11 +37,11 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def load_names():
+def load_names() -> dict[str, str]:
     '''
     Load ONS dataset to memory
     '''
-    gendered_names = {}
+    gendered_names: dict[str, str] = {}
     with open(CSV, 'r') as csv_file:
         rows = csv.reader(csv_file)
         for row in rows:
@@ -49,13 +50,13 @@ def load_names():
     return gendered_names
 
 
-def retrieve_people_records():
+def retrieve_people_records() -> tuple[int, list[dict[str, Optiona[str]]]]:
     '''
     Download 500 people in scope from 2019-01-01
     and update their implied gender to record
     '''
-    search = '(creation>"2019-01-01" and party.class=PERSON and name=* and not (forename.implied_gender=MALE,FEMALE,UNRESOLVED)) and not use=*'
-    fields = [
+    search: str = '(creation>"2019-01-01" and party.class=PERSON and name=* and not (forename.implied_gender=MALE,FEMALE,UNRESOLVED)) and not use=*'
+    fields: list[str] = [
         'priref',
         'name',
         'used_for'
@@ -89,7 +90,7 @@ def main():
     if hits == 0:
         LOGGER.warning("Exiting: No files found in CID people record search")
         sys.exit()
-    gendered_names = load_names()
+    gendered_names: dict[str, str] = load_names()
 
     # Parse cid people records
     for r in records:
@@ -151,18 +152,18 @@ def main():
     LOGGER.info("------------ Gender script end ---------------------------")
 
 
-def update_implied_gender(priref, gender):
+def update_implied_gender(priref: str, gender: str) -> str:
     '''
     Update gender data to Person record
     '''
-    now = str(datetime.datetime.now())[:10]
-    time = str(datetime.datetime.now())[11:19]
-    p_head = f'<adlibXML><recordList><record><priref>{priref}</priref>'
-    p_mid = f'<forename.implied_gender>{gender}</forename.implied_gender>'
-    p_edit1 = f'<Edit><edit.date>{now}</edit.date><edit.notes>Automatic gender determination ({gender}) using ONS baby names</edit.notes>'
-    p_edit2 = f'<edit.name>pip:gender</edit.name><edit.time>{time}</edit.time></Edit>'
-    p_end = '</record></recordList></adlibXML>'
-    payload = p_head + p_mid + p_edit1 + p_edit2 + p_end
+    now: str = str(datetime.datetime.now())[:10]
+    time: str = str(datetime.datetime.now())[11:19]
+    p_head: str = f'<adlibXML><recordList><record><priref>{priref}</priref>'
+    p_mid: str  = f'<forename.implied_gender>{gender}</forename.implied_gender>'
+    p_edit1: str  = f'<Edit><edit.date>{now}</edit.date><edit.notes>Automatic gender determination ({gender}) using ONS baby names</edit.notes>'
+    p_edit2: str  = f'<edit.name>pip:gender</edit.name><edit.time>{time}</edit.time></Edit>'
+    p_end: str  = '</record></recordList></adlibXML>'
+    payload: str  = p_head + p_mid + p_edit1 + p_edit2 + p_end
 
     record = adlib.post(CID_API, payload, 'people', 'updaterecord')
     if not record:

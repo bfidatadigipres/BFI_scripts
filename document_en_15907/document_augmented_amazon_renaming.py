@@ -44,6 +44,7 @@ import shutil
 import logging
 import datetime
 import subprocess
+from typing import Final, Optional, Any
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -51,16 +52,16 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
-AMZ_PTH = os.environ.get('AMAZON_PATH')
-AMZ_INGEST = os.environ.get('AMAZON_INGEST')
-AUTOINGEST = os.path.join(STORAGE_PTH, AMZ_INGEST)
-STORAGE = os.path.join(STORAGE_PTH, AMZ_PTH)
-ADMIN = os.environ.get('ADMIN')
-LOGS = os.path.join(ADMIN, 'Logs')
-CODE = os.environ.get('CODE_PATH')
-CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ['CID_API4']
+STORAGE_PTH: Final = os.environ.get('PLATFORM_INGEST_PTH')
+AMZ_PTH: Final  = os.environ.get('AMAZON_PATH')
+AMZ_INGEST: Final  = os.environ.get('AMAZON_INGEST')
+AUTOINGEST: Final  = os.path.join(STORAGE_PTH, AMZ_INGEST)
+STORAGE: Final  = os.path.join(STORAGE_PTH, AMZ_PTH)
+ADMIN: Final  = os.environ.get('ADMIN')
+LOGS: Final  = os.path.join(ADMIN, 'Logs')
+CODE: Final  = os.environ.get('CODE_PATH')
+CONTROL_JSON: Final  = os.path.join(LOGS, 'downtime_control.json')
+CID_API: Final  = os.environ['CID_API4']
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_amazon_renaming')
@@ -71,12 +72,12 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def cid_check_fname(object_number):
+def cid_check_fname(object_number: str) -> Optional[str]:
     '''
     Looks up object_number and retrieves title
     and other data for new timed text record
     '''
-    search = f"object_number='{object_number}'"
+    search: str = f"object_number='{object_number}'"
     try:
         record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
     except Exception as err:
@@ -86,13 +87,13 @@ def cid_check_fname(object_number):
     return record
 
 
-def walk_folders():
+def walk_folders() -> list[str]:
     '''
     Collect list of folderpaths
     for files named rename_amazon
     '''
 
-    rename_folders = []
+    rename_folders: list[str] = []
     for root, dirs, _ in os.walk(STORAGE):
         for dir in dirs:
             if 'rename_amazon' == dir:
@@ -101,7 +102,7 @@ def walk_folders():
     folder_list = []
     for rename_folder in rename_folders:
         print(rename_folder)
-        folders = os.listdir(rename_folder)
+        folders: list[str] = os.listdir(rename_folder)
         if not folders:
             LOGGER.info("Amazon file renaming script. Skipping as rename folder empty: %s", rename_folder)
             continue
@@ -116,18 +117,18 @@ def walk_folders():
     return folder_list
 
 
-def retrieve_metadata(fpath, mfile):
+def retrieve_metadata(fpath: str, mfile: str) -> str:
     '''
     Retrieve metadata for each file
     '''
-    cmd = [
+    cmd: list[str] = [
         'mediainfo', '-f',
         '--Language=raw',
         '--Output=Video;%colour_primaries%',
         os.path.join(fpath, mfile)
     ]
 
-    cmd2 = [
+    cmd2: list[str] = [
         'ffprobe', '-v',
         'error', '-select_streams',
         'a', '-show_entries',
@@ -136,10 +137,8 @@ def retrieve_metadata(fpath, mfile):
         os.path.join(fpath, mfile)
     ]
 
-    colour_prim = subprocess.check_output(cmd)
-    colour_prim = colour_prim.decode('utf-8')
-    audio_spec = subprocess.check_output(cmd2)
-    audio_spec = audio_spec.decode('utf-8')
+    colour_prim = subprocess.check_output(cmd).decode('utf-8')
+    audio_spec = subprocess.check_output(cmd2).decode('utf-8')
 
     if 'BT.2020' in str(colour_prim):
         return 'HDR'
@@ -167,7 +166,7 @@ def main():
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
 
-    folder_list = walk_folders()
+    folder_list: list[str] = walk_folders()
     if len(folder_list) == 0:
         LOGGER.info("Amazon file renaming script. No folders found.")
         sys.exit()
@@ -180,13 +179,13 @@ def main():
         if record is None:
             LOGGER.warning("Skipping: Record could not be matched with object_number")
             continue
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
+        priref: str = adlib.retrieve_field_name(record[0], 'priref')[0]
+        ob_num: str = adlib.retrieve_field_name(record[0], 'object_number')[0]
 
         LOGGER.info("Folder matched to CID Item record: %s | %s ", folder, priref)
-        mov_list = [x for x in os.listdir(fpath) if x.endswith(('.mov', '.MOV'))]
+        mov_list: list[str] = [x for x in os.listdir(fpath) if x.endswith(('.mov', '.MOV'))]
         print(mov_list)
-        all_items = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
+        all_items: liststr = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
         if len(mov_list) != len(all_items):
             LOGGER.warning("Folder contains files that are not MOV: %s", fpath)
             continue
@@ -205,7 +204,7 @@ def main():
                 new_fpath = os.path.join(fpath, new_filename)
                 digital_note = f'{mov_file} - Renamed to: {new_filename}'
 
-                success = create_digital_original_filenames(priref, folder.strip(), digital_note)
+                success: bool = create_digital_original_filenames(priref, folder.strip(), digital_note)
                 if not success:
                     LOGGER.warning("Skipping further actions. Acquired filename not written to CID item record: %s", priref)
                     break
@@ -283,7 +282,7 @@ def main():
     LOGGER.info("== Document augmented Amazon renaming end ===================\n")
 
 
-def make_item_record_dict(priref, file, record, arg):
+def make_item_record_dict(priref: str, file: str, record: str, arg: str) -> Optional[list[dict[str, str]]]:
     '''
     Get CID item record for source and borrow data
     for creation of new CID item record
@@ -346,7 +345,7 @@ def make_item_record_dict(priref, file, record, arg):
     return item
 
 
-def create_digital_original_filenames(priref, folder, digital_note):
+def create_digital_original_filenames(priref: str, folder: str, digital_note: str) -> bool:
     '''
     Create entries for digital.acquired_filename
     and append to the CID item record.
@@ -373,7 +372,7 @@ def create_digital_original_filenames(priref, folder, digital_note):
         return False
 
 
-def defaults():
+def defaults() -> list[dict[str, str]]:
     '''
     Build defaults for new CID item records
     '''

@@ -60,6 +60,7 @@ import logging
 import itertools
 from datetime import datetime
 from ds3 import ds3, ds3Helpers
+from typing import Final, Optional
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -69,16 +70,16 @@ from downloaded_transcode_mp4 import transcode_mp4
 from downloaded_transcode_mp4_watermark import transcode_mp4_access
 
 # GLOBAL VARIABLES
-CID_API = os.environ['CID_API3']
-CLIENT = ds3.createClientFromEnv()
-HELPER = ds3Helpers.Helper(client=CLIENT)
-LOG_PATH = os.environ['LOG_PATH']
-CONTROL_JSON = os.environ['CONTROL_JSON']
-CODEPTH = os.environ['CODE']
-DATABASE = os.path.join(CODEPTH, 'dpi_downloader/database_transcode.db')
-EMAIL_SENDER=os.environ['EMAIL_SEND']
-EMAIL_PSWD=os.environ['EMAIL_PASS']
-FMT = '%Y-%m-%d %H:%M:%s'
+CID_API: Final = os.environ['CID_API3']
+CLIENT: Final = ds3.createClientFromEnv()
+HELPER: Final = ds3Helpers.Helper(client=CLIENT)
+LOG_PATH: Final = os.environ['LOG_PATH']
+CONTROL_JSON: Final = os.environ['CONTROL_JSON']
+CODEPTH: Final = os.environ['CODE']
+DATABASE: Final = os.path.join(CODEPTH, 'dpi_downloader/database_transcode.db')
+EMAIL_SENDER: Final =os.environ['EMAIL_SEND']
+EMAIL_PSWD: Final =os.environ['EMAIL_PASS']
+FMT: Final = '%Y-%m-%d %H:%M:%s'
 
 # Set up logging
 LOGGER = logging.getLogger('schedule_database_downloader_transcode')
@@ -89,7 +90,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def check_control():
+def check_control() -> None:
     '''
     Check control json for downtime requests
     '''
@@ -103,7 +104,7 @@ def check_control():
             sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
 
-def get_media_original_filename(fname):
+def get_media_original_filename(fname: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     '''
     Retrieve the reference_number from CID media record
     '''
@@ -138,7 +139,7 @@ def get_media_original_filename(fname):
     return media_priref, orig_fname, bucket
 
 
-def get_prirefs(pointer):
+def get_prirefs(pointer: str) -> Optional[list[str]]:
     '''
     User pointer number and look up
     for list of prirefs in CID
@@ -161,7 +162,7 @@ def get_prirefs(pointer):
     return prirefs
 
 
-def get_dictionary(priref_list):
+def get_dictionary(priref_list: list[str]) -> dict[str, list[dict[str, list[str]]]]:
     '''
     Iterate list of prirefs and
     collate data
@@ -175,7 +176,7 @@ def get_dictionary(priref_list):
     return data_dict
 
 
-def get_media_record_data(priref):
+def get_media_record_data(priref: str) -> list[dict[str, list[str]]]:
     '''
     Get CID media record details
     '''
@@ -224,7 +225,7 @@ def get_media_record_data(priref):
     return all_files
 
 
-def get_bp_md5(fname, bucket):
+def get_bp_md5(fname: str, bucket: str) -> str:
     '''
     Fetch BP checksum to compare
     to new local MD5
@@ -240,7 +241,7 @@ def get_bp_md5(fname, bucket):
         return md5.replace('"', '')
 
 
-def make_check_md5(fpath, fname, bucket):
+def make_check_md5(fpath: str, fname: str, bucket: str) -> tuple[str, str]:
     '''
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
@@ -262,7 +263,7 @@ def make_check_md5(fpath, fname, bucket):
     return str(download_checksum).strip(), str(bp_checksum).strip()
 
 
-def retrieve_requested():
+def retrieve_requested() -> list[str]:
     '''
     Access database.db and retrieve
     recently requested downloads
@@ -293,7 +294,7 @@ def retrieve_requested():
     return sorted_data
 
 
-def remove_duplicates(list_data):
+def remove_duplicates(list_data: list[str]) -> list[str]:
     '''
     Sort and remove duplicates
     using itertools
@@ -304,7 +305,7 @@ def remove_duplicates(list_data):
     return unique
 
 
-def update_table(fname, trans, new_status):
+def update_table(fname: str, trans: str, new_status: str) -> None:
     '''
     Update specific row with new
     data, for fname match
@@ -326,7 +327,7 @@ def update_table(fname, trans, new_status):
             sqlite_connection.close()
 
 
-def check_download_exists(download_fpath, orig_fname, fname, transcode):
+def check_download_exists(download_fpath: str, orig_fname: str, fname:str, transcode: str) -> tuple[Optional[str], Optional[bool]]:
     '''
     Check if download already exists
     in path, return new filepath and bool
@@ -536,7 +537,7 @@ def main():
     LOGGER.info("================ DPI DOWNLOAD REQUESTS COMPLETED. Date: %s =================\n", datetime.now().strftime(FMT)[:19])
 
 
-def download_bp_object(fname, outpath, bucket):
+def download_bp_object(fname: str, outpath: str, bucket: str) -> Optional[str]:
     '''
     Download the BP object from SpectraLogic
     tape library and save to outpath
@@ -555,7 +556,7 @@ def download_bp_object(fname, outpath, bucket):
     return get_job_id
 
 
-def create_transcode(new_fpath, transcode, fname):
+def create_transcode(new_fpath: str, transcode: str, fname: str) -> tuple[Optional[str], bool]:
     '''
     Transcode files depending on supplied
     transcode preference. Output result of attempt
@@ -631,7 +632,7 @@ def create_transcode(new_fpath, transcode, fname):
     return trans, failed_trans
 
 
-def send_email_update(email, fname, download_fpath, tran_status):
+def send_email_update(email: str, fname: str, download_fpath: str, tran_status: str) -> None:
     '''
     Update user that their item has been
     downloaded, with path, folder and
@@ -698,7 +699,7 @@ Digital Preservation team'''
             LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
 
 
-def send_email_update_bulk(email, download_fpath, files_processed):
+def send_email_update_bulk(email: str, download_fpath: str, files_processed: dict[str, str]) -> None:
     '''
     Update user that their item has been
     downloaded, with path, folder and

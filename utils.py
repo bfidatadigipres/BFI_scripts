@@ -18,7 +18,7 @@ import adlib_v3 as adlib
 from typing import Final, Optional, Iterator, Any
 
 LOG_PATH: Final = os.environ['LOG_PATH']
-CONTROL_JSON: Final = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
+CONTROL_JSON: str = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 
 
@@ -115,7 +115,7 @@ def accepted_file_type(ext: str) -> Optional[str]:
     return None
 
 
-def check_control(arg: str) -> bool:
+def check_control(arg: Any) -> bool:
     '''
     Check control json for downtime requests
     based on passed argument
@@ -149,7 +149,7 @@ def cid_check(cid_api: str) -> bool:
         return False
 
 
-def read_yaml(file: str) -> dict[str, str]:
+def read_yaml(file):
     '''
     Safe open yaml and return as dict
     '''
@@ -158,7 +158,7 @@ def read_yaml(file: str) -> dict[str, str]:
         return d
 
 
-def read_csv(csv_path: str) -> Iterator[dict[Any, Any]]:
+def read_csv(csv_path: str):
     '''
     Check CSV for evidence that fname already
     downloaded. Extract download date and return
@@ -169,7 +169,7 @@ def read_csv(csv_path: str) -> Iterator[dict[Any, Any]]:
         return readme
 
 
-def read_extract(fpath: str) -> str:
+def read_extract(fpath: str):
     '''
     For reading metadata text files
     and returning as a block
@@ -235,7 +235,7 @@ def get_object_number(fname: str) -> str | bool | None:
         return False
     try:
         splits: list[str] = fname.split('_')
-        object_number: str = '-'.join(splits[:-1])
+        object_number: Optional[str] = '-'.join(splits[:-1])
     except Exception:
         object_number = None
     return object_number
@@ -312,7 +312,7 @@ def get_ms(filepath: str) -> Optional[str | bytes]:
     Retrieve duration as milliseconds if possible
     '''
     retry: bool = False
-    duration: str = ''
+    duration: bytes = b''
     cmd: list[str] = [
         'ffprobe',
         '-v', 'error',
@@ -349,7 +349,7 @@ def get_duration(filepath: str) -> Optional[str | bytes]:
     Retrieve duration field if possible
     '''
     retry: bool = False
-    duration: str | bytes = ''
+    duration: bytes = b''
     cmd: list[str] = [
         'ffprobe',
         '-v', 'error',
@@ -422,7 +422,7 @@ def get_size(fpath: str) -> Optional[int]:
         return None
 
 
-def create_md5_65536(fpath: str):
+def create_md5_65536(fpath: str) -> Optional[str]:
     '''
     Hashlib md5 generation, return as 32 character hexdigest
     '''

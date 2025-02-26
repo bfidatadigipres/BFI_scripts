@@ -33,6 +33,7 @@ import shutil
 import logging
 import datetime
 import subprocess
+from typing import Any, Final, Optional
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -58,13 +59,13 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def fname_split(filename):
+def fname_split(filename: str) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     '''
     Receive filename, extract part whole
     and return items split up
     '''
     fname, ext = os.path.splitext(filename)
-    file_split = fname.split('_')
+    file_split: list[str] = fname.split('_')
     if len(file_split) == 4:
         part_whole = str(file_split[3])
         part, whole = part_whole.split('of')
@@ -77,7 +78,7 @@ def fname_split(filename):
         return None, None, None, None
 
 
-def remove_whitespace(title):
+def remove_whitespace(title: str) -> str:
     '''
     Remove excess whitespace from badly formed names
     '''
@@ -86,7 +87,7 @@ def remove_whitespace(title):
     return new_title
 
 
-def return_range(filename):
+def return_range(filename: str) -> list[str]:
     '''
     Receive filename for WAV, extract part whole data
     create all fnames for range and return as list
@@ -94,9 +95,9 @@ def return_range(filename):
     fname, part, whole, ext = fname_split(filename)
     if not fname:
         return []
-    part = int(part)
-    whole = int(whole)
-    range_list = []
+    part: int = int(part)
+    whole: int = int(whole)
+    range_list: list[str] = []
 
     for count in range(1, whole + 1):
         name = f"{fname}" + str(count).zfill(2) + 'of' + str(whole).zfill(2) + f"{ext}"
@@ -104,18 +105,17 @@ def return_range(filename):
     return range_list
 
 
-def conformance_check(filepath):
+def conformance_check(filepath: str) -> str:
     '''
     Checks mediaconch policy against WAV files
     '''
-    mediaconch_cmd = [
+    mediaconch_cmd: list[str] = [
         'mediaconch', '--force',
         '-p', WAV_POLICY,
         filepath
     ]
 
-    result = subprocess.check_output(mediaconch_cmd)
-    result = str(result)
+    result: str = str(subprocess.check_output(mediaconch_cmd))
 
     if 'N/A!' in result or 'pass!' not in result:
         return f"FAIL! '{filepath}'\n{result}"
@@ -123,14 +123,14 @@ def conformance_check(filepath):
         return "PASS!"
 
 
-def check_range(range_list):
+def check_range(range_list: list[str]) -> Optional[list[str]]:
     '''
     Checks for all present in path and returns False boolean
     if any one is missing, or returns whole sequence path list
     '''
-    file_paths = []
+    file_paths: list[str] = []
     for item in range_list:
-        filepath = os.path.join(WAV_ARCHIVE_PATH, item)
+        filepath: str = os.path.join(WAV_ARCHIVE_PATH, item)
         if os.path.isfile(filepath):
             file_paths.append(filepath)
         else:
@@ -139,7 +139,7 @@ def check_range(range_list):
     return file_paths
 
 
-def make_object_number(file_path):
+def make_object_number(file_path: str) -> str:
     '''
     Convert file or directory to CID object_number
     '''
@@ -152,11 +152,11 @@ def make_object_number(file_path):
         return object_number
 
 
-def cid_query(database, search, object_number):
+def cid_query(database: str, search: str, object_number: str) -> Optional[dict[str, str]]:
     '''
     Format CID query for cid_data_retrieval()
     '''
-    fields = [
+    fields: list[str] = [
         'priref',
         'title',
         'title.article',
@@ -183,8 +183,8 @@ def cid_query(database, search, object_number):
 
     return cid_data
 
-
-def cid_data_retrieval(ob_num):
+#####
+def cid_data_retrieval(ob_num: str) -> dict[str, str]:
     '''
     Retrieve source data from CID
     to link to for new Item record
@@ -216,7 +216,7 @@ def cid_data_retrieval(ob_num):
     return cid_data
 
 
-def main():
+def main() -> None:
     '''
     Looks through WAV_ARCHIVE_PATH for files ending .wav/.WAV
     If part whole is greater than 01, extract all parts to list and check all present
@@ -460,7 +460,7 @@ def main():
     LOGGER.info("================ END magnetic_rename_wav.py END =================")
 
 
-def create_wav_record(gp_priref, title, title_article, title_language, source_ob_num):
+def create_wav_record(gp_priref:str, title: str, title_article: str, title_language: str, source_ob_num: str) -> Optional[tuple[str, str]]:
     '''
     Item record creation for WAV file
     TO DO: Needs reviewing with Lucy
@@ -535,7 +535,7 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_ob
         return None
 
 
-def rename(file, ob_num):
+def rename(file: str, ob_num: str) -> Optional[tuple[str, str]]:
     '''
     Receive original file path and rename filename
     based on object number, return new filepath, filename
@@ -556,7 +556,7 @@ def rename(file, ob_num):
         return None
 
 
-def ingest_move(filepath, new_filename):
+def ingest_move(filepath: str, new_filename: str) -> Optional[str]:
     '''
     Take file path and check move to autoingest
     '''
@@ -569,7 +569,7 @@ def ingest_move(filepath, new_filename):
         return None
 
 
-def log_pprint(dct):
+def log_pprint(dct: dict[str, str]) -> str:
     '''
     Make neat string variable from dct
     '''
@@ -580,7 +580,7 @@ def log_pprint(dct):
     return data_store
 
 
-def local_log(data):
+def local_log(data: str) -> None:
     '''
     Write collected data actions list of items
     to local log in audio_operations

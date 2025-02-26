@@ -21,6 +21,7 @@ import time
 import logging
 import subprocess
 import magic
+from typing import Optional, Any
 
 # Local imports
 sys.path.append(os.environ['CODE'])
@@ -41,7 +42,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
-def check_mime_type(fpath):
+def check_mime_type(fpath: str) -> bool:
     '''
     Checks the mime type is video
     and if stream media checks ffprobe
@@ -76,7 +77,7 @@ def check_mime_type(fpath):
     return True
 
 
-def get_dar(fullpath):
+def get_dar(fullpath: str) -> str:
     '''
     Retrieves metadata DAR info and returns as string
     '''
@@ -89,23 +90,23 @@ def get_dar(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     dar_setting = subprocess.check_output(cmd)
-    dar_setting = dar_setting.decode('utf-8')
+    dar_setting_str = dar_setting.decode('utf-8')
 
-    if '4:3' in str(dar_setting):
+    if '4:3' in dar_setting_str:
         return '4:3'
-    if '16:9' in str(dar_setting):
+    if '16:9' in dar_setting_str:
         return '16:9'
-    if '15:11' in str(dar_setting):
+    if '15:11' in dar_setting_str:
         return '4:3'
-    if '1.85:1' in str(dar_setting):
+    if '1.85:1' in dar_setting_str:
         return '1.85:1'
-    if '2.2:1' in str(dar_setting):
+    if '2.2:1' in dar_setting_str:
         return '2.2:1'
 
-    return str(dar_setting)
+    return dar_setting_str
 
 
-def get_par(fullpath):
+def get_par(fullpath: str) -> str:
     '''
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
@@ -119,8 +120,7 @@ def get_par(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     par_setting = subprocess.check_output(cmd)
-    par_setting = par_setting.decode('utf-8')
-    par_full = str(par_setting).rstrip('\n')
+    par_full = par_setting.decode('utf-8').rstrip('\n')
 
     if len(par_full) <= 5:
         return par_full
@@ -181,7 +181,7 @@ def get_height(fullpath):
         return re.sub("[^0-9]", "", height)
 
 
-def get_width(fullpath):
+def get_width(fullpath: str):
     '''
     Retrieves height information using mediainfo
     '''
@@ -194,7 +194,7 @@ def get_width(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     width = subprocess.check_output(cmd)
-    width = str(width)
+    width_str = width.decode('utf-8')
 
     if '720' == width:
         return '720'
@@ -207,11 +207,11 @@ def get_width(fullpath):
     if '1920' == width or '1 920' == width:
         return '1920'
     else:
-        if width.isdigit():
-            return str(width)
+        if width_str.isdigit():
+            return width_str
         else:
-            width = width.split(' p', maxsplit=1)[0]
-            return re.sub("[^0-9]", "", width)
+            width_str = width_str.split(' p', maxsplit=1)[0]
+            return re.sub("[^0-9]", "", width_str)
 
 
 def get_duration(fullpath):
@@ -261,7 +261,7 @@ def get_duration(fullpath):
             return (second_duration, '1')
 
 
-def check_audio(fullpath):
+def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     '''
     Mediainfo command to retrieve channels, identify
     stereo or mono, returned as 2 or 1 respectively
@@ -297,36 +297,37 @@ def check_audio(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     audio = subprocess.check_output(cmd)
-    audio = str(audio)
-
+    audio_str = audio.decode('utf-8')
     if len(audio) == 0:
         return None, None, None
 
     try:
         lang0 = subprocess.check_output(cmd0)
+        lang0_str = lang0.decode('utf-8')
     except Exception:
-        lang0 = ''
+        lang0_str = ''
     try:
         lang1 = subprocess.check_output(cmd1)
+        lang1_str = lang1.decode('utf-8')
     except Exception:
-        lang1 = ''
+        lang1_str = ''
 
-    print(f"**** LANGUAGES: Stream 0 {lang0} - Stream 1 {lang1}")
+    print(f"**** LANGUAGES: Stream 0 {lang0_str} - Stream 1 {lang1_str}")
 
     cmd2[3] = cmd2[3].replace('"', '')
     chnl_layout = subprocess.check_output(cmd2)
-    chnl_layout = str(chnl_layout)
+    chnl_layout_str = chnl_layout.decode('utf-8')
     stereo_lr = False
 
-    if 'LR' in chnl_layout:
+    if 'LR' in chnl_layout_str:
         stereo_lr = True
 
-    if 'NAR' in str(lang0):
+    if 'NAR' in lang0_str:
         print("Narration stream 0 / English stream 1")
         if stereo_lr:
             return ('Audio', '1', 'ac')
         return('Audio', '1', None)
-    elif 'NAR' in str(lang1):
+    elif 'NAR' in lang1_str:
         print("Narration stream 1 / English stream 0")
         if stereo_lr:
             return ('Audio', '0', 'ac')
@@ -337,7 +338,7 @@ def check_audio(fullpath):
         return ('Audio', None, None)
 
 
-def create_watermark_command(fullpath, output):
+def create_watermark_command(fullpath: str, output: str) -> list[Optional[str]]:
     '''
     Subprocess command build, with variations
     added based on metadata extraction
@@ -376,7 +377,7 @@ def create_watermark_command(fullpath, output):
     return ffmpeg_program_call + input_video + input_watermark + filter_graph3 + [output]
 
 
-def create_ffmpeg_command(fullpath, output, video_data):
+def create_ffmpeg_command(fullpath: str, output: str, video_data: list[Optional[str]]) -> list[str]:
     '''
     Subprocess command build, with variations
     added based on metadata extraction
@@ -549,7 +550,7 @@ def create_ffmpeg_command(fullpath, output, video_data):
         return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + fast_start + cmd_mid + output_data
 
 
-def check_policy(output_path):
+def check_policy(output_path: str):
     '''
     Run mediaconch check against new prores
     '''
@@ -565,7 +566,7 @@ def check_policy(output_path):
             return result
 
 
-def conformance_check(filepath):
+def conformance_check(filepath: str) -> str:
     '''
     Checks mediaconch policy against new V210 mov
     '''
@@ -578,26 +579,26 @@ def conformance_check(filepath):
 
     try:
         success = subprocess.check_output(mediaconch_cmd)
-        success = str(success)
+        success_str = success.decode('utf-8')
     except Exception:
-        success = ""
+        success_str = ""
         logger.exception("Mediaconch policy retrieval failure for %s", filepath)
 
-    if 'N/A!' in success:
+    if 'N/A!' in success_str:
         logger.info("***** FAIL! Problem with the MediaConch policy suspected. Check <%s> manually *****\n%s", filepath, success)
         return "FAIL!"
-    elif 'pass!' in success:
+    elif 'pass!' in success_str:
         logger.info("PASS: %s has passed the mediaconch policy", filepath)
         return "PASS!"
-    elif 'fail!' in success:
+    elif 'fail!' in success_str:
         logger.warning("FAIL! The policy has failed for %s:\n %s", filepath, success)
         return "FAIL!"
     else:
         logger.warning("FAIL! The policy has failed for %s", filepath)
         return "FAIL!"
 
-
-def transcode_mp4_access(fpath, arg):
+####
+def transcode_mp4_access(fpath, arg: str) -> str:
     '''
     Receives fullpath and watermark boole from Python downloader script
     Passes to FFmpeg subprocess command, transcodes MP4 then checks

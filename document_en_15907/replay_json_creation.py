@@ -24,6 +24,7 @@ import shutil
 import logging
 import datetime
 import tenacity
+from typing import Optional, Final
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -52,13 +53,13 @@ LOGGER.setLevel(logging.INFO)
 
 
 @tenacity.retry(stop=(tenacity.stop_after_delay(60) | tenacity.stop_after_attempt(10)))
-def cid_retrieve(filename, search):
+def cid_retrieve(filename: str, search: str) -> Optional[tuple[dict[str, Any]]]:
     '''
     Receive filename and search in CID manifestations
     Return list of lists to main. Retry every minute for
     10 minutes in case of problem accessing CID API
     '''
-    fields = [
+    fields: list[str] = [
         'time_code.start',
         'time_code.end',
         'part_of_reference',
@@ -73,7 +74,7 @@ def cid_retrieve(filename, search):
         return record
 
 
-def extract_prirefs(records):
+def extract_prirefs(records: Optional[tuple[dict[str, Any]]]) -> Optiona[list[str]]:
     '''
     Iterate returned CID hits for individual prirefs
     '''
@@ -88,7 +89,7 @@ def extract_prirefs(records):
     return prirefs
 
 
-def create_dictionary(records):
+def create_dictionary(recordsOptional[tuple[dict[str, Any]]]) -> dict[str, str]:
     '''
     Extract data and list of dictionaries
     '''
@@ -255,7 +256,7 @@ def main():
     LOGGER.info("------------- Replay JSON creation script END ----------------\n")
 
 
-def json_dump(data, filename):
+def json_dump(data: str, filename: str) -> str:
     '''
     Split filename and make .json, dump text to json
     '''
@@ -275,7 +276,7 @@ def json_dump(data, filename):
     return file_json
 
 
-def move_files(filepath, arg):
+def move_files(filepath: str, arg: str) -> bool:
     '''
     Move to split/no_split paths
     '''
@@ -298,7 +299,7 @@ def move_files(filepath, arg):
         return False
 
 
-def local_logger(data):
+def local_logger(data: str) -> None:
     '''
     Print local log to WATCH_FOLDER
     '''

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+########
 '''
 Script to create People records from EPG metadata
 and attach to existing CID Work records
@@ -38,6 +38,7 @@ import glob
 import codecs
 import logging
 import datetime
+from typing import Optional, Any, Final, Generator, Iterable
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -45,20 +46,20 @@ import adlib_v3_sess as adlib
 import utils
 
 # Global vars
-TODAY = str(datetime.datetime.now())
-TODAY_TIME = TODAY[11:19]
-TODAY_DATE = TODAY[:10]
-YEST = str(datetime.datetime.today() - datetime.timedelta(days=1))
-YEAR = YEST[:4]
-MONTH = YEST[5:7]  #= down to 05 needed JMW
+TODAY: Final = str(datetime.datetime.now())
+TODAY_TIME: Final = TODAY[11:19]
+TODAY_DATE: Final = TODAY[:10]
+YEST: Final = str(datetime.datetime.today() - datetime.timedelta(days=1))
+YEAR: Final = YEST[:4]
+MONTH: Final = YEST[5:7]  #= down to 05 needed JMW
 # YEAR = '2024'
 # MONTH = '05'
-COMPLETE = os.environ['STORA_COMPLETED']
-ARCHIVE_PATH = os.path.join(COMPLETE, YEAR, MONTH)
-LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API4']
-CODEPTH = os.environ['CODE']
-CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
+COMPLETE: Final = os.environ['STORA_COMPLETED']
+ARCHIVE_PATH: Final = os.path.join(COMPLETE, YEAR, MONTH)
+LOG_PATH: Final = os.environ['LOG_PATH']
+CID_API: Final = os.environ['CID_API4']
+CODEPTH: Final = os.environ['CODE']
+CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
 
 # Setup logging
 LOGGER = logging.getLogger('document_stora_castcred')
@@ -69,7 +70,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 # First val index CID cast.credit_type (Work),  activity_type (Person), term_code for sort.sequence (work)
-contributors = {'actor': ['cast member', 'Cast', '73000'],
+contributors: dict[str, list[str]] = {'actor': ['cast member', 'Cast', '73000'],
                 'co-host': ['host', 'Presentation', '72700'],
                 'coach': ['on-screen participant', 'Miscellaneous', '73010'],
                 'Commentator': ['commentator', 'Cast', '71500'],
@@ -107,7 +108,7 @@ production = {'abridged-by': ['Script', 'Scripting', '15500'],
               'writer-f': ['Screenplay', 'Scripting', '15000']}
 
 
-def split_title(title_article):
+def split_title(title_article: str) -> Optional[tuple[str, str]]:
     '''
     Splits title where it finds a matching article to startswith() list
     '''
@@ -124,7 +125,7 @@ def split_title(title_article):
     return None
 
 
-def title_filter(item_asset_title, item_title):
+def title_filter(item_asset_title: str, item_title: str) -> tuple[str, str]:
     '''
     Function to match actions of Py2 title processing
     Returns title, title_art where possible
@@ -165,7 +166,7 @@ def title_filter(item_asset_title, item_title):
     return (title, title_art)
 
 
-def enum_list(creds):
+def enum_list(creds: Iterable[str]) -> Generator[tuple[int, str], None, None]:
     '''
     Change list to dictionary pairs for sort order
     Increments of 5, beginning at 50
@@ -176,7 +177,7 @@ def enum_list(creds):
         n += 5
 
 
-def firstname_split(person):
+def firstname_split(person: str) -> str:
     '''
     Splits 'firstname surname' and returns 'surname, firstname'
     '''
@@ -192,7 +193,7 @@ def firstname_split(person):
     return person
 
 
-def retrieve_epg_data(fullpath):
+def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list[str] ]:
     '''
     Retrieve credits dct, asset/type and asset/category/code list
     '''
@@ -272,7 +273,7 @@ def retrieve_epg_data(fullpath):
         return (item_title, item_asset_title, nfa_category, work_type, title_date_start, time, credit_list)
 
 
-def retrieve_person(credit_list_raw, nfa_cat):
+def retrieve_person(credit_list_raw: list[str], nfa_cat: str):
     '''
     Receives credits dictionary from main(), iterates over entries and creates
     list of dictionaries for credit/cast enumerated (5,10,15) in order retrieved
@@ -961,7 +962,7 @@ def rename(root, file, info):
         LOGGER.critical("%s not renamed %s:\n - %s", file, new_fname, info)
 
 
-def create_payload(priref, known_for, early_life, bio, trivia):
+def create_payload(priref: str, known_for, early_life, bio, trivia):
     '''
     Take string blocks and wrap in xml for appending to CID person record
     '''
@@ -996,7 +997,7 @@ def create_payload(priref, known_for, early_life, bio, trivia):
     return payload
 
 
-def write_payload(payload, person_priref, session):
+def write_payload(payload: str, person_priref: str, session: requests.Session) -> bool:
     '''
     Removed from main to avoid repetition
     '''

@@ -27,6 +27,7 @@ import json
 import logging
 import itertools
 import datetime
+from typing import Final, Optional, Any
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -58,11 +59,11 @@ GROUPINGS = {
 }
 
 
-def cid_check_items(grouping, file_type, platform):
+def cid_check_items(grouping: str, file_type: str, platform: str) -> list[dict[str, str]]:
     '''
     Sends CID request grouping and file_type block
     '''
-    search = f'(grouping.lref="{grouping}" and file_type="{file_type}")'
+    search: str = f'(grouping.lref="{grouping}" and file_type="{file_type}")'
     hits, record = adlib.retrieve_record(CID_API, 'items', search, '0', ['priref'])
     if not record:
         LOGGER.warning("cid_check_items(): Unable to retrieve any %s groupings from CID item records", platform)
@@ -71,13 +72,13 @@ def cid_check_items(grouping, file_type, platform):
     return record
 
 
-def cid_check_filenames(priref, platform):
+def cid_check_filenames(priref: str, platform: str) -> Optional[str, str]:
     '''
     Sends CID request for object number
     checks if filename already populated
     '''
-    search = f'priref="{priref}"'
-    fields = [
+    search: str = f'priref="{priref}"'
+    fields: lisr[str] = [
         'priref',
         'digital.acquired_filename',
         'edit.notes',
@@ -107,13 +108,13 @@ def cid_check_filenames(priref, platform):
     return file_name_block, ''
 
 
-def cid_check_media(priref, original_filename, ingest_fname):
+def cid_check_media(priref: str, original_filename: str, ingest_fname: str) -> tuple[Optional[str], Operational[bool]]:
     '''
     Check for CID media record linked to Item priref
     and see if digital.acquired_filename field populated
     '''
-    search = f'imagen.media.original_filename="{ingest_fname}"'
-    fields = [
+    search: str = f'imagen.media.original_filename="{ingest_fname}"'
+    fields: list[str] = [
         'priref',
         'digital.acquired_filename'
     ]
@@ -140,7 +141,7 @@ def cid_check_media(priref, original_filename, ingest_fname):
     return None, None
 
 
-def date_gen(date_str):
+def date_gen(date_str: str) -> None:
     '''
     Yield date range back to main. Py3.7+
     '''
@@ -168,7 +169,7 @@ def main():
     LOGGER.info("=== Streaming Platform original filename updates START ===================")
 
     for key, value in GROUPINGS.items():
-        platform = key
+        platform: str = key
         grouping_lref, file_type = value.split(', ')
 
         records = cid_check_items(grouping_lref, file_type, platform)
@@ -229,13 +230,13 @@ def main():
     LOGGER.info("=== Streaming Platform original filename updates END =====================")
 
 
-def update_cid_media_record(priref, orig_fname, platform, file_type):
+def update_cid_media_record(priref: str, orig_fname: str, platform: str, file_type: str) -> Operational[bool]:
     '''
     CID media record found without
     original filename, append here
     '''
-    names = False
-    name_updates = []
+    names: bool = False
+    name_updates: list[dict[str, str]] = []
     name_updates.append({'digital.acquired_filename': orig_fname})
     name_updates.append({'digital.acquired_filename.type': 'FILE'})
     fname_xml = adlib.create_record_data(CID_API, 'media', priref, name_updates)
@@ -244,7 +245,7 @@ def update_cid_media_record(priref, orig_fname, platform, file_type):
         names = True
 
     # Append file name with edit block
-    edit_data = []
+    edit_data: list[dict[str, str]] = []
     edit_data.append({'edit.name': 'datadigipres'})
     edit_data.append({'edit.date': str(datetime.datetime.now())[:10]})
     edit_data.append({'edit.time': str(datetime.datetime.now())[11:19]})

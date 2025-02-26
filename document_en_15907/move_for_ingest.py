@@ -15,6 +15,7 @@ import sys
 import json
 import logging
 import datetime
+from typing import Any, Final, Optional
 
 # Local imports
 sys.path.append(os.environ['CODE'])
@@ -45,7 +46,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def check_media_records(folder_search, time):
+def check_media_records(folder_search: str, time: list[str]) -> int:
     '''
     Check number of successful CID media records created from folder
     '''
@@ -75,22 +76,22 @@ def main():
             if not utils.check_control('pause_scripts'):
                 LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
                 sys.exit('Script run prevented by downtime_control.json. Script exiting.')
-            move_folder = False
-            folder_search = f'_{foldername}of'
+            move_folder: bool
+            folder_search: str = f'_{foldername}of'
             LOGGER.info('* Current folder is %s - searching for %s', foldername, folder_search)
 
             # Check number of successful ingest jobs from folder
             file = open(GLOBAL_LOG, 'r')
-            ingest_jobs = len([x for x in file if folder_search in x and 'Moved ingest-ready file to BlackPearl ingest' in x])
+            ingest_jobs: int = len([x for x in file if folder_search in x and 'Moved ingest-ready file to BlackPearl ingest' in x])
             LOGGER.info('* Number of successful ingest jobs from folder %s: %s', foldername, ingest_jobs)
 
-            hits = check_media_records(folder_search, None)
+            hits: int = check_media_records(folder_search, None)
             # If zero CID records created for folder, exit and wait until next time
             if hits == 0:
                 LOGGER.info('* No CID records created for folder, waiting until next time...')
                 continue
 
-            gap = ingest_jobs - hits
+            gap: int = ingest_jobs - hits
             LOGGER.info('* Number of successful CID Media records from folder %s: %s', foldername, hits)
             LOGGER.info('* Gap = %s', gap)
 

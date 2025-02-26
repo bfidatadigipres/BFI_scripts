@@ -16,28 +16,29 @@ import logging
 import itertools
 import subprocess
 import datetime
+from typing import Optional, Any, Final, Generator
 
 # Local packages
 sys.path.append(os.environ['CODE'])
 import utils
 
 # GLOBAL VARIABLES
-STORA = os.environ['STORA']
-STORA_BACKUP = os.environ['STORA_BACKUP']
-LOG_PATH = os.environ['LOG_PATH']
-RSYNC_LOG = os.path.join(LOG_PATH, "news_preservation_move_to_dpi.log")
-DATABASE = os.environ['DATABASE_NEWS_PRESERVATION']
-EMAIL_SENDER=os.environ['EMAIL_SEND']
-EMAIL_PSWD=os.environ['EMAIL_PASS']
-FMT = '%Y-%m-%d %H:%M:%s'
-TODAY = str(datetime.date.today())
-YESTERDAY = datetime.date.today() - datetime.timedelta(days=1)
-YESTERDAY2 = datetime.date.today() - datetime.timedelta(days=2)
-YEST = str(YESTERDAY)
-YEST2 = str(YESTERDAY2)
+STORA: Final = os.environ['STORA']
+STORA_BACKUP: Final  = os.environ['STORA_BACKUP']
+LOG_PATH: Final  = os.environ['LOG_PATH']
+RSYNC_LOG: Final  = os.path.join(LOG_PATH, "news_preservation_move_to_dpi.log")
+DATABASE: Final  = os.environ['DATABASE_NEWS_PRESERVATION']
+EMAIL_SENDER: Final =os.environ['EMAIL_SEND']
+EMAIL_PSWD: Final =os.environ['EMAIL_PASS']
+FMT: Final  = '%Y-%m-%d %H:%M:%s'
+TODAY: Final  = str(datetime.date.today())
+YESTERDAY: Final  = datetime.date.today() - datetime.timedelta(days=1)
+YESTERDAY2: Final  = datetime.date.today() - datetime.timedelta(days=2)
+YEST: Final  = str(YESTERDAY)
+YEST2: Final  = str(YESTERDAY2)
 
 # Set up logging
-LOGGER = logging.getLogger('news_preservation_move_to_dpi')
+LOGGER: Final  = logging.getLogger('news_preservation_move_to_dpi')
 HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'news_preservation_move_to_dpi.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
@@ -45,7 +46,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def date_gen(date_str):
+def date_gen(date_str: str) -> Generator[datetime.date, None, None]:
     '''
     Generate date for checks if date
     in correct 14 day window
@@ -56,7 +57,7 @@ def date_gen(date_str):
         from_date = from_date - datetime.timedelta(days=1)
 
 
-def check_date_range(preservation_date):
+def check_date_range(preservation_date: str) -> bool:
     '''
     Check date range is correct
     and that the file is not today
@@ -77,7 +78,7 @@ def check_date_range(preservation_date):
     return False
 
 
-def retrieve_requested():
+def retrieve_requested() -> list[str]:
     '''
     Access database.db and retrieve
     recently requested downloads
@@ -109,7 +110,7 @@ def retrieve_requested():
     return sorted_data
 
 
-def remove_duplicates(list_data):
+def remove_duplicates(list_data: list[str]) -> list[str]:
     '''
     Sort and remove duplicates
     using itertools
@@ -120,7 +121,7 @@ def remove_duplicates(list_data):
     return unique
 
 
-def update_table(preservation_date, channel, new_status):
+def update_table(preservation_date: str, channel: str, new_status: str) -> None:
     '''
     Update specific row with new
     data, for fname match
@@ -191,7 +192,7 @@ def main():
     LOGGER.info("================ DPI NEWS PRESERVATION REQUESTS COMPLETED. Date: %s =================\n", datetime.datetime.now().strftime(FMT)[:19])
 
 
-def rsync_move(source_path, dest_path):
+def rsync_move(source_path: str, dest_path: str) -> bool:
     '''
     DEPRECATED
     Copy files from QNAP-04
@@ -223,7 +224,7 @@ def rsync_move(source_path, dest_path):
         return False
 
 
-def move_folder(channel, date_pth):
+def move_folder(channel:str , date_pth: str) -> bool:
     '''
     Use Linux mv to shift folder from
     STORA_backup to STORA path
@@ -249,7 +250,7 @@ def move_folder(channel, date_pth):
         return True
 
 
-def send_email_update(email, preservation_date, channel, message):
+def send_email_update(email: str, preservation_date: str, channel: str, message: str) -> None:
     '''
     Update user that their item has been
     downloaded, with path, folder and

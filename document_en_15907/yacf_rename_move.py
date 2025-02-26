@@ -54,30 +54,30 @@ TODAY_TIME = TODAY[11:19]
 DATE_TIME = (f"{TODAY_DATE} = {TODAY_TIME}")
 
 
-def cid_retrieve(filename):
+def cid_retrieve(filename: str) -> tuple[str, str, str, str]:
     '''
     Receive filename and search in CID items
     Return object number to main
     '''
-    search = f'digital.acquired_filename="{filename}"'
-    record = adlib.retrieve_record(CID_API, 'items', search, '0', ['priref', 'object_number', 'title', 'title.article'])[1]
+    search: str = f'digital.acquired_filename="{filename}"'
+    record: str = adlib.retrieve_record(CID_API, 'items', search, '0', ['priref', 'object_number', 'title', 'title.article'])[1]
     LOGGER.info("cid_retrieve(): Making CID query request with:\n %s", search)
     if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {filename}")
         LOGGER.exception("cid_retrieve(): Unable to retrieve data for %s", filename)
         return None
     try:
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        priref: str = adlib.retrieve_field_name(record[0], 'priref')[0]
     except (KeyError, IndexError) as err:
         priref = ""
         LOGGER.warning("cid_retrieve(): Unable to access priref %s", err)
     try:
-        ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
+        ob_num: str = adlib.retrieve_field_name(record[0], 'object_number')[0]
     except (KeyError, IndexError) as err:
         ob_num = ""
         LOGGER.warning("cid_retrieve(): Unable to access object_number: %s", err)
     try:
-        title = adlib.retrieve_field_name(record[0], 'title')[0]
+        title: str = adlib.retrieve_field_name(record[0], 'title')[0]
     except (KeyError, IndexError) as err:
         title = ""
         LOGGER.warning("cid_retrieve(): Unable to access title: %s", err)
@@ -154,16 +154,16 @@ def main():
                 LOGGER.info("Skipping. File found that is not MXF or MOV: %s", file)
 
 
-def rename(filepath, ob_num):
+def rename(filepath: str, ob_num: str) -> tuple[str, str]:
     '''
     Receive original file path and rename filename
     based on object number, return new filepath, filename
     '''
     new_filepath, new_filename = '', ''
     path, filename = os.path.split(filepath)
-    ext = os.path.splitext(filename)
-    new_name = ob_num.replace('-', '_')
-    new_filename = f"{new_name}_01of01{ext[1]}"
+    ext: str = os.path.splitext(filename)
+    new_name: str = ob_num.replace('-', '_')
+    new_filename: str = f"{new_name}_01of01{ext[1]}"
     print(f"Renaming {filename} to {new_filename}")
     new_filepath = os.path.join(path, new_filename)
 
@@ -175,7 +175,7 @@ def rename(filepath, ob_num):
     return (new_filepath, new_filename)
 
 
-def move(filepath, arg):
+def move(filepath: str, arg: str) -> bool:
     '''
     Move existing filepaths to Autoingest
     '''
@@ -199,7 +199,7 @@ def move(filepath, arg):
         return False
 
 
-def local_logger(data):
+def local_logger(data: str) -> None:
     '''
     Pretty printed log for human readable data
     Output local log data for Video Ops teams to monitor renaming process

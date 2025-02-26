@@ -60,7 +60,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def cid_list_retrieve(database, search):
+def cid_list_retrieve(database: str, search:str) -> list[str]:
     '''
     Receive search and look in CID manifestations
     for list of object numbers/prirefs for file_type DPX
@@ -85,12 +85,12 @@ def cid_list_retrieve(database, search):
     return record_list
 
 
-def cid_retrieve(database, search):
+def cid_retrieve(database: str, search: str) - > tuple[str, str, str, str, str, list[str]]:
     '''
     Receive filename and search in CID records
     Return all available data to main
     '''
-    fields = [
+    fields: list[str] = [
         'object_number',
         'priref',
         'title',
@@ -327,7 +327,7 @@ def main():
     LOGGER.info("============= END RC DPX rename script END ============")
 
 
-def make_object_num(dpx):
+def make_object_num(dpx: str) -> Optional[str]:
     '''
     Receive a filename remove part whole
     and return as object number:
@@ -344,7 +344,7 @@ def make_object_num(dpx):
         return None
 
 
-def fail_move(fullpath, dpx):
+def fail_move(fullpath: str, dpx: str) -> bool:
     '''
     Handles repeated failure moves
     '''
@@ -363,7 +363,7 @@ def fail_move(fullpath, dpx):
         return False
 
 
-def folder_depth(fullpath):
+def folder_depth(fullpath: str) -> Optional[str]:
     '''
     Check if folder is three depth of four depth
     '''
@@ -378,7 +378,7 @@ def folder_depth(fullpath):
         return None
 
 
-def rename(filepath, ob_num):
+def rename(filepath: str, ob_num: str) -> tuple[str, str]:
     '''
     Receive original file path and rename filename
     based on object number and original part whole
@@ -402,7 +402,7 @@ def rename(filepath, ob_num):
     return (new_filepath, new_filename)
 
 
-def move(filepath, arg):
+def move(filepath: str, arg: str) -> bool:
     '''
     Move existing filepath to new filepath
     '''
@@ -432,7 +432,7 @@ def move(filepath, arg):
         return False
 
 
-def local_logger(data):
+def local_logger(data: str) -> None:
     '''
     Output local log data for team to monitor renaming process
     '''

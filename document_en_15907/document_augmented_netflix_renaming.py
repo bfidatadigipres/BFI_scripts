@@ -51,6 +51,7 @@ import shutil
 import logging
 import datetime
 import xmltodict
+from typing import Final, Optional, Any, Sequence, Iterable
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -58,16 +59,16 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-STORAGE_PTH = os.environ.get('PLATFORM_INGEST_PTH')
-NETFLIX_PTH = os.environ.get('NETFLIX_PATH')
-NET_INGEST = os.environ.get('NETFLIX_INGEST')
-AUTOINGEST = os.path.join(STORAGE_PTH, NET_INGEST)
-STORAGE = os.path.join(STORAGE_PTH, NETFLIX_PTH)
-ADMIN = os.environ.get('ADMIN')
-LOGS = os.path.join(ADMIN, 'Logs')
-CODE = os.environ.get('CODE_PATH')
-CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API4')
+STORAGE_PTH: Final = os.environ.get('PLATFORM_INGEST_PTH')
+NETFLIX_PTH: Final = os.environ.get('NETFLIX_PATH')
+NET_INGEST: Final = os.environ.get('NETFLIX_INGEST')
+AUTOINGEST: Final = os.path.join(STORAGE_PTH, NET_INGEST)
+STORAGE: Final = os.path.join(STORAGE_PTH, NETFLIX_PTH)
+ADMIN: Final = os.environ.get('ADMIN')
+LOGS: Final = os.path.join(ADMIN, 'Logs')
+CODE: Final = os.environ.get('CODE_PATH')
+CONTROL_JSON: Final = os.path.join(LOGS, 'downtime_control.json')
+CID_API: Final = os.environ.get('CID_API4')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_netflix_renaming')
@@ -78,12 +79,12 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def cid_check_filename(imp_fname):
+def cid_check_filename(imp_fname: str) -> tuple[str, str, str]:
     '''
     Sends CID request for series_id data
     '''
-    search = f'digital.acquired_filename="{imp_fname}"'
-    record = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
+    search: str = f'digital.acquired_filename="{imp_fname}"'
+    record: Optional[Iterable[dict[str, Any]]] = adlib.retrieve_record(CID_API, 'items', search, '1')[1]
     print(record)
     if not record:
         print(f"cid_check(): Unable to match IMP with Item record: {imp_fname}")
@@ -114,22 +115,22 @@ def cid_check_filename(imp_fname):
     return priref, ob_num, file_type.title()
 
 
-def walk_netflix_folders():
+def walk_netflix_folders() -> list[str]:
     '''
     Collect list of folderpaths
     for files named rename_netflix
     '''
     print(STORAGE)
-    rename_folders = []
+    rename_folders: list[str] = []
     for root, dirs, _ in os.walk(STORAGE):
         for directory in dirs:
             if 'rename_netflix' == directory:
                 rename_folders.append(os.path.join(root, directory))
     print(f"{len(rename_folders)} rename folder(s) found")
-    folder_list = []
+    folder_list: list[str] = []
     for rename_folder in rename_folders:
         print(rename_folder)
-        folders = os.listdir(rename_folder)
+        folders: list[str] = os.listdir(rename_folder)
         if not folders:
             print(f"Skipping, rename folder empty: {rename_folder}")
             continue
@@ -160,7 +161,7 @@ def main():
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
 
-    folder_list = walk_netflix_folders()
+    folder_list: list[str] = walk_netflix_folders()
     if len(folder_list) == 0:
         LOGGER.info("Netflix IMP renaming script. No folders found.")
         sys.exit()
@@ -180,15 +181,15 @@ def main():
             continue
 
         LOGGER.info("Folder matched to CID Item record: %s | %s | %s", folder, priref, ob_num)
-        xml_list = [x for x in os.listdir(fpath) if x.endswith(('.xml', '.XML'))]
-        mxf_list = [x for x in os.listdir(fpath) if x.endswith(('.mxf', '.MXF'))]
-        all_items = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
-        total_items = len(mxf_list) + len(xml_list)
+        xml_list: list[str] = [x for x in os.listdir(fpath) if x.endswith(('.xml', '.XML'))]
+        mxf_list: list[str] = [x for x in os.listdir(fpath) if x.endswith(('.mxf', '.MXF'))]
+        all_items: list[str] = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
+        total_items: int = len(mxf_list) + len(xml_list)
         if total_items != len(all_items):
             LOGGER.warning("Folder contains files that are not XML or MXF: %s", fpath)
             continue
-        packing_list = ''
-        xml_content_all = []
+        packing_list: str = ''
+        xml_content_all: list[str] = []
         # Read/write to CID item record, and identify the PackingList
         for xml in xml_list:
             with open(os.path.join(fpath, xml), 'r') as xml_text:
@@ -199,7 +200,7 @@ def main():
             xml_content_all.append(lines)
         print(xml_content_all)
         print(packing_list)
-        success = xml_item_append(priref, xml_content_all)
+        success: bool = xml_item_append(priref, xml_content_all)
         if not success:
             LOGGER.warning("Problem writing to CID record %s", priref)
             LOGGER.warning("Skipping further actions: Failed write of XML data")
@@ -211,7 +212,7 @@ def main():
         LOGGER.info("PackingList located and XML data written to CID item record")
 
         # Extracting PackingList content to dict and count
-        asset_dct = {}
+        asset_dct: dict[str, str] = {}
         with open(packing_list, 'r') as readfile:
             asset_text = readfile.read()
             asset_dct = xmltodict.parse(f"""{asset_text}""")
@@ -226,22 +227,22 @@ def main():
 
         # Build asset_list, PKL order first, followed by remaining XML
         LOGGER.info("PackingList returned %s items, matching MXF content + CPL XML.", asset_whole)
-        asset_items = {}
-        object_num = 1
-        new_filenum_prefix = ob_num.replace('-', '_')
+        asset_items: dict[str, str] = {}
+        object_num: int = 1
+        new_filenum_prefix: str = ob_num.replace('-', '_')
         for asset in asset_dct_list:
             filename = asset['OriginalFileName']['#text']
-            ext = os.path.splitext(filename)[1]
+            ext: str = os.path.splitext(filename)[1]
             if not filename:
                 LOGGER.warning("Exiting processing this asset - Could not retrieve original filename: %s", asset)
                 continue
             print(f"Filename found {filename}")
-            new_filename = f"{new_filenum_prefix}_{str(object_num).zfill(2)}of{str(total_items).zfill(2)}{ext}"
+            new_filename: str = f"{new_filenum_prefix}_{str(object_num).zfill(2)}of{str(total_items).zfill(2)}{ext}"
             asset_items[filename] = new_filename
             object_num += 1
         for xml in xml_list:
             if xml not in asset_items.keys():
-                new_filename = f"{new_filenum_prefix}_{str(object_num).zfill(2)}of{str(total_items).zfill(2)}.xml"
+                new_filename: str = f"{new_filenum_prefix}_{str(object_num).zfill(2)}of{str(total_items).zfill(2)}.xml"
                 asset_items[xml] = new_filename
                 object_num += 1
 
@@ -250,7 +251,7 @@ def main():
             continue
 
         # Write all dict names to digital.acquired_filename in CID item record, re-write folder name
-        success = create_digital_original_filenames(priref, folder.strip(), asset_items)
+        success: bool = create_digital_original_filenames(priref, folder.strip(), asset_items)
         if not success:
             LOGGER.warning("Skipping further actions. Asset item list not written to CID item record: %s", priref)
             continue
@@ -258,7 +259,7 @@ def main():
 
         # Rename all files in IMP folder
         LOGGER.info("Beginning renaming of IMP folder assets:")
-        success_rename = True
+        success_rename: bool = True
         for key, value in asset_items.items():
             filepath = os.path.join(fpath, key)
             new_filepath = os.path.join(fpath, value)
@@ -285,7 +286,7 @@ def main():
                 LOGGER.warning(" - Please move manually")
 
         # Check IMP folder is empty and delete - Is this stage wanted? Waiting to hear from Andy
-        contents = list(os.listdir(fpath))
+        contents: list[str] = list(os.listdir(fpath))
         if len(contents) == 0:
             os.rmdir(fpath)
             LOGGER.info("IMP folder empty, deleting %s", fpath)
@@ -295,7 +296,7 @@ def main():
     LOGGER.info("== Document augmented Netflix renaming end ===================\n")
 
 
-def build_defaults():
+def build_defaults() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     '''
     Build record and item defaults
     Not active, may not be needed
@@ -326,7 +327,7 @@ def build_defaults():
     return record, item
 
 
-def create_digital_original_filenames(priref, folder_name, asset_list_dct):
+def create_digital_original_filenames(priref: str, folder_name: str, asset_list_dct: dict[str, str]) -> Optional[bool]:
     '''
     Create entries for digital.acquired_filename
     and append to the CID item record.
@@ -359,7 +360,7 @@ def create_digital_original_filenames(priref, folder_name, asset_list_dct):
         return False
 
 
-def xml_item_append(priref, xml_data):
+def xml_item_append(priref: str, xml_data: list[str]) -> bool:
     '''
     Write XML data to CID item record
     '''

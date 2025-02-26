@@ -20,6 +20,7 @@ import json
 import logging
 import datetime
 import requests
+from typing import Final, Any, Optional
 
 # Setup logging
 logger = logging.getLogger('fetch_series_stora_augmented')
@@ -54,7 +55,7 @@ PATHS = os.path.join(JSON_PATH, DATE_PATH)
 CODEPTH = os.environ['CODE']
 
 
-def check_control():
+def check_control() -> None:
     '''
     Check control JSON for downtime request
     '''
@@ -65,7 +66,7 @@ def check_control():
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
 
-def main():
+def main() -> None:
     '''
     Iterate date path in /media/data for yesterday
     fetching series information from PATV if found
@@ -101,7 +102,7 @@ def main():
     logger.info('========== Fetch series augmented metadata script ENDED ================================================')
 
 
-def get_asset(series_id, title):
+def get_asset(series_id: str, title: str) -> None:
     '''
     Get series data from PATV
     using requests library

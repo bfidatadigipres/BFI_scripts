@@ -40,6 +40,7 @@ import logging
 import datetime
 import pandas
 import yaml
+from typing import Final, Optional, Any, Sequence
 
 # Local packages
 from document_augmented_streaming_cast import create_contributors
@@ -48,20 +49,20 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-STORAGE = os.environ.get('QNAP_IMAGEN')
-AMAZON = os.path.join(STORAGE, 'AMAZON')
-CAT_ID = os.environ.get('PA_AMAZON')
-ADMIN = os.environ.get('ADMIN')
-LOGS = os.path.join(ADMIN, 'Logs')
-CODE = os.environ.get('CODE_PATH')
-GENRE_MAP = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
-CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API4')
-FORMAT = '%Y-%m-%d'
+STORAGE: Final  = os.environ.get('QNAP_IMAGEN')
+AMAZON: Final = os.path.join(STORAGE, 'AMAZON')
+CAT_ID: Final = os.environ.get('PA_AMAZON')
+ADMIN: Final = os.environ.get('ADMIN')
+LOGS: Final = os.path.join(ADMIN, 'Logs')
+CODE: Final = os.environ.get('CODE_PATH')
+GENRE_MAP: Final = os.path.join(CODE, 'document_en_15907/EPG_genre_mapping.yaml')
+CONTROL_JSON: Final = os.path.join(LOGS, 'downtime_control.json')
+CID_API: Final = os.environ.get('CID_API4')
+FORMAT: Final = '%Y-%m-%d'
 
 # PATV API details including unique identifiers for Amazon catalogue
-URL = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
-URL2 = os.path.join(os.environ['PATV_STREAM_URL'], 'asset/')
+URL: Final = os.path.join(os.environ['PATV_STREAM_URL'], f'catalogue/{CAT_ID}/')
+URL2: Final = os.path.join(os.environ['PATV_STREAM_URL'], 'asset/')
 HEADERS = {
     "accept": "application/json",
     "apikey": os.environ['PATV_KEY']
@@ -76,7 +77,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def read_csv_to_dict(csv_path):
+def read_csv_to_dict(csv_path: str) -> dict[str, Any]:
     '''
     Make set of all entries
     with title as key, and value
@@ -90,7 +91,7 @@ def read_csv_to_dict(csv_path):
     return data_dct
 
 
-def get_folder_title(article, title):
+def get_folder_title(article: str, title: str) -> str:
     '''
     Match title to folder naming
     '''
@@ -103,7 +104,7 @@ def get_folder_title(article, title):
     return title
 
 
-def split_title(title_article):
+def split_title(title_article: str) -> tuple[str,str]:
     '''
     An exception needs adding for "Die " as German language content
     This list is not comprehensive.
@@ -121,14 +122,14 @@ def split_title(title_article):
         return title_article, '-'
 
 
-def get_folder_match(foldername):
+def get_folder_match(foldername: str) -> list[str]:
     '''
     Get full folder path
     from Amazon folder excluding
     any folders that have additional
     title data, eg 'Enola_Holmes_2_'
     '''
-    folder_list = [x for x in os.listdir(AMAZON) if x.startswith(foldername)]
+    folder_list: list[str] = [x for x in os.listdir(AMAZON) if x.startswith(foldername)]
     for fr in folder_list:
         id_ = fr.split(foldername)[-1]
         if '_' in id_:
@@ -137,7 +138,7 @@ def get_folder_match(foldername):
     return folder_list
 
 
-def get_json_files(fpath):
+def get_json_files(fpath: str) -> list[str]:
     '''
     Fetch JSON files in folder
     '''
@@ -151,7 +152,7 @@ def get_json_files(fpath):
     return json_files
 
 
-def retrieve_json(json_pth):
+def retrieve_json(json_pth: str) -> dict[str, str]:
     '''
     One at a time, retrieve metadata for
     a given programme title, and check
@@ -164,7 +165,7 @@ def retrieve_json(json_pth):
     return data
 
 
-def get_cat_data(data=None):
+def get_cat_data(data=None) -> Optional[dict[str, str]]:
     '''
     Get catalogue data and return as dct
     '''
@@ -252,7 +253,7 @@ def get_cat_data(data=None):
     return c_data
 
 
-def get_json_data(data=None):
+def get_json_data(data=None) -> Optional[dict[str, str]]:
     '''
     Retrieve data from a PATV JSONs
     and return as dictionary
@@ -337,13 +338,13 @@ def get_json_data(data=None):
     return j_data
 
 
-def cid_check_works(patv_id):
+def cid_check_works(patv_id: str) -> Optional[tuple[int, str, str, str, list[str], list[str]]]:
     '''
     Sends CID request for series_id data
     '''
-    query = f'alternative_number="{patv_id}"'
+    query: str = f'alternative_number="{patv_id}"'
     try:
-        hits, record = adlib.retrieve_record(CID_API, 'works', query, 0)
+        hits: int, record = adlib.retrieve_record(CID_API, 'works', query, 0)
     except Exception as err:
         LOGGER.warning("cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s", patv_id, err)
         print("cid_check_works(): Record not found. Series hit count and series priref will return empty strings")
@@ -352,21 +353,21 @@ def cid_check_works(patv_id):
         LOGGER.exception('"CID API was unreachable for Works search: %s', query)
         raise Exception(f"CID API was unreachable for Works search: {query}")
     try:
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+        priref: str = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"cid_check_works(): Series priref: {priref}")
     except Exception as err:
         priref = ''
     try:
-        title = adlib.retrieve_field_name(record[0], 'title')[0]
+        title: str = adlib.retrieve_field_name(record[0], 'title')[0]
         print(f"cid_check_works(): Series title: {title}")
     except Exception as err:
         title = ''
     try:
-        title_art = adlib.retrieve_field_name(record[0], 'title_article')[0]
+        title_art: str = adlib.retrieve_field_name(record[0], 'title_article')[0]
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ''
-    groupings = []
+    groupings: list[str] = []
     for num in range(0, hits):
         try:
             grouping = adlib.retrieve_field_name(record[num], 'grouping.lref')[0]
@@ -375,7 +376,7 @@ def cid_check_works(patv_id):
         except Exception as err:
             pass
 
-    alt_type = []
+    alt_type: list[str] = []
     for num in range(0, hits):
         try:
             all_priref = adlib.retrieve_field_name(record[num], 'priref')[0]
@@ -397,7 +398,7 @@ def cid_check_works(patv_id):
     return hits, priref, title, title_art, groupings, alt_type
 
 
-def genre_retrieval(category_code, description, title):
+def genre_retrieval(category_code: str, description: str, title: str) -> list[str, str]:
     '''
     Retrieve genre data, return as list
     '''
@@ -406,8 +407,8 @@ def genre_retrieval(category_code, description, title):
         print(f"genre_retrieval(): The genre data is being retrieved for: {category_code}")
         for _ in data:
             if category_code in data['genres']:
-                genre_one = []
-                genre_two = []
+                genre_one: list[str] = []
+                genre_two: list[str] = []
                 try:
                     genre_one = data['genres'][category_code.strip('u')]['Genre']
                     print(f"genre_retrieval(): Genre one: {genre_one}")
@@ -417,20 +418,20 @@ def genre_retrieval(category_code, description, title):
                             print("genre_retrieval(): Writing Undefined category details to genre log")
                             genre_log.write("\n")
                             genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
-                        genre_one_priref = ''
+                        genre_one_priref: str = ''
                     else:
                         for key, val in genre_one.items():
-                            genre_one_priref = val
+                            genre_one_priref: str = val
                         print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
                 except Exception:
-                    genre_one_priref = ''
+                    genre_one_priref= ''
                 try:
                     genre_two = data['genres'][category_code.strip('u')]['Genre2']
                     for key, val in genre_two.items():
                         genre_two_priref = val
                     print(f"genre_retrieval(): Key value for genre_two_priref: {genre_two_priref}")
                 except Exception:
-                    genre_two_priref = ''
+                    genre_two_priref: str = ''
                 return [genre_one_priref, genre_two_priref]
             else:
                 LOGGER.warning("%s -- New category not in EPG_genre_map.yaml: %s", category_code, title)
@@ -440,16 +441,16 @@ def genre_retrieval(category_code, description, title):
                     genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
 
 
-def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
+def make_work_dictionary(episode_no: str, episode_id: str, csv_data: dict[str, str], cat_dct: Optional[dict[str, str]], json_dct: dict[str, str]) -> dict[str, str]:
     '''
     Build up work data into dictionary for Work creation
     '''
     if not cat_dct:
-        cat_dct = {}
+        cat_dct: dict[str, str ] = {}
     if not json_dct:
-        json_dct = {}
+        json_dct: dict[str, str] = {}
 
-    work_dict = {}
+    work_dict: dict[str, str] = {}
     if 'title' in cat_dct:
         work_dict['title'] = cat_dct['title']
     elif 'title' in json_dct:
@@ -478,7 +479,7 @@ def make_work_dictionary(episode_no, episode_id, csv_data, cat_dct, json_dct):
         work_dict['runtime'] = cat_dct['runtime']
     elif 'runtime' in json_dct:
         work_dict['runtime'] = json_dct['runtime']
-    desc_list = []
+    desc_list: list[str] = []
     if 'd_short' in cat_dct:
         work_dict['d_short'] = cat_dct['d_short']
         desc_list.append(cat_dct['d_short'])
@@ -838,7 +839,7 @@ def main():
     LOGGER.info("=== Document augmented Amazon end =================================")
 
 
-def firstname_split(person):
+def firstname_split(person: str) -> str:
     '''
     Splits 'firstname surname' and returns 'surname, firstname'
     '''
@@ -855,11 +856,11 @@ def firstname_split(person):
         return person
 
 
-def genre_retrieval_term(category_code, description, title):
+def genre_retrieval_term(category_code: str, description: str, title: str) -> tuple[str]:
     '''
     Check genre yaml to retrieve genre prirefs
     '''
-    category_data = genre_retrieval(category_code, description, title)
+    category_data: list[str, str] = genre_retrieval(category_code, description, title)
     try:
         genre1 = category_data[0]
     except Exception:
@@ -880,20 +881,20 @@ def genre_retrieval_term(category_code, description, title):
     return (genre1, genre2, subject1, subject2)
 
 
-def build_defaults(data):
+def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
     '''
     Get detailed information
     and build record_defaults dict
     '''
-    start_date_str = data.get('title_date_start')
+    start_date_str: str = data.get('title_date_start')
     if '-' in start_date_str:
         start_date = datetime.datetime.stprtime(start_date_str, FORMAT)
     else:
         start_date = datetime.date.today()
     new_date = start_date + datetime.timedelta(days=2927)
-    date_restriction = new_date.strftime(FORMAT)
+    date_restriction: str = new_date.strftime(FORMAT)
 
-    record = ([{'input.name': 'datadigipres'},
+    record: list[dict[str, str]] = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
                {'input.notes': 'Amazon metadata integration - automated bulk documentation'},
@@ -928,21 +929,21 @@ def build_defaults(data):
                {'language.lref': '74129'},
                {'language.type': 'DIALORIG'}])
 
-    series_work = ([{'record_type': 'WORK'},
+    series_work: list[dict[str, str]] = ([{'record_type': 'WORK'},
                     {'worklevel_type': 'SERIAL'},
                     {'work_type': "T"},
                     {'description.type.lref': '100298'},
                     {'production_country.lref': '73938'},
                     {'nfa_category': data['nfa_category']}])
 
-    work = ([{'record_type': 'WORK'},
+    work: list[dict[str, str]] = ([{'record_type': 'WORK'},
              {'worklevel_type': 'MONOGRAPHIC'},
              {'work_type': data['work_type']},
              {'description.type.lref': '100298'},
              {'production_country.lref': '73938'},
              {'nfa_category': data['nfa_category']}])
 
-    work_restricted = ([{'application_restriction': 'MEDIATHEQUE'},
+    work_restricted: list[dict[str, str]] = ([{'application_restriction': 'MEDIATHEQUE'},
                         {'application_restriction.date': str(datetime.datetime.now())[:10]},
                         {'application_restriction.reason': 'STRATEGIC'},
                         {'application_restriction.duration': 'PERM'},
@@ -950,7 +951,7 @@ def build_defaults(data):
                         {'application_restriction.authoriser': 'kerriganl'},
                         {'application_restriction.notes': 'Amazon UK streaming content - pending discussion'}])
 
-    manifestation = ([{'record_type': 'MANIFESTATION'},
+    manifestation: list[dict[str, str]] = ([{'record_type': 'MANIFESTATION'},
                       {'manifestationlevel_type': 'INTERNET'},
                       {'format_high_level': 'Video - Digital'},
                       {'format_low_level.lref': '395150'}, # Apple ProRes 422 HQ
@@ -964,7 +965,7 @@ def build_defaults(data):
                       {'country_manifestation': 'United Kingdom'},
                       {'notes': 'Manifestation representing the UK streaming platform release of the Work.'}])
 
-    item = ([{'record_type': 'ITEM'},
+    item: list[dict[str, str]] = ([{'record_type': 'ITEM'},
              {'item_type': 'DIGITAL'},
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
@@ -982,7 +983,7 @@ def build_defaults(data):
     return (record, series_work, work, work_restricted, manifestation, item)
 
 
-def create_series_work(patv_id, series_dct, csv_data, series_work, work_restricted, record):
+def create_series_work(patv_id: str, series_dct: dict[str, str], csv_data, series_work: list[dict[str, str]], work_restricted: list[dict[str, str]], record: list[dict[str, str]]) -> dict[str, str]:
     '''
     Build data needed to make
     episodic series work to
@@ -990,7 +991,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
     [year_release, title, article, nfa, level, season_num, genres, episode_num]
     '''
     series_work_id = None
-    series_work_values = []
+    series_work_values: list[dict[str, str]] = []
     series_work_values.extend(record)
     series_work_values.extend(series_work)
     series_work_values.extend(work_restricted)
@@ -1047,7 +1048,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
             LOGGER.info("Label text successfully updated to Series Work %s", series_work_id)
 
     # Append Content subject to record
-    series_subjects = []
+    series_subjects: list[dict[str, str]] = []
     if 'subjects' in series_dct:
         subs = series_dct['subjects']
         for sub in subs:
@@ -1060,7 +1061,7 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
             LOGGER.info("Label text successfully updated to Series Work %s", series_work_id)
 
     # Append Label grouped data to record
-    label_fields = []
+    label_fields: list[dict[str, str]] = []
     if 'd_short' in series_dct:
         label_fields.append([{'label.type': 'EPGSHORT'},{'label.text': series_dct['d_short']},{'label.source': 'EBS augmented EPG supply'},{'label.date': str(datetime.datetime.now())[:10]}])
     if 'd_medium' in series_dct:
@@ -1077,16 +1078,16 @@ def create_series_work(patv_id, series_dct, csv_data, series_work, work_restrict
     return series_work_id
 
 
-def create_work(part_of_priref, work_title, work_title_art, work_dict, record_def, work_def, work_restricted):
+def create_work(part_of_priref: str, work_title: str, work_title_art: str, work_dict: list[dict[str, str]], record_def: dict[str,str], work_def: list[dict[str,str]], work_restricted: list[dict[str, str]]) -> str:
     '''
     Build all data needed to make new work.
     work_def from work/series_work defaults
     Hand in series or episode, part_of_priref
     populated as needed.
     '''
-    work_id = ''
-    work_genres = []
-    work_values = []
+    work_id: str = ''
+    work_genres: list[dict[str, str]] = []
+    work_values: list[dict[str, str]] = []
     work_values.extend(record_def)
     work_values.extend(work_def)
     work_values.extend(work_restricted)
@@ -1207,15 +1208,15 @@ def create_work(part_of_priref, work_title, work_title_art, work_dict, record_de
     return work_id
 
 
-def create_manifestation(work_priref, work_title, work_title_art, work_dict, record_defaults, manifestation_defaults):
+def create_manifestation(work_priref: str, work_title: str, work_title_art: str, work_dict, record_defaults: list[dict[str, str]], manifestation_defaults: list[dict[str, str]]) -> str:
     '''
     Create a manifestation record,
     linked to work_priref
     '''
-    manifestation_id = ''
+    manifestation_id: str = ''
     print(work_dict)
-    title = work_dict['title']
-    manifestation_values = []
+    title: str = work_dict['title']
+    manifestation_values: list[dict[str, str]] = []
     manifestation_values.extend(record_defaults)
     manifestation_values.extend(manifestation_defaults)
 
@@ -1251,7 +1252,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
         manifestation_values.append({'utb.content': work_dict['certification_bbfc']})
     print(f"Manifestation values:\n{manifestation_values}")
 
-    broadcast_addition = []
+    broadcast_addition: list[dict[str, str]] = []
     manifestation_xml = adlib.create_record_data(CID_API, 'manifestations', '', manifestation_values)
     try:
         print("Attempting to create CID record")
@@ -1284,7 +1285,7 @@ def create_manifestation(work_priref, work_title, work_title_art, work_dict, rec
     return manifestation_id
 
 
-def append_url_data(work_priref, man_priref, data=None):
+def append_url_data(work_priref: str, man_priref: str, data=None):
     '''
     Receive Amazon URLs and priref and append to CID manifestation
     '''

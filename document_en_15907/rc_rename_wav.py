@@ -29,6 +29,7 @@ import shutil
 import logging
 import datetime
 import subprocess
+from typing import Final, Optional, Any 
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -58,7 +59,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def fname_split(filename):
+def fname_split(filename: str) -> tuple[str, str, str, str]:
     '''
     Receive filename, extract part whole
     and return items split up
@@ -75,7 +76,7 @@ def fname_split(filename):
         return (f"{file_split[0]}_{file_split[1]}_", part, whole, ext)
 
 
-def remove_whitespace(title):
+def remove_whitespace(title: str) -> str:
     '''
     Remove excess whitespace from badly formed names
     '''
@@ -84,15 +85,15 @@ def remove_whitespace(title):
     return new_title
 
 
-def return_range(filename):
+def return_range(filename: str) -> list[str]:
     '''
     Receive filename for WAV, extract part whole data
     create all fnames for range and return as list
     '''
     fname, part, whole, ext = fname_split(filename)
-    part = int(part)
-    whole = int(whole)
-    range_list = []
+    part: int = int(part)
+    whole: int = int(whole)
+    range_list: list[str] = []
 
     for count in range(1, whole + 1):
         name = f"{fname}" + str(count).zfill(2) + 'of' + str(whole).zfill(2) + f"{ext}"
@@ -100,18 +101,17 @@ def return_range(filename):
     return range_list
 
 
-def conformance_check(filepath):
+def conformance_check(filepath: str) -> str:
     '''
     Checks mediaconch policy against WAV files
     '''
-    mediaconch_cmd = [
+    mediaconch_cmd: list[str] = [
         'mediaconch', '--force',
         '-p', WAV_POLICY,
         filepath
     ]
 
-    result = subprocess.check_output(mediaconch_cmd)
-    result = str(result)
+    result = str(process.check_output(mediaconch_cmd))
 
     if 'N/A!' in result or 'pass!' not in result:
         return f"FAIL! '{filepath}'\n{result}"
@@ -119,12 +119,12 @@ def conformance_check(filepath):
         return "PASS!"
 
 
-def check_range(range_list):
+def check_range(range_list: list[str]) -> list[str]:
     '''
     Checks for all present in path and returns False boolean
     if any one is missing, or returns whole sequence path list
     '''
-    file_paths = []
+    file_paths:list[str] = []
     for item in range_list:
         filepath = os.path.join(WAV_ARCHIVE_PATH, item)
         if os.path.isfile(filepath):
@@ -135,24 +135,24 @@ def check_range(range_list):
     return file_paths
 
 
-def make_object_number(file_path):
+def make_object_number(file_path: str) -> str:
     '''
     Convert file or directory to CID object_number
     '''
     if os.path.isfile(file_path):
-        path_split = os.path.split(file_path)
-        fname = str(path_split[1])
+        path_split: str = os.path.split(file_path)
+        fname: str = str(path_split[1])
         filename = os.path.splitext(fname)[0]
         filename = filename.replace('_', '-')
         object_number = filename[:-7]
         return object_number
 
 
-def cid_query(database, search, object_number):
+def cid_query(database: str, search: str, object_number: str) -> tuple[str, str, str, str, str, str, str]:
     '''
     Format CID query for cid_data_retrieval()
     '''
-    fields = [
+    fields: list[str] = [
         'priref',
         'title',
         'title.article',
@@ -202,7 +202,7 @@ def cid_query(database, search, object_number):
     return priref, new_title, title_article, ob_num, derived_item, source_item, title_language
 
 
-def cid_data_retrieval(ob_num):
+def cid_data_retrieval(ob_num: str) -> list[str]:
     '''
     Retrieve source data from CID
     to link to for new Item record
@@ -490,7 +490,7 @@ def main():
     LOGGER.info("================ END rc_rename_wav.py END =================")
 
 
-def create_wav_record(gp_priref, title, title_article, title_language):
+def create_wav_record(gp_priref: str, title: str, title_article: str, title_language: str) -> tuple[str, str]:
     '''
     Item record creation for WAV file
     TO DO: Needs reviewing with Lucy
@@ -574,7 +574,7 @@ def create_wav_record(gp_priref, title, title_article, title_language):
         return None
   
 
-def append_source(source_ob_num, priref, ob_num):
+def append_source(source_ob_num: str, priref: str, ob_num: str) -> bool:
     '''
     Where source_item can't be written with record creation
     appended after record created. Check source_item field
@@ -600,7 +600,7 @@ def append_source(source_ob_num, priref, ob_num):
         return False
 
 
-def rename(file, ob_num):
+def rename(file: str, ob_num: str) -> tuple[str, str]:
     '''
     Receive original file path and rename filename
     based on object number, return new filepath, filename
@@ -621,7 +621,7 @@ def rename(file, ob_num):
         return None
 
 
-def ingest_move(filepath, new_filename):
+def ingest_move(filepath: str, new_filename: str) -> Optional[str]:
     '''
     Take file path and check move to autoingest
     '''
@@ -634,7 +634,7 @@ def ingest_move(filepath, new_filename):
         return None
 
 
-def log_pprint(dct):
+def log_pprint(dct: dict[str, str]):
     '''
     Make neat string variable from dct
     '''
@@ -645,7 +645,7 @@ def log_pprint(dct):
     return data_store
 
 
-def local_log(data):
+def local_log(data: str) -> None:
     '''
     Write collected data actions list of items
     to local log in audio_operations

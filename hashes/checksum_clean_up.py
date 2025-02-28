@@ -67,9 +67,9 @@ def checksum_split(data: str) -> tuple[str, str, str]:
     '''
     Splits string and returns
     '''
-    md5: str = path: str = date: str = ''
+    md5 = path = date = ''
     try:
-        data_split: str = data.split(" - ")
+        data_split  = data.split(" - ")
         md5 = data_split[0]
         path = data_split[1]
         date = data_split[2]
@@ -90,9 +90,9 @@ def cid_retrieve(fname: str) -> tuple[str, str]:
     '''
     Retrieve priref for media record from imagen.media.original_filename
     '''
-    priref: str = ''
-    search: str = f"imagen.media.original_filename='{fname}'"
-    record: str = adlib.retrieve_record(CID_API, 'media', search, '0', ['priref', 'checksum.value'])[1]
+    priref= ''
+    search = f"imagen.media.original_filename='{fname}'"
+    record= adlib.retrieve_record(CID_API, 'media', search, '0', ['priref', 'checksum.value'])[1]
     if not record:
         return '', ''
     print(record)
@@ -148,7 +148,7 @@ def main():
         sys.exit(f'Supplied file is not a media file {fname}')
 
     LOGGER.info("%s -- Processing checksum", fname)
-    priref: str, checksum_val: str = cid_retrieve(fname)
+    priref, checksum_val = cid_retrieve(fname)
     if priref == '':
         LOGGER.info("Failed to match data to a CID Media record. Skipping this file.", fname)
         sys.exit()

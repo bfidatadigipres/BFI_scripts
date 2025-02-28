@@ -22,7 +22,7 @@ HEADERS = {
 }
 
 
-def check(api: str) -> dict[Any, Any]:
+def check(api):
     '''
     Check API responds
     '''
@@ -36,7 +36,7 @@ def check(api: str) -> dict[Any, Any]:
 
 # -> tuple[int, list[dict[str, str]]]
 # tuple[Optional[int],Optional[Sequence[dict[str, Any]]]]
-def retrieve_record(api: str, database: str, search: str, limit: str, fields=None) -> tuple[Optional[int], Optional[dict[Any,Any]]]:
+def retrieve_record(api, database, search, limit, fields=None):
     '''
     Retrieve data from CID using new API
     '''
@@ -82,7 +82,7 @@ def retrieve_record(api: str, database: str, search: str, limit: str, fields=Non
 
 
 @retry(stop=stop_after_attempt(10))
-def get(api: str, query: Mapping[str, object]) -> dict[Any, Any]:
+def get(api, query):
     '''
     Send a GET request
     '''
@@ -105,7 +105,7 @@ def get(api: str, query: Mapping[str, object]) -> dict[Any, Any]:
         print(err)
         raise Exception from err
 
-def group_check(record: Any, fname: str) -> Optional[list[dict[Any, Any]]]:
+def group_check(record, fname):
     '''
     Get group that contains field key
     '''
@@ -155,7 +155,7 @@ def group_check(record: Any, fname: str) -> Optional[list[dict[Any, Any]]]:
     else:
         return None
 
-def post(api: str, payload: Optional[str | bytes], database: str, method: str):
+def post(api, payload, database, method):
     '''
     Send a POST request
     '''
@@ -224,7 +224,7 @@ def post(api: str, payload: Optional[str | bytes], database: str, method: str):
     return None
 
 
-def retrieve_field_name(record, fieldname: str) -> list[str]:
+def retrieve_field_name(record, fieldname):
     '''
     Retrieve record, check for language data
     Alter retrieval method. record ==
@@ -248,7 +248,7 @@ def retrieve_field_name(record, fieldname: str) -> list[str]:
     return field_list
 
 
-def retrieve_facet_list(record: list[dict[Any, Any]], fname: str) -> list[str]:
+def retrieve_facet_list(record, fname):
     '''
     Retrieve list of facets
     '''
@@ -258,7 +258,7 @@ def retrieve_facet_list(record: list[dict[Any, Any]], fname: str) -> list[str]:
 
     return facets
 
-def get_grouped_items(api: str, database: str) -> dict[str, list[str]] | tuple[None, None]:
+def get_grouped_items(api, database):
     '''
     Check dB for groupings and ensure
     these are added to XML configuration
@@ -287,7 +287,7 @@ def get_grouped_items(api: str, database: str) -> dict[str, list[str]] | tuple[N
     return grouped
  
 
-def create_record_data(api: str, database: str, priref: str, data: Optional[list[Any]]=None) -> bool | str:
+def create_record_data(api, database, priref, data=None):
     '''
     Create a record from supplied dictionary (or list of dictionaries)
     '''
@@ -335,7 +335,7 @@ def create_record_data(api: str, database: str, priref: str, data: Optional[list
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
-def create_grouped_data(priref: str, grouping: str, field_pairs: list[list[dict[Any, Any]]]) -> Optional[str]:
+def create_grouped_data(priref, grouping, field_pairs):
     '''
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append
@@ -367,7 +367,7 @@ def create_grouped_data(priref: str, grouping: str, field_pairs: list[list[dict[
         return payload_mid
 
 
-def get_fragments(obj: Iterable[Any]) -> list[str]:
+def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
     fragment from dictionary / list of dictionaries
@@ -398,7 +398,7 @@ def get_fragments(obj: Iterable[Any]) -> list[str]:
     return data
 
 
-def add_quality_comments(api: str, priref: str, comments: str) -> bool:
+def add_quality_comments(api, priref, comments):
     '''
     Receive comments string
     convert to XML quality comments
@@ -447,7 +447,7 @@ def check_response(rec, api):
             return True
 
 
-def recycle_api(api: str) -> None:
+def recycle_api(api):
     '''
     Adds a search call to API which
     triggers Powershell recycle

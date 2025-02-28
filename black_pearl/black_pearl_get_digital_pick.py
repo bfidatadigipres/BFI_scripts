@@ -45,7 +45,7 @@ import logging
 from xml.sax.saxutils import escape
 from datetime import datetime, timedelta
 from tenacity import retry, stop_after_attempt
-from typing import Optional, Any, Final
+from typing import Optional, Any, Final, Union
 
 # Local package
 import bp_utils as bp
@@ -140,12 +140,12 @@ def get_date_range() -> tuple[str, str]:
     return todays_date, end_date
 
 
-def fetch_item_list(priref: str) -> Optional[str] | Optional[list[str]]:
+def fetch_item_list(priref: str) -> Union[Optional[str], Optional[list[str]]]:
     '''
     Fetch a workflow job's items list
     '''
-    search: str = f"parent_record={priref} and recordType=ObjectList"
-    records: str = adlib.retrieve_record(CID_API, 'workflow', search, '0')[1]
+    search = f"parent_record={priref} and recordType=ObjectList"
+    records = adlib.retrieve_record(CID_API, 'workflow', search, '0')[1]
     if not records:
         LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s", priref)
         return None
@@ -239,7 +239,7 @@ def get_missing_part_names(filename: str) -> Optional[list[str]]:
     '''
     fname_list: list[str] = []
     filename, ext = os.path.splitext(filename)
-    fname_split: str = filename.split('_')
+    fname_split = filename.split('_')
     part_whole = fname_split[-1]
     fname = '_'.join(fname_split[:-1])
     if 'of' not in part_whole:
@@ -296,14 +296,14 @@ def checksum_log(message: str) -> None:
     Append checksum message to checksum
     log where no match found
     '''
-    datestamp: datetimr = datetime.now()
+    datestamp: datetime = datetime.now()
     data: str = f"{datestamp}, {message}\n"
 
     with open(PICK_TEXT, 'a+') as out_file:
         out_file.write(data)
 
 
-def check_csv(fname: str) -> str | Any:
+def check_csv(fname: str) -> Union[str, Any]:
     '''
     Check CSV for evidence that fname already
     downloaded. Extract download date and return

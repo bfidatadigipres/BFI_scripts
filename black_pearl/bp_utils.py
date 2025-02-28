@@ -8,7 +8,7 @@ to one utility module
 import os
 import json
 from ds3 import ds3, ds3Helpers
-from typing import Optional
+from typing import Optional, Union
 
 CLIENT = ds3.createClientFromEnv()
 HELPER = ds3Helpers.Helper(client=CLIENT)
@@ -118,7 +118,7 @@ def get_bp_length(fname: str, bucket: str) -> Optional[str]:
         return size.replace('"', '')
 
 
-def get_confirmation_length_md5(fname: str, bucket: str, bucket_list: list[str]) -> Optional[tuple[Optional[bool | str], Optional[str], Optional[str]]]:
+def get_confirmation_length_md5(fname: str, bucket: str, bucket_list: list[str]) -> Optional[tuple[Optional[Union[bool, str]], Optional[str], Optional[str]]]:
     '''
     Alternative retrieval for get_object_list
     avoiding full_details requests
@@ -162,7 +162,7 @@ def get_confirmation_length_md5(fname: str, bucket: str, bucket_list: list[str])
     return confirmed, md5, length
 
 
-def get_object_list(fname: str) -> Optional[tuple[bool | str, Optional[str], Optional[str] ]]:
+def get_object_list(fname: str) -> Optional[tuple[Union[bool, str], Optional[str], Optional[str] ]]:
     '''
     Get all details to check file persisted
     '''

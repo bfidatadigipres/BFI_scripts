@@ -60,6 +60,8 @@ def move_to_ingest_folder(folderpth: str, upload_size: int, autoingest: str, fil
     logger.info("move_to_ingest_folder(): Moving files to %s", folderpth)
 
     folder_size = utils.get_size(folderpth)
+    if folder_size is None:
+        folder_size =0
     max_fill_size = upload_size - folder_size
     for file in file_list:
         if '.DS_Store' in file:
@@ -74,6 +76,8 @@ def move_to_ingest_folder(folderpth: str, upload_size: int, autoingest: str, fil
             continue
         fpath = os.path.join(autoingest, file)
         file_size = utils.get_size(fpath)
+        if file_size is None:
+            file_size =0
         max_fill_size -= file_size
         shutil.move(fpath, os.path.join(folderpth, file))
         logger.info("move_to_ingest_folder(): Moved file into new Ingest folder: %s", file)
@@ -300,12 +304,15 @@ def put_dir(directory_pth: str, bucket_choice: str) -> list[str]:
     Retrieve job number and launch json notification
     '''
     try:
-        job_list: list[str] = bp.put_directory(directory_pth, bucket_choice)
+        job_list = bp.put_directory(directory_pth, bucket_choice)
         print(f"bp.put_directory: {job_list}")
     except Exception as err:
         logger.error('Exception: %s', err)
         print('Exception: %s', err)
     logger.info("PUT COMPLETE - JOB ID retrieved: %s", job_list)
+
+    if job_list is None:
+        job_list = []
 
     for job_id in job_list:
         confirmation = bp.put_notification(job_id)

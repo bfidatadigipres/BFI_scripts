@@ -25,22 +25,22 @@ import sys
 import logging
 import datetime
 import tenacity
-import typing
+from typing import Optional, Final
 
 # Custom Libraries
 sys.path.append(os.environ['CODE'])
 import utils
 
 # Global variables
-LOG_PATH: typing.Final = os.environ['LOG_PATH']
-CODE_PTH: typing.Final = os.environ['CODE_DDP']
-CODE: typing.Final = os.environ['CODE']
-TODAY: typing.Final = str(datetime.date.today())
-CONTROL_JSON: typing.Final = os.environ['CONTROL_JSON']
-CHECKSUM_PATH: typing.Final = os.path.join(LOG_PATH, 'checksum_md5')
-CHECKSUM_PATH2: typing.Final = os.path.join(CODE_PTH, 'Logs', 'checksum_md5')
-MEDIAINFO_PATH: typing.Final = os.path.join(LOG_PATH, 'cid_mediainfo')
-MEDIAINFO_PATH2: typing.Final = os.path.join(CODE_PTH, 'Logs', 'cid_mediainfo')
+LOG_PATH: Final = os.environ['LOG_PATH']
+CODE_PTH: Final = os.environ['CODE_DDP']
+CODE: Final = os.environ['CODE']
+TODAY: Final = str(datetime.date.today())
+CONTROL_JSON: Final = os.environ['CONTROL_JSON']
+CHECKSUM_PATH: Final = os.path.join(LOG_PATH, 'checksum_md5')
+CHECKSUM_PATH2: Final = os.path.join(CODE_PTH, 'Logs', 'checksum_md5')
+MEDIAINFO_PATH: Final = os.path.join(LOG_PATH, 'cid_mediainfo')
+MEDIAINFO_PATH2: Final = os.path.join(CODE_PTH, 'Logs', 'cid_mediainfo')
 
 # Setup logging
 LOGGER = logging.getLogger('checksum_maker_mediainfo')
@@ -69,7 +69,7 @@ def checksum_exist(checksum_path_env: str, filename: str, checksum, filepath) ->
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def make_output_md5(filepath: str, filename: str) -> typing.Optional[str] :
+def make_output_md5(filepath: str, filename: str) -> Optional[str] :
     '''
     Runs checksum generation/output to file as separate function allowing for easier retries
     '''
@@ -82,7 +82,7 @@ def make_output_md5(filepath: str, filename: str) -> typing.Optional[str] :
         return None
 
 
-def checksum_test(CHECKSUM_PATH: str, check: str) -> typing.Optional[bool]:
+def checksum_test(CHECKSUM_PATH: str, check: str) -> Optional[bool]:
     '''
     Check for 'None' where checksum should be
     '''

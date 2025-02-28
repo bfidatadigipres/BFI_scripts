@@ -211,8 +211,8 @@ def main():
             remove_list: list = []
             if replace_list:
                 for item in replace_list:
-                    local_md5: str = utils.create_md5_65536(os.path.join(access_path, folder, file))
-                    bp_md5: str = bp_utils.get_bp_md5(item, BUCKET)
+                    local_md5 = utils.create_md5_65536(os.path.join(access_path, folder, file))
+                    bp_md5 = bp_utils.get_bp_md5(item, BUCKET)
                     print(f"Local {local_md5} - {item}")
                     print(f"Remote {bp_md5} - {item}")
                     if local_md5 == bp_md5:
@@ -246,7 +246,9 @@ def main():
             os.makedirs(new_path, mode=0o777, exist_ok=True)
             LOGGER.info("Created new ingest path: %s", new_path)
             while file_list:
-                check_control()
+                if not utils.check_control('black_pearl'):
+                    LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+                    sys.exit('Script run prevented by downtime_control.json. Script exiting.')
                 empty_check = [ x for x in os.listdir(INGEST_POINT) if os.path.isfile(os.path.join(INGEST_POINT, x)) ]
                 if len(empty_check) != 0:
                     LOGGER.warning("Exiting: Files found that weren't moved from ingest point previous run: %s", INGEST_POINT)

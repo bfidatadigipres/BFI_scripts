@@ -44,7 +44,7 @@ from datetime import datetime, timezone
 import pytz
 import subprocess
 import tenacity
-from typing import Optional, Final
+from typing import Optional, Final, Union
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -129,6 +129,8 @@ def main():
     print(file, fname, ext)
     # Check CID for Item record and extract transcode path
     object_number = utils.get_object_number(fname)
+    if object_number == None or object_number is False:
+        object_number = ''
     if object_number.startswith('CA-'):
         priref, source, groupings = check_item(object_number, 'collectionsassets')
     else:
@@ -283,6 +285,10 @@ def main():
         # Generate Full size 600x600, thumbnail 300x300
         full_jpeg = make_jpg(jpeg_location, 'full', None, None)
         thumb_jpeg = make_jpg(jpeg_location, 'thumb', None, None)
+        if thumb_jpeg is None:
+            thumb_jpeg = ''
+        if full_jpeg is None:
+            full_jpeg = ''
         log_build.append(f"{local_time()}\tINFO\tNew images created at {seconds} seconds into video:\n - {full_jpeg}\n - {thumb_jpeg}")
         if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
             os.remove(jpeg_location)
@@ -325,11 +331,14 @@ def main():
             full_jpeg = make_jpg(fullpath, 'oversize', transcode_pth, percent)
 
         thumb_jpeg = make_jpg(fullpath, 'thumb', transcode_pth, None)
-
+        if thumb_jpeg is None:
+            thumb_jpeg = ''
+        if full_jpeg is None:
+            full_jpeg = ''
         if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
             log_build.append(f"{local_time()}\tINFO\tNew images created:\n - {full_jpeg}\n - {thumb_jpeg}")
         else:
-            log_build.append(f"{local_time()}\tERROR\tOne of both JPEG image creations failed for file %s", file)
+            log_build.append(f"{local_time()}\tERROR\tOne of both JPEG image creations failed for file {file}")
 
     else:
         log_build.append(f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}")
@@ -369,7 +378,7 @@ def main():
     log_output(log_build)
 
 
-def log_output(log_build: str) -> None:
+def log_output(log_build: list[str]) -> None:
     '''
     Collect up log list and output to log in one block
     '''
@@ -428,7 +437,7 @@ def retrieve_blackspaces(data: str) -> list[str]:
     return time_range
 
 
-def check_seconds(blackspace: list[str], seconds: float) -> bool:
+def check_seconds(blackspace: list[str], seconds: float) -> Optional[bool]:
     '''
     Create range and check for second within
     '''
@@ -470,7 +479,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         return False
 
 
-def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, list[str]]]:
+def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, str]]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
@@ -478,7 +487,7 @@ def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, list[str]
     record = adlib.retrieve_record(CID_API, database, search, '1')[1]
     if not record:
         record = adlib.retrieve_record(CID_API, 'collect', search, '1')[1]
-    if not record:
+    if record is None:
         return None
 
     priref = adlib.retrieve_field_name(record[0], 'priref')[0]
@@ -494,7 +503,7 @@ def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, list[str]
     return priref, source, groupings
 
 
-def get_media_priref(fname: str) -> tuple[str, str, str, str, str]:
+def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
     '''
     Retrieve priref from Digital record
     '''
@@ -635,8 +644,8 @@ def check_for_mixed_audio(fpath: str) -> Optional[dict[str, int]]:
         '-of', 'csv=p=0', fpath
     ]
     audio = subprocess.check_output(cmd)
-    audio = str(audio.decode('utf-8').lstrip('\n').rstrip('\n'))
-    audio_channels = str(audio).split('\n')
+    audio_str = str(audio.decode('utf-8').lstrip('\n').rstrip('\n'))
+    audio_channels = str(audio_str).split('\n')
     if len(audio_channels) > 1:
         audio_downmix = {}
         for num in range(0, len(audio_channels)):
@@ -661,8 +670,8 @@ def check_for_fl_fr(fpath: str) -> bool:
         '-of', 'csv=p=0', fpath
     ]
     audio = subprocess.check_output(cmd)
-    audio = str(audio.decode('utf-8')).lstrip('\n').rstrip('\n')
-    audio_channels = audio.split('\n')
+    audio_str = str(audio.decode('utf-8')).lstrip('\n').rstrip('\n')
+    audio_channels = audio_str.split('\n')
     if '5.1(side)' in audio_channels:
         return True
     if len(audio_channels) > 1:
@@ -680,7 +689,7 @@ def check_for_fl_fr(fpath: str) -> bool:
     return False
 
 
-def get_duration(fullpath: str) -> tuple[str | int, str]:
+def get_duration(fullpath: str) -> Optional[tuple[int, str]]:
     '''
     Retrieves duration information via mediainfo
     where more than two returned, file longest of
@@ -690,7 +699,7 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
 
     duration = utils.get_metadata('Video', 'Duration', fullpath)
     if not duration:
-        return ('', '')
+        return (0, '')
     if '.' in duration:
         duration = duration.split('.')
 
@@ -715,8 +724,7 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
             second_duration = int(dur2) // 1000
             return (second_duration, '1')
 
-
-def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[bytes | list[str]]]:
+def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[Union[bytes, list[str]]]]:
     '''
     Mediainfo command to retrieve channels, identify
     stereo or mono, returned as 2 or 1 respectively
@@ -751,30 +759,32 @@ def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[b
 
     try:
         lang0 = subprocess.check_output(cmd0)
+        lang0_str = lang0.decode('utf-8')
     except Exception:
-        lang0 = ''
+        lang0_str = ''
     try:
         lang1 = subprocess.check_output(cmd1)
+        lang1_str = lang1.decode('utf-8')
     except Exception:
-        lang1 = ''
+        lang1_str = ''
     try:
         streams: bytes = subprocess.check_output(cmd2)
-        streams = streams.decode('utf-8').lstrip('\n').rstrip('\n').split('\n')
+        streams_str = streams.decode('utf-8').lstrip('\n').rstrip('\n').split('\n')
     except Exception:
-        streams = None
-    print(f"**** LANGUAGES: Stream 0 {lang0} - Stream 1 {lang1}")
+        streams_str = None
+    print(f"**** LANGUAGES: Stream 0 {lang0_str} - Stream 1 {lang1_str}")
 
-    if 'nar' in str(lang0).lower():
+    if 'nar' in str(lang0_str).lower():
         print("Narration stream 0 / English stream 1")
-        return ('Audio', '1', streams)
-    elif 'nar' in str(lang1).lower():
+        return ('Audio', '1', streams_str)
+    elif 'nar' in str(lang1_str).lower():
         print("Narration stream 1 / English stream 0")
-        return ('Audio', '0', streams)
+        return ('Audio', '0', streams_str)
     else:
-        return ('Audio', None, streams)
+        return ('Audio', None, streams_str)
 
 
-def create_transcode(fullpath: str, output_path: str, height: int, width: int, dar: str, par: str, audio: str, default: str, vs: str, mixed_dict: dict[str, int], fl_fr: bool) -> list[str]:
+def create_transcode(fullpath: str, output_path: str, height: Union[int,str], width: Union[int,str], dar: str, par: str, audio: Optional[str], default: Optional[str], vs: str, mixed_dict: Optional[dict[str, int]], fl_fr: bool) -> Optional[list[str]]:
 
     '''
     Builds FFmpeg command based on height/dar input
@@ -937,8 +947,10 @@ def create_transcode(fullpath: str, output_path: str, height: int, width: int, d
         cmd_mid = crop_ntsc_640x480
     elif height < 576 and width == 720 and dar == '4:3':
         cmd_mid = scale_sd_4x3
-    elif height == 576 and width == 703 and dar == '4:3':
+    elif height == 576 and width == 703 and dar != '16:9':
         cmd_mid = scale_sd_4x3
+    elif height == 576 and width == 703 and dar == '16:9':
+        cmd_mid == scale_sd_16x9
     elif height == 576 and width == 1024:
         cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '16:9':
@@ -987,7 +999,7 @@ def create_transcode(fullpath: str, output_path: str, height: int, width: int, d
         return ffmpeg_program_call + input_video_file + map_video + video_settings + pix + cmd_mid + map_audio + fast_start + output
 
 
-def make_jpg(filepath: str, arg: str, transcode_pth: str, percent: str) -> str:
+def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str]) -> Optional[str]:
     '''
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.
@@ -1074,7 +1086,7 @@ def conformance_check(file: str) -> str:
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))
-def cid_media_append(fname: str, priref: str, data: tuple[str, str, str, str, str]) -> bool:
+def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]:
     '''
     Receive data and priref and append to CID media record
     '''
@@ -1087,14 +1099,16 @@ def cid_media_append(fname: str, priref: str, data: tuple[str, str, str, str, st
     if rec is None:
         return False
 
-    data = get_media_priref(fname)
+    data_priref = get_media_priref(fname)
     print("**************************************************************")
-    print(data)
+    print(data_priref)
     print("**************************************************************")
 
-    data = get_media_priref(fname)
+    data_priref = get_media_priref(fname)
+    if data_priref is None:
+        data_priref = tuple('')
     file = fname.split('.')[0]
-    if file == data[4] or file in str(data[2]):
+    if file == data_priref[4] or file in str(data_priref[2]):
         LOGGER.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
         return True
 

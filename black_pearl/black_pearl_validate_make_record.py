@@ -110,7 +110,7 @@ def retrieve_json_data(foldername: str) -> str:
         return os.path.join(JSON_PATH, json_file[0])
 
 
-def json_check(json_pth: str) -> str:
+def json_check(json_pth: str) -> Optional[str]:
     '''
     Open json and return value for ObjectsNotPersisted
     Has to be a neater way than this!

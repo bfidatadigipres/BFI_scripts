@@ -348,6 +348,9 @@ def main():
             duration_ms = ''
         if not byte_size:
             byte_size = ''
+        if object_number is None:
+            object_number = ''
+
         duration_size_log(fname, object_number, duration, byte_size, duration_ms)
 
         # Make global log message
@@ -458,7 +461,7 @@ def create_media_record(ob_num: str, duration: str, byte_size: str, filename: st
     '''
 
     part, whole = utils.check_part_whole(filename)
-    record_data: list[dict[str, str]] = ([{'input.name': 'datadigipres'},
+    record_data = ([{'input.name': 'datadigipres'},
                     {'input.date': str(datetime.now())[:10]},
                     {'input.time': str(datetime.now())[11:19]},
                     {'input.notes': 'Digital preservation ingest - automated bulk documentation.'},

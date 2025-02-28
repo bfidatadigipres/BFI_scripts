@@ -69,8 +69,9 @@ import ntpath
 import logging
 import datetime
 import subprocess
+import requests
 import magic
-from typing import Final, Optional
+from typing import Final, Optional, Union, Any
 
 # Private packages
 import bp_utils as bp
@@ -98,7 +99,7 @@ logger.setLevel(logging.INFO)
 # Setup CID/Black Pearl variables
 CID_API: Final = os.environ['CID_API4']
 
-PREFIX: Final = [
+PREFIX= [
     'N',
     'C',
     'PD',
@@ -252,7 +253,7 @@ def process_image_archive(fname: str, log_paths: str) -> tuple[Optional[str], Op
     return object_number, int(part), int(whole), ext
 
 
-def get_item_priref(ob_num: str, session: str) -> str:
+def get_item_priref(ob_num: str, session: requests.Session) -> str:
     '''
     Retrieve item priref, title from CID
     '''
@@ -260,31 +261,35 @@ def get_item_priref(ob_num: str, session: str) -> str:
     search = f"object_number='{ob_num}'"
     record = adlib.retrieve_record(CID_API, 'collect', search, '1', session)[1]
     print(f"get_item_priref(): AdlibV3 record for priref:\n{record}")
+
+    if record is None:
+        return ''
     try:
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
         print(f"get_item_priref(): AdlibV3 priref: {priref}")
     except Exception:
-        priref = ''
+        priref =''
 
-    return priref
+    return priref or ''
 
 
-def check_media_record(fname: str, session: str) -> str | bool:
+def check_media_record(fname: str, session: requests.Session) -> Optional[Union[str,bool]]:
     '''
     Check if CID media record
     already created for filename
     '''
-    search = f"imagen.media.original_filename='{fname}'"
+    search = f"(imagen.media.original_filename='{fname}') or (reference_number='{fname}')"
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
     except Exception as err:
         print(f"Unable to retrieve CID Media record {err}")
-        return False
+        return None
 
     if hits is None:
         logger.exception('"CID API was unreachable for Media search: %s', search)
         raise Exception(f"CID API was unreachable for Media search: {search}")
+
     print(f"check_media_record(): AdlibV3 record for hits: {hits}")
     if int(hits) == 1:
         return True
@@ -314,7 +319,7 @@ def get_buckets(bucket_collection: str) -> list[str]:
     return bucket_list
 
 
-def ext_in_file_type(ext: str, priref: str, log_paths: str, ob_num: str, session: str) -> bool:
+def ext_in_file_type(ext: str, priref: str, log_paths: str, ob_num: str, session: requests.Session) -> Optional[bool]:
     '''
     Check if ext matches file_type
     '''
@@ -325,8 +330,8 @@ def ext_in_file_type(ext: str, priref: str, log_paths: str, ob_num: str, session
         logger.warning('%s\tFile type is not recognised in autoingest', log_paths)
         return False
 
-    ftype = ftype.split(', ')
-    print(ftype)
+    ftype_list = ftype.split(', ')
+    print(ftype_list)
     if ob_num.startswith('CA-'):
         logger.info("Collections Asset item file type check with 'asset_file_type' field")
         retrieved_fields = ['asset_file_type']
@@ -347,7 +352,7 @@ def ext_in_file_type(ext: str, priref: str, log_paths: str, ob_num: str, session
         return False
 
     if len(file_type) == 1:
-        for ft in ftype:
+        for ft in ftype_list:
             ft = ft.strip()
             if file_type[0] is None:
                 return False
@@ -368,7 +373,7 @@ def ext_in_file_type(ext: str, priref: str, log_paths: str, ob_num: str, session
         return False
 
 
-def get_media_ingests(object_number: str, session: str) -> list[str]:
+def get_media_ingests(object_number: str, session: requests.Session) -> list[str]:
     '''
     Use object_number to retrieve all media records
     '''
@@ -378,6 +383,10 @@ def get_media_ingests(object_number: str, session: str) -> list[str]:
     if hits is None:
         logger.exception('"CID API was unreachable for Media search: %s', search)
         raise Exception(f"CID API was unreachable for Media search: {search}")
+    if record is None:
+        logger.exception('"There is no such record for object: %s', object_number)
+        raise Exception(f"There's no such record for object: {object_number}")
+    
     print(f"get_media_ingests(): AdlibV3 record returned:\n{record}")
 
     original_filenames = []
@@ -431,7 +440,7 @@ def asset_is_next_ingest(fname: str, previous_fname: str, black_pearl_folder: st
         return False
 
 
-def asset_is_next(fname: str, ext: str, object_number: str, part: int, whole: Optional[int], black_pearl_folder: str, session: str) -> str:
+def asset_is_next(fname: str, ext: str, object_number: str, part: int, whole: int, black_pearl_folder: str, session: requests.Session) -> str:
     '''
     Check which files have persisted already and
     if this file is next in queue
@@ -555,9 +564,12 @@ def main():
             if fname.endswith(('.txt', '.md5', '.log', '.mhl', '.ini', '.json')):
                 continue
             ext = fname.split('.')[-1]
-            if ext.lower() == 'avi' and 'qnap08_osh' not in host:
-                print("** AVI FILE - Not in QNAP-08 OSH path. Skipping")
-                continue
+            if ext.lower() == 'avi':
+                if 'qnap08_osh' in str(fpath):
+                    pass
+                else:
+                    print("** AVI FILE - Not in QNAP-08 OSH path. Skipping")
+                    continue
 
             print(f'\n====== CURRENT FILE: {fpath} ===========================')
 
@@ -626,6 +638,9 @@ def main():
 
             # CID media record check
             media_check = check_media_record(fname, sess)
+            if media_check is None:
+                print("Skipping. Exceptionion raised for call to CID API")
+                continue
             if media_check is True:
                 print(f'* Filename {fname} already has a CID Media record. Manual clean up needed.')
                 logger.warning('%s\tFilename already has a CID Media record: %s', log_paths, fname)
@@ -734,7 +749,7 @@ def main():
                 continue
 
 
-def check_for_deletions(fpath, fname, log_paths, messages, session):
+def check_for_deletions(fpath, fname, log_paths, messages, session: requests.Session):
     '''
     Process files in completed/ folder by checking for persistence
     message that confirms deletion is allowed.
@@ -742,8 +757,11 @@ def check_for_deletions(fpath, fname, log_paths, messages, session):
 
     # Check if CID media record exists
     media_check = check_media_record(fname, session)
+    if media_check is None:
+        print("** Exception raised for API request. Skipping this deletion.")
+        return False
     if media_check is False:
-        print(f'*********** Filename {fname} has no CID Media record. Leaving for manual checks. (cid_media_record returned False)')
+        print(f'** Filename {fname} has no CID Media record. Leaving for manual checks. (cid_media_record returned False)')
         logger.warning('%s\tCompleted file has no CID Media record: %s', log_paths, fname)
         return False
 

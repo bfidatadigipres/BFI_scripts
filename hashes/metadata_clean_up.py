@@ -26,7 +26,7 @@ import csv
 import sys
 import json
 import logging
-from typing import Optional
+from typing import Optional, Union, Any
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -157,18 +157,18 @@ def cid_retrieve(fname: str) -> Optional[str]:
     Retrieve priref for media record from imagen.media.original_filename
     '''
     try:
-        search: str = f"imagen.media.original_filename='{fname}'"
-        record: str = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
+        search = f"imagen.media.original_filename='{fname}'"
+        record = adlib.retrieve_record(CID_API, 'media', search, '0')[1]
         if not record:
             return ''
         if 'priref' in str(record):
-            priref: str = adlib.retrieve_field_name(record[0], 'priref')[0]
+            priref = adlib.retrieve_field_name(record[0], 'priref')[0]
             return priref
         return ''
-    except Exception as e:
-        print(e)
     except AttributeError:
         print('Priref return None type')
+    except Exception as e:
+        print(e)
 
 
 def main():
@@ -268,7 +268,7 @@ def main():
         LOGGER.warning("Failed to POST header tag data to CID record. Writing to errors CSV")
 
 
-def build_exif_metadata_xml(exif_path: str, priref: str) -> str | bool:
+def build_exif_metadata_xml(exif_path: str, priref: str) -> Union[str, bool]:
     '''
     Open text file for any EXIF data
     and create XML for update record
@@ -379,7 +379,7 @@ def iterate_text_rows(data: list[str], match: str, key: str) -> Optional[dict[st
         return {f'{key}': field_chosen}
 
 
-def get_stream_count(gen_rows: list[str]) -> tuple[float, float]:
+def get_stream_count(gen_rows: list[str]) -> tuple[int, int]:
     '''
     Get counts of streams
     to isolate metadata
@@ -495,10 +495,12 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
     return f"{payload_start}{payload}{payload_end}"
 
 
-def manipulate_data(key: str, selection: str) -> str | bool:
+def manipulate_data(key: str, selection: Optional[str]) -> Optional[str]:
     '''
     Sort and transform data where needed
     '''
+    if selection is None:
+        selection = ''
     if '.format' in key and ' / ' in selection:
         return selection.split(' / ')[0].strip()
     if '.codec_id' in key and ' / ' in selection:
@@ -548,7 +550,7 @@ def manipulate_data(key: str, selection: str) -> str | bool:
     return selection
 
 
-def wrap_as_xml(grouping: str, field_pairs: list[str]) -> str:
+def wrap_as_xml(grouping: str, field_pairs: list[dict[Any, Any]]) -> str:
     '''
     Borrwed from Adlib
     but for specific need
@@ -562,7 +564,7 @@ def wrap_as_xml(grouping: str, field_pairs: list[str]) -> str:
     return f'<{grouping}>{mid}</{grouping}>'
 
 
-def get_xml(arg: str, track: dict[str]) -> list[dict]:
+def get_xml(arg: str, track: dict[str, str]) -> list[dict]:
     '''
     Create dictionary for General
     metadata required
@@ -618,7 +620,7 @@ def get_video_xml(track: dict[str, str]) -> list[dict]:
     return video_dict
 
 
-def get_image_xml(track: list[str]) -> list[dict]:
+def get_image_xml(track: list[str]) -> list[dict[str, str]]:
     '''
     Create dictionary for Image
     metadata from Exif data source
@@ -769,7 +771,7 @@ def make_header_data(text_path: str, filename: str, priref: str) -> str:
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
 
 
-def write_payload(payload: str, priref: str) -> tuple[bool, dict[str]]:
+def write_payload(payload: str, priref: str) -> tuple[Optional[bool], Optional[dict[Any, Any]]]:
     '''
     Payload formatting per mediainfo output
     '''
@@ -786,7 +788,7 @@ def write_payload(payload: str, priref: str) -> tuple[bool, dict[str]]:
         return None, record
 
 
-def write_to_errors_csv(dbase: str, api: str, priref: str, xml_dump: str, record_response: dict[str]) -> None:
+def write_to_errors_csv(dbase: str, api: str, priref: str, xml_dump: str, record_response: dict[Any, Any]) -> None:
     '''
     Keep a tab of problem POSTs as we expand
     thesaurus range for media record linked metadata

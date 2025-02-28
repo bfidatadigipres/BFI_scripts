@@ -56,7 +56,7 @@ import datetime
 import subprocess
 import re
 from ds3 import ds3, ds3Helpers
-from typing import Final, Optional
+from typing import Final, Optional, Union
 
 # Private imports
 sys.path.append(os.environ['CODE'])
@@ -99,7 +99,7 @@ def check_control() -> None:
             sys.exit('Exit requested by downtime_control.json. Script exiting')
 
 
-def read_csv_match_file(file: str) -> tuple[str, str]:
+def read_csv_match_file(file: str) -> Optional[tuple[str, str]]:
     '''
     Make set of all entries
     with title as key, and value
@@ -108,7 +108,7 @@ def read_csv_match_file(file: str) -> tuple[str, str]:
     '''
 
     data: pandas.DataFrame = pandas.read_csv(CSV_PATH)
-    data_dct: dict[str, str] = data.to_dict(orient='list')
+    data_dct = data.to_dict(orient='list')
     length: int = len(data_dct['fname'])
 
     for num in range(1, length):
@@ -123,7 +123,7 @@ def check_cid_record(priref: str, file: str) -> tuple[str, str, str, str, str]:
     returned record
     '''
 
-    search: str = f"priref='{priref}'"
+    search = f"priref='{priref}'"
     fields: list[str] = [
         'item_type',
         'file_type',
@@ -131,12 +131,14 @@ def check_cid_record(priref: str, file: str) -> tuple[str, str, str, str, str]:
         'reference_number',
         'code_type'
     ]
-    record: str = adlib.retrieve_record(CID_API, 'items', search, '0', fields)[1]
+    record = adlib.retrieve_record(CID_API, 'items', search, '0', fields)[1]
+    if record is None:
+        record = []
     if not record:
         print(f"Unable to retrieve CID Item record {priref}")
 
     item_type = file_type = original_fname = ref_num = code_type = ''
-    if 'item_type' in str(record[0]):
+    if 'item_type' in str(record[0]): 
         item_type = adlib.retrieve_field_name(record[0], 'item_type')[0]
     if 'file_type' in str(record[0]):
         file_type = adlib.retrieve_field_name(record[0], 'file_type')[0]
@@ -161,8 +163,9 @@ def check_media_record(fname: str) -> tuple[str, str, str, str]:
         'access_rendition.mp4',
         'input.date'
     ]
-    record: str = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
-    if not record: 
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
+    if not record or record is None: 
+        record = []
         print(f"Unable to retrieve CID Media record for item {fname}")
 
     priref = media_hls = access_mp4 = input_date = ''
@@ -193,7 +196,7 @@ def check_bp_status(fname: str, bucket_list: list[str], local_md5: str) -> Optio
 
         try:
             md5: str = result.response.msg['ETag']
-            length: int | str = result.response.msg['Content-Length']
+            length = result.response.msg['Content-Length']
             if int(length) > 1 and md5.strip() == local_md5:
                 return True
         except (IndexError, TypeError, KeyError) as err:
@@ -234,7 +237,7 @@ def get_media_ingests(object_number: str) -> Optional[list[str]]:
     Use object_number to retrieve all media records
     '''
     search: str = f'object.object_number="{object_number}"'
-    record: str = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])[1]
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename'])[1]
     if not record:
         return None
 
@@ -248,7 +251,7 @@ def get_media_ingests(object_number: str) -> Optional[list[str]]:
     return original_filenames
 
 
-def check_codec(fpath: str) -> str | bytes:
+def check_codec(fpath: str) -> Union[str, bytes]:
     '''
     Check MP4 file codec is supported
     otherwise initiate transcode
@@ -299,7 +302,7 @@ def md5_65536(fpath: str) -> Optional[str]:
     Hashlib md5 generation, return as 32 character hexdigest
     '''
     try:
-        hash_md5: hashlib._hashlib.HASH = hashlib.md5()
+        hash_md5: hashlib._hashlib.HASH = hashlib.md5() # type: ignore
         with open(fpath, "rb") as fname:
             for chunk in iter(lambda: fname.read(65536), b""):
                 hash_md5.update(chunk)
@@ -333,7 +336,7 @@ def main():
         fname: str = file.split('.')[0]
 
         # Find match in CSV
-        match_dict: tuple[str] = read_csv_match_file(file)
+        match_dict  = read_csv_match_file(file)
         if match_dict is None:
             LOGGER.warning("File not found in CSV: %s", file)
             continue
@@ -495,7 +498,7 @@ def main():
     LOGGER.info("============== Legacy filename updater END ====================")
 
 
-def get_duration(fullpath: str) -> str | int | tuple[int, str]:
+def get_duration(fullpath: str) -> Optional[Union[str, int, tuple[int, str]]]:
     '''
     Retrieves duration information via mediainfo
     where more than two returned, file longest of
@@ -516,20 +519,20 @@ def get_duration(fullpath: str) -> str | int | tuple[int, str]:
     print(f"Mediainfo seconds: {duration}")
 
     if '.' in duration:
-        duration = duration.split('.')
+        duration_list = duration.split('.')
 
     if isinstance(duration, str):
         second_duration = int(duration) // 1000
         return second_duration
-    elif len(duration) == 2:
+    elif len(duration_list) == 2:
         print("Just one duration returned")
-        num = duration[0]
+        num = duration_list[0]
         second_duration = int(num) // 1000
         return second_duration
-    elif len(duration) > 2:
+    elif len(duration_list) > 2:
         print("More than one duration returned")
-        dur1 = f"{duration[0]}"
-        dur2 = f"{duration[1][6:]}"
+        dur1 = f"{duration_list[0]}"
+        dur2 = f"{duration_list[1][6:]}"
         print(dur1, dur2)
         if int(dur1) > int(dur2):
             second_duration = int(dur1) // 1000
@@ -590,7 +593,7 @@ def adjust_seconds(duration: float, data: str) -> float:
     return duration // 2
 
 
-def check_seconds(blackspace: list[str], seconds: int | float) -> Optional[bool]:
+def check_seconds(blackspace: list[str], seconds: Union[int,float]) -> Optional[bool]:
     '''
     Create range and check for second within
     '''
@@ -780,8 +783,7 @@ def create_media_record(ob_num: str, duration: str, byte_size: str, filename: st
         LOGGER.exception("CID media record failed to retrieve priref")
         media_priref = ""
 
-    return media_priref
-
+    return media_priref or ""
 
 def cid_media_append(fname: str, priref: str, data: str) -> bool:
     '''

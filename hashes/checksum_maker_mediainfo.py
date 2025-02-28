@@ -52,13 +52,13 @@ LOGGER.setLevel(logging.INFO)
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def checksum_exist(checksum_path_env: str, filename: str, checksum, filepath) -> str:
+def checksum_exist(filename: str, checksum: str, filepath: str) -> str:
     '''
     Create a new Checksum file and write MD5_checksum
     Return checksum path where successfully written
     '''
-    cpath: str = os.path.join(checksum_path_env, f"{filename}.md5")
-    if os.path.isfile(checksum_pth):
+    cpath: str = os.path.join(CHECKSUM_PATH, f"{filename}.md5")
+    if os.path.isfile(cpath):
         checksum_pth = utils.checksum_write(cpath, checksum, filepath, filename)
     else:
         with open(cpath, 'x') as fnm:
@@ -66,8 +66,8 @@ def checksum_exist(checksum_path_env: str, filename: str, checksum, filepath) ->
         checksum_pth = utils.checksum_write(cpath, checksum, filepath, filename)
     if not os.path.isfile(checksum_pth):
         return None
-    else:
-        return checksum_pth
+
+    return checksum_pth
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
@@ -148,7 +148,7 @@ def main():
     if os.path.isfile(filepath):
         LOGGER.info("Attempting to make metadata file dumps")
         make_metadata(bpi_path, filepath, filename, MEDIAINFO_PATH)
-        success = checksum_exist(CHECKSUM_PATH, filename, md5_checksum, filepath)
+        success = checksum_exist(filename, md5_checksum, filepath)
         if not success:
             LOGGER.warning("Failed to write checksum to filepath: %s", filepath)
         else:

@@ -522,13 +522,13 @@ def fetch_lines(fullpath, lines):
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
-            series_id = lines["item"][0]["asset"]["related"][1]["id"]
+            series_id = lines["item"][0]["asset"]["related"][0]["id"]
             epg_dict['series_id'] = str(series_id)
         except (IndexError, KeyError, TypeError):
             series_id = None
         if not series_id:
             try:
-                series_id = lines["item"][0]["asset"]["related"][0]["id"]
+                series_id = lines["item"][0]["asset"]["related"][1]["id"]
                 epg_dict['series_id'] = str(series_id)
             except (IndexError, KeyError, TypeError) as err:
                 print(err)

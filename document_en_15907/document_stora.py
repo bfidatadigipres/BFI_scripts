@@ -51,8 +51,8 @@ logger.setLevel(logging.INFO)
 TODAY = datetime.date.today()
 YEST = TODAY - datetime.timedelta(days=1)
 YEST_CLEAN = YEST.strftime('%Y-%m-%d')
-YEAR = YEST_CLEAN[0:4]
-#YEAR = '2024'
+# YEAR = YEST_CLEAN[0:4]
+YEAR = '2024'
 STORAGE_PATH = os.path.join(STORAGE, YEAR)
 
 
@@ -148,7 +148,13 @@ def generate_variables(data):
     duration_total = (duration_hours_integer * 60) + duration_minutes_integer
 
     actual_duration = data['actual_duration']
-    actual_duration_hours, actual_duration_minutes, actual_duration_seconds = actual_duration.split(':')
+    if ':' in str(actual_duration):
+        actual_duration_hours, actual_duration_minutes, actual_duration_seconds = actual_duration.split(':')
+    elif '-' in str(actual_duration):
+        actual_duration_hours, actual_duration_minutes, actual_duration_seconds = actual_duration.split('-')
+    else:
+        return (title, description, title_date_start, time, duration_total, duration_total, 0, channel, broadcast_company, code_type)
+
     actual_duration_hours_integer = int(actual_duration_hours)
     actual_duration_minutes_integer = int(actual_duration_minutes)
     actual_duration_total = (actual_duration_hours_integer * 60) + actual_duration_minutes_integer

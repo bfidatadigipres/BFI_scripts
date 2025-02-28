@@ -523,15 +523,17 @@ def fetch_lines(fullpath, lines):
             print(err)
         try:
             series_id = lines["item"][0]["asset"]["related"][1]["id"]
+            epg_dict['series_id'] = str(series_id)
         except (IndexError, KeyError, TypeError):
             series_id = None
         nested_id = check_id(fullpath)
-        if len(nested_id) == 36 and nested_id != series_id:
-            logger.warning("Retrieved Series ID %s likely not 'series' - exchanged for %s", series_id, nested_id)
-            series_id = nested_id
-            epg_dict['series_id'] = str(series_id)
-        elif len(series_id) == 36:
-            epg_dict['series_id'] = str(series_id)
+        if nested_id is None:
+            pass
+        else:
+            if len(nested_id) == 36 and nested_id != series_id:
+                logger.warning("Retrieved Series ID %s likely not 'series' - exchanged for %s", series_id, nested_id)
+                series_id = nested_id
+                epg_dict['series_id'] = str(series_id)
         try:
             episode_total = lines["item"][0]["asset"]["meta"]["episodeTotal"]
             epg_dict['episode_total'] = episode_total

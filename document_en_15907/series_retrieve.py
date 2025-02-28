@@ -61,7 +61,8 @@ def retrieve(fullpath):
                         LOGGER.info("Getting asset details from series_id: %s - %s", series_id, title)
                         print(f"retrieve(): Title: {title}")
                         get_asset(series_id, title)
-                    except:
+                    except Exception as err:
+                        print(err)
                         pass
     LOGGER.info('========== Fetch series_retrieve.py script ENDED ================================================')
 
@@ -81,3 +82,22 @@ def get_asset(series_id, title):
         print(f"Created new series data JSON {fname}")
     time.sleep(10)
 
+
+def check_id(fullpath):
+    '''
+    Check series id from EPG matches
+    nested search returned for 'series'
+    '''
+
+    with open(fullpath, 'r') as inf:
+        dct = json.load(inf)
+        for subdct in dct['item'][0]["asset"]["related"]:
+            for key, value in subdct.items():
+                type = subdct["type"]
+                if type == "series":
+                    try:
+                        series_id = subdct["id"]
+                        print(f"retrieve(): Series ID: {series_id}")
+                        return series_id
+                    except (KeyError, IndexError, ValueError) as err:
+                        return None

@@ -927,7 +927,7 @@ def create_transcode(fullpath: str, output_path: str, height: int, width: int, d
 
     if height < 400 and width < 533 and dar == '4:3':
         cmd_mid = scale_sd_4x3
-    elif height < 400 and width < 533 and dar == '16:9':
+    elif height < 400 and width <= 640 and dar == '16:9':
         cmd_mid = scale_sd_16x9
     elif height <= 486 and dar == '16:9':
         cmd_mid = crop_ntsc_486_16x9

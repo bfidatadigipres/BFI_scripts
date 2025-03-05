@@ -820,12 +820,12 @@ def create_transcode(fullpath: str, output_path: str, height: int, width: int, d
 
     upscale_sd_width = [
         "-vf",
-        "yadif,scale=1024:-1:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+        "yadif,scale=1024:-1:flags=lanczos,pad=1024:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
     ]
 
     upscale_sd_height = [
         "-vf",
-        "yadif,scale=-1:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10"
+        "yadif,scale=-1:576:flags=lanczos,pad=1024:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
     ]
 
     scale_sd_4x3 = [
@@ -935,13 +935,13 @@ def create_transcode(fullpath: str, output_path: str, height: int, width: int, d
     aspect = round(width / height, 3)
     cmd_mid = []
 
-    if height < 480 and aspect >= 1.778:
+    if height < 486 and aspect >= 1.778:
         cmd_mid = upscale_sd_width
-    elif height < 480 and aspect < 1.778:
+    elif height < 486 and aspect < 1.778:
         cmd_mid = upscale_sd_height
-    elif height <= 486 and dar == '16:9':
+    elif height = 486 and dar == '16:9':
         cmd_mid = crop_ntsc_486_16x9
-    elif height <= 486 and dar == '4:3':
+    elif height = 486 and dar == '4:3':
         cmd_mid = crop_ntsc_486
     elif height <= 486 and width == 640:
         cmd_mid = crop_ntsc_640x480

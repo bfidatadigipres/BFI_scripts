@@ -53,6 +53,7 @@ GENRE_MAP = os.path.join(CODE_PATH, 'document_en_15907/EPG_genre_mapping.yaml')
 SERIES_LIST = os.path.join(CODE_PATH, 'document_en_15907/series_list.json')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
+MEDIACONCH = os.environ['']
 SUBS_PTH = os.environ['SUBS_PATH2']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
 CID_API = os.environ['CID_API4']
@@ -783,8 +784,17 @@ def main():
                 csv_description = ""
                 csv_dump = ""
 
+        # Check file health with policy verification
         acquired_filename = os.path.join(root, "stream.mpeg2.ts")
         print(f"Path for programme stream content: {acquired_filename}")
+        success, response = utils.get_mediaconch(acquired_filename, MEDIACONCH)
+        if success is False:
+            # Fix 'BROKEN' to folder name, update failure CSV
+            logger.warning("Skipping: File found that has failed MPEG-TS policy:\n%s.", response)
+            mark_broken_stream(fullpath, acquired_filename)
+            update_broken_ts(acquired_filename, epg_dict)
+            continue
+
 
         # Get defaults as lists of dictionary pairs
         rec_def, ser_def, work_def, work_res_def, man_def, item_def = build_defaults(epg_dict)
@@ -1623,6 +1633,37 @@ def mark_problem_json(fullpath):
         logger.warning('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
     if os.path.exists(problem):
         return True
+
+
+def mark_broken_stream(json_path, vpath):
+    '''
+    Rename JSON with .PROBLEM to prevent retry
+    and append ts.BROKEN to video file
+    '''
+
+    vpath_broken = f'{vpath}.BROKEN'
+    problem = f'{json_path}.PROBLEM'
+    print(f'* Renaming {json_path} to {problem}')
+    print(f'* Renaming {vpath} to {vpath_broken}')
+    logger.info('%s\t Renaming JSON to %s', json_path, problem)
+    logger.info('%s\t Renaming MPEG-TS to %s', vpath, vpath_broken)
+
+    if os.path.exists(json_path):
+        os.rename(json_path, problem)
+    else:
+        logger.warning("Path not found, unable to append '.PROBLEM': %s", json_path)
+    if os.path.exists(vpath):
+        os.rename(vpath, vpath_broken)
+    else:
+        logger.warning("Path not found, unable to append '.BROKEN': %s", vpath)
+
+
+def update_broken_ts(vpath, channel, ):
+    '''
+    Update broken MPEG-TS file to
+    CSV along with date/channel/policy
+    '''
+    pass
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))

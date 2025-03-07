@@ -51,8 +51,8 @@ logger.setLevel(logging.INFO)
 TODAY = datetime.date.today()
 YEST = TODAY - datetime.timedelta(days=1)
 YEST_CLEAN = YEST.strftime('%Y-%m-%d')
-# YEAR = YEST_CLEAN[0:4]
-YEAR = '2024'
+YEAR = YEST_CLEAN[0:4]
+# YEAR = '2024'
 STORAGE_PATH = os.path.join(STORAGE, YEAR)
 
 
@@ -244,7 +244,8 @@ def main():
 
     logger.info('========== STORA documentation script STARTED ===============================================')
     session = adlib.create_session()
-    # Iterate through all info.csv.redux/.stora creating CID records
+
+    # Iterate through all info.csv.stora creating CID records
     for root, _, files in os.walk(STORAGE_PATH):
         for file in files:
             if FAILURE_COUNTER > 5:
@@ -259,6 +260,7 @@ def main():
                 continue
 
             fullpath = os.path.join(root, file)
+            print(f"Processing path: {fullpath}")
             data = csv_retrieve(fullpath)
             if len(data) > 0:
                 print(f'* CSV found and being processed - {fullpath}')

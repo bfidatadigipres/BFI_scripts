@@ -153,7 +153,7 @@ def cid_series_query(series_id):
 
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
-    sleep(2)
+    sleep(1)
     try:
         hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
     except Exception as err:
@@ -183,7 +183,7 @@ def find_repeats(asset_id):
     '''
 
     search = f'alternative_number="{asset_id}"'
-    sleep(2)
+    sleep(1)
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1')
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
@@ -195,7 +195,7 @@ def find_repeats(asset_id):
         man_priref = adlib.retrieve_field_name(result[0], 'priref')[0]
     except (IndexError, TypeError, KeyError):
         return None
-    sleep(2)
+    sleep(1)
     full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{man_priref}"', '1', ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
@@ -820,6 +820,8 @@ def main():
             logger.warning("Marking stream.mpeg2.ts.BROKEN and updating CSV")
             update_broken_ts(acquired_filename, work_priref, response, epg_dict)
             continue
+        logger.info("MPEG-TS passed MediaConch check: %s", success)
+        print(response)
 
         # Make news channels new works for all live programming
         if channel in NEWS_CHANNELS:
@@ -1086,7 +1088,7 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     series_values_xml = adlib.create_record_data(CID_API, 'works', '', series_work_values)
     if series_values_xml is None:
         return None
-    sleep(2)
+    sleep(1)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
@@ -1345,14 +1347,14 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
             work_values.append({'utb.fieldname': 'Freeview EPG'})
             work_values.append({'utb.content': csv_dump})
 
-    work_id = ''
+    work_id = work_rec = ''
     # Start creating CID Work record
-    sleep(3)
+    sleep(1)
     work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None
     try:
-        sleep(2)
+        sleep(1)
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         print(f"create_work(): {work_rec}")
@@ -1362,9 +1364,12 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         logger.warning(err)
 
     # Allow for retry if record priref creation crash:
+    if len(work_rec) == 0:
+        raise Exception("Recycle of API exception raised.")
+
     if "Duplicate key in unique index 'invno':" in str(work_rec):
         try:
-            sleep(2)
+            sleep(1)
             logger.info("Attempting to create Work record for item %s", epg_dict['title'])
             work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
             print(f"create_work(): {work_rec}")
@@ -1373,8 +1378,6 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
             logger.warning('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
             logger.warning(err)
 
-    if work_rec is False:
-        raise Exception("Recycle of API exception raised.")
     try:
         print("Populating work_id and object_number variables")
         work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
@@ -1485,7 +1488,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     if man_values_xml is None:
         return None
     try:
-        sleep(2)
+        sleep(1)
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
         print(f"create_manifestation(): {man_rec}")
@@ -1496,7 +1499,7 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(man_rec):
         try:
-            sleep(2)
+            sleep(1)
             logger.info("Attempting to create Manifestation record for item %s", title)
             man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
             print(f"create_manifestation(): {man_rec}")
@@ -1540,7 +1543,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         return None
 
     try:
-        sleep(2)
+        sleep(1)
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
         print(f"create_cid_item_record(): {item_rec}")
@@ -1551,7 +1554,7 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(item_rec):
         try:
-            sleep(2)
+            sleep(1)
             logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
             item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
             print(f"create_cid_item_record(): {item_rec}")
@@ -1590,7 +1593,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_start + payload_mid + payload_end
     try:
-        sleep(2)
+        sleep(1)
         response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
@@ -1606,7 +1609,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         payload_end = "</record></recordList></adlibXML>"
         payload = payload_start + payload_mid + payload_end
         try:
-            sleep(2)
+            sleep(1)
             response = adlib.post(CID_API, payload, 'works', 'updaterecord')
             if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)

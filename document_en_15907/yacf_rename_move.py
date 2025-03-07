@@ -20,7 +20,6 @@ NOTE: Supports use of adlib_v3.py
 # Public packages
 import os
 import sys
-import json
 import shutil
 import logging
 import datetime
@@ -32,7 +31,7 @@ import utils
 
 # Global path variables
 YACF_PATH = os.environ['YACF_COMPLETE']
-YACF_NO_CID = os.path.join(YACF_PATH, 'CID_item_not_found')
+YACF_NO_CID = os.path.join(YACF_PATH, 'cid_item_not_found')
 AUTOINGEST = os.environ['AUTOINGEST_YACF']
 LOG_PATH = os.environ['LOG_PATH']
 LOCAL_LOG = os.path.join(YACF_PATH, 'YACF_renumbering.log')

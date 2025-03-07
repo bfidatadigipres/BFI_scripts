@@ -53,6 +53,8 @@ GENRE_MAP = os.path.join(CODE_PATH, 'document_en_15907/EPG_genre_mapping.yaml')
 SERIES_LIST = os.path.join(CODE_PATH, 'document_en_15907/series_list.json')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
+CSV_FAILURES = os.path.join(LOG_PATH, 'failed_mpeg_ts_files.csv')
+MPEG_TS_POLICY = os.path.join(os.environ['MEDIACONCH'], 'mpeg_ts_stora_policy.xml')
 SUBS_PTH = os.environ['SUBS_PATH2']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
 CID_API = os.environ['CID_API4']
@@ -783,9 +785,6 @@ def main():
                 csv_description = ""
                 csv_dump = ""
 
-        acquired_filename = os.path.join(root, "stream.mpeg2.ts")
-        print(f"Path for programme stream content: {acquired_filename}")
-
         # Get defaults as lists of dictionary pairs
         rec_def, ser_def, work_def, work_res_def, man_def, item_def = build_defaults(epg_dict)
 
@@ -808,6 +807,19 @@ def main():
                 new_work = True
             else:
                 logger.info("** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s", work_priref)
+
+        # Check file health with policy verification - skip if broken MPEG file
+        acquired_filename = os.path.join(root, "stream.mpeg2.ts")
+        print(f"Path for programme stream content: {acquired_filename}")
+        success, response = utils.get_mediaconch(acquired_filename, MPEG_TS_POLICY)
+        if success is False:
+            # Fix 'BROKEN' to folder name, update failure CSV
+            logger.warning("File found that has failed MPEG-TS policy:\n%s", acquired_filename)
+            logger.warning("Marking JSON with .PROBLEM")
+            mark_broken_stream(fullpath, acquired_filename)
+            logger.warning("Marking stream.mpeg2.ts.BROKEN and updating CSV")
+            update_broken_ts(acquired_filename, work_priref, response, epg_dict)
+            continue
 
         # Make news channels new works for all live programming
         if channel in NEWS_CHANNELS:
@@ -1623,6 +1635,55 @@ def mark_problem_json(fullpath):
         logger.warning('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
     if os.path.exists(problem):
         return True
+
+
+def mark_broken_stream(json_path, vpath):
+    '''
+    Rename JSON with .PROBLEM to prevent retry
+    and append ts.BROKEN to video file
+    '''
+
+    vpath_broken = f'{vpath}.BROKEN'
+    problem = f'{json_path}.PROBLEM'
+    print(f'* Renaming {json_path} to {problem}')
+    print(f'* Renaming {vpath} to {vpath_broken}')
+    logger.info('%s\t Renaming JSON to %s', json_path, problem)
+    logger.info('%s\t Renaming MPEG-TS to %s', vpath, vpath_broken)
+
+    if os.path.exists(json_path):
+        os.rename(json_path, problem)
+    else:
+        logger.warning("Path not found, unable to append '.PROBLEM': %s", json_path)
+    if os.path.exists(vpath):
+        os.rename(vpath, vpath_broken)
+    else:
+        logger.warning("Path not found, unable to append '.BROKEN': %s", vpath)
+
+
+def update_broken_ts(vpath, work_priref, response, epg_dict=None):
+    '''
+    Update broken MPEG-TS file to
+    CSV along with date/channel/policy
+    '''
+    broadcast_channel = epg_dict.get('broadcast_channel')
+    title_art = epg_dict.get('title_article')
+    if title_art:
+        title_art = f"{title_art} "
+    else:
+        title_art = ''
+    title = epg_dict.get('title')
+    date_start = epg_dict.get('title_date_start')
+    time = epg_dict.get('time')
+    duration = epg_dict.get('duration')
+    asset_id = epg_dict.get('asset_id')
+    episode_number = epg_dict.get('episode_number')
+    series_id = epg_dict.get('series_id')
+    code_type = epg_dict.get('code_type')
+    data = [broadcast_channel, f"{title_art}{title}", date_start, time, duration, asset_id, episode_number, series_id, work_priref, code_type, vpath, response]
+
+    with open(CSV_FAILURES, 'a') as failures:
+        writer = csv.writer(failures)
+        writer.writerow(data)
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))

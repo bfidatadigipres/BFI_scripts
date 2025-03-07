@@ -161,7 +161,7 @@ def check_for_media_record(fname: str, session: requests.Session) -> tuple[str, 
     In which case the file may be a duplicate
     '''
     priref = access_mp4 = ''
-    search = f"imagen.media.original_filename='{fname}'"
+    search = f"(imagen.media.original_filename='{fname}') or (reference_number='{fname}')"
 
     try:
         result = adlib.retrieve_record(CID_API, 'media', search, '0', session, ['priref', 'access_rendition.mp4'])[1]

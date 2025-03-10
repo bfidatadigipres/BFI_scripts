@@ -15,6 +15,7 @@ import shutil
 import logging
 import datetime
 from pathlib import Path
+from typing import Union, Optional
 
 
 sys.path.append(os.environ["CODE"])
@@ -35,13 +36,13 @@ IGNORED_EXTENSION = {".ini", ".DS_Store", ".mhl", ".tmp", ".dpx", ".DPX", ".log"
 IGNORE_FOLDERS = {"checksum_folder", "ingest_match", "ingest_failed", "ingest_partial"}
 
 
-def normalised_file(path):
+def normalised_file(path: str) -> str:
     """replace the path that has \\ to / in order for the file to be processed."""
 
     return path.replace("\\", "/")
 
 
-def process_file_for_match(filepath, hash_number, file_name):
+def process_file_for_match(filepath: str, hash_number: str, file_name: str) -> list[str]:
     """
     Based on the filename or checksum, this function will find either inside
     the checksum folder and returns a tuple containing the line in
@@ -53,7 +54,7 @@ def process_file_for_match(filepath, hash_number, file_name):
           contain the list of tuples containing matches found inside checksum file
     """
 
-    lists_of_files = []
+    lists_of_files: list[str] = []
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             for line in f:
@@ -72,7 +73,7 @@ def process_file_for_match(filepath, hash_number, file_name):
     return lists_of_files
 
 
-def pygrep(checksum_folder, hash_value, file_name):
+def pygrep(checksum_folder: str, hash_value: str, file_name: str) -> list[str]:
     """
     This function represent the python version of the linux command 'grep'
     Return
@@ -81,7 +82,7 @@ def pygrep(checksum_folder, hash_value, file_name):
         return a list of file matches
 
     """
-    lists_of_files = []
+    lists_of_files: list[str] = []
     for checksum_file in os.listdir(checksum_folder):
         if not checksum_file.endswith(tuple(IGNORED_EXTENSION)):
             # print(checksum_file)
@@ -94,10 +95,10 @@ def pygrep(checksum_folder, hash_value, file_name):
     return lists_of_files
 
 
-def handle_different_file_matches(match, root, file, hash_number, filepath, file_dict):
+def handle_different_file_matches(match: str, root: str, file: str, hash_number: str, filepath: str, file_dict: dict[str, Union[str, bool]]) -> dict[str, Union[str, bool]]:
     """Handles logic if local checkusm matches with supplied checksum values"""
-    doc_location = str(match).split(",")[-1]
-    supplied_checksum = str(match).split(",")[0].split(" ")[0]
+    doc_location: str = str(match).split(",")[-1]
+    supplied_checksum: str = str(match).split(",")[0].split(" ")[0]
 
     if hash_number in str(match) and file not in str(match):
 
@@ -160,8 +161,8 @@ def handle_different_file_matches(match, root, file, hash_number, filepath, file
 
 
 def move_file_based_on_outcome(
-    filepath, dpath, dir, no_match, partial_match, full_match
-):
+    filepath: str, dpath: str, dir: str, no_match: bool, partial_match: bool, full_match: bool
+) -> str:
     """
     Moves file to specific directory based on the outcome of their checksum and
     file validation results.
@@ -256,12 +257,12 @@ def move_file_based_on_outcome(
         return "File has been moved"
 
 
-def file_to_checksum_retrival(filepath, dir, ignore_folders):
+def file_to_checksum_retrival(filepath: str, dir: Optional[str], ignore_folders: set[str]) -> dict[str, Union[str, bool]]:
     """This script goes through each file in ingest_check folder (ignoring the other folder) and
     find the checksum for each file and return s dictinary containing the line corresponding
     to the checksum file or false as a value and the file as the key"""
 
-    file_dict = {}
+    file_dict: dict[str, Union[str, bool]] = {}
     if dir is None:
         dir = filepath
 
@@ -283,7 +284,7 @@ def file_to_checksum_retrival(filepath, dir, ignore_folders):
                 )
                 file_dict[os.path.join(root, file)] = False
                 hash_number = utils.create_md5_65536(os.path.join(root, file))
-                print(hash_number)
+                # print(hash_number)
 
                 # checksum_path = os.path.join(CHECKSUM_PATH, f"{file}.md5")
                 # print(hash_number.upper(), os.path.join(root, file))
@@ -312,7 +313,7 @@ def file_to_checksum_retrival(filepath, dir, ignore_folders):
     return file_dict
 
 
-def local_log(full_path, data):
+def local_log(full_path: str, data: str) -> None:
     """
     Writes to local logs found in ingest_check folder, ensures that no duplicate messages are logged within the same session
 
@@ -344,20 +345,18 @@ def local_log(full_path, data):
         log_file.write(f"{data} - {timestamp[0:19]}\n")
         log_file.close()
 
-    return unique_message
-
 
 def main():
     if len(sys.argv) < 2:
         LOGGER.error("Shell script failed to pass argument path via GNU parallel")
         sys.exit("Shell script failed to pass argument to Python script")
 
-    # if not utils.check_control('power_off_all'):
-    #    # LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-    #     sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_control('power_off_all'):
+        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     # the file path should refer to the ingest_check folder found in any qnap folders
-    filepath = os.path.join(sys.argv[1], "test/Acquisitions/ingest_check")
+    filepath = os.path.join(sys.argv[1], "ingest_check")
     file_dict = {}
 
     # seperate file from folder, dont process folders,full matrch partial match and no match
@@ -467,15 +466,6 @@ def main():
             partial_match,
             full_match,
         )
-
-
-"""
-                # generate a dictonary containing the file structure as well as the file and the tuple containing the the hash value,
-                # location of the checksum value and if its a mismatch, full match or no match
-                file_result = finding_file_structure(file_dict)
-                print(file_result)
-                move_file_based_on_outcome(filepath, file_result)
-"""
 
 
 if __name__ == "__main__":

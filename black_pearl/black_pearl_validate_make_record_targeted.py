@@ -154,7 +154,7 @@ def get_md5(filename: str) -> Optional[str]:
         return local_md5
 
 
-def check_for_media_record(fname: str, session: str) -> tuple[str, str]:
+def check_for_media_record(fname: str, session: requests.Session) -> tuple[str, str]:
     '''
     Check if media record already exists
     In which case the file may be a duplicate

@@ -9,13 +9,16 @@ import re
 import os
 import csv
 import json
-import yaml
 import hashlib
 import logging
 import datetime
 import subprocess
-import adlib_v3 as adlib
 from typing import Final, Optional, Iterator, Any
+import yaml
+import tenacity
+
+# BFI library
+import adlib_v3 as adlib
 
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: str = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
@@ -70,6 +73,8 @@ ACCEPTED_EXT: Final = [
 ]
 
 
+
+# (ext: str) -> Optional[str]:
 def accepted_file_type(ext):
     '''
     Receive extension and returnc
@@ -115,6 +120,7 @@ def accepted_file_type(ext):
     return None
 
 
+# (arg: str) -> bool:
 def check_control(arg):
     '''
     Check control json for downtime requests
@@ -133,6 +139,7 @@ def check_control(arg):
             return False
 
 
+# (cid_api: str) -> bool:
 def cid_check(cid_api):
     '''
     Tests if CID API operational before
@@ -149,6 +156,7 @@ def cid_check(cid_api):
         return False
 
 
+# (file: str) -> dict[str, str]:
 def read_yaml(file):
     '''
     Safe open yaml and return as dict
@@ -158,6 +166,7 @@ def read_yaml(file):
         return d
 
 
+#(csv_path: str) -> Iterator[dict[Any, Any]]:
 def read_csv(csv_path):
     '''
     Check CSV for evidence that fname already
@@ -169,6 +178,7 @@ def read_csv(csv_path):
         return readme
 
 
+# (fpath: str) -> str:
 def read_extract(fpath):
     '''
     For reading metadata text files
@@ -180,6 +190,7 @@ def read_extract(fpath):
     return readme
 
 
+# (fname: str) -> bool:
 def check_filename(fname):
     '''
     Run series of checks against BFI filenames
@@ -206,6 +217,7 @@ def check_filename(fname):
     return True
 
 
+# (fname: str) -> tuple[Optional[int], Optional[int]]:
 def check_part_whole(fname):
     '''
     Check part whole well formed
@@ -226,6 +238,7 @@ def check_part_whole(fname):
     return part, whole
 
 
+# (fname: str) -> str | bool | None:
 def get_object_number(fname):
     '''
     Extract object number from name formatted
@@ -241,6 +254,7 @@ def get_object_number(fname):
     return object_number
 
 
+# (ext: str) -> Optional[str]:
 def sort_ext(ext):
     '''
     Decide on file type
@@ -256,6 +270,7 @@ def sort_ext(ext):
             return key
 
 
+# (dpath: str) -> str:
 def exif_data(dpath):
     '''
     Retrieve exiftool data
@@ -271,6 +286,7 @@ def exif_data(dpath):
     return data
 
 
+# (stream: str, arg: str, dpath: str) -> str:
 def get_metadata(stream, arg, dpath):
     '''
     Retrieve metadata with subprocess
@@ -288,6 +304,7 @@ def get_metadata(stream, arg, dpath):
     return meta.decode('utf-8').rstrip('\n')
 
 
+# (dpath: str, policy: str) -> tuple[bool, str]:
 def get_mediaconch(dpath, policy):
     '''
     Check for 'pass! {path}' in mediaconch reponse
@@ -307,6 +324,7 @@ def get_mediaconch(dpath, policy):
     return False, meta
 
 
+# (filepath: str) -> Optional[str | bytes]:
 def get_ms(filepath):
     '''
     Retrieve duration as milliseconds if possible
@@ -344,6 +362,7 @@ def get_ms(filepath):
     return None
 
 
+# (filepath: str) -> Optional[str | bytes]:
 def get_duration(filepath):
     '''
     Retrieve duration field if possible
@@ -381,6 +400,7 @@ def get_duration(filepath):
     return None
 
 
+# (log_path: str, level: str, message: str) -> None:
 def logger(log_path, level, message):
     '''
     Configure and handle logging
@@ -406,6 +426,7 @@ def logger(log_path, level, message):
         LOGGER.exception(message)
 
 
+# (fpath: str) -> Optional[int]:
 def get_size(fpath):
     '''
     Check the size of given folder path
@@ -422,6 +443,7 @@ def get_size(fpath):
         return None
 
 
+# (fpath: str):
 def create_md5_65536(fpath):
     '''
     Hashlib md5 generation, return as 32 character hexdigest
@@ -438,6 +460,7 @@ def create_md5_65536(fpath):
         return None
 
 
+# (fname: str, check_str: str) -> Optional[list[str]]:
 def check_global_log(fname, check_str):
     '''
     Read global log lines and look for a
@@ -453,6 +476,7 @@ def check_global_log(fname, check_str):
                 return row
 
 
+# (checksum_path: str, checksum: str, filepath: str, filename: str) -> str:
 def checksum_write(checksum_path, checksum, filepath, filename):
     '''
     This function writes the checksum into a txt file with correct
@@ -469,6 +493,7 @@ def checksum_write(checksum_path, checksum, filepath, filename):
         raise Exception
 
 
+# (arg: str, output_type: str, filepath: str, mediainfo_path: str) -> str | bool:
 def mediainfo_create(arg, output_type, filepath, mediainfo_path):
     '''
     Output mediainfo data to text files
@@ -508,7 +533,26 @@ def mediainfo_create(arg, output_type, filepath, mediainfo_path):
 
     try:
         subprocess.call(command)
-        return out_path
     except Exception as e:
         print(e)
-        return False
+        raise Exception
+
+    # Check file created has contents
+    file_stats = os.stat(out_path)
+    file_size = file_stats.st_size
+    if file_size > 0:
+        return out_path
+    else:
+        raise Exception
+
+
+def local_file_search(fpath, fname):
+    '''
+    To assist potential for localised
+    file movements within folders -
+    checksums/metadata creation
+    '''
+    for root, _, files in os.walk(fpath):
+        for file in files:
+            if file == fname:
+                return os.path.join(root, file)

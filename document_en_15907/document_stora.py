@@ -156,15 +156,17 @@ def generate_variables(data) -> tuple[str, str, str, str, int, int, int, str, st
     duration_minutes_integer = int(duration_minutes)
     duration_total = (duration_hours_integer * 60) + duration_minutes_integer
 
-    actual_duration = data["actual_duration"]
-    actual_duration_hours, actual_duration_minutes, actual_duration_seconds = (
-        actual_duration.split(":")
-    )
+    actual_duration = data['actual_duration']
+    if ':' in str(actual_duration):
+        actual_duration_hours, actual_duration_minutes, actual_duration_seconds = actual_duration.split(':')
+    elif '-' in str(actual_duration):
+        actual_duration_hours, actual_duration_minutes, actual_duration_seconds = actual_duration.split('-')
+    else:
+        return (title, description, title_date_start, time, duration_total, duration_total, 0, channel, broadcast_company, code_type)
+
     actual_duration_hours_integer = int(actual_duration_hours)
     actual_duration_minutes_integer = int(actual_duration_minutes)
-    actual_duration_total = (
-        actual_duration_hours_integer * 60
-    ) + actual_duration_minutes_integer
+    actual_duration_total = (actual_duration_hours_integer * 60) + actual_duration_minutes_integer
     actual_duration_seconds_integer = int(actual_duration_seconds)
 
     return (
@@ -291,7 +293,8 @@ def main() -> None:
         "========== STORA documentation script STARTED ==============================================="
     )
     session = adlib.create_session()
-    # Iterate through all info.csv.redux/.stora creating CID records
+
+    # Iterate through all info.csv.stora creating CID records
     for root, _, files in os.walk(STORAGE_PATH):
         for file in files:
             if FAILURE_COUNTER > 5:
@@ -316,6 +319,7 @@ def main() -> None:
                 continue
 
             fullpath = os.path.join(root, file)
+            print(f"Processing path: {fullpath}")
             data = csv_retrieve(fullpath)
             if len(data) > 0:
                 print(f"* CSV found and being processed - {fullpath}")

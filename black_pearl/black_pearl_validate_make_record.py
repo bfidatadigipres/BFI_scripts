@@ -45,6 +45,7 @@ import glob
 import json
 import shutil
 import logging
+import requests
 from datetime import datetime
 from typing import Optional
 
@@ -154,13 +155,13 @@ def get_md5(filename: str) -> Optional[str]:
         return local_md5
 
 
-def check_for_media_record(fname: str, session: str) -> tuple[str, str]:
+def check_for_media_record(fname: str, session: requests.Session) -> tuple[str, str]:
     '''
     Check if media record already exists
     In which case the file may be a duplicate
     '''
     priref = access_mp4 = ''
-    search = f"imagen.media.original_filename='{fname}'"
+    search = f"(imagen.media.original_filename='{fname}') or (reference_number='{fname}')"
 
     try:
         result = adlib.retrieve_record(CID_API, 'media', search, '0', session, ['priref', 'access_rendition.mp4'])[1]
@@ -241,10 +242,42 @@ def main():
                 logger.info("Failed folder found, will pass on for repeat processing. No JSON needed: %s", folder)
                 failed_folder = folder.split("_")[-1]
 
-            elif len(folder) > 36:
-                logger.info("Too many concatenated job IDs - skipping! %s", folder)
-                success = None
-                continue
+            elif len(folder) == 73:
+                logger.info("Concatenated job IDs! %s", folder)
+
+                folders = folder.split('_')
+                if not len(folders) == 2:
+                    success = None
+                    continue
+                if len(folders[0]) != 36 or len(folders[1]) != 36:
+                    success = None
+                    continue
+
+                # Iterate through JOB IDs
+                for fld in folders:
+                    fpath = os.path.join(autoingest, fld)
+                    json_file = retrieve_json_data(fld)
+                    if not json_file:
+                        logger.info("No matching JSON found for folder.")
+                        continue
+
+                    logger.info("Matching JSON found for BP Job ID: %s", fld)
+                    # Check in JSON for failed BP job object
+                    failed_files = json_check(json_file)
+                    if failed_files:
+                        for ffile in failed_files:
+                            for key, value in ffile.items():
+                                if key == 'Name':
+                                    logger.info("FAILED: Moving back into Black Pearl ingest folder:\n%s", value)
+                                    print(f"shutil.move({os.path.join(fpath, value)}, {os.path.join(autoingest, value)})")
+                                    try:
+                                        shutil.move(os.path.join(fpath, value), os.path.join(autoingest, value))
+                                    except Exception as exc:
+                                        print(exc)
+                                        logger.warning("Failed ingest file %s couldn't be moved out of path: %s", value, fpath)
+                                        pass
+                    else:
+                        logger.info("No files failed transfer to BP data tape")
 
             else:
                 fpath = os.path.join(autoingest, folder)

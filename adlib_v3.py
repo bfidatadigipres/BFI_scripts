@@ -22,6 +22,7 @@ HEADERS = {
 }
 
 
+# (api: str) -> dict[Any, Any]:
 def check(api):
     '''
     Check API responds
@@ -34,8 +35,8 @@ def check(api):
 
     return get(api, query)
 
-# -> tuple[int, list[dict[str, str]]]
-# tuple[Optional[int],Optional[Sequence[dict[str, Any]]]]
+
+# (api: str, database: str, search: str, limit: str, fields=None) -> tuple[int, list[dict[str, str]]]
 def retrieve_record(api, database, search, limit, fields=None):
     '''
     Retrieve data from CID using new API
@@ -81,6 +82,7 @@ def retrieve_record(api, database, search, limit, fields=None):
     return hits, record['adlibJSON']['recordList']['record']
 
 
+# (api: str, query: dict[str, str]) -> dict[Any, Any]:
 @retry(stop=stop_after_attempt(10))
 def get(api, query):
     '''
@@ -105,6 +107,100 @@ def get(api, query):
         print(err)
         raise Exception from err
 
+
+# (api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
+def post(api, payload, database, method):
+
+    '''
+    Send a POST request
+    '''
+    params = {
+        'command': method,
+        'database': database,
+        'xmltype': 'grouped',
+        'output': 'jsonv1'
+    }
+    payload = payload.encode('utf-8')
+    record = {}
+
+    try:
+        response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
+    except requests.exceptions.Timeout as err:
+        print(err)
+        raise Exception from err
+    except requests.exceptions.ConnectionError as err:
+        print(err)
+        raise Exception from err
+    except requests.exceptions.HTTPError as err:
+        print(err)
+        raise Exception from err
+    except Exception as err:
+        print(err)
+        raise Exception from err
+
+    print("-------------------------------------")
+    print(f"adlib_v3.POST(): {response.text}")
+    print("-------------------------------------")
+    boolean = check_response(response.text, api)
+    if boolean is True:
+        return False
+    if 'recordList' in response.text:
+        record = json.loads(response.text)
+        try:
+            if isinstance(record['adlibJSON']['recordList']['record'], list):
+                return record['adlibJSON']['recordList']['record'][0]
+            else:
+                return record['adlibJSON']['recordList']['record']
+        except (KeyError, IndexError, TypeError):
+            return record
+    elif '@attributes' in response.text:
+        record = json.loads(response.text)
+        return record
+    elif 'error' in response.text:
+        return record
+
+    return None
+
+
+# (record: dict, fieldname: str) -> list[str]:
+def retrieve_field_name(record, fieldname):
+    '''
+    Retrieve record, check for language data
+    Alter retrieval method. record ==
+    ['adlibJSON']['recordList']['record'][0]
+    '''
+    field_list = []
+
+    try:
+        for field in record[f'{fieldname}']:
+            if isinstance(field, str):
+                field_list.append(field)
+            elif "'@lang'" in str(field):
+                field_list.append(field['value'][0]['spans'][0]['text'])
+            else:
+                field_list.append(field['spans'][0]['text'])
+    except KeyError:
+        field_list = group_check(record, fieldname)
+
+    if not isinstance(field_list, list):
+        return [field_list]
+    return field_list
+
+
+# (record: dict, fname: str) -> dict[any, any]:
+def retrieve_facet_list(record, fname):
+    '''
+    Retrieve list of facets
+    '''
+    facets = []
+    for value in record['adlibJSON']['facetList'][0]['values']:
+        facets.append(value[fname]['spans'][0]['text'])
+    print(f"retrieve_facet_list(): {type(facets)}")
+
+    return facets
+
+
+# (record: dict, fname: str) -> list[str]:
 def group_check(record, fname):
     '''
     Get group that contains field key
@@ -127,6 +223,7 @@ def group_check(record, fname):
                         except (IndexError, KeyError):
                             pass
         if fieldnames:
+            print(f"group_check(): {type(fieldnames)}")
             return fieldnames
 
     elif len(group_check) > 1:
@@ -155,109 +252,8 @@ def group_check(record, fname):
     else:
         return None
 
-def post(api, payload, database, method):
-    '''
-    Send a POST request
-    '''
-    params = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'jsonv1'
-    }
-    payload = payload.encode('utf-8')
-    record = {}
 
-    if method == 'insertrecord':
-        try:
-            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
-        except requests.exceptions.Timeout as err:
-            print(err)
-            raise Exception from err
-        except requests.exceptions.ConnectionError as err:
-            print(err)
-            raise Exception from err
-        except requests.exceptions.HTTPError as err:
-            print(err)
-            raise Exception from err
-        except Exception as err:
-            print(err)
-            raise Exception from err
-
-    if method == 'updaterecord':
-        try:
-            response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
-        except requests.exceptions.Timeout as err:
-            print(err)
-            raise Exception from err
-        except requests.exceptions.ConnectionError as err:
-            print(err)
-            raise Exception from err
-        except requests.exceptions.HTTPError as err:
-            print(err)
-            raise Exception from err
-        except Exception as err:
-            print(err)
-            raise Exception from err
-
-    print("-------------------------------------")
-    print(f"adlib_v3.POST(): {response.text}")
-    print("-------------------------------------")
-    bool = check_response(response.text, api)
-    if bool is True:
-        return False
-    if 'recordList' in response.text:
-        record = json.loads(response.text)
-        try:
-            if isinstance(record['adlibJSON']['recordList']['record'], list):
-                return record['adlibJSON']['recordList']['record'][0]
-            else:
-                return record['adlibJSON']['recordList']['record']
-        except (KeyError, IndexError, TypeError):
-            return record
-    elif '@attributes' in response.text:
-        record = json.loads(response.text)
-        return record
-    elif 'error' in response.text:
-        return record
-
-    return None
-
-
-def retrieve_field_name(record, fieldname):
-    '''
-    Retrieve record, check for language data
-    Alter retrieval method. record ==
-    ['adlibJSON']['recordList']['record'][0]
-    '''
-    field_list = []
-
-    try:
-        for field in record[f'{fieldname}']:
-            if isinstance(field, str):
-                field_list.append(field)
-            elif "'@lang'" in str(field):
-                field_list.append(field['value'][0]['spans'][0]['text'])
-            else:
-                field_list.append(field['spans'][0]['text'])
-    except KeyError:
-        field_list = group_check(record, fieldname)
-
-    if not isinstance(field_list, list):
-        return [field_list]
-    return field_list
-
-
-def retrieve_facet_list(record, fname):
-    '''
-    Retrieve list of facets
-    '''
-    facets = []
-    for value in record['adlibJSON']['facetList'][0]['values']:
-        facets.append(value[fname]['spans'][0]['text'])
-
-    return facets
-
+# (api: str, database: str) -> dict[str]
 def get_grouped_items(api, database):
     '''
     Check dB for groupings and ensure
@@ -272,7 +268,7 @@ def get_grouped_items(api, database):
     metadata = xmltodict.parse(result.text)
     if not isinstance(metadata, dict):
         return None, None
-    grouped: dict[str, list[str]] = {}
+    grouped = {}
     mdata = metadata['adlibXML']['recordList']['record']
     for num in range(0, len(mdata)):
         try:
@@ -285,8 +281,9 @@ def get_grouped_items(api, database):
         except KeyError:
             pass
     return grouped
- 
 
+
+# (api: str, database: str, priref: str, data=None) -> str
 def create_record_data(api, database, priref, data=None):
     '''
     Create a record from supplied dictionary (or list of dictionaries)
@@ -335,6 +332,7 @@ def create_record_data(api, database, priref, data=None):
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
+# (priref: str, grouping: str, field_pairs: list[str]) -> str:
 def create_grouped_data(priref, grouping, field_pairs):
     '''
     Handle repeated groups of fields pairs, suppied as list of dcts per group
@@ -367,6 +365,7 @@ def create_grouped_data(priref, grouping, field_pairs):
         return payload_mid
 
 
+# (obj) -> list[str]:
 def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
@@ -375,14 +374,14 @@ def get_fragments(obj):
     '''
 
     if not isinstance(obj, list):
-        obj = [obj]
+        obj: list = [obj]
 
     data = []
     for item in obj:
         if isinstance(item, str):
-            sub_item = item
+            sub_item: str = item
         else:
-            sub_item = dicttoxml(item, root=False, attr_type=False)
+            sub_item: str = dicttoxml(item, root=False, attr_type=False)
             if '<item>' in str(sub_item):
                 ss = str(sub_item).lstrip("b'").rstrip("'").replace("<item>","").replace("</item>", "")
                 sub_item = ss.encode()
@@ -398,6 +397,7 @@ def get_fragments(obj):
     return data
 
 
+# (api: str, priref: str, comments: str) -> bool:
 def add_quality_comments(api, priref, comments):
     '''
     Receive comments string
@@ -405,31 +405,26 @@ def add_quality_comments(api, priref, comments):
     and updaterecord with data
     '''
 
-    p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
-    date_now = str(datetime.datetime.now())[:10]
-    p_comm = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"
-    p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
-    p_writer = "<quality_comments.writer>datadigipres</quality_comments.writer>"
-    p_end = "</quality_comments></record></recordList></adlibXML>"
-    payload = p_start + p_comm + p_date + p_writer + p_end
+    p_start: str = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
+    date_now: str = str(datetime.datetime.now())[:10]
+    p_comm: str = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"
+    p_date: str = f"<quality_comments.date>{date_now}</quality_comments.date>"
+    p_writer: str = "<quality_comments.writer>datadigipres</quality_comments.writer>"
+    p_end: str = "</quality_comments></record></recordList></adlibXML>"
+    payload: str = p_start + p_comm + p_date + p_writer + p_end
 
-    response = requests.request(
-        'POST',
-        api,
-        headers={'Content-Type': 'text/xml'},
-        params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
-        data=payload,
-        timeout=1200)
+    print(payload)
 
-    bool = check_response(response.text, api)
-    if bool is True:
+    rec = post(api, payload, 'items', 'updaterecord')
+    if rec is None:
         return False
-    if "error" in str(response.text):
+    if "error" in str(rec):
         return False
     else:
         return True
 
 
+# (rec: dict, api: str) -> bool:
 def check_response(rec, api):
     '''
     Collate list of received API failures
@@ -447,6 +442,7 @@ def check_response(rec, api):
             return True
 
 
+# (api: str) -> None:
 def recycle_api(api):
     '''
     Adds a search call to API which

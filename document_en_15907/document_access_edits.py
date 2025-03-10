@@ -145,7 +145,7 @@ def main():
         local_log(f"Edit file: {fpath}")
         local_log(f"Renamed to: {new_fpath}")
         os.rename(fpath, new_fpath)
-        if os.path.exists(new_fpath):
+        if os.path.isfile(new_fpath):
             LOGGER.info("New file successfully renamed and moved to autoingest path")
         else:
             LOGGER.warning("Failed to rename/move file: %s", fpath)
@@ -177,6 +177,8 @@ def make_item_record_dict(priref: Optional[str], file: str, record: str) -> Opti
 
     item = []
     item.extend(defaults())
+    if isinstance(priref, list):
+        priref = priref[0]
 
     if 'Title' in str(record):
         title = adlib.retrieve_field_name(record, 'title')[0]
@@ -203,7 +205,7 @@ def make_item_record_dict(priref: Optional[str], file: str, record: str) -> Opti
     item.append({'digital.acquired_filename.type': 'FILE'})
     item.append({'file_type': ext})
     item.append({'scan.type': 'PROGRESSIVE'})
-    item.append({'source_item.lref': priref[0]})
+    item.append({'source_item.lref': priref})
     print(f"Item record assembled:\n{item}")
     return item
 

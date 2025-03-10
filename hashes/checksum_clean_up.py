@@ -12,7 +12,9 @@ writes checksums to CID media record priref before deleting files.
 5. Where there's a match look up work on CID and retrieve media record priref
 6. Write checksum to CID media record in notes field
 7. Where data written successfully delete checksum
-8. Where there's no match leave original checksum and may still be needed
+8. Where there's no media record match check for CID item record, if not found move
+   to 'unmatched_checksums' subfolder. If CID media match failed API read or CID
+   item record matched then leave checksum in place for repeat attempt later
 
 2021
 Python3.8+
@@ -21,6 +23,7 @@ Python3.8+
 # Global packages
 import os
 import sys
+import shutil
 import datetime
 import logging
 import typing
@@ -56,10 +59,10 @@ def name_split(filepath: str) -> str:
     Splits name of checksum file to filename
     cuts '.md5' from the end to leave whole filename
     '''
-    fname: str = ''
-    filename_ext: str = ''
-    filename_ext: str = os.path.basename(filepath)
-    fname: str = filename_ext[:-4]
+    fname = ''
+    filename_ext = ''
+    filename_ext = os.path.basename(filepath)
+    fname = filename_ext[:-4]
     return fname
 
 
@@ -90,22 +93,37 @@ def cid_retrieve(fname: str) -> tuple[str, str]:
     '''
     Retrieve priref for media record from imagen.media.original_filename
     '''
-    priref= ''
-    search = f"imagen.media.original_filename='{fname}'"
-    record= adlib.retrieve_record(CID_API, 'media', search, '0', ['priref', 'checksum.value'])[1]
-    if not record:
+    priref = checksum_val = ''
+    search = f"(imagen.media.original_filename='{fname}') or (reference_number='{fname}')"
+    print(f"Media record search: {search}")
+    record = adlib.retrieve_record(CID_API, 'media', search, '0', ['priref', 'checksum.value'])[1]
+    if record is None:
         return '', ''
     print(record)
     if 'priref' in str(record):
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-    else:
-        priref = ''
     if 'checksum.value' in str(record):
-        checksum_val: str = adlib.retrieve_field_name(record[0], 'checksum.value')[0]
-    else:
-        checksum_val = ''
+        checksum_val = adlib.retrieve_field_name(record[0], 'checksum.value')[0]
 
     return priref, checksum_val
+
+
+def check_for_item_record(fname):
+    '''
+    Check for Item record for filename
+    '''
+    ob_num = utils.get_object_number(fname)
+    if ob_num is None:
+        return None
+    search = f"object_number='{ob_num}'"
+    print(f"Item record search: {search}")
+    hits = adlib.retrieve_record(CID_API, 'collect', search, '0')[0]
+    if hits is None:
+        return None
+    if hits >= 1:
+        return True
+    if hits == 0:
+        return False
 
 
 def read_checksum(path: str) -> list[str]:
@@ -139,48 +157,66 @@ def main():
     fname: str = name_split(filepath)
     LOGGER.info("===== CHECKSUM CLEAN UP SCRIPT START: %s =====", fname)
 
-    if not os.path.exists(filepath):
+    if not os.path.isfile(filepath):
         LOGGER.warning("%s -- MD5 path does not exist: %s", fname, filepath)
         sys.exit(f'Supplied path does not exist: {filepath}')
 
-    if fname.endswith((".ini", ".DS_Store", ".mhl", ".json")):
+    if fname.endswith((".ini", ".DS_Store", ".mhl", ".json", ".swp")):
         LOGGER.info("%s -- Skipping as non media file detected.", fname)
         sys.exit(f'Supplied file is not a media file {fname}')
 
     LOGGER.info("%s -- Processing checksum", fname)
     priref, checksum_val = cid_retrieve(fname)
     if priref == '':
-        LOGGER.info("Failed to match data to a CID Media record. Skipping this file.", fname)
-        sys.exit()
+        LOGGER.warning("Failed to match data to a CID Media record. Skipping file %s", fname)
+        match = check_for_item_record(fname)
+        if match is None:
+            LOGGER.info("API could not establish match with CID item record and file: %s", fname)
+        if match is True:
+            LOGGER.info("Skipping for now. CID Item record matched to file: %s", fname)
+        if match is False:
+            LOGGER.warning("CID item record not found that matches file name: %s", fname)
+            LOGGER.info("Moving MD5 file to subfolder 'unmatched_checksums'")
+            # Move to subfolder for missing CID media and item records
+            filepath_split = os.path.split(filepath)
+            move_path = os.path.join(filepath_split[0], 'unmatched_checksums/', filepath_split[1])
+            try:
+                shutil.move(filepath, move_path)
+            except FileNotFoundError:
+                LOGGER.warning("Could not move filepath, missing: %s", filepath)
+        sys.exit("Checksum could not be matched to CID media record")
     if len(checksum_val) == 0:
         LOGGER.info("%s Media record found for associated checksum. Checksum no longer required.", fname)
         LOGGER.info("Priref <%s> - Checksum value empty.", priref)
-    
         if len(priref) > 0 and priref.isnumeric():
             LOGGER.info("%s -- Priref retrieved: %s. Writing checksum to record", fname, priref)
-
             # Get checksum data and write to media record notes
-            ck_data: list[str] = read_checksum(filepath)
-            ck_data: str = str(ck_data[0])
-            checksum_data: Tuple[str] = checksum_split(ck_data)
-            md5: str = checksum_data[0]
-            md5_path: str = checksum_data[1]
-            md5_date: str = checksum_data[2]
+            ck_data = read_checksum(filepath)
+            if len(ck_data) == 0:
+                LOGGER.warning("%s -- MD5 file is empty, exiting without writing checksum to CID. Deleting MD5.", fname)
+                os.remove(filepath) # MD5 file deletion
+                LOGGER.info("===== CHECKSUM CLEAN UP SCRIPT COMPLETE %s =====", fname)
+                sys.exit()
+            ck_data = str(ck_data[0])
+            checksum_data = checksum_split(ck_data)
+            md5 = checksum_data[0]
+            md5_path = checksum_data[1]
+            md5_date = checksum_data[2]
             if 'None' in str(md5):
                 LOGGER.warning("%s -- MD5 is 'None', exiting without writing checksum to CID. Deleting MD5.", fname)
                 os.remove(filepath) # MD5 file deletion
                 LOGGER.info("===== CHECKSUM CLEAN UP SCRIPT COMPLETE %s =====", fname)
                 sys.exit()
 
-            pre_data: str = f'<adlibXML><recordList><record><priref>{priref}</priref>'
-            checksum1: str = f'<Checksum><checksum.value>{md5}</checksum.value><checksum.type>MD5</checksum.type>'
-            checksum2: str = f'<checksum.date>{md5_date}</checksum.date><checksum.path>"{md5_path}"</checksum.path></Checksum>'
-            checksum3: str = f'<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date>'
-            checksum4: str = f'<edit.time>{str(datetime.datetime.now())[11:19]}</edit.time>'
-            checksum5: str = '<edit.notes>Automated bulk checksum documentation.</edit.notes></Edit>'
-            post_data: str = '</record></recordList></adlibXML>'
-            checksum: str = pre_data + checksum1 + checksum2 + checksum3 + checksum4 + checksum5 + post_data
-
+            pre_data = f'<adlibXML><recordList><record><priref>{priref}</priref>'
+            checksum1 = f'<Checksum><checksum.value>{md5}</checksum.value><checksum.type>MD5</checksum.type>'
+            checksum2 = f'<checksum.date>{md5_date}</checksum.date><checksum.path>"{md5_path}"</checksum.path></Checksum>'
+            checksum3 = f'<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date>'
+            checksum4 = f'<edit.time>{str(datetime.datetime.now())[11:19]}</edit.time>'
+            checksum5 = '<edit.notes>Automated bulk checksum documentation.</edit.notes></Edit>'
+            post_data = '</record></recordList></adlibXML>'
+            checksum = pre_data + checksum1 + checksum2 + checksum3 + checksum4 + checksum5 + post_data
+            print(checksum)
             try:
                 LOGGER.info("%s -- Attempting to write checksum data to Checksum fields", fname)
                 record = adlib.post(CID_API, checksum, 'media', 'updaterecord')

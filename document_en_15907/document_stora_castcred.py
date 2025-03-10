@@ -51,9 +51,9 @@ TODAY_TIME: Final = TODAY[11:19]
 TODAY_DATE: Final = TODAY[:10]
 YEST: Final = str(datetime.datetime.today() - datetime.timedelta(days=1))
 YEAR: Final = YEST[:4]
-MONTH: Final = YEST[5:7]  #= down to 05 needed JMW
+MONTH: Final = YEST[5:7]
 # YEAR = '2024'
-# MONTH = '05'
+# MONTH = '12'
 COMPLETE: Final = os.environ['STORA_COMPLETED']
 ARCHIVE_PATH: Final = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH: Final = os.environ['LOG_PATH']

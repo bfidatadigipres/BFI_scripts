@@ -53,15 +53,27 @@ def check_no_bp_status(fname: str, bucket_list: list[str]) -> bool:
     Look up filename in BP to avoid
     multiple ingests of files
     '''
-
+    exist_across_buckets: list[str] = []
     for bucket in bucket_list:
-        query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
-        result: ds3.HeadObjectReponse = CLIENT.head_object(query)
-        # Only return false if DOESNTEXIST is missing, eg file found
-        if 'DOESNTEXIST' in str(result.result):
-            print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
-            return True
-
+        try:
+            query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
+            result: ds3.HeadObjectResponse = CLIENT.head_object(query)
+            # Only return false if DOESNTEXIST is missing, eg file found
+            if 'DOESNTEXIST' in str(result.result):
+                print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                exist_across_buckets.append('DOESNTEXIST')
+            elif str(result.result) == 'EXISTS':
+                print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                exist_across_buckets.append('PRESENT')
+        except Exception as err:
+            print(err)
+    print(exist_across_buckets)
+    if exist_across_buckets == []:
+        return False
+    if 'PRESENT' in str(exist_across_buckets):
+        return False
+    if 'DOESNTEXIST' in str(exist_across_buckets):
+        return True
     return False
 
 
@@ -91,9 +103,9 @@ def get_bp_md5(fname: str, bucket: str) -> Optional[str]:
     '''
     md5: str = ''
     query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
-    result: ds3.HeadObjectReponse = CLIENT.head_object(query)
+    result: ds3.HeadObjectResponse = CLIENT.head_object(query)
     try:
-        md5 = result.response.msg['ETag']
+        md5: str = result.response.msg['ETag']
     except Exception as err:
         print(err)
         return None
@@ -107,8 +119,8 @@ def get_bp_length(fname: str, bucket: str) -> Optional[str]:
     to new local MD5
     '''
     size: str = ''
-    query: ds3.HeadObjectReques = ds3.HeadObjectRequest(bucket, fname)
-    result: ds3.HeadObjectReponse = CLIENT.head_object(query)
+    query: ds3.HeadObjectRequest = ds3.HeadObjectRequest(bucket, fname)
+    result: ds3.HeadObjectResponse = CLIENT.head_object(query)
     try:
         size = result.response.msg['Content-Length']
     except Exception as err:
@@ -282,14 +294,15 @@ def put_single_file(fpath: str, ref_num, bucket_name, check=False) -> Optional[s
         print('Exception: %s', err)
         return None
 
-def delete_black_pearl_object(ref_num: str, version: Optional[str], bucket: str) -> Optional[ds3.DeleteObjectReponse]:
+
+def delete_black_pearl_object(ref_num: str, version: Optional[str], bucket: str) -> Optional[ds3.DeleteObjectResponse]:
     '''
     Receive reference number and initiate
     deletion of object
     '''
     try:
         request = ds3.DeleteObjectRequest(bucket, ref_num, version_id=version)
-        job_deletion: ds3.DeleteObjectReponse = CLIENT.delete_object(request)
+        job_deletion: str = CLIENT.delete_object(request)
         return job_deletion
     except Exception as exc:
         print(exc)
@@ -301,7 +314,7 @@ def etag_deletion_confirmation(ref_num: str, bucket: str) -> Optional[str]:
     Get confirmation of deletion
     '''
     resp = ds3.HeadObjectRequest(bucket, ref_num)
-    result: ds3.HeadObjectReponse = CLIENT.head_object(resp)
+    result: ds3.HeadObjectResponse = CLIENT.head_object(resp)
     etag = result.response.msg['ETag']
     if etag is None:
         return 'Deleted'
@@ -328,4 +341,3 @@ def get_version_id(ref_num: str) -> Optional[str]:
     except (IndexError, TypeError, KeyError):
         version_id = None
     return version_id
-

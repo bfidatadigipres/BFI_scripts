@@ -119,13 +119,19 @@ def check_media_record(fname: str) -> bool:
     already created for filename
     '''
     search = f"imagen.media.original_filename='{fname}'"
-    hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
-    print(f"Check media record response: {hits} hits")
+    try:
+        hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+        print(f"Check media record response: {hits} hits")
+    except Exception as err:
+        print(f"Skipping: Unable to retrieve CID Media record {err}")
+        return None
+
     if hits is None:
-        raise SystemExit(f'Could not retrieve data from API: {search}')
-    if hits >= 1:
+        print(f"Skipping: Unable to retrieve CID Media confirmation")
+        return None
+    if int(hits) >= 1:
         return True
-    elif hits == 0:
+    elif int(hits) == 0:
         return False
 
 

@@ -39,7 +39,7 @@ CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
 CID_API: Final = os.environ['CID_API4']
 CLIENT: Final = ds3.createClientFromEnv()
 
-TARGETS: : Final = [
+TARGETS: Final = [
    f"{os.environ['QNAP_H22']}/processing/",
    f"{os.environ['GRACK_H22']}/processing/",
    f"{os.environ['ISILON_VID']}/processing/",

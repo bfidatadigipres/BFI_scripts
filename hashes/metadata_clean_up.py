@@ -71,7 +71,7 @@ FIELDS = [
     {'container.media_UUID': ['UniqueID', 'Unique ID  ']},
     {'container.truncated': ['IsTruncated','Is truncated  ']},
     {'video.duration': ['Duration_String1', '']},
-    {'video.duration.milliseconds': ['Duration','Duration  ']}, 
+    {'video.duration.milliseconds': ['Duration','Duration  ']},
     {'video.bit_depth': ['BitDepth', 'Bit depth  ']},
     {'video.bit_rate_mode': ['BitRate_Mode', 'Bit rate mode  ']},
     {'video.bit_rate': ['BitRate_String','Bit rate  ']},
@@ -189,6 +189,10 @@ def main():
 
     text_path: str = sys.argv[1]
     text_file: str = os.path.basename(text_path)
+    if not os.path.isfile(text_path):
+        sys.exit(f"Skipping. File absent from path: {text_path}")
+    if os.path.getsize(text_path) < 1:
+        sys.exit(f"Skipping. File is empty: {text_path}")
     if text_file.endswith('_TEXT.txt'):
         filename: str = text_file.split("_TEXT.txt")[0]
         if len(filename) > 0 and filename.endswith((".ini", ".DS_Store", ".mhl", ".json")):
@@ -209,7 +213,7 @@ def main():
             LOGGER.warning("JSON record is absent. Attempting recovery from TEXT data")
             json_use = False
         else:
-            with open(json_path, 'r') as f:
+            with open(json_path, 'rb') as f:
                 length = len(f.readlines())
                 if not length >= 10:
                     LOGGER.warning("JSON record is absent. Attempting recovery from TEXT data")
@@ -260,6 +264,8 @@ def main():
         write_to_errors_csv('media', CID_API, priref, header_payload)
         sys.exit()
 
+    print(header_payload)
+    print(">> ********************** <<")
     success, _ = write_payload(header_payload, priref)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
@@ -274,6 +280,7 @@ def build_exif_metadata_xml(exif_path: str, priref: str) -> Union[str, bool]:
     and create XML for update record
     '''
     with open(exif_path, 'r') as metadata:
+        # mdata = base64.b64encode(metadata.readlines())
         mdata: list[str] = metadata.readlines()
 
     img_xml  = get_image_xml(mdata)
@@ -317,10 +324,12 @@ def build_metadata_xml(json_path: str, priref: str) -> str:
         elif track['@type'] == 'Other':
             oth = get_xml('other', track)
             oth_xml = wrap_as_xml('Other', oth)
-            if len(other) > 0:
-                other += oth_xml
-            else:
+            # Only pass one set of Other data to XML at this time
+            if len(other) == 0:
                 other = oth_xml
+            else:
+                # other += other_xml
+                pass
         elif track['@type'] == 'Text':
             txt = get_xml('text', track)
             txt_xml = wrap_as_xml('Text', txt)
@@ -379,18 +388,21 @@ def iterate_text_rows(data: list[str], match: str, key: str) -> Optional[dict[st
         return {f'{key}': field_chosen}
 
 
-def get_stream_count(gen_rows: list[str]) -> tuple[int, int]:
+def get_stream_count(gen_rows: list[str]) -> tuple[int, int, int]:
     '''
     Get counts of streams
     to isolate metadata
     '''
+    vid_count = aud_count = oth_count = 0
     for row in gen_rows:
+        print(row)
         if row.startswith('Count of audio streams  '):
             aud_count = int(row.split(':')[-1].strip())
         if row.startswith('Count of video streams  '):
             vid_count = int(row.split(':')[-1].strip())
-
-    return vid_count, aud_count
+        if row.startswith('OtherCount '):
+            oth_count = int(row.split(':')[-1].strip())
+    return vid_count, aud_count, oth_count
 
 
 def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) -> str:
@@ -399,9 +411,11 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
     '''
     if os.path.exists(text_full_path):
         with open(text_full_path, 'r') as metadata:
+            # mdata = base64.b64encode(metadata.readlines())
             mdata = metadata.readlines()
     else:
         with open(text_path, 'r') as metadata:
+            # mdata = base64.b64encode(metadata.readlines())
             mdata = metadata.readlines()
 
     gen = []
@@ -409,6 +423,15 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
     gen_rows = get_text_rows('General', mdata)
     for field in FIELDS:
         for key, val in field.items():
+            # Temporarily convert text returned milliseconds to seconds
+            if key.endswith('duration.milliseconds'):
+                match = iterate_text_rows(gen_rows, val[1], key)
+                if match is None:
+                    continue
+                milliseconds = match.get(key)
+                seconds = f"{float(milliseconds) / 1000:.9f}"
+                print(f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***")
+                gen.append({f'{key}': float(seconds)})
             if key.startswith('container.'):
                 match = iterate_text_rows(gen_rows, val[1], key)
                 if match is None:
@@ -417,8 +440,8 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
     if len(gen) > 0:
         xml = wrap_as_xml('Container', gen)
         payload += xml
-
-    vid_count, aud_count = get_stream_count(gen_rows)
+    print(gen)
+    vid_count, aud_count, oth_count = get_stream_count(gen_rows)
     for num in range(1, vid_count+1):
         if vid_count == 1:
             vid_rows = get_text_rows('Video', mdata)
@@ -427,6 +450,15 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         vid = []
         for field in FIELDS:
             for key, val in field.items():
+                # Temporarily convert text returned milliseconds to seconds
+                if key.endswith('duration.milliseconds'):
+                    match = iterate_text_rows(vid_rows, val[1], key)
+                    if match is None:
+                        continue
+                    milliseconds = match[key]
+                    seconds = f"{float(milliseconds) / 1000:.9f}"
+                    print(f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***")
+                    vid.append({f'{key}': float(seconds)})
                 if key.startswith('video.'):
                     match = iterate_text_rows(vid_rows, val[1], key)
                     if match is None:
@@ -454,6 +486,15 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         aud = []
         for field in FIELDS:
             for key, val in field.items():
+                # Temporarily convert text returned milliseconds to seconds
+                if key.endswith('duration.milliseconds'):
+                    match = iterate_text_rows(aud_rows, val[1], key)
+                    if match is None:
+                        continue
+                    milliseconds = match[key]
+                    seconds = f"{float(milliseconds) / 1000:.9f}"
+                    print(f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***")
+                    aud.append({f'{key}': seconds})
                 if key.startswith('audio.'):
                     match = iterate_text_rows(aud_rows, val[1], key)
                     if match is None:
@@ -464,7 +505,11 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
             payload += xml
 
     oth = []
-    oth_rows = get_text_rows('Other', mdata)
+    # Other tracks not repeatable in CID yet. Managing multiple Other tracks
+    if oth_count <= 1:
+        oth_rows = get_text_rows('Other', mdata)
+    else:
+        oth_rows = get_text_rows(f'Other \#1', mdata)
     for field in FIELDS:
         for key, val in field.items():
             if key.startswith('other.'):
@@ -707,7 +752,7 @@ def make_header_data(text_path: str, filename: str, priref: str) -> str:
     Create the header tag data
     '''
     tfp, ep, pp, xp, jp, exfp = make_paths(filename)
-    text = text_full = ebu = pb = xml = json = exif = ''
+    text = text_full = ebu = pb = xml = jsn = exif = ''
     if text_path.endswith('_EXIF.txt'):
         text_path = text_path.replace('_EXIF.txt', '_TEXT.txt')
 
@@ -754,7 +799,7 @@ def make_header_data(text_path: str, filename: str, priref: str) -> str:
     # Processing metadata output for json path
     try:
         text_dump = utils.read_extract(jp)
-        json = f"<Header_tags><header_tags.parser>MediaInfo json 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+        jsn = f"<Header_tags><header_tags.parser>MediaInfo json 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
     except Exception as err:
         print(err)
         LOGGER.warning("Failed to write JSON dump to record %s", priref)
@@ -767,7 +812,7 @@ def make_header_data(text_path: str, filename: str, priref: str) -> str:
         print(err)
         LOGGER.warning("Failed to write Exif dump to record %s", priref)
 
-    payload_data = text + text_full + ebu + pb + xml + json + exif
+    payload_data = text + text_full + ebu + pb + xml + jsn + exif
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
 
 

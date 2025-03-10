@@ -39,7 +39,7 @@ import tenacity
 from time import sleep
 
 # Private packages
-from series_retrieve import retrieve
+from series_retrieve import retrieve, check_id
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 import utils
@@ -53,6 +53,8 @@ GENRE_MAP = os.path.join(CODE_PATH, 'document_en_15907/EPG_genre_mapping.yaml')
 SERIES_LIST = os.path.join(CODE_PATH, 'document_en_15907/series_list.json')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
+CSV_FAILURES = os.path.join(LOG_PATH, 'failed_mpeg_ts_files.csv')
+MPEG_TS_POLICY = os.path.join(os.environ['MEDIACONCH'], 'mpeg_ts_stora_policy.xml')
 SUBS_PTH = os.environ['SUBS_PATH2']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
 CID_API = os.environ['CID_API4']
@@ -151,7 +153,7 @@ def cid_series_query(series_id):
 
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
-    sleep(2)
+    sleep(1)
     try:
         hit_count, series_query_result = adlib.retrieve_record(CID_API, 'works', search, '1')
     except Exception as err:
@@ -181,7 +183,7 @@ def find_repeats(asset_id):
     '''
 
     search = f'alternative_number="{asset_id}"'
-    sleep(2)
+    sleep(1)
     hits, result = adlib.retrieve_record(CID_API, 'manifestations', search, '1')
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
@@ -193,7 +195,7 @@ def find_repeats(asset_id):
         man_priref = adlib.retrieve_field_name(result[0], 'priref')[0]
     except (IndexError, TypeError, KeyError):
         return None
-    sleep(2)
+    sleep(1)
     full_result = adlib.retrieve_record(CID_API, 'manifestations', f'priref="{man_priref}"', '1', ['alternative_number.type', 'part_of_reference.lref'])[1]
     if not full_result:
         return None
@@ -526,12 +528,14 @@ def fetch_lines(fullpath, lines):
             epg_dict['series_id'] = str(series_id)
         except (IndexError, KeyError, TypeError):
             series_id = None
-        if not series_id:
-            try:
-                series_id = lines["item"][0]["asset"]["related"][0]["id"]
+        nested_id = check_id(fullpath)
+        if nested_id is None:
+            pass
+        else:
+            if len(nested_id) == 36 and nested_id != series_id:
+                logger.warning("Retrieved Series ID %s likely not 'series' - exchanged for %s", series_id, nested_id)
+                series_id = nested_id
                 epg_dict['series_id'] = str(series_id)
-            except (IndexError, KeyError, TypeError) as err:
-                print(err)
         try:
             episode_total = lines["item"][0]["asset"]["meta"]["episodeTotal"]
             epg_dict['episode_total'] = episode_total
@@ -781,9 +785,6 @@ def main():
                 csv_description = ""
                 csv_dump = ""
 
-        acquired_filename = os.path.join(root, "stream.mpeg2.ts")
-        print(f"Path for programme stream content: {acquired_filename}")
-
         # Get defaults as lists of dictionary pairs
         rec_def, ser_def, work_def, work_res_def, man_def, item_def = build_defaults(epg_dict)
 
@@ -806,6 +807,21 @@ def main():
                 new_work = True
             else:
                 logger.info("** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s", work_priref)
+
+        # Check file health with policy verification - skip if broken MPEG file
+        acquired_filename = os.path.join(root, "stream.mpeg2.ts")
+        print(f"Path for programme stream content: {acquired_filename}")
+        success, response = utils.get_mediaconch(acquired_filename, MPEG_TS_POLICY)
+        if success is False:
+            # Fix 'BROKEN' to folder name, update failure CSV
+            logger.warning("File found that has failed MPEG-TS policy:\n%s", acquired_filename)
+            logger.warning("Marking JSON with .PROBLEM")
+            mark_broken_stream(fullpath, acquired_filename)
+            logger.warning("Marking stream.mpeg2.ts.BROKEN and updating CSV")
+            update_broken_ts(acquired_filename, work_priref, response, epg_dict)
+            continue
+        logger.info("MPEG-TS passed MediaConch check: %s", success)
+        print(response)
 
         # Make news channels new works for all live programming
         if channel in NEWS_CHANNELS:
@@ -939,7 +955,6 @@ def main():
     logger.info('========== STORA documentation script END ===================================================\n')
 
 
-@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id):
     '''
     Call function series_check(series_id) and build all data needed
@@ -952,10 +967,11 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     series_work_id = ''
     series_data = series_check(epg_dict['series_id'])
     if series_data is None:
-        print("Attempting to retrieve series data from EPG API using retrieve(fullpath)")
+        print(f"Attempting to retrieve series data from EPG API using function 'retrieve({fullpath})'")
         retrieve(fullpath)
-        series_data = series_check(epg_dict['series_id'])
-    if not series_data[4]:
+    series_data = series_check(epg_dict['series_id'])
+    print(series_data)
+    if series_data is None:
         print("No series data found in CID or in cache")
         return None
 
@@ -1072,13 +1088,22 @@ def create_series(fullpath, series_work_defaults, work_restricted_def, epg_dict,
     series_values_xml = adlib.create_record_data(CID_API, 'works', '', series_work_values)
     if series_values_xml is None:
         return None
-    sleep(2)
+    sleep(1)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
     except Exception as err:
         print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
         logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
+
+    # Allow for retry if record priref creation crash:
+    if "Duplicate key in unique index 'invno':" in str(work_rec):
+        try:
+            logger.info("Attempting to create CID series record for %s", series_title_full)
+            work_rec = adlib.post(CID_API, series_values_xml, 'works', 'insertrecord')
+        except Exception as err:
+            print(f'* Unable to create Series Work record for <{series_title_full}> {err}')
+            logger.warning('%s\tUnable to create Series Work record for <%s>', fullpath, series_title_full)
 
     if work_rec is False:
         raise Exception("Recycle of API exception raised.")
@@ -1322,14 +1347,14 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
             work_values.append({'utb.fieldname': 'Freeview EPG'})
             work_values.append({'utb.content': csv_dump})
 
-    work_id = ''
+    work_id = work_rec = ''
     # Start creating CID Work record
-    sleep(3)
+    sleep(1)
     work_values_xml = adlib.create_record_data(CID_API, 'works', '', work_values)
     if work_values_xml is None:
         return None
     try:
-        sleep(2)
+        sleep(1)
         logger.info("Attempting to create Work record for item %s", epg_dict['title'])
         work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
         print(f"create_work(): {work_rec}")
@@ -1337,8 +1362,22 @@ def create_work(fullpath, series_work_id, work_values, csv_description, csv_dump
         print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
         logger.warning('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
         logger.warning(err)
-    if work_rec is False:
+
+    # Allow for retry if record priref creation crash:
+    if len(work_rec) == 0:
         raise Exception("Recycle of API exception raised.")
+
+    if "Duplicate key in unique index 'invno':" in str(work_rec):
+        try:
+            sleep(1)
+            logger.info("Attempting to create Work record for item %s", epg_dict['title'])
+            work_rec = adlib.post(CID_API, work_values_xml, 'works', 'insertrecord')
+            print(f"create_work(): {work_rec}")
+        except Exception as err:
+            print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
+            logger.warning('%s\tUnable to create Work record for <%s>', fullpath, epg_dict['title'])
+            logger.warning(err)
+
     try:
         print("Populating work_id and object_number variables")
         work_id = adlib.retrieve_field_name(work_rec, 'priref')[0]
@@ -1449,13 +1488,25 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
     if man_values_xml is None:
         return None
     try:
-        sleep(2)
+        sleep(1)
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
         logger.warning("Unable to write manifestation record <%s> %s", manifestation_id, err)
+
+    # Allow for retry if record priref creation crash:
+    if "Duplicate key in unique index 'invno':" in str(man_rec):
+        try:
+            sleep(1)
+            logger.info("Attempting to create Manifestation record for item %s", title)
+            man_rec = adlib.post(CID_API, man_values_xml, 'manifestations', 'insertrecord')
+            print(f"create_manifestation(): {man_rec}")
+        except Exception as err:
+            print(f"*** Unable to write manifestation record: {err}")
+            logger.warning("Unable to write manifestation record <%s> %s", manifestation_id, err)
+
     if man_rec is False:
             raise Exception("Recycle of API exception raised.")
     try:
@@ -1492,13 +1543,25 @@ def create_cid_item_record(work_id, manifestation_id, acquired_filename, fullpat
         return None
 
     try:
-        sleep(2)
+        sleep(1)
         logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
         item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
         print(f"create_cid_item_record(): {item_rec}")
     except Exception as err:
         logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
         print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
+
+    # Allow for retry if record priref creation crash:
+    if "Duplicate key in unique index 'invno':" in str(item_rec):
+        try:
+            sleep(1)
+            logger.info("Attempting to create CID item record for item %s", epg_dict['title'])
+            item_rec = adlib.post(CID_API, item_values_xml, 'items', 'insertrecord')
+            print(f"create_cid_item_record(): {item_rec}")
+        except Exception as err:
+            logger.warning('%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion', fullpath, file)
+            print(f"** PROBLEM: Unable to create Item record for {fullpath} {err}")
+
     if item_rec is False:
         raise Exception("Recycle of API exception raised.")
     try:
@@ -1530,7 +1593,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_start + payload_mid + payload_end
     try:
-        sleep(2)
+        sleep(1)
         response = adlib.post(CID_API, payload, 'manifestations', 'updaterecord')
         if response:
             logger.info('%s\tRenamed Manifestation %s with deletion prompt in title', fullpath, manifestation_id)
@@ -1546,7 +1609,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         payload_end = "</record></recordList></adlibXML>"
         payload = payload_start + payload_mid + payload_end
         try:
-            sleep(2)
+            sleep(1)
             response = adlib.post(CID_API, payload, 'works', 'updaterecord')
             if 'priref' in str(response):
                 logger.info('%s\tRenamed Work %s with deletion prompt in title, for bulk deletion', fullpath, work_id)
@@ -1575,6 +1638,55 @@ def mark_problem_json(fullpath):
         logger.warning('%s\tCould not rename JSON to %s. Error: %s', fullpath, problem, err)
     if os.path.exists(problem):
         return True
+
+
+def mark_broken_stream(json_path, vpath):
+    '''
+    Rename JSON with .PROBLEM to prevent retry
+    and append ts.BROKEN to video file
+    '''
+
+    vpath_broken = f'{vpath}.BROKEN'
+    problem = f'{json_path}.PROBLEM'
+    print(f'* Renaming {json_path} to {problem}')
+    print(f'* Renaming {vpath} to {vpath_broken}')
+    logger.info('%s\t Renaming JSON to %s', json_path, problem)
+    logger.info('%s\t Renaming MPEG-TS to %s', vpath, vpath_broken)
+
+    if os.path.exists(json_path):
+        os.rename(json_path, problem)
+    else:
+        logger.warning("Path not found, unable to append '.PROBLEM': %s", json_path)
+    if os.path.exists(vpath):
+        os.rename(vpath, vpath_broken)
+    else:
+        logger.warning("Path not found, unable to append '.BROKEN': %s", vpath)
+
+
+def update_broken_ts(vpath, work_priref, response, epg_dict=None):
+    '''
+    Update broken MPEG-TS file to
+    CSV along with date/channel/policy
+    '''
+    broadcast_channel = epg_dict.get('broadcast_channel')
+    title_art = epg_dict.get('title_article')
+    if title_art:
+        title_art = f"{title_art} "
+    else:
+        title_art = ''
+    title = epg_dict.get('title')
+    date_start = epg_dict.get('title_date_start')
+    time = epg_dict.get('time')
+    duration = epg_dict.get('duration')
+    asset_id = epg_dict.get('asset_id')
+    episode_number = epg_dict.get('episode_number')
+    series_id = epg_dict.get('series_id')
+    code_type = epg_dict.get('code_type')
+    data = [broadcast_channel, f"{title_art}{title}", date_start, time, duration, asset_id, episode_number, series_id, work_priref, code_type, vpath, response]
+
+    with open(CSV_FAILURES, 'a') as failures:
+        writer = csv.writer(failures)
+        writer.writerow(data)
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))

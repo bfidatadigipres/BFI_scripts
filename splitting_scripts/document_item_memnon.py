@@ -10,17 +10,18 @@ June 2022
 import os
 import sys
 import datetime
+from typing import Optional, Any, Final
 
 # Public packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
 # Configure adlib
-CID_API = os.environ['CID_API4']
-CODE_PATH = os.environ['CODE']
+CID_API: Final = os.environ['CID_API4']
+CODE_PATH: Final = os.environ['CODE']
 
 
-def log_print(data):
+def log_print(data: str) -> None:
     '''
     Temp func to track failures in
     CID item record creation
@@ -31,7 +32,7 @@ def log_print(data):
         file.write("--------------------------------\n")
 
 
-def fetch_existing_object_number(source_object_number):
+def fetch_existing_object_number(source_object_number: str) -> str:
     '''
     Retrieve the Object Number for an existing MKV record, for use in renaming
     the existing Matroska (single Item) or naming the segment
@@ -49,7 +50,7 @@ def fetch_existing_object_number(source_object_number):
         raise Exception('Unable to retrieve data from Item record')
 
 
-def new_or_existing(source_object_number, segments, duration, extension, note=None):
+def new_or_existing(source_object_number: str, segments: list[str], duration: str, extension: str, note: Optional[str]=None) -> Optional[str]:
     '''
     Create a new item record for multi-reeler if one doesn't already exist,
     otherwise return the ID of the existing record
@@ -74,7 +75,7 @@ def new_or_existing(source_object_number, segments, duration, extension, note=No
         return destination_object
 
 
-def new_or_existing_no_segments(source_object_number, extension, note=None):
+def new_or_existing_no_segments(source_object_number: str, extension: str, note=None) -> Optional[str]:
     '''
     Create a new item record for multi-reeler if one doesn't already exist,
     otherwise return the ID of the existing record
@@ -99,7 +100,7 @@ def new_or_existing_no_segments(source_object_number, extension, note=None):
         return destination_object
 
 
-def already_exists(source_object_number):
+def already_exists(source_object_number: str) -> tuple[int, list[dict[str, Optional[Any]]]]:
     '''
     Has an F47 record already been created for source?
     '''
@@ -115,7 +116,7 @@ def already_exists(source_object_number):
         return hits, None
 
 
-def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
+def new_no_segments_mopup(source_object_number: str, extension: str, grouping: str, note: Optional[str]=None) -> Optional[str]:
     '''
     Create a new item record
     Python 3 changes to record creation - unsure of write impact
@@ -181,7 +182,7 @@ def new_no_segments_mopup(source_object_number, extension, grouping, note=None):
         raise Exception('Unable to create record')
 
 
-def new_no_segments(source_object_number, extension, note=None):
+def new_no_segments(source_object_number: str, extension: str, note=None) -> Optional[str]:
     '''
     Create a new item record
     Python 3 changes to record creation - unsure of write impact
@@ -243,7 +244,7 @@ def new_no_segments(source_object_number, extension, note=None):
         raise Exception('Unable to create record')
 
 
-def new(source_object_number, segments, duration, extension, note=None):
+def new(source_object_number: str, segments: list[str], duration: str, extension: str, note=None) -> Optional[str]:
     '''
     Create a new item record
     '''

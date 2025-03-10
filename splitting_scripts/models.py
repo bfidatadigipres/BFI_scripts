@@ -17,6 +17,7 @@ import sys
 import string
 import logging
 import datetime
+from typing import Optional, Any, Final
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -46,16 +47,16 @@ class Item():
     Useful interactions with an item record
     '''
 
-    def __init__(self, priref):
-        self.priref = priref
-        self.object_number = self._object_number()
+    def __init__(self, priref: str):
+        self.priref: str = priref
+        self.object_number: str = self._object_number()
 
     def _object_number(self):
         '''
         Resolve <object_number> id
         '''
         rec = cid_get('items', f'priref={self.priref}', 'object_number')[1]
-        object_number = adlib.retrieve_field_name(rec, 'object_number')[0]
+        object_number: str = adlib.retrieve_field_name(rec, 'object_number')[0]
         logger.info("Object number: %s", object_number)
         return object_number
 
@@ -71,8 +72,8 @@ class Item():
         '''
         Fetch identifiers of items in same manifestation
         '''
-        siblings_priref = []
-        q = f'(part_of_reference->(parts_reference.lref={self.priref}))'
+        siblings_priref: list[str] = []
+        q: str = f'(part_of_reference->(parts_reference.lref={self.priref}))'
         recs = cid_get('items', q, 'priref')[1]
         for rec in recs:
             siblings_priref.append(int(adlib.retrieve_field_name(rec, 'priref')[0]))
@@ -83,7 +84,7 @@ class Item():
         '''
         Fetch identifiers of items in any other manifestation in same work
         '''
-        cousins_priref = []
+        cousins_priref: list[int] = []
         q = f'(part_of_reference->(part_of_reference->(parts_reference->(parts_reference.lref={self.priref}))))'
         recs = cid_get('items', q, 'priref')[1]
         for rec in recs:
@@ -429,7 +430,7 @@ class Carrier():
         return manifest
 
 
-def cid_get(database, search, fields=None):
+def cid_get(database: str, search: str, fields: Optional[list[Any]]=None) -> tuple[int, Optional[list[dict[Any, Any]]]]:
     '''
     Simple query wrapper
     '''

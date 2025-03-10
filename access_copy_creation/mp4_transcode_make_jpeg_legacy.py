@@ -35,7 +35,7 @@ import datetime
 import subprocess
 import pytz
 import tenacity
-from typing import Optional, Final
+from typing import Optional, Final, Union
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -102,14 +102,18 @@ def main():
     outpath, outpath2 = "", ""
 
     ext: str = ext.lstrip('.')
+    duration, vs = get_duration(fullpath)
     print(file, fname, ext)
     # Check CID for Item record and extract transcode path
-    object_number: str = utils.get_object_number(fname)
+    object_number = utils.get_object_number(fname)
+    if object_number == None or object_number is False:
+        object_number = ''
+
     if object_number.startswith('CA_'):
         priref, source, groupings = check_item(object_number, 'collectionsassets')
     else:
         priref, source, groupings = check_item(object_number, 'items')
-    # Check CID media record and extract input date for path
+    # Check CID media record and extract input date for path 
     media_priref, input_date, largeimage, thumbnail, access, largeimage_old, thumbnail_old, access_old = get_media_priref(file)
     if not media_priref:
         log_build.append(f"{local_time()}\tCRITICAL\tDigital media record priref missing: {file}")
@@ -153,7 +157,7 @@ def main():
             log_build.append(f"{local_time()}\tWARNING\tCID UMIDs exist but no transcoding. Allowing files to proceed.")
 
     # Get file type, video or audio etc.
-    ftype: str = utils.sort_ext(ext)
+    ftype = utils.sort_ext(ext)
     if ftype != 'video':
         log_build.append(f"{local_time()}\tINFO\tItem is not a video file. Skipping.")
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
@@ -201,7 +205,7 @@ def main():
     # Calculate seconds mark to grab screen
     seconds = adjust_seconds(duration, data)
     print(f"Seconds for JPEG cut: {seconds}")
-    success: bool = get_jpeg(seconds, outpath, jpeg_location)
+    success = get_jpeg(seconds, outpath, jpeg_location)
     if not success:
         log_build.append(f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file")
         log_build.append(f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================")
@@ -209,8 +213,12 @@ def main():
         sys.exit("Exiting: JPEG not created from MP4 file")
 
     # Generate Full size 600x600, thumbnail 300x300
-    full_jpeg: str = make_jpg(jpeg_location, 'full', None, None)
-    thumb_jpeg: str = make_jpg(jpeg_location, 'thumb', None, None)
+    full_jpeg  = make_jpg(jpeg_location, 'full', None, None)
+    thumb_jpeg = make_jpg(jpeg_location, 'thumb', None, None)
+    if thumb_jpeg is None:
+            thumb_jpeg = ''
+    if full_jpeg is None:
+            full_jpeg = ''
     log_build.append(f"{local_time()}\tINFO\tNew images created at {seconds} seconds into video:\n - {full_jpeg}\n - {thumb_jpeg}")
     if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
         os.remove(jpeg_location)
@@ -252,7 +260,7 @@ def main():
     log_output(log_build)
 
 
-def log_output(log_build: str) -> None:
+def log_output(log_build: list[str]) -> None:
     '''
     Collect up log list and output to log in one block
     '''
@@ -260,7 +268,7 @@ def log_output(log_build: str) -> None:
         LOGGER.info(log)
 
 
-def adjust_seconds(duration: int, data: Optional[bytes]) -> int:
+def adjust_seconds(duration: int, data: str) -> int:
     '''
     Adjust second durations within
     FFmpeg detected blackspace
@@ -291,7 +299,7 @@ def adjust_seconds(duration: int, data: Optional[bytes]) -> int:
     return duration // 2
 
 
-def retrieve_blackspaces(data: Optional[bytes | str]) -> list[str]:
+def retrieve_blackspaces(data: str) -> list[str]:
     '''
     Retrieve black detect log and check if
     second variable falls in blocks of blackdetected
@@ -353,12 +361,14 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
         return False
 
 
-def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, str]]:
+def check_item(ob_num: str, database:str) -> Optional[tuple[str, str, str]]:
     '''
     Use requests to retrieve priref/RNA data for item object number
     '''
     search: str = f"(object_number='{ob_num}')"
     record = adlib.retrieve_record(CID_API, database, search, '1')[1]
+    if not record:
+        record = adlib.retrieve_record(CID_API, 'collect', search, '1')[1]
     if not record:
         return None
 
@@ -374,8 +384,7 @@ def check_item(ob_num: str, database: str) -> Optional[tuple[str, str, str]]:
 
     return priref, source, groupings
 
-
-def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
+def get_media_priref(fname: str) -> Optional[tuple[str]]:
     '''
     Retrieve priref from Digital record
     '''
@@ -384,19 +393,19 @@ def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
     if not record:
         return None
 
-    priref: str = adlib.retrieve_field_name(record[0], 'priref')[0]
+    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
     if not priref:
         priref = ''
-    input_date: str = adlib.retrieve_field_name(record[0], 'input.date')[0]
+    input_date = adlib.retrieve_field_name(record[0], 'input.date')[0]
     if not input_date:
         input_date = ''
-    largeimage_umid: str = adlib.retrieve_field_name(record[0], 'access_rendition.largeimage')[0]
+    largeimage_umid = adlib.retrieve_field_name(record[0], 'access_rendition.largeimage')[0]
     if not largeimage_umid:
         largeimage_umid = ''
-    thumbnail_umid: str = adlib.retrieve_field_name(record[0], 'access_rendition.thumbnail')[0]
+    thumbnail_umid = adlib.retrieve_field_name(record[0], 'access_rendition.thumbnail')[0]
     if not thumbnail_umid:
         thumbnail_umid = ''
-    access_rendition: str = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
+    access_rendition = adlib.retrieve_field_name(record[0], 'access_rendition.mp4')[0]
     if not access_rendition:
         access_rendition = ''
 
@@ -499,7 +508,7 @@ def get_width(fullpath: str) -> str:
             return re.sub("[^0-9]", "", width)
 
 
-def get_duration(fullpath: str) -> tuple[str | int, str]:
+def get_duration(fullpath: str) -> Optional[tuple[int, str]]:
     '''
     Retrieves duration information via mediainfo
     where more than two returned, file longest of
@@ -507,9 +516,9 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
     for update to ffmpeg map command
     '''
 
-    duration: str = utils.get_metadata('Video', 'Duration', fullpath)
+    duration = utils.get_metadata('Video', 'Duration', fullpath)
     if not duration:
-        return ('', '')
+        return (0, '')
     if '.' in duration:
         duration = duration.split('.')
     print(f"Mediainfo seconds: {duration}")
@@ -564,19 +573,21 @@ def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str]]:
 
     try:
         lang0 = subprocess.check_output(cmd0)
+        lang0_str = lang0.decode('utf-8')
     except Exception:
-        lang0 = ''
+        lang0_str = ''
     try:
         lang1 = subprocess.check_output(cmd1)
+        lang1_str = lang0.decode('utf-8')
     except Exception:
-        lang1 = ''
+        lang1_str = ''
 
-    print(f"**** LANGUAGES: Stream 0 {lang0} - Stream 1 {lang1}")
+    print(f"**** LANGUAGES: Stream 0 {lang0_str} - Stream 1 {lang1_str}")
 
-    if 'nar' in str(lang0).lower():
+    if 'nar' in str(lang0_str).lower():
         print("Narration stream 0 / English stream 1")
         return ('Audio', '1')
-    elif 'nar' in str(lang1).lower():
+    elif 'nar' in str(lang1_str).lower():
         print("Narration stream 1 / English stream 0")
         return ('Audio', '0')
     else:
@@ -610,7 +621,7 @@ def create_transcode(fullpath: str) -> list[str]:
     return ffmpeg_program_call + input_video_file + blackdetect + output
 
 
-def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str]) -> str:
+def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str]) -> Optional[str]:
     '''
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.
@@ -703,14 +714,17 @@ def cid_media_append(fname: str, priref: str, data: list[str]) -> Optional[bool]
     if not rec:
         return False
 
-    data = get_media_priref(fname)
+    data_priref = get_media_priref(fname)
     print("**************************************************************")
     print(data)
     print("**************************************************************")
     
-    data = get_media_priref(fname)
+    data_priref = get_media_priref(fname)
+    if data_priref is None:
+        data_priref = tuple('')
+        return False
     file = fname.split('.')[0]
-    if file == data[4]:
+    if file == data_priref[4]:
         LOGGER.info("cid_media_append(): Write of access_rendition data confirmed successful for %s - Priref %s", fname, priref)
         return True
 

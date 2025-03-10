@@ -22,16 +22,17 @@ import json
 import logging
 import subprocess
 import magic
+from typing import Optional, Any, Final
 
 # Private packages
 sys.path.append(os.environ['CODE'])
 import utils
 
 # Global paths from server environmental variables
-PATH_POLICY = os.environ['MEDIACONCH']
-PRORES_POLICY = os.path.join(PATH_POLICY, 'BFI_download_transcode_basic_prores.xml')
-LOG = os.environ['LOG_PATH']
-CONTROL_JSON = os.path.join(LOG, 'downtime_control.json')
+PATH_POLICY: Final = os.environ['MEDIACONCH']
+PRORES_POLICY: Final = os.path.join(PATH_POLICY, 'BFI_download_transcode_basic_prores.xml')
+LOG: Final = os.environ['LOG_PATH']
+CONTROL_JSON: Final = os.path.join(LOG, 'downtime_control.json')
 
 # Setup logging
 logger = logging.getLogger('downloaded_transcode_prores')
@@ -42,7 +43,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
-def check_mime_type(fpath):
+def check_mime_type(fpath: str) -> bool:
     '''
     Checks the mime type is video
     and if stream media checks ffprobe
@@ -77,7 +78,7 @@ def check_mime_type(fpath):
     return True
 
 
-def get_dar(fullpath):
+def get_dar(fullpath: str):
     '''
     Retrieves metadata DAR info and returns as string
     '''
@@ -90,23 +91,23 @@ def get_dar(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     dar_setting = subprocess.check_output(cmd)
-    dar_setting = dar_setting.decode('utf-8')
+    dar_setting_str = dar_setting.decode('utf-8')
 
-    if '4:3' in str(dar_setting):
+    if '4:3' in dar_setting_str:
         return '4:3'
-    if '16:9' in str(dar_setting):
+    if '16:9' in dar_setting_str:
         return '16:9'
-    if '15:11' in str(dar_setting):
+    if '15:11' in dar_setting_str:
         return '4:3'
-    if '1.85:1' in str(dar_setting):
+    if '1.85:1' in dar_setting_str:
         return '1.85:1'
-    if '2.2:1' in str(dar_setting):
+    if '2.2:1' in dar_setting_str:
         return '2.2:1'
 
-    return str(dar_setting)
+    return dar_setting_str
 
 
-def get_par(fullpath):
+def get_par(fullpath: str) -> str:
     '''
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
@@ -120,8 +121,7 @@ def get_par(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     par_setting = subprocess.check_output(cmd)
-    par_setting = par_setting.decode('utf-8')
-    par_full = str(par_setting).rstrip('\n')
+    par_full = par_setting.decode('utf-8').rstrip('\n')
 
     if len(par_full) <= 5:
         return par_full
@@ -129,7 +129,7 @@ def get_par(fullpath):
         return par_full[:5]
 
 
-def get_height(fullpath):
+def get_height(fullpath: str) -> str:
     '''
     Retrieves height information via mediainfo
     Using sampled height where original
@@ -145,6 +145,7 @@ def get_height(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     sampled_height = subprocess.check_output(cmd)
+    sampled_height_str = sampled_height.decode('utf-8')
     cmd2 = [
         'mediainfo',
         '--Language=raw', '--Full',
@@ -154,16 +155,16 @@ def get_height(fullpath):
 
     cmd2[3] = cmd2[3].replace('"', '')
     reg_height = subprocess.check_output(cmd2)
-
+    reg_height_str = reg_height.decode('utf-8')
     try:
-        int(sampled_height)
+        int(sampled_height_str)
     except ValueError:
-        sampled_height = 0
+        sampled_height_str = '0'
 
-    if int(sampled_height) > int(reg_height):
-        height = str(sampled_height)
+    if int(sampled_height_str) > int(reg_height_str):
+        height = str(sampled_height_str)
     else:
-        height = str(reg_height)
+        height = str(reg_height_str)
 
     if '480' == height:
         return '480'
@@ -182,7 +183,7 @@ def get_height(fullpath):
         return re.sub("[^0-9]", "", height)
 
 
-def get_width(fullpath):
+def get_width(fullpath: str):
     '''
     Retrieves height information using mediainfo
     '''
@@ -195,27 +196,27 @@ def get_width(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     width = subprocess.check_output(cmd)
-    width = str(width)
+    width_str = width.decode('utf-8')
 
-    if '720' == width:
+    if '720' == width_str:
         return '720'
-    if '768' == width:
+    if '768' == width_str:
         return '768'
-    if '1024' == width or '1 024' == width:
+    if '1024' == width_str or '1 024' == width_str:
         return '1024'
-    if '1280' == width or '1 280' == width:
+    if '1280' == width_str or '1 280' == width_str:
         return '1280'
-    if '1920' == width or '1 920' == width:
+    if '1920' == width_str or '1 920' == width_str:
         return '1920'
     else:
-        if width.isdigit():
-            return str(width)
+        if width_str.isdigit():
+            return width_str
         else:
-            width = width.split(' p', maxsplit=1)[0]
-            return re.sub("[^0-9]", "", width)
+            width_str = width_str.split(' p', maxsplit=1)[0]
+            return re.sub("[^0-9]", "", width_str)
 
 
-def get_duration(fullpath):
+def get_duration(fullpath: str) -> tuple[str | int, str]:
     '''
     Retrieves duration information via mediainfo
     where more than two returned, file longest of
@@ -234,25 +235,25 @@ def get_duration(fullpath):
     if not duration:
         return ('', '')
 
-    duration = duration.decode('utf-8').rstrip('\n')
-    print(f"Mediainfo seconds: {duration}")
+    duration_str = duration.decode('utf-8').rstrip('\n')
+    print(f"Mediainfo seconds: {duration_str}")
 
-    if '.' in duration:
-        duration = duration.split('.')
+    if '.' in duration_str:
+        duration_list = duration_str.split('.')
 
-    if isinstance(duration, str):
-        second_duration = int(duration) // 1000
+    if isinstance(duration_str, str):
+        second_duration = int(duration_str) // 1000
         return (second_duration, '0')
-    elif len(duration) == 2:
+    elif len(duration_list) == 2:
         print("Just one duration returned")
-        num = duration[0]
+        num = duration_list[0]
         second_duration = int(num) // 1000
         print(second_duration)
         return (second_duration, '0')
-    elif len(duration) > 2:
+    elif len(duration_list) > 2:
         print("More than one duration returned")
-        dur1 = f"{duration[0]}"
-        dur2 = f"{duration[1][6:]}"
+        dur1 = f"{duration_list[0]}"
+        dur2 = f"{duration_list[1][6:]}"
         print(dur1, dur2)
         if int(dur1) > int(dur2):
             second_duration = int(dur1) // 1000
@@ -262,7 +263,7 @@ def get_duration(fullpath):
             return (second_duration, '1')
 
 
-def check_audio(fullpath):
+def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     '''
     Mediainfo command to retrieve channels, identify
     stereo or mono, returned as 2 or 1 respectively
@@ -298,36 +299,38 @@ def check_audio(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     audio = subprocess.check_output(cmd)
-    audio = str(audio)
+    audio_str = audio.decode('utf-8')
 
     if len(audio) == 0:
         return None, None, None
 
     try:
         lang0 = subprocess.check_output(cmd0)
+        lang0_str = lang0.decode('utf-8')
     except Exception:
-        lang0 = ''
+        lang0_str = ''
     try:
         lang1 = subprocess.check_output(cmd1)
+        lang1_str = lang1.decode('utf-8')
     except Exception:
-        lang1 = ''
+        lang1_str = ''
 
-    print(f"**** LANGUAGES: Stream 0 {lang0} - Stream 1 {lang1}")
+    print(f"**** LANGUAGES: Stream 0 {lang0_str} - Stream 1 {lang1_str}")
 
     cmd2[3] = cmd2[3].replace('"', '')
     chnl_layout = subprocess.check_output(cmd2)
-    chnl_layout = str(chnl_layout)
+    chnl_layout_str = chnl_layout.decode('utf-8')
     stereo_lr = False
 
-    if 'LR' in chnl_layout:
+    if 'LR' in chnl_layout_str:
         stereo_lr = True
 
-    if 'NAR' in str(lang0):
+    if 'NAR' in str(lang0_str):
         print("Narration stream 0 / English stream 1")
         if stereo_lr:
             return ('Audio', '1', 'ac')
         return('Audio', '1', None)
-    elif 'NAR' in str(lang1):
+    elif 'NAR' in str(lang1_str):
         print("Narration stream 1 / English stream 0")
         if stereo_lr:
             return ('Audio', '0', 'ac')
@@ -338,7 +341,7 @@ def check_audio(fullpath):
         return ('Audio', None, None)
 
 
-def create_ffmpeg_command(fullpath, output, video_data):
+def create_ffmpeg_command(fullpath: str, output: str, video_data: list[Optional[str]]) -> list[str]:
     '''
     Subprocess command build, with variations
     added based on metadata extraction
@@ -422,7 +425,7 @@ def create_ffmpeg_command(fullpath, output, video_data):
         return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + cmd_mid + prores_build + output_settings
 
 
-def check_policy(output_path):
+def check_policy(output_path: str) -> str:
     '''
     Run mediaconch check against new prores
     '''
@@ -436,7 +439,7 @@ def check_policy(output_path):
             return result
 
 
-def conformance_check(filepath):
+def conformance_check(filepath: str) -> str:
     '''
     Checks mediaconch policy against new V210 mov
     '''
@@ -449,22 +452,22 @@ def conformance_check(filepath):
 
     try:
         success = subprocess.check_output(mediaconch_cmd)
-        success = str(success)
+        success_str = success.decode('utf-8')
     except Exception:
-        success = ""
+        success_str = ""
         logger.exception("Mediaconch policy retrieval failure for %s", filepath)
 
-    if 'N/A!' in success:
+    if 'N/A!' in success_str:
         return "FAIL!"
-    elif 'pass!' in success:
+    elif 'pass!' in success_str:
         return "PASS!"
-    elif 'fail!' in success:
+    elif 'fail!' in success_str:
         return "FAIL!"
     else:
         return "FAIL!"
 
 
-def transcode_mov(fpath):
+def transcode_mov(fpath: str) -> bool | str:
     '''
     Receives sys.argv[1] path to MOV from shell start script via GNU parallel
     Passes to FFmpeg subprocess command, transcodes ProRes mov then checks

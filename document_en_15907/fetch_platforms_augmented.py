@@ -31,6 +31,7 @@ import datetime
 import requests
 import tenacity
 import pandas
+from typing import Final, Any, Optional
 
 # Local package
 sys.path.append(os.environ['CODE'])
@@ -67,7 +68,7 @@ STREAM_KEYS = {
 }
 
 
-def read_csv_to_dict(csv_path):
+def read_csv_to_dict(csv_path: str) -> dict[str, list[str]]:
     '''
     Make set of all entries
     with title as key, and value
@@ -82,7 +83,7 @@ def read_csv_to_dict(csv_path):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(3))
-def fetch(cat_id, search_type, search_id, title):
+def fetch(cat_id: str, search_type: str, search_id: str, title: str) -> Optional[dict[str, str]]:
     '''
     Fetch data from PATV URL
     '''
@@ -129,7 +130,7 @@ def fetch(cat_id, search_type, search_id, title):
     return None
 
 
-def json_dump(json_path, dct=None):
+def json_dump(json_path: str, dct=None) -> None:
     '''
     Take a catalogue dictionary
     and output to file for read/processing
@@ -142,7 +143,7 @@ def json_dump(json_path, dct=None):
         file.close()
 
 
-def get_cat_assets(asset=None):
+def get_cat_assets(asset=None) -> tuple[str, str, Optional[str], str]:
     '''
     Retrieve asset information for logs/processing
     '''
@@ -172,7 +173,7 @@ def get_cat_assets(asset=None):
     return(episode_title, cat_id, ep_num, episode_asset_id)
 
 
-def get_series_title(asset=None):
+def get_series_title(asset=None) -> Optional[str]:
     '''
     Get series title data
     '''
@@ -186,7 +187,7 @@ def get_series_title(asset=None):
         return None
 
 
-def main():
+def main() -> None:
     '''
     Grab last two weeks catalogue items, output to JSON for storage
     Iterate list and build asset_dict of TV items, then process
@@ -386,7 +387,7 @@ def main():
     LOGGER.info('========== Fetch augmented metadata script ENDED ================================================')
 
 
-def retrieve_dct_data(dct=None):
+def retrieve_dct_data(dct=None) -> tuple[Optional[str], Optional[str]]:
     '''
     Check if DCT data is None, if not retrieve season/series IDs
     '''

@@ -57,7 +57,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def remove_whitespace(title):
+def remove_whitespace(title: str) -> str:
     '''
     Remove excess whitespace from badly formed names
     '''
@@ -66,18 +66,18 @@ def remove_whitespace(title):
     return new_title
 
 
-def conformance_check(filepath):
+def conformance_check(filepath: str) -> str:
     '''
     Checks mediaconch policy against WAV files
     '''
-    mediaconch_cmd = [
+    mediaconch_cmd: list[str] = [
         'mediaconch', '--force',
         '-p', WAV_POLICY,
         filepath
     ]
 
-    result = subprocess.check_output(mediaconch_cmd)
-    result = str(result)
+    result = str(subprocess.check_output(mediaconch_cmd))
+
 
     if 'N/A!' in result or 'pass!' not in result:
         return f"FAIL! '{filepath}'\n{result}"
@@ -85,21 +85,21 @@ def conformance_check(filepath):
         return "PASS!"
 
 
-def make_object_number(folder):
+def make_object_number(folder: str) -> tuple[str, str]:
     '''
     Convert file or directory to CID object_number
     '''
-    filename_split = folder.split('_')
-    object_num = '-'.join(filename_split[:-1])
+    filename_split: str = folder.split('_')
+    object_num: str = '-'.join(filename_split[:-1])
 
     return object_num, filename_split[-1]
 
 
-def cid_query(database, search, object_number):
+def cid_query(database: str, search: str, object_number: str) -> tuple[str, str, str, str, str, str, str, str]:
     '''
     Format CID query for cid_data_retrieval()
     '''
-    fields = [
+    fields: list[str] = [
         'priref',
         'title',
         'title.article',
@@ -154,7 +154,7 @@ def cid_query(database, search, object_number):
     return (priref, new_title, title_article, ob_num, derived_item, source_item, title_language, sound_item)
 
 
-def cid_data_retrieval(ob_num):
+def cid_data_retrieval(ob_num: str) -> list[str]:
     '''
     Retrieve source data from CID
     to link to for new Item record
@@ -348,14 +348,14 @@ def main():
     LOGGER.info("================ END WAV folder record creation rename END =================")
 
 
-def create_wav_record(gp_priref, title, title_article, title_language, source_priref):
+def create_wav_record(gp_priref: list[str], title: str, title_article: str, title_language: str, source_priref: str) -> Optional[tuple[str, str]]:
     '''
     Item record creation for WAV file
     TO DO: Needs reviewing with Lucy
     '''
     print(gp_priref, title, title_article)
-    record_defaults = []
-    item_defaults = []
+    record_defaults: list[dict[str, str]] = []
+    item_defaults: list[dict[str, str]]  = []
 
     record_defaults = ([{'input.name': 'datadigipres'},
                         {'input.date': str(datetime.datetime.now())[:10]},
@@ -381,8 +381,8 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
                       {'source_item.lref': source_priref},
                       {'source_item.content': 'SOUND'}])
 
-    wav_ob_num = ""
-    item_values = []
+    wav_ob_num: str = ""
+    item_values: list[dict[str, str]] = []
     item_values.extend(record_defaults)
     item_values.extend(item_defaults)
 
@@ -417,15 +417,15 @@ def create_wav_record(gp_priref, title, title_article, title_language, source_pr
         return None
 
 
-def rename(folder, ob_num):
+def rename(folder: str, ob_num: str) -> tuple[str, str]:
     '''
     Receive original folder path and rename
     based on object number, return new filepath, filename
     '''
-    new_name = ob_num.replace('-', '_')
-    folderpath = os.path.join(WAV_RENAME_PATH, folder)
-    name_split = folder.split('_')
-    new_fname = f"{new_name}_{name_split[-1]}"
+    new_name: str = ob_num.replace('-', '_')
+    folderpath: str = os.path.join(WAV_RENAME_PATH, folder)
+    name_split: list[str] = folder.split('_')
+    new_fname: str = f"{new_name}_{name_split[-1]}"
     print(f"Renaming {folder} to {new_fname}")
     new_fpath = os.path.join(WAV_RENAME_PATH, new_fname)
 
@@ -438,11 +438,11 @@ def rename(folder, ob_num):
         return None
 
 
-def ingest_move(filepath, new_filename):
+def ingest_move(filepath: str, new_filename: str) -> Optional[str]:
     '''
     Take file path and check move to autoingest
     '''
-    tar_wrap_path = os.path.join(FOR_TAR_WRAP, new_filename)
+    tar_wrap_path: str = os.path.join(FOR_TAR_WRAP, new_filename)
     try:
         shutil.move(filepath, tar_wrap_path)
         return tar_wrap_path
@@ -451,7 +451,7 @@ def ingest_move(filepath, new_filename):
         return None
 
 
-def local_log(data):
+def local_log(data: str) -> None:
     '''
     Write collected data actions list of items
     to local log in audio_operations

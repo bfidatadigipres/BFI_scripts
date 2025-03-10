@@ -26,27 +26,28 @@ import errno
 import shutil
 import logging
 import datetime
+from typing import Optional, Any, Final
 
 # ENV packages
 import requests
 import tenacity
 
 # Global variables
-STORAGE_PATH = os.environ['STORA_PATH']
-LOG_PATH = os.environ['LOG_PATH']
-CODE_PATH = os.environ['CODE']
-STORA_CONTROL = os.path.join(CODE_PATH, 'stora_control.json')
-UNMATCHED_JSON = os.path.join(STORAGE_PATH, 'unmatched_jsons/')
-TODAY = datetime.date.today()
-YESTERDAY = TODAY - datetime.timedelta(days=3)
-YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
-START = f'{YESTERDAY_CLEAN}T00:00:00'
-END = f'{YESTERDAY_CLEAN}T23:59:00'
+STORAGE_PATH: Final = os.environ['STORA_PATH']
+LOG_PATH: Final = os.environ['LOG_PATH']
+CODE_PATH: Final = os.environ['CODE']
+STORA_CONTROL: Final = os.path.join(CODE_PATH, 'stora_control.json')
+UNMATCHED_JSON: Final = os.path.join(STORAGE_PATH, 'unmatched_jsons/')
+TODAY: Final = datetime.date.today()
+YESTERDAY: Final = TODAY - datetime.timedelta(days=3)
+YESTERDAY_CLEAN: Final = YESTERDAY.strftime('%Y-%m-%d')
+START: Final = f'{YESTERDAY_CLEAN}T00:00:00'
+END: Final = f'{YESTERDAY_CLEAN}T23:59:00'
 # If a different date period needs targeting use:
 #START = '2024-10-19T00:00:00'
 #END = '2024-10-19T23:59:00'
-DATE_PATH = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
-PATH = os.path.join(STORAGE_PATH, DATE_PATH)
+DATE_PATH: Final = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
+PATH: Final = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
 
 # Setup logging
@@ -86,7 +87,7 @@ CHANNEL = {
 }
 
 
-def check_control():
+def check_control() -> None:
     '''
     Check control JSON for downtime request
     '''
@@ -98,7 +99,7 @@ def check_control():
 
 
 @tenacity.retry(wait=tenacity.wait_random(min=5, max=30))
-def check_api(value):
+def check_api(value: str) -> Optional[bool]:
     '''
     Run standard check with today's date on supplied channelID
     '''
@@ -111,7 +112,7 @@ def check_api(value):
     raise tenacity.TryAgain
 
 
-def make_path(channel, item):
+def make_path(channel: dict[str, str], item: str) -> None:
     '''
     Test path exists, if not makes new directory 'NO_RECORDING_*'
     '''
@@ -125,7 +126,7 @@ def make_path(channel, item):
 
 
 @tenacity.retry(wait=tenacity.wait_random(min=5, max=30))
-def fetch(value):
+def fetch(value) -> Optional[dict[str, str]]:
     '''
     Retrieval of EPG metadata here
     '''
@@ -148,7 +149,7 @@ def fetch(value):
     return jdct
 
 
-def json_split(jdct, key):
+def json_split(jdct: dict[str, Any], key: str) -> None:
     '''
     Splits dct into subdicts based on 'item' and dateTime being present
     '''
@@ -170,7 +171,7 @@ def json_split(jdct, key):
                 logger.info("Splitting has been successful. Saving to top folder %s", dump_to)
 
 
-def main():
+def main() -> None:
     '''
     Checks if all channel folders exist in storage_path
     Populates channel folders that do with cut up schedules
@@ -286,7 +287,7 @@ def main():
     logger.info('========== Fetch augmented metadata script ENDED ================================================')
 
 
-def retrieve_dct_data(key, value, jdct=None):
+def retrieve_dct_data(key: str, value: str, jdct=None) -> None:
     '''
     Check if DCT data is None, if not instigate json_split
     '''
@@ -312,7 +313,7 @@ def retrieve_dct_data(key, value, jdct=None):
         json_split(jdct, key)
 
 
-def move(path_move, item):
+def move(path_move: str, item: str) -> None:
     '''
     Handles move of JSON files
     into correct paths with
@@ -394,7 +395,7 @@ def move(path_move, item):
                     logger.warning("move(): Unable to move %s to unmatched_json: %s", filepath, err)
 
 
-def folder_check(path_move):
+def folder_check(path_move: str) -> None:
     '''
     Where folder missing .JSON
     rename info.csv to info.csv.stora

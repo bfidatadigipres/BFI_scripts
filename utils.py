@@ -21,7 +21,7 @@ import tenacity
 import adlib_v3 as adlib
 
 LOG_PATH: Final = os.environ['LOG_PATH']
-CONTROL_JSON: Final = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
+CONTROL_JSON: str = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 
 
@@ -73,12 +73,14 @@ ACCEPTED_EXT: Final = [
 ]
 
 
-def accepted_file_type(ext: str) -> Optional[str]:
+
+# (ext: str) -> Optional[str]:
+def accepted_file_type(ext):
     '''
     Receive extension and returnc
     matching accepted file_type
     '''
-    ftype: dict[str, str]= {'avi': 'avi',
+    ftype = {'avi': 'avi',
              'imp': 'mxf, xml',
              'tar': 'dpx, dcp, dcdm, wav',
              'mxf': 'mxf, 50i, imp',
@@ -118,7 +120,8 @@ def accepted_file_type(ext: str) -> Optional[str]:
     return None
 
 
-def check_control(arg: str) -> bool:
+# (arg: str) -> bool:
+def check_control(arg):
     '''
     Check control json for downtime requests
     based on passed argument
@@ -136,7 +139,8 @@ def check_control(arg: str) -> bool:
             return False
 
 
-def cid_check(cid_api: str) -> bool:
+# (cid_api: str) -> bool:
+def cid_check(cid_api):
     '''
     Tests if CID API operational before
     all other operations commence
@@ -144,7 +148,7 @@ def cid_check(cid_api: str) -> bool:
         sys.exit(message)
     '''
     try:
-        dct: dict[str, str] = adlib.check(cid_api)
+        dct = adlib.check(cid_api)
         print(dct)
         if isinstance(dct, dict):
             return True
@@ -152,7 +156,8 @@ def cid_check(cid_api: str) -> bool:
         return False
 
 
-def read_yaml(file: str) -> dict[str, str]:
+# (file: str) -> dict[str, str]:
+def read_yaml(file):
     '''
     Safe open yaml and return as dict
     '''
@@ -161,7 +166,8 @@ def read_yaml(file: str) -> dict[str, str]:
         return d
 
 
-def read_csv(csv_path: str) -> Iterator[dict[Any, Any]]:
+#(csv_path: str) -> Iterator[dict[Any, Any]]:
+def read_csv(csv_path):
     '''
     Check CSV for evidence that fname already
     downloaded. Extract download date and return
@@ -172,7 +178,8 @@ def read_csv(csv_path: str) -> Iterator[dict[Any, Any]]:
         return readme
 
 
-def read_extract(fpath: str) -> str:
+# (fpath: str) -> str:
+def read_extract(fpath):
     '''
     For reading metadata text files
     and returning as a block
@@ -183,7 +190,8 @@ def read_extract(fpath: str) -> str:
     return readme
 
 
-def check_filename(fname: str) -> bool:
+# (fname: str) -> bool:
+def check_filename(fname):
     '''
     Run series of checks against BFI filenames
     check accepted prefixes, and extensions
@@ -209,7 +217,8 @@ def check_filename(fname: str) -> bool:
     return True
 
 
-def check_part_whole(fname: str) -> tuple[Optional[int], Optional[int]]:
+# (fname: str) -> tuple[Optional[int], Optional[int]]:
+def check_part_whole(fname):
     '''
     Check part whole well formed
     '''
@@ -229,7 +238,8 @@ def check_part_whole(fname: str) -> tuple[Optional[int], Optional[int]]:
     return part, whole
 
 
-def get_object_number(fname: str) -> str | bool | None:
+# (fname: str) -> str | bool | None:
+def get_object_number(fname):
     '''
     Extract object number from name formatted
     with partWhole, eg N_123456_01of03.ext
@@ -238,17 +248,18 @@ def get_object_number(fname: str) -> str | bool | None:
         return False
     try:
         splits: list[str] = fname.split('_')
-        object_number: str = '-'.join(splits[:-1])
+        object_number: Optional[str] = '-'.join(splits[:-1])
     except Exception:
         object_number = None
     return object_number
 
 
-def sort_ext(ext: str) -> Optional[str]:
+# (ext: str) -> Optional[str]:
+def sort_ext(ext):
     '''
     Decide on file type
     '''
-    mime_type: dict[str, list[str]] = {'video': ['mxf', 'mkv', 'mov', 'wmv', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
+    mime_type = {'video': ['mxf', 'mkv', 'mov', 'wmv', 'mp4', 'mpg', 'avi', 'ts', 'mpeg', 'm2ts'],
                  'image': ['png', 'gif', 'jpeg', 'jpg', 'tif', 'pct', 'tiff'],
                  'audio': ['wav', 'flac', 'mp3'],
                  'document': ['docx', 'pdf', 'vtt', 'doc', 'tar', 'srt', 'scc', 'itt', 'stl', 'cap', 'dxfp', 'xml', 'dfxp', 'txt', 'ttf', 'rtf', 'csv', 'txt']}
@@ -259,7 +270,8 @@ def sort_ext(ext: str) -> Optional[str]:
             return key
 
 
-def exif_data(dpath: str) -> str:
+# (dpath: str) -> str:
+def exif_data(dpath):
     '''
     Retrieve exiftool data
     return match to field if available
@@ -274,7 +286,8 @@ def exif_data(dpath: str) -> str:
     return data
 
 
-def get_metadata(stream: str, arg: str, dpath: str) -> str:
+# (stream: str, arg: str, dpath: str) -> str:
+def get_metadata(stream, arg, dpath):
     '''
     Retrieve metadata with subprocess
     for supplied stream/field arg
@@ -291,13 +304,14 @@ def get_metadata(stream: str, arg: str, dpath: str) -> str:
     return meta.decode('utf-8').rstrip('\n')
 
 
-def get_mediaconch(dpath: str, policy: str) -> tuple[bool, str]:
+# (dpath: str, policy: str) -> tuple[bool, str]:
+def get_mediaconch(dpath, policy):
     '''
     Check for 'pass! {path}' in mediaconch reponse
     for supplied file path and policy
     '''
 
-    cmd: list[str] = [
+    cmd = [
         'mediaconch', '--force',
         '-p', policy,
         dpath
@@ -310,13 +324,14 @@ def get_mediaconch(dpath: str, policy: str) -> tuple[bool, str]:
     return False, meta
 
 
-def get_ms(filepath: str) -> Optional[str | bytes]:
+# (filepath: str) -> Optional[str | bytes]:
+def get_ms(filepath):
     '''
     Retrieve duration as milliseconds if possible
     '''
-    retry: bool = False
-    duration: str = ''
-    cmd: list[str] = [
+    retry = False
+    duration = ''
+    cmd = [
         'ffprobe',
         '-v', 'error',
         '-show_entries', 'format=duration',
@@ -347,13 +362,14 @@ def get_ms(filepath: str) -> Optional[str | bytes]:
     return None
 
 
-def get_duration(filepath: str) -> Optional[str | bytes]:
+# (filepath: str) -> Optional[str | bytes]:
+def get_duration(filepath):
     '''
     Retrieve duration field if possible
     '''
-    retry: bool = False
-    duration: str | bytes = ''
-    cmd: list[str] = [
+    retry = False
+    duration = ''
+    cmd = [
         'ffprobe',
         '-v', 'error',
         '-show_entries', 'format=duration',
@@ -384,7 +400,8 @@ def get_duration(filepath: str) -> Optional[str | bytes]:
     return None
 
 
-def logger(log_path: str, level: str, message: str) -> None:
+# (log_path: str, level: str, message: str) -> None:
+def logger(log_path, level, message):
     '''
     Configure and handle logging
     of file events
@@ -409,7 +426,8 @@ def logger(log_path: str, level: str, message: str) -> None:
         LOGGER.exception(message)
 
 
-def get_size(fpath: str) -> Optional[int]:
+# (fpath: str) -> Optional[int]:
+def get_size(fpath):
     '''
     Check the size of given folder path
     return size in kb
@@ -418,14 +436,15 @@ def get_size(fpath: str) -> Optional[int]:
         return os.path.getsize(fpath)
 
     try:
-        byte_size: Optional[int] = sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
+        byte_size: int= sum(os.path.getsize(os.path.join(fpath, f)) for f in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, f)))
         return byte_size
     except OSError as err:
         print(f"get_size(): Cannot reach folderpath for size check: {fpath}\n{err}")
         return None
 
 
-def create_md5_65536(fpath: str):
+# (fpath: str):
+def create_md5_65536(fpath):
     '''
     Hashlib md5 generation, return as 32 character hexdigest
     '''
@@ -441,7 +460,8 @@ def create_md5_65536(fpath: str):
         return None
 
 
-def check_global_log(fname: str, check_str: str) -> Optional[list[str]]:
+# (fname: str, check_str: str) -> Optional[list[str]]:
+def check_global_log(fname, check_str):
     '''
     Read global log lines and look for a
     confirmation of deletion from autoingest
@@ -456,7 +476,8 @@ def check_global_log(fname: str, check_str: str) -> Optional[list[str]]:
                 return row
 
 
-def checksum_write(checksum_path: str, checksum: str, filepath: str, filename: str) -> str:
+# (checksum_path: str, checksum: str, filepath: str, filename: str) -> str:
+def checksum_write(checksum_path, checksum, filepath, filename):
     '''
     This function writes the checksum into a txt file with correct
     formatting and returns the path to that document
@@ -472,8 +493,8 @@ def checksum_write(checksum_path: str, checksum: str, filepath: str, filename: s
         raise Exception
 
 
-@tenacity.retry(stop=tenacity.stop_after_attempt(4))
-def mediainfo_create(arg: str, output_type: str, filepath: str, mediainfo_path: str) -> str | bool:
+# (arg: str, output_type: str, filepath: str, mediainfo_path: str) -> str | bool:
+def mediainfo_create(arg, output_type, filepath, mediainfo_path):
     '''
     Output mediainfo data to text files
     '''

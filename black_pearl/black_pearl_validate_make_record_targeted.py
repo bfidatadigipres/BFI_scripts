@@ -47,7 +47,7 @@ import shutil
 import logging
 import requests
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 # Local import
 import bp_utils as bp
@@ -322,7 +322,7 @@ def main():
     logger.info("======== END Black Pearl validate/CID media record END ========")
 
 
-def process_files(autoingest: str, job_id: str, bucket: str, bucket_list: list[str], session: requests.Session) -> str | list[str]:
+def process_files(autoingest: str, job_id: str, bucket: str, bucket_list: list[str], session: requests.Session) -> Union[str, list[str]]:
     '''
     Receive ingest fpath then JSON has confirmed files ingested to tape
     and this function handles CID media record check/creation and move

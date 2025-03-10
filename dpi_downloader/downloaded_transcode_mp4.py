@@ -20,10 +20,12 @@ import sys
 import time
 import shutil
 import logging
+import json
 import datetime
 import subprocess
 import pytz
 import tenacity
+from typing import Optional, Final
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -35,6 +37,7 @@ LOG_PATH = os.environ['LOG_PATH']
 LOG_FILE = os.path.join(LOG_PATH, 'scheduled_database_downloader_transcode.log')
 CID_API = os.environ['CID_API3']
 TRANSCODE = os.environ['TRANSCODING']
+CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
 
 # Setup logging
 logger = logging.getLogger('bp_downloader_mp4_transcode')
@@ -58,7 +61,7 @@ SUPPLIERS = {"East Anglian Film Archive": "eafa",
              "Wessex Film and Sound Archive": "wfsa",
              "Yorkshire Film Archive": "yfa"}
 
-def check_control():
+def check_control() -> bool:
     '''
     Check control json for downtime requests
     '''
@@ -70,7 +73,7 @@ def check_control():
             return True
 
 
-def local_time():
+def local_time() -> str:
     '''
     Return strftime object formatted
     for London time (includes BST adjustment)
@@ -78,14 +81,14 @@ def local_time():
     return datetime.datetime.now(pytz.timezone('Europe/London')).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def transcode_mp4(fpath):
+def transcode_mp4(fpath: str) -> str:
     '''
     Get ext, check filetype then process
     according to video, image or pass through
     audio and documents
     '''
     if not check_control():
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
+        logger.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     fullpath = fpath
     if not os.path.isfile(fullpath):
@@ -103,6 +106,9 @@ def transcode_mp4(fpath):
     print(file, fname, ext)
     # Check CID for Item record and extract transcode path
     object_number = make_object_number(fname)
+    if object_number is None:
+        log_build.append(f"Object number: {object_number} does not exists")
+        object_number = ''
     if object_number.startswith('CA_'):
         priref, source, groupings = check_item(object_number, 'collectionsassets')
     else:
@@ -276,7 +282,7 @@ def transcode_mp4(fpath):
         if os.path.isfile(full_jpeg) and os.path.isfile(thumb_jpeg):
             log_build.append(f"{local_time()}\tINFO\tNew images created:\n - {full_jpeg}\n - {thumb_jpeg}")
         else:
-            log_build.append(f"{local_time()}\tERROR\tOne of both JPEG image creations failed for file %s", file)
+            log_build.append(f"{local_time()}\tERROR\tOne of both JPEG image creations failed for file: {file}")
 
     else:
         log_build.append(f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}")
@@ -317,7 +323,7 @@ def transcode_mp4(fpath):
     return 'True'
 
 
-def log_output(log_build):
+def log_output(log_build: list[str]) -> None:
     '''
     Collect up log list and output to log in one block
     '''
@@ -326,13 +332,17 @@ def log_output(log_build):
         logger.info(log)
 
 
-def adjust_seconds(duration, data):
+def adjust_seconds(duration: int | str, data: str) -> int:
     '''
     Adjust second durations within
     FFmpeg detected blackspace
     '''
     blist = retrieve_blackspaces(data)
     print(f"*** BLACK GAPS: {blist}")
+
+    if isinstance(duration, str):
+        duration = int(duration)
+
     if not blist:
         return duration // 2
 
@@ -357,7 +367,7 @@ def adjust_seconds(duration, data):
     return duration // 2
 
 
-def retrieve_blackspaces(data):
+def retrieve_blackspaces(data: str) -> list[str]:
     '''
     Retrieve black detect log and check if
     second variable falls in blocks of blackdetected
@@ -377,7 +387,7 @@ def retrieve_blackspaces(data):
     return time_range
 
 
-def check_seconds(blackspace, seconds):
+def check_seconds(blackspace: list[str], seconds: int) -> Optional[bool]:
     '''
     Create range and check for second within
     '''
@@ -393,7 +403,7 @@ def check_seconds(blackspace, seconds):
         return True
 
 
-def get_jpeg(seconds, fullpath, outpath):
+def get_jpeg(seconds: int, fullpath: str, outpath: str) -> bool:
     '''
     Retrieve JPEG from MP4
     Seconds accepted as float
@@ -416,7 +426,7 @@ def get_jpeg(seconds, fullpath, outpath):
         return False
 
 
-def make_object_number(fname):
+def make_object_number(fname: str) -> Optional[str]:
     '''
     Convert file or directory to CID object_number
     '''
@@ -429,7 +439,7 @@ def make_object_number(fname):
         return None
 
 
-def check_item(ob_num, database):
+def check_item(ob_num: Optional[str], database: str) -> Optional[tuple[str, str, str]]:
     '''
     Use adlib to retrieve priref/RNA data for item object number
     '''
@@ -459,7 +469,7 @@ def check_item(ob_num, database):
     return (priref, source, groupings)
 
 
-def get_media_priref(fname):
+def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
     '''
     Retrieve priref from Digital record
     '''
@@ -499,7 +509,7 @@ def get_media_priref(fname):
     return (priref, input_date, largeimage_umid, thumbnail_umid, access_rendition)
 
 
-def sort_ext(ext):
+def sort_ext(ext: str) -> Optional[str]:
     '''
     Decide on file type
     '''
@@ -514,7 +524,7 @@ def sort_ext(ext):
             return key
 
 
-def get_dar(fullpath):
+def get_dar(fullpath: str) -> str:
     '''
     Retrieves metadata DAR info and returns as string
     '''
@@ -527,23 +537,23 @@ def get_dar(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     dar_setting = subprocess.check_output(cmd)
-    dar_setting = dar_setting.decode('utf-8')
+    dar_setting_str = dar_setting.decode('utf-8')
 
-    if '4:3' in str(dar_setting):
+    if '4:3' in dar_setting_str:
         return '4:3'
-    if '16:9' in str(dar_setting):
+    if '16:9' in dar_setting_str:
         return '16:9'
-    if '15:11' in str(dar_setting):
+    if '15:11' in dar_setting_str:
         return '4:3'
-    if '1.85:1' in str(dar_setting):
+    if '1.85:1' in dar_setting_str:
         return '1.85:1'
-    if '2.2:1' in str(dar_setting):
+    if '2.2:1' in dar_setting_str:
         return '2.2:1'
 
-    return str(dar_setting)
+    return dar_setting_str
 
 
-def get_par(fullpath):
+def get_par(fullpath: str) -> str:
     '''
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
@@ -557,8 +567,7 @@ def get_par(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     par_setting = subprocess.check_output(cmd)
-    par_setting = par_setting.decode('utf-8')
-    par_full = str(par_setting).rstrip('\n')
+    par_full = par_setting.decode('utf-8').rstrip('\n')
 
     if len(par_full) <= 5:
         return par_full
@@ -566,7 +575,7 @@ def get_par(fullpath):
         return par_full[:5]
 
 
-def get_height(fullpath):
+def get_height(fullpath: str) -> str:
     '''
     Retrieves height information via mediainfo
     Using sampled height where original
@@ -582,7 +591,7 @@ def get_height(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     sampled_height = subprocess.check_output(cmd)
-
+    sampled_height_str = sampled_height.decode('utf-8')
     cmd2 = [
         'mediainfo',
         '--Language=raw', '--Full',
@@ -592,16 +601,16 @@ def get_height(fullpath):
 
     cmd2[3] = cmd2[3].replace('"', '')
     reg_height = subprocess.check_output(cmd2)
-
+    reg_height_str = reg_height.decode('utf-8')
     try:
-        int(sampled_height)
+        int(sampled_height_str)
     except ValueError:
-        sampled_height = 0
+        sampled_height_str = 0
 
-    if int(sampled_height) > int(reg_height):
-        height = str(sampled_height)
+    if int(sampled_height_str) > int(reg_height_str):
+        height = str(sampled_height_str)
     else:
-        height = str(reg_height)
+        height = str(reg_height_str)
 
     if '480' == height:
         return '480'
@@ -620,7 +629,7 @@ def get_height(fullpath):
         return re.sub("[^0-9]", "", height)
 
 
-def get_width(fullpath):
+def get_width(fullpath: str) -> str:
     '''
     Retrieves height information using mediainfo
     '''
@@ -633,7 +642,7 @@ def get_width(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     width = subprocess.check_output(cmd)
-    width = str(width)
+    width_str = width.decode('utf-8')
 
     if '720' == width:
         return '720'
@@ -649,11 +658,11 @@ def get_width(fullpath):
         if width.isdigit():
             return str(width)
         else:
-            width = width.split(' p', maxsplit=1)[0]
-            return re.sub("[^0-9]", "", width)
+            width_str = width_str.split(' p', maxsplit=1)[0]
+            return re.sub("[^0-9]", "", width_str)
 
 
-def get_duration(fullpath):
+def get_duration(fullpath: str) -> tuple[str | int, str]:
     '''
     Retrieves duration information via mediainfo
     where more than two returned, file longest of
@@ -672,25 +681,25 @@ def get_duration(fullpath):
     if not duration:
         return ('', '')
 
-    duration = duration.decode('utf-8').rstrip('\n')
-    print(f"Mediainfo seconds: {duration}")
+    duration_str = duration.decode('utf-8').rstrip('\n')
+    print(f"Mediainfo seconds: {duration_str}")
 
-    if '.' in duration:
-        duration = duration.split('.')
+    if '.' in duration_str:
+        duration_list = duration_str.split('.')
 
-    if isinstance(duration, str):
-        second_duration = int(duration) // 1000
+    if isinstance(duration_str, str):
+        second_duration = int(duration_str) // 1000
         return (second_duration, '0')
-    elif len(duration) == 2:
+    elif len(duration_list) == 2:
         print("Just one duration returned")
-        num = duration[0]
+        num = duration_list[0]
         second_duration = int(num) // 1000
         print(second_duration)
         return (second_duration, '0')
-    elif len(duration) > 2:
+    elif len(duration_list) > 2:
         print("More than one duration returned")
-        dur1 = f"{duration[0]}"
-        dur2 = f"{duration[1][6:]}"
+        dur1 = f"{duration_list[0]}"
+        dur2 = f"{duration_list[1][6:]}"
         print(dur1, dur2)
         if int(dur1) > int(dur2):
             second_duration = int(dur1) // 1000
@@ -700,7 +709,7 @@ def get_duration(fullpath):
             return (second_duration, '1')
 
 
-def check_audio(fullpath):
+def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     '''
     Mediainfo command to retrieve channels, identify
     stereo or mono, returned as 2 or 1 respectively
@@ -737,31 +746,33 @@ def check_audio(fullpath):
 
     cmd[3] = cmd[3].replace('"', '')
     audio = subprocess.check_output(cmd)
-    audio = str(audio)
+    audio_str = audio.decode('utf-8')
 
     if len(audio) == 0:
         return (None, None, None)
 
     try:
         lang0 = subprocess.check_output(cmd0)
+        lang0_str = lang0.decode('utf-8')
     except Exception:
-        lang0 = ''
+        lang0_str = ''
     try:
         lang1 = subprocess.check_output(cmd1)
+        lang1_str = lang1.decode('utf-8')
     except Exception:
-        lang1 = ''
+        lang1_str = ''
 
-    print(f"**** LANGUAGES: Stream 0 {lang0} - Stream 1 {lang1}")
+    print(f"**** LANGUAGES: Stream 0 {lang0_str} - Stream 1 {lang1_str}")
 
     cmd2[3] = cmd2[3].replace('"', '')
     chnl_layout = subprocess.check_output(cmd2)
-    chnl_layout = str(chnl_layout)
+    chnl_layout_str = chnl_layout.decode('utf-8')
 
     stereo = None
-    if 'LR' in chnl_layout:
+    if 'LR' in chnl_layout_str:
         print("Audio is Stereo with LR configuration")
         stereo = 'ac1'
-    if 'C' in chnl_layout:
+    if 'C' in chnl_layout_str:
         print("Audio is Stereo with central audio configuration")
         stereo = 'ac2'
 
@@ -775,7 +786,7 @@ def check_audio(fullpath):
         return ('Audio', None, stereo)
 
 
-def create_transcode(fullpath, output_path, height, width, dar, par, audio, default, vs, stereo):
+def create_transcode(fullpath: str, output_path: str, height: str | int, width: str | int, dar: str, par: str, audio: Optional[str], default: Optional[str], vs: str, stereo: Optional[str]) -> list[str]:
     '''
     Builds FFmpeg command based on height/dar input
     '''
@@ -945,7 +956,7 @@ def create_transcode(fullpath, output_path, height, width, dar, par, audio, defa
         return ffmpeg_program_call + input_video_file + map_video + map_audio + video_settings + pix + fast_start + cmd_mid + output
 
 
-def make_jpg(filepath, arg, transcode_pth, percent):
+def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str]) -> str:
     '''
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.
@@ -997,7 +1008,7 @@ def make_jpg(filepath, arg, transcode_pth, percent):
         return outfile
 
 
-def conformance_check(file):
+def conformance_check(file: str) -> str:
     '''
     Checks file against MP4 mediaconch policy
     Looks for essential items to ensure that
@@ -1012,21 +1023,21 @@ def conformance_check(file):
 
     try:
         success = subprocess.check_output(mediaconch_cmd)
-        success = str(success)
+        success_str = success.decode('uft-8')
     except Exception as err:
-        success = ""
+        success_str = ""
         logger.warning("%s\tWARNING\tMediaconch policy retrieval failure for %s\n%s", local_time(), file, err)
 
-    if 'pass!' in str(success):
+    if 'pass!' in str(success_str):
         return "PASS!"
-    elif success.startswith('fail!'):
-        return f"FAIL! This policy has failed {success}"
+    elif success_str.startswith('fail!'):
+        return f"FAIL! This policy has failed {success_str}"
     else:
         return "FAIL!"
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(10))
-def cid_media_append(priref, data):
+def cid_media_append(priref: str, data: list[str]) -> bool:
     '''
     Receive data and priref and append to CID media record
     '''

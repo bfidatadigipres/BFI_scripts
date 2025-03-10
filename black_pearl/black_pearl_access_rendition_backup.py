@@ -25,6 +25,7 @@ import shutil
 import logging
 from datetime import datetime
 from time import sleep
+from ds3 import ds3, ds3Helpers
 from typing import Final, Optional
 
 # Local imports
@@ -76,8 +77,10 @@ def move_to_ingest_folder(new_path: str, file_list: list[str]):
     ingest_list: list[str] = []
     LOGGER.info("move_to_ingest_folder(): %s", INGEST_POINT)
 
-    folder_size: int = utils.get_size(INGEST_POINT)
-    max_fill_size: int = UPLOAD_MAX - folder_size
+    folder_size = utils.get_size(INGEST_POINT)
+    if folder_size is None:
+        folder_size = 0
+    max_fill_size  = UPLOAD_MAX - folder_size
 
     for fname in file_list:
         fpath: str = os.path.join(STORAGE, fname)
@@ -85,7 +88,9 @@ def move_to_ingest_folder(new_path: str, file_list: list[str]):
             LOGGER.info("move_to_ingest_folder(): Folder at capacity. Breaking move to ingest folder.")
             break
 
-        file_size: str = utils.get_size(fpath)
+        file_size = utils.get_size(fpath)
+        if file_size is None:
+            file_size = 0
         max_fill_size -= file_size
         print(f"Moving file {fname} to {new_path}")
         shutil.move(fpath, new_path)

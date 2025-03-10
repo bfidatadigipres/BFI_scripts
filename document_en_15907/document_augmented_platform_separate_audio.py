@@ -289,7 +289,7 @@ def build_record_defaults(platform):
     return record
 
 
-def rename_or_move(arg, file_a, file_b):
+def rename_or_move(arg: str, file_a: str, file_b: str) -> str | bool:
     '''
     Use shutil or os to move/rename
     from file a to file b. Verify change
@@ -421,7 +421,7 @@ def create_digital_original_filenames(priref, asset_list_dct):
         return False
 
 
-def create_new_item_record(priref, platform, record):
+def create_new_item_record(priref: str, platform: sr, record):
     '''
     Build new CID item record from existing data and make CID item record
     '''

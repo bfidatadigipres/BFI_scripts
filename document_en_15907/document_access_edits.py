@@ -14,8 +14,9 @@ NOTES: Integrated with adlib_v3 for test
 import os
 import sys
 import logging
+import shutil
 import datetime
-from typing import Final, Optional
+from typing import Final, Optional, Any
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -38,9 +39,42 @@ FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
+####
 
+def process_duplicate_files(fname: str, log_file: str, duplicated_folder: str) -> Optional[str]:
+    '''
+    Check if a given filepath is inside the log file (access_document_edit.log) 
+    and move to folder if it's inside the log.
+    '''
+    # go through the file
+    if not os.path.exists(log_file):
+        return 'log file does not exists'
+    
+    with open(log_file, 'r') as log:
+        contents = log.readline()
 
-def get_source_record(file: str) -> list[dict[str, str]]:
+    # check if the file is inside the log
+    if fname in contents:
+        if os.path.exists(os.path.join(f'{duplicated_folder}/', fname)) and os.path.exists(os.path.join('test_folder/', fname)):
+            os.remove(os.path.join(f'{duplicated_folder}/', fname))
+        try:
+            shutil.move(os.path.join(f'test_folder/', fname), os.path.join(f'{duplicated_folder}/'))
+            write_to_log(log_file, fname)
+            return 'duplicated file'
+        except Exception as e: 
+            print(e)
+
+    else:
+        return 'new file'
+      
+def write_to_log(log_file: str, fname: str) -> None:
+    '''
+    writes into document access log
+    '''
+    with open(log_file, 'a+') as log:
+        log.write(f"duplicated file has been found: {fname} \n")
+        
+def get_source_record(file: str) -> Optional[list[dict[str, str]]]:
     '''
     Get source Item record ob_num from filename
     '''
@@ -77,7 +111,9 @@ def main():
         if not os.path.isfile(fpath):
             LOGGER.warning("Skipping: File type has not been recoginsed.")
             continue
-
+        result = process_duplicate_files(file, 'log_file.log', 'duplicated_folder')
+        if result == 'duplicated file':
+            continue
         # Get source Item record ob_num from filename
         source_record = get_source_record(file)
         if source_record is None:
@@ -92,6 +128,8 @@ def main():
             continue
         priref = adlib.retrieve_field_name(new_record, 'priref')[0]
         ob_num = adlib.retrieve_field_name(new_record, 'object_number')[0]
+        if ob_num is None:
+            ob_num = ''
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
 
         comments = '''Viewing copy created from digital master which has been ingested for access instances. \
@@ -115,7 +153,7 @@ def main():
     LOGGER.info("======== Document Access Edits scripts end =======================")
 
 
-def create_new_item_record(source_priref: str, file: str, source_record: list[dict[str, str]]) -> None:
+def create_new_item_record(source_priref: Optional[str], file: str, source_record: list[dict[str, str]]) -> Optional[dict[Any, Any]]:
     '''
     Build new CID item record from existing data and make CID item record
     '''
@@ -130,7 +168,7 @@ def create_new_item_record(source_priref: str, file: str, source_record: list[di
     return new_record
 
 
-def make_item_record_dict(priref: str, file: str, record: str) -> list[dict[str, str]]:
+def make_item_record_dict(priref: Optional[str], file: str, record: str) -> Optional[list[dict[str, str]]]:
     '''
     Get CID item record for source and borrow data
     for creation of new CID item record
@@ -172,7 +210,7 @@ def make_item_record_dict(priref: str, file: str, record: str) -> list[dict[str,
     return item
 
 
-def defaults() -> list[dict[str, str]]:
+def defaults() -> list[dict[Any, Any]]:
     '''
     Build defaults for new CID item records
     '''
@@ -197,7 +235,7 @@ def defaults() -> list[dict[str, str]]:
     return record
 
 
-def local_log(data: str) -> str:
+def local_log(data: str) -> None:
     '''
     Write collected data actions list of items
     to local log in audio_operations

@@ -30,7 +30,6 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-LOGGED_MESSAGES = set()
 
 IGNORED_EXTENSION = {".ini", ".DS_Store", ".mhl", ".tmp", ".dpx", ".DPX", ".log"}
 IGNORE_FOLDERS = {"checksum_folder", "ingest_match", "ingest_failed", "ingest_partial"}

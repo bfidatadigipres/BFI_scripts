@@ -15,14 +15,15 @@ from time import sleep
 from lxml import etree, html
 from dicttoxml import dicttoxml
 from tenacity import retry, stop_after_attempt
-from typing import Final, Optional, Any
+from typing import Final, Optional, Any, Iterable, Mapping
 
 HEADERS = {
     'Content-Type': 'text/xml'
 }
 
 
-def check(api: str) -> dict[Any, Any]:
+# (api: str) -> dict[Any, Any]:
+def check(api):
     '''
     Check API responds
     '''
@@ -35,7 +36,8 @@ def check(api: str) -> dict[Any, Any]:
     return get(api, query)
 
 
-def retrieve_record(api: str, database: str, search: str, limit: str, fields=None) -> tuple[Optional[int],Optional[list[dict[str, Any]]]]:
+# (api: str, database: str, search: str, limit: str, fields=None) -> tuple[int, list[dict[str, str]]]
+def retrieve_record(api, database, search, limit, fields=None):
     '''
     Retrieve data from CID using new API
     '''
@@ -80,8 +82,9 @@ def retrieve_record(api: str, database: str, search: str, limit: str, fields=Non
     return hits, record['adlibJSON']['recordList']['record']
 
 
+# (api: str, query: dict[str, str]) -> dict[Any, Any]:
 @retry(stop=stop_after_attempt(10))
-def get(api: str, query: dict[str, str]) -> dict[Any, Any]:
+def get(api, query):
     '''
     Send a GET request
     '''
@@ -105,7 +108,9 @@ def get(api: str, query: dict[str, str]) -> dict[Any, Any]:
         raise Exception from err
 
 
-def post(api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
+# (api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
+def post(api, payload, database, method):
+
     '''
     Send a POST request
     '''
@@ -116,6 +121,7 @@ def post(api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
         'output': 'jsonv1'
     }
     payload = payload.encode('utf-8')
+    record = {}
 
     try:
         response = requests.request('POST', api, headers=HEADERS, params=params, data=payload, timeout=1200)
@@ -156,7 +162,8 @@ def post(api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
     return None
 
 
-def retrieve_field_name(record: dict, fieldname: str) -> list[str]:
+# (record: dict, fieldname: str) -> list[str]:
+def retrieve_field_name(record, fieldname):
     '''
     Retrieve record, check for language data
     Alter retrieval method. record ==
@@ -180,7 +187,8 @@ def retrieve_field_name(record: dict, fieldname: str) -> list[str]:
     return field_list
 
 
-def retrieve_facet_list(record: dict, fname: str) -> dict[any, any]:
+# (record: dict, fname: str) -> dict[any, any]:
+def retrieve_facet_list(record, fname):
     '''
     Retrieve list of facets
     '''
@@ -192,7 +200,8 @@ def retrieve_facet_list(record: dict, fname: str) -> dict[any, any]:
     return facets
 
 
-def group_check(record: dict, fname: str) -> list[str]:
+# (record: dict, fname: str) -> list[str]:
+def group_check(record, fname):
     '''
     Get group that contains field key
     '''
@@ -244,7 +253,8 @@ def group_check(record: dict, fname: str) -> list[str]:
         return None
 
 
-def get_grouped_items(api: str, database: str) -> dict[str]:
+# (api: str, database: str) -> dict[str]
+def get_grouped_items(api, database):
     '''
     Check dB for groupings and ensure
     these are added to XML configuration
@@ -273,7 +283,8 @@ def get_grouped_items(api: str, database: str) -> dict[str]:
     return grouped
 
 
-def create_record_data(api: str, database: str, priref: str, data=None) -> str:
+# (api: str, database: str, priref: str, data=None) -> str
+def create_record_data(api, database, priref, data=None):
     '''
     Create a record from supplied dictionary (or list of dictionaries)
     '''
@@ -284,7 +295,7 @@ def create_record_data(api: str, database: str, priref: str, data=None) -> str:
     grouped = get_grouped_items(api, database)
     remove_list = []
     for key, value in grouped.items():
-        new_grouping = {}
+        new_grouping: dict[str, list[Any]] = {}
         for item in data:
             for k in item.keys():
                 if k in value:
@@ -321,7 +332,8 @@ def create_record_data(api: str, database: str, priref: str, data=None) -> str:
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
-def create_grouped_data(priref: str, grouping: str, field_pairs: list[str]) -> str:
+# (priref: str, grouping: str, field_pairs: list[str]) -> str:
+def create_grouped_data(priref, grouping, field_pairs):
     '''
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append
@@ -353,7 +365,8 @@ def create_grouped_data(priref: str, grouping: str, field_pairs: list[str]) -> s
         return payload_mid
 
 
-def get_fragments(obj) -> list[str]:
+# (obj) -> list[str]:
+def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
     fragment from dictionary / list of dictionaries
@@ -384,7 +397,8 @@ def get_fragments(obj) -> list[str]:
     return data
 
 
-def add_quality_comments(api: str, priref: str, comments: str) -> bool:
+# (api: str, priref: str, comments: str) -> bool:
+def add_quality_comments(api, priref, comments):
     '''
     Receive comments string
     convert to XML quality comments
@@ -410,7 +424,8 @@ def add_quality_comments(api: str, priref: str, comments: str) -> bool:
         return True
 
 
-def check_response(rec: dict, api: str) -> bool:
+# (rec: dict, api: str) -> bool:
+def check_response(rec, api):
     '''
     Collate list of received API failures
     and check for these reponses from post
@@ -427,7 +442,8 @@ def check_response(rec: dict, api: str) -> bool:
             return True
 
 
-def recycle_api(api: str) -> None:
+# (api: str) -> None:
+def recycle_api(api):
     '''
     Adds a search call to API which
     triggers Powershell recycle

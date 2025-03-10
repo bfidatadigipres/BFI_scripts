@@ -200,8 +200,8 @@ def move_file(fname: str) -> None:
     Move json files dealt with to completed/ folder
     '''
     if os.path.exists(fname):
-        filename = os.path.basename(fname)
-        file_completed = os.path.join(JSON_COMPLETED, filename)
+        filename: str = os.path.basename(fname)
+        file_completed: str = os.path.join(JSON_COMPLETED, filename)
         try:
             shutil.move(fname, file_completed)
             LOGGER.info("Moved %s to completed folder", fname)
@@ -240,7 +240,7 @@ def cid_retrieve(search: str) -> Optional[tuple[str | list, str, str]]:
     return groupings, title, edit_name
 
 
-def work_quick_check(dct=None):
+def work_quick_check(dct=None) -> tuple[str, str, str, str]:
     '''
     Retrieve work_id, priref and art_form from existing Artifax work
     '''
@@ -249,13 +249,13 @@ def work_quick_check(dct=None):
         LOGGER.warning("No dictionary data passed through to work_quick_check()")
 
     if dct['work_id']:
-        work_id = dct['work_id']
+        work_id: str = dct['work_id']
     else:
         work_id = ''
         LOGGER.warning("Unable to retrieve work_id")
     print(f"Work ID: {work_id}")
     if dct['art_form']:
-        art_form = dct['art_form']
+        art_form: str = dct['art_form']
     else:
         art_form = ''
         LOGGER.warning("Unable to retrieve art_form")
@@ -271,7 +271,7 @@ def work_quick_check(dct=None):
     return (work_id, priref, cid_import, art_form)
 
 
-def work_season_retrieve(fname, supplied_season_id):
+def work_season_retrieve(fname: str, supplied_season_id: str) -> tuple[str]:
     '''
     Obtain various statuses from work_season for work_id, if season_id match
     '''
@@ -282,14 +282,14 @@ def work_season_retrieve(fname, supplied_season_id):
             if not isinstance(dct, dict):
                 return None
 
-            season_id = ''
+            season_id: str = ''
             if dct['season_id']:
                 season_id = dct['season_id']
             print(f"Season ID: {season_id}")
             if str(season_id) not in str(supplied_season_id):
                 continue
 
-            work_season_id = ''
+            work_season_id: str = ''
             if dct['work_on_season_id']:
                 work_season_id = dct['work_on_season_id']
             start_date = ""
@@ -322,7 +322,7 @@ def work_season_retrieve(fname, supplied_season_id):
         return (advanced_confirm, qanda_confirm, qanda_date, cid_import_date, nfa_category, start_date, work_season_id)
 
 
-def work_copy_extraction(fname, current_festival):
+def work_copy_extraction(fname: str, current_festival):
     '''
     Extracts data from newly downloaded work_copy for specified work_id
     Only returns data if the festival matches that being processed in main() dct
@@ -941,12 +941,12 @@ def main():
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def make_manifestations(work_copy_fname, current_festival, start_date, priref, manifestation_dct=None):
+def make_manifestations(work_copy_fname: str, current_festival: str, start_date: str, priref: str, manifestation_dct=None) -> bool:
     '''
     Function to form manifestations manifestations and their creation
     '''
-    man_int_priref = ''
-    man_fest_priref = ''
+    man_int_priref: str = ''
+    man_fest_priref: str = ''
     if manifestation_dct is None:
         print("*** WORK COPY DATA NONE ***")
         manifestation_dct = {}
@@ -987,11 +987,11 @@ def make_manifestations(work_copy_fname, current_festival, start_date, priref, m
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))
-def make_qanda(qanda_date, priref, grouping, qna_title_dct=None, manifestation_dct=None):
+def make_qanda(qanda_date, priref, grouping, qna_title_dct=None, manifestation_dct=None) -> Optional[bool]:
     '''
     Creates new Q&A Work record with tenacity retry
     '''
-    man_qna_priref = ''
+    man_qna_priref: str = ''
     qna_title_dct = {} if qna_title_dct is None else qna_title_dct.copy()
     manifestation_dct = {} if manifestation_dct is None else manifestation_dct.copy()
 
@@ -1192,7 +1192,7 @@ def manifestation_create(start_date, event_type, priref, manifestation_dct=None,
     return man_priref
 
 
-def create_qna_work(qna_date, film_priref, grouping, qna_title_dct=None):
+def create_qna_work(qna_date: str, film_priref: str, grouping: str, qna_title_dct=None):
     '''
     Uses qna_title_dct, work_default and work_restricted_defaults to generate Q&A Work record in CID
     '''
@@ -1200,9 +1200,9 @@ def create_qna_work(qna_date, film_priref, grouping, qna_title_dct=None):
     qna_title_dct = {} if qna_title_dct is None else qna_title_dct.copy()
 
     # Work record defaults, basic and retrieve priref/object_number for Artifax push
-    application_restriction_date = str(datetime.date.today() + datetime.timedelta(120))
-    application_restriction_date_8yr = str(datetime.date.today() + datetime.timedelta(2922))
-    work_default = []
+    application_restriction_date: str = str(datetime.date.today() + datetime.timedelta(120))
+    application_restriction_date_8yr: str = str(datetime.date.today() + datetime.timedelta(2922))
+    work_default: list[dict[str, str]] = []
     work_default = ({'record_type': 'WORK'},
                     {'input.name': 'datadigipres'},
                     {'input.date': TODAY},

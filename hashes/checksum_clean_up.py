@@ -72,7 +72,7 @@ def checksum_split(data: str) -> tuple[str, str, str]:
     '''
     md5 = path = date = ''
     try:
-        data_split: str = data.split(" - ")
+        data_split  = data.split(" - ")
         md5 = data_split[0]
         path = data_split[1]
         date = data_split[2]

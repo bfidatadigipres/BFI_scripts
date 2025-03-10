@@ -33,6 +33,8 @@ import sys
 import shutil
 import logging
 import datetime
+import requests
+from typing import Optional, Final 
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -64,13 +66,13 @@ BIT_DEPTHS = {
     '48': '95709'
 }
 
-def cid_retrieve(fname, session):
+def cid_retrieve(fname: str, session:requests.Session) -> Optional[tuple[str, str, str, str, str, str]]:
     '''
     Receive filename and search in CID works dB
     Return selected data to main()
     '''
-    search = f'object_number="{fname}"'
-    fields = [
+    search: str = f'object_number="{fname}"'
+    fields: list[str] = [
         'priref',
         'object_number',
         'title_date_start',
@@ -115,7 +117,7 @@ def cid_retrieve(fname, session):
     return priref, ob_num, title, title_article, tds
 
 
-def sort_date_types(title_date_start, title_date_type):
+def sort_date_types(title_date_start: list[str], title_date_type: list[str]) -> Optional[str]:
     '''
     Make sure only 'copyright' pair returned
     '''
@@ -238,7 +240,7 @@ def main():
     LOGGER.info("=========== Special Collections rename - Digital Derivatives END ==============")
 
 
-def build_defaults(work_data, ipath, image, arg, obj=None):
+def build_defaults(work_data: Optional[tuple[str, str, str, str, str, str]], ipath: str, image: str, arg: str, obj=None) -> Optional[tuple[list[dict[str, str]], Optional[str]]]:
     '''
     Build up item record defaults
     '''
@@ -296,15 +298,15 @@ def build_defaults(work_data, ipath, image, arg, obj=None):
     return records, metadata
 
 
-def get_exifdata(dpath):
+def get_exifdata(dpath: str) -> tuple[Optional[list[dict[str, str]]], Optional[str]]:
     '''
     Attempt to get metadata for record build
     Example dict below, waiting for confirmation
     '''
-    metadata = ([])
-    creator_data = []
-    rights_data = []
-    data = utils.exif_data(dpath)
+    metadata: list[dict[str, str]] = ([])
+    creator_data: list[str] = []
+    rights_data: list[str] = []
+    data: str = utils.exif_data(dpath)
     print(data)
     if not data:
         return None, None
@@ -375,12 +377,12 @@ def get_exifdata(dpath):
     return None, data
 
 
-def write_exif_to_file(image, metadata):
+def write_exif_to_file(image: str, metadata: str) -> Optional[str]:
     '''
     Create newline output to text file
     '''
 
-    meta_dump = os.path.join(MEDIAINFO_PATH, f"{image}_EXIF.txt")
+    meta_dump: str = os.path.join(MEDIAINFO_PATH, f"{image}_EXIF.txt")
 
     with open(meta_dump, 'a+') as file:
         file.write(metadata)
@@ -391,7 +393,7 @@ def write_exif_to_file(image, metadata):
     return None
 
 
-def create_new_image_record(record_json, session):
+def create_new_image_record(record_json: str, session: requests.Session) -> Optional[tuple[str, str]]:
     '''
     Function for creation of new CID records
     both Analogue and Digital, returning priref/obj
@@ -409,13 +411,13 @@ def create_new_image_record(record_json, session):
     return priref, obj
                 
 
-def write_payload(priref, payload_header, session):
+def write_payload(priref: str, payload_header: str, session: requests.Session) -> bool:
     '''
     Payload formatting per mediainfo output
     '''
-    payload_head = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_end = "</record></recordList></adlibXML>"
-    payload = payload_head + payload_header + payload_end
+    payload_head: str = f"<adlibXML><recordList><record priref='{priref}'>"
+    payload_end: str = "</record></recordList></adlibXML>"
+    payload: str = payload_head + payload_header + payload_end
 
     record = adlib.post(CID_API, payload, 'internalobject', 'updaterecord', session)
     if record is None:
@@ -426,7 +428,7 @@ def write_payload(priref, payload_header, session):
         return True
 
 
-def rename(filepath, ob_num):
+def rename(filepath: str, ob_num: str) -> tuple[str, str]:
     '''
     Receive original file path and rename filename
     based on object number, return new filepath, filename
@@ -447,13 +449,13 @@ def rename(filepath, ob_num):
     return (new_filepath, new_filename)
 
 
-def move(filepath, arg):
+def move(filepath: str, arg: str) -> bool:
     '''
     Move existing filepaths to Autoingest
     '''
     if os.path.exists(filepath) and 'fail' in arg:
-        pth = os.path.split(filepath)[0]
-        failures = os.path.join(pth, 'failures/')
+        pth: str = os.path.split(filepath)[0]
+        failures: str = os.path.join(pth, 'failures/')
         os.makedirs(failures, mode=0o777, exist_ok=True)
         print(f"move(): Moving {filepath} to {failures}")
         try:

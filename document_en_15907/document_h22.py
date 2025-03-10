@@ -13,6 +13,7 @@ import shutil
 import logging
 import argparse
 import subprocess
+from typing import Any, Final, Optional
 
 # Private modules
 sys.path.append(os.environ['CODE'])
@@ -34,7 +35,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
-RNA_PRIREF = {
+RNA_PRIREF: Final = {
     'EAFA': 20009,
     'IWM': 360,
     'LSA': 999697937,
@@ -50,7 +51,7 @@ RNA_PRIREF = {
     'YFA': 999376880
 }
 
-FRAMEWORK_PRIREF = {
+FRAMEWORK_PRIREF: Final = {
     'DC1': 999795134,
     'LMH': 999801915,
     'MX1': 999761305,
@@ -63,7 +64,7 @@ FRAMEWORK_PRIREF = {
 }
 
 
-def default_record():
+def default_record() -> list[dict[str]]:
     '''
     Default values for an item record
     '''
@@ -85,7 +86,7 @@ def default_record():
     return data
 
 
-def make_item_record(rna, frame_work):
+def make_item_record(rna: str, frame_work: str) -> list[dict[str, str]]:
     '''
     Return item record data as a list of field-value pair dictionaries
     '''
@@ -102,7 +103,7 @@ def make_item_record(rna, frame_work):
     return new_record
 
 
-def check_supplier(filepath):
+def check_supplier(filepath: str) -> Optional[str]:
     '''
     Match file path to supplier
     short form
@@ -129,11 +130,11 @@ def check_supplier(filepath):
     return supplier
 
 
-def get_duration(filepath):
+def get_duration(filepath: str) -> str:
     '''
     Replacing fffilter
     '''
-    cmd = [
+    cmd: list[str] = [
         'mediainfo',
         '--Language=raw', '-f',
         '--Output=General;%Duration%',
@@ -141,8 +142,7 @@ def get_duration(filepath):
     ]
 
     try:
-        duration = subprocess.check_output(cmd)
-        duration = duration.decode('utf-8')
+        duration = subprocess.check_output(cmd).decode('utf-8')
     except Exception as err:
         logger.warning(err)
         duration = ''
@@ -150,7 +150,7 @@ def get_duration(filepath):
     return duration
 
 
-def main(filepath, frame_work, destination=None):
+def main(filepath: str, frame_work: str, destination=None) -> None:
     '''
     Create a new item record and rename source file
     '''

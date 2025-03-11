@@ -76,7 +76,7 @@ def make_output_md5(filepath: str, filename: str) -> Optional[str] :
     Runs checksum generation/output to file as separate function allowing for easier retries
     '''
     try:
-        md5_checksum: typing.Optional[str] = utils.create_md5_65536(filepath)
+        md5_checksum: Optional[str] = utils.create_md5_65536(filepath)
         LOGGER.info("%s - MD5 sum generated: %s", filename, md5_checksum)
         if 'None' in str(md5_checksum):
             raise Exception
@@ -138,9 +138,9 @@ def main():
     bpi_path: str = get_bpi_folder(filepath)
     LOGGER.info("Black Pearl Ingest folder identified: %s", bpi_path)
     if not os.path.isfile(filepath):
-        filepath: str = utils.local_file_search(bpi_path, fname)
+        filepath: str = utils.local_file_search(bpi_path, filename)
 
-    md5_checksum: typing.Optional[str] = make_output_md5(filepath, filename)
+    md5_checksum: Optional[str] = make_output_md5(filepath, filename)
     if md5_checksum is None:
         md5_checksum = make_output_md5(filepath, filename)
     elif 'None' in str(md5_checksum):
@@ -193,7 +193,7 @@ def make_metadata(bpi_path: str, fpath: str, fname: str, mediainfo_path: str) ->
     LOGGER.info("Written metadata to paths:\n%s\n%s\n%s\n%s\n%s\n%s", path1, path2, path3, path4, path5, path6)
 
 
-def get_bpi_folder(filepath):
+def get_bpi_folder(filepath: str) -> Optional[str]:
     '''
     Identify and return the base
     black_pearl_ingest folder to

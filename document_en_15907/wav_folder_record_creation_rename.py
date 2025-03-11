@@ -28,6 +28,7 @@ import shutil
 import logging
 import datetime
 import subprocess
+from typing import Optional
 
 # Private packages
 sys.path.append(os.environ['CODE'])

@@ -24,7 +24,7 @@ import shutil
 import logging
 import datetime
 import tenacity
-from typing import Optional, Final
+from typing import Optional, Final, Any
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -89,7 +89,7 @@ def extract_prirefs(records: Optional[tuple[dict[str, Any]]]) -> Optiona[list[st
     return prirefs
 
 
-def create_dictionary(recordsOptional[tuple[dict[str, Any]]]) -> dict[str, str]:
+def create_dictionary(records: Optional[tuple[dict[str, Any]]]) -> dict[str, str]:
     '''
     Extract data and list of dictionaries
     '''

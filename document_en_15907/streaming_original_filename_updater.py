@@ -78,7 +78,7 @@ def cid_check_filenames(priref: str, platform: str) -> Optional[str, str]:
     checks if filename already populated
     '''
     search: str = f'priref="{priref}"'
-    fields: lisr[str] = [
+    fields: list[str] = [
         'priref',
         'digital.acquired_filename',
         'edit.notes',
@@ -108,7 +108,7 @@ def cid_check_filenames(priref: str, platform: str) -> Optional[str, str]:
     return file_name_block, ''
 
 
-def cid_check_media(priref: str, original_filename: str, ingest_fname: str) -> tuple[Optional[str], Operational[bool]]:
+def cid_check_media(priref: str, original_filename: str, ingest_fname: str) -> tuple[Optional[str], Optional[bool]]:
     '''
     Check for CID media record linked to Item priref
     and see if digital.acquired_filename field populated
@@ -230,7 +230,7 @@ def main():
     LOGGER.info("=== Streaming Platform original filename updates END =====================")
 
 
-def update_cid_media_record(priref: str, orig_fname: str, platform: str, file_type: str) -> Operational[bool]:
+def update_cid_media_record(priref: str, orig_fname: str, platform: str, file_type: str) -> Optional[bool]:
     '''
     CID media record found without
     original filename, append here

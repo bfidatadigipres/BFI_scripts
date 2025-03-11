@@ -69,9 +69,9 @@ import ntpath
 import logging
 import datetime
 import subprocess
+from typing import Final, Optional, Union, Any
 import requests
 import magic
-from typing import Final, Optional, Union, Any
 
 # Private packages
 import bp_utils as bp

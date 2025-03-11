@@ -185,7 +185,7 @@ def main():
         LOGGER.info("Folder matched to CID Item record: %s | %s ", folder, priref)
         mov_list: list[str] = [x for x in os.listdir(fpath) if x.endswith(('.mov', '.MOV'))]
         print(mov_list)
-        all_items: liststr = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
+        all_items: list[str] = [x for x in os.listdir(fpath) if os.path.isfile(os.path.join(fpath, x))]
         if len(mov_list) != len(all_items):
             LOGGER.warning("Folder contains files that are not MOV: %s", fpath)
             continue

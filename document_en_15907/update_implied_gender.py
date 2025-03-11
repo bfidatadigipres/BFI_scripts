@@ -50,7 +50,7 @@ def load_names() -> dict[str, str]:
     return gendered_names
 
 
-def retrieve_people_records() -> tuple[int, list[dict[str, Optiona[str]]]]:
+def retrieve_people_records() -> tuple[int, list[dict[str, Optional[str]]]]:
     '''
     Download 500 people in scope from 2019-01-01
     and update their implied gender to record

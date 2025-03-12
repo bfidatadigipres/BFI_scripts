@@ -344,7 +344,7 @@ def cid_check_works(patv_id: str) -> Optional[tuple[int, str, str, str, list[str
     '''
     query: str = f'alternative_number="{patv_id}"'
     try:
-        hits: int, record = adlib.retrieve_record(CID_API, 'works', query, 0)
+        hits, record = adlib.retrieve_record(CID_API, 'works', query, 0)
     except Exception as err:
         LOGGER.warning("cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s", patv_id, err)
         print("cid_check_works(): Record not found. Series hit count and series priref will return empty strings")
@@ -374,7 +374,7 @@ def cid_check_works(patv_id: str) -> Optional[tuple[int, str, str, str, list[str
             print(f"cid_check_works(): Grouping: {grouping}")
             groupings.append(grouping)
         except Exception as err:
-            pass
+            print(err)
 
     alt_type: list[str] = []
     for num in range(0, hits):

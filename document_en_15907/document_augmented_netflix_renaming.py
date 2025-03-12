@@ -51,7 +51,7 @@ import shutil
 import logging
 import datetime
 import xmltodict
-from typing import Final, Optional, Any, Sequence, Iterable
+from typing import Final, Optional, Any, Iterable
 
 # Local packages
 sys.path.append(os.environ['CODE'])

@@ -359,9 +359,9 @@ def get_exifdata(dpath: str) -> tuple[Optional[list[dict[str, str]]], Optional[s
             metadata.append({'source_device': d.split(': ', 1)[-1]})
 
     if len(creator_data) > 0 and len(rights_data) > 0:
-        creator_data.sort(key=len, reverse=True)
-        rights_data.sort(key=len, reverse=True)
-        metadata.append({'production.notes': f"Photographer: {creator_data[0]}, Rights: {rights_data[0]}"})
+         creator_data.sort(key=len, reverse=True)
+         rights_data.sort(key=len, reverse=True)
+         metadata.append({'production.notes': f"Photographer: {creator_data[0]}, Rights: {rights_data[0]}"})
     elif len(creator_data) > 0:
          creator_data.sort(key=len, reverse=True)
          metadata.append({'production.notes': f"Photographer: {creator_data[0]}"})

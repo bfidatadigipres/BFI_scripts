@@ -85,7 +85,7 @@ def cid_list_retrieve(database: str, search:str) -> list[str]:
     return record_list
 
 
-def cid_retrieve(database: str, search: str) - > tuple[str, str, str, str, str, list[str]]:
+def cid_retrieve(database: str, search: str) -> tuple[str, str, str, str, str, list[str]]:
     '''
     Receive filename and search in CID records
     Return all available data to main

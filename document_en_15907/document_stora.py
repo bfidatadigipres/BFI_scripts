@@ -489,9 +489,7 @@ def create_work(
             )
             logger.info("%s\tWork record created with priref %s", fullpath, work_id)
         except (IndexError, TypeError, KeyError) as err:
-            logger.critical(
-                f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {title}"
-            )
+            logger.critical("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", title)
             raise Exception(
                 "Failed to retrieve Priref/Object Number from record creation."
             ).with_traceback(err.__traceback__)
@@ -546,9 +544,7 @@ def create_manifestation(
                 manifestation_id,
             )
         except (IndexError, TypeError, KeyError) as err:
-            logger.critical(
-                f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {title}"
-            )
+            logger.critical("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", title)
             raise Exception(
                 "Failed to retrieve Priref/Object Number from record creation."
             ).with_traceback(err.__traceback__)
@@ -640,9 +636,7 @@ def create_item(
             )
             logger.info("%s\tItem record created with priref %s", fullpath, item_id)
         except (TypeError, IndexError, KeyError) as err:
-            logger.critical(
-                f"Failed to retrieve Priref from record created using: 'works', 'insertrecord' for {title}"
-            )
+            logger.critical("Failed to retrieve Priref from record created using: 'works', 'insertrecord' %s", title)
             raise Exception(
                 "Failed to retrieve Priref/Object Number from record creation."
             ).with_traceback(err.__traceback__)

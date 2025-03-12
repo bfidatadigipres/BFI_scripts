@@ -238,7 +238,7 @@ def main():
         os.remove(filepath)
         sys.exit("Checksum already exists. Exiting.")
     else:
-        LOGGER.info("Failed to match data to a CID Media record. Skipping this file.", fname)
+        LOGGER.info("Failed to match data to a CID Media record %s. Skipping this file.", fname)
 
     LOGGER.info("===== CHECKSUM CLEAN UP SCRIPT COMPLETE %s =====", fname)
 

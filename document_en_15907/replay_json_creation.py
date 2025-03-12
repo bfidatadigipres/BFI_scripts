@@ -74,7 +74,7 @@ def cid_retrieve(filename: str, search: str) -> Optional[tuple[dict[str, Any]]]:
         return record
 
 
-def extract_prirefs(records: Optional[tuple[dict[str, Any]]]) -> Optiona[list[str]]:
+def extract_prirefs(records: Optional[tuple[dict[str, Any]]]) -> Optional[list[str]]:
     '''
     Iterate returned CID hits for individual prirefs
     '''

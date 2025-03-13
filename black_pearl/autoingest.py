@@ -384,9 +384,9 @@ def get_media_ingests(object_number: str, session: requests.Session) -> list[str
         logger.exception('"CID API was unreachable for Media search: %s', search)
         raise Exception(f"CID API was unreachable for Media search: {search}")
     if record is None:
-        logger.exception('"There is no such record for object: %s', object_number)
-        raise Exception(f"There's no such record for object: {object_number}")
-    
+        logger.info("No digitised assets found for this object_number: %s", object_number)
+        return None
+
     print(f"get_media_ingests(): AdlibV3 record returned:\n{record}")
 
     original_filenames = []

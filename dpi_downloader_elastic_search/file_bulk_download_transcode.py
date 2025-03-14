@@ -572,7 +572,7 @@ def main():
     LOGGER.info("================ DPI DOWNLOAD REQUESTS COMPLETED. Date: %s =================\n", datetime.now().strftime(FMT)[:19])
 
 
-def create_transcode(new_fpath: str, transcode: str, fname: str, user_id: str) -> Tuple[str, bool]:
+def create_transcode(new_fpath: str, transcode: str, fname: str, user_id: str) -> tuple[str, bool]:
     '''
     Transcode files depending on supplied
     transcode preference. Output result of attempt

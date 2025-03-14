@@ -40,13 +40,13 @@ CID_API: Final = os.environ['CID_API4']
 CLIENT: Final = ds3.createClientFromEnv()
 
 TARGETS: Final = [
-   f"{os.environ['QNAP_H22']}/processing/",
-   f"{os.environ['GRACK_H22']}/processing/",
-   f"{os.environ['ISILON_VID']}/processing/",
-   f"{os.environ['QNAP_08']}/processing/",
-   f"{os.environ['QNAP_10']}/processing/"
+    os.path.join(os.environ['QNAP_H22'], processing/),
+    os.path.join(os.environ['GRACK_H22'], processing/),
+    os.path.join(os.environ['QNAP_08'], processing/),
+    os.path.join(os.environ['QNAP_08'], memnon_processing/),
+    os.path.join(os.environ['QNAP_10'], processing/),
 ]
-
+print(TARGETS)
 # Setup logging, overwrite each time
 logger = logging.getLogger('delete_post_split')
 hdlr = logging.FileHandler(os.path.join(LOG_PATH, 'delete_post_split.log'))

@@ -57,7 +57,7 @@ import os
 import sys
 import logging
 import itertools
-from typing import Optional, Any, Final
+from typing import Optional, Any, Final, Union
 from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError

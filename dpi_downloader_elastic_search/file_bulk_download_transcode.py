@@ -116,6 +116,8 @@ def get_media_original_filename(fname: str) -> tuple[Optional[str], Optional[str
         'imagen.media.original_filename',
         'preservation_bucket'
     ]
+    print(search, fields, CID_API)
+
     record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
     if record is None:
         LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s", fname)

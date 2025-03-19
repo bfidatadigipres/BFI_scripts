@@ -369,6 +369,8 @@ def adjust_seconds(duration: int | str, data: str) -> int:
     blist = retrieve_blackspaces(data)
     print(f"*** BLACK GAPS: {blist}")
     if isinstance(duration, str):
+        if '.' in duration:
+            duration = duration.split('.')[0]
         duration = int(duration)
     if not blist:
         return duration // 2
@@ -657,7 +659,7 @@ def get_width(fullpath):
         return '1920'
     if width.isdigit():
         return str(width)
-    
+
     width = width.split(' p', maxsplit=1)[0]
     return re.sub("[^0-9]", "", width)
 
@@ -671,15 +673,13 @@ def get_duration(fullpath: str) -> tuple[int, str] | tuple[str, str]:
     '''
 
     duration = utils.get_metadata('Video', 'Duration', fullpath)
+    duration_list = []
     if not duration:
         return ('', '')
     if '.' in duration:
         duration_list = duration.split('.')
 
-    if isinstance(duration, str):
-        second_duration = int(duration) // 1000
-        return (second_duration, '0')
-    elif len(duration_list) == 2:
+    if len(duration_list) == 2:
         print("Just one duration returned")
         num = duration_list[0]
         second_duration = int(num) // 1000
@@ -696,6 +696,9 @@ def get_duration(fullpath: str) -> tuple[int, str] | tuple[str, str]:
         elif int(dur1) < int(dur2):
             second_duration = int(dur2) // 1000
             return (second_duration, '1')
+    else:
+        second_duration = int(duration) // 1000
+        return (second_duration, '0')
 
 
 def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[list[str]]]:

@@ -259,6 +259,7 @@ def get_item_priref(ob_num: str, session: requests.Session) -> str:
     '''
     ob_num = ob_num.strip()
     search = f"object_number='{ob_num}'"
+    print(f"Search used against CID Collect dB: {search}")
     record = adlib.retrieve_record(CID_API, 'collect', search, '1', session)[1]
     print(f"get_item_priref(): AdlibV3 record for priref:\n{record}")
 

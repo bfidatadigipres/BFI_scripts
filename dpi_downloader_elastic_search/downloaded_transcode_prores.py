@@ -235,25 +235,24 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
     if not duration:
         return ('', '')
 
-    duration_str = duration.decode('utf-8').rstrip('\n')
+    duration = duration.decode('utf-8').rstrip('\n')
     print(f"Mediainfo seconds: {duration_str}")
 
-    if '.' in duration_str:
-        duration_list = duration_str.split('.')
-
-    if isinstance(duration_str, str):
-        second_duration = int(duration_str) // 1000
+    if '.' in duration:
+        duration = duration.split('.')
+    if isinstance(duration, str):
+        second_duration = int(duration) // 1000
         return (second_duration, '0')
-    elif len(duration_list) == 2:
+    elif len(duration) == 2:
         print("Just one duration returned")
-        num = duration_list[0]
+        num = duration[0]
         second_duration = int(num) // 1000
         print(second_duration)
         return (second_duration, '0')
-    elif len(duration_list) > 2:
+    elif len(duration) > 2:
         print("More than one duration returned")
-        dur1 = f"{duration_list[0]}"
-        dur2 = f"{duration_list[1][6:]}"
+        dur1 = f"{duration[0]}"
+        dur2 = f"{duration[1][6:]}"
         print(dur1, dur2)
         if int(dur1) > int(dur2):
             second_duration = int(dur1) // 1000

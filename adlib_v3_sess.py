@@ -43,7 +43,8 @@ def create_session() -> Session:
     return session
 
 
-def retrieve_record(api: str, database: str, search: str, limit: str, session: Session=None, fields=None)-> tuple[Optional[int], Optional[list[Any]]]:
+#def retrieve_record(api: str, database: str, search: str, limit: str, session: Session=None, fields=None)-> tuple[Optional[int], Optional[list[Any]]]:
+def retrieve_record(api, database, search, limit, session, fields=None):
     '''
     Retrieve data from CID using new API
     '''

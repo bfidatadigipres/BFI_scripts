@@ -25,8 +25,8 @@ import shutil
 import logging
 from datetime import datetime
 from time import sleep
-from ds3 import ds3, ds3Helpers
 from typing import Final, Optional
+from ds3 import ds3, ds3Helpers
 
 # Local imports
 import bp_utils

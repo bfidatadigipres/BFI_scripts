@@ -19,6 +19,7 @@ import time
 import json
 import logging
 import requests
+from typing import Optional
 
 # Global variables
 STORAGE = os.environ['STORA_PATH']
@@ -83,7 +84,7 @@ def get_asset(series_id: str, title: str) -> None:
     time.sleep(10)
 
 
-def check_id(fullpath):
+def check_id(fullpath: str) -> Optional[str]:
     '''
     Check series id from EPG matches
     nested search returned for 'series'

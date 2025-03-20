@@ -29,6 +29,7 @@ import sys
 import shutil
 import logging
 import datetime
+from typing import Any, Optional, Final
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -55,7 +56,7 @@ STORAGE = {
 }
 
 
-def cid_check_ob_num(object_number):
+def cid_check_ob_num(object_number: str) -> dict[Any, Any]:
     '''
     Looks up object_number and retrieves title
     and other data for new timed text record
@@ -69,7 +70,7 @@ def cid_check_ob_num(object_number):
     return record
 
 
-def walk_folders(storage):
+def walk_folders(storage: str) -> list[str]:
     '''
     Collect list of folderpaths
     for files named rename_<platform>
@@ -175,7 +176,7 @@ def main():
     LOGGER.info("== Document augmented streaming platform timed text end =====================\n")
 
 
-def build_record_defaults(platform):
+def build_record_defaults(platform: str) -> list[dict[str, str]]:
     '''
     Return all record defaults
     '''
@@ -211,7 +212,7 @@ def build_record_defaults(platform):
     return record
 
 
-def rename_or_move(arg, file_a, file_b):
+def rename_or_move(arg: str, file_a: str, file_b: str) -> bool:
     '''
     Use shutil or os to move/rename
     from file a to file b. Verify change
@@ -242,7 +243,7 @@ def rename_or_move(arg, file_a, file_b):
     return False
 
 
-def make_item_record_dict(priref, file, record):
+def make_item_record_dict(priref: str, file: str, record: dict[Any, Any]):
     '''
     Get CID item record for source and borrow data
     for creation of new CID item record
@@ -308,7 +309,7 @@ def make_item_record_dict(priref, file, record):
     return item
 
 
-def create_new_item_record(priref, fname, record):
+def create_new_item_record(priref: str, fname: str, record:dict[Any, Any]) -> dict[Any, Any]:
     '''
     Build new CID item record from existing data and make CID item record
     '''

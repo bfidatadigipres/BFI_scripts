@@ -32,7 +32,7 @@ LOGS: Final = os.environ.get('LOG_PATH')
 CONTROL_JSON: Final = os.path.join(LOGS, 'downtime_control.json')
 CID_API: Final = os.environ.get('CID_API4')
 
-# Setup logging
+# Setup loggin
 LOGGER = logging.getLogger('document_access_edits')
 HDLR = logging.FileHandler(os.path.join(LOGS, 'document_access_edits.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
@@ -50,19 +50,21 @@ def process_duplicate_files(fname: str) -> Optional[str]:
     if not os.path.exists(LOCAL_LOG):
         return 'local log does not exist'
 
-    with open(LOGAL_LOG, 'r') as log:
-        contents = log.readline()
+    with open(LOCAL_LOG, 'r') as log:
+        contents = log.readlines()
 
     # check if the file is inside the log
-    for fname in contents:
-        if os.path.exists(os.path.join(STORAGE, f'duplicates/{fname}')):
-            os.remove(STORAGE, f'duplicates/{fname}')))
-        try:
-            shutil.move(os.path.join(STORAGE, fname), os.path.join(STORAGE, f'duplicates/{fname}'))
-            local_log(LOCAL_LOG, f"** Duplicated file has been found: {fname} \n")
-            return 'duplicated file'
-        except Exception as e:
-            print(e)
+    for row in contents:
+        if fname in str(row):
+            if os.path.exists(os.path.join(STORAGE, f'duplicates/{fname}')):
+                os.remove(os.path.join(STORAGE, f'duplicates/{fname}'))
+            try:
+                shutil.move(os.path.join(STORAGE, fname), os.path.join(STORAGE, f'duplicates/{fname}'))
+                local_log(f"** Duplicated file has been found: {fname} \n")
+                return 'duplicated file'
+            except Exception as e:
+                print(e)
+                raise Exception from e
 
     return 'new file'
 

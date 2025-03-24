@@ -236,7 +236,7 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
         return ('', '')
 
     duration = duration.decode('utf-8').rstrip('\n')
-    print(f"Mediainfo seconds: {duration_str}")
+    print(f"Mediainfo seconds: {duration}")
 
     if '.' in duration:
         duration = duration.split('.')
@@ -466,20 +466,19 @@ def conformance_check(filepath: str) -> str:
         return "FAIL!"
 
 
-def transcode_mov(fpath: str) -> bool | str:
+def transcode_mov(fullpath):
     '''
-    Receives sys.argv[1] path to MOV from shell start script via GNU parallel
+    Receives file path to MOV from shell start script via GNU parallel
     Passes to FFmpeg subprocess command, transcodes ProRes mov then checks
     finished encoding against custom prores mediaconch policy
     If pass, cleans up files moving to finished_prores/ folder and deletes V210 mov (temp offline).
     '''
-    fullpath = fpath
     if not os.path.isfile(fullpath):
-        logger.warning("SCRIPT EXITING: Error with file path:\n %s", sys.argv)
+        logger.warning("SCRIPT EXITING: Error with file path:\n %s", fullpath)
         return False
     mime_true = check_mime_type(fullpath)
     if not mime_true:
-        logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", sys.argv)
+        logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", fullpath)
         return 'not video'
     if not utils.check_control('pause_scripts'):
         logger.info('Script run prevented by downtime_control.json. Script exiting.')

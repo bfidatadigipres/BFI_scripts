@@ -7,11 +7,13 @@ Script stages:
 1. Iterate through supplied sys.argv[1] folder path
 2. For each subfolder split folder name: ob_num / ISAD(G) level / Title
 3. Create CID record for each folder following level from folder name
+   - Only when subfolder starts with object number of parent folder
    - Only creating Series, Sub Series and Sub Sub Series (awaiting record_type for last)
    - For items (any digital document) create an Archive Item record (df='ITEM_ARCH')
 4. Join to the parent/children records through the ob_num part/part_of
 5. Once at bottom of folders in sub or sub sub series, order files by creation date (if possble)
-6. CID archive item records are to be made for each, and linked to parent folder:
+6. Check for filename already in digital.acquired_filename in CID already (report where found)
+7. CID archive item records are to be made for each, and linked to parent folder:
       Named GUR-2-1-1-1-1, GUR-2-1-1-1-2 etc based on parent's object number
       Original filename is to be captured into the Item record digital.acquired_filename
       Rename the file and move to autoingest.
@@ -25,20 +27,18 @@ import sys
 import shutil
 import logging
 import datetime
-import requests
-from pathlib import Path
 from typing import Optional, Final, List, Dict
 
 # Private packages
-sys.path.append(os.environ['CODE'])
+sys.path.append(os.environ.get('CODE'))
 import adlib_v3_sess as adlib
 import utils
 
 # Global path variables
-AUTOINGEST = os.path.join(os.environ['AUTOINGEST_IS_SPEC'], 'ingest/proxy/image/')
-LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_document_archiving_osh.log')
-MEDIAINFO_PATH = os.path.join(os.environ['LOG_PATH'], 'cid_mediainfo/')
-CID_API = os.environ['CID_API4']
+AUTOINGEST = os.path.join(os.environ.get('AUTOINGEST_BP_SC'), 'ingest/autodetect/')
+LOG = os.path.join(os.environ.get('LOG_PATH'), 'special_collections_document_archiving_osh.log')
+MEDIAINFO_PATH = os.path.join(os.environ.get('LOG_PATH'), 'cid_mediainfo/')
+CID_API = os.environ.get('CID_API4')
 
 LOGGER = logging.getLogger('sc_document_archiving_osh')
 HDLR = logging.FileHandler(LOG)
@@ -48,7 +48,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def cid_retrieve(fname: str, session:requests.Session) -> Optional[tuple[str, str, str]]:
+def cid_retrieve(fname: str, session) -> Optional[tuple[str, str, str]]:
     '''
     Receive filename and search in CID works dB
     Return selected data to main()
@@ -97,9 +97,26 @@ def sort_dates(file_list: List[str]) -> List[str]:
 
     enum_list = []
     for i, name in enumerate(time_list):
-        enum_list.append(f"{name.split(' - ')[-1]}, {i + 1}")
-    
+        enum_list.append(f"{name.split(' - ', 1)[-1]}, {i + 1}")
+
     return enum_list
+
+
+def folder_split(fname):
+    '''
+    Split folder name into parts
+    '''
+    fsplit = fname.split('_', 2)
+    print(fsplit)
+    if len(fsplit) != 3:
+        LOGGER.warning("Folder has not split as anticipated: %s", fsplit)
+        return None, None, None
+    ob_num, record_type, title = fsplit
+    if not ob_num.startswith(('GUR', '')):
+        LOGGER.warning("Object number is not formatted as anticipated: %s", ob_num)
+        return None, None, None
+
+    return ob_num, record_type, title
 
 
 def main():
@@ -117,56 +134,92 @@ def main():
     LOGGER.info("=========== Special Collections rename - Document Archiving OSH START ============")
 
     base_dir = sys.argv[1]  # sub_fond level path
+    sub_fond = os.path.basename(base_dir)
+    sf_ob_num, sf_record_type, sf_title = folder_split(sub_fond)
+    print(f"Sub fond data found: {sf_ob_num}, {sf_record_type}, {sf_title}")
+    LOGGER.info("Sub fond data: %s, %s, %s", sf_ob_num, sf_record_type, sf_title)
+
     if not os.path.isdir(base_dir):
         sys.exit("Folder path is not a valid path")
-    
+
     session = adlib.create_session()
-    series = [x for x in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir / x))]
+    # Only match directories that start with GUR-1 / GUR-2 etc.
+    series = [x for x in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, x)) and x.startswith(sf_ob_num)]
+    series.sort()
     LOGGER.info("Series found %s: %s", len(series), ', '.join(series))
 
-    sub_fond = os.path.basename(base_dir)
-    sf_ob_num, record_type, title = sub_fond.split('_')
-    LOGGER.info("Targeting %s - %s, title %s", sf_ob_num, record_type, title)
-    sf_priref, title, title_art = cid_retrieve(sf_ob_num, session)
-    LOGGER.info("Matched priref to %s: %s %s %s", sf_ob_num, sf_priref, title_art, title)
-
-    LOGGER.info("Processing contents of %s}", sub_fond)
-    series_structure = {}
+    LOGGER.info("Targeting %s - %s, title %s", sf_ob_num, sf_record_type, sf_title)
+    #sf_priref, title, title_art = cid_retrieve(sf_ob_num, session)
+    #LOGGER.info("Matched priref to %s: %s %s %s", sf_ob_num, sf_priref, title_art, title)
+    print("**** SERIES PROCESSING ****")
+    series_structure_all = []
+    series_ob_num = []
     for folder in series:
-        fpath = base_dir / folder
-        series_structure[fpath] = {
-            "folders": [os.path.join(fpath, x) for x in os.listdir(fpath) if os.path.isdir(os.path.join(fpath, x))]
-        }
-    LOGGER.info("Series data retrieved:\n%s", series_structure)
+        fpath = os.path.join(base_dir, folder)
+        ob_num, record_type, title = folder_split(folder)
+        if ob_num is None:
+            continue
+        series_ob_num.append(f"New object number: {ob_num} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
+        print(f"New series object number: {ob_num} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
+        series_structure = [os.path.join(fpath, x) for x in os.listdir(fpath) if os.path.isdir(os.path.join(fpath, x)) and x.startswith(ob_num)]
+        if series_structure is not None:
+            series_structure.sort()
+            series_structure_all = series_structure_all + series_structure
+    LOGGER.info("Series data retrieved")
 
-    LOGGER.info("Retrieving sub series file and folder paths...")
+    print("**** SUB SERIES PROCESSING ****")
+    sub_series_ob_num = []
     sub_series_structure = {}
     folders = []
     files = []
-    for key, value in series_structure.items():
-        fpath = key
-        for item in value:
-            if os.path.isdir(item):
-                folders.append(os.path.join(fpath, item))
-            elif os.path.isfile(fpath, item):
-                files.append(os.path.join(fpath, item))
-        sub_series_structure[fpath] = {"files": files}
-        sub_series_structure[fpath] = {"folders": folders}
-    LOGGER.info("Sub series data retrieved:\n%s", sub_series_structure)
+    for fpath in series_structure_all:
+        print(fpath)
+        sub_path, folder = os.path.split(fpath)
+        parent_ob_num = os.path.basename(sub_path).split('_', 1)[0]
+        ob_num, record_type, title = folder_split(folder)
+        if ob_num is None:
+            continue
+        sub_series_ob_num.append(f"New object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
+        print(f"New sub_series object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
+        folders = [f"{os.path.join(fpath, x)}" for x in os.listdir(fpath) if os.path.isdir(os.path.join(fpath, x)) and x.startswith(ob_num)]
+        if folders:
+            folders.sort()
+            sub_series_structure[f"{fpath} folders"] = folders
+        files = [f"{os.path.join(fpath, x)}" for x in os.listdir(fpath) if os.path.isfile(f"{os.path.join(fpath, x)}")]
+        if files:
+            enum_files = sort_dates(files)
+            sub_series_structure[f"{fpath} files"] = enum_files
+
+    print("Archive items found in creation date order:")
+    for file in sub_series_structure[f"{fpath} files"]:
+        print(f"{fpath} files")
 
     sub_sub_series_structure = {}
+    print("**** SUB SUB SERIES PROCESSING ****")
     folders = []
     files = []
     for key, value in sub_series_structure.items():
-        fpath = key
-        for item in value:
-            if os.path.isdir(item):
-                folders.append(os.path.join(fpath, item))
-            elif os.path.isfile(fpath, item):
-                files.append(os.path.join(fpath, item))
-        sub_sub_series_structure[fpath] = {"files": files}
-        sub_sub_series_structure[fpath] = {"folders": folders}
-    LOGGER.info("Sub series data retrieved:\n%s", sub_series_structure)
+        if ' folders' in key:
+            if not value:
+                continue
+            for fpath in value:
+                print(fpath)
+                sub_path, folder = os.path.split(fpath)
+                parent_ob_num = os.path.basename(sub_path).split('_', 1)[0]
+                ob_num, record_type, title = folder_split(folder)
+                if ob_num is None:
+                    continue
+                sub_series_ob_num.append(f"New object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
+                print(f"New sub_sub_series object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
+                files = [f"{os.path.join(fpath, x)}" for x in os.listdir(fpath) if os.path.isfile(f"{os.path.join(fpath, x)}")]
+                if files:
+                    enum_files = sort_dates(files)
+                    sub_sub_series_structure[f"{fpath}"] = enum_files
+
+    print("Archive items found in creation date order")
+    for k, v in sub_sub_series_structure.items():
+        for file in v:
+            print(f"\t{file}")
 
     LOGGER.info("=========== Special Collections - Document Archiving OSH END ==============")
 
@@ -284,7 +337,7 @@ def build_defaults(title_art, title) -> Optional[tuple[list[dict[str, str]], Opt
     return records
 
 
-def create_new_record(object_number, record_type, record_dct, session: requests.Session) -> Optional[tuple[str, str]]:
+def create_new_record(object_number, record_type, record_dct, session) -> Optional[tuple[str, str]]:
     '''
     Function for creation of new CID records JMW:
     Check if supplying Object Number has any adlib XML requirements!!
@@ -296,7 +349,7 @@ def create_new_record(object_number, record_type, record_dct, session: requests.
     if not record:
         LOGGER.warning("Adlib POST failed to create CID item record for data:\n%s", record_xml)
         return None
-    
+
     priref = adlib.retrieve_field_name(record, 'priref')[0]
     obj = adlib.retrieve_field_name(record, 'object_number')[0]
     return priref, obj

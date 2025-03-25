@@ -259,6 +259,7 @@ def get_item_priref(ob_num: str, session: requests.Session) -> str:
     '''
     ob_num = ob_num.strip()
     search = f"object_number='{ob_num}'"
+    print(f"Search used against CID Collect dB: {search}")
     record = adlib.retrieve_record(CID_API, 'collect', search, '1', session)[1]
     print(f"get_item_priref(): AdlibV3 record for priref:\n{record}")
 
@@ -384,9 +385,9 @@ def get_media_ingests(object_number: str, session: requests.Session) -> list[str
         logger.exception('"CID API was unreachable for Media search: %s', search)
         raise Exception(f"CID API was unreachable for Media search: {search}")
     if record is None:
-        logger.exception('"There is no such record for object: %s', object_number)
-        raise Exception(f"There's no such record for object: {object_number}")
-    
+        logger.info("No digitised assets found for this object_number: %s", object_number)
+        return None
+
     print(f"get_media_ingests(): AdlibV3 record returned:\n{record}")
 
     original_filenames = []

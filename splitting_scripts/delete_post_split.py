@@ -40,11 +40,11 @@ CID_API: Final = os.environ['CID_API4']
 CLIENT: Final = ds3.createClientFromEnv()
 
 TARGETS: Final = [
-   f"{os.environ['QNAP_H22']}/processing/",
-   f"{os.environ['GRACK_H22']}/processing/",
-   f"{os.environ['ISILON_VID']}/processing/",
-   f"{os.environ['QNAP_08']}/processing/",
-   f"{os.environ['QNAP_10']}/processing/"
+    os.path.join(os.environ['QNAP_H22'], 'processing/'),
+    os.path.join(os.environ['GRACK_H22'], 'processing/'),
+    os.path.join(os.environ['QNAP_08'], 'processing/'),
+    os.path.join(os.environ['QNAP_08'], 'memnon_processing/'),
+    os.path.join(os.environ['QNAP_10'], 'processing/'),
 ]
 
 # Setup logging, overwrite each time
@@ -166,6 +166,8 @@ def main():
                 # Check expected number of media records have been created for correct grouping
                 if '/qnap_h22/' in filepath or '/qnap_10/' in filepath:
                     grouping = '398385'
+                elif 'memnon_processing/' in filepath:
+                    grouping = '401629'
                 else:
                     grouping = '397987'
 

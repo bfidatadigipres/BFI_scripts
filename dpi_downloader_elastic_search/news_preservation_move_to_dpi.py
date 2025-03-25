@@ -5,6 +5,17 @@ Looks to database.db for preservation date and
 news channel information retrieving rows with status
 'Requested'. Stores username, email, date, channel, status.
 
+If the requested file can be found within available
+channels in QNAP-04/STORA_backup/YYYY/MM/DD/Channel, then moves requested
+channel (including acquired JSON files) to the DPI ingest
+path in STORA/YYYY/MM/DD/Channel.
+
+If it can't be found because the files have not yet been moved to the
+STORA_backup path then the script keeps checking.
+
+If a date is provided which is too late then a warning is added to the
+Flask app status.
+
 2023
 '''
 
@@ -152,7 +163,7 @@ def main():
     if len(data) == 0:
         sys.exit('No data found in DOWNLOADS database')
 
-    if not utils.check_control('power_off_all'):
+    if not utils.check_control('stora'):
         LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
     LOGGER.info("================ DPI NEWS PRESERVATION REQUESTS RETRIEVED: %s. Date: %s =================", len(data), datetime.datetime.now().strftime(FMT)[:19])

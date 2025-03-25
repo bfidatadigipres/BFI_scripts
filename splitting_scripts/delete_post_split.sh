@@ -36,6 +36,10 @@ sudo rm "${ISILON_VID}/processing/delete/*"
 echo "Actioning deletion of F47 Ofcom files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 sudo rm "${QNAP_08}/processing/delete/*"
 
+# Action deletion of F47 Ofcom files in QNAP Video processing/delete folder
+echo "Actioning deletion of Memnon files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
+sudo rm "${QNAP_08}/memnon_processing/delete/*"
+
 # Action deletion of H22 files in QNAP-10 processing/delete folder
 echo "Actioning deletion of H22 files in QNAP-10 identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 sudo rm "${QNAP_10}/processing/delete/*"

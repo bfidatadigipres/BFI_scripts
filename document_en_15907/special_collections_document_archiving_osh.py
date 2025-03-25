@@ -193,6 +193,7 @@ def main():
     defaults = build_defaults()
     for fpath in series:
         folder = os.path.basename(fpath)
+        print(f"Folder to be processed {folder}")
         ob_num, record_type, local_title = folder_split(folder)
         if record_type != 'series':
             continue
@@ -315,14 +316,14 @@ def create_series(object_number, record_type, parent_priref, title, session, def
         return None
 
     series_record.extend(defaults)        
-    series = [(
+    series = [
         {'Df': 'SERIES'},
         {'description_level_object': 'ARCHIVE'},
         {'object_number': object_number},
         {'part_of_reference.lref': parent_priref},
         {'archive_title.type': '07_arch'},
         {'title': title}
-    )]
+    ]
     series_record.extend(series)
     # Convert to XML
     print(series_record)
@@ -336,14 +337,14 @@ def create_sub_series(object_number, record_type, parent_priref, parent_ob_num, 
     and create records for each
     and create CID records
     '''
-    dct = [(
+    dct = [
         {'Df': 'SUB_SERIES'},
         {'object_number': object_number},
         {'record_type': record_type},
         {'part_of_reference.lref': parent_priref},
         {'archive_title.type': '07_arch'},
         {'title': title}
-    )]
+    ]
     dct.append({'Df': 'SUB_SERIES'})
     pass
 
@@ -404,7 +405,7 @@ def build_defaults():
     Use this function to just build standard defaults for all GUR records
     Discuss what specific record data they want in every record / some records
     '''
-    records = [(
+    records = [
         {'record_access.owner': 'Special Collections'},
         {'record_access.user': 'BFIiispublic'},
         {'record_access.rights': '0'},
@@ -413,7 +414,7 @@ def build_defaults():
         {'input.date': str(datetime.datetime.now())[:10]},
         {'input.time': str(datetime.datetime.now())[11:19]},
         {'input.notes': 'Automated record creation for Special Collections OSH, to facilitate ingest to DPI'}
-    )]
+    ]
 
     return records
 

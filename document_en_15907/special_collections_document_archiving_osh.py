@@ -146,18 +146,18 @@ def main():
     series = sub_series = sub_sub_series = sub_sub_sub_series = file = []
     for root, dirs, _ in os.walk(base_dir):
         for directory in dirs:
-            if directory.startswith(sf_ob_num):
-                print(directory)
+            if not str(directory).startswith(sf_ob_num):
+                continue
             dpath = os.path.join(root, directory)
-            if '_series_' in directory:
+            if '_series_' in str(directory):
                 series.append(dpath)
-            elif '_sub-series_' in directory:
+            elif '_sub-series_' in str(directory):
                 sub_series.append(dpath)
-            elif '_sub-sub-series_' in directory:
+            elif '_sub-sub-series_' in str(directory):
                 sub_sub_series.append(dpath)
-            elif '_sub-sub-sub-series_' in directory:
+            elif '_sub-sub-sub-series_' in str(directory):
                 sub_sub_sub_series.append(dpath)
-            elif '_file_' in directory:
+            elif '_file_' in str(directory):
                 file.append(dpath)
             else:
                 pass

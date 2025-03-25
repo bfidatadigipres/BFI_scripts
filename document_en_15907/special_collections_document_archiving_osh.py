@@ -204,13 +204,16 @@ def main():
             continue
         elif exist is True:
             LOGGER.info("Skipping creation. Record for %s already exists", ob_num)
+            continue
+        else:
+            LOGGER.info("No record found. Proceeding.")
 
-        # Create series record here
-        series_priref = create_series(ob_num, record_type.upper(), sf_priref, sf_ob_num, local_title, defaults, session)
-        if series_priref:
-            LOGGER.info("New SERIES record_type created: %s", series_priref)
-        print(f"New series record created: {ob_num} - {series_priref} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
-        sys.exit('Completed to end of first file. Exiting.')
+            # Create series record here
+            series_priref = create_series(ob_num, record_type.upper(), sf_priref, sf_ob_num, local_title, defaults, session)
+            if series_priref:
+                LOGGER.info("New SERIES record_type created: %s", series_priref)
+            print(f"New series record created: {ob_num} - {series_priref} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
+            sys.exit('Completed to end of first file. Exiting.')
     '''
     print("**** SUB SERIES PROCESSING ****")
     sub_series_ob_num = []

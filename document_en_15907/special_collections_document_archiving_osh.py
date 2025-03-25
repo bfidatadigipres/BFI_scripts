@@ -159,7 +159,7 @@ def main():
             elif '_file_' in directory:
                 file.append(dpath)
             else:
-                print(f"Skipping unrecognised folder: {dpath}")
+                pass
 
     print(f"Series: {series}")
     print(f"Sub-series: {sub_series}")

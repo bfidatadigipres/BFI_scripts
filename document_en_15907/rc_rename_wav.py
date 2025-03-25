@@ -111,7 +111,7 @@ def conformance_check(filepath: str) -> str:
         filepath
     ]
 
-    result = str(process.check_output(mediaconch_cmd))
+    result = str(subprocess.check_output(mediaconch_cmd))
 
     if 'N/A!' in result or 'pass!' not in result:
         return f"FAIL! '{filepath}'\n{result}"

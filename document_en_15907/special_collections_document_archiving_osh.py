@@ -135,6 +135,7 @@ def main():
 
     base_dir = sys.argv[1]  # sub_fond level path
     sub_fond = os.path.basename(base_dir)
+    print(base_dir)
     sf_ob_num, sf_record_type, sf_title = folder_split(sub_fond)
     print(f"Sub fond data found: {sf_ob_num}, {sf_record_type}, {sf_title}")
     LOGGER.info("Sub fond data: %s, %s, %s", sf_ob_num, sf_record_type, sf_title)
@@ -219,6 +220,7 @@ def main():
                     sub_sub_series_structure[f"{fpath}"] = enum_files
 
     file_structure = {}
+    print("**** FILES PROCESSING ****")
     files = []
     for key, value in sub_series_structure.items():
         if 'sub-sub' in key:
@@ -247,6 +249,7 @@ def main():
         for file in v:
             print(f"\t{file}")
     print("=--------------------------------=")
+    print("Archive File items found in creation date order")
     for k, v in file_structure.items():
         for file in v:
             print(f"\t{file}")        

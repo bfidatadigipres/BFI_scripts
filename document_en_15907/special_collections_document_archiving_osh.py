@@ -281,6 +281,23 @@ def create_series(item_dct, parent_priref, parent_ob_num, title_art, title):
     pass
 
 
+def create_archive_item(ipath, num, parent_priref, parent_ob_num, title):
+    '''
+    Get data needed for creation of item archive record
+    Receive item fpath, enumeration, parent priref/ob num and title
+    '''
+    root, iname = os.path.split(ipath)
+    ext = os.path.splitext(iname)
+    ob_num = f"{parent_ob_num}-{num}"
+    new_name = f"{ob_num}.{ext}"
+    record_dct = {
+        'title': title,
+        'digital.acquired_filename': iname,
+        'object_number': ob_num,
+    }
+
+
+
 def rename_files(fpath, parent_ob_num, index):
     '''
     Using index and parent object number

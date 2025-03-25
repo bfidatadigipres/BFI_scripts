@@ -209,7 +209,7 @@ def main():
         if series_priref:
             LOGGER.info("New SERIES record_type created: %s", series_priref)
         print(f"New series record created: {ob_num} - {series_priref} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
-        sys.exit()
+        sys.exit('Completed to end of first file. Exiting.')
     '''
     print("**** SUB SERIES PROCESSING ****")
     sub_series_ob_num = []
@@ -320,8 +320,8 @@ def create_series(object_number, record_type, parent_priref, title, session, def
         {'title': title}
     )]
     series_record.extend(series)
-
     # Convert to XML
+    print(series_record)
     series_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', series_record)
     print(series_xml)
 

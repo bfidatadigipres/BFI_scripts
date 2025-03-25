@@ -121,7 +121,7 @@ def folder_split(fname):
 
 def main():
     '''
-    Iterate folders in STORAGE, find image files in folders
+    Iterate supplied folder, find image files in folders
     named after work and create analogue/digital item records
     for every photo. Clean up empty folders.
     '''
@@ -199,6 +199,8 @@ def main():
     folders = []
     files = []
     for key, value in sub_series_structure.items():
+        if 'sub-sub' not in key:
+            continue
         if ' folders' in key:
             if not value:
                 continue
@@ -216,10 +218,38 @@ def main():
                     enum_files = sort_dates(files)
                     sub_sub_series_structure[f"{fpath}"] = enum_files
 
+    file_structure = {}
+    files = []
+    for key, value in sub_series_structure.items():
+        if 'sub-sub' in key:
+            continue
+        if ' folders' in key:
+            if not value:
+                continue
+            for fpath in value:
+                print(fpath)
+                sub_path, folder = os.path.split(fpath)
+                parent_ob_num = os.path.basename(sub_path).split('_', 1)[0]
+                ob_num, record_type, title = folder_split(folder)
+                if ob_num is None:
+                    continue
+                sub_series_ob_num.append(f"New object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
+                print(f"New sub_sub_series object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
+                files = [f"{os.path.join(fpath, x)}" for x in os.listdir(fpath) if os.path.isfile(f"{os.path.join(fpath, x)}")]
+                if files:
+                    enum_files = sort_dates(files)
+                    file_structure[f"{fpath}"] = enum_files
+    LOGGER.info("File data retrieved:\n%s", file_structure)
+
+
     print("Archive items found in creation date order")
     for k, v in sub_sub_series_structure.items():
         for file in v:
             print(f"\t{file}")
+    print("=--------------------------------=")
+    for k, v in file_structure.items():
+        for file in v:
+            print(f"\t{file}")        
 
     LOGGER.info("=========== Special Collections - Document Archiving OSH END ==============")
 

@@ -375,13 +375,14 @@ def create_archive_item(ipath, num, parent_priref, parent_ob_num, title):
     ext = os.path.splitext(iname)
     ob_num = f"{parent_ob_num}-{num}"
     new_name = f"{ob_num}.{ext}"
-    record_dct = {
-        'archive_title.type': '07_arch'
-        'title': title,
-        'digital.acquired_filename': iname,
-        'object_number': ob_num,
-        'Df': 'ITEM_ARCH'
-    }
+    record_dct = [(
+        {'Df': 'ITEM_ARCH'},
+        {'archive_title.type': '07_arch'},
+        {'title': title},
+        {'digital.acquired_filename': iname},
+        {'object_number': ob_num}
+    )]
+    pass
 
 
 

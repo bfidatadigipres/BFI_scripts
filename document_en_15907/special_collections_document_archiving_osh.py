@@ -146,6 +146,7 @@ def main():
     series = sub_series = sub_sub_series = sub_sub_sub_series = file = []
     for root, dirs, _ in os.walk(sub_fond):
         for directory in dirs:
+            print(directory)
             dpath = os.path.join(root, directory)
             if '_series_' in directory:
                 series.append(dpath)

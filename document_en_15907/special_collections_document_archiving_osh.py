@@ -329,6 +329,8 @@ def create_series(object_number, record_type, parent_priref, title, session, def
     print(series_record)
     series_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', series_record)
     print(series_xml)
+    rec = adlib.post(CID_API, series_xml, 'archivescatalogue', 'insertrecord', session)
+    print(rec)
 
 
 def create_sub_series(object_number, record_type, parent_priref, parent_ob_num, title):

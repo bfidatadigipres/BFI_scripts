@@ -91,7 +91,7 @@ def record_hits(fname: str, record_type: str, session) -> Optional[Any]:
     print(search)
     hits = adlib.retrieve_record(CID_API, 'archivescatalogue', search, 1, session)[0]
     print(hits)
-    if not hits:
+    if hits is None:
         return None
     if int(hits) == 0:
         return False

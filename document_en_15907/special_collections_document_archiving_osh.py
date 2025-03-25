@@ -144,7 +144,7 @@ def main():
         sys.exit("Folder path is not a valid path")
 
     series = sub_series = sub_sub_series = sub_sub_sub_series = file = []
-    for root, dirs, _ in os.walk(sub_fond):
+    for root, dirs, _ in os.walk(base_dir):
         for directory in dirs:
             print(directory)
             dpath = os.path.join(root, directory)

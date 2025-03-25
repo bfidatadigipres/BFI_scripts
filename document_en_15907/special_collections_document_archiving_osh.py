@@ -88,7 +88,7 @@ def record_hits(fname: str, record_type: str, session) -> Optional[Any]:
     Count hits and return bool / NoneType
     '''
     search: str = f'object_number="{fname}" and Df="{record_type}"'
-    hits = adlib.retrieve_record(CID_API, 'works', search, '1', session, fields)[0]
+    hits = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '1', session)[0]
     if not hits:
         return None
     if int(hits) == 0:

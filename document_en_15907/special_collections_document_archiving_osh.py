@@ -209,7 +209,7 @@ def main():
             LOGGER.info("No record found. Proceeding.")
 
             # Create series record here
-            series_priref = create_series(ob_num, record_type.upper(), sf_priref, sf_ob_num, local_title, defaults, session)
+            series_priref = create_series(ob_num, record_type.upper(), sf_priref, local_title, session, defaults)
             if series_priref:
                 LOGGER.info("New SERIES record_type created: %s", series_priref)
             print(f"New series record created: {ob_num} - {series_priref} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")

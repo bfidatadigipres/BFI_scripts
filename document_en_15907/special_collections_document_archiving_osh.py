@@ -27,7 +27,7 @@ import sys
 import shutil
 import logging
 import datetime
-from typing import Optional, Final, List, Dict
+from typing import Optional, Final, List, Dict, Any
 
 # Private packages
 sys.path.append(os.environ.get('CODE'))
@@ -48,19 +48,19 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def cid_retrieve(fname: str, session) -> Optional[tuple[str, str, str]]:
+def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, str, str]]:
     '''
     Receive filename and search in CID works dB
     Return selected data to main()
     '''
-    search: str = f'object_number="{fname}"'
+    search: str = f'object_number="{fname}" and Df="{record_type}"'
     fields: list[str] = [
         'priref',
         'title',
         'title.article'
     ]
 
-    record = adlib.retrieve_record(CID_API, 'works', search, '1', session, fields)[1]
+    record = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '1', session, fields)[1]
     LOGGER.info("cid_retrieve(): Making CID query request with:\n%s", search)
     if not record:
         print(f"cid_retrieve(): Unable to retrieve data for {fname}")
@@ -80,7 +80,21 @@ def cid_retrieve(fname: str, session) -> Optional[tuple[str, str, str]]:
     else:
         title_article = ""
 
-    return priref, title, title_article,
+    return priref, title, title_article
+
+
+def record_hits(fname: str, record_type: str, session) -> Optional[Any]:
+    '''
+    Count hits and return bool / NoneType
+    '''
+    search: str = f'object_number="{fname}" and Df="{record_type}"'
+    hits = adlib.retrieve_record(CID_API, 'works', search, '1', session, fields)[0]
+    if not hits:
+        return None
+    if int(hits) == 0:
+        return False
+    if int(hits) > 0:
+        return True
 
 
 def sort_dates(file_list: List[str]) -> List[str]:
@@ -163,39 +177,39 @@ def main():
                 sub_sub_sub_series.append(dpath)
             elif '_file_' in str(directory):
                 file.append(dpath)
-            else:
-                pass
 
-    print(f"Series: {series}")
-    print(f"Sub-series: {sub_series}")
-    print(f"Sub-sub-series: {sub_sub_series}")
-    print(f"File: {file}")
-    '''
-    session = adlib.create_session()
     # Only match directories that start with GUR-1 / GUR-2 etc.
-    series = [x for x in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, x)) and x.startswith(sf_ob_num)]
     series.sort()
     LOGGER.info("Series found %s: %s", len(series), ', '.join(series))
-
     LOGGER.info("Targeting %s - %s, title %s", sf_ob_num, sf_record_type, sf_title)
-    #sf_priref, title, title_art = cid_retrieve(sf_ob_num, session)
-    #LOGGER.info("Matched priref to %s: %s %s %s", sf_ob_num, sf_priref, title_art, title)
+
+    session = adlib.create_session()
+    sf_priref, title, title_art = cid_retrieve(sf_ob_num, 'SUB_FONDS', session)
+    LOGGER.info("Matched priref to %s: %s %s %s", sf_ob_num, sf_priref, title_art, title)
+
     print("**** SERIES PROCESSING ****")
-    series_structure_all = []
-    series_ob_num = []
-    for folder in series:
-        fpath = os.path.join(base_dir, folder)
-        ob_num, record_type, title = folder_split(folder)
+    defaults = build_defaults()
+    for fpath in series:
+        folder = os.path.basename(fpath)
+        ob_num, record_type, local_title = folder_split(folder)
+        if record_type != 'series':
+            continue
         if ob_num is None:
             continue
-        series_ob_num.append(f"New object number: {ob_num} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
-        print(f"New series object number: {ob_num} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
-        series_structure = [os.path.join(fpath, x) for x in os.listdir(fpath) if os.path.isdir(os.path.join(fpath, x)) and x.startswith(ob_num)]
-        if series_structure is not None:
-            series_structure.sort()
-            series_structure_all = series_structure_all + series_structure
-    LOGGER.info("Series data retrieved")
+        exist = record_hits(ob_num, record_type.upper(), session)
+        if exist is None:
+            LOGGER.warning("API may not be available. Skipping for safety.")
+            continue
+        elif exist is True:
+            LOGGER.info("Skipping creation. Record for %s already exists", ob_num)
 
+        # Create series record here
+        series_priref = create_series(ob_num, record_type.upper(), sf_priref, sf_ob_num, local_title, defaults, session)
+        if series_priref:
+            LOGGER.info("New SERIES record_type created: %s", series_priref)
+        print(f"New series record created: {ob_num} - {series_priref} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
+        sys.exit()
+    '''
     print("**** SUB SERIES PROCESSING ****")
     sub_series_ob_num = []
     sub_series_structure = {}
@@ -281,32 +295,52 @@ def main():
     for k, v in file_structure.items():
         for file in v:
             print(f"\t{file}")        
-
+    '''
     LOGGER.info("=========== Special Collections - Document Archiving OSH END ==============")
-    '''
 
-def create_series(series_dct, parent_priref, parent_ob_num, title_art, title):
+
+def create_series(object_number, record_type, parent_priref, title, session, defaults=None) -> Optional[Any]:
     '''
     Receive dict of series data
     and create records for each
     and create CID records
     '''
-    dct = {}
-    dct.append({'Df': 'SERIES'})
-    pass
+    series_record = []
+    if not defaults:
+        return None
+
+    series_record.extend(defaults)        
+    series = [(
+        {'Df': 'SERIES'},
+        {'description_level_object': 'ARCHIVE'},
+        {'object_number': object_number},
+        {'part_of_reference.lref': parent_priref},
+        {'archive_title.type': '07_arch'},
+        {'title': title}
+    )]
+    series_record.extend(series)
+
+    # Convert to XML
+    series_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', series_record)
+    print(series_xml)
 
 
-
-def create_sub_series(sub_series_dct, parent_priref, parent_ob_num, title_art, title):
+def create_sub_series(object_number, record_type, parent_priref, parent_ob_num, title):
     '''
     Receive dict of series data
     and create records for each
     and create CID records
     '''
-    dct = {}
+    dct = [(
+        {'Df': 'SUB_SERIES'},
+        {'object_number': object_number},
+        {'record_type': record_type},
+        {'part_of_reference.lref': parent_priref},
+        {'archive_title.type': '07_arch'},
+        {'title': title}
+    )]
     dct.append({'Df': 'SUB_SERIES'})
     pass
-
 
 
 def create_sub_sub_series(sub_sub_series_dct, parent_priref, parent_ob_num, title_art, title):
@@ -319,7 +353,6 @@ def create_sub_sub_series(sub_sub_series_dct, parent_priref, parent_ob_num, titl
     dct = {}
     dct.append({'Df': 'SUB_SUB_SERIES'})
     pass
-
 
 
 def create_files(files_dct, parent_priref, parent_ob_num, title_art, title):
@@ -343,6 +376,7 @@ def create_archive_item(ipath, num, parent_priref, parent_ob_num, title):
     ob_num = f"{parent_ob_num}-{num}"
     new_name = f"{ob_num}.{ext}"
     record_dct = {
+        'archive_title.type': '07_arch'
         'title': title,
         'digital.acquired_filename': iname,
         'object_number': ob_num,
@@ -359,51 +393,22 @@ def rename_files(fpath, parent_ob_num, index):
     pass
 
 
-def build_defaults(title_art, title) -> Optional[tuple[list[dict[str, str]], Optional[str]]]:
+def build_defaults():
     '''
     Use this function to just build standard defaults for all GUR records
     Discuss what specific record data they want in every record / some records
-
-    records = ([
-        {'institution.name.lref': '999570701'},
-        {'object_type': 'OBJECT'}
-    ])
-    print(work_data)
-    if work_data[1]:
-        records.append({'related_object.reference.lref': work_data[0]})
-    else:
-        LOGGER.warning("No parent object number retrieved. Script exiting.")
-        return None
-    if work_data[2]:
-        records.append({'title': work_data[2]})
-    else:
-        LOGGER.warning("No title data retrieved. Script exiting.")
-        return None
-    if work_data[3]:
-        records.append({'title.article': work_data[3]})
-    if work_data[4]:
-        records.append({'production.date.start': work_data[4]})
-
-    if arg == 'analogue':
-        records.append({'analogue_or_digital': 'ANALOGUE'})
-    elif arg == 'digital':
-        records.append({'analogue_or_digital': 'DIGITAL'})
-        records.append({'digital.born_or_derived': 'DIGITAL_DERIVATIVE_PRES'})
-        records.append({'digital.acquired_filename': image})
-        if obj:
-            records.append({'source_item': obj})
-        ext = image.split('.')[-1]
-        if ext.lower() in ['jpeg', 'jpg']:
-            records.append({'file_type.lref': '396310'})
-        elif ext.lower() in ['tif', 'tiff']:
-            records.append({'file_type.lref': '395395'})
-
     '''
-    records.append({'input.name': 'datadigipres'})
-    records.append({'input.date': str(datetime.datetime.now())[:10]})
-    records.append({'input.time': str(datetime.datetime.now())[11:19]})
-    records.append({'input.notes': 'Automated record creation for Special Collections, to facilitate ingest to DPI'})
-    print(records)
+    records = [(
+        {'record_access.owner': 'Special Collections'},
+        {'record_access.user': 'BFIiispublic'},
+        {'record_access.rights': '0'},
+        {'institution.name.lref': '999570701'}, # BFI National Archive
+        {'input.name': 'datadigipres'},
+        {'input.date': str(datetime.datetime.now())[:10]},
+        {'input.time': str(datetime.datetime.now())[11:19]},
+        {'input.notes': 'Automated record creation for Special Collections OSH, to facilitate ingest to DPI'}
+    )]
+
     return records
 
 

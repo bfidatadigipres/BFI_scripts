@@ -143,7 +143,11 @@ def main():
     if not os.path.isdir(base_dir):
         sys.exit("Folder path is not a valid path")
 
-    series = sub_series = sub_sub_series = sub_sub_sub_series = file = []
+    series = []
+    sub_series = []
+    sub_sub_series = []
+    sub_sub_sub_series = []
+    file = []
     for root, dirs, _ in os.walk(base_dir):
         for directory in dirs:
             if not str(directory).startswith(sf_ob_num):

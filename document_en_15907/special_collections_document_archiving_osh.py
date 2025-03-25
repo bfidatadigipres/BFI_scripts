@@ -143,6 +143,28 @@ def main():
     if not os.path.isdir(base_dir):
         sys.exit("Folder path is not a valid path")
 
+    series = sub_series = sub_sub_series = sub_sub_sub_series = file = []
+    for root, dirs, _ in os.walk(sub_fond):
+        for directory in dirs:
+            dpath = os.path.join(root, directory)
+            if '_series_' in directory:
+                series.append(dpath)
+            elif '_sub-series_' in directory:
+                sub_series.append(dpath)
+            elif '_sub-sub-series_' in directory:
+                sub_sub_series.append(dpath)
+            elif '_sub-sub-sub-series_' in directory:
+                sub_sub_sub_series.append(dpath)
+            elif '_file_' in directory:
+                file.append(dpath)
+            else:
+                print(f"Skipping unrecognised folder: {dpath}")
+
+    print(f"Series: {series}")
+    print(f"Sub-series: {sub_series}")
+    print(f"Sub-sub-series: {sub_sub_series}")
+    print(f"File: {file}")
+    '''
     session = adlib.create_session()
     # Only match directories that start with GUR-1 / GUR-2 etc.
     series = [x for x in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, x)) and x.startswith(sf_ob_num)]
@@ -255,16 +277,7 @@ def main():
             print(f"\t{file}")        
 
     LOGGER.info("=========== Special Collections - Document Archiving OSH END ==============")
-
-
-
-
-
-
-
-
-
-
+    '''
 
 def create_series(series_dct, parent_priref, parent_ob_num, title_art, title):
     '''
@@ -290,12 +303,12 @@ def create_sub_series(sub_series_dct, parent_priref, parent_ob_num, title_art, t
 
 
 
-def create_series(sub_sub_series_dct, parent_priref, parent_ob_num, title_art, title):
+def create_sub_sub_series(sub_sub_series_dct, parent_priref, parent_ob_num, title_art, title):
     '''
     Receive dict of series data
     and create records for each
     and create CID records
-    This record_type is not yet working!
+    This record_type is not yet created!
     '''
     dct = {}
     dct.append({'Df': 'SUB_SUB_SERIES'})
@@ -303,14 +316,14 @@ def create_series(sub_sub_series_dct, parent_priref, parent_ob_num, title_art, t
 
 
 
-def create_series(item_dct, parent_priref, parent_ob_num, title_art, title):
+def create_files(files_dct, parent_priref, parent_ob_num, title_art, title):
     '''
     Receive dict of series data
     and create records for each
     and create CID records
     '''
     dct = {}
-    dct.append({'Df': 'ITEM_ARCH'})
+    dct.append({'Df': 'FILES'})
     pass
 
 
@@ -327,6 +340,7 @@ def create_archive_item(ipath, num, parent_priref, parent_ob_num, title):
         'title': title,
         'digital.acquired_filename': iname,
         'object_number': ob_num,
+        'Df': 'ITEM_ARCH'
     }
 
 

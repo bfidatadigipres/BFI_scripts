@@ -200,7 +200,7 @@ def main():
     folders = []
     files = []
     for key, value in sub_series_structure.items():
-        if 'sub-sub' not in key:
+        if 'sub-sub' not in value:
             continue
         if ' folders' in key:
             if not value:
@@ -223,10 +223,10 @@ def main():
     print("**** FILES PROCESSING ****")
     files = []
     for key, value in sub_series_structure.items():
-        if 'sub-sub' in key:
-            continue
         if ' folders' in key:
             if not value:
+                continue
+            if 'sub-sub' in value:
                 continue
             for fpath in value:
                 print(fpath)

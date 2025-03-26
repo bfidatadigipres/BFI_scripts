@@ -128,8 +128,7 @@ def main():
             ob_num = ''
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
 
-        comments = '''Viewing copy created from digital master which has been ingested for access instances. \
-                      The file may have had adverts, bars and tones cut out, or other fixes applied.'''
+        comments = '''Viewing copy created from digital master which has been ingested for access instances. The file may have had adverts, bars and tones cut out, or other fixes applied.'''
         success = adlib.add_quality_comments(CID_API, priref, comments)
         if not success:
             LOGGER.warning("Quality comments were not written to record: %s", priref)

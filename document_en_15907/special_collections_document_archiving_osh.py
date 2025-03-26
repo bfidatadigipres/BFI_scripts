@@ -199,6 +199,8 @@ def main():
             continue
         if ob_num is None:
             continue
+
+        # Check if already created to allow for repeat runs against folders
         exist = record_hits(ob_num, record_type.upper(), session)
         if exist is None:
             LOGGER.warning("API may not be available. Skipping for safety.")
@@ -209,13 +211,15 @@ def main():
         else:
             LOGGER.info("No record found. Proceeding.")
 
+            '''
             # Create series record here
             series_priref = create_series(ob_num, record_type.upper(), sf_priref, local_title, session, defaults)
             if series_priref:
                 LOGGER.info("New SERIES record_type created: %s", series_priref)
             print(f"New series record created: {ob_num} - {series_priref} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
             sys.exit('Completed to end of first file. Exiting.')
-    '''
+
+
     print("**** SUB SERIES PROCESSING ****")
     sub_series_ob_num = []
     sub_series_structure = {}
@@ -300,7 +304,7 @@ def main():
     print("Archive File items found in creation date order")
     for k, v in file_structure.items():
         for file in v:
-            print(f"\t{file}")        
+            print(f"\t{file}")
     '''
     LOGGER.info("=========== Special Collections - Document Archiving OSH END ==============")
 
@@ -315,7 +319,7 @@ def create_series(object_number, record_type, parent_priref, title, session, def
     if not defaults:
         return None
 
-    series_record.extend(defaults)        
+    series_record.extend(defaults)
     series = [
         {'Df': 'SERIES'},
         {'description_level_object': 'ARCHIVE'},
@@ -407,15 +411,35 @@ def build_defaults():
     Use this function to just build standard defaults for all GUR records
     Discuss what specific record data they want in every record / some records
     '''
+    text = '''
+The arrangement of the collection maintains its original order, \
+as stored on a shared Google Drive for Gurinder Chadha and her team. \
+Consequently, the collection is archived in alphabetical order, \
+including productions, rather than by date; please refer to the \
+material’s date for further details. \
+The collection has been organised into five series, each relating \
+to a different area of activity.
+'''
+    text2 = '''
+The working digital documents and images related to the films and \
+television programmes, directed, produced, and/or written by \
+Gurinder Chadha.
+'''
+
     records = [
-        {'record_access.owner': 'Special Collections'},
+        # {'record_access.owner': 'Special Collections'}, Most probably $REST here
         {'record_access.user': 'BFIiispublic'},
         {'record_access.rights': '0'},
+        {'content.person.name.lref': '378012'},
+        {'content.person.name.type': 'PERSON'},
+        {'system_of_arrangement': text},
+        {'production.date.notes': '2013-2024'},
+        {'content.description': text2},
         {'institution.name.lref': '999570701'}, # BFI National Archive
         {'input.name': 'datadigipres'},
         {'input.date': str(datetime.datetime.now())[:10]},
         {'input.time': str(datetime.datetime.now())[11:19]},
-        {'input.notes': 'Automated record creation for Special Collections OSH, to facilitate ingest to DPI'}
+        {'input.notes': 'Automated record creation for Our Screen Heritage OSH strand 3, to facilitate ingest to Archivematica.'}
     ]
 
     return records

@@ -25,6 +25,7 @@ Script stages:
 import os
 import sys
 import shutil
+import requests
 import logging
 import datetime
 from typing import Optional, Final, List, Dict, Any
@@ -180,46 +181,28 @@ def main():
             elif '_file_' in str(directory):
                 file.append(dpath)
 
-    # Only match directories that start with GUR-1 / GUR-2 etc.
+    session = adlib.create_session()
+    defaults_all, defaults_items = build_defaults()
+
+    # Process series filepaths first
+    if not series:
+        sys.exit("No series data found, exiting as not possible to iterate lower than series.")
     series.sort()
     LOGGER.info("Series found %s: %s", len(series), ', '.join(series))
-    LOGGER.info("Targeting %s - %s, title %s", sf_ob_num, sf_record_type, sf_title)
 
-    session = adlib.create_session()
-    sf_priref, title, title_art = cid_retrieve(sf_ob_num, 'SUB_FONDS', session)
-    LOGGER.info("Matched priref to %s: %s %s %s", sf_ob_num, sf_priref, title_art, title)
+    # Create records
+    priref_list = create_record(series, session, defaults_all)
 
-    print("**** SERIES PROCESSING ****")
-    defaults = build_defaults()
-    for fpath in series:
-        folder = os.path.basename(fpath)
-        print(f"Folder to be processed {folder}")
-        ob_num, record_type, local_title = folder_split(folder)
-        if record_type != 'series':
+    # Check for item_archive files within folders
+    for key, val in priref_list.items():
+        print(f"Folder path: {key} - priref {val}")
+        file_list = [x for x in os.listdir(key) if os.path.isfile(os.path.join(key, x))]
+        if len(file_list) == 0:
             continue
-        if ob_num is None:
-            continue
+        LOGGER.info("Files found to create Item Archive records: %s", ', '.join(file_list))
+        # Create ITEM_ARCH records and rename files / move to new subfolders? TBC
 
-        # Check if already created to allow for repeat runs against folders
-        exist = record_hits(ob_num, record_type.upper(), session)
-        if exist is None:
-            LOGGER.warning("API may not be available. Skipping for safety.")
-            continue
-        elif exist is True:
-            LOGGER.info("Skipping creation. Record for %s already exists", ob_num)
-            continue
-        else:
-            LOGGER.info("No record found. Proceeding.")
-
-            '''
-            # Create series record here
-            series_priref = create_series(ob_num, record_type.upper(), sf_priref, local_title, session, defaults)
-            if series_priref:
-                LOGGER.info("New SERIES record_type created: %s", series_priref)
-            print(f"New series record created: {ob_num} - {series_priref} / Parent: {sf_ob_num} / Record type: {record_type} / {title}")
-            sys.exit('Completed to end of first file. Exiting.')
-
-
+    '''
     print("**** SUB SERIES PROCESSING ****")
     sub_series_ob_num = []
     sub_series_structure = {}
@@ -309,32 +292,103 @@ def main():
     LOGGER.info("=========== Special Collections - Document Archiving OSH END ==============")
 
 
-def create_series(object_number, record_type, parent_priref, title, session, defaults=None) -> Optional[Any]:
+def create_record(folder_list: List[str], session: requests.Session, defaults: List[Dict[str]]) -> Dict[str, str]:
+    '''
+    Accept list of folder paths and create a record
+    where none already exist, linking to the parent
+    record
+    '''
+    record_types = [
+        'sub_fonds'
+        'series',
+        'sub-series',
+        'sub-sub-series',
+        'sub-sub-sub-series',
+        'file'
+    ]
+
+    priref_dct = {}
+    for fpath in folder_list:
+        root, folder = os.path.split(fpath)
+        p_ob_num, p_record_type, _ = folder_split(os.path.basename(root))
+
+        print(f"Folder to be processed {folder}")
+        ob_num, record_type, local_title = folder_split(folder)
+        idx = record_types.index(record_type)
+        if isinstance(idx, int):
+            print(f"Record type match: {record_types[idx]} - checking parent record_type is correct.")
+            pidx = idx - 1
+            if record_types[pidx] != p_record_type:
+                LOGGER.warning("Problem with supplied record types in folder name, skipping")
+                continue
+        if ob_num is None:
+            continue
+
+        # Check if parent already created to allow for repeat runs against folders
+        p_exist = record_hits(p_ob_num, p_record_type.upper(), session)
+        if p_exist is None:
+            LOGGER.warning("API may not be available. Skipping for safety.")
+            continue
+        elif p_exist is False:
+            LOGGER.info("Skipping creation of child record to %s, record not matched in CID", p_ob_num)
+            continue
+        LOGGER.info("Parent record matched in CID: %s", p_ob_num)
+        p_priref, title, title_art = cid_retrieve(p_ob_num, p_record_type.upper(), session)
+        LOGGER.info("Parent priref %s, Title %s %s", p_priref, title_art, title)
+
+        # Check if record already exists before creating new record
+        exist = record_hits(ob_num, record_type.upper(), session)
+        if exist is None:
+            LOGGER.warning("API may not be available. Skipping for safety %s", folder)
+            continue
+        elif exist is True:
+            priref, title, title_art = cid_retrieve(ob_num, record_type.upper(), session)
+            LOGGER.info("Skipping creation. Record for %s already exists", ob_num)
+            priref_dct[fpath] = priref
+            continue
+
+        LOGGER.info("No record found. Proceeding.")
+        # Create record here
+        new_priref = create_record(ob_num, record_type.upper(), p_priref, local_title, session, defaults)
+        if new_priref is None:
+            LOGGER.warning("Record failed to create using data: %s, %s, %s, %s,\n%s", ob_num, record_type.upper(), p_priref, local_title, defaults)
+            continue
+
+        LOGGER.info("New %s record_type created: %s", record_type.upper(), priref)
+        print(f"New series record created: {ob_num} - {priref} / Parent: {p_ob_num} / Record type: {record_type} / {local_title}")
+        priref_dct[fpath] = new_priref
+
+    return priref_dct
+
+
+# Waiting to see about defaults, it's possible on function can make all records
+def create_record(object_number, record_type, parent_priref, title, session, defaults=None) -> Optional[Any]:
     '''
     Receive dict of series data
     and create records for each
     and create CID records
     '''
-    series_record = []
     if not defaults:
         return None
 
-    series_record.extend(defaults)
     series = [
-        {'Df': 'SERIES'},
+        {'Df': record_type.upper()},
         {'description_level_object': 'ARCHIVE'},
         {'object_number': object_number},
         {'part_of_reference.lref': parent_priref},
         {'archive_title.type': '07_arch'},
         {'title': title}
     ]
-    series_record.extend(series)
+    series.extend(defaults)
+
     # Convert to XML
-    print(series_record)
-    series_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', series_record)
+    print(series)
+    series_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', series)
     print(series_xml)
     rec = adlib.post(CID_API, series_xml, 'archivescatalogue', 'insertrecord', session)
-    print(rec)
+    if not rec:
+        LOGGER.warning("Failed to create new Series record")
+        return None
 
 
 def create_sub_series(object_number, record_type, parent_priref, parent_ob_num, title):
@@ -426,7 +480,7 @@ television programmes, directed, produced, and/or written by \
 Gurinder Chadha.
 '''
 
-    records = [
+    records_all = [
         # {'record_access.owner': 'Special Collections'}, Most probably $REST here
         {'record_access.user': 'BFIiispublic'},
         {'record_access.rights': '0'},
@@ -442,25 +496,9 @@ Gurinder Chadha.
         {'input.notes': 'Automated record creation for Our Screen Heritage OSH strand 3, to facilitate ingest to Archivematica.'}
     ]
 
-    return records
+    records_items = []
 
-
-def create_new_record(object_number, record_type, record_dct, session) -> Optional[tuple[str, str]]:
-    '''
-    Function for creation of new CID records JMW:
-    Check if supplying Object Number has any adlib XML requirements!!
-    '''
-    print(record_dct)
-    record_xml = adlib.create_record_data(CID_API, 'archivescatalogue', '', record_json)
-    print(record_xml)
-    record = adlib.post(CID_API, record_xml, 'archivescatalogue', 'insertrecord', session)
-    if not record:
-        LOGGER.warning("Adlib POST failed to create CID item record for data:\n%s", record_xml)
-        return None
-
-    priref = adlib.retrieve_field_name(record, 'priref')[0]
-    obj = adlib.retrieve_field_name(record, 'object_number')[0]
-    return priref, obj
+    return records_all, records_items
 
 
 def update_acquired_filename(priref, acquired_filename, session):

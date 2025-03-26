@@ -16,14 +16,28 @@ import subprocess
 from typing import Final, Optional, Iterator, Any
 import yaml
 import tenacity
+import smtplib
+import ssl
+import os
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+from dotenv import load_dotenv
 
 # BFI library
 import adlib_v3 as adlib
 
+load_dotenv()
+
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: str = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, 'autoingest', 'global.log')
-
+SMTP_SERVER = 'mail.smtp2go.com'
+SMTP_PORT = 465
+EMAIL = os.getenv("EMAIL_ADDRESS")
+PASSWORD = os.getenv("EMAIL_PASSWORD")
+CONTEXT = ssl.create_default_context()
 
 PREFIX: Final = [
     'N',
@@ -556,3 +570,31 @@ def local_file_search(fpath, fname):
         for file in files:
             if file == fname:
                 return os.path.join(root, file)
+
+def send_email(email: str, subject: str, body: str, files: str) -> None:
+    '''
+    automate the process of sending out simple emails
+    '''
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = 'digitalpreservationsystems@bfi.org.uk'
+        msg['To'] = email
+        msg['Subject'] = subject
+
+        msg.attach(MIMEText(body, 'plain'))
+
+        with open(files, 'rb') as file:
+            attachment_package = MIMEBase('application', 'octet-stream')
+            attachment_package.set_payload((file).read())
+            encoders.encode_base64(attachment_package)
+            attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
+            msg.attach(attachment_package)
+
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=CONTEXT) as smtp:
+            smtp.login(EMAIL, PASSWORD)
+            smtp.sendmail('digitalpreservationsystems@bfi.org.uk', email, msg.as_string())
+
+        print("Email sent!")
+
+    except Exception as e:
+        print(f'Error sending email: {e}')

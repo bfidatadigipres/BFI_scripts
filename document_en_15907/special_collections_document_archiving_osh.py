@@ -136,6 +136,81 @@ def folder_split(fname):
     return ob_num, record_type, title
 
 
+def get_image_data(ipath: str) -> list[dict[str, str]]:
+    '''
+    Create dictionary for Image
+    metadata from Exif data source
+    '''
+    exif_metadata = utils.exif_data(ipath)
+    if not isinstance(exif_metadata, list):
+        return None
+
+    data = [
+        'File Size, file_size',
+        'File Modification Date/Time, production.date.notes',
+        'File Type, file_type'
+        'MIME Type, media_type',
+        'Software, source_software'
+    ]
+
+    image_dict = []
+    for mdata in exif_metadata:
+        field, value = mdata.split(':', 1)
+        for d in data:
+            exif_field, cid_field = d.split(', ')
+            if 'File Type' in exif_field:
+                ft, type = value.split(' ')
+                image_dict.append({f'{cid_field}': ft.strip()})
+                image_dict.append({f'{cid_field}.type': type.strip()})
+            elif exif_field == field.strip():
+                image_dict.append({f'{cid_field}': value.strip()})
+
+    return image_dict
+
+
+def build_defaults():
+    '''
+    Use this function to just build standard defaults for all GUR records
+    Discuss what specific record data they want in every record / some records
+    '''
+    text = '''
+The arrangement of the collection maintains its original order, \
+as stored on a shared Google Drive for Gurinder Chadha and her team. \
+Consequently, the collection is archived in alphabetical order, \
+including productions, rather than by date; please refer to the \
+materials date for further details.\n\n \
+The collection has been organised into five series, each relating \
+to a different area of activity.
+'''
+    text2 = '''
+The working digital documents and images related to the films and \
+television programmes, directed, produced, and/or written by \
+Gurinder Chadha.
+'''
+
+    records_all = [
+        # {'record_access.owner': 'Special Collections'}, JMW Most probably $REST here ?
+        {'record_access.user': 'BFIiispublic'},
+        {'record_access.rights': '0'},
+        {'content.person.name.lref': '378012'},
+        {'content.person.name.type': 'PERSON'},
+        {'system_of_arrangement': text},
+        {'content.description': text2},
+        {'institution.name.lref': '999570701'}, # JMW BFI National Archive?
+        {'analogue_or_digital': 'DIGITAL'},
+        {'digital.born_or_derived': 'BORN_DIGITAL'}
+        {'input.name': 'datadigipres'},
+        {'input.date': str(datetime.datetime.now())[:10]},
+        {'input.time': str(datetime.datetime.now())[11:19]},
+        {'input.notes': 'Automated record creation for Our Screen Heritage OSH strand 3, to facilitate ingest to Archivematica.'}
+    ]
+
+    # JMW This may be unique to file each time, may skip
+    records_items = []
+
+    return records_all, records_items
+
+
 def main():
     '''
     Iterate supplied folder, find image files in folders
@@ -182,7 +257,7 @@ def main():
                 file.append(dpath)
 
     session = adlib.create_session()
-    defaults_all, defaults_items = build_defaults()
+    defaults_all, defaults_item = build_defaults()
 
     # Process series filepaths first
     if not series:
@@ -190,109 +265,63 @@ def main():
     series.sort()
     LOGGER.info("Series found %s: %s", len(series), ', '.join(series))
 
-    # Create records
-    priref_list = create_record(series, session, defaults_all)
+    # Create record for folder
+    s_priref_list = create_folder_record(series, session, defaults_all)
+    LOGGER.info("New records created for series beneath %s - %s:\n%s", sf_ob_num, sf_record_type.upper(), ', '.join(s_priref_list))
 
-    # Check for item_archive files within folders
-    for key, val in priref_list.items():
-        print(f"Folder path: {key} - priref {val}")
-        file_list = [x for x in os.listdir(key) if os.path.isfile(os.path.join(key, x))]
-        if len(file_list) == 0:
-            continue
-        LOGGER.info("Files found to create Item Archive records: %s", ', '.join(file_list))
-        # Create ITEM_ARCH records and rename files / move to new subfolders? TBC
+    if not sub_series:
+        sys.exit("No sub-series data found, exiting as not possible to iterate lower than sub-series")
+    LOGGER.info("Sub-series found %s: %s", len(sub_series), ', '.join(sub_series))
 
-    '''
-    print("**** SUB SERIES PROCESSING ****")
-    sub_series_ob_num = []
-    sub_series_structure = {}
-    folders = []
-    files = []
-    for fpath in series_structure_all:
-        print(fpath)
-        sub_path, folder = os.path.split(fpath)
-        parent_ob_num = os.path.basename(sub_path).split('_', 1)[0]
-        ob_num, record_type, title = folder_split(folder)
-        if ob_num is None:
-            continue
-        sub_series_ob_num.append(f"New object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
-        print(f"New sub_series object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
-        folders = [f"{os.path.join(fpath, x)}" for x in os.listdir(fpath) if os.path.isdir(os.path.join(fpath, x)) and x.startswith(ob_num)]
-        if folders:
-            folders.sort()
-            sub_series_structure[f"{fpath} folders"] = folders
-        files = [f"{os.path.join(fpath, x)}" for x in os.listdir(fpath) if os.path.isfile(f"{os.path.join(fpath, x)}")]
-        if files:
-            enum_files = sort_dates(files)
-            sub_series_structure[f"{fpath} files"] = enum_files
+    # Create records for folders
+    if series:
+        series_dcts, series_items = handle_repeat_folder_data(series, session, defaults_all, defaults_item)
+    if sub_series:
+        s_series_dcts, s_series_items = handle_repeat_folder_data(sub_series, session, defaults_all, defaults_item)
+    if sub_sub_series:
+        ss_series_dcts, ss_series_items = handle_repeat_folder_data(sub_sub_series, session, defaults_all, defaults_item)
+    if sub_sub_sub_series:
+        sss_series_dcts, sss_series_items = handle_repeat_folder_data(sub_sub_sub_series, session, defaults_all, defaults_item)
+    if file:
+        file_dcts, file_items = handle_repeat_folder_data(file, session, defaults_all, defaults_item)
 
-    print("Archive items found in creation date order:")
-    for file in sub_series_structure[f"{fpath} files"]:
-        print(f"{fpath} files")
-
-    sub_sub_series_structure = {}
-    print("**** SUB SUB SERIES PROCESSING ****")
-    folders = []
-    files = []
-    for key, value in sub_series_structure.items():
-        if 'sub-sub-series' not in str(key):
-            continue
-        if ' folders' in key:
-            if not value:
-                continue
-            for fpath in value:
-                print(fpath)
-                sub_path, folder = os.path.split(fpath)
-                parent_ob_num = os.path.basename(sub_path).split('_', 1)[0]
-                ob_num, record_type, title = folder_split(folder)
-                if ob_num is None:
-                    continue
-                sub_series_ob_num.append(f"New object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
-                print(f"New sub_sub_series object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
-                files = [f"{os.path.join(fpath, x)}" for x in os.listdir(fpath) if os.path.isfile(f"{os.path.join(fpath, x)}")]
-                if files:
-                    enum_files = sort_dates(files)
-                    sub_sub_series_structure[f"{fpath}"] = enum_files
-
-    file_structure = {}
-    print("**** FILES PROCESSING ****")
-    files = []
-    for key, value in sub_series_structure.items():
-        if ' folders' in key:
-            if not value:
-                continue
-            if 'sub-sub-series' in str(key):
-                continue
-            for fpath in value:
-                print(fpath)
-                sub_path, folder = os.path.split(fpath)
-                parent_ob_num = os.path.basename(sub_path).split('_', 1)[0]
-                ob_num, record_type, title = folder_split(folder)
-                if ob_num is None:
-                    continue
-                sub_series_ob_num.append(f"New object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
-                print(f"New sub_sub_series object number: {ob_num} / Parent: {parent_ob_num} / Record type: {record_type} / {title}")
-                files = [f"{os.path.join(fpath, x)}" for x in os.listdir(fpath) if os.path.isfile(f"{os.path.join(fpath, x)}")]
-                if files:
-                    enum_files = sort_dates(files)
-                    file_structure[f"{fpath}"] = enum_files
-    LOGGER.info("File data retrieved:\n%s", file_structure)
-
-
-    print("Archive items found in creation date order")
-    for k, v in sub_sub_series_structure.items():
-        for file in v:
-            print(f"\t{file}")
-    print("=--------------------------------=")
-    print("Archive File items found in creation date order")
-    for k, v in file_structure.items():
-        for file in v:
-            print(f"\t{file}")
-    '''
     LOGGER.info("=========== Special Collections - Document Archiving OSH END ==============")
 
 
-def create_record(folder_list: List[str], session: requests.Session, defaults: List[Dict[str]]) -> Dict[str, str]:
+def handle_repeat_folder_data(record_type_list, session, defaults_all, defaults_item):
+    '''
+    Create record at folder level irrespective
+    of record_type, inherited from folder name.
+    Get back dict of fpaths and prirefs, then
+    look within each for documents that need recs.
+    '''
+
+    priref_dct = create_folder_record(record_type_list, session, defaults_all)
+    LOGGER.info("New records created:\n%s", priref_dct)
+
+    # Check for item_archive files within folders
+    file_order = {}
+    for key, val in priref_dct.items():
+        p_priref, p_ob_num = val.split(' - ')
+
+        print(f"Folder path: {key} - priref {p_priref} - object number {p_ob_num}")
+        file_list = [x for x in os.listdir(key) if os.path.isfile(os.path.join(key, x))]
+        if len(file_list) == 0:
+            LOGGER.info("No files found in path: %s", key)
+            continue
+
+        # Sort into numerical order based on mod times
+        enum_files = sort_dates(file_list)
+        file_order[f"{key}"] = enum_files
+        LOGGER.info("%s files found to create Item Archive records: %s", len(file_order), ', '.join(file_order))
+
+        # Create ITEM_ARCH records and rename files / move to new subfolders? 
+        item_prirefs = create_archive_item_record(file_order, key, p_priref, session, defaults_all, defaults_item)
+
+    return priref_dct, item_prirefs
+
+
+def create_folder_record(folder_list: List[str], session: requests.Session, defaults: List[Dict[str]]) -> Dict[str, str]:
     '''
     Accept list of folder paths and create a record
     where none already exist, linking to the parent
@@ -344,229 +373,141 @@ def create_record(folder_list: List[str], session: requests.Session, defaults: L
         elif exist is True:
             priref, title, title_art = cid_retrieve(ob_num, record_type.upper(), session)
             LOGGER.info("Skipping creation. Record for %s already exists", ob_num)
-            priref_dct[fpath] = priref
+            priref_dct[fpath] = f"{priref} - {ob_num}"
             continue
-
         LOGGER.info("No record found. Proceeding.")
+
         # Create record here
-        new_priref = create_record(ob_num, record_type.upper(), p_priref, local_title, session, defaults)
+        data = [
+            {'Df': record_type.upper()},
+            {'description_level_object': 'ARCHIVE'},
+            {'object_number': ob_num},
+            {'part_of_reference.lref': p_priref},
+            {'archive_title.type': '07_arch'},
+            {'title': local_title}
+        ]
+        data.extend(defaults)
+        new_priref = post_record(session, data)
         if new_priref is None:
-            LOGGER.warning("Record failed to create using data: %s, %s, %s, %s,\n%s", ob_num, record_type.upper(), p_priref, local_title, defaults)
+            LOGGER.warning("Record failed to create using data: %s, %s, %s, %s,\n%s", ob_num, record_type.upper(), p_priref, local_title, data)
             continue
 
         LOGGER.info("New %s record_type created: %s", record_type.upper(), priref)
-        print(f"New series record created: {ob_num} - {priref} / Parent: {p_ob_num} / Record type: {record_type} / {local_title}")
-        priref_dct[fpath] = new_priref
+        print(f"New series record created: {ob_num} - {new_priref} / Parent: {p_ob_num} / Record type: {record_type} / {local_title}")
+        priref_dct[fpath] = f"{new_priref} - {ob_num}"
 
     return priref_dct
 
 
-# Waiting to see about defaults, it's possible on function can make all records
-def create_record(object_number, record_type, parent_priref, title, session, defaults=None) -> Optional[Any]:
+def post_record(session, record_data=None) -> Optional[Any]:
     '''
     Receive dict of series data
     and create records for each
     and create CID records
     '''
-    if not defaults:
+    if record_data is None:
         return None
-
-    series = [
-        {'Df': record_type.upper()},
-        {'description_level_object': 'ARCHIVE'},
-        {'object_number': object_number},
-        {'part_of_reference.lref': parent_priref},
-        {'archive_title.type': '07_arch'},
-        {'title': title}
-    ]
-    series.extend(defaults)
 
     # Convert to XML
-    print(series)
-    series_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', series)
-    print(series_xml)
-    rec = adlib.post(CID_API, series_xml, 'archivescatalogue', 'insertrecord', session)
-    if not rec:
-        LOGGER.warning("Failed to create new Series record")
-        return None
+    print(record_data)
+    record_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', record_data)
+    print(record_xml)
+    try:
+        rec = adlib.post(CID_API, record_xml, 'archivescatalogue', 'insertrecord', session)
+        if rec is None:
+            LOGGER.warning("Failed to create new record:\n%s", record_xml)
+            return None
+        elif 'priref' not in str(rec):
+            LOGGER.warning("Failed to create new record:\n%s", record_xml)
+            return None
+        priref = adlib.retrieve_field_name(rec, 'priref')[0]
+        return priref
+    except Exception as err:
+        raise err
 
 
-def create_sub_series(object_number, record_type, parent_priref, parent_ob_num, title):
-    '''
-    Receive dict of series data
-    and create records for each
-    and create CID records
-    '''
-    dct = [
-        {'Df': 'SUB_SERIES'},
-        {'object_number': object_number},
-        {'record_type': record_type},
-        {'part_of_reference.lref': parent_priref},
-        {'archive_title.type': '07_arch'},
-        {'title': title}
-    ]
-    dct.append({'Df': 'SUB_SERIES'})
-    pass
-
-
-def create_sub_sub_series(sub_sub_series_dct, parent_priref, parent_ob_num, title_art, title):
-    '''
-    Receive dict of series data
-    and create records for each
-    and create CID records
-    This record_type is not yet created!
-    '''
-    dct = {}
-    dct.append({'Df': 'SUB_SUB_SERIES'})
-    pass
-
-
-def create_files(files_dct, parent_priref, parent_ob_num, title_art, title):
-    '''
-    Receive dict of series data
-    and create records for each
-    and create CID records
-    '''
-    dct = {}
-    dct.append({'Df': 'FILES'})
-    pass
-
-
-def create_archive_item(ipath, num, parent_priref, parent_ob_num, title):
+def create_archive_item_record(file_order, parent_path, parent_priref, session, defaults_all, defaults_item):
     '''
     Get data needed for creation of item archive record
     Receive item fpath, enumeration, parent priref/ob num and title
     '''
-    root, iname = os.path.split(ipath)
-    ext = os.path.splitext(iname)
-    ob_num = f"{parent_ob_num}-{num}"
-    new_name = f"{ob_num}.{ext}"
-    record_dct = [(
-        {'Df': 'ITEM_ARCH'},
-        {'archive_title.type': '07_arch'},
-        {'title': title},
-        {'digital.acquired_filename': iname},
-        {'object_number': ob_num}
-    )]
-    pass
+    parent_ob_num, _, title = folder_split(os.path.basename(parent_path))
+    LOGGER.info("Processing files for parent %s in path: %s", parent_priref, parent_path)
 
+    all_item_prirefs = {}
+    for ipath, num in file_order:
+        if not os.path.isfile(ipath):
+            LOGGER.warning("Corrupt file path supplied: %s", ipath)
+            continue
 
+        # Get particulars
+        iname = os.path.basename(ipath)
+        LOGGER.info("------ File: %s --- number %s ------", iname, num)
+        ext = os.path.splitext(iname)
+        ob_num = f"{parent_ob_num}-{num.strip()}"
+        new_name = f"{ob_num}.{ext}"
 
-def rename_files(fpath, parent_ob_num, index):
-    '''
-    Using index and parent object number
-    create a new filename and rename fpath
-    '''
-    pass
+        # Create exif metadata / checksum
+        exif_metadata = utils.exif_data(ipath)
+        if 'Corrupt data' in str(exif_metadata):
+            LOGGER.info("Exif cannot read metadata for file: %s", ipath)
+            metadata_dct = [
+                {'file_size', os.path.getsize(ipath)},
+                {'file_size.type': 'Bytes'},
+                {'file_type': ext.upper()}
+            ]
+        else:
+            metadata_dct = get_image_data(exif_metadata)
+        checksum = utils.create_md5_65536(ipath)
 
+        record_dct = [(
+            {'Df': 'ITEM_ARCH'},
+            {'part_of_reference.lref': parent_priref},
+            {'archive_title.type': '07_arch'},
+            {'title': title}, # Inheriting from the parent folder?
+            {'digital.acquired_filename': iname},
+            {'object_number': ob_num},
+            {'received_checksum.type': 'MD5'},
+            {'received_checksum.data': str(datetime.datetime.now())[:19]}, # Should we be generating received checksum data?
+            {'received_checksum.value': checksum}
+        )]
 
-def build_defaults():
-    '''
-    Use this function to just build standard defaults for all GUR records
-    Discuss what specific record data they want in every record / some records
-    '''
-    text = '''
-The arrangement of the collection maintains its original order, \
-as stored on a shared Google Drive for Gurinder Chadha and her team. \
-Consequently, the collection is archived in alphabetical order, \
-including productions, rather than by date; please refer to the \
-material’s date for further details. \
-The collection has been organised into five series, each relating \
-to a different area of activity.
-'''
-    text2 = '''
-The working digital documents and images related to the films and \
-television programmes, directed, produced, and/or written by \
-Gurinder Chadha.
-'''
+        if metadata_dct:
+            record_dct.extend(metadata_dct)
+        record_dct.extend(defaults_all)
+        record_dct.extend(defaults_item)
 
-    records_all = [
-        # {'record_access.owner': 'Special Collections'}, Most probably $REST here
-        {'record_access.user': 'BFIiispublic'},
-        {'record_access.rights': '0'},
-        {'content.person.name.lref': '378012'},
-        {'content.person.name.type': 'PERSON'},
-        {'system_of_arrangement': text},
-        {'production.date.notes': '2013-2024'},
-        {'content.description': text2},
-        {'institution.name.lref': '999570701'}, # BFI National Archive
-        {'input.name': 'datadigipres'},
-        {'input.date': str(datetime.datetime.now())[:10]},
-        {'input.time': str(datetime.datetime.now())[11:19]},
-        {'input.notes': 'Automated record creation for Our Screen Heritage OSH strand 3, to facilitate ingest to Archivematica.'}
-    ]
+        # Check record not already existing - then create record and receive priref
+        exist = record_hits(ob_num, 'ITEM_ARCH', session)
+        if exist is None:
+            LOGGER.warning("API may not be available. Skipping record creation for safety %s", iname)
+            continue
+        elif exist is True:
+            priref, title, _ = cid_retrieve(ob_num, 'ITEM_ARCH', session)
+            LOGGER.warning("Skipping creation. Record %s / %s already exists: <%s>", title, ob_num, priref)
+            continue
 
-    records_items = []
+        # Create
+        LOGGER.info("Data collated for record creation: %s", record_dct)
+        new_priref = post_record(session, record_dct)
+        if new_priref is None:
+            LOGGER.warning("Record creation failed: %s", record_dct)
+            return None
 
-    return records_all, records_items
+        all_item_prirefs[new_priref] = f"{iname} - {new_name}"
+        LOGGER.info("New record created for Item Archive: %s", new_priref)
 
-
-def update_acquired_filename(priref, acquired_filename, session):
-    '''
-    Update the file's original filename
-    to digital.acquired_filename field
-    using new item record priref
-    '''
-    payload_head: str = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_mid: str = f"<digital.acquired_filename>'{acquired_filename}</digital.acquired_filename>"
-    payload_end: str = "</record></recordList></adlibXML>"
-    payload: str = payload_head + payload_mid + payload_end
-
-    record = adlib.post(CID_API, payload, 'archivescatalogue', 'updaterecord', session)
-    if record is None:
-        return False
-    elif 'error' in str(record):
-        return False
-    else:
-        return True
-
-
-def rename(filepath: str, ob_num: str) -> tuple[str, str]:
-    '''
-    Receive original file path and rename filename - TBU
-    based on object number, return new filepath, filename
-    '''
-    new_filepath, new_filename = '', ''
-    ipath, filename = os.path.split(filepath)
-    ext = os.path.splitext(filename)[1]
-    new_name = ob_num.replace('-', '_')
-    new_filename = f"{new_name}_01of01{ext}"
-    print(f"Renaming {filename} to {new_filename}")
-    new_filepath = os.path.join(ipath, new_filename)
-
-    try:
-        os.rename(filepath, new_filepath)
-    except OSError:
-        LOGGER.warning("There was an error renaming %s to %s", filename, new_filename)
-
-    return (new_filepath, new_filename)
-
-
-def move(filepath: str, arg: str) -> bool:
-    '''
-    Move existing filepaths to Autoingest - TBU
-    '''
-    if os.path.exists(filepath) and 'fail' in arg:
-        pth: str = os.path.split(filepath)[0]
-        failures: str = os.path.join(pth, 'failures/')
-        os.makedirs(failures, mode=0o777, exist_ok=True)
-        print(f"move(): Moving {filepath} to {failures}")
+        # Do we need to new folder in new location here?
+        new_fpath = os.path.join(parent_path, new_name)
         try:
-            shutil.move(filepath, failures)
-            return True
-        except Exception as err:
-            LOGGER.warning("Error trying to move file %s to %s. Error %s", filepath, failures, err)
-            return False
-    elif os.path.exists(filepath) and 'ingest' in arg:
-        print(f"move(): Moving {filepath} to {AUTOINGEST}")
-        try:
-            shutil.move(filepath, AUTOINGEST)
-            return True
-        except Exception:
-            LOGGER.warning("Error trying to move file %s to %s", filepath, AUTOINGEST)
-            return False
-    else:
-        return False
+            LOGGER.info("File renaming:\n - %s\n - %s", ipath, new_fpath)
+            os.rename(ipath, new_fpath)
+            if os.path.isfile(new_fpath):
+                LOGGER.info("File renaming was successful.")
+            else:
+                LOGGER.warning("File renaming failed.")
+        except OSError as err:
+            LOGGER.warning("File renaming error: %s", err)
 
 
 if __name__ == '__main__':

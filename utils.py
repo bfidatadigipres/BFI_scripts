@@ -571,6 +571,7 @@ def local_file_search(fpath, fname):
             if file == fname:
                 return os.path.join(root, file)
 
+
 def send_email(email: str, subject: str, body: str, files: str) -> None:
     '''
     automate the process of sending out simple emails

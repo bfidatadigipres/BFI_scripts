@@ -187,9 +187,8 @@ The working digital documents and images related to the films and \
 television programmes, directed, produced, and/or written by \
 Gurinder Chadha.
 '''
-
+   
     records_all = [
-        # {'record_access.owner': 'Special Collections'}, JMW Most probably $REST here ?
         {'record_access.user': 'BFIiispublic'},
         {'record_access.rights': '0'},
         {'content.person.name.lref': '378012'},
@@ -202,7 +201,8 @@ Gurinder Chadha.
         {'input.name': 'datadigipres'},
         {'input.date': str(datetime.datetime.now())[:10]},
         {'input.time': str(datetime.datetime.now())[11:19]},
-        {'input.notes': 'Automated record creation for Our Screen Heritage OSH strand 3, to facilitate ingest to Archivematica.'}
+        {'input.notes': 'Automated record creation for Our Screen Heritage OSH strand 3, to facilitate ingest to Archivematica.'},
+        # {'record_access.owner': 'Special Collections'}, JMW Most probably $REST here ?
     ]
 
     # JMW This may be unique to file each time, may skip
@@ -238,7 +238,7 @@ def main():
     series = []
     sub_series = []
     sub_sub_series = []
-    sub_sub_sub_series = []
+    # sub_sub_sub_series = []
     file = []
     for root, dirs, _ in os.walk(base_dir):
         for directory in dirs:
@@ -251,8 +251,8 @@ def main():
                 sub_series.append(dpath)
             elif '_sub-sub-series_' in str(directory):
                 sub_sub_series.append(dpath)
-            elif '_sub-sub-sub-series_' in str(directory):
-                sub_sub_sub_series.append(dpath)
+            # elif '_sub-sub-sub-series_' in str(directory):
+            #     sub_sub_sub_series.append(dpath)
             elif '_file_' in str(directory):
                 file.append(dpath)
 
@@ -276,14 +276,42 @@ def main():
     # Create records for folders
     if series:
         series_dcts, series_items = handle_repeat_folder_data(series, session, defaults_all, defaults_item)
+        LOGGER.info("Processed the following Series and Series items:")
+        for s in series_dcts:
+            LOGGER.info(s)
+        for i in series_items:
+            LOGGER.info(i)
     if sub_series:
         s_series_dcts, s_series_items = handle_repeat_folder_data(sub_series, session, defaults_all, defaults_item)
+        LOGGER.info("Processed the following Sub series and Sub series items:")
+        for s in s_series_dcts:
+            LOGGER.info(s)
+        for i in s_series_items:
+            LOGGER.info(i)
     if sub_sub_series:
         ss_series_dcts, ss_series_items = handle_repeat_folder_data(sub_sub_series, session, defaults_all, defaults_item)
+        LOGGER.info("Processed the following Sub-sub series and Sub-sub series items:")
+        for s in ss_series_dcts:
+            LOGGER.info(s)
+        for i in ss_series_items:
+            LOGGER.info(i)
+    '''
+    ADDITIONAL ISAD(G) LEVEL - RESERVED FOR POSSIBLE USE
     if sub_sub_sub_series:
         sss_series_dcts, sss_series_items = handle_repeat_folder_data(sub_sub_sub_series, session, defaults_all, defaults_item)
+        LOGGER.info("Processed the following Sub-sub-sub series and Sub-sub-sub series items:")
+        for s in sss_series_dcts:
+            LOGGER.info(s)
+        for i in sss_series_items:
+            LOGGER.info(i)
+    '''
     if file:
         file_dcts, file_items = handle_repeat_folder_data(file, session, defaults_all, defaults_item)
+        LOGGER.info("Processed the following File and File items:")
+        for s in file_dcts:
+            LOGGER.info(s)
+        for i in file_items:
+            LOGGER.info(i)
 
     LOGGER.info("=========== Special Collections - Document Archiving OSH END ==============")
 
@@ -332,7 +360,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         'series',
         'sub-series',
         'sub-sub-series',
-        'sub-sub-sub-series',
+        # 'sub-sub-sub-series',
         'file'
     ]
 

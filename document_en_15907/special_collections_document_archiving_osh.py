@@ -4,6 +4,7 @@
 Special Collections Document Archiving script for OSH
 
 Script stages:
+MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOLD LEVEL PATH
 1. Iterate through supplied sys.argv[1] folder path
 2. For each subfolder split folder name: ob_num / ISAD(G) level / Title
 3. Create CID record for each folder following level from folder name
@@ -24,11 +25,10 @@ Script stages:
 # Public packages
 import os
 import sys
-import shutil
 import requests
 import logging
 import datetime
-from typing import Optional, Final, List, Dict, Any
+from typing import Optional, List, Dict, Any
 
 # Private packages
 sys.path.append(os.environ.get('CODE'))
@@ -111,7 +111,6 @@ def sort_dates(file_list: List[str]) -> List[str]:
         time_list.append(f"{time} - {file_path}")
 
     time_list.sort()
-
     enum_list = []
     for i, name in enumerate(time_list):
         enum_list.append(f"{name.split(' - ', 1)[-1]}, {i + 1}")
@@ -159,9 +158,9 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         for d in data:
             exif_field, cid_field = d.split(', ')
             if 'File Type' in exif_field:
-                ft, type = value.split(' ')
+                ft, ft_type = value.split(' ')
                 image_dict.append({f'{cid_field}': ft.strip()})
-                image_dict.append({f'{cid_field}.type': type.strip()})
+                image_dict.append({f'{cid_field}.type': ft_type.strip()})
             elif exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
 
@@ -198,7 +197,7 @@ Gurinder Chadha.
         {'content.description': text2},
         {'institution.name.lref': '999570701'}, # JMW BFI National Archive?
         {'analogue_or_digital': 'DIGITAL'},
-        {'digital.born_or_derived': 'BORN_DIGITAL'}
+        {'digital.born_or_derived': 'BORN_DIGITAL'},
         {'input.name': 'datadigipres'},
         {'input.date': str(datetime.datetime.now())[:10]},
         {'input.time': str(datetime.datetime.now())[11:19]},
@@ -225,7 +224,7 @@ def main():
 
     LOGGER.info("=========== Special Collections rename - Document Archiving OSH START ============")
 
-    base_dir = sys.argv[1]  # sub_fond level path
+    base_dir = sys.argv[1]  # Always sub_fond level path
     sub_fond = os.path.basename(base_dir)
     print(base_dir)
     sf_ob_num, sf_record_type, sf_title = folder_split(sub_fond)
@@ -315,7 +314,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all, defaults_
         file_order[f"{key}"] = enum_files
         LOGGER.info("%s files found to create Item Archive records: %s", len(file_order), ', '.join(file_order))
 
-        # Create ITEM_ARCH records and rename files / move to new subfolders? 
+        # Create ITEM_ARCH records and rename files / move to new subfolders?
         item_prirefs = create_archive_item_record(file_order, key, p_priref, session, defaults_all, defaults_item)
 
     return priref_dct, item_prirefs

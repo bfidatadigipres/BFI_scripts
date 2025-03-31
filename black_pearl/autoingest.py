@@ -279,7 +279,7 @@ def check_media_record(fname: str, session: requests.Session) -> Optional[Union[
     Check if CID media record
     already created for filename
     '''
-    search = f"(imagen.media.original_filename='{fname}') or (reference_number='{fname}')"
+    search = f"imagen.media.original_filename='{fname}'"
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
@@ -798,6 +798,19 @@ def check_for_deletions(fpath, fname, log_paths, messages, session: requests.Ses
                         logger.warning('%s\tFailed to delete file', log_paths)
                 else:
                     print('* File already absent from path. Check problem with persistence message')
+
+    '''
+    # Temporary step to delete compelted items whose logging failed (QNAP write failures)
+    if 'qnap_04/autoingest/completed/' in fpath:
+        if media_check is True:
+            logger.info("%s\tDeleting: Ingested during Admin/Log write failures. No deletion confirmed in global.log but CID Media record present.", log_paths)
+            os.remove(fpath)
+            log_delete_message(fpath, 'Successfully deleted file', fname)
+            logger.info("%s\tAutoingest persistence checks passed.", log_paths)
+            logger.info("%s\tSuccessfully deleted file", log_paths)
+            print("* Successfully deleted QNAP-04 item based on CID media record")
+            return True
+    '''
     return False
 
 

@@ -200,10 +200,9 @@ def traverse_sub_records(record, field):
     field_list = []
     for sub_rec in record:
         if field in str(record[sub_rec]):
-            if isinstance(field, str):
-                field_list.append(field)
-            elif isinstance(field, list):
-                for f in field:
+            new_rec = record[sub_rec]
+            if isinstance(field, list):
+                for nr in new_rec:
                     if isinstance(f, str):
                         field_list.append(f)
                     elif "'@lang'" in str(f):
@@ -251,7 +250,13 @@ def group_check(record, fname):
                     else:
                         try:
                             fieldnames.append(val[0]['spans'][0]['text'])
-                        except (IndexError, KeyError):
+                        except KeyError:
+                            for ky, vl in fieldnames.items():
+                                if ky != fname:
+                                    print(f"Nested item found: {ky}")
+                                    if 'spans' in val:
+                                        fieldnames.append(val[0][ky][0]['spans'][0]['text'])
+                        except TypeError:
                             pass
         if fieldnames:
             print(f"group_check(): {type(fieldnames)}")

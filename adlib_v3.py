@@ -250,13 +250,7 @@ def group_check(record, fname):
                     else:
                         try:
                             fieldnames.append(val[0]['spans'][0]['text'])
-                        except KeyError:
-                            for ky, vl in val.items():
-                                if ky != fname:
-                                    print(f"Nested item found: {ky}")
-                                    if 'spans' in vl and isinstance(vl,list):
-                                        fieldnames.append(vl[0][ky][0]['spans'][0]['text'])
-                        except TypeError:
+                        except (IndexError, KeyError):
                             pass
         if fieldnames:
             print(f"group_check(): {type(fieldnames)}")

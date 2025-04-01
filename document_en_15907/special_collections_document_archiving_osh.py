@@ -172,21 +172,17 @@ def build_defaults():
     Use this function to just build standard defaults for all GUR records
     Discuss what specific record data they want in every record / some records
     '''
-    text = '''
-The arrangement of the collection maintains its original order, \
+    text = ''' The arrangement of the collection maintains its original order, \
 as stored on a shared Google Drive for Gurinder Chadha and her team. \
 Consequently, the collection is archived in alphabetical order, \
 including productions, rather than by date; please refer to the \
 materials date for further details.\n\n \
 The collection has been organised into five series, each relating \
-to a different area of activity.
-'''
-    text2 = '''
-The working digital documents and images related to the films and \
+to a different area of activity.'''
+    text2 = ''' The working digital documents and images related to the films and \
 television programmes, directed, produced, and/or written by \
-Gurinder Chadha.
-'''
-   
+Gurinder Chadha.'''
+
     records_all = [
         {'record_access.user': 'BFIiispublic'},
         {'record_access.rights': '0'},

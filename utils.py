@@ -576,7 +576,7 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
     try:
         msg = MIMEMultipart()
         msg['From'] = 'digitalpreservationsystems@bfi.org.uk'
-        msg['To'] = 'saabriin.mohamed@bfi.org.uk'
+        msg['To'] = email
         msg['Subject'] = subject
 
 
@@ -588,7 +588,7 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
                 attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
                 msg.attach(attachment_package)
         else:
-            body += f"\n \n User has added an attachment: {files} is above the recommended size, find a different method to send the file.\n"
+            body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"
 
         msg.attach(MIMEText(body, 'plain'))
 

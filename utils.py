@@ -582,14 +582,18 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
         msg['To'] = email
         msg['Subject'] = subject
 
-        msg.attach(MIMEText(body, 'plain'))
 
-        with open(files, 'rb') as file:
-            attachment_package = MIMEBase('application', 'octet-stream')
-            attachment_package.set_payload((file).read())
-            encoders.encode_base64(attachment_package)
-            attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
-            msg.attach(attachment_package)
+        if os.path.getsize(files) < 500000:
+            with open(files, 'rb') as file:
+                attachment_package = MIMEBase('application', 'octet-stream')
+                attachment_package.set_payload((file).read())
+                encoders.encode_base64(attachment_package)
+                attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
+                msg.attach(attachment_package)
+        else:
+            body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"
+
+        msg.attach(MIMEText(body, 'plain'))
 
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=CONTEXT) as smtp:
             smtp.login(EMAIL, PASSWORD)

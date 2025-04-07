@@ -193,7 +193,7 @@ def make_metadata(bpi_path: str, fpath: str, fname: str, mediainfo_path: str) ->
     LOGGER.info("Written metadata to paths:\n%s\n%s\n%s\n%s\n%s\n%s", path1, path2, path3, path4, path5, path6)
 
 
-def get_bpi_folder(filepath):
+def get_bpi_folder(filepath: str) -> Optional[str]:
     '''
     Identify and return the base
     black_pearl_ingest folder to

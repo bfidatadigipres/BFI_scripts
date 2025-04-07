@@ -179,11 +179,41 @@ def retrieve_field_name(record, fieldname):
                 field_list.append(field['value'][0]['spans'][0]['text'])
             else:
                 field_list.append(field['spans'][0]['text'])
+    except TypeError:
+        field_list = traverse_sub_records(record, fieldname)
     except KeyError:
         field_list = group_check(record, fieldname)
+    except Exception as err:
+        print(err)
 
     if not isinstance(field_list, list):
         return [field_list]
+    return field_list
+
+
+# (record: dict, field: str) -> list[str]:
+def traverse_sub_records(record, field):
+    '''
+    Where there is group nesting check for
+    fieldname in other layers
+    '''
+    field_list = []
+    for sub_rec in record:
+        if field in str(record[sub_rec]):
+            new_rec = record[sub_rec]
+            if isinstance(field, list):
+                for nr in new_rec:
+                    if isinstance(f, str):
+                        field_list.append(f)
+                    elif "'@lang'" in str(f):
+                        field_list.append(f['value'][0]['spans'][0]['text'])
+                    else:
+                        field_list.append(f['spans'][0]['text'])
+            elif "'@lang'" in str(field):
+                field_list.append(field['value'][0]['spans'][0]['text'])
+            else:
+                field_list.append(field['spans'][0]['text'])
+
     return field_list
 
 

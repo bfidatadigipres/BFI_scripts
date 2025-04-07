@@ -15,7 +15,7 @@ import csv
 import json
 import logging
 import datetime
-from typing import Final
+from typing import Final, Optional
 
 # Private packages
 sys.path.append(os.environ['CODE'])

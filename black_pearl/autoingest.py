@@ -69,9 +69,9 @@ import ntpath
 import logging
 import datetime
 import subprocess
+from typing import Final, Optional, Union, Any
 import requests
 import magic
-from typing import Final, Optional, Union, Any
 
 # Private packages
 import bp_utils as bp
@@ -259,6 +259,7 @@ def get_item_priref(ob_num: str, session: requests.Session) -> str:
     '''
     ob_num = ob_num.strip()
     search = f"object_number='{ob_num}'"
+    print(f"Search used against CID Collect dB: {search}")
     record = adlib.retrieve_record(CID_API, 'collect', search, '1', session)[1]
     print(f"get_item_priref(): AdlibV3 record for priref:\n{record}")
 
@@ -278,7 +279,7 @@ def check_media_record(fname: str, session: requests.Session) -> Optional[Union[
     Check if CID media record
     already created for filename
     '''
-    search = f"(imagen.media.original_filename='{fname}') or (reference_number='{fname}')"
+    search = f"imagen.media.original_filename='{fname}'"
     print(f"Search used against CID Media dB: {search}")
     try:
         hits = adlib.retrieve_record(CID_API, 'media', search, '0', session)[0]
@@ -384,9 +385,9 @@ def get_media_ingests(object_number: str, session: requests.Session) -> list[str
         logger.exception('"CID API was unreachable for Media search: %s', search)
         raise Exception(f"CID API was unreachable for Media search: {search}")
     if record is None:
-        logger.exception('"There is no such record for object: %s', object_number)
-        raise Exception(f"There's no such record for object: {object_number}")
-    
+        logger.info("No digitised assets found for this object_number: %s", object_number)
+        return None
+
     print(f"get_media_ingests(): AdlibV3 record returned:\n{record}")
 
     original_filenames = []
@@ -797,6 +798,19 @@ def check_for_deletions(fpath, fname, log_paths, messages, session: requests.Ses
                         logger.warning('%s\tFailed to delete file', log_paths)
                 else:
                     print('* File already absent from path. Check problem with persistence message')
+
+    '''
+    # Temporary step to delete compelted items whose logging failed (QNAP write failures)
+    if 'qnap_04/autoingest/completed/' in fpath:
+        if media_check is True:
+            logger.info("%s\tDeleting: Ingested during Admin/Log write failures. No deletion confirmed in global.log but CID Media record present.", log_paths)
+            os.remove(fpath)
+            log_delete_message(fpath, 'Successfully deleted file', fname)
+            logger.info("%s\tAutoingest persistence checks passed.", log_paths)
+            logger.info("%s\tSuccessfully deleted file", log_paths)
+            print("* Successfully deleted QNAP-04 item based on CID media record")
+            return True
+    '''
     return False
 
 

@@ -57,7 +57,7 @@ import os
 import sys
 import logging
 import itertools
-from typing import Optional, Any, Final
+from typing import Optional, Any, Final, Union
 from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConflictError, NotFoundError, RequestError, TransportError
@@ -116,6 +116,8 @@ def get_media_original_filename(fname: str) -> tuple[Optional[str], Optional[str
         'imagen.media.original_filename',
         'preservation_bucket'
     ]
+    print(search, fields, CID_API)
+
     record = adlib.retrieve_record(CID_API, 'media', search, '0', fields)[1]
     if record is None:
         LOGGER.exception("get_media_original_filename: Unable to match filename to CID media record: %s", fname)
@@ -572,7 +574,7 @@ def main():
     LOGGER.info("================ DPI DOWNLOAD REQUESTS COMPLETED. Date: %s =================\n", datetime.now().strftime(FMT)[:19])
 
 
-def create_transcode(new_fpath: str, transcode: str, fname: str, user_id: str) -> Tuple[str, bool]:
+def create_transcode(new_fpath: str, transcode: str, fname: str, user_id: str) -> tuple[str, bool]:
     '''
     Transcode files depending on supplied
     transcode preference. Output result of attempt

@@ -23,20 +23,20 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-from dotenv import load_dotenv
+
 
 # BFI library
 import adlib_v3 as adlib
 
-load_dotenv()
+
 
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: str = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, 'autoingest', 'global.log')
 SMTP_SERVER = 'mail.smtp2go.com'
 SMTP_PORT = 465
-EMAIL = os.getenv("EMAIL_ADDRESS")
-PASSWORD = os.getenv("EMAIL_PASSWORD")
+EMAIL =  os.environ.get("EMAIL_ADDRESS")
+PASSWORD =  os.environ.get("EMAIL_PASSWORD")
 CONTEXT = ssl.create_default_context()
 
 PREFIX: Final = [

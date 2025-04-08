@@ -37,7 +37,6 @@ import utils
 STORA: Final = os.environ['STORA']
 STORA_BACKUP: Final  = os.environ['STORA_BACKUP']
 LOG_PATH: Final  = os.environ['LOG_PATH']
-RSYNC_LOG: Final  = os.path.join(LOG_PATH, "news_preservation_move_to_dpi.log")
 DATABASE: Final  = os.environ['DATABASE_NEWS_PRESERVATION']
 EMAIL_SENDER: Final =os.environ['EMAIL_SEND']
 EMAIL_PSWD: Final =os.environ['EMAIL_PASS']
@@ -203,38 +202,6 @@ def main():
     LOGGER.info("================ DPI NEWS PRESERVATION REQUESTS COMPLETED. Date: %s =================\n", datetime.datetime.now().strftime(FMT)[:19])
 
 
-def rsync_move(source_path: str, dest_path: str) -> bool:
-    '''
-    DEPRECATED
-    Copy files from QNAP-04
-    STORA_backup/yyyy/mm/dd/channel to
-    STORA/yyyy/mm/dd/channel
-    '''
-    source_path = source_path.rstrip('/')
-    dest_path = dest_path.rstrip('/')
-
-    if not os.path.exists(dest_path):
-        os.makedirs(dest_path, mode=0o777, exist_ok=True)
-
-    rsync_cmd = [
-        'rsync',
-        '--info=FLIST2,COPY2,PROGRESS2,NAME2,BACKUP2,STATS2',
-        '-acvh', '--remove-source-files',
-        '--no-o', '--no-g',
-        source_path, dest_path,
-        f'--log-file={RSYNC_LOG}'
-    ]
-
-    try:
-        subprocess.call(rsync_cmd)
-        LOGGER.info("Files moved to DPI path: %s", dest_path)
-        return True
-    except Exception as err:
-        LOGGER.warning("Files failed moved to DPI path: %s", dest_path)
-        LOGGER.warning(err)
-        return False
-
-
 def move_folder(channel:str , date_pth: str) -> bool:
     '''
     Use Linux mv to shift folder from
@@ -243,6 +210,8 @@ def move_folder(channel:str , date_pth: str) -> bool:
 
     from_path = os.path.join(STORA_BACKUP, date_pth, channel)
     to_path = os.path.join(STORA, date_pth, channel)
+    if not os.path.exists(to_path):
+        os.makedirs(to_path, mode=0o777, exist_ok=True)
 
     cmd = [
         'mv',

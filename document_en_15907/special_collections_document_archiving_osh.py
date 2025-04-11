@@ -373,7 +373,10 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         idx = record_types.index(record_type)
         if isinstance(idx, int):
             print(f"Record type match: {record_types[idx]} - checking parent record_type is correct.")
+            # JMW BREAKS HERE
             pidx = idx - 1
+            print(type(pidx), pidx)
+            print(record_types[pidx])
             if record_types[pidx] != p_record_type:
                 LOGGER.warning("Problem with supplied record types in folder name, skipping")
                 continue

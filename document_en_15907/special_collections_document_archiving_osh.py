@@ -54,7 +54,7 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     Receive filename and search in CID works dB
     Return selected data to main()
     '''
-    search: str = f'object_number="{fname}" and Df="{record_type}"'
+    search: str = f'(object_number="{fname}" and Df="{record_type}")'
     fields: list[str] = [
         'priref',
         'title',
@@ -91,7 +91,7 @@ def record_hits(fname: str, session) -> Optional[Any]:
     '''
     Count hits and return bool / NoneType
     '''
-    search: str = f'object_number="{fname}" and Df="{record_type}"'
+    search: str = f'(object_number="{fname}" and Df="{record_type}")'
     print(search)
     hits = adlib.retrieve_record(CID_API, 'archivescatalogue', search, 1, session)[0]
     print(hits)

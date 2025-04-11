@@ -122,7 +122,7 @@ def main() -> None:
         sys.exit('Script run prevented by downtime_control.json. Script exiting.')
 
     # the file path should refer to the ingest_check folder
-    filepath = os.path.join(sys.argv[1], "Acquisitions/ingest_check")
+    filepath = os.path.join(sys.argv[1], "ingest_check")
 
     LOGGER.info("Starting checksum validation process")
     print(filepath)

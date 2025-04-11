@@ -50,7 +50,7 @@ LOGGER.setLevel(logging.INFO)
 
 FIELDS = [
     {'container.duration': ['Duration_String1', 'Duration  ']},
-    {'container.duration.milliseconds': ['Duration', '']},
+    {'container.duration.seconds': ['Duration', '']},
     {'container.file_size.total_bytes': ['FileSize', 'File size  ']},
     {'container.file_size.total_gigabytes': ['FileSize_String4', 'File size  ']},
     {'container.commercial_name': ['Format_Commercial', 'Commercial name  ']},
@@ -71,7 +71,7 @@ FIELDS = [
     {'container.media_UUID': ['UniqueID', 'Unique ID  ']},
     {'container.truncated': ['IsTruncated','Is truncated  ']},
     {'video.duration': ['Duration_String1', '']},
-    {'video.duration.milliseconds': ['Duration','Duration  ']},
+    {'video.duration.seconds': ['Duration','Duration  ']},
     {'video.bit_depth': ['BitDepth', 'Bit depth  ']},
     {'video.bit_rate_mode': ['BitRate_Mode', 'Bit rate mode  ']},
     {'video.bit_rate': ['BitRate_String','Bit rate  ']},
@@ -424,7 +424,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
     for field in FIELDS:
         for key, val in field.items():
             # Temporarily convert text returned milliseconds to seconds
-            if key.endswith('duration.milliseconds'):
+            if key.endswith('duration.seconds'):
                 match = iterate_text_rows(gen_rows, val[1], key)
                 if match is None:
                     continue
@@ -451,7 +451,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         for field in FIELDS:
             for key, val in field.items():
                 # Temporarily convert text returned milliseconds to seconds
-                if key.endswith('duration.milliseconds'):
+                if key.endswith('duration.seconds'):
                     match = iterate_text_rows(vid_rows, val[1], key)
                     if match is None:
                         continue
@@ -487,7 +487,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         for field in FIELDS:
             for key, val in field.items():
                 # Temporarily convert text returned milliseconds to seconds
-                if key.endswith('duration.milliseconds'):
+                if key.endswith('duration.seconds'):
                     match = iterate_text_rows(aud_rows, val[1], key)
                     if match is None:
                         continue

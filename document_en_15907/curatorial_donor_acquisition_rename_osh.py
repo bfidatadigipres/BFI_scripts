@@ -209,15 +209,20 @@ def main() -> None:
         ftype = sort_ext(ext)
         LOGGER.info("File type for %s is %s", item, ftype)
         if ftype == 'video':
-            duration = utils.get_metadata('General', 'Duration', itempath)
+            duration = utils.probe_metadata('duration', 'video', itempath)
+            if duration is None:
+                LOGGER.warning("Skipping: General duration missing from video file %s - moving to fail_trucated/ folder", item)
+                os.makedirs(os.path.join(fullpath, 'fail_truncated'), mode=0o777, exist_ok=True)
+                shutil.move(itempath, os.path.join(fullpath, 'fail_truncated/', item))
+                continue
             if len(duration) == 0:
                 LOGGER.warning("Skipping: General duration missing from video file %s - moving to fail_trucated/ folder", item)
                 os.makedirs(os.path.join(fullpath, 'fail_truncated'), mode=0o777, exist_ok=True)
                 shutil.move(itempath, os.path.join(fullpath, 'fail_truncated/', item))
                 continue
-
         # Retrieve CID data
         search = f'digital.acquired_filename="{item}"'
+        print(search)
         cid_data = cid_retrieve(item, search)
         priref = cid_data[0]
         ob_num = cid_data[1]

@@ -9,6 +9,7 @@ import re
 import os
 import csv
 import json
+import ffmpeg
 import hashlib
 import logging
 import datetime
@@ -298,6 +299,24 @@ def exif_data(dpath):
     data = subprocess.check_output(cmd).decode('latin-1')
 
     return data
+
+
+def probe_metadata(arg, stream, fpath):
+    '''
+    Use FFmpeg module to extract
+    ffprobe data from file
+    '''
+    try:
+        probe = ffmpeg.probe(fpath)
+    except ffmpeg.Error as err:
+        print(err)
+        return None
+
+    for st in probe['streams']:
+        if st['codec_type'] == stream:
+            return st[arg]
+
+    return None
 
 
 # (stream: str, arg: str, dpath: str) -> str:

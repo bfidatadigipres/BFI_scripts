@@ -339,6 +339,8 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
 
         # Create ITEM_ARCH records and rename files / move to new subfolders?
         item_prirefs = create_archive_item_record(file_order, key, p_priref, session, defaults_all)
+        if not item_prirefs:
+            return None, None
 
     return priref_dct, item_prirefs
 

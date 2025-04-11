@@ -64,9 +64,12 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     record = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '1', session, fields)[1]
     LOGGER.info("cid_retrieve(): Making CID query request with:\n%s", search)
     if not record:
-        print(f"cid_retrieve(): Unable to retrieve data for {fname}")
-        utils.logger(LOG, 'exception', f"cid_retrieve(): Unable to retrieve data for {fname}")
-        return None
+        search: str = f'object_number="{fname}"'
+        record = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '1', session, fields)[1]
+        if not record:
+            print(f"cid_retrieve(): Unable to retrieve data for {fname}")
+            utils.logger(LOG, 'exception', f"cid_retrieve(): Unable to retrieve data for {fname}")
+            return None
 
     if 'priref' in str(record):
         priref = adlib.retrieve_field_name(record[0], 'priref')[0]
@@ -84,7 +87,7 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     return priref, title, title_article
 
 
-def record_hits(fname: str, record_type: str, session) -> Optional[Any]:
+def record_hits(fname: str, session) -> Optional[Any]:
     '''
     Count hits and return bool / NoneType
     '''
@@ -381,7 +384,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
             continue
 
         # Check if parent already created to allow for repeat runs against folders
-        p_exist = record_hits(p_ob_num, p_record_type.upper(), session)
+        p_exist = record_hits(p_ob_num, session)
         if p_exist is None:
             LOGGER.warning("API may not be available. Skipping for safety.")
             continue
@@ -393,7 +396,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         LOGGER.info("Parent priref %s, Title %s %s", p_priref, title_art, title)
 
         # Check if record already exists before creating new record
-        exist = record_hits(ob_num, record_type.upper(), session)
+        exist = record_hits(ob_num, session)
         if exist is None:
             LOGGER.warning("API may not be available. Skipping for safety %s", folder)
             continue
@@ -419,7 +422,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
             LOGGER.warning("Record failed to create using data: %s, %s, %s, %s,\n%s", ob_num, record_type.upper(), p_priref, local_title, data)
             continue
 
-        LOGGER.info("New %s record_type created: %s", record_type.upper(), priref)
+        LOGGER.info("New %s record_type created: %s", record_type.upper(), new_priref)
         print(f"New series record created: {ob_num} - {new_priref} / Parent: {p_ob_num} / Record type: {record_type} / {local_title}")
         priref_dct[fpath] = f"{new_priref} - {ob_num}"
 
@@ -504,7 +507,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
         record_dct.extend(defaults_all)
 
         # Check record not already existing - then create record and receive priref
-        exist = record_hits(ob_num, 'ITEM_ARCH', session)
+        exist = record_hits(ob_num, session)
         if exist is None:
             LOGGER.warning("API may not be available. Skipping record creation for safety %s", iname)
             continue

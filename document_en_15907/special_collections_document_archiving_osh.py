@@ -466,80 +466,80 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
     LOGGER.info("Processing files for parent %s in path: %s", parent_priref, parent_path)
 
     all_item_prirefs = {}
-    for ip in file_order:
-        print(ip)
-        ipath, num = ip.split(', ', 1)
-        if not os.path.isfile(ipath):
-            LOGGER.warning("Corrupt file path supplied: %s", ipath)
-            continue
+    for _, value in file_order:
+        for ip in value:
+            ipath, num = ip.split(', ', 1)
+            if not os.path.isfile(ipath):
+                LOGGER.warning("Corrupt file path supplied: %s", ipath)
+                continue
 
-        # Get particulars
-        iname = os.path.basename(ipath)
-        LOGGER.info("------ File: %s --- number %s ------", iname, num)
-        ext = os.path.splitext(iname)
-        ob_num = f"{parent_ob_num}-{num.strip()}"
-        new_name = f"{ob_num}.{ext}"
+            # Get particulars
+            iname = os.path.basename(ipath)
+            LOGGER.info("------ File: %s --- number %s ------", iname, num)
+            ext = os.path.splitext(iname)
+            ob_num = f"{parent_ob_num}-{num.strip()}"
+            new_name = f"{ob_num}.{ext}"
 
-        # Create exif metadata / checksum
-        exif_metadata = utils.exif_data(ipath)
-        if 'Corrupt data' in str(exif_metadata):
-            LOGGER.info("Exif cannot read metadata for file: %s", ipath)
-            metadata_dct = [
-                {'file_size', os.path.getsize(ipath)},
-                {'file_size.type': 'Bytes'},
-                {'file_type': ext.upper()}
-            ]
-        else:
-            metadata_dct = get_image_data(exif_metadata)
-        checksum = utils.create_md5_65536(ipath)
-
-        record_dct = [(
-            {'Df': 'ITEM_ARCH'},
-            {'part_of_reference.lref': parent_priref},
-            {'archive_title.type': '07_arch'},
-            {'title': title}, # Inheriting from the parent folder?
-            {'digital.acquired_filename': iname},
-            {'object_number': ob_num},
-            {'received_checksum.type': 'MD5'},
-            {'received_checksum.data': str(datetime.datetime.now())[:19]}, # Should we be generating received checksum data?
-            {'received_checksum.value': checksum}
-        )]
-
-        if metadata_dct:
-            record_dct.extend(metadata_dct)
-        record_dct.extend(defaults_all)
-
-        # Check record not already existing - then create record and receive priref
-        exist = record_hits(ob_num, session)
-        if exist is None:
-            LOGGER.warning("API may not be available. Skipping record creation for safety %s", iname)
-            continue
-        elif exist is True:
-            priref, title, _ = cid_retrieve(ob_num, 'ITEM_ARCH', session)
-            LOGGER.warning("Skipping creation. Record %s / %s already exists: <%s>", title, ob_num, priref)
-            continue
-
-        # Create
-        LOGGER.info("Data collated for record creation: %s", record_dct)
-        new_priref = post_record(session, record_dct)
-        if new_priref is None:
-            LOGGER.warning("Record creation failed: %s", record_dct)
-            return None
-
-        all_item_prirefs[new_priref] = f"{iname} - {new_name}"
-        LOGGER.info("New record created for Item Archive: %s", new_priref)
-
-        # Do we need to new folder in new location here?
-        new_fpath = os.path.join(parent_path, new_name)
-        try:
-            LOGGER.info("File renaming:\n - %s\n - %s", ipath, new_fpath)
-            os.rename(ipath, new_fpath)
-            if os.path.isfile(new_fpath):
-                LOGGER.info("File renaming was successful.")
+            # Create exif metadata / checksum
+            exif_metadata = utils.exif_data(ipath)
+            if 'Corrupt data' in str(exif_metadata):
+                LOGGER.info("Exif cannot read metadata for file: %s", ipath)
+                metadata_dct = [
+                    {'file_size', os.path.getsize(ipath)},
+                    {'file_size.type': 'Bytes'},
+                    {'file_type': ext.upper()}
+                ]
             else:
-                LOGGER.warning("File renaming failed.")
-        except OSError as err:
-            LOGGER.warning("File renaming error: %s", err)
+                metadata_dct = get_image_data(exif_metadata)
+            checksum = utils.create_md5_65536(ipath)
+
+            record_dct = [(
+                {'Df': 'ITEM_ARCH'},
+                {'part_of_reference.lref': parent_priref},
+                {'archive_title.type': '07_arch'},
+                {'title': title}, # Inheriting from the parent folder?
+                {'digital.acquired_filename': iname},
+                {'object_number': ob_num},
+                {'received_checksum.type': 'MD5'},
+                {'received_checksum.data': str(datetime.datetime.now())[:19]}, # Should we be generating received checksum data?
+                {'received_checksum.value': checksum}
+            )]
+
+            if metadata_dct:
+                record_dct.extend(metadata_dct)
+            record_dct.extend(defaults_all)
+
+            # Check record not already existing - then create record and receive priref
+            exist = record_hits(ob_num, session)
+            if exist is None:
+                LOGGER.warning("API may not be available. Skipping record creation for safety %s", iname)
+                continue
+            elif exist is True:
+                priref, title, _ = cid_retrieve(ob_num, 'ITEM_ARCH', session)
+                LOGGER.warning("Skipping creation. Record %s / %s already exists: <%s>", title, ob_num, priref)
+                continue
+
+            # Create
+            LOGGER.info("Data collated for record creation: %s", record_dct)
+            new_priref = post_record(session, record_dct)
+            if new_priref is None:
+                LOGGER.warning("Record creation failed: %s", record_dct)
+                return None
+
+            all_item_prirefs[new_priref] = f"{iname} - {new_name}"
+            LOGGER.info("New record created for Item Archive: %s", new_priref)
+
+            # Do we need to new folder in new location here?
+            new_fpath = os.path.join(parent_path, new_name)
+            try:
+                LOGGER.info("File renaming:\n - %s\n - %s", ipath, new_fpath)
+                os.rename(ipath, new_fpath)
+                if os.path.isfile(new_fpath):
+                    LOGGER.info("File renaming was successful.")
+                else:
+                    LOGGER.warning("File renaming failed.")
+            except OSError as err:
+                LOGGER.warning("File renaming error: %s", err)
 
 
 if __name__ == '__main__':

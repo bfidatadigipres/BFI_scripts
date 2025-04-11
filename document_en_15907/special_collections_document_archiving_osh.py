@@ -145,7 +145,6 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         return None
 
     data = [
-        'File Size, file_size',
         'File Modification Date/Time, production.date.notes',
         'File Type, file_type'
         'MIME Type, media_type',
@@ -164,6 +163,8 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
             elif exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
 
+    image_dict.append({'file_size', os.path.getsize(ipath)})
+    image_dict.append({'file_size.type': 'Bytes'})
     return image_dict
 
 
@@ -200,10 +201,7 @@ Gurinder Chadha.'''
         # {'record_access.owner': 'Special Collections'}, JMW Most probably $REST here ?
     ]
 
-    # JMW This may be unique to file each time, may skip
-    records_items = []
-
-    return records_all, records_items
+    return records_all
 
 
 def main():
@@ -252,7 +250,7 @@ def main():
                 file.append(dpath)
 
     session = adlib.create_session()
-    defaults_all, defaults_item = build_defaults()
+    defaults_all = build_defaults()
 
     # Process series filepaths first
     if not series:
@@ -270,21 +268,21 @@ def main():
 
     # Create records for folders
     if series:
-        series_dcts, series_items = handle_repeat_folder_data(series, session, defaults_all, defaults_item)
+        series_dcts, series_items = handle_repeat_folder_data(series, session, defaults_all)
         LOGGER.info("Processed the following Series and Series items:")
         for s in series_dcts:
             LOGGER.info(s)
         for i in series_items:
             LOGGER.info(i)
     if sub_series:
-        s_series_dcts, s_series_items = handle_repeat_folder_data(sub_series, session, defaults_all, defaults_item)
+        s_series_dcts, s_series_items = handle_repeat_folder_data(sub_series, session, defaults_all)
         LOGGER.info("Processed the following Sub series and Sub series items:")
         for s in s_series_dcts:
             LOGGER.info(s)
         for i in s_series_items:
             LOGGER.info(i)
     if sub_sub_series:
-        ss_series_dcts, ss_series_items = handle_repeat_folder_data(sub_sub_series, session, defaults_all, defaults_item)
+        ss_series_dcts, ss_series_items = handle_repeat_folder_data(sub_sub_series, session, defaults_all)
         LOGGER.info("Processed the following Sub-sub series and Sub-sub series items:")
         for s in ss_series_dcts:
             LOGGER.info(s)
@@ -293,7 +291,7 @@ def main():
     '''
     ADDITIONAL ISAD(G) LEVEL - RESERVED FOR POSSIBLE USE
     if sub_sub_sub_series:
-        sss_series_dcts, sss_series_items = handle_repeat_folder_data(sub_sub_sub_series, session, defaults_all, defaults_item)
+        sss_series_dcts, sss_series_items = handle_repeat_folder_data(sub_sub_sub_series, session, defaults_all)
         LOGGER.info("Processed the following Sub-sub-sub series and Sub-sub-sub series items:")
         for s in sss_series_dcts:
             LOGGER.info(s)
@@ -301,7 +299,7 @@ def main():
             LOGGER.info(i)
     '''
     if file:
-        file_dcts, file_items = handle_repeat_folder_data(file, session, defaults_all, defaults_item)
+        file_dcts, file_items = handle_repeat_folder_data(file, session, defaults_all)
         LOGGER.info("Processed the following File and File items:")
         for s in file_dcts:
             LOGGER.info(s)
@@ -311,7 +309,7 @@ def main():
     LOGGER.info("=========== Special Collections - Document Archiving OSH END ==============")
 
 
-def handle_repeat_folder_data(record_type_list, session, defaults_all, defaults_item):
+def handle_repeat_folder_data(record_type_list, session, defaults_all):
     '''
     Create record at folder level irrespective
     of record_type, inherited from folder name.
@@ -339,12 +337,12 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all, defaults_
         LOGGER.info("%s files found to create Item Archive records: %s", len(file_order), ', '.join(file_order))
 
         # Create ITEM_ARCH records and rename files / move to new subfolders?
-        item_prirefs = create_archive_item_record(file_order, key, p_priref, session, defaults_all, defaults_item)
+        item_prirefs = create_archive_item_record(file_order, key, p_priref, session, defaults_all)
 
     return priref_dct, item_prirefs
 
 
-def create_folder_record(folder_list: List[str], session: requests.Session, defaults: List[Dict[str]]) -> Dict[str, str]:
+def create_folder_record(folder_list: List[str], session: requests.Session, defaults: List[Dict[str, str]]) -> Dict[str, str]:
     '''
     Accept list of folder paths and create a record
     where none already exist, linking to the parent
@@ -449,7 +447,7 @@ def post_record(session, record_data=None) -> Optional[Any]:
         raise err
 
 
-def create_archive_item_record(file_order, parent_path, parent_priref, session, defaults_all, defaults_item):
+def create_archive_item_record(file_order, parent_path, parent_priref, session, defaults_all):
     '''
     Get data needed for creation of item archive record
     Receive item fpath, enumeration, parent priref/ob num and title
@@ -498,7 +496,6 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
         if metadata_dct:
             record_dct.extend(metadata_dct)
         record_dct.extend(defaults_all)
-        record_dct.extend(defaults_item)
 
         # Check record not already existing - then create record and receive priref
         exist = record_hits(ob_num, 'ITEM_ARCH', session)

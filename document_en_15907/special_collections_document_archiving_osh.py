@@ -268,6 +268,7 @@ def main():
 
     # Create records for folders
     if series:
+        print(series, defaults_all)
         series_dcts, series_items = handle_repeat_folder_data(series, session, defaults_all)
         LOGGER.info("Processed the following Series and Series items:")
         for s in series_dcts:
@@ -316,7 +317,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
     Get back dict of fpaths and prirefs, then
     look within each for documents that need recs.
     '''
-
+    print(f"Received {record_type_list}, {defaults_all}")
     priref_dct = create_folder_record(record_type_list, session, defaults_all)
     LOGGER.info("New records created:\n%s", priref_dct)
 
@@ -361,7 +362,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
     for fpath in folder_list:
         root, folder = os.path.split(fpath)
         p_ob_num, p_record_type, _ = folder_split(os.path.basename(root))
-
+        print(f"Parent folder: {root} - {p_ob_num} - {p_record_type}")
         print(f"Folder to be processed {folder}")
         ob_num, record_type, local_title = folder_split(folder)
         print(ob_num)

@@ -7,6 +7,7 @@ to one utils.py document
 
 import re
 import os
+import ast
 import csv
 import json
 import ffmpeg
@@ -297,8 +298,8 @@ def exif_data(dpath):
         dpath
     ]
     data = subprocess.check_output(cmd).decode('latin-1')
-
-    return data
+    list_data = ast.literal_eval(data)
+    return list_data
 
 
 def probe_metadata(arg, stream, fpath):

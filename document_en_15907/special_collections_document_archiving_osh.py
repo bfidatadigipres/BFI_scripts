@@ -253,7 +253,7 @@ def main():
     defaults_all = build_defaults()
 
     # Process series filepaths first
-    if not series:
+    if len(series) == 0:
         sys.exit("No series data found, exiting as not possible to iterate lower than series.")
     series.sort()
     LOGGER.info("Series found %s: %s", len(series), ', '.join(series))
@@ -349,7 +349,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
     record
     '''
     record_types = [
-        'sub_fonds'
+        'sub_fonds',
         'series',
         'sub-series',
         'sub-sub-series',
@@ -364,6 +364,9 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
 
         print(f"Folder to be processed {folder}")
         ob_num, record_type, local_title = folder_split(folder)
+        print(ob_num)
+        print(record_type)
+        print(local_title)
         idx = record_types.index(record_type)
         if isinstance(idx, int):
             print(f"Record type match: {record_types[idx]} - checking parent record_type is correct.")

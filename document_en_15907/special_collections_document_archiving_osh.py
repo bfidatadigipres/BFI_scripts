@@ -331,7 +331,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
         p_priref, p_ob_num = val.split(' - ')
 
         print(f"Folder path: {key} - priref {p_priref} - object number {p_ob_num}")
-        file_list = [x for x in os.listdir(key) if os.path.isfile(os.path.join(key, x))]
+        file_list = [os.path.join(key, x) for x in os.listdir(key) if os.path.isfile(os.path.join(key, x))]
         if len(file_list) == 0:
             LOGGER.info("No files found in path: %s", key)
             continue

@@ -222,6 +222,7 @@ def main() -> None:
                 continue
         # Retrieve CID data
         search = f'digital.acquired_filename="{item}"'
+        print(search)
         cid_data = cid_retrieve(item, search)
         priref = cid_data[0]
         ob_num = cid_data[1]

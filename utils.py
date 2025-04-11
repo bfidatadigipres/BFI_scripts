@@ -297,7 +297,7 @@ def exif_data(dpath):
         'exiftool',
         dpath
     ]
-    data = subprocess.check_output(cmd).decode('latin-1')
+    data = subprocess.check_output(cmd, shell=False).decode('latin-1')
     list_data = ast.literal_eval(data)
     return list_data
 

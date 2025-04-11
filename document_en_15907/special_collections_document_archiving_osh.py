@@ -117,7 +117,7 @@ def sort_dates(file_list: List[str]) -> List[str]:
     enum_list = []
     for i, name in enumerate(time_list):
         enum_list.append(f"{name.split(' - ', 1)[-1]}, {i + 1}")
-
+    print(f"Enumerated list: {enum_list}")
     return enum_list
 
 
@@ -337,6 +337,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
             continue
 
         # Sort into numerical order based on mod times
+        print(file_list)
         enum_files = sort_dates(file_list)
         file_order[f"{key}"] = enum_files
         LOGGER.info("%s files found to create Item Archive records: %s", len(file_order), ', '.join(file_order))
@@ -362,7 +363,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         # 'sub-sub-sub-series',
         'file'
     ]
-
+    print(f"Received {folder_list}, {defaults}")
     priref_dct = {}
     for fpath in folder_list:
         root, folder = os.path.split(fpath)

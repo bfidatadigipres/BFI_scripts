@@ -352,7 +352,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
     record
     '''
     record_types = [
-        'sub_fonds',
+        'sub-fonds',
         'series',
         'sub-series',
         'sub-sub-series',

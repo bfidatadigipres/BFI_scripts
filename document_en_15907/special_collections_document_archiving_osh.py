@@ -323,6 +323,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
 
     # Check for item_archive files within folders
     file_order = {}
+    item_prirefs = []
     for key, val in priref_dct.items():
         p_priref, p_ob_num = val.split(' - ')
 
@@ -338,9 +339,8 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
         LOGGER.info("%s files found to create Item Archive records: %s", len(file_order), ', '.join(file_order))
 
         # Create ITEM_ARCH records and rename files / move to new subfolders?
-        item_prirefs = create_archive_item_record(file_order, key, p_priref, session, defaults_all)
-        if not item_prirefs:
-            return None, None
+        item_priref = create_archive_item_record(file_order, key, p_priref, session, defaults_all)
+        item_prirefs.append(item_priref)
 
     return priref_dct, item_prirefs
 
@@ -373,10 +373,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         idx = record_types.index(record_type)
         if isinstance(idx, int):
             print(f"Record type match: {record_types[idx]} - checking parent record_type is correct.")
-            # JMW BREAKS HERE
             pidx = idx - 1
-            print(type(pidx), pidx)
-            print(record_types[pidx])
             if record_types[pidx] != p_record_type:
                 LOGGER.warning("Problem with supplied record types in folder name, skipping")
                 continue

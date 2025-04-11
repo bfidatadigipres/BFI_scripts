@@ -467,6 +467,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
 
     all_item_prirefs = {}
     for ip in file_order:
+        print(file_order)
         ipath, num = ip.split(', ')
         if not os.path.isfile(ipath):
             LOGGER.warning("Corrupt file path supplied: %s", ipath)

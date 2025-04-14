@@ -479,7 +479,7 @@ def recycle_api(api):
     triggers Powershell recycle
     '''
     search = 'title=recycle.application.pool.data.test'
-    req = requests.request('retrieve_record', api, headers=HEADERS, params=search)
+    req = requests.request('GET', api, headers=HEADERS, params=search)
     print(f"Search to trigger recycle sent: {req}")
     print("Pausing for 2 minutes")
     sleep(120)

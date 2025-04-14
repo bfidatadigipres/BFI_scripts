@@ -464,11 +464,13 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
     '''
     parent_ob_num, _, title = folder_split(os.path.basename(parent_path))
     LOGGER.info("Processing files for parent %s in path: %s", parent_priref, parent_path)
+    print(file_order)
 
     all_item_prirefs = {}
     for _, value in file_order.items():
         for ip in value:
             ipath, num = ip.split(', ', 1)
+            print(ipath, num)
             if not os.path.isfile(ipath):
                 LOGGER.warning("Corrupt file path supplied: %s", ipath)
                 continue

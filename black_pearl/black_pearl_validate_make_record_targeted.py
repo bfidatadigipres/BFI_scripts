@@ -208,6 +208,7 @@ def main():
 
     print(autoingest_list)
     for autoingest in autoingest_list:
+        print(autoingest)
         if not os.path.exists(autoingest):
             print(f"**** Path does not exist: {autoingest}")
             continue
@@ -220,6 +221,7 @@ def main():
             bucket, bucket_list = bp.get_buckets('bfi')
 
         folders = [x for x in os.listdir(autoingest) if os.path.isdir(os.path.join(autoingest, x))]
+        print(folders)
         if not folders:
             continue
 

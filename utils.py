@@ -299,7 +299,7 @@ def exif_data(dpath):
     ]
     data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
     print(data)
-    return data.split('\n')
+    return data
 
 
 def probe_metadata(arg, stream, fpath):

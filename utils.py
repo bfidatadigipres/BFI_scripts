@@ -7,7 +7,6 @@ to one utils.py document
 
 import re
 import os
-import ast
 import csv
 import json
 import ffmpeg
@@ -17,7 +16,6 @@ import datetime
 import subprocess
 from typing import Final, Optional, Iterator, Any
 import yaml
-import tenacity
 import smtplib
 import ssl
 import os
@@ -298,7 +296,10 @@ def exif_data(dpath):
         dpath
     ]
     data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
-    return json.loads(data)
+    exif_d = data.split("exiftool', '")[-1]
+    exif_md = exif_d.split("']")[0]
+    exif_metadata = exif_md.split('\n')
+    return exif_metadata
 
 
 def probe_metadata(arg, stream, fpath):

@@ -297,7 +297,7 @@ def exif_data(dpath):
         'exiftool',
         dpath
     ]
-    data = subprocess.check_output(cmd, shell=False).decode('utf-8')
+    data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
     print(data)
     return data.split('\n')
 

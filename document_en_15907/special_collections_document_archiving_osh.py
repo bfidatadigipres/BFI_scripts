@@ -55,6 +55,7 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     Return selected data to main()
     '''
     search: str = f'(object_number="{fname}" and Df="{record_type}")'
+    print(search)
     fields: list[str] = [
         'priref',
         'title',
@@ -62,6 +63,7 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     ]
 
     record = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '1', session, fields)[1]
+    print(record)
     LOGGER.info("cid_retrieve(): Making CID query request with:\n%s", search)
     if not record:
         search: str = f'object_number="{fname}"'

@@ -298,6 +298,7 @@ def exif_data(dpath):
         dpath
     ]
     data = subprocess.check_output(cmd, shell=False).decode('utf-8')
+    print(data)
     return data.split('\n')
 
 

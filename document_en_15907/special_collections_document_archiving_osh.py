@@ -262,7 +262,7 @@ def main():
 
     # Create record for folder
     s_priref_list = create_folder_record(series, session, defaults_all)
-    LOGGER.info("New records created for series beneath %s - %s:\n%s", sf_ob_num, sf_record_type.upper(), ', '.join(s_priref_list))
+    LOGGER.info("New records created for series beneath %s - %s:\n%s", sf_ob_num, sf_record_type.upper().replace('-', '_'), ', '.join(s_priref_list))
 
     if not sub_series:
         sys.exit("No sub-series data found, exiting as not possible to iterate lower than sub-series")
@@ -372,15 +372,22 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         print(ob_num)
         print(record_type)
         print(local_title)
-        idx = record_types.index(record_type)
-        if isinstance(idx, int):
-            print(f"Record type match: {record_types[idx]} - checking parent record_type is correct.")
-            pidx = idx - 1
-            if record_types[pidx] != p_record_type:
-                LOGGER.warning("Problem with supplied record types in folder name, skipping")
-                continue
+
         if ob_num is None:
             continue
+        # Skip file, it can sit any level in types
+        if record_type != 'file':
+            idx = record_types.index(record_type)
+            if isinstance(idx, int):
+                print(f"Record type match: {record_types[idx]} - checking parent record_type is correct.")
+                print(idx)
+                print(idx - 1)
+                print(record_types[idx - 1])
+                print(p_record_type)
+                pidx = idx - 1
+                if record_types[pidx] != p_record_type:
+                    LOGGER.warning("Problem with supplied record types in folder name, skipping")
+                    continue
 
         # Check if parent already created to allow for repeat runs against folders
         p_exist = record_hits(p_ob_num, session)
@@ -391,7 +398,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
             LOGGER.info("Skipping creation of child record to %s, record not matched in CID", p_ob_num)
             continue
         LOGGER.info("Parent record matched in CID: %s", p_ob_num)
-        p_priref, title, title_art = cid_retrieve(p_ob_num, p_record_type.upper(), session)
+        p_priref, title, title_art = cid_retrieve(p_ob_num, p_record_type.upper().replace('-', '_'), session)
         LOGGER.info("Parent priref %s, Title %s %s", p_priref, title_art, title)
 
         # Check if record already exists before creating new record
@@ -400,7 +407,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
             LOGGER.warning("API may not be available. Skipping for safety %s", folder)
             continue
         elif exist is True:
-            priref, title, title_art = cid_retrieve(ob_num, record_type.upper(), session)
+            priref, title, title_art = cid_retrieve(ob_num, record_type.upper().replace('-', '_'), session)
             LOGGER.info("Skipping creation. Record for %s already exists", ob_num)
             priref_dct[fpath] = f"{priref} - {ob_num}"
             continue

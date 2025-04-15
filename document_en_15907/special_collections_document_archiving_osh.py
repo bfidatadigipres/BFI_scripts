@@ -4,7 +4,7 @@
 Special Collections Document Archiving script for OSH
 
 Script stages:
-MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOLD LEVEL PATH
+MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
 1. Iterate through supplied sys.argv[1] folder path
 2. For each subfolder split folder name: ob_num / ISAD(G) level / Title
 3. Create CID record for each folder following level from folder name
@@ -200,8 +200,7 @@ Gurinder Chadha.'''
         {'input.name': 'datadigipres'},
         {'input.date': str(datetime.datetime.now())[:10]},
         {'input.time': str(datetime.datetime.now())[11:19]},
-        {'input.notes': 'Automated record creation for Our Screen Heritage OSH strand 3, to facilitate ingest to Archivematica.'},
-        # {'record_access.owner': 'Special Collections'}, JMW Most probably $REST here ?
+        {'input.notes': 'Automated record creation for Our Screen Heritage OSH strand 3, to facilitate ingest to Archivematica.'}
     ]
 
     return records_all
@@ -234,7 +233,7 @@ def main():
     series = []
     sub_series = []
     sub_sub_series = []
-    # sub_sub_sub_series = []
+    sub_sub_sub_series = []
     file = []
     for root, dirs, _ in os.walk(base_dir):
         for directory in dirs:
@@ -247,8 +246,8 @@ def main():
                 sub_series.append(dpath)
             elif '_sub-sub-series_' in str(directory):
                 sub_sub_series.append(dpath)
-            # elif '_sub-sub-sub-series_' in str(directory):
-            #     sub_sub_sub_series.append(dpath)
+            elif '_sub-sub-sub-series_' in str(directory):
+                sub_sub_sub_series.append(dpath)
             elif '_file_' in str(directory):
                 file.append(dpath)
 
@@ -292,8 +291,7 @@ def main():
             LOGGER.info(s)
         for i in ss_series_items:
             LOGGER.info(i)
-    '''
-    ADDITIONAL ISAD(G) LEVEL - RESERVED FOR POSSIBLE USE
+
     if sub_sub_sub_series:
         sss_series_dcts, sss_series_items = handle_repeat_folder_data(sub_sub_sub_series, session, defaults_all)
         LOGGER.info("Processed the following Sub-sub-sub series and Sub-sub-sub series items:")
@@ -301,7 +299,7 @@ def main():
             LOGGER.info(s)
         for i in sss_series_items:
             LOGGER.info(i)
-    '''
+
     if file:
         file_dcts, file_items = handle_repeat_folder_data(file, session, defaults_all)
         LOGGER.info("Processed the following File and File items:")
@@ -360,7 +358,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         'series',
         'sub-series',
         'sub-sub-series',
-        # 'sub-sub-sub-series',
+        'sub-sub-sub-series',
         'file'
     ]
     print(f"Received {folder_list}, {defaults}")
@@ -409,8 +407,9 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         LOGGER.info("No record found. Proceeding.")
 
         # Create record here
+        cid_record_type = record_type.upper().replace('-', '_')
         data = [
-            {'Df': record_type.upper()},
+            {'Df': cid_record_type},
             {'description_level_object': 'ARCHIVE'},
             {'object_number': ob_num},
             {'part_of_reference.lref': p_priref},
@@ -420,11 +419,11 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         data.extend(defaults)
         new_priref = post_record(session, data)
         if new_priref is None:
-            LOGGER.warning("Record failed to create using data: %s, %s, %s, %s,\n%s", ob_num, record_type.upper(), p_priref, local_title, data)
+            LOGGER.warning("Record failed to create using data: %s, %s, %s, %s,\n%s", ob_num, cid_record_type, p_priref, local_title, data)
             continue
 
-        LOGGER.info("New %s record_type created: %s", record_type.upper(), new_priref)
-        print(f"New series record created: {ob_num} - {new_priref} / Parent: {p_ob_num} / Record type: {record_type} / {local_title}")
+        LOGGER.info("New %s record_type created: %s", cid_record_type, new_priref)
+        print(f"New series record created: {ob_num} - {new_priref} / Parent: {p_ob_num} / Record type: {cid_record_type} / {local_title}")
         priref_dct[fpath] = f"{new_priref} - {ob_num}"
 
     return priref_dct
@@ -462,6 +461,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
     Get data needed for creation of item archive record
     Receive item fpath, enumeration, parent priref/ob num and title
     '''
+    print('Create archive item record!')
     parent_ob_num, _, title = folder_split(os.path.basename(parent_path))
     LOGGER.info("Processing files for parent %s in path: %s", parent_priref, parent_path)
     print(file_order)

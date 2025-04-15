@@ -298,7 +298,7 @@ def exif_data(dpath):
         dpath
     ]
     data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
-    return eval(data)
+    return json.loads(data)
 
 
 def probe_metadata(arg, stream, fpath):

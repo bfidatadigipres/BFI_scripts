@@ -147,6 +147,8 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     metadata from Exif data source
     '''
     exif_metadata = utils.exif_data(ipath)
+    print(type(exif_metadata))
+    print(exif_metadata)
     if not isinstance(exif_metadata, list):
         return None
 

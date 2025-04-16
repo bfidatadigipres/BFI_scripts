@@ -370,7 +370,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
     '''
     print(f"Received {record_type_list}, {defaults_all}")
     priref_dct = create_folder_record(record_type_list, session, defaults_all)
-    LOGGER.info("New records created:\n%s", priref_dct)
+    LOGGER.info("Records created/identified:\n%s", priref_dct)
 
     # Check for item_archive files within folders
     file_order = {}
@@ -400,12 +400,9 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
         LOGGER.info("%s files found to create Item Archive records: %s", len(file_order), ', '.join(file_order))
 
         # Create ITEM_ARCH records and rename files / move to new subfolders?
-        item_priref = create_archive_item_record(file_order, key, p_priref, session, defaults_all)
-        item_prirefs.append(item_priref)
+        item_priref_group = create_archive_item_record(file_order, key, p_priref, session, defaults_all)
+        item_prirefs.append(item_priref_group)
 
-    print(f"Item prirefs: {item_prirefs}")
-    print(f"Priref dict: {priref_dct}")
-    sys.exit("One run only for test to preserve enumeration")
     return priref_dct, item_prirefs
 
 
@@ -607,6 +604,10 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                     LOGGER.warning("File renaming failed.")
             except OSError as err:
                 LOGGER.warning("File renaming error: %s", err)
+
+    print(f"Item prirefs: {all_item_prirefs}")
+    sys.exit("One run only for test to preserve enumeration")
+    return all_item_prirefs
 
 
 if __name__ == '__main__':

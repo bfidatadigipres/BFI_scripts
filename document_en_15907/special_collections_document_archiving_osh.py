@@ -25,6 +25,7 @@ MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
 # Public packages
 import os
 import sys
+import magic
 import requests
 import logging
 import datetime
@@ -485,24 +486,27 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 continue
 
             # Get particulars
+            mime = magic.Magic(mime=True)
+            mime_type = mime.from_file(ipath)
             iname = os.path.basename(ipath)
-            LOGGER.info("------ File: %s --- number %s ------", iname, num)
+            LOGGER.info("------ File: %s --- number %s --- mime %s ------", iname, num, mime_type)
             ext = os.path.splitext(iname)
             ob_num = f"{parent_ob_num}-{num.strip()}"
             new_name = f"{ob_num}.{ext}"
 
             # Create exif metadata / checksum
-            exif_metadata = utils.exif_data(ipath)
-            if 'Corrupt data' in str(exif_metadata):
-                LOGGER.info("Exif cannot read metadata for file: %s", ipath)
-                metadata_dct = [
-                    {'file_size', os.path.getsize(ipath)},
-                    {'file_size.type': 'Bytes'},
-                    {'file_type': ext.upper()}
-                ]
-            else:
-                metadata_dct = get_image_data(exif_metadata)
-            checksum = utils.create_md5_65536(ipath)
+            if 'image' in mime_type or 'application' in mime_type:
+                exif_metadata = utils.exif_data(ipath)
+                if 'Corrupt data' in str(exif_metadata):
+                    LOGGER.info("Exif cannot read metadata for file: %s", ipath)
+                    metadata_dct = [
+                        {'file_size', os.path.getsize(ipath)},
+                        {'file_size.type': 'Bytes'},
+                        {'file_type': ext.upper()}
+                    ]
+                else:
+                    metadata_dct = get_image_data(exif_metadata)
+                checksum = utils.create_md5_65536(ipath)
 
             record_dct = [(
                 {'Df': 'ITEM_ARCH'},
@@ -552,6 +556,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             except OSError as err:
                 LOGGER.warning("File renaming error: %s", err)
 
+            sys.exit(f"One run only. New priref: {new_priref}")
 
 if __name__ == '__main__':
     main()

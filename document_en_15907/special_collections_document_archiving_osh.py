@@ -110,14 +110,14 @@ def get_children_items(ppriref: str, session) -> Optional[List[str]]:
     '''
     Get all children of a given priref
     '''
-    search: str = f'part_of_reference="{ppriref}" and Df="ITEM_ARCH"'
+    search: str = f'part_of_reference.lref="{ppriref}" and Df="ITEM_ARCH"'
     print(search)
     fields: list[str] = [
         'priref',
         'object_number'
     ]
 
-    records = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '0', session, fields)
+    records = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '0', session, fields)[1]
     print(records)
     if not records:
         return None

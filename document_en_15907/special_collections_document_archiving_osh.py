@@ -164,10 +164,17 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         field, value = mdata.split(':', 1)
         for d in data:
             exif_field, cid_field = d.split(', ')
-            if 'File Type' in exif_field:
-                ft, ft_type = value.split(' ')
-                image_dict.append({f'{cid_field}': ft.strip()})
-                image_dict.append({f'{cid_field}.type': ft_type.strip()})
+            if 'File Type   ' in exif_field:
+                try:
+                    ft, ft_type = value.split(' ')
+                    if len(ft) > 1 and len(ft_type) > 1:
+                        image_dict.append({f'{cid_field}': ft.strip()})
+                        image_dict.append({f'{cid_field}.type': ft_type.strip()})
+                    else:
+                        image_dict.append({f'{cid_field}': value.strip()})
+                except ValueError as err:
+                    image_dict.append({f'{cid_field}': value.strip()})
+                    print(err)
             elif exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
 

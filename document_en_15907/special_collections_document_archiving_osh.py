@@ -148,6 +148,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     Create dictionary for Image
     metadata from Exif data source
     '''
+    ext = os.path.splitext(ipath)
     exif_metadata = utils.exif_data(ipath)
     if 'Corrupt data' in str(exif_metadata):
         LOGGER.info("Exif cannot read metadata for file: %s", ipath)
@@ -371,7 +372,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
 
     print(f"Item prirefs: {item_prirefs}")
     print(f"Priref dict: {priref_dct}")
-    sys.exit(f"One run only for test to preserve enumeration")
+    sys.exit("One run only for test to preserve enumeration")
     #return priref_dct, item_prirefs
 
 

@@ -244,7 +244,7 @@ Gurinder Chadha.'''
         {'content.person.name.type': 'PERSON'},
         {'system_of_arrangement': text},
         {'content.description': text2},
-        {'institution.name.lref': '999570701'}, # JMW BFI National Archive?
+        {'institution.name.lref': '999570701'},
         {'analogue_or_digital': 'DIGITAL'},
         {'digital.born_or_derived': 'BORN_DIGITAL'},
         {'input.name': 'datadigipres'},
@@ -406,7 +406,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
     print(f"Item prirefs: {item_prirefs}")
     print(f"Priref dict: {priref_dct}")
     sys.exit("One run only for test to preserve enumeration")
-    #return priref_dct, item_prirefs
+    return priref_dct, item_prirefs
 
 
 def create_folder_record(folder_list: List[str], session: requests.Session, defaults: List[Dict[str, str]]) -> Dict[str, str]:

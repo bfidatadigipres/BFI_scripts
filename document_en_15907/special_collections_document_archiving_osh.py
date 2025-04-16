@@ -106,7 +106,30 @@ def record_hits(fname: str, session) -> Optional[Any]:
         return True
 
 
-def sort_dates(file_list: List[str]) -> List[str]:
+def get_children_items(ppriref: str, session) -> Optional[List[str]]:
+    '''
+    Get all children of a given priref
+    '''
+    search: str = f'part_of_reference="{ppriref}" and Df="ITEM_ARCH"'
+    print(search)
+    fields: list[str] = [
+        'priref',
+        'object_number'
+    ]
+
+    records = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '0', session, fields)
+    print(record)
+    if not record:
+        return None
+
+    item_list = []
+    for r in record:
+        item_list.append(adlib.retrieve_field_name(r, 'object_number')[0])
+
+    return item_list
+
+
+def sort_dates(file_list: List[str], last_child_num: str) -> List[str]:
     '''
     Get modification date of files, and sort into newest first
     return with enumeration number
@@ -121,6 +144,7 @@ def sort_dates(file_list: List[str]) -> List[str]:
     time_list.sort()
     enum_list = []
     for i, name in enumerate(time_list):
+        i += last_child_num
         enum_list.append(f"{name.split(' - ', 1)[-1]}, {i + 1}")
     print(f"Enumerated list: {enum_list}")
     return enum_list
@@ -361,8 +385,17 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
             continue
 
         # Sort into numerical order based on mod times
+        # Get object numbers of items already linked to parent priref
+        child_list = get_children_items*(p_priref, session)
+        if child_list:
+            child_list.sort()
+            last_child_num = child_list[-1].split('-')[-1]
+            print(f"Last child number: {last_child_num}")
+            LOGGER.info("Children of record found. Passing last number to enumartion: %s", last_child_num)
+        else:
+            last_child_num = '0'
         print(file_list)
-        enum_files = sort_dates(file_list)
+        enum_files = sort_dates(file_list, int(last_child_num))
         file_order[f"{key}"] = enum_files
         LOGGER.info("%s files found to create Item Archive records: %s", len(file_order), ', '.join(file_order))
 

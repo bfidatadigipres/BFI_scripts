@@ -170,6 +170,8 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
 
     image_dict = []
     for mdata in exif_metadata:
+        if ':' not in str(mdata):
+            continue
         field, value = mdata.split(':', 1)
         for d in data:
             exif_field, cid_field = d.split(', ')

@@ -147,6 +147,15 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     metadata from Exif data source
     '''
     exif_metadata = utils.exif_data(ipath)
+    if 'Corrupt data' in str(exif_metadata):
+        LOGGER.info("Exif cannot read metadata for file: %s", ipath)
+        metadata_dct = [
+            {'file_size', os.path.getsize(ipath)},
+            {'file_size.type': 'Bytes'},
+            {'file_type': ext.upper()}
+        ]
+        return metadata_dct
+
     print(type(exif_metadata))
     print(exif_metadata)
     if not isinstance(exif_metadata, list):
@@ -505,17 +514,10 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
 
             # Create exif metadata / checksum
             if 'image' in mime_type or 'application' in mime_type:
-                exif_metadata = utils.exif_data(ipath)
-                if 'Corrupt data' in str(exif_metadata):
-                    LOGGER.info("Exif cannot read metadata for file: %s", ipath)
-                    metadata_dct = [
-                        {'file_size', os.path.getsize(ipath)},
-                        {'file_size.type': 'Bytes'},
-                        {'file_type': ext.upper()}
-                    ]
-                else:
-                    metadata_dct = get_image_data(exif_metadata)
-                checksum = utils.create_md5_65536(ipath)
+                metadata_dct = get_image_data(ipath)
+            else:
+                LOGGER.warning("File type not recognised: %s", mime_type)
+            checksum = utils.create_md5_65536(ipath)
 
             record_dct = [(
                 {'Df': 'ITEM_ARCH'},

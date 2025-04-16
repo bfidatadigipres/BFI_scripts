@@ -369,7 +369,10 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
         item_priref = create_archive_item_record(file_order, key, p_priref, session, defaults_all)
         item_prirefs.append(item_priref)
 
-    return priref_dct, item_prirefs
+    print(f"Item prirefs: {item_prirefs}")
+    print(f"Priref dict: {priref_dct}")
+    sys.exit(f"One run only for test to preserve enumeration")
+    #return priref_dct, item_prirefs
 
 
 def create_folder_record(folder_list: List[str], session: requests.Session, defaults: List[Dict[str, str]]) -> Dict[str, str]:
@@ -571,7 +574,6 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             except OSError as err:
                 LOGGER.warning("File renaming error: %s", err)
 
-            sys.exit(f"One run only. New priref: {new_priref}")
 
 if __name__ == '__main__':
     main()

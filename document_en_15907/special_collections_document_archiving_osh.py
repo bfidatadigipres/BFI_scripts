@@ -154,7 +154,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
 
     data = [
         'File Modification Date/Time, production.date.notes',
-        'File Type, file_type'
+        'File Type, file_type',
         'MIME Type, media_type',
         'Software, source_software'
     ]

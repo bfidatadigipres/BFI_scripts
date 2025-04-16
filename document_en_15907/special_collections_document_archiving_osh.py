@@ -118,12 +118,12 @@ def get_children_items(ppriref: str, session) -> Optional[List[str]]:
     ]
 
     records = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '0', session, fields)
-    print(record)
-    if not record:
+    print(records)
+    if not records:
         return None
 
     item_list = []
-    for r in record:
+    for r in records:
         item_list.append(adlib.retrieve_field_name(r, 'object_number')[0])
 
     return item_list

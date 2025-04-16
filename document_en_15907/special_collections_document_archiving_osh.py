@@ -110,6 +110,8 @@ def sort_dates(file_list: List[str]) -> List[str]:
     '''
     Get modification date of files, and sort into newest first
     return with enumeration number
+    JMW this must handle adding new files into a list that are found
+    at a later date by sensing existing ITEM_ARCH childen and getting last 'num'
     '''
     time_list = []
     for file_path in file_list:
@@ -521,7 +523,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 LOGGER.warning("File type not recognised: %s", mime_type)
             checksum = utils.create_md5_65536(ipath)
 
-            record_dct = [(
+            record_dct = [
                 {'Df': 'ITEM_ARCH'},
                 {'part_of_reference.lref': parent_priref},
                 {'archive_title.type': '07_arch'},
@@ -531,7 +533,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 {'received_checksum.type': 'MD5'},
                 {'received_checksum.data': str(datetime.datetime.now())[:19]}, # Should we be generating received checksum data?
                 {'received_checksum.value': checksum}
-            )]
+            ]
 
             if metadata_dct:
                 record_dct.extend(metadata_dct)

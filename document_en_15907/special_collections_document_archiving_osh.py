@@ -386,7 +386,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
 
         # Sort into numerical order based on mod times
         # Get object numbers of items already linked to parent priref
-        child_list = get_children_items*(p_priref, session)
+        child_list = get_children_items(p_priref, session)
         if child_list:
             child_list.sort()
             last_child_num = child_list[-1].split('-')[-1]

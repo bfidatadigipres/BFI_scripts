@@ -118,8 +118,6 @@ def create_current_errors_logs() -> None:
         shutil.move(CURRENT_ERRORS_NEW, CURRENT_ERRORS)
 
     print('* Creating versions of error log in all in-scope autoingest NAS shares')
-    if os.path.exists(os.environ['AUTOINGEST_EDITSHARE']):
-        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_EDITSHARE'], 'current_errors/current_errors.csv'))
     if os.path.exists(os.environ['AUTOINGEST_H22']):
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_H22'], 'current_errors/current_errors.csv'))
     if os.path.exists(os.environ['AUTOINGEST_QNAP01']):
@@ -168,7 +166,8 @@ def create_current_errors_logs() -> None:
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM5'], 'autoingest/current_errors/current_errors.csv'))
     if os.path.exists(os.environ['BP_FILM6']):
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['BP_FILM6'], 'autoingest/current_errors/current_errors.csv'))
-
+    if os.path.exists(os.environ['AUTOINGEST_EDITSHARE']):
+        shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_EDITSHARE'], 'current_errors/current_errors.csv'))
 
 if __name__ == '__main__':
     main()

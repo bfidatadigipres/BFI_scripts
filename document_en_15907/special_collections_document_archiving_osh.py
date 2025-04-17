@@ -216,11 +216,9 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
                     print(err)
             elif exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
-    print(image_dict)
+    image_dict.append({'file_size': str(os.path.getsize(ipath))})
     image_dict.append({'file_size.type': 'Bytes'})
-    print(image_dict)
-    image_dict.append({'file_size', str(os.path.getsize(ipath))})
-    print(image_dict)
+
     return image_dict
 
 

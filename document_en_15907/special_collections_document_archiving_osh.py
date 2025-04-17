@@ -216,9 +216,11 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
                     print(err)
             elif exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
-
-    image_dict.append({'file_size', str(os.path.getsize(ipath))})
+    print(image_dict)
     image_dict.append({'file_size.type': 'Bytes'})
+    print(image_dict)
+    image_dict.append({'file_size', str(os.path.getsize(ipath))})
+    print(image_dict)
     return image_dict
 
 
@@ -555,6 +557,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             # Create exif metadata / checksum
             if 'image' in mime_type or 'application' in mime_type:
                 metadata_dct = get_image_data(ipath)
+                print(metadata_dct)
             else:
                 LOGGER.warning("File type not recognised: %s", mime_type)
             checksum = utils.create_md5_65536(ipath)
@@ -567,7 +570,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 {'digital.acquired_filename': iname},
                 {'object_number': ob_num},
                 {'received_checksum.type': 'MD5'},
-                {'received_checksum.data': str(datetime.datetime.now())[:19]}, # Should we be generating received checksum data?
+                {'received_checksum.data': str(datetime.datetime.now())[:19]},
                 {'received_checksum.value': checksum}
             ]
 

@@ -480,7 +480,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
             {'Df': cid_record_type},
             {'description_level_object': 'ARCHIVE'},
             {'object_number': ob_num},
-            {'part_of_reference.lref': p_priref},
+            {'part_of_reference': p_ob_num},
             {'archive_title.type': '07_arch'},
             {'title': local_title}
         ]
@@ -562,7 +562,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
 
             record_dct = [
                 {'Df': 'ITEM_ARCH'},
-                {'part_of_reference.lref': parent_priref},
+                {'part_of_reference': parent_ob_num},
                 {'archive_title.type': '07_arch'},
                 {'title': title}, # Inheriting from the parent folder?
                 {'digital.acquired_filename': iname},

@@ -327,6 +327,7 @@ def create_record_data(api, database, priref, data=None):
     for key, value in grouped.items():
         new_grouping: dict[str, list[Any]] = {}
         for item in data:
+            print(item)
             for k in item.keys():
                 if k in value:
                     if key in new_grouping.keys():

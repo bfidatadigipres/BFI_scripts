@@ -511,6 +511,7 @@ def post_record(session, record_data=None) -> Optional[Any]:
     record_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', record_data)
     print(record_xml)
     try:
+        print(f"Settings for POST call: {CID_API}, {record_xml}, 'archivescatalogue', 'insertrecord'")
         rec = adlib.post(CID_API, record_xml, 'archivescatalogue', 'insertrecord', session)
         if rec is None:
             LOGGER.warning("Failed to create new record:\n%s", record_xml)
@@ -568,7 +569,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 {'digital.acquired_filename': iname},
                 {'object_number': ob_num},
                 {'received_checksum.type': 'MD5'},
-                {'received_checksum.data': str(datetime.datetime.now())[:19]},
+                {'received_checksum.date': str(datetime.datetime.now())[:19]},
                 {'received_checksum.value': checksum}
             ]
 

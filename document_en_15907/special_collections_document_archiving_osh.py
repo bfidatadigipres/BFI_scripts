@@ -22,6 +22,40 @@ MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
 2025
 '''
 
+file_types = {
+    'XLS': ['xls', 'xlsx'],
+    'DOC': ['doc', 'docx'],
+    'PDF': ['pdf'],
+    'PPT': ['ppt', 'pptx'],
+    'JPG': ['jpg', 'jpeg'],
+    'PNG': ['png'],
+    'TIFF': ['tiff', 'tif'],
+    'EML': ['eml'],
+    'AI': ['ai'],
+    'PSD': ['psd'],
+    'FDX': ['fdx'],
+    'FDR': ['fdr'],
+    'PAGES': ['pages'],
+    'PSB': ['psb'],
+    'EPS': ['eps'],
+    'CR2': ['cr2'],
+    'HEIC': ['heic'],
+    'RTF': ['rtf'],
+    'CSV': ['csv'],
+    'TXT': ['txt'],
+    'MSG': ['msg'],
+    'ZIP': ['zip'],
+    'BMP': ['bmp'],
+    'NUMBERS': ['numbers'],
+    'CPGZ': ['cpgz'],
+    'INDD': ['indd'],
+    'JFIF': ['jfif'],
+    'PKGF': ['pkgf'],
+    'SVG': ['svg'],
+    'KEY': ['key']
+}
+
+
 # Public packages
 import os
 import sys

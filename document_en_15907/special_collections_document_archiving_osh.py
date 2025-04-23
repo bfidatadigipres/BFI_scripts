@@ -23,11 +23,14 @@ MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
 '''
 
 file_types = {
-    'XLS': ['xls', 'xlsx'],
-    'DOC': ['doc', 'docx'],
+    'XLS': ['xls'],
+    'XLSX': ['xlsx'],
+    'DOC': ['doc'],
+    'DOCX': ['docx'],
     'PDF': ['pdf'],
-    'PPT': ['ppt', 'pptx'],
-    'JPG': ['jpg', 'jpeg'],
+    'PPT': ['ppt'],
+    'PPTX': ['pptx'],
+    'JPEG': ['jpg', 'jpeg'],
     'PNG': ['png'],
     'TIFF': ['tiff', 'tif'],
     'EML': ['eml'],
@@ -124,6 +127,16 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     return priref, title, title_article
 
 
+def get_file_type(ext: str) -> Optional[str]:
+    '''
+    Get file type from extension
+    '''
+    for key, value in file_types.items():
+        if ext in value:
+            return key
+    return ext.upper()
+
+
 def record_hits(fname: str, session) -> Optional[Any]:
     '''
     Count hits and return bool / NoneType
@@ -207,13 +220,14 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     metadata from Exif data source
     '''
     ext = os.path.splitext(ipath)
+    file_type = get_file_type(ext)
     exif_metadata = utils.exif_data(ipath)
     if 'Corrupt data' in str(exif_metadata):
         LOGGER.info("Exif cannot read metadata for file: %s", ipath)
         metadata_dct = [
             {'filesize', str(os.path.getsize(ipath))},
             {'filesize.unit': 'B (Byte)'},
-            {'file_type': ext.upper()}
+            {'file_type': file_type}
         ]
         return metadata_dct
 
@@ -224,7 +238,6 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
 
     data = [
         'File Modification Date/Time, production.date.notes',
-        'File Type, file_type',
         'MIME Type, media_type',
         'Software, source_software'
     ]
@@ -236,22 +249,11 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         field, value = mdata.split(':', 1)
         for d in data:
             exif_field, cid_field = d.split(', ')
-            if 'File Type   ' in exif_field:
-                try:
-                    ft, ft_type = value.split(' ')
-                    print(ft, ft_type)
-                    if len(ft) > 1 and len(ft_type) > 1:
-                        image_dict.append({f'{cid_field}': ft.strip()})
-                        image_dict.append({f'{cid_field}.type': ft_type.strip()})
-                    else:
-                        image_dict.append({f'{cid_field}': value.strip()})
-                except ValueError as err:
-                    image_dict.append({f'{cid_field}': value.strip()})
-                    print(err)
-            elif exif_field == field.strip():
+            if exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
     image_dict.append({'filesize': str(os.path.getsize(ipath))})
     image_dict.append({'filesize.unit': 'B (Byte)'})
+    image_dict.append({'file_type': file_type})
 
     return image_dict
 

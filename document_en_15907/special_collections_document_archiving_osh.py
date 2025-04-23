@@ -177,8 +177,8 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     if 'Corrupt data' in str(exif_metadata):
         LOGGER.info("Exif cannot read metadata for file: %s", ipath)
         metadata_dct = [
-            {'file_size', str(os.path.getsize(ipath))},
-            {'file_size.type': 'Bytes'},
+            {'filesize', str(os.path.getsize(ipath))},
+            {'filesize.unit': 'B (Byte)'},
             {'file_type': ext.upper()}
         ]
         return metadata_dct
@@ -216,8 +216,8 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
                     print(err)
             elif exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
-    image_dict.append({'file_size': str(os.path.getsize(ipath))})
-    image_dict.append({'file_size.type': 'Bytes'})
+    image_dict.append({'filesize': str(os.path.getsize(ipath))})
+    image_dict.append({'filesize.unit': 'B (Byte)'})
 
     return image_dict
 
@@ -227,24 +227,12 @@ def build_defaults():
     Use this function to just build standard defaults for all GUR records
     Discuss what specific record data they want in every record / some records
     '''
-    text = ''' The arrangement of the collection maintains its original order, \
-as stored on a shared Google Drive for Gurinder Chadha and her team. \
-Consequently, the collection is archived in alphabetical order, \
-including productions, rather than by date; please refer to the \
-materials date for further details.\n\n \
-The collection has been organised into five series, each relating \
-to a different area of activity.'''
-    text2 = ''' The working digital documents and images related to the films and \
-television programmes, directed, produced, and/or written by \
-Gurinder Chadha.'''
 
     records_all = [
         {'record_access.user': 'BFIiispublic'},
         {'record_access.rights': '0'},
         {'content.person.name.lref': '378012'},
         {'content.person.name.type': 'PERSON'},
-        {'system_of_arrangement': text},
-        {'content.description': text2},
         {'institution.name.lref': '999570701'},
         {'analogue_or_digital': 'DIGITAL'},
         {'digital.born_or_derived': 'BORN_DIGITAL'},

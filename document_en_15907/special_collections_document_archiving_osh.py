@@ -93,7 +93,7 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     Return selected data to main()
     '''
     search: str = f'(object_number="{fname}" and Df="{record_type}")'
-    print(search)
+
     fields: list[str] = [
         'priref',
         'title',
@@ -101,14 +101,13 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     ]
 
     record = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '1', session, fields)[1]
-    print(record)
+
     LOGGER.info("cid_retrieve(): Making CID query request with:\n%s", search)
     if not record:
         search: str = f'object_number="{fname}"'
         record = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '1', session, fields)[1]
         if not record:
-            print(f"cid_retrieve(): Unable to retrieve data for {fname}")
-            utils.logger(LOG, 'exception', f"cid_retrieve(): Unable to retrieve data for {fname}")
+            LOGGER.warning("cid_retrieve(): Unable to retrieve data for %s", fname)
             return None
 
     if 'priref' in str(record):
@@ -142,9 +141,8 @@ def record_hits(fname: str, session) -> Optional[Any]:
     Count hits and return bool / NoneType
     '''
     search: str = f'object_number="{fname}"'
-    print(search)
     hits = adlib.retrieve_record(CID_API, 'archivescatalogue', search, 1, session)[0]
-    print(hits)
+
     if hits is None:
         return None
     if int(hits) == 0:
@@ -158,14 +156,12 @@ def get_children_items(ppriref: str, session) -> Optional[List[str]]:
     Get all children of a given priref
     '''
     search: str = f'part_of_reference.lref="{ppriref}" and Df="ITEM_ARCH"'
-    print(search)
     fields: list[str] = [
         'priref',
         'object_number'
     ]
 
     records = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '0', session, fields)[1]
-    print(records)
     if not records:
         return None
 
@@ -202,7 +198,6 @@ def folder_split(fname):
     Split folder name into parts
     '''
     fsplit = fname.split('_', 2)
-    print(fsplit)
     if len(fsplit) != 3:
         LOGGER.warning("Folder has not split as anticipated: %s", fsplit)
         return None, None, None
@@ -230,8 +225,6 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
             {'file_type': file_type}
         ]
         return metadata_dct
-
-    print(type(exif_metadata))
     print(exif_metadata)
     if not isinstance(exif_metadata, list):
         return None
@@ -298,9 +291,8 @@ def main():
 
     base_dir = sys.argv[1]  # Always sub_fond level path
     sub_fond = os.path.basename(base_dir)
-    print(base_dir)
     sf_ob_num, sf_record_type, sf_title = folder_split(sub_fond)
-    print(f"Sub fond data found: {sf_ob_num}, {sf_record_type}, {sf_title}")
+    print(f"Sub fond data found:\n\n{sf_ob_num}\n\n{sf_record_type}\n\n{sf_title}")
     LOGGER.info("Sub fond data: %s, %s, %s", sf_ob_num, sf_record_type, sf_title)
 
     if not os.path.isdir(base_dir):
@@ -346,7 +338,6 @@ def main():
 
     # Create records for folders
     if series:
-        print(series, defaults_all)
         series_dcts, series_items = handle_repeat_folder_data(series, session, defaults_all)
         LOGGER.info("Processed the following Series and Series items:")
         for s in series_dcts:
@@ -535,7 +526,6 @@ def post_record(session, record_data=None) -> Optional[Any]:
     record_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', record_data)
     print(record_xml)
     try:
-        print(f"Settings for POST call: {CID_API}, {record_xml}, 'archivescatalogue', 'insertrecord'")
         rec = adlib.post(CID_API, record_xml, 'archivescatalogue', 'insertrecord', session)
         if rec is None:
             LOGGER.warning("Failed to create new record:\n%s", record_xml)
@@ -632,8 +622,10 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                     LOGGER.warning("File renaming failed.")
             except OSError as err:
                 LOGGER.warning("File renaming error: %s", err)
-
+    print("*************************************************************")
     print(f"Item prirefs: {all_item_prirefs}")
+    print("*************************************************************")
+
     sys.exit("One run only for test to preserve enumeration")
     return all_item_prirefs
 

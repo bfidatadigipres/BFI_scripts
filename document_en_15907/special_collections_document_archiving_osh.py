@@ -579,7 +579,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 {'part_of_reference': parent_ob_num},
                 {'archive_title.type': '07_arch'},
                 {'title': title}, # Inheriting from the parent folder?
-                {'digital.acquired_filename': iname},
+                {'digital.acquired_filename': iname}, # Being debated
                 {'digital.acquired_filename.type': 'FILE'},
                 {'object_number': ob_num},
                 {'received_checksum.type': 'MD5'},
@@ -635,6 +635,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             success = create_metadata_csv(new_fpath, iname, title, ob_num)
             if not success:
                 LOGGER.warning("Metadata file creation failed for %s", new_fpath)
+            sys.exit("Just one image achive test run")
 
     print("*************************************************************")
     print(f"Item prirefs: {all_item_prirefs}")

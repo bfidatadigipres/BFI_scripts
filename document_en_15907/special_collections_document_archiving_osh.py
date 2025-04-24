@@ -22,9 +22,47 @@ MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
 2025
 '''
 
+file_types = {
+    'XLS': ['xls'],
+    'XLSX': ['xlsx'],
+    'DOC': ['doc'],
+    'DOCX': ['docx'],
+    'PDF': ['pdf'],
+    'PPT': ['ppt'],
+    'PPTX': ['pptx'],
+    'JPEG': ['jpg', 'jpeg'],
+    'PNG': ['png'],
+    'TIFF': ['tiff', 'tif'],
+    'EML': ['eml'],
+    'AI': ['ai'],
+    'PSD': ['psd'],
+    'FDX': ['fdx'],
+    'FDR': ['fdr'],
+    'PAGES': ['pages'],
+    'PSB': ['psb'],
+    'EPS': ['eps'],
+    'CR2': ['cr2'],
+    'HEIC': ['heic'],
+    'RTF': ['rtf'],
+    'CSV': ['csv'],
+    'TXT': ['txt'],
+    'MSG': ['msg'],
+    'ZIP': ['zip'],
+    'BMP': ['bmp'],
+    'NUMBERS': ['numbers'],
+    'CPGZ': ['cpgz'],
+    'INDD': ['indd'],
+    'JFIF': ['jfif'],
+    'PKGF': ['pkgf'],
+    'SVG': ['svg'],
+    'KEY': ['key']
+}
+
+
 # Public packages
 import os
 import sys
+import csv
 import magic
 import requests
 import logging
@@ -56,7 +94,7 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     Return selected data to main()
     '''
     search: str = f'(object_number="{fname}" and Df="{record_type}")'
-    print(search)
+
     fields: list[str] = [
         'priref',
         'title',
@@ -64,14 +102,13 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     ]
 
     record = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '1', session, fields)[1]
-    print(record)
+
     LOGGER.info("cid_retrieve(): Making CID query request with:\n%s", search)
     if not record:
         search: str = f'object_number="{fname}"'
         record = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '1', session, fields)[1]
         if not record:
-            print(f"cid_retrieve(): Unable to retrieve data for {fname}")
-            utils.logger(LOG, 'exception', f"cid_retrieve(): Unable to retrieve data for {fname}")
+            LOGGER.warning("cid_retrieve(): Unable to retrieve data for %s", fname)
             return None
 
     if 'priref' in str(record):
@@ -90,14 +127,23 @@ def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, s
     return priref, title, title_article
 
 
+def get_file_type(ext: str) -> Optional[str]:
+    '''
+    Get file type from extension
+    '''
+    for key, value in file_types.items():
+        if ext in value:
+            return key
+    return ext.upper()
+
+
 def record_hits(fname: str, session) -> Optional[Any]:
     '''
     Count hits and return bool / NoneType
     '''
     search: str = f'object_number="{fname}"'
-    print(search)
     hits = adlib.retrieve_record(CID_API, 'archivescatalogue', search, 1, session)[0]
-    print(hits)
+
     if hits is None:
         return None
     if int(hits) == 0:
@@ -111,14 +157,12 @@ def get_children_items(ppriref: str, session) -> Optional[List[str]]:
     Get all children of a given priref
     '''
     search: str = f'part_of_reference.lref="{ppriref}" and Df="ITEM_ARCH"'
-    print(search)
     fields: list[str] = [
         'priref',
         'object_number'
     ]
 
     records = adlib.retrieve_record(CID_API, 'archivescatalogue', search, '0', session, fields)[1]
-    print(records)
     if not records:
         return None
 
@@ -155,7 +199,6 @@ def folder_split(fname):
     Split folder name into parts
     '''
     fsplit = fname.split('_', 2)
-    print(fsplit)
     if len(fsplit) != 3:
         LOGGER.warning("Folder has not split as anticipated: %s", fsplit)
         return None, None, None
@@ -173,24 +216,22 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     metadata from Exif data source
     '''
     ext = os.path.splitext(ipath)
+    file_type = get_file_type(ext)
     exif_metadata = utils.exif_data(ipath)
     if 'Corrupt data' in str(exif_metadata):
         LOGGER.info("Exif cannot read metadata for file: %s", ipath)
         metadata_dct = [
             {'filesize', str(os.path.getsize(ipath))},
-            {'filesize.unit': 'Bytes'},
-            {'file_type': ext.upper()}
+            {'filesize.unit': 'B (Byte)'},
+            {'file_type': file_type}
         ]
         return metadata_dct
-
-    print(type(exif_metadata))
     print(exif_metadata)
     if not isinstance(exif_metadata, list):
         return None
 
     data = [
         'File Modification Date/Time, production.date.notes',
-        'File Type, file_type',
         'MIME Type, media_type',
         'Software, source_software'
     ]
@@ -202,22 +243,11 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         field, value = mdata.split(':', 1)
         for d in data:
             exif_field, cid_field = d.split(', ')
-            if 'File Type   ' in exif_field:
-                try:
-                    ft, ft_type = value.split(' ')
-                    print(ft, ft_type)
-                    if len(ft) > 1 and len(ft_type) > 1:
-                        image_dict.append({f'{cid_field}': ft.strip()})
-                        image_dict.append({f'{cid_field}.type': ft_type.strip()})
-                    else:
-                        image_dict.append({f'{cid_field}': value.strip()})
-                except ValueError as err:
-                    image_dict.append({f'{cid_field}': value.strip()})
-                    print(err)
-            elif exif_field == field.strip():
+            if exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
     image_dict.append({'filesize': str(os.path.getsize(ipath))})
-    image_dict.append({'filesize.unit': 'Bytes'})
+    image_dict.append({'filesize.unit': 'B (Byte)'})
+    image_dict.append({'file_type': file_type})
 
     return image_dict
 
@@ -227,24 +257,12 @@ def build_defaults():
     Use this function to just build standard defaults for all GUR records
     Discuss what specific record data they want in every record / some records
     '''
-    text = ''' The arrangement of the collection maintains its original order, \
-as stored on a shared Google Drive for Gurinder Chadha and her team. \
-Consequently, the collection is archived in alphabetical order, \
-including productions, rather than by date; please refer to the \
-materials date for further details.\n\n \
-The collection has been organised into five series, each relating \
-to a different area of activity.'''
-    text2 = ''' The working digital documents and images related to the films and \
-television programmes, directed, produced, and/or written by \
-Gurinder Chadha.'''
 
     records_all = [
         {'record_access.user': 'BFIiispublic'},
         {'record_access.rights': '0'},
         {'content.person.name.lref': '378012'},
         {'content.person.name.type': 'PERSON'},
-        {'system_of_arrangement': text},
-        {'content.description': text2},
         {'institution.name.lref': '999570701'},
         {'analogue_or_digital': 'DIGITAL'},
         {'digital.born_or_derived': 'BORN_DIGITAL'},
@@ -274,9 +292,8 @@ def main():
 
     base_dir = sys.argv[1]  # Always sub_fond level path
     sub_fond = os.path.basename(base_dir)
-    print(base_dir)
     sf_ob_num, sf_record_type, sf_title = folder_split(sub_fond)
-    print(f"Sub fond data found: {sf_ob_num}, {sf_record_type}, {sf_title}")
+    print(f"Sub fond data found:\n\n{sf_ob_num}\n\n{sf_record_type}\n\n{sf_title}")
     LOGGER.info("Sub fond data: %s, %s, %s", sf_ob_num, sf_record_type, sf_title)
 
     if not os.path.isdir(base_dir):
@@ -322,7 +339,6 @@ def main():
 
     # Create records for folders
     if series:
-        print(series, defaults_all)
         series_dcts, series_items = handle_repeat_folder_data(series, session, defaults_all)
         LOGGER.info("Processed the following Series and Series items:")
         for s in series_dcts:
@@ -381,7 +397,8 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
         p_priref, p_ob_num = val.split(' - ')
 
         print(f"Folder path: {key} - priref {p_priref} - object number {p_ob_num}")
-        file_list = [os.path.join(key, x) for x in os.listdir(key) if os.path.isfile(os.path.join(key, x))]
+        # List all files in folder, but not if already named after parent ob_num
+        file_list = [os.path.join(key, x) for x in os.listdir(key) if os.path.isfile(os.path.join(key, x)) and not x.startwith(p_ob_num)]
         if len(file_list) == 0:
             LOGGER.info("No files found in path: %s", key)
             continue
@@ -441,10 +458,6 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
             idx = record_types.index(record_type)
             if isinstance(idx, int):
                 print(f"Record type match: {record_types[idx]} - checking parent record_type is correct.")
-                print(idx)
-                print(idx - 1)
-                print(record_types[idx - 1])
-                print(p_record_type)
                 pidx = idx - 1
                 if record_types[pidx] != p_record_type:
                     LOGGER.warning("Problem with supplied record types in folder name, skipping")
@@ -511,7 +524,6 @@ def post_record(session, record_data=None) -> Optional[Any]:
     record_xml = adlib.create_record_data(CID_API, 'archivescatalogue', session, '', record_data)
     print(record_xml)
     try:
-        print(f"Settings for POST call: {CID_API}, {record_xml}, 'archivescatalogue', 'insertrecord'")
         rec = adlib.post(CID_API, record_xml, 'archivescatalogue', 'insertrecord', session)
         if rec is None:
             LOGGER.warning("Failed to create new record:\n%s", record_xml)
@@ -552,6 +564,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             ext = os.path.splitext(iname)
             ob_num = f"{parent_ob_num}-{num.strip()}"
             new_name = f"{ob_num}.{ext}"
+            new_folder = f"{ob_num}_{iname.split('.')[0].replace(' ', '-')}"
 
             # Create exif metadata / checksum
             if 'image' in mime_type or 'application' in mime_type:
@@ -567,6 +580,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 {'archive_title.type': '07_arch'},
                 {'title': title}, # Inheriting from the parent folder?
                 {'digital.acquired_filename': iname},
+                {'digital.acquired_filename.type': 'FILE'},
                 {'object_number': ob_num},
                 {'received_checksum.type': 'MD5'},
                 {'received_checksum.date': str(datetime.datetime.now())[:19]},
@@ -597,21 +611,54 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             all_item_prirefs[new_priref] = f"{iname} - {new_name}"
             LOGGER.info("New record created for Item Archive: %s", new_priref)
 
-            # Do we need to new folder in new location here?
-            new_fpath = os.path.join(parent_path, new_name)
+            # Create new folder to house file within
+            LOGGER.info("Creating new folder for file: %s", new_folder)
+            new_fpath = os.path.join(parent_path, new_folder)
+            if not os.path.isdir(new_fpath):
+                try:
+                    os.makedirs(new_fpath, exist_ok=True)
+                    LOGGER.info("New folder created: %s", new_fpath)
+                except OSError as err:
+                    LOGGER.warning("Folder creation error: %s", err)
+            # Rename and move file into new folder
+            new_filepath = os.path.join(new_fpath, new_name)
             try:
-                LOGGER.info("File renaming:\n - %s\n - %s", ipath, new_fpath)
-                os.rename(ipath, new_fpath)
-                if os.path.isfile(new_fpath):
+                LOGGER.info("File renaming:\n - %s\n - %s", ipath, new_filepath)
+                os.rename(ipath, new_filepath)
+                if os.path.isfile(new_filepath):
                     LOGGER.info("File renaming was successful.")
                 else:
-                    LOGGER.warning("File renaming failed.")
+                    LOGGER.warning("File renaming failed:\n%s\n%s", ipath, new_fpath)
             except OSError as err:
                 LOGGER.warning("File renaming error: %s", err)
+            # Create metadata.csv file for new folder
+            success = create_metadata_csv(new_fpath, iname, title, ob_num)
+            if not success:
+                LOGGER.warning("Metadata file creation failed for %s", new_fpath)
 
+    print("*************************************************************")
     print(f"Item prirefs: {all_item_prirefs}")
+    print("*************************************************************")
+
     sys.exit("One run only for test to preserve enumeration")
     return all_item_prirefs
+
+
+def create_metadata_csv(fpath, fname, title, ob_num):
+    '''
+    Create new metadata folder, and fill with metadata.csv
+    '''
+    metadata_path = os.path.join(fpath, 'metadata/')
+    os.makedirs(metadata_path, exist_ok=True)
+    metadata_file = os.path.join(metadata_path, 'metadata.csv')
+    headers = ['filename', 'dc.title', 'dc.identifier']
+    with open(metadata_file, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(headers)
+        writer.writerow([fname, title, ob_num])
+     
+    if os.path.getsize(metadata_file) > 0:
+        return True
 
 
 if __name__ == '__main__':

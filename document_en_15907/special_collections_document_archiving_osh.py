@@ -398,7 +398,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
 
         print(f"Folder path: {key} - priref {p_priref} - object number {p_ob_num}")
         # List all files in folder, but not if already named after parent ob_num
-        file_list = [os.path.join(key, x) for x in os.listdir(key) if os.path.isfile(os.path.join(key, x)) and not x.startwith(p_ob_num)]
+        file_list = [os.path.join(key, x) for x in os.listdir(key) if os.path.isfile(os.path.join(key, x)) and not x.startswith(p_ob_num)]
         if len(file_list) == 0:
             LOGGER.info("No files found in path: %s", key)
             continue

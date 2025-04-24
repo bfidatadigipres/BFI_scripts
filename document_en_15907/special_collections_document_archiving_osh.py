@@ -62,6 +62,7 @@ file_types = {
 # Public packages
 import os
 import sys
+import csv
 import magic
 import requests
 import logging
@@ -396,7 +397,8 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
         p_priref, p_ob_num = val.split(' - ')
 
         print(f"Folder path: {key} - priref {p_priref} - object number {p_ob_num}")
-        file_list = [os.path.join(key, x) for x in os.listdir(key) if os.path.isfile(os.path.join(key, x))]
+        # List all files in folder, but not if already named after parent ob_num
+        file_list = [os.path.join(key, x) for x in os.listdir(key) if os.path.isfile(os.path.join(key, x)) and not x.startwith(p_ob_num)]
         if len(file_list) == 0:
             LOGGER.info("No files found in path: %s", key)
             continue
@@ -456,10 +458,6 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
             idx = record_types.index(record_type)
             if isinstance(idx, int):
                 print(f"Record type match: {record_types[idx]} - checking parent record_type is correct.")
-                print(idx)
-                print(idx - 1)
-                print(record_types[idx - 1])
-                print(p_record_type)
                 pidx = idx - 1
                 if record_types[pidx] != p_record_type:
                     LOGGER.warning("Problem with supplied record types in folder name, skipping")
@@ -566,6 +564,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             ext = os.path.splitext(iname)
             ob_num = f"{parent_ob_num}-{num.strip()}"
             new_name = f"{ob_num}.{ext}"
+            new_folder = f"{ob_num}_{iname.split('.')[0].replace(' ', '-')}"
 
             # Create exif metadata / checksum
             if 'image' in mime_type or 'application' in mime_type:
@@ -581,6 +580,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 {'archive_title.type': '07_arch'},
                 {'title': title}, # Inheriting from the parent folder?
                 {'digital.acquired_filename': iname},
+                {'digital.acquired_filename.type': 'FILE'},
                 {'object_number': ob_num},
                 {'received_checksum.type': 'MD5'},
                 {'received_checksum.date': str(datetime.datetime.now())[:19]},
@@ -611,23 +611,54 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             all_item_prirefs[new_priref] = f"{iname} - {new_name}"
             LOGGER.info("New record created for Item Archive: %s", new_priref)
 
-            # Do we need to new folder in new location here?
-            new_fpath = os.path.join(parent_path, new_name)
+            # Create new folder to house file within
+            LOGGER.info("Creating new folder for file: %s", new_folder)
+            new_fpath = os.path.join(parent_path, new_folder)
+            if not os.path.isdir(new_fpath):
+                try:
+                    os.makedirs(new_fpath, exist_ok=True)
+                    LOGGER.info("New folder created: %s", new_fpath)
+                except OSError as err:
+                    LOGGER.warning("Folder creation error: %s", err)
+            # Rename and move file into new folder
+            new_filepath = os.path.join(new_fpath, new_name)
             try:
-                LOGGER.info("File renaming:\n - %s\n - %s", ipath, new_fpath)
-                os.rename(ipath, new_fpath)
-                if os.path.isfile(new_fpath):
+                LOGGER.info("File renaming:\n - %s\n - %s", ipath, new_filepath)
+                os.rename(ipath, new_filepath)
+                if os.path.isfile(new_filepath):
                     LOGGER.info("File renaming was successful.")
                 else:
-                    LOGGER.warning("File renaming failed.")
+                    LOGGER.warning("File renaming failed:\n%s\n%s", ipath, new_fpath)
             except OSError as err:
                 LOGGER.warning("File renaming error: %s", err)
+            # Create metadata.csv file for new folder
+            success = create_metadata_csv(new_fpath, iname, title, ob_num)
+            if not success:
+                LOGGER.warning("Metadata file creation failed for %s", new_fpath)
+
     print("*************************************************************")
     print(f"Item prirefs: {all_item_prirefs}")
     print("*************************************************************")
 
     sys.exit("One run only for test to preserve enumeration")
     return all_item_prirefs
+
+
+def create_metadata_csv(fpath, fname, title, ob_num):
+    '''
+    Create new metadata folder, and fill with metadata.csv
+    '''
+    metadata_path = os.path.join(fpath, 'metadata/')
+    os.makedirs(metadata_path, exist_ok=True)
+    metadata_file = os.path.join(metadata_path, 'metadata.csv')
+    headers = ['filename', 'dc.title', 'dc.identifier']
+    with open(metadata_file, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(headers)
+        writer.writerow([fname, title, ob_num])
+     
+    if os.path.getsize(metadata_file) > 0:
+        return True
 
 
 if __name__ == '__main__':

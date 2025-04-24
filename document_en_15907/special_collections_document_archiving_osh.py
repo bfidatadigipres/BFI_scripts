@@ -131,10 +131,12 @@ def get_file_type(ext: str) -> Optional[str]:
     '''
     Get file type from extension
     '''
+    print(ext)
     for key, value in file_types.items():
         if ext in value:
+            print(value)
             return key
-    return ext.upper()
+    return str(ext).upper()
 
 
 def record_hits(fname: str, session) -> Optional[Any]:

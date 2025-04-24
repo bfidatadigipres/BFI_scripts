@@ -22,7 +22,7 @@ MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
 2025
 '''
 
-file_types = {
+FILE_TYPES = {
     'XLS': ['xls'],
     'XLSX': ['xlsx'],
     'DOC': ['doc'],
@@ -131,13 +131,9 @@ def get_file_type(ext: str) -> Optional[str]:
     '''
     Get file type from extension
     '''
-    if isinstance(ext, tuple):
-        ext = ext[0]
-    if ext.startswith('.'):
-        ext = ext[1:]
-    for key, value in file_types.items():
+
+    for key, value in FILE_TYPES.items():
         if ext in value:
-            print(value)
             return key
     return ext.upper()
 
@@ -220,7 +216,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     Create dictionary for Image
     metadata from Exif data source
     '''
-    ext = os.path.splitext(ipath)
+    ext = os.path.splitext(ipath)[1].replace('.', '')
     file_type = get_file_type(ext)
     exif_metadata = utils.exif_data(ipath)
     if 'Corrupt data' in str(exif_metadata):
@@ -566,9 +562,9 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             mime_type = mime.from_file(ipath)
             iname = os.path.basename(ipath)
             LOGGER.info("------ File: %s --- number %s --- mime %s ------", iname, num, mime_type)
-            ext = os.path.splitext(iname)
+            ext = os.path.splitext(ipath)[1].replace('.', '')
             ob_num = f"{parent_ob_num}-{num.strip()}"
-            new_name = f"{ob_num}.{ext}"
+            new_name = f"{ob_num.replace('-', '_')}_01of01.{ext}" # Waiting for confirmation of file naming
             new_folder = f"{ob_num}_{iname.split('.')[0].replace(' ', '-')}"
 
             # Create exif metadata / checksum

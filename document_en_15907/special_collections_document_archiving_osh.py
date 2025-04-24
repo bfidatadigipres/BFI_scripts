@@ -131,6 +131,8 @@ def get_file_type(ext: str) -> Optional[str]:
     '''
     Get file type from extension
     '''
+    if isinstance(ext, tuple):
+        ext = ext[0]
     if ext.startswith('.'):
         ext = ext[1:]
     for key, value in file_types.items():

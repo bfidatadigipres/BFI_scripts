@@ -177,8 +177,8 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     if 'Corrupt data' in str(exif_metadata):
         LOGGER.info("Exif cannot read metadata for file: %s", ipath)
         metadata_dct = [
-            {'file_size', str(os.path.getsize(ipath))},
-            {'file_size.type': 'Bytes'},
+            {'filesize', str(os.path.getsize(ipath))},
+            {'filesize.unit': 'Bytes'},
             {'file_type': ext.upper()}
         ]
         return metadata_dct
@@ -216,8 +216,8 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
                     print(err)
             elif exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
-    image_dict.append({'file_size': str(os.path.getsize(ipath))})
-    image_dict.append({'file_size.type': 'Bytes'})
+    image_dict.append({'filesize': str(os.path.getsize(ipath))})
+    image_dict.append({'filesize.unit': 'Bytes'})
 
     return image_dict
 

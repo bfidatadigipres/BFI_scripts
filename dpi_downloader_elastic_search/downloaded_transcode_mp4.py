@@ -35,7 +35,7 @@ import utils
 MP4_POLICY: Final = os.environ['MP4_POLICY']
 LOG_PATH: Final = os.environ['LOG_PATH']
 LOG_FILE: Final = os.path.join(LOG_PATH, 'scheduled_elasticsearch_downloader_transcode.log')
-CID_API: Final = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API3']
 TRANSCODE: Final = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_REND1'], 'mp4_transcoding_backup/')
 

@@ -58,7 +58,7 @@ LOG_PREFIX: Final = '_'.join(FLLPTH)
 LOG_FILE: Final = os.path.join(LOG_PATH, f'mp4_transcode{LOG_PREFIX}.log')
 TRANSCODE: Final = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
-CID_API: Final = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API3']
 HOST: Final = os.uname()[1]
 
 # Setup logging

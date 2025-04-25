@@ -167,7 +167,7 @@ def check_accepted_file_type(fpath: str) -> bool:
             return True
         elif 'ProRes' in str(formt):
             return True
-    if any(x in fpath for x in ['bp_nas/film', 'EditShare', 'bp_nas/digital']):
+    if any(x in fpath for x in ['bp_nas/film', 'EditShare-Director', 'bp_nas/digital']):
         if fpath.endswith(('.tar', '.TAR', '.mkv', '.MKV')):
             return True
         elif 'ProRes' in str(formt):

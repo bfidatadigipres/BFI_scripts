@@ -640,8 +640,8 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                     LOGGER.warning("File renaming failed:\n%s\n%s", ipath, new_fpath)
             except OSError as err:
                 LOGGER.warning("File renaming error: %s", err)
-            # Create metadata.csv file for new folder
-            success = create_metadata_csv(new_fpath, new_name, new_folder, ob_num)
+            # Create metadata.csv file for new folder - filename objects/new_filename, dc.title - original filename
+            success = create_metadata_csv(new_fpath, new_name, iname, ob_num)
             if not success:
                 LOGGER.warning("Metadata file creation failed for %s", new_fpath)
             sys.exit("Just one image achive test run")

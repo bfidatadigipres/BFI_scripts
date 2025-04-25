@@ -562,9 +562,9 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             mime_type = mime.from_file(ipath)
             iname = os.path.basename(ipath)
             LOGGER.info("------ File: %s --- number %s --- mime %s ------", iname, num, mime_type)
-            ext = os.path.splitext(ipath)[1].replace('.', '')
+            ext = os.path.splitext(ipath)[1].lstrip('.')
             ob_num = f"{parent_ob_num}-{num.strip()}"
-            new_name = f"{ob_num.replace('-', '_')}_01of01.{ext}" # Waiting for confirmation of file naming
+            new_name = f"{ob_num.replace('-', '_')}_01of01.{ext}"
             new_folder = f"{ob_num}_{iname.split('.')[0].replace(' ', '-')}"
 
             # Create exif metadata / checksum
@@ -579,8 +579,8 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 {'Df': 'ITEM_ARCH'},
                 {'part_of_reference': parent_ob_num},
                 {'archive_title.type': '07_arch'},
-                {'title': title}, # Inheriting from the parent folder?
-                {'digital.acquired_filename': iname}, # Being debated
+                {'title': title},
+                {'digital.acquired_filename': iname},
                 {'digital.acquired_filename.type': 'FILE'},
                 {'object_number': ob_num},
                 {'received_checksum.type': 'MD5'},

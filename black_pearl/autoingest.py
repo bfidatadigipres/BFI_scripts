@@ -157,8 +157,11 @@ def check_accepted_file_type(fpath: str) -> bool:
     if any(x in fpath for x in ['qnap_11', 'qnap_10']):
         if fpath.endswith(('.tar', '.TAR', '.mkv', '.MKV')):
             return True
-    if any(x in fpath for x in ['qnap_06', 'qnap_03']):
+    if any(x in fpath for x in ['qnap_06', 'qnap_03', 'qnap_07']):
         if fpath.endswith(('.mkv', '.MKV', '.tar', '.TAR')):
+            return True
+    if any(x in fpath for x in ['bp_nas/film', 'EditShare', 'bp_nas/digital']):
+        if fpath.endswith(('.tar', '.TAR', '.mkv', '.MKV')):
             return True
     formt: str = utils.get_metadata('Video', 'Format', fpath)
     print(f"utils.get_metadata: {formt}")

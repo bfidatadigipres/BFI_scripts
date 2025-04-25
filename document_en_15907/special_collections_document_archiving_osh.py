@@ -23,39 +23,39 @@ MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
 '''
 
 FILE_TYPES = {
-    'XLS': ['xls'],
-    'XLSX': ['xlsx'],
-    'DOC': ['doc'],
-    'DOCX': ['docx'],
-    'PDF': ['pdf'],
-    'PPT': ['ppt'],
-    'PPTX': ['pptx'],
-    'JPEG': ['jpg', 'jpeg'],
-    'PNG': ['png'],
-    'TIFF': ['tiff', 'tif'],
-    'EML': ['eml'],
-    'AI': ['ai'],
-    'PSD': ['psd'],
-    'FDX': ['fdx'],
-    'FDR': ['fdr'],
-    'PAGES': ['pages'],
-    'PSB': ['psb'],
-    'EPS': ['eps'],
-    'CR2': ['cr2'],
-    'HEIC': ['heic'],
-    'RTF': ['rtf'],
-    'CSV': ['csv'],
-    'TXT': ['txt'],
-    'MSG': ['msg'],
-    'ZIP': ['zip'],
-    'BMP': ['bmp'],
-    'NUMBERS': ['numbers'],
-    'CPGZ': ['cpgz'],
-    'INDD': ['indd'],
-    'JFIF': ['jfif'],
-    'PKGF': ['pkgf'],
-    'SVG': ['svg'],
-    'KEY': ['key']
+    'XLS': ['xls', 'SS'],
+    'XLSX': ['xlsx', 'SS'],
+    'DOC': ['doc', 'D'],
+    'DOCX': ['docx', 'D'],
+    'PDF': ['pdf', 'D'],
+    'PPT': ['ppt', 'SL'],
+    'PPTX': ['pptx', 'SL'],
+    'JPEG': ['jpg', 'jpeg', 'I'],
+    'PNG': ['png', 'I'],
+    'TIFF': ['tiff', 'tif', 'I'],
+    'EML': ['eml', 'E'],
+    'AI': ['ai', 'D'],
+    'PSD': ['psd', 'D'],
+    'FDX': ['fdx', 'T'],
+    'FDR': ['fdr', 'T'],
+    'PAGES': ['pages', 'D'],
+    'PSB': ['psb', 'D'],
+    'EPS': ['eps', 'D'],
+    'CR2': ['cr2', 'I'],
+    'HEIC': ['heic', 'I'],
+    'RTF': ['rtf', 'T'],
+    'CSV': ['csv', 'SS'],
+    'TXT': ['txt', 'T'],
+    'MSG': ['msg', 'M'],
+    'ZIP': ['zip', 'D'],
+    'BMP': ['bmp', 'I'],
+    'NUMBERS': ['numbers', 'SS'],
+    'CPGZ': ['cpgz', 'D'],
+    'INDD': ['indd', 'D'],
+    'JFIF': ['jfif', 'I'],
+    'PKGF': ['pkgf', 'D'],
+    'SVG': ['svg', 'I'],
+    'KEY': ['key', 'SL']
 }
 
 
@@ -134,8 +134,8 @@ def get_file_type(ext: str) -> Optional[str]:
 
     for key, value in FILE_TYPES.items():
         if ext in value:
-            return key
-    return ext.upper()
+            return key, value[-1]
+    return ext.upper(), ''
 
 
 def record_hits(fname: str, session) -> Optional[Any]:
@@ -217,14 +217,15 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     metadata from Exif data source
     '''
     ext = os.path.splitext(ipath)[1].replace('.', '')
-    file_type = get_file_type(ext)
+    file_type, mime = get_file_type(ext)
     exif_metadata = utils.exif_data(ipath)
     if 'Corrupt data' in str(exif_metadata):
         LOGGER.info("Exif cannot read metadata for file: %s", ipath)
         metadata_dct = [
             {'filesize', str(os.path.getsize(ipath))},
             {'filesize.unit': 'B (Byte)'},
-            {'file_type': file_type}
+            {'file_type': file_type},
+            {'media_type': mime}
         ]
         return metadata_dct
     print(exif_metadata)
@@ -233,7 +234,6 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
 
     data = [
         'File Modification Date/Time, production.date.notes',
-        'MIME Type, media_type',
         'Software, source_software'
     ]
 
@@ -244,11 +244,19 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         field, value = mdata.split(':', 1)
         for d in data:
             exif_field, cid_field = d.split(', ')
-            if exif_field == field.strip():
+            if 'production.date.notes' in str(d):
+                image_dict.append({f'{cid_field}': value.strip()})
+                try:
+                    date = value.split(' ', 1)[0].replace(':', '-')
+                    image_dict.append({'production.date.start': date})
+                except IndexError as err:
+                    LOGGER.warning("Error splitting date: %s", err)
+            elif exif_field == field.strip():
                 image_dict.append({f'{cid_field}': value.strip()})
     image_dict.append({'filesize': str(os.path.getsize(ipath))})
     image_dict.append({'filesize.unit': 'B (Byte)'})
     image_dict.append({'file_type': file_type})
+    image_dict.append({'media_type': mime})
 
     return image_dict
 
@@ -262,9 +270,7 @@ def build_defaults():
     records_all = [
         {'record_access.user': 'BFIiispublic'},
         {'record_access.rights': '0'},
-        {'record_access.reason': 'Temporary restriction while OSH New Voices in the Archive project completes, to be removed for public access later in project'},
-        {'content.person.name.lref': '378012'},
-        {'content.person.name.type': 'PERSON'},
+        #{'record_access.reason': 'Temporary restriction while OSH New Voices in the Archive project completes, to be removed for public access later in project'},
         {'institution.name.lref': '999570701'},
         {'analogue_or_digital': 'DIGITAL'},
         {'digital.born_or_derived': 'BORN_DIGITAL'},
@@ -581,12 +587,12 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
                 {'Df': 'ITEM_ARCH'},
                 {'part_of_reference': parent_ob_num},
                 {'archive_title.type': '07_arch'},
-                {'title': title},
+                {'title': iname},
                 {'digital.acquired_filename': iname},
                 {'digital.acquired_filename.type': 'FILE'},
                 {'object_number': ob_num},
                 {'received_checksum.type': 'MD5'},
-                {'received_checksum.date': str(datetime.datetime.now())[:19]},
+                {'received_checksum.date': str(datetime.datetime.now())[:10]},
                 {'received_checksum.value': checksum}
             ]
 
@@ -635,15 +641,12 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             except OSError as err:
                 LOGGER.warning("File renaming error: %s", err)
             # Create metadata.csv file for new folder
-            success = create_metadata_csv(new_fpath, iname, title, ob_num)
+            success = create_metadata_csv(new_fpath, new_name, new_folder, ob_num)
             if not success:
                 LOGGER.warning("Metadata file creation failed for %s", new_fpath)
             sys.exit("Just one image achive test run")
 
-    print("*************************************************************")
     print(f"Item prirefs: {all_item_prirefs}")
-    print("*************************************************************")
-
     sys.exit("One run only for test to preserve enumeration")
     return all_item_prirefs
 
@@ -659,7 +662,7 @@ def create_metadata_csv(fpath, fname, title, ob_num):
     with open(metadata_file, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(headers)
-        writer.writerow([fname, title, ob_num])
+        writer.writerow([f"objects/{fname}", title, ob_num])
      
     if os.path.getsize(metadata_file) > 0:
         return True

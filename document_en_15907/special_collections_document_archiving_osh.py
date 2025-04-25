@@ -262,6 +262,7 @@ def build_defaults():
     records_all = [
         {'record_access.user': 'BFIiispublic'},
         {'record_access.rights': '0'},
+        {'record_access.reason': 'Temporary restriction while OSH New Voices in the Archive project completes, to be removed for public access later in project'},
         {'content.person.name.lref': '378012'},
         {'content.person.name.type': 'PERSON'},
         {'institution.name.lref': '999570701'},
@@ -407,9 +408,7 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
         # Sort into numerical order based on mod times
         # Get object numbers of items already linked to parent priref
         child_list = get_children_items(p_priref, session)
-        print("**************************************************************")
         print(f"Child list: {child_list}")
-        print("**************************************************************")
         if child_list:
             child_list.sort()
             last_child_num = child_list[-1].split('-')[-1]
@@ -421,7 +420,6 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
         enum_files = sort_dates(file_list, int(last_child_num))
         file_order[f"{key}"] = enum_files
         LOGGER.info("%s files found to create Item Archive records: %s", len(file_order), ', '.join(file_order))
-        sys.exit('Exit to check child list')
 
         # Create ITEM_ARCH records and rename files / move to new subfolders?
         item_priref_group = create_archive_item_record(file_order, key, p_priref, session, defaults_all)

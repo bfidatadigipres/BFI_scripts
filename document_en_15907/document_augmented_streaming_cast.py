@@ -232,23 +232,31 @@ def cid_person_check(credit_id, session):
     Retrieve if Person record with priref already exist for credit_entity_id
     '''
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
-    record = adlib.retrieve_record(CID_API, 'people', search, '0', session, ['priref', 'name', 'activity_type'])[1]
-    if not record:
-        LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
-        return None
     try:
-        name = adlib.retrieve_field_name(record[0], 'name')[0]
+        result = adlib.retrieve_record(CID_API, 'people', search, '0', session)[1]
+    except (KeyError, IndexError, TypeError):
+        LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
+        result = None
+    if result is None:
+        return None, None, None
+    try:
+        name = adlib.retrieve_field_name(result[0], 'name')[0]
+        priref = adlib.retrieve_field_name(result[0], 'priref')[0]
     except (KeyError, IndexError):
         name = ''
-    try:
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-    except (KeyError, IndexError):
         priref = ''
     try:
-        activity_type = adlib.retrieve_field_name(record[0], 'activity_type')[0]
+        act_type = adlib.retrieve_field_name(result[0], 'activity_type')
     except (KeyError, IndexError):
-        activity_type = ''
-    return priref, name, activity_type
+        return priref, name, ''
+
+    activity_types = []
+    for count in range(0, len(act_type)):
+        try:
+            activity_types.append(act_type[count])
+        except (KeyError, IndexError):
+            pass
+    return priref, name, activity_types
 
 
 def cid_work_check(search, platform, session):

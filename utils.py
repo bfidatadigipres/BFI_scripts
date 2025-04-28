@@ -9,13 +9,13 @@ import re
 import os
 import csv
 import json
+import ffmpeg
 import hashlib
 import logging
 import datetime
 import subprocess
 from typing import Final, Optional, Iterator, Any
 import yaml
-import tenacity
 import smtplib
 import ssl
 import os
@@ -295,9 +295,29 @@ def exif_data(dpath):
         'exiftool',
         dpath
     ]
-    data = subprocess.check_output(cmd).decode('latin-1')
+    data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
+    exif_d = data.split("exiftool', '")[-1]
+    exif_md = exif_d.split("']")[0]
+    exif_metadata = exif_md.split('\n')
+    return exif_metadata
 
-    return data
+
+def probe_metadata(arg, stream, fpath):
+    '''
+    Use FFmpeg module to extract
+    ffprobe data from file
+    '''
+    try:
+        probe = ffmpeg.probe(fpath)
+    except ffmpeg.Error as err:
+        print(err)
+        return None
+
+    for st in probe['streams']:
+        if st['codec_type'] == stream:
+            return st[arg]
+
+    return None
 
 
 # (stream: str, arg: str, dpath: str) -> str:

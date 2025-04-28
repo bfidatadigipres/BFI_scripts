@@ -97,7 +97,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
-CID_API: Final = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API3']
 
 PREFIX= [
     'N',
@@ -154,16 +154,25 @@ def check_accepted_file_type(fpath: str) -> bool:
     Retrieve codec and ensure file is accepted type
     TAR accepted from DMS / ProRes all other paths
     '''
+    formt: str = utils.get_metadata('Video', 'Format', fpath)
+    print(f"utils.get_metadata: {formt}")
+
     if any(x in fpath for x in ['qnap_11', 'qnap_10']):
         if fpath.endswith(('.tar', '.TAR', '.mkv', '.MKV')):
             return True
-    if any(x in fpath for x in ['qnap_06', 'qnap_03']):
+        elif 'ProRes' in str(formt):
+            return True
+    if any(x in fpath for x in ['qnap_06', 'qnap_03', 'qnap_07']):
         if fpath.endswith(('.mkv', '.MKV', '.tar', '.TAR')):
             return True
-    formt: str = utils.get_metadata('Video', 'Format', fpath)
-    print(f"utils.get_metadata: {formt}")
-    if 'ProRes' in str(formt):
-        return True
+        elif 'ProRes' in str(formt):
+            return True
+    if any(x in fpath for x in ['bp_nas/film', 'EditShare-Director', 'bp_nas/digital']):
+        if fpath.endswith(('.tar', '.TAR', '.mkv', '.MKV')):
+            return True
+        elif 'ProRes' in str(formt):
+            return True
+
     return False
 
 

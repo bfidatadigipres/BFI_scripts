@@ -38,7 +38,7 @@ CODE_PATH = os.environ["CODE_DDP"]
 LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
 SUBS_PTH = os.environ["SUBS_PATH2"]
-CID_API = os.environ["CID_API4"]
+CID_API = os.environ["CID_API3"]
 FAILURE_COUNTER = 0
 
 # Setup logging
@@ -69,7 +69,7 @@ def csv_retrieve(fullpath: str) -> Optional[dict[str, str]]:
         print("No info.csv file found. Skipping CSV retrieve")
         return None
     print("*** Check CSV data reading well ***")
-    with open(fullpath, "r", encoding="utf-8") as inf:
+    with open(fullpath, "r", encoding="latin-1") as inf:
         rows = csv.reader(inf)
         for row in rows:
             print(row)
@@ -579,7 +579,7 @@ def build_webvtt_dct(old_webvtt: str) -> Optional[str]:
         print(f"subtitles.vtt not found: {old_webvtt}")
         return None
 
-    with open(old_webvtt, encoding="utf-8") as webvtt_file:
+    with open(old_webvtt, encoding="latin-1") as webvtt_file:
         webvtt_payload = webvtt_file.read()
         webvtt_file.close()
 

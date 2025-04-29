@@ -48,7 +48,7 @@ AUTOINGEST = os.path.join(os.environ['QNAP_08'], os.environ['AUTOINGEST_AUD'])
 LOCAL_LOG = os.path.join(WAV_ARCHIVE_PATH, 'magnetic_preservation_renaming.log')
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 
 # Setup logging
 LOGGER = logging.getLogger('magnetic_rename_wav')

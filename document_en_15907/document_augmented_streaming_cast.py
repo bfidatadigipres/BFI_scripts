@@ -37,7 +37,7 @@ import utils
 
 # Global vars
 LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 
 # Setup logging
 LOGGER = logging.getLogger('document_streaming_castcred')

@@ -42,7 +42,7 @@ import utils
 LOGS: Final = os.environ.get('LOG_PATH')
 STORAGE: Final = os.path.join(os.environ.get('QNAP_11'), 'timed_text')
 AUTOINGEST: Final = os.path.join(os.environ.get('AUTOINGEST_QNAP11'), 'ingest/autodetect/')
-CID_API: Final = os.environ.get('CID_API4')
+CID_API: Final = os.environ.get('CID_API3')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_filmfund_timed_text')

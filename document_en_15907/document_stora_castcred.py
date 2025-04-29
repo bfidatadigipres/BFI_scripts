@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-########
+
 '''
 Script to create People records from EPG metadata
 and attach to existing CID Work records

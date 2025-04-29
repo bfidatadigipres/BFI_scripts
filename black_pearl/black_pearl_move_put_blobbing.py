@@ -263,6 +263,7 @@ def main():
 
     # Get initial files as list, exit if none
     files = [f for f in os.listdir(autoingest) if os.path.isfile(os.path.join(autoingest, f))]
+    files.sort()
     if not files:
         sys.exit()
 

@@ -38,6 +38,7 @@ import glob
 import codecs
 import logging
 import datetime
+import requests
 from typing import Optional, Any, Final, Generator, Iterable
 
 # Local packages

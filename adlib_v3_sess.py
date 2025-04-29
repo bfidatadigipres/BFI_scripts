@@ -15,14 +15,15 @@ from lxml import etree, html
 from dicttoxml import dicttoxml
 from requests import request, Session, exceptions
 from tenacity import retry, stop_after_attempt
-from typing import Final, Optional, Any, Iterable
+from typing import Final, Optional, Any, Iterable, Dict
 
 HEADERS = {
     'Content-Type': 'text/xml'
 }
 
 
-def check(api: str) -> dict[Any, Any]:
+# (api: str) -> Dict[Any, Any]:
+def check(api):
     '''
     Check API responds
     '''
@@ -35,7 +36,8 @@ def check(api: str) -> dict[Any, Any]:
     return get(api, query)
 
 
-def create_session() -> Session:
+# () -> Session:
+def create_session():
     '''
     Start a requests session and return
     '''
@@ -43,7 +45,8 @@ def create_session() -> Session:
     return session
 
 
-def retrieve_record(api: str, database: str, search: str, limit: str, session: Session=None, fields=None)-> tuple[Optional[int], Optional[list[Any]]]:
+# (api: str, database: str, search: str, limit: str, session: Session=None, fields=None)-> tuple[Optional[int], Optional[list[Any]]]:
+def retrieve_record(api, database, search, limit, session, fields=None):
     '''
     Retrieve data from CID using new API
     '''
@@ -88,7 +91,8 @@ def retrieve_record(api: str, database: str, search: str, limit: str, session: S
 
 
 @retry(stop=stop_after_attempt(10))
-def get(api: str, query: dict[str, object | str], session: Optional[Session]=None):
+# (api: str, query: dict[str, object | str], session: Optional[Session]=None):
+def get(api, query, session):
     '''
     Send a GET request
     '''
@@ -114,7 +118,8 @@ def get(api: str, query: dict[str, object | str], session: Optional[Session]=Non
         raise Exception from err
 
 
-def post(api: str, payload: Optional[str | bytes], database: str, method: str, session: Optional[Session]=None) -> Optional[dict[Any, Iterable[Any]]] | bool:
+# (api: str, payload: Optional[str | bytes], database: str, method: str, session: Optional[Session]=None) -> Optional[dict[Any, Iterable[Any]]] | bool:
+def post(api, payload, database, method, session):
     '''
     Send a POST request
     '''
@@ -189,7 +194,8 @@ def post(api: str, payload: Optional[str | bytes], database: str, method: str, s
     return None
 
 
-def retrieve_field_name(record: dict[str, str], fieldname: str) -> list[str]:
+# (record: dict[str, str], fieldname: str) -> list[str]:
+def retrieve_field_name(record, fieldname):
     '''
     Retrieve record, check for language data
     Alter retrieval method. record ==
@@ -213,7 +219,8 @@ def retrieve_field_name(record: dict[str, str], fieldname: str) -> list[str]:
     return field_list
 
 
-def retrieve_facet_list(record: list[dict[Any, Any]], fname: str) -> list[str]:
+# (record: list[dict[Any, Any]], fname: str) -> list[str]:
+def retrieve_facet_list(record, fname):
     '''
     Retrieve list of facets
     '''
@@ -224,7 +231,8 @@ def retrieve_facet_list(record: list[dict[Any, Any]], fname: str) -> list[str]:
     return facets
 
 
-def group_check(record: Any, fname: str) -> Optional[list[str]]:    
+# (record: Any, fname: str) -> Optional[list[str]]:
+def group_check(record, fname):
     '''
     Get group that contains field key
     '''
@@ -275,7 +283,8 @@ def group_check(record: Any, fname: str) -> Optional[list[str]]:
         return None
 
 
-def get_grouped_items(api: str, database: str, session: Session) -> dict[str, list[str]] | tuple[None, None]:
+# (api: str, database: str, session: Session) -> dict[str, list[str]] | tuple[None, None]:
+def get_grouped_items(api, database, session):
     '''
     Check dB for groupings and ensure
     these are added to XML configuration
@@ -308,7 +317,8 @@ def get_grouped_items(api: str, database: str, session: Session) -> dict[str, li
     return grouped
 
 
-def create_record_data(api: str, database: str, session: Session, priref: str, data: list[Any]=None) -> bool | str:
+# (api: str, database: str, session: Session, priref: str, data: list[Any]=None) -> bool | str:
+def create_record_data(api, database, session, priref, data=None):
     '''
     Create a record from supplied dictionary (or list of dictionaries)
     '''
@@ -357,7 +367,8 @@ def create_record_data(api: str, database: str, session: Session, priref: str, d
     return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
 
 
-def create_grouped_data(priref: str, grouping: str, field_pairs: list[list[dict[Any, Any]]]) -> Optional[str]:
+# (priref: str, grouping: str, field_pairs: list[list[dict[Any, Any]]]) -> Optional[str]:
+def create_grouped_data(priref, grouping, field_pairs):
     '''
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append
@@ -389,7 +400,8 @@ def create_grouped_data(priref: str, grouping: str, field_pairs: list[list[dict[
         return payload_mid
 
 
-def get_fragments(obj: list[Any]):
+# (obj: list[Any]):
+def get_fragments(obj):
     '''
     Validate given XML string(s), or create valid XML
     fragment from dictionary / list of dictionaries
@@ -419,7 +431,8 @@ def get_fragments(obj: list[Any]):
     return data
 
 
-def add_quality_comments(api: str, priref: str, comments: str, session: Optional[Session]=None) -> bool:
+# (api: str, priref: str, comments: str, session: Optional[Session]=None) -> bool:
+def add_quality_comments(api, priref, comments, session):
     '''
     Receive comments string
     convert to XML quality comments
@@ -449,7 +462,8 @@ def add_quality_comments(api: str, priref: str, comments: str, session: Optional
         return True
 
 
-def check_response(rec: str, api: str) -> Optional[bool]:
+# (rec: str, api: str) -> Optional[bool]:
+def check_response(rec, api):
     '''
     Collate list of received API failures
     and check for these reponses from post
@@ -466,7 +480,8 @@ def check_response(rec: str, api: str) -> Optional[bool]:
             return True
 
 
-def recycle_api(api: str) -> None:
+# (api: str) -> None:
+def recycle_api(api):
     '''
     Adds a search call to API which
     triggers Powershell recycle

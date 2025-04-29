@@ -34,6 +34,7 @@ import shutil
 import logging
 import datetime
 from time import sleep
+from typing import Any, Final, Optional
 
 # Local packages
 sys.path.append(os.environ['CODE'])
@@ -69,7 +70,7 @@ ORDER = {
 }
 
 
-def cid_check_ob_num(object_number):
+def cid_check_ob_num(object_number: str) -> Optional[dict[str, Optional[Any]]]:
     '''
     Looks up object_number and retrieves title
     and other data for new separate 5.1 audio record
@@ -83,7 +84,7 @@ def cid_check_ob_num(object_number):
     return record
 
 
-def walk_folders(storage):
+def walk_folders(storage: str) -> list[str]:
     '''
     Collect list of folderpaths
     for files named rename_<platform>
@@ -216,7 +217,7 @@ def main():
     LOGGER.info("== Document augmented streaming platform separate audio end =====================\n")
 
 
-def build_fname_dct(file_list, ob_num, platform):
+def build_fname_dct(file_list: list[str], ob_num: str, platform: str) -> dict[str, str]:
     '''
     Take file list and build dict of names
     '''
@@ -250,7 +251,7 @@ def build_fname_dct(file_list, ob_num, platform):
     return dict(sorted(file_names.items()))
 
 
-def build_record_defaults(platform):
+def build_record_defaults(platform: str) -> list[dict[str, str]]:
     '''
     Return all record defaults
     '''
@@ -320,7 +321,7 @@ def rename_or_move(arg: str, file_a: str, file_b: str) -> str | bool:
     return False
 
 
-def make_item_record_dict(priref, platform, record):
+def make_item_record_dict(priref: str, platform: str, record: list[dict[str, Optional[Any]]]):
     '''
     Get CID item record for source and borrow data
     for creation of new CID item record
@@ -389,7 +390,7 @@ def make_item_record_dict(priref, platform, record):
     return item
 
 
-def create_digital_original_filenames(priref, asset_list_dct):
+def create_digital_original_filenames(priref: str, asset_list_dct: dict[Any, Any]) -> bool:
     '''
     Create entries for digital.acquired_filename
     and append to the CID item record.
@@ -421,7 +422,7 @@ def create_digital_original_filenames(priref, asset_list_dct):
         return False
 
 
-def create_new_item_record(priref: str, platform: sr, record):
+def create_new_item_record(priref: str, platform: str, record: dict[str, Optional[Any]]):
     '''
     Build new CID item record from existing data and make CID item record
     '''

@@ -24,7 +24,7 @@ import shutil
 import logging
 import datetime
 import tenacity
-from typing import Optional, Any
+from typing import Optional, Final, Any
 
 # Private packages
 sys.path.append(os.environ['CODE'])

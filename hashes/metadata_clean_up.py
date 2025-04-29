@@ -6,7 +6,7 @@ Script to clean up Mediainfo files that belong to filepaths deleted by autoinges
 writes mediainfo data to CID media record priref before deleting files.
 
 1. Receive filepath of '*_TEXT.txt' file from sys.argv
-2. Extract filename, and create paths for all metadata possibilities
+2. Extract filename, and create paths for all metadata possibilities 
 3. Check CID Media record exists with imagen.media.original_filename matching filename
    There is no danger deleting before asset in autoingest, as validation occurs
    before CID media record creation now.
@@ -50,12 +50,12 @@ LOGGER.setLevel(logging.INFO)
 
 FIELDS = [
     {'container.duration': ['Duration_String1', 'Duration  ']},
-    {'container.duration.milliseconds': ['Duration', '']},
+    {'container.duration.seconds': ['Duration', '']},
     {'container.file_size.total_bytes': ['FileSize', 'File size  ']},
     {'container.file_size.total_gigabytes': ['FileSize_String4', 'File size  ']},
     {'container.commercial_name': ['Format_Commercial', 'Commercial name  ']},
     {'container.format': ['Format', 'Format  ']},
-    {'container.audio_codecs': ['Audio_Codec_List', 'Audio codecs ']},
+    {'container.audio_codecs': ['Audio_Codec_List', 'Audio codecs ']}, # Returns ' / ' separated list
     {'container.audio_stream_count': ['AudioCount', 'Count of audio streams  ']},
     {'container.video_stream_count': ['VideoCount', 'Count of video streams  ']},
     {'container.format_profile': ['Format_Profile','Format profile  ']},
@@ -71,7 +71,7 @@ FIELDS = [
     {'container.media_UUID': ['UniqueID', 'Unique ID  ']},
     {'container.truncated': ['IsTruncated','Is truncated  ']},
     {'video.duration': ['Duration_String1', '']},
-    {'video.duration.milliseconds': ['Duration','Duration  ']},
+    {'video.duration.seconds': ['Duration','Duration  ']},
     {'video.bit_depth': ['BitDepth', 'Bit depth  ']},
     {'video.bit_rate_mode': ['BitRate_Mode', 'Bit rate mode  ']},
     {'video.bit_rate': ['BitRate_String','Bit rate  ']},
@@ -91,13 +91,13 @@ FIELDS = [
     {'video.width': ['Width', 'Width  ']},
     {'video.format_profile': ['Format_Profile', 'Format profile  ']},
     {'video.width_aperture': ['Width_CleanAperture', 'Width clean aperture  ']}, # Guessed second
-    {'video.delay': ['Delay','Delay  ']},
+    {'video.delay': ['Delay', 'Delay  ']},
     {'video.format_settings_GOP': ['Format_Settings_GOP', 'Format settings, GOP  ']},
-    {'video.codec_id': ['CodecID','Codec ID  ']},
-    {'video.colour_space': ['ColorSpace','Color space  ']},
+    {'video.codec_id': ['CodecID', 'Codec ID  ']},
+    {'video.colour_space': ['ColorSpace', 'Color space  ']},
     {'video.colour_primaries': ['colour_primaries', 'Color primaries  ']},
     {'video.commercial_name': ['Format_Commercial', 'Commercial name  ']},
-    {'video.display_aspect_ratio': ['DisplayAspectRatio','Display aspect ratio  ']},
+    {'video.display_aspect_ratio': ['DisplayAspectRatio', 'Display aspect ratio  ']},
     {'video.format': ['Format', 'Format  ']},
     {'video.matrix_coefficients': ['matrix_coefficients', 'Matrix coefficients  ']},
     {'video.pixel_aspect_ratio': ['PixelAspectRatio', 'Pixel aspect ratio  ']},
@@ -424,7 +424,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
     for field in FIELDS:
         for key, val in field.items():
             # Temporarily convert text returned milliseconds to seconds
-            if key.endswith('duration.milliseconds'):
+            if key.endswith('duration.seconds'):
                 match = iterate_text_rows(gen_rows, val[1], key)
                 if match is None:
                     continue
@@ -432,6 +432,9 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                 seconds = f"{float(milliseconds) / 1000:.9f}"
                 print(f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***")
                 gen.append({f'{key}': float(seconds)})
+            if 'container.audio_codecs' in key:
+                # Handle multiples
+                pass
             if key.startswith('container.'):
                 match = iterate_text_rows(gen_rows, val[1], key)
                 if match is None:
@@ -451,7 +454,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         for field in FIELDS:
             for key, val in field.items():
                 # Temporarily convert text returned milliseconds to seconds
-                if key.endswith('duration.milliseconds'):
+                if key.endswith('duration.seconds'):
                     match = iterate_text_rows(vid_rows, val[1], key)
                     if match is None:
                         continue
@@ -487,7 +490,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         for field in FIELDS:
             for key, val in field.items():
                 # Temporarily convert text returned milliseconds to seconds
-                if key.endswith('duration.milliseconds'):
+                if key.endswith('duration.seconds'):
                     match = iterate_text_rows(aud_rows, val[1], key)
                     if match is None:
                         continue
@@ -547,6 +550,8 @@ def manipulate_data(key: str, selection: Optional[str]) -> Optional[str]:
     if selection is None:
         selection = ''
     if '.format' in key and ' / ' in selection:
+        return selection.split(' / ')[0].strip()
+    if '.audio_codecs' in key and ' / ' in selection:
         return selection.split(' / ')[0].strip()
     if '.codec_id' in key and ' / ' in selection:
         return selection.split(' / ')[0].strip()

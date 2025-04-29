@@ -57,7 +57,7 @@ CSV_FAILURES = os.path.join(LOG_PATH, 'failed_mpeg_ts_files.csv')
 MPEG_TS_POLICY = os.path.join(os.environ['MEDIACONCH'], 'mpeg_ts_stora_policy.xml')
 SUBS_PTH = os.environ['SUBS_PATH2']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 FAILURE_COUNTER = 0
 
 # Setup logging
@@ -235,7 +235,7 @@ def series_check(series_id):
         fullpath = os.path.join(SERIES_CACHE_PATH, files)
         print(f"series_check(): MATCH! {filename} with Series_ID {series_id}")
         print(f"series_check(): Json to be opened and read for series data retrieval: {fullpath}")
-        with open(fullpath, 'r', encoding='utf8') as inf:
+        with open(fullpath, 'r', encoding='latin-1') as inf:
             lines = json.load(inf)
             if 'ResourceNotFoundError' in str(lines):
                 continue
@@ -357,7 +357,7 @@ def csv_retrieve(fullpath):
         return None
 
     print("**** Check CSV reading correctly ****")
-    with open(fullpath, 'r', encoding='utf-8') as inf:
+    with open(fullpath, 'r', encoding='latin-1') as inf:
         rows = csv.reader(inf)
         for row in rows:
             print(row)
@@ -749,7 +749,7 @@ def main():
         new_work = False
 
         print(f"\nFullpath for file being handled: {fullpath}")
-        with open(fullpath, 'r', encoding='utf8') as inf:
+        with open(fullpath, 'r', encoding='latin-1') as inf:
             lines = json.load(inf)
 
         # Retrieve all data needed from JSON
@@ -1273,7 +1273,7 @@ def build_webvtt_dct(old_webvtt):
         print(f"subtitles.vtt not found: {old_webvtt}")
         return None
 
-    with open(old_webvtt, encoding='utf-8') as webvtt_file:
+    with open(old_webvtt, encoding='latin-1') as webvtt_file:
         webvtt_payload = webvtt_file.read()
         webvtt_file.close()
 

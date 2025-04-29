@@ -24,7 +24,7 @@ import datetime
 import subprocess
 import pytz
 import tenacity
-from typing import Optional, Any, Final
+from typing import Optional, Any, Final, Union
 
 # Private packages
 sys.path.append(os.environ['CODE'])
@@ -35,7 +35,7 @@ import utils
 MP4_POLICY: Final = os.environ['MP4_POLICY']
 LOG_PATH: Final = os.environ['LOG_PATH']
 LOG_FILE: Final = os.path.join(LOG_PATH, 'scheduled_elasticsearch_downloader_transcode.log')
-CID_API: Final = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API3']
 TRANSCODE: Final = os.environ['TRANSCODING']
 # TRANSCODE = os.path.join(os.environ['QNAP_REND1'], 'mp4_transcoding_backup/')
 
@@ -209,6 +209,7 @@ def transcode_mp4(fpath: str) -> str:
         fl_fr = check_for_fl_fr(fullpath)
 
         # Build FFmpeg command based on dar/height
+        print("Launching create_transcode() function")
         ffmpeg_cmd = create_transcode(fullpath, outpath, height, width, dar, par, audio, stream_default, vs, mixed_dict, fl_fr)
         if not ffmpeg_cmd:
             log_build.append(f"{local_time()}\tWARNING\tFailed to build FFmpeg command with data: {fullpath}\nHeight {height} Width {width} DAR {dar}")
@@ -368,6 +369,8 @@ def adjust_seconds(duration: int | str, data: str) -> int:
     blist = retrieve_blackspaces(data)
     print(f"*** BLACK GAPS: {blist}")
     if isinstance(duration, str):
+        if '.' in duration:
+            duration = duration.split('.')[0]
         duration = int(duration)
     if not blist:
         return duration // 2
@@ -656,7 +659,7 @@ def get_width(fullpath):
         return '1920'
     if width.isdigit():
         return str(width)
-    
+
     width = width.split(' p', maxsplit=1)[0]
     return re.sub("[^0-9]", "", width)
 
@@ -670,15 +673,13 @@ def get_duration(fullpath: str) -> tuple[int, str] | tuple[str, str]:
     '''
 
     duration = utils.get_metadata('Video', 'Duration', fullpath)
+    duration_list = []
     if not duration:
         return ('', '')
     if '.' in duration:
         duration_list = duration.split('.')
 
-    if isinstance(duration, str):
-        second_duration = int(duration) // 1000
-        return (second_duration, '0')
-    elif len(duration_list) == 2:
+    if len(duration_list) == 2:
         print("Just one duration returned")
         num = duration_list[0]
         second_duration = int(num) // 1000
@@ -695,6 +696,9 @@ def get_duration(fullpath: str) -> tuple[int, str] | tuple[str, str]:
         elif int(dur1) < int(dur2):
             second_duration = int(dur2) // 1000
             return (second_duration, '1')
+    else:
+        second_duration = int(duration) // 1000
+        return (second_duration, '0')
 
 
 def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[list[str]]]:
@@ -757,11 +761,11 @@ def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[l
         return ('Audio', None, streams_str)
 
 
-def create_transcode(fullpath: str, output_path: str, height:str | int, width: str | int, dar: str, par: str, audio: Optional[str], default: Optional[str], vs: str, mixed_dict: Optional[dict[str, int]], fl_fr: bool) -> list[str]:
+def create_transcode(fullpath: str, output_path: str, height: Union[int,str], width: Union[int,str], dar: str, par: str, audio: Optional[str], default: Optional[str], vs: str, mixed_dict: Optional[dict[str, int]], fl_fr: bool) -> Optional[list[str]]:
     '''
     Builds FFmpeg command based on height/dar input
     '''
-    print(f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs} Mixed dict {mixed_dict}")
+    print(f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs} Mixed audio {mixed_dict}")
     print(f"Fullpath {fullpath} Output path {output_path}")
 
     ffmpeg_program_call = [
@@ -798,6 +802,16 @@ def create_transcode(fullpath: str, output_path: str, height:str | int, width: s
     crop_sd_4x3 = [
         "-vf",
         "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
+    upscale_sd_width = [
+        "-vf",
+        "yadif,scale=1024:-1:flags=lanczos,pad=1024:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
+    upscale_sd_height = [
+        "-vf",
+        "yadif,scale=-1:576:flags=lanczos,pad=1024:576:-1:-1,blackdetect=d=0.05:pix_th=0.10"
     ]
 
     scale_sd_4x3 = [
@@ -845,6 +859,11 @@ def create_transcode(fullpath: str, output_path: str, height:str | int, width: s
         "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1,blackdetect=d=0.05:pix_th=0.10"
     ]
 
+    hd_16x9_letterbox = [
+        "-vf",
+        "yadif,scale=1280:-1:flags=lanczos,pad=1280:720:-1:-1,blackdetect=d=0.05:pix_th=0.10"
+    ]
+
     fhd_all = [
         "-vf",
         "yadif,scale=-1:1080:flags=lanczos,pad=1920:1080:-1:-1,blackdetect=d=0.05:pix_th=0.10"
@@ -882,14 +901,14 @@ def create_transcode(fullpath: str, output_path: str, height:str | int, width: s
         map_audio = [
             "-map", "0:a?", "-c:a", "aac",
             "-ac", "2", "-dn"
-        ] 
+        ]
     elif default and audio:
         print(f"Default {default}, Audio {audio}")
         map_audio = [
             "-map", "0:a?", "-c:a", "aac",
             f"-disposition:a:{default}",
             "default", "-dn"
-        ]       
+        ]
     else:
         map_audio = [
             "-map", "0:a?",
@@ -902,20 +921,22 @@ def create_transcode(fullpath: str, output_path: str, height:str | int, width: s
     aspect = round(width / height, 3)
     cmd_mid = []
 
-    if height < 400 and width < 533 and dar == '4:3':
-        cmd_mid = scale_sd_4x3
-    elif height < 400 and width < 533 and dar == '16:9':
-        cmd_mid = scale_sd_16x9
-    elif height <= 486 and dar == '16:9':
+    if height < 480 and aspect >= 1.778:
+        cmd_mid = upscale_sd_width
+    elif height < 480 and aspect < 1.778:
+        cmd_mid = upscale_sd_height
+    elif height == 486 and dar == '16:9':
         cmd_mid = crop_ntsc_486_16x9
-    elif height <= 486 and dar == '4:3':
+    elif height == 486 and dar == '4:3':
         cmd_mid = crop_ntsc_486
     elif height <= 486 and width == 640:
         cmd_mid = crop_ntsc_640x480
     elif height < 576 and width == 720 and dar == '4:3':
         cmd_mid = scale_sd_4x3
-    elif height == 576 and width == 703 and dar == '4:3':
+    elif height == 576 and width == 703 and dar != '16:9':
         cmd_mid = scale_sd_4x3
+    elif height == 576 and width == 703 and dar == '16:9':
+        cmd_mid = scale_sd_16x9
     elif height == 576 and width == 1024:
         cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == '16:9':
@@ -940,7 +961,11 @@ def create_transcode(fullpath: str, output_path: str, height:str | int, width: s
         cmd_mid = scale_sd_16x9
     elif height < 720 and dar == '4:3':
         cmd_mid = sd_downscale_4x3
+    elif width == 1280 and height <= 720:
+        cmd_mid = hd_16x9_letterbox
     elif height == 720 and dar == '16:9':
+        cmd_mid = hd_16x9
+    elif height == 720:
         cmd_mid = hd_16x9
     elif width == 1920 and aspect >= 1.778:
         cmd_mid = fhd_letters

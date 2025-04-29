@@ -385,7 +385,7 @@ def write_exif_to_file(image: str, metadata: str) -> Optional[str]:
     return None
 
 
-def write_exif_to_file(image: str, metadata: str) -> Optional[str]:
+def create_new_image_record(record_json, session: requests.Session):
     '''
     Function for creation of new CID records
     both Analogue and Digital, returning priref/obj

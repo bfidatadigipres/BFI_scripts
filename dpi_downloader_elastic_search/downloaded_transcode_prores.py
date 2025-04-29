@@ -235,25 +235,24 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
     if not duration:
         return ('', '')
 
-    duration_str = duration.decode('utf-8').rstrip('\n')
-    print(f"Mediainfo seconds: {duration_str}")
+    duration = duration.decode('utf-8').rstrip('\n')
+    print(f"Mediainfo seconds: {duration}")
 
-    if '.' in duration_str:
-        duration_list = duration_str.split('.')
-
-    if isinstance(duration_str, str):
-        second_duration = int(duration_str) // 1000
+    if '.' in duration:
+        duration = duration.split('.')
+    if isinstance(duration, str):
+        second_duration = int(duration) // 1000
         return (second_duration, '0')
-    elif len(duration_list) == 2:
+    elif len(duration) == 2:
         print("Just one duration returned")
-        num = duration_list[0]
+        num = duration[0]
         second_duration = int(num) // 1000
         print(second_duration)
         return (second_duration, '0')
-    elif len(duration_list) > 2:
+    elif len(duration) > 2:
         print("More than one duration returned")
-        dur1 = f"{duration_list[0]}"
-        dur2 = f"{duration_list[1][6:]}"
+        dur1 = f"{duration[0]}"
+        dur2 = f"{duration[1][6:]}"
         print(dur1, dur2)
         if int(dur1) > int(dur2):
             second_duration = int(dur1) // 1000
@@ -467,20 +466,19 @@ def conformance_check(filepath: str) -> str:
         return "FAIL!"
 
 
-def transcode_mov(fpath: str) -> bool | str:
+def transcode_mov(fullpath):
     '''
-    Receives sys.argv[1] path to MOV from shell start script via GNU parallel
+    Receives file path to MOV from shell start script via GNU parallel
     Passes to FFmpeg subprocess command, transcodes ProRes mov then checks
     finished encoding against custom prores mediaconch policy
     If pass, cleans up files moving to finished_prores/ folder and deletes V210 mov (temp offline).
     '''
-    fullpath = fpath
     if not os.path.isfile(fullpath):
-        logger.warning("SCRIPT EXITING: Error with file path:\n %s", sys.argv)
+        logger.warning("SCRIPT EXITING: Error with file path:\n %s", fullpath)
         return False
     mime_true = check_mime_type(fullpath)
     if not mime_true:
-        logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", sys.argv)
+        logger.warning("SCRIPT EXITING: Supplied file is not mimetype video:\n %s", fullpath)
         return 'not video'
     if not utils.check_control('pause_scripts'):
         logger.info('Script run prevented by downtime_control.json. Script exiting.')

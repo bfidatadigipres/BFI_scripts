@@ -43,9 +43,9 @@ import json
 import hashlib
 import logging
 from xml.sax.saxutils import escape
+from typing import Optional, Any, Final, Union
 from datetime import datetime, timedelta
 from tenacity import retry, stop_after_attempt
-from typing import Optional, Any, Final, Union
 
 # Local package
 import bp_utils as bp

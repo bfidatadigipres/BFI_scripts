@@ -24,7 +24,7 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-INGEST: Final = os.environ.get('AUTOINGEST_QNAP10')
+INGEST: Final = os.path.join(os.environ.get('BP_DIGITAL'), 'autoingest/')
 STORAGE: Final = os.path.join(INGEST, 'access_edits')
 LOCAL_LOG: Final = os.path.join(STORAGE, 'access_edits_renamed.log')
 AUTOINGEST: Final = os.path.join(INGEST, 'ingest/autodetect')
@@ -32,48 +32,43 @@ LOGS: Final = os.environ.get('LOG_PATH')
 CONTROL_JSON: Final = os.path.join(LOGS, 'downtime_control.json')
 CID_API: Final = os.environ.get('CID_API4')
 
-# Setup logging
+# Setup loggin
 LOGGER = logging.getLogger('document_access_edits')
 HDLR = logging.FileHandler(os.path.join(LOGS, 'document_access_edits.log'))
 FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-####
 
-def process_duplicate_files(fname: str, log_file: str, duplicated_folder: str) -> Optional[str]:
+
+def process_duplicate_files(fname: str) -> Optional[str]:
     '''
-    Check if a given filepath is inside the log file (access_document_edit.log) 
+    Check if a given filepath is inside the log file (access_document_edit.log)
     and move to folder if it's inside the log.
     '''
     # go through the file
-    if not os.path.exists(log_file):
-        return 'log file does not exists'
-    
-    with open(log_file, 'r') as log:
-        contents = log.readline()
+    if not os.path.exists(LOCAL_LOG):
+        return 'local log does not exist'
+
+    with open(LOCAL_LOG, 'r') as log:
+        contents = log.readlines()
 
     # check if the file is inside the log
-    if fname in contents:
-        if os.path.exists(os.path.join(f'{duplicated_folder}/', fname)) and os.path.exists(os.path.join('test_folder/', fname)):
-            os.remove(os.path.join(f'{duplicated_folder}/', fname))
-        try:
-            shutil.move(os.path.join(f'test_folder/', fname), os.path.join(f'{duplicated_folder}/'))
-            write_to_log(log_file, fname)
-            return 'duplicated file'
-        except Exception as e: 
-            print(e)
+    for row in contents:
+        if fname in str(row):
+            if os.path.exists(os.path.join(STORAGE, f'duplicates/{fname}')):
+                os.remove(os.path.join(STORAGE, f'duplicates/{fname}'))
+            try:
+                shutil.move(os.path.join(STORAGE, fname), os.path.join(STORAGE, f'duplicates/{fname}'))
+                local_log(f"** Duplicated file has been found: {fname} \n")
+                return 'duplicated file'
+            except Exception as e:
+                print(e)
+                raise Exception from e
 
-    else:
-        return 'new file'
-      
-def write_to_log(log_file: str, fname: str) -> None:
-    '''
-    writes into document access log
-    '''
-    with open(log_file, 'a+') as log:
-        log.write(f"duplicated file has been found: {fname} \n")
-        
+    return 'new file'
+
+
 def get_source_record(file: str) -> Optional[list[dict[str, str]]]:
     '''
     Get source Item record ob_num from filename
@@ -111,8 +106,9 @@ def main():
         if not os.path.isfile(fpath):
             LOGGER.warning("Skipping: File type has not been recoginsed.")
             continue
-        result = process_duplicate_files(file, 'log_file.log', 'duplicated_folder')
+        result = process_duplicate_files(file)
         if result == 'duplicated file':
+            LOGGER.warning("DigiOps supplied a duplicate filename - replacing %s", file)
             continue
         # Get source Item record ob_num from filename
         source_record = get_source_record(file)
@@ -132,8 +128,7 @@ def main():
             ob_num = ''
         LOGGER.info("** New CID Item record created %s - %s", priref, ob_num)
 
-        comments = '''Viewing copy created from digital master which has been ingested for access instances. \
-                      The file may have had adverts, bars and tones cut out, or other fixes applied.'''
+        comments = '''Viewing copy created from digital master which has been ingested for access instances. The file may have had adverts, bars and tones cut out, or other fixes applied.'''
         success = adlib.add_quality_comments(CID_API, priref, comments)
         if not success:
             LOGGER.warning("Quality comments were not written to record: %s", priref)

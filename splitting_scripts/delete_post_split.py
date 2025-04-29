@@ -36,7 +36,7 @@ import models
 # Global variables
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API: Final = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API3']
 CLIENT: Final = ds3.createClientFromEnv()
 
 TARGETS: Final = [

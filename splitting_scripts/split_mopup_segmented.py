@@ -36,7 +36,7 @@ import models
 
 # Logging
 LOGS: Final = os.environ['SCRIPT_LOG']
-CID_API: Final = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API3']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('split_mopup_segmented')

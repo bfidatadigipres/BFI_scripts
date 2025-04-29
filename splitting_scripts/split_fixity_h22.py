@@ -57,7 +57,7 @@ OUTPUT = os.path.join(os.path.split(SOURCE)[0], 'segmented')
 MEDIA_TARGET = os.path.split(OUTPUT)[0]  # Processing folder
 AUTOINGEST = os.path.join(os.path.split(MEDIA_TARGET)[0], 'autoingest')
 LOG_PATH = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API4']
+CID_API = os.environ['CID_API3']
 
 # Setup logging, overwrite each time
 logger = logging.getLogger(f'split_fixity_{NUM}')

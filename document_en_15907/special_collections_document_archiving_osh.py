@@ -132,7 +132,7 @@ def get_file_type(ext: str) -> Optional[str]:
     '''
 
     for key, value in FILE_TYPES.items():
-        if ext in value:
+        if ext.lower() in value:
             return key, value[-1]
     return ext.upper(), ''
 
@@ -217,11 +217,15 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     '''
     ext = os.path.splitext(ipath)[1].replace('.', '')
     file_type, mime = get_file_type(ext)
+    print(f"**** {mime} ****")
     exif_metadata = utils.exif_data(f"{ipath}")
     if exif_metadata is None:
         LOGGER.warning("File could not be read by ExifTool: %s", ipath)
+        date = os.path.getmtime(ipath)
         metadata_dct = [
-            {'filesize', str(os.path.getsize(ipath))},
+            {'production.date.notes': datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d %H:%M:%S')},
+            {'production.date.start': datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d')},
+            {'filesize': str(os.path.getsize(ipath))},
             {'filesize.unit': 'B (Byte)'},
             {'file_type': file_type},
             {'media_type': mime}
@@ -230,8 +234,11 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
 
     if 'Corrupt data' in str(exif_metadata):
         LOGGER.info("Exif cannot read metadata for file: %s", ipath)
+        date = os.path.getmtime(ipath)
         metadata_dct = [
-            {'filesize', str(os.path.getsize(ipath))},
+            {'production.date.notes': datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d %H:%M:%S')},
+            {'production.date.start': datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d')},
+            {'filesize': str(os.path.getsize(ipath))},
             {'filesize.unit': 'B (Byte)'},
             {'file_type': file_type},
             {'media_type': mime}
@@ -408,9 +415,9 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
     LOGGER.info("Records created/identified:\n%s", priref_dct)
 
     # Check for item_archive files within folders
-    file_order = {}
     item_prirefs = []
     for key, val in priref_dct.items():
+        file_order = {}
         p_priref, p_ob_num = val.split(' - ')
 
         print(f"Folder path: {key} - priref {p_priref} - object number {p_ob_num}")

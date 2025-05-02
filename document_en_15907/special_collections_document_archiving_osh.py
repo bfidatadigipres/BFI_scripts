@@ -287,11 +287,11 @@ def main():
     Iterate supplied folder, find image files in folders
     named after work and create analogue/digital item records
     for every photo. Clean up empty folders.
-
+    '''
     if not utils.check_control('power_off_all'):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    '''
+
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
 
@@ -645,10 +645,8 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             success = create_metadata_csv(new_fpath, new_name, iname, ob_num)
             if not success:
                 LOGGER.warning("Metadata file creation failed for %s", new_fpath)
-            sys.exit("Just one image achive test run")
 
     print(f"Item prirefs: {all_item_prirefs}")
-    sys.exit("One run only for test to preserve enumeration")
     return all_item_prirefs
 
 

@@ -217,7 +217,17 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     '''
     ext = os.path.splitext(ipath)[1].replace('.', '')
     file_type, mime = get_file_type(ext)
-    exif_metadata = utils.exif_data(ipath)
+    exif_metadata = utils.exif_data(f"{ipath}")
+    if exif_metadata is None:
+        LOGGER.warning("File could not be read by ExifTool: %s", ipath)
+        metadata_dct = [
+            {'filesize', str(os.path.getsize(ipath))},
+            {'filesize.unit': 'B (Byte)'},
+            {'file_type': file_type},
+            {'media_type': mime}
+        ]
+        return metadata_dct
+
     if 'Corrupt data' in str(exif_metadata):
         LOGGER.info("Exif cannot read metadata for file: %s", ipath)
         metadata_dct = [

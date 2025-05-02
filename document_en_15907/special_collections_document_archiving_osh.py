@@ -246,7 +246,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
             if 'production.date.notes' in str(d) and 'File Modification Date/Time' in str(field):
                 image_dict.append({f'{cid_field}': value.strip()})
                 try:
-                    date = value.split(' ', 1)[0].replace(':', '-')
+                    date = value.strip().split(' ', 1)[0].replace(':', '-')
                     image_dict.append({'production.date.start': date})
                 except IndexError as err:
                     LOGGER.warning("Error splitting date: %s", err)

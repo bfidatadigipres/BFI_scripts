@@ -243,7 +243,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         field, value = mdata.split(':', 1)
         for d in data:
             exif_field, cid_field = d.split(', ')
-            if 'production.date.notes' in str(d):
+            if 'production.date.notes' in str(d) and 'File Modification Date/Time' in str(field):
                 image_dict.append({f'{cid_field}': value.strip()})
                 try:
                     date = value.split(' ', 1)[0].replace(':', '-')

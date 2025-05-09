@@ -47,7 +47,7 @@ LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
 DIGIOPS_PATH: Final = os.environ['QNAP_08_OSH']
 RSYNC_LOG: Final = os.path.join(DIGIOPS_PATH, 'transfer_logs')
-CID_API: Final = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API3']
 
 # Setup logging
 LOGGER = logging.getLogger('curatorial_donor_acquisition_rename_osh.log')

@@ -169,5 +169,6 @@ def create_current_errors_logs() -> None:
     if os.path.exists(os.environ['AUTOINGEST_EDITSHARE']):
         shutil.copy(CURRENT_ERRORS, os.path.join(os.environ['AUTOINGEST_EDITSHARE'], 'current_errors/current_errors.csv'))
 
+
 if __name__ == '__main__':
     main()

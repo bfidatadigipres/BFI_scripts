@@ -47,7 +47,7 @@ import utils
 LOGS: Final = os.environ.get('LOG_PATH')
 CONTROL_JSON: Final = os.path.join(LOGS, 'downtime_control.json')
 PLATFORM_STORAGE: Final = os.environ.get('PLATFORM_INGEST_PTH')
-CID_API: Final = os.environ.get('CID_API4')
+CID_API: Final = os.environ.get('CID_API3')
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_platform_separate_51_audio')

@@ -70,24 +70,27 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 LOG_PATHS = {os.environ['QNAP_VID']: os.environ['L_QNAP01'],
-             os.environ['QNAP_08']: os.environ['L_QNAP08'],
-             os.environ['QNAP_10']: os.environ['L_QNAP10'],
              os.environ['QNAP_H22']: os.environ['L_QNAP02'],
              os.environ['GRACK_H22']: os.environ['L_GRACK02'],
-             os.environ['QNAP_06']: os.environ['L_QNAP06'],
-             os.environ['QNAP_IMAGEN']: os.environ['L_QNAP04'],
              os.environ['QNAP_FILM']: os.environ['L_QNAP03'],
-             os.environ['IS_SC']: os.environ['L_IS_SPEC'],
-             os.environ['IS_FILM']: os.environ['L_IS_FILM'],
-             os.environ['IS_VID']: os.environ['L_IS_VID'],
-             os.environ['IS_ING']: os.environ['L_IS_MED'],
-             os.environ['IS_AUD']: os.environ['L_IS_AUD'],
-             os.environ['IS_DIG']: os.environ['L_IS_DIGI'],
-             os.environ['GRACK_F47']: os.environ['L_IS_VID'],
-             os.environ['GRACK_FILM']: os.environ['L_GRACK01'],
+             os.environ['QNAP_IMAGEN']: os.environ['L_QNAP04'],
+             os.environ['QNAP_06']: os.environ['L_QNAP06'],
              os.environ['QNAP_07']: os.environ['L_QNAP07'],
+             os.environ['QNAP_08']: os.environ['L_QNAP08'],
              os.environ['QNAP_09']: os.environ['L_QNAP09'],
-             os.environ['QNAP_11']: os.environ['L_QNAP11']
+             os.environ['QNAP_10']: os.environ['L_QNAP10'],
+             os.environ['QNAP_11']: os.environ['L_QNAP11'],
+             os.environ['EDITSHARE']: os.environ['L_EDITSHARE'],
+             os.environ['BP_VIDEO']: os.environ['L_BP_VIDEO'],
+             os.environ['BP_AUDIO']: os.environ['L_BP_AUDIO'],
+             os.environ['BP_SC']: os.environ['L_BP_SC'],
+             os.environ['BP_DIGITAL']: os.environ['L_BP_DIGITAL'],
+             os.environ['BP_FILM1']: os.environ['L_BP_FILM1'],
+             os.environ['BP_FILM2']: os.environ['L_BP_FILM2'],
+             os.environ['BP_FILM3']: os.environ['L_BP_FILM3'],
+             os.environ['BP_FILM4']: os.environ['L_BP_FILM4'],
+             os.environ['BP_FILM5']: os.environ['L_BP_FILM5'],
+             os.environ['BP_FILM6']: os.environ['L_BP_FILM6']
 }
 
 
@@ -260,6 +263,7 @@ def main():
 
     # Get initial files as list, exit if none
     files = [f for f in os.listdir(autoingest) if os.path.isfile(os.path.join(autoingest, f))]
+    files.sort()
     if not files:
         sys.exit()
 

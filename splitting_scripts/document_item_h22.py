@@ -17,7 +17,7 @@ sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
 
 # Configure adlib
-CID_API: Final = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API3']
 CODE_PATH: Final = os.environ['CODE']
 
 

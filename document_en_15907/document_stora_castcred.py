@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-########
+
 '''
 Script to create People records from EPG metadata
 and attach to existing CID Work records
@@ -58,7 +58,7 @@ MONTH: Final = YEST[5:7]
 COMPLETE: Final = os.environ['STORA_COMPLETED']
 ARCHIVE_PATH: Final = os.path.join(COMPLETE, YEAR, MONTH)
 LOG_PATH: Final = os.environ['LOG_PATH']
-CID_API: Final = os.environ['CID_API4']
+CID_API: Final = os.environ['CID_API3']
 CODEPTH: Final = os.environ['CODE']
 CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
 

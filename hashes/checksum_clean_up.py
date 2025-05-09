@@ -37,7 +37,7 @@ import utils
 LOG_PATH: typing.Final = os.environ['LOG_PATH']
 CHECKSUM_PATH: typing.Final = os.path.join(LOG_PATH, 'checksum_md5')
 CONTROL_JSON: typing.Final = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API: typing.Final = os.environ['CID_API4']
+CID_API: typing.Final = os.environ['CID_API3']
 
 # Setup logging
 LOGGER = logging.getLogger('checksum_clean_up')

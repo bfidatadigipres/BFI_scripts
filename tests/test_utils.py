@@ -30,7 +30,7 @@ def test_check_control(input, expected_output):
 
 @pytest.mark.skip(reason='no api credentials')
 def test_check_cid():
-    true_response = utils.cid_check(os.environ['CID_DATA4'])
+    true_response = utils.cid_check(os.environ['CID_DATA3'])
     assert true_response is True
 
 

@@ -293,9 +293,13 @@ def exif_data(dpath):
 
     cmd = [
         'exiftool',
-        dpath
+        f'{dpath}'
     ]
-    data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
+    try:
+        data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
+    except subprocess.CalledProcessError as err:
+        print(err)
+        return None
     exif_d = data.split("exiftool', '")[-1]
     exif_md = exif_d.split("']")[0]
     exif_metadata = exif_md.split('\n')

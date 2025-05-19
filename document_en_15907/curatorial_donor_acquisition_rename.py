@@ -48,7 +48,7 @@ LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
 DIGIOPS_PATH: Final = os.environ.get('BP_DIGI_CURATORIAL') # BP Nas Digital
 RSYNC_LOG: Final = os.path.join(DIGIOPS_PATH, 'transfer_logs')
-CID_API: Final = os.environ['CID_API3']
+CID_API: Final = utils.get_current_api()
 
 # Setup logging
 LOGGER = logging.getLogger('curatorial_donor_acquisition_rename.log')

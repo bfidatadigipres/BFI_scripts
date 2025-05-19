@@ -74,7 +74,7 @@ from downloaded_transcode_mp4 import transcode_mp4
 from downloaded_transcode_mp4_watermark import transcode_mp4_access
 
 # GLOBAL VARIABLES
-CID_API: Final = os.environ['CID_API3']
+CID_API: Final = utils.get_current_api()
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: Final = os.environ['CONTROL_JSON']
 CODEPTH: Final = os.environ['CODE']

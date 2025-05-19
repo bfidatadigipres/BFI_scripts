@@ -161,6 +161,8 @@ def cid_check(cid_api):
     if not utils.cid_check[API]:
         sys.exit(message)
     '''
+    if cid_api is None:
+        return False
     try:
         dct = adlib.check(cid_api)
         print(dct)

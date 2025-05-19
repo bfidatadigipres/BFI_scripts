@@ -48,7 +48,7 @@ LOG_PATH: Final = os.environ['LOG_PATH']
 FLLPTH: Final = sys.argv[1].split('/')[:4]
 LOG_PREFIX: Final = '_'.join(FLLPTH)
 LOG_FILE: Final = os.path.join(LOG_PATH, f'mp4_transcode_make_jpeg_legacy.log')
-CID_API: Final = os.environ['CID_API3']
+CID_API: Final = utils.get_current_api()
 TRANSCODE: Final = os.environ['TRANSCODING']
 HOST: Final = os.uname()[1]
 

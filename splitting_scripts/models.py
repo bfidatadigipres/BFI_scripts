@@ -22,11 +22,12 @@ from typing import Optional, Any, Final
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
 LOGS = os.environ['LOG_PATH']
 LOG_PATH = os.path.join(LOGS, 'splitting_models.log')
-CID_API = os.environ['CID_API3']
+CID_API = utils.get_current_api()
 
 # Setup logging, overwrite each time
 logger = logging.getLogger('split_qnap_test')

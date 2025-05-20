@@ -47,6 +47,7 @@ AUTOINGEST = os.path.join(SCPATH, os.environ['INGEST_SC'])
 LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_rename_partial_digital_derivatives.log')
 MEDIAINFO_PATH = os.path.join(os.environ['LOG_PATH'], 'cid_mediainfo/')
 CID_API = os.environ['CID_API3']
+# CID_API = utils.get_current_api()
 
 # Global variables
 TODAY = str(datetime.datetime.now())

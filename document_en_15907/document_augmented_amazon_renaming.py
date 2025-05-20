@@ -61,7 +61,7 @@ ADMIN: Final  = os.environ.get('ADMIN')
 LOGS: Final  = os.path.join(ADMIN, 'Logs')
 CODE: Final  = os.environ.get('CODE_PATH')
 CONTROL_JSON: Final  = os.path.join(LOGS, 'downtime_control.json')
-CID_API: Final  = os.environ['CID_API3']
+CID_API: Final = utils.get_current_api()
 
 # Setup logging
 LOGGER = logging.getLogger('document_augmented_amazon_renaming')

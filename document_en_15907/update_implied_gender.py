@@ -25,7 +25,7 @@ import utils
 # Global variables
 LOGS: Final = os.environ['LOG_PATH']
 CSV: Final  = os.path.join(LOGS, 'gendered_names.csv')
-CID_API: Final  = os.environ['CID_API3']
+CID_API: Final = utils.get_current_api()
 CONTROL_JSON: Final  = os.path.join(LOGS, 'downtime_control.json')
 
 # Setup logging

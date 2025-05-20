@@ -58,7 +58,7 @@ import utils
 MP4_ACCESS1 = os.environ['MP4_ACCESS_REDIRECT']
 MP4_ACCESS2 = os.environ['MP4_ACCESS2']
 LOGS = os.environ['LOG_PATH']
-CID_API = os.environ['CID_API3']
+CID_API = utils.get_current_api()
 
 # Logging config
 LOGGER = logging.getLogger('bp_pointer_file_deletions')

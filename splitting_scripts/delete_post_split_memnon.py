@@ -36,7 +36,7 @@ import utils
 # Global variables
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API: Final = os.environ['CID_API3']
+CID_API: Final = utils.get_current_api()
 CLIENT: Final = ds3.createClientFromEnv()
 
 TARGETS: Final = [

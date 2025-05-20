@@ -42,6 +42,7 @@ AUTOINGEST = os.path.join(os.environ.get('AUTOINGEST_BP_SC'), 'ingest/autodetect
 LOG = os.path.join(os.environ.get('LOG_PATH'), 'special_collections_document_archiving_osh.log')
 MEDIAINFO_PATH = os.path.join(os.environ.get('LOG_PATH'), 'cid_mediainfo/')
 CID_API = os.environ.get('CID_API4')
+# CID_API = utils.get_current_api()
 
 LOGGER = logging.getLogger('sc_document_archiving_osh')
 HDLR = logging.FileHandler(LOG)

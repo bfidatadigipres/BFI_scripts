@@ -12,12 +12,13 @@ from datetime import datetime
 
 # Local packages
 sys.path.append(os.environ['CODE'])
-sys.path.append(os.environ['WORKFLOW'])
 import adlib_v3 as adlib
+import utils
+sys.path.append(os.environ['WORKFLOW'])
 import records
 
 # Global variable
-CID_API = os.environ['CID_API4']
+CID_API = utils.get_current_api()
 
 
 class Activities():

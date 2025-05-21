@@ -12,9 +12,10 @@ import sys
 # Local imports
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global variables
-CID_API = os.environ['CID_API4']
+CID_API = utils.get_current_api()
 
 
 class Tape():

@@ -57,7 +57,7 @@ CSV_FAILURES = os.path.join(LOG_PATH, 'failed_mpeg_ts_files.csv')
 MPEG_TS_POLICY = os.path.join(os.environ['MEDIACONCH'], 'mpeg_ts_stora_policy.xml')
 SUBS_PTH = os.environ['SUBS_PATH2']
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
-CID_API = os.environ['CID_API3']
+CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
 
 # Setup logging

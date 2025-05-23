@@ -109,7 +109,22 @@ def creating_checksum_path(tmp_path):
     checksum_file_name = d / 'mkv_sample.mkv.md5'
     return checksum_file_name
 
+@pytest.fixture()
+def oversized_file(tmp_path):
+    file = tmp_path / 'oversized_file.xml'
+    with open(file, 'wb') as write_file:
+        write_file.seek(55551073741824-1)
+        write_file.write(b"\0")
+    yield file
 
+@pytest.fixture()
+def create_mediainfo_folder(tmp_path):
+    d = tmp_path / 'mediainfo_folder'
+    d.mkdir()
+    media_file = d / 'mkv_sample.mkv'
+    media_file.write_text("dummy media content")
+    return d  
+            
 
 
 

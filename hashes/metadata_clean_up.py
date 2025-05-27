@@ -442,7 +442,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                 if ' / ' in aud_codecs:
                     codecs_split = aud_codecs.split(' / ')
                     unique_codecs = list(set(codecs_split))
-                    gen.append({f'{key}': ', '.join(unique_codecs.strip())})
+                    gen.append({f'{key}': ', '.join(unique_codecs)})
                 else:
                     get.append(match)
             if key.startswith('container.'):

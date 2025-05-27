@@ -57,7 +57,7 @@ LANGUAGE_MAP: Final = os.environ['LANGUAGE_YAML']
 JSON_COMPLETED: Final = os.environ['COMPLETED_PATH']
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API: Final = os.environ['CID_API3']
+CID_API = utils.get_current_api()
 
 # Setup logging (running from bk-qnap-video)
 LOGGER = logging.getLogger('document_artifax_record_population')

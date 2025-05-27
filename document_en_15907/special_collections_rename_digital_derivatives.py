@@ -48,6 +48,7 @@ AUTOINGEST = os.path.join(os.environ['AUTOINGEST_IS_SPEC'], 'ingest/proxy/image/
 LOG = os.path.join(os.environ['LOG_PATH'], 'special_collections_rename_digital_derivatives.log')
 MEDIAINFO_PATH = os.path.join(os.environ['LOG_PATH'], 'cid_mediainfo/')
 CID_API = os.environ['CID_API3']
+# CID_API = utils.get_current_api()
 
 LOGGER = logging.getLogger('sc_rename_digital_derivatives')
 HDLR = logging.FileHandler(LOG)

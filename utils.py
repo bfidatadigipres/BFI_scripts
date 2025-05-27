@@ -161,6 +161,8 @@ def cid_check(cid_api):
     if not utils.cid_check[API]:
         sys.exit(message)
     '''
+    if cid_api is None:
+        return False
     try:
         dct = adlib.check(cid_api)
         print(dct)
@@ -293,9 +295,13 @@ def exif_data(dpath):
 
     cmd = [
         'exiftool',
-        dpath
+        f'{dpath}'
     ]
-    data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
+    try:
+        data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
+    except subprocess.CalledProcessError as err:
+        print(err)
+        return None
     exif_d = data.split("exiftool', '")[-1]
     exif_md = exif_d.split("']")[0]
     exif_metadata = exif_md.split('\n')
@@ -623,3 +629,25 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
 
     except Exception as e:
         print(f'Error sending email: {e}')
+
+
+def get_current_api():
+    '''
+    Check control json for downtime requests
+    based on passed argument
+    if not utils.check_control['arg']:
+        sys.exit(message)
+    '''
+
+    try:
+        with open(CONTROL_JSON) as control:
+            j: dict[str, str] = json.load(control)
+            if j['current_api']:
+                api_key = j['current_api']
+                return os.environ.get(api_key)
+            else:
+                print('No API key found in control json')
+                return None
+    except FileNotFoundError:
+        print(f"Control JSON file not found: {CONTROL_JSON}")
+        return None

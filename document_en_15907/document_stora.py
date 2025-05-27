@@ -38,7 +38,7 @@ CODE_PATH = os.environ["CODE_DDP"]
 LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
 SUBS_PTH = os.environ["SUBS_PATH2"]
-CID_API = os.environ["CID_API3"]
+CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
 
 # Setup logging

@@ -22,6 +22,35 @@ MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
 2025
 '''
 
+# Public packages
+import os
+import sys
+import csv
+import magic
+import logging
+import requests
+import datetime
+from typing import Optional, List, Dict, Any
+
+# Private packages
+sys.path.append(os.environ.get('CODE'))
+import adlib_v3_sess as adlib
+import utils
+
+# Global path variables
+AUTOINGEST = os.path.join(os.environ.get('AUTOINGEST_BP_SC'), 'ingest/autodetect/')
+LOG = os.path.join(os.environ.get('LOG_PATH'), 'special_collections_document_archiving_osh.log')
+MEDIAINFO_PATH = os.path.join(os.environ.get('LOG_PATH'), 'cid_mediainfo/')
+CID_API = os.environ.get('CID_API4')
+# CID_API = utils.get_current_api()
+
+LOGGER = logging.getLogger('sc_document_archiving_osh')
+HDLR = logging.FileHandler(LOG)
+FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+HDLR.setFormatter(FORMATTER)
+LOGGER.addHandler(HDLR)
+LOGGER.setLevel(logging.INFO)
+
 FILE_TYPES = {
     'XLS': ['xls', 'SS'],
     'XLSX': ['xlsx', 'SS'],
@@ -59,41 +88,12 @@ FILE_TYPES = {
 }
 
 
-# Public packages
-import os
-import sys
-import csv
-import magic
-import requests
-import logging
-import datetime
-from typing import Optional, List, Dict, Any
-
-# Private packages
-sys.path.append(os.environ.get('CODE'))
-import adlib_v3_sess as adlib
-import utils
-
-# Global path variables
-AUTOINGEST = os.path.join(os.environ.get('AUTOINGEST_BP_SC'), 'ingest/autodetect/')
-LOG = os.path.join(os.environ.get('LOG_PATH'), 'special_collections_document_archiving_osh.log')
-MEDIAINFO_PATH = os.path.join(os.environ.get('LOG_PATH'), 'cid_mediainfo/')
-CID_API = os.environ.get('CID_API3')
-
-LOGGER = logging.getLogger('sc_document_archiving_osh')
-HDLR = logging.FileHandler(LOG)
-FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
-HDLR.setFormatter(FORMATTER)
-LOGGER.addHandler(HDLR)
-LOGGER.setLevel(logging.INFO)
-
-
 def cid_retrieve(fname: str, record_type: str, session) -> Optional[tuple[str, str, str]]:
     '''
     Receive filename and search in CID works dB
     Return selected data to main()
     '''
-    search: str = f'(object_number="{fname}" and Df="{record_type}")'
+    search: str = f'(object_number="{fname}" and record_type="{record_type}")'
 
     fields: list[str] = [
         'priref',
@@ -133,7 +133,7 @@ def get_file_type(ext: str) -> Optional[str]:
     '''
 
     for key, value in FILE_TYPES.items():
-        if ext in value:
+        if ext.lower() in value:
             return key, value[-1]
     return ext.upper(), ''
 
@@ -157,7 +157,7 @@ def get_children_items(ppriref: str, session) -> Optional[List[str]]:
     '''
     Get all children of a given priref
     '''
-    search: str = f'part_of_reference.lref="{ppriref}" and Df="ITEM_ARCH"'
+    search: str = f'part_of_reference.lref="{ppriref}" and record_type="ITEM_ARCH"'
     fields: list[str] = [
         'priref',
         'object_number'
@@ -218,11 +218,28 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     '''
     ext = os.path.splitext(ipath)[1].replace('.', '')
     file_type, mime = get_file_type(ext)
-    exif_metadata = utils.exif_data(ipath)
+    print(f"**** {mime} ****")
+    exif_metadata = utils.exif_data(f"{ipath}")
+    if exif_metadata is None:
+        LOGGER.warning("File could not be read by ExifTool: %s", ipath)
+        date = os.path.getmtime(ipath)
+        metadata_dct = [
+            {'production.date.notes': datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d %H:%M:%S')},
+            {'production.date.start': datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d')},
+            {'filesize': str(os.path.getsize(ipath))},
+            {'filesize.unit': 'B (Byte)'},
+            {'file_type': file_type},
+            {'media_type': mime}
+        ]
+        return metadata_dct
+
     if 'Corrupt data' in str(exif_metadata):
         LOGGER.info("Exif cannot read metadata for file: %s", ipath)
+        date = os.path.getmtime(ipath)
         metadata_dct = [
-            {'filesize', str(os.path.getsize(ipath))},
+            {'production.date.notes': datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d %H:%M:%S')},
+            {'production.date.start': datetime.datetime.fromtimestamp(date).strftime('%Y-%m-%d')},
+            {'filesize': str(os.path.getsize(ipath))},
             {'filesize.unit': 'B (Byte)'},
             {'file_type': file_type},
             {'media_type': mime}
@@ -244,10 +261,10 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         field, value = mdata.split(':', 1)
         for d in data:
             exif_field, cid_field = d.split(', ')
-            if 'production.date.notes' in str(d):
+            if 'production.date.notes' in str(d) and 'File Modification Date/Time' in str(field):
                 image_dict.append({f'{cid_field}': value.strip()})
                 try:
-                    date = value.split(' ', 1)[0].replace(':', '-')
+                    date = value.strip().split(' ', 1)[0].replace(':', '-')
                     image_dict.append({'production.date.start': date})
                 except IndexError as err:
                     LOGGER.warning("Error splitting date: %s", err)
@@ -288,11 +305,11 @@ def main():
     Iterate supplied folder, find image files in folders
     named after work and create analogue/digital item records
     for every photo. Clean up empty folders.
-
+    '''
     if not utils.check_control('power_off_all'):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    '''
+
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
 
@@ -399,9 +416,9 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
     LOGGER.info("Records created/identified:\n%s", priref_dct)
 
     # Check for item_archive files within folders
-    file_order = {}
     item_prirefs = []
     for key, val in priref_dct.items():
+        file_order = {}
         p_priref, p_ob_num = val.split(' - ')
 
         print(f"Folder path: {key} - priref {p_priref} - object number {p_ob_num}")
@@ -477,7 +494,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         if p_exist is None:
             LOGGER.warning("API may not be available. Skipping for safety.")
             continue
-        elif p_exist is False:
+        if p_exist is False:
             LOGGER.info("Skipping creation of child record to %s, record not matched in CID", p_ob_num)
             continue
         LOGGER.info("Parent record matched in CID: %s", p_ob_num)
@@ -489,7 +506,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         if exist is None:
             LOGGER.warning("API may not be available. Skipping for safety %s", folder)
             continue
-        elif exist is True:
+        if exist is True:
             priref, title, title_art = cid_retrieve(ob_num, record_type.upper().replace('-', '_'), session)
             LOGGER.info("Skipping creation. Record for %s already exists", ob_num)
             priref_dct[fpath] = f"{priref} - {ob_num}"
@@ -499,7 +516,7 @@ def create_folder_record(folder_list: List[str], session: requests.Session, defa
         # Create record here
         cid_record_type = record_type.upper().replace('-', '_')
         data = [
-            {'Df': cid_record_type},
+            {'record_type': cid_record_type},
             {'description_level_object': 'ARCHIVE'},
             {'object_number': ob_num},
             {'part_of_reference': p_ob_num},
@@ -537,7 +554,7 @@ def post_record(session, record_data=None) -> Optional[Any]:
         if rec is None:
             LOGGER.warning("Failed to create new record:\n%s", record_xml)
             return None
-        elif 'priref' not in str(rec):
+        if 'priref' not in str(rec):
             LOGGER.warning("Failed to create new record:\n%s", record_xml)
             return None
         priref = adlib.retrieve_field_name(rec, 'priref')[0]
@@ -559,13 +576,15 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
     all_item_prirefs = {}
     for _, value in file_order.items():
         for ip in value:
-            ipath, num = ip.split(', ', 1)
-            print(ipath, num)
-            if not os.path.isfile(ipath):
+            data = ip.rsplit(', ', 1)
+            print(data)
+            if not os.path.isfile(data[0]):
                 LOGGER.warning("Corrupt file path supplied: %s", ipath)
                 continue
 
             # Get particulars
+            ipath = data[0]
+            num = data[1]
             mime = magic.Magic(mime=True)
             mime_type = mime.from_file(ipath)
             iname = os.path.basename(ipath)
@@ -584,9 +603,9 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             checksum = utils.create_md5_65536(ipath)
 
             record_dct = [
-                {'Df': 'ITEM_ARCH'},
+                {'record_type': 'ITEM_ARCH'},
                 {'part_of_reference': parent_ob_num},
-                {'archive_title.type': '07_arch'},
+                {'archive_title.type': '01_orig'},
                 {'title': iname},
                 {'digital.acquired_filename': iname},
                 {'digital.acquired_filename.type': 'FILE'},
@@ -605,7 +624,7 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             if exist is None:
                 LOGGER.warning("API may not be available. Skipping record creation for safety %s", iname)
                 continue
-            elif exist is True:
+            if exist is True:
                 priref, title, _ = cid_retrieve(ob_num, 'ITEM_ARCH', session)
                 LOGGER.warning("Skipping creation. Record %s / %s already exists: <%s>", title, ob_num, priref)
                 continue
@@ -644,10 +663,8 @@ def create_archive_item_record(file_order, parent_path, parent_priref, session, 
             success = create_metadata_csv(new_fpath, new_name, iname, ob_num)
             if not success:
                 LOGGER.warning("Metadata file creation failed for %s", new_fpath)
-            sys.exit("Just one image achive test run")
 
     print(f"Item prirefs: {all_item_prirefs}")
-    sys.exit("One run only for test to preserve enumeration")
     return all_item_prirefs
 
 
@@ -663,7 +680,7 @@ def create_metadata_csv(fpath, fname, title, ob_num):
         writer = csv.writer(csvfile)
         writer.writerow(headers)
         writer.writerow([f"objects/{fname}", title, ob_num])
-     
+
     if os.path.getsize(metadata_file) > 0:
         return True
 

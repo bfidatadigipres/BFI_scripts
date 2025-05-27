@@ -37,7 +37,7 @@ import utils
 LOG_PATH = os.environ['LOG_PATH']
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
 CSV_PATH = os.path.join(LOG_PATH, 'persistence_queue_copy.csv')
-CID_API = os.environ['CID_API3']
+CID_API = utils.get_current_api()
 ERROR_CSV = os.path.join(LOG_PATH, 'media_record_metadata_post_failures.csv')
 
 # Setup logging
@@ -55,7 +55,7 @@ FIELDS = [
     {'container.file_size.total_gigabytes': ['FileSize_String4', 'File size  ']},
     {'container.commercial_name': ['Format_Commercial', 'Commercial name  ']},
     {'container.format': ['Format', 'Format  ']},
-    {'container.audio_codecs': ['Audio_Codec_List', 'Audio codecs ']}, # Returns ' / ' separated list
+    {'container.audio_codecs': ['Audio_Codec_List', 'Audio codecs ']}, # Returns ' / ' separated list. Will need removing following changes
     {'container.audio_stream_count': ['AudioCount', 'Count of audio streams  ']},
     {'container.video_stream_count': ['VideoCount', 'Count of video streams  ']},
     {'container.format_profile': ['Format_Profile','Format profile  ']},
@@ -620,6 +620,7 @@ def wrap_as_xml(grouping: str, field_pairs: list[dict[Any, Any]]) -> str:
     mid = ''
     for grouped in field_pairs:
         for key, val in grouped.items():
+            # May need to wrap repeated fields here
             xml_field = f'<{key}>{val}</{key}>'
             mid += xml_field
 

@@ -61,7 +61,7 @@ JSON_DELETE_PATH = os.environ['COMPLETED_PATH']
 LANGUAGE_MAP = os.environ['LANGUAGE_YAML']
 LOG_PATH = os.environ['LOG_PATH']
 CONTROL_JSON = os.path.join(LOG_PATH, 'downtime_control.json')
-CID_API = os.environ['CID_API3']
+CID_API = utils.get_current_api()
 
 # Setup logging (running from bk-qnap-video)
 logger = logging.getLogger('document_artifax_record_creation')

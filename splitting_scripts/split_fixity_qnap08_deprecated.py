@@ -39,6 +39,7 @@ from typing import Final, Optional, Any
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib
+import utils
 import document_item
 import models
 import clipmd5
@@ -63,7 +64,7 @@ AUTOINGEST_08: Final = os.environ['AUTOINGEST_QNAP08']
 LOG_PATH: Final = os.environ['LOG_PATH']
 
 # Setup CID
-CID_API: Final = os.environ['CID_API3']
+CID_API: Final = utils.get_current_api()
 CID: Final = adlib.Database(url=CID_API)
 CUR: Final = adlib.Cursor
 

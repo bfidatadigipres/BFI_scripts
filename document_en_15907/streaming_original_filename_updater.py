@@ -37,7 +37,7 @@ import utils
 ADMIN = os.environ.get('ADMIN')
 LOGS = os.path.join(ADMIN, 'Logs')
 CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-CID_API = os.environ.get('CID_API3')
+CID_API = utils.get_current_api()
 
 # Specific date work
 FORMAT = '%Y-%m-%d'

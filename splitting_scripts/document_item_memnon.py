@@ -15,9 +15,10 @@ from typing import Optional, Any, Final
 # Public packages
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Configure adlib
-CID_API: Final = os.environ['CID_API3']
+CID_API: Final = utils.get_current_api()
 CODE_PATH: Final = os.environ['CODE']
 
 

@@ -57,7 +57,7 @@ DPI_BUCKETS = os.environ.get('DPI_BUCKET')
 MEDIA_REC_CSV = os.path.join(LOG_PATH, 'duration_size_media_records.csv')
 MEDIAINFO_PATH = os.path.join(LOG_PATH, 'cid_mediainfo')
 PERSISTENCE_LOG = os.path.join(LOG_PATH, 'autoingest', 'persistence_queue.csv')
-CID_API = os.environ['CID_API3']
+CID_API = utils.get_current_api()
 TODAY = str(datetime.today())
 CODE = os.environ['CODE']
 

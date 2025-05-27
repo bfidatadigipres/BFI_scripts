@@ -38,12 +38,13 @@ from typing import Final, Optional
 
 sys.path.append(os.environ['CODE'])
 import adlib_v3 as adlib
+import utils
 
 # Global paths
 AUTO_TAR: Final = os.environ['AUTOMATION_WAV']
 AUTOINGEST: Final = os.path.join(os.environ['QNAP_08'], os.environ['AUTOINGEST_STORE'])
 LOG: Final = os.path.join(os.environ['LOG_PATH'], 'tar_wrapping_check_audio_ops.log')
-CID_API: Final = os.environ['CID_API3']
+CID_API: Final = utils.get_current_api()
 
 # Logging config
 LOGGER = logging.getLogger('tar_wrapping_check_audio_ops')

@@ -805,7 +805,7 @@ def main():
 
     LOGGER.info("=== Document augmented Netflix end =================================")
 
-###
+
 def make_episodes(series_priref: str, work_title: str, work_title_art: str, num: int, season_fpaths: str, title: str, csv_data: dict[str, list[str]]) -> tuple[str, str, str]:
     '''
     Receive number for episode (individual or
@@ -951,7 +951,7 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
     record: list[dict[str, str]] = ([{'input.name': 'datadigipres'},
                {'input.date': str(datetime.datetime.now())[:10]},
                {'input.time': str(datetime.datetime.now())[11:19]},
-               {'input.notes': 'Amazon metadata integration - automated bulk documentation'},
+               {'input.notes': 'Netflix metadata integration - automated bulk documentation'},
                {'record_access.user': 'BFIiispublic'},
                {'record_access.rights': '0'},
                {'record_access.reason': 'SENSITIVE_LEGAL'},
@@ -979,7 +979,7 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
                #{'record_access.user': '$REST'},
                #{'record_access.rights': '1'},
                #{'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'grouping.lref': '401361'}, # Amazon
+               {'grouping.lref': '400947'}, # Netflix
                {'language.lref': '74129'},
                {'language.type': 'DIALORIG'}])
 
@@ -1003,16 +1003,16 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
                         {'application_restriction.duration': 'PERM'},
                         {'application_restriction.review_date': date_restriction},
                         {'application_restriction.authoriser': 'kerriganl'},
-                        {'application_restriction.notes': 'Amazon UK streaming content - pending discussion'}])
+                        {'application_restriction.notes': 'Netflix UK streaming content - pending discussion'}])
 
     manifestation: list[dict[str, str]] = ([{'record_type': 'MANIFESTATION'},
                       {'manifestationlevel_type': 'INTERNET'},
                       {'format_high_level': 'Video - Digital'},
-                      {'format_low_level.lref': '395150'}, # Apple ProRes 422 HQ
+                      {'format_low_level.lref': '400949'}, # IMF
                       {'colour_manifestation': data['colour_manifestation']},
                       {'sound_manifestation': 'SOUN'},
                       {'transmission_date': data['title_date_start']},
-                      {'availability.name.lref': '999823516'},
+                      {'availability.name.lref': '143463'}, # Netflix
                       {'transmission_coverage': 'STR'},
                       {'vod_service_type.lref': '398712'},
                       {'aspect_ratio': '16:9'},
@@ -1023,12 +1023,12 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
              {'item_type': 'DIGITAL'},
              {'copy_status': 'M'},
              {'copy_usage.lref': '131560'},
-             {'file_type.lref': '114307'}, # MOV
-             {'code_type.lref': '114308'}, # ProRes 422 (HQ)
+             {'file_type.lref': '401103'}, # IMP
+             {'code_type.lref': '400945'}, # Mixed Netflix
              {'accession_date': str(datetime.datetime.now())[:10]},
              {'acquisition.date': data['acquisition_date']},
              {'acquisition.method.lref': '132853'},
-             {'acquisition.source.lref': '999923912'},
+             {'acquisition.source.lref': '143463'}, # Netflix
              {'acquisition.source.type': 'DONOR'},
              {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
                                    'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
@@ -1059,7 +1059,7 @@ def create_series_work(patv_id: str, series_dct: dict[str, str], csv_data, serie
         if series_dct['title_article'] != '-' and series_dct['title_article'] != '':
             series_work_values.append({'title.article': series_dct['title_article']})
     if len('patv_id') > 0:
-        series_work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
+        series_work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
         series_work_values.append({'alternative_number': patv_id})
     if 'description' in series_dct:
         series_work_values.append({'description': series_dct['description']})
@@ -1087,7 +1087,7 @@ def create_series_work(patv_id: str, series_dct: dict[str, str], csv_data, serie
         print(f'* Unable to create Work record for <{title}> {err}')
         LOGGER.critical('Unable to create Work record for <%s>', title)
         return None
-    
+
     # Append Content genres to record
     series_genres = []
     if 'genres' in series_dct:
@@ -1098,7 +1098,9 @@ def create_series_work(patv_id: str, series_dct: dict[str, str], csv_data, serie
         genre_xml = adlib.create_grouped_data(series_work_id, 'Content_genre', series_genres)
         print(genre_xml)
         update_rec = adlib.post(CID_API, genre_xml, 'works', 'updaterecord')
-        if 'Content_genre' in str(update_rec):
+        if update_rec is None:
+            LOGGER.info("Failed to update genres to Series Work record: %s", series_work_id)
+        elif 'Content_genre' in str(update_rec):
             LOGGER.info("Label text successfully updated to Series Work %s", series_work_id)
 
     # Append Content subject to record
@@ -1111,7 +1113,9 @@ def create_series_work(patv_id: str, series_dct: dict[str, str], csv_data, serie
         subject_xml = adlib.create_grouped_data(series_work_id, 'Content_subject', series_subjects)
         print(subject_xml)
         update_rec = adlib.post(CID_API, subject_xml, 'works', 'updaterecord')
-        if 'Content_subject' in str(update_rec):
+        if update_rec is None:
+            LOGGER.info("Failed to update subjects to Series Work record: %s", series_work_id)
+        elif 'Content_subject' in str(update_rec):
             LOGGER.info("Label text successfully updated to Series Work %s", series_work_id)
 
     # Append Label grouped data to record
@@ -1126,7 +1130,9 @@ def create_series_work(patv_id: str, series_dct: dict[str, str], csv_data, serie
         label_xml = adlib.create_grouped_data(series_work_id, 'Label', label_fields)
         print(label_xml)
         update_rec = adlib.post(CID_API, label_xml, 'works', 'updaterecord')
-        if 'Label' in str(update_rec):
+        if update_rec is None:
+            LOGGER.info("Failed to update Labels to Series Work record: %s", series_work_id)
+        elif 'Label' in str(update_rec):
             LOGGER.info("Label text successfully updated to Series Work %s", series_work_id)
 
     return series_work_id
@@ -1140,7 +1146,6 @@ def create_work(part_of_priref: str, work_title: str, work_title_art: str, work_
     populated as needed.
     '''
     work_id: str = ''
-    work_genres: list[dict[str, str]] = []
     work_values: list[dict[str, str]] = []
     work_values.extend(record_def)
     work_values.extend(work_def)
@@ -1165,13 +1170,13 @@ def create_work(part_of_priref: str, work_title: str, work_title_art: str, work_
         work_values.append({'title_date_start': work_dict['title_date_start']})
         work_values.append({'title_date.type': '03_R'})
     if 'patv_id' in work_dict:
-        work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
+        work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
         work_values.append({'alternative_number': work_dict['patv_id']})
     if 'cat_id' in work_dict:
-        work_values.append({'alternative_number.type': 'PATV Amazon catalogue ID'})
+        work_values.append({'alternative_number.type': 'PATV Netflix catalogue ID'})
         work_values.append({'alternative_number': work_dict['cat_id']})
     if 'episode_id' in work_dict:
-        work_values.append({'alternative_number.type': 'PATV Amazon asset ID'})
+        work_values.append({'alternative_number.type': 'PATV Netflix asset ID'})
         work_values.append({'alternative_number': work_dict['episode_id']})
     if part_of_priref:
         work_values.append({'part_of_reference.lref': part_of_priref})
@@ -1361,7 +1366,7 @@ def append_url_data(work_priref: str, man_priref: str, data=None) -> None:
         LOGGER.info("append_url_data(): Failed to update Watch URL data to Work record: %s", work_priref)
     LOGGER.info("append_url_data(): Watch URL data updated to work: %s", work_priref)
 
-#work_priref: str, work_title: str, work_title_art: str, work_dict: dict[str, list[str]]
+
 def create_item(man_priref: str, work_title: str, work_title_art: str, work_dict: dict[str, list[str]], record_defaults: list[dict[str, str]], item_default: list[dict[str, str]]) -> tuple[str, str]:
     '''
     Create item record,

@@ -1037,7 +1037,7 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
     return (record, series_work, work, work_restricted, manifestation, item)
 
 
-def create_series_work(patv_id: str, series_dct: dict[str, str], csv_data, series_work: list[dict[str, str]], work_restricted: list[dict[str, str]], record: list[dict[str, str]]) -> dict[str, str]:
+def create_series_work(patv_id: str, series_dct: dict[str, str], series_work: list[dict[str, str]], work_restricted: list[dict[str, str]], record: list[dict[str, str]]) -> dict[str, str]:
     '''
     Build data needed to make
     episodic series work to

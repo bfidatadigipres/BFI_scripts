@@ -433,23 +433,19 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                 print(f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***")
                 gen.append({f'{key}': float(seconds)})
             if 'container.audio_codecs' in key:
-                # Split multiple entries '/' and return unique codecs
                 match = iterate_text_rows(gen_rows, val[1], key)
-                if ' / ' in match[key]:
-                    splits = match[key].split(' / ')
-                    print(f"Multiple entries found: {splits}")
-                    unique = list(set(splits))
-                    '''
-                    if len(unique) == 1:
-                        gen.append({key: unique[0]})
-                    elif len(unique) > 1:
-                        for split in unique:
-                            gen.append({key: split})
-                    '''
-                    gen.append({key: unique[0]})
+                if match is None:
+                    continue
+                # Help handle multiple reponses ' / ' separated
+                aud_codecs = match.get(key)
+                LOGGER.info("*** Container audio codecs: %s", aud_codecs)
+                if ' / ' in aud_codecs:
+                    codecs_split = aud_codecs.split(' / ')
+                    unique_codecs = list(set(codecs_split))
+                    gen.append({f'{key}': ', '.join(unique_codecs)})
                 else:
-                    gen.append(match)
-            elif key.startswith('container.'):
+                    get.append(match)
+            if key.startswith('container.'):
                 match = iterate_text_rows(gen_rows, val[1], key)
                 if match is None:
                     continue
@@ -566,7 +562,9 @@ def manipulate_data(key: str, selection: Optional[str]) -> Optional[str]:
     if '.format' in key and ' / ' in selection:
         return selection.split(' / ')[0].strip()
     if '.audio_codecs' in key and ' / ' in selection:
-        return selection.split(' / ')[0].strip()
+        all_codecs = selection.split(' / ')
+        unique_codecs = list(set(all_codecs))
+        return ', '.join(unique_codecs.strip())
     if '.codec_id' in key and ' / ' in selection:
         return selection.split(' / ')[0].strip()
     if '.sampling_rate' in key and selection.isnumeric():

@@ -702,7 +702,7 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Digital Preservation team'''
 
-    utils.send_email(email, subject, body, '')
+    utils.send_email(email, subject, body, '', LOGGER)
     # send_mail = EmailMessage()
     # send_mail['From'] = EMAIL_SENDER
     # send_mail['To'] = email
@@ -775,7 +775,7 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Digital Preservation team'''
 
-    utils.send_email(email, subject, body, '')
+    utils.send_email(email, subject, body, '', LOGGER)
 
     # send_mail = EmailMessage()
     # send_mail['From'] = EMAIL_SENDER
@@ -821,7 +821,7 @@ This is an automated notification, please do not reply to this email.
 
 Thank you,
 Digital Preservation team'''
-    utils.send_email(email, subject, body, '')
+    utils.send_email(email, subject, body, '', LOGGER)
 
     # send_mail = EmailMessage()
     # send_mail['From'] = EMAIL_SENDER

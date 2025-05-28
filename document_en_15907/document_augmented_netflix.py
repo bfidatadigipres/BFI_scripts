@@ -446,7 +446,7 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
                     genre_log.write(f"Category: {category_code}     Title: {title}     Description: {description}")
 
 
-def make_work_dictionary(episode_no: str, episode_id: str, csv_data: dict[str, str], cat_dct: Optional[dict[str, str]], json_dct: dict[str, str]) -> dict[str, str]:
+def make_work_dictionary(episode_no: str, csv_data: dict[str, str], cat_dct: Optional[dict[str, str]], json_dct: dict[str, str]) -> dict[str, str]:
     '''
     Build up work data into dictionary for Work creation
     '''
@@ -949,90 +949,90 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
     date_restriction: str = new_date.strftime(FORMAT)
 
     record: list[dict[str, str]] = ([{'input.name': 'datadigipres'},
-               {'input.date': str(datetime.datetime.now())[:10]},
-               {'input.time': str(datetime.datetime.now())[11:19]},
-               {'input.notes': 'Netflix metadata integration - automated bulk documentation'},
-               {'record_access.user': 'BFIiispublic'},
-               {'record_access.rights': '0'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'System Management'},
-               {'record_access.rights': '3'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Information Specialist'},
-               {'record_access.rights': '3'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Digital Operations'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Documentation'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Curator'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Special Collections'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Librarian'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               #{'record_access.user': '$REST'},
-               #{'record_access.rights': '1'},
-               #{'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'grouping.lref': '400947'}, # Netflix
-               {'language.lref': '74129'},
-               {'language.type': 'DIALORIG'}])
+        {'input.date': str(datetime.datetime.now())[:10]},
+        {'input.time': str(datetime.datetime.now())[11:19]},
+        {'input.notes': 'Netflix metadata integration - automated bulk documentation'},
+        {'record_access.user': 'BFIiispublic'},
+        {'record_access.rights': '0'},
+        {'record_access.reason': 'SENSITIVE_LEGAL'},
+        {'record_access.user': 'System Management'},
+        {'record_access.rights': '3'},
+        {'record_access.reason': 'SENSITIVE_LEGAL'},
+        {'record_access.user': 'Information Specialist'},
+        {'record_access.rights': '3'},
+        {'record_access.reason': 'SENSITIVE_LEGAL'},
+        {'record_access.user': 'Digital Operations'},
+        {'record_access.rights': '2'},
+        {'record_access.reason': 'SENSITIVE_LEGAL'},
+        {'record_access.user': 'Documentation'},
+        {'record_access.rights': '2'},
+        {'record_access.reason': 'SENSITIVE_LEGAL'},
+        {'record_access.user': 'Curator'},
+        {'record_access.rights': '2'},
+        {'record_access.reason': 'SENSITIVE_LEGAL'},
+        {'record_access.user': 'Special Collections'},
+        {'record_access.rights': '2'},
+        {'record_access.reason': 'SENSITIVE_LEGAL'},
+        {'record_access.user': 'Librarian'},
+        {'record_access.rights': '2'},
+        {'record_access.reason': 'SENSITIVE_LEGAL'},
+        #{'record_access.user': '$REST'},
+        #{'record_access.rights': '1'},
+        #{'record_access.reason': 'SENSITIVE_LEGAL'},
+        {'grouping.lref': '400947'}, # Netflix
+        {'language.lref': '74129'},
+        {'language.type': 'DIALORIG'}])
 
     series_work: list[dict[str, str]] = ([{'record_type': 'WORK'},
-                    {'worklevel_type': 'SERIAL'},
-                    {'work_type': "T"},
-                    {'description.type.lref': '100298'},
-                    {'production_country.lref': '73938'},
-                    {'nfa_category': data['nfa_category']}])
+        {'worklevel_type': 'SERIAL'},
+        {'work_type': "T"},
+        {'description.type.lref': '100298'},
+        {'production_country.lref': '73938'},
+        {'nfa_category': data['nfa_category']}])
 
     work: list[dict[str, str]] = ([{'record_type': 'WORK'},
-             {'worklevel_type': 'MONOGRAPHIC'},
-             {'work_type': data['work_type']},
-             {'description.type.lref': '100298'},
-             {'production_country.lref': '73938'},
-             {'nfa_category': data['nfa_category']}])
+        {'worklevel_type': 'MONOGRAPHIC'},
+        {'work_type': data['work_type']},
+        {'description.type.lref': '100298'},
+        {'production_country.lref': '73938'},
+        {'nfa_category': data['nfa_category']}])
 
     work_restricted: list[dict[str, str]] = ([{'application_restriction': 'MEDIATHEQUE'},
-                        {'application_restriction.date': str(datetime.datetime.now())[:10]},
-                        {'application_restriction.reason': 'STRATEGIC'},
-                        {'application_restriction.duration': 'PERM'},
-                        {'application_restriction.review_date': date_restriction},
-                        {'application_restriction.authoriser': 'kerriganl'},
-                        {'application_restriction.notes': 'Netflix UK streaming content - pending discussion'}])
+        {'application_restriction.date': str(datetime.datetime.now())[:10]},
+        {'application_restriction.reason': 'STRATEGIC'},
+        {'application_restriction.duration': 'PERM'},
+        {'application_restriction.review_date': date_restriction},
+        {'application_restriction.authoriser': 'kerriganl'},
+        {'application_restriction.notes': 'Netflix UK streaming content - pending discussion'}])
 
     manifestation: list[dict[str, str]] = ([{'record_type': 'MANIFESTATION'},
-                      {'manifestationlevel_type': 'INTERNET'},
-                      {'format_high_level': 'Video - Digital'},
-                      {'format_low_level.lref': '400949'}, # IMF
-                      {'colour_manifestation': data['colour_manifestation']},
-                      {'sound_manifestation': 'SOUN'},
-                      {'transmission_date': data['title_date_start']},
-                      {'availability.name.lref': '143463'}, # Netflix
-                      {'transmission_coverage': 'STR'},
-                      {'vod_service_type.lref': '398712'},
-                      {'aspect_ratio': '16:9'},
-                      {'country_manifestation': 'United Kingdom'},
-                      {'notes': 'Manifestation representing the UK streaming platform release of the Work.'}])
+        {'manifestationlevel_type': 'INTERNET'},
+        {'format_high_level': 'Video - Digital'},
+        {'format_low_level.lref': '400949'}, # IMF
+        {'colour_manifestation': data['colour_manifestation']},
+        {'sound_manifestation': 'SOUN'},
+        {'transmission_date': data['title_date_start']},
+        {'availability.name.lref': '143463'}, # Netflix
+        {'transmission_coverage': 'STR'},
+        {'vod_service_type.lref': '398712'},
+        {'aspect_ratio': '16:9'},
+        {'country_manifestation': 'United Kingdom'},
+        {'notes': 'Manifestation representing the UK streaming platform release of the Work.'}])
 
     item: list[dict[str, str]] = ([{'record_type': 'ITEM'},
-             {'item_type': 'DIGITAL'},
-             {'copy_status': 'M'},
-             {'copy_usage.lref': '131560'},
-             {'file_type.lref': '401103'}, # IMP
-             {'code_type.lref': '400945'}, # Mixed Netflix
-             {'accession_date': str(datetime.datetime.now())[:10]},
-             {'acquisition.date': data['acquisition_date']},
-             {'acquisition.method.lref': '132853'},
-             {'acquisition.source.lref': '143463'}, # Netflix
-             {'acquisition.source.type': 'DONOR'},
-             {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
-                                   'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
-             {'access_conditions.date': str(datetime.datetime.now())[:10]}])
+        {'item_type': 'DIGITAL'},
+        {'copy_status': 'M'},
+        {'copy_usage.lref': '131560'},
+        {'file_type.lref': '401103'}, # IMP
+        {'code_type.lref': '400945'}, # Mixed Netflix
+        {'accession_date': str(datetime.datetime.now())[:10]},
+        {'acquisition.date': data['acquisition_date']},
+        {'acquisition.method.lref': '132853'},
+        {'acquisition.source.lref': '143463'}, # Netflix
+        {'acquisition.source.type': 'DONOR'},
+        {'access_conditions': 'Access requests for this collection are subject to an approval process. '\
+            'Please raise a request via the Collections Systems Service Desk, describing your specific use.'},
+        {'access_conditions.date': str(datetime.datetime.now())[:10]}])
 
     return (record, series_work, work, work_restricted, manifestation, item)
 

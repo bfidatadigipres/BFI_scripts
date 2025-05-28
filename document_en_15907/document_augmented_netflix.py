@@ -942,7 +942,7 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
     '''
     start_date_str: str = data.get('title_date_start')
     if '-' in start_date_str:
-        start_date = datetime.datetime.stprtime(start_date_str, FORMAT)
+        start_date = datetime.datetime.strptime(start_date_str, FORMAT)
     else:
         start_date = datetime.date.today()
     new_date = start_date + datetime.timedelta(days=2927)

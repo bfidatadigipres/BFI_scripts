@@ -602,6 +602,7 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
     '''
     automate the process of sending out simple emails
     '''
+    success = False
     try:
         msg = MIMEMultipart()
         msg['From'] = 'digitalpreservationsystems@bfi.org.uk'
@@ -627,9 +628,12 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
             smtp.sendmail('digitalpreservationsystems@bfi.org.uk', email, msg.as_string())
 
         print(f"Email notification sent to {email}")
+        success = True
+        return success
 
     except Exception as e:
-        print(f'Email notification failed in sending: {email} {e}')
+        print(f'Email notification failed in sending: {email}\n{e}')
+        return success
 
 
 def get_current_api():

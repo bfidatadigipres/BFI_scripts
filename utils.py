@@ -609,15 +609,16 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
         msg['Subject'] = subject
 
 
-        if os.path.getsize(files) < 500000:
-            with open(files, 'rb') as file:
-                attachment_package = MIMEBase('application', 'octet-stream')
-                attachment_package.set_payload((file).read())
-                encoders.encode_base64(attachment_package)
-                attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
-                msg.attach(attachment_package)
-        else:
-            body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"
+        if files != '' and files is not None:
+            if os.path.getsize(files) < 500000:
+                with open(files, 'rb') as file:
+                    attachment_package = MIMEBase('application', 'octet-stream')
+                    attachment_package.set_payload((file).read())
+                    encoders.encode_base64(attachment_package)
+                    attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
+                    msg.attach(attachment_package)
+            else:
+                body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"
 
         msg.attach(MIMEText(body, 'plain'))
 
@@ -625,10 +626,10 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
             smtp.login(EMAIL, PASSWORD)
             smtp.sendmail('digitalpreservationsystems@bfi.org.uk', email, msg.as_string())
 
-        print("Email sent!")
+        print(f"Email notification sent to {email}")
 
     except Exception as e:
-        print(f'Error sending email: {e}')
+        print(f'Email notification failed in sending: {email} {e}')
 
 
 def get_current_api():

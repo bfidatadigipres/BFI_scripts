@@ -702,19 +702,20 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Digital Preservation team'''
 
-    send_mail = EmailMessage()
-    send_mail['From'] = EMAIL_SENDER
-    send_mail['To'] = email
-    send_mail['Subject'] = subject
-    send_mail.set_content(body)
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
-        try:
-            smtp.login(EMAIL_SENDER, EMAIL_PSWD)
-            smtp.sendmail(EMAIL_SENDER, email, send_mail.as_string())
-            LOGGER.info("Email notification sent to %s", email)
-        except Exception as exc:
-            LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
+    utils.send_email(email, subject, body, '')
+    # send_mail = EmailMessage()
+    # send_mail['From'] = EMAIL_SENDER
+    # send_mail['To'] = email
+    # send_mail['Subject'] = subject
+    # send_mail.set_content(body)
+    # context = ssl.create_default_context()
+    # with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
+    #     try:
+    #         smtp.login(EMAIL_SENDER, EMAIL_PSWD)
+    #         smtp.sendmail(EMAIL_SENDER, email, send_mail.as_string())
+    #         LOGGER.info("Email notification sent to %s", email)
+    #     except Exception as exc:
+    #         LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
 
 
 def send_email_update_bulk(email: str, download_fpath: str, files_processed: dict[str, str], failure_list: list[str]) -> list[str]:
@@ -774,19 +775,21 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Digital Preservation team'''
 
-    send_mail = EmailMessage()
-    send_mail['From'] = EMAIL_SENDER
-    send_mail['To'] = email
-    send_mail['Subject'] = subject
-    send_mail.set_content(body)
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
-        try:
-            smtp.login(EMAIL_SENDER, EMAIL_PSWD)
-            smtp.sendmail(EMAIL_SENDER, email, send_mail.as_string())
-            LOGGER.info("Email notification sent to %s", email)
-        except Exception as exc:
-            LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
+    utils.send_email(email, subject, body, '')
+
+    # send_mail = EmailMessage()
+    # send_mail['From'] = EMAIL_SENDER
+    # send_mail['To'] = email
+    # send_mail['Subject'] = subject
+    # send_mail.set_content(body)
+    # context = ssl.create_default_context()
+    # with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
+    #     try:
+    #         smtp.login(EMAIL_SENDER, EMAIL_PSWD)
+    #         smtp.sendmail(EMAIL_SENDER, email, send_mail.as_string())
+    #         LOGGER.info("Email notification sent to %s", email)
+    #     except Exception as exc:
+    #         LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
 
 
 def send_email_failures_bulk(email: list[str], download_fpath: list[str], failed_downloads: list[str]) -> None:
@@ -818,20 +821,21 @@ This is an automated notification, please do not reply to this email.
 
 Thank you,
 Digital Preservation team'''
+    utils.send_email(email, subject, body, '')
 
-    send_mail = EmailMessage()
-    send_mail['From'] = EMAIL_SENDER
-    send_mail['To'] = email
-    send_mail['Subject'] = subject
-    send_mail.set_content(body)
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
-        try:
-            smtp.login(EMAIL_SENDER, EMAIL_PSWD)
-            smtp.sendmail(EMAIL_SENDER, email, send_mail.as_string())
-            LOGGER.info("Email notification sent to %s", email)
-        except Exception as exc:
-            LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
+    # send_mail = EmailMessage()
+    # send_mail['From'] = EMAIL_SENDER
+    # send_mail['To'] = email
+    # send_mail['Subject'] = subject
+    # send_mail.set_content(body)
+    # context = ssl.create_default_context()
+    # with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
+    #     try:
+    #         smtp.login(EMAIL_SENDER, EMAIL_PSWD)
+    #         smtp.sendmail(EMAIL_SENDER, email, send_mail.as_string())
+    #         LOGGER.info("Email notification sent to %s", email)
+    #     except Exception as exc:
+    #         LOGGER.warning("Email notification failed in sending: %s\n%s", email, exc)
 
 
 if __name__ == '__main__':

@@ -627,13 +627,13 @@ def send_email(email: str, subject: str, body: str, files: str, logger) -> bool:
             smtp.login(EMAIL, PASSWORD)
             smtp.sendmail('digitalpreservationsystems@bfi.org.uk', email, msg.as_string())
 
-        logger.info(f"Email notification sent to {email}")
+        print(f"Email notification sent to {email}")
         success = True
-        return success
+        return success, ''
 
     except Exception as e:
-        logger.warning(f'Email notification failed in sending: {email}\n{e}')
-        return success
+        print(f'Email notification failed in sending: {email}\n{e}')
+        return success, e
 
 
 def get_current_api():

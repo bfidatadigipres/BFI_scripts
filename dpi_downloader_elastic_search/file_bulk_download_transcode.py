@@ -702,7 +702,14 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Digital Preservation team'''
 
-    utils.send_email(email, subject, body, '')
+    success, error = utils.send_email(email, subject, body, '')
+
+    if success:
+        LOGGER.info(f"Email notification sent to {email}")
+
+    else:
+        LOGGER.warning(f"Email notification failed in sending: {email}")
+        LOGGER.warning(f'Error: {error}')
     # send_mail = EmailMessage()
     # send_mail['From'] = EMAIL_SENDER
     # send_mail['To'] = email
@@ -775,7 +782,14 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Digital Preservation team'''
 
-    utils.send_email(email, subject, body, '')
+    success, error = utils.send_email(email, subject, body, '')
+
+    if success:
+        LOGGER.info(f"Email notification sent to {email}")
+
+    else:
+        LOGGER.warning(f"Email notification failed in sending: {email}")
+        LOGGER.warning(f'Error: {error}')
 
     # send_mail = EmailMessage()
     # send_mail['From'] = EMAIL_SENDER
@@ -821,7 +835,15 @@ This is an automated notification, please do not reply to this email.
 
 Thank you,
 Digital Preservation team'''
-    utils.send_email(email, subject, body, '')
+
+    success, error = utils.send_email(email, subject, body, '')
+
+    if success:
+        LOGGER.info(f"Email notification sent to {email}")
+
+    else:
+        LOGGER.warning(f"Email notification failed in sending: {email}")
+        LOGGER.warning(f'Error: {error}')
 
     # send_mail = EmailMessage()
     # send_mail['From'] = EMAIL_SENDER

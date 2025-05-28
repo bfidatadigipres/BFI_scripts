@@ -598,7 +598,7 @@ def local_file_search(fpath, fname):
                 return os.path.join(root, file)
 
 
-def send_email(email: str, subject: str, body: str, files: str) -> None:
+def send_email(email: str, subject: str, body: str, files: str, logger) -> bool:
     '''
     automate the process of sending out simple emails
     '''
@@ -629,11 +629,11 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
 
         print(f"Email notification sent to {email}")
         success = True
-        return success
+        return success, ''
 
     except Exception as e:
         print(f'Email notification failed in sending: {email}\n{e}')
-        return success
+        return success, e
 
 
 def get_current_api():

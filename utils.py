@@ -5,31 +5,28 @@ to one utils.py document
 2024
 '''
 
-import re
 import os
+import re
+import ssl
 import csv
+import yaml
 import json
 import ffmpeg
 import hashlib
 import logging
+import smtplib
 import datetime
 import subprocess
 from typing import Final, Optional, Iterator, Any
-import yaml
-import smtplib
-import ssl
-import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 
-
 # BFI library
 import adlib_v3 as adlib
 
-
-
+# Global imports
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: str = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, 'autoingest', 'global.log')
@@ -598,7 +595,8 @@ def local_file_search(fpath, fname):
                 return os.path.join(root, file)
 
 
-def send_email(email: str, subject: str, body: str, files: str, logger) -> bool:
+# (email: str, subject: str, body: str, files: str, logger) -> bool:
+def send_email(email, subject, body, files):
     '''
     automate the process of sending out simple emails
     '''

@@ -616,7 +616,7 @@ def send_email(email, subject, body, files) -> tuple[bool, string | None]:
                     attachment_package = MIMEBase('application', 'octet-stream')
                     attachment_package.set_payload((file).read())
                     encoders.encode_base64(attachment_package)
-                    attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
+                    attachment_package.add_header('Content-Disposition', f"attachment; filename= {files}")
                     msg.attach(attachment_package)
             else:
                 body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"

@@ -598,7 +598,7 @@ def local_file_search(fpath, fname):
                 return os.path.join(root, file)
 
 
-def send_email(email, subject, body, files) -> tuple[bool, string | None]:
+def send_email(email: str, subject: str, body: str, files: str | None) -> tuple[bool, string | None]:
     '''
     automate the process of sending out simple emails
     '''

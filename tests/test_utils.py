@@ -2,6 +2,8 @@
 import csv
 import os
 import pytest
+import io
+import json
 import subprocess
 import sys
 sys.path.append(os.environ['CODE'])
@@ -637,8 +639,27 @@ def test_send_email(mocker, writing_csv):
     args = mock_smtp_instance.sendmail.call_args[0]
     assert 'Test subject' in args[2]
 
-def test_send_email_txt(mocker, writing_txt):
+def test_send_email_oversized(mocker, oversized_file):
       
+    # create an file
+    mock_smtp = mocker.patch("smtplib.SMTP_SSL", autospec=True)
+    mock_smtp_instance = mocker.MagicMock()
+    mock_smtp.return_value.__enter__.return_value = mock_smtp_instance
+
+    mocker.patch('utils.EMAIL', 'test@bfi.org.uk')
+    mocker.patch('utils.PASSWORD', 'dumb_pass')
+    mocker.patch('utils.SMTP_SERVER', 'smtp.test.com')
+    mocker.patch('utils.SMTP_PORT', 465)
+
+    utils.send_email('reciver@email.com', 'Test subject', 'Test_body', oversized_file)
+    mock_smtp_instance.login.assert_called_once_with("test@bfi.org.uk", 'dumb_pass')
+    mock_smtp_instance.sendmail.assert_called_once()
+    args = mock_smtp_instance.sendmail.call_args[0]
+    assert 'Test subject' in args[2]
+
+def test_send_email_txt(mocker, writing_txt):
+    '''
+    ''' 
     # create an file
     mock_smtp = mocker.patch("smtplib.SMTP_SSL", autospec=True)
     mock_smtp_instance = mocker.MagicMock()
@@ -655,34 +676,38 @@ def test_send_email_txt(mocker, writing_txt):
     args = mock_smtp_instance.sendmail.call_args[0]
     assert 'Test subject' in args[2]
 
-# @pytest.mark.parametrize("json_data", [
-#     ("{ invalid json")
-# ])
-# def test_get_current_api(mocker):
-    
-#     # mocker_json_load = mocker.patch('json.load', side_effect=FileNotFoundError)
-#     # captured = capsys.readouterr()
-#     # control JSON file not found:
-#     fake_json = {}
-#     mocker.patch('builtin.open', mocker.mock_open(read_data=json.dumps(fake_json)))
-#     result = utils.get_current_api()
-    
-#     assert result is None
+def test_get_current_api_failed(mocker):
+    '''
+    testing get_current_api() function in utils where the json file doesnt exists
+    '''
+    mocker.patch('json.load', side_effect=FileNotFoundError)
 
-# def test_get_current_api_failed(mocker):
-#     mocker.patch('json.load', side_effect=FileNotFoundError)
+    result = utils.get_current_api()
 
-#     result = utils.get_current_api()
+    assert result is None
 
-#     assert result is None
+def test_get_current_api_no_env(mocker):
+    '''
+    testing get_current_api() function in utils where the environmental variable
+    doesnt exists
+    '''
+    fake_json = {"current_api": "MY_API_KEYT"}
 
+    mocker_control_json = io.StringIO(json.dumps(fake_json))
+    mocker.patch("builtins.open", return_value=mocker_control_json)
 
-# def test_get_current_api_found(mocker):
-#     fake_json = {'current_api': "MY_API_KEYT"}
-#     mocker.patch('builtin.open', mocker.mock_open(read_data=json.dumps(fake_json)))
-#     mocker.patch.dict(os.environ, {"MY_API_KEYT": "dummy_data"})
+    result = utils.get_current_api()
+    assert result is None
 
-#     result = utils.get_current_api()
-#     mocker_json_load = mocker.patch("json.patch", wraps=json.load)
-#     assert result == "dummy_data"
-#     assert mocker_json_load.assert_called_once()
+def test_get_current_api_found(mocker):
+    '''
+    testing get_current_api() function in utils
+    '''
+    fake_json = {"current_api": "MY_API_KEYT"}
+    mocker.patch(os.environ, {"MY_API_KEYT": "dummy_data"})
+
+    mocker_control_json = io.StringIO(json.dumps(fake_json))
+    mocker.patch("builtins.open", return_value=mocker_control_json)
+
+    result = utils.get_current_api()
+    assert result == "dummy_data"

@@ -595,8 +595,7 @@ def local_file_search(fpath, fname):
                 return os.path.join(root, file)
 
 
-# (email: str, subject: str, body: str, files: str, logger) -> bool:
-def send_email(email, subject, body, files):
+def send_email(email: str, subject: str, body: str, files: str | None) -> tuple[bool, string | None]:
     '''
     automate the process of sending out simple emails
     '''
@@ -614,7 +613,7 @@ def send_email(email, subject, body, files):
                     attachment_package = MIMEBase('application', 'octet-stream')
                     attachment_package.set_payload((file).read())
                     encoders.encode_base64(attachment_package)
-                    attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
+                    attachment_package.add_header('Content-Disposition', f"attachment; filename={files}")
                     msg.attach(attachment_package)
             else:
                 body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"

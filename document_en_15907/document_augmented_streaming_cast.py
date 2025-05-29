@@ -382,7 +382,9 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
                             print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")    
                 else:
                     person_priref, person_name, person_act_type = pdata
-                    if len(person_priref) > 1:
+                    if person_priref is None:
+                        pass
+                    elif len(person_priref) > 1:
                         for k_, v_ in contributors.items():
                             if str(cast_type) == k_:
                                 activity_type = v_[1]
@@ -432,7 +434,7 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
 
                 # Check person record exists
                 pdata = cid_person_check(cred_id, session)
-                if pdata is None:
+                if pdata[0] is None:
                     # Create data for Person record creation
                     cred_dct_data = make_person_dct(val)
                     cred_dct_formatted = cred_dct_data[0]

@@ -598,10 +598,11 @@ def local_file_search(fpath, fname):
                 return os.path.join(root, file)
 
 
-def send_email(email: str, subject: str, body: str, files: str) -> None:
+def send_email(email: str, subject: str, body: str, files: str | None) -> tuple[bool, str | None]:
     '''
     automate the process of sending out simple emails
     '''
+    success = False
     try:
         msg = MIMEMultipart()
         msg['From'] = 'digitalpreservationsystems@bfi.org.uk'
@@ -615,7 +616,7 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
                     attachment_package = MIMEBase('application', 'octet-stream')
                     attachment_package.set_payload((file).read())
                     encoders.encode_base64(attachment_package)
-                    attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
+                    attachment_package.add_header('Content-Disposition', f"attachment; filename= {files}")
                     msg.attach(attachment_package)
             else:
                 body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"
@@ -627,9 +628,12 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
             smtp.sendmail('digitalpreservationsystems@bfi.org.uk', email, msg.as_string())
 
         print(f"Email notification sent to {email}")
+        success = True
+        return success, ''
 
     except Exception as e:
-        print(f'Email notification failed in sending: {email} {e}')
+        print(f'Email notification failed in sending: {email}\n{e}')
+        return success, e
 
 
 def get_current_api():

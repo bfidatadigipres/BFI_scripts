@@ -659,6 +659,7 @@ def test_send_email_oversized(mocker, oversized_file):
 
 def test_send_email_txt(mocker, writing_txt):
     '''
+    sending email with a text attachment
     ''' 
     # create an file
     mock_smtp = mocker.patch("smtplib.SMTP_SSL", autospec=True)

@@ -8,7 +8,7 @@ import sys
 import requests
 import base64
 
-LOCATION = "To follow"
+LOCATION = os.environ.get('AM_TS_UUID') # Transfer source
 ARCH_URL = os.environ.get('AM_URL') # Basic URL for bfi archivametica
 API_NAME = os.environ.get('AM_API') # temp user / key
 API_KEY = os.environ.get('AM_KEY')

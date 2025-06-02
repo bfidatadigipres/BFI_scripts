@@ -85,7 +85,7 @@ jobs:
 
             # Query the GitHub API to check for existing PRs
             PR_EXISTS=$(gh pr list \
-                --repo "bfidatadigipres/BFI_scripts \
+                --repo "bfidatadigipres/BFI_scripts" \
                 --head "${BRANCH_NAME}" \
                 --base main \
                 --state open \

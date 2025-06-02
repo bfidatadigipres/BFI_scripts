@@ -3,6 +3,7 @@
 '''
 Fetch JSON metadata from PA Media for streaming platforms.
 CSV for programmes must be supplied for metadata retrieval
+** Must be supplied CSV path as argv[1] to operate **
 
 main():
 1. Open platform year CSV and read list of article, title, level and platform

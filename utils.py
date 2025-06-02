@@ -5,31 +5,28 @@ to one utils.py document
 2024
 '''
 
-import re
 import os
+import re
+import ssl
 import csv
+import yaml
 import json
 import ffmpeg
 import hashlib
 import logging
+import smtplib
 import datetime
 import subprocess
 from typing import Final, Optional, Iterator, Any
-import yaml
-import smtplib
-import ssl
-import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 
-
 # BFI library
 import adlib_v3 as adlib
 
-
-
+# Global imports
 LOG_PATH: Final = os.environ['LOG_PATH']
 CONTROL_JSON: str = os.path.join(os.environ.get('LOG_PATH'), 'downtime_control.json')
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, 'autoingest', 'global.log')
@@ -598,10 +595,11 @@ def local_file_search(fpath, fname):
                 return os.path.join(root, file)
 
 
-def send_email(email: str, subject: str, body: str, files: str) -> None:
+def send_email(email: str, subject: str, body: str, files: str | None) -> tuple[bool, str | None]:
     '''
     automate the process of sending out simple emails
     '''
+    success = False
     try:
         msg = MIMEMultipart()
         msg['From'] = 'digitalpreservationsystems@bfi.org.uk'
@@ -609,15 +607,16 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
         msg['Subject'] = subject
 
 
-        if os.path.getsize(files) < 500000:
-            with open(files, 'rb') as file:
-                attachment_package = MIMEBase('application', 'octet-stream')
-                attachment_package.set_payload((file).read())
-                encoders.encode_base64(attachment_package)
-                attachment_package.add_header('Content-Disposition', "attachment; filename= %s" % files)
-                msg.attach(attachment_package)
-        else:
-            body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"
+        if files != '' and files is not None:
+            if os.path.getsize(files) < 500000:
+                with open(files, 'rb') as file:
+                    attachment_package = MIMEBase('application', 'octet-stream')
+                    attachment_package.set_payload((file).read())
+                    encoders.encode_base64(attachment_package)
+                    attachment_package.add_header('Content-Disposition', f"attachment; filename={files}")
+                    msg.attach(attachment_package)
+            else:
+                body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"
 
         msg.attach(MIMEText(body, 'plain'))
 
@@ -625,10 +624,13 @@ def send_email(email: str, subject: str, body: str, files: str) -> None:
             smtp.login(EMAIL, PASSWORD)
             smtp.sendmail('digitalpreservationsystems@bfi.org.uk', email, msg.as_string())
 
-        print("Email sent!")
+        print(f"Email notification sent to {email}")
+        success = True
+        return success, ''
 
     except Exception as e:
-        print(f'Error sending email: {e}')
+        print(f'Email notification failed in sending: {email}\n{e}')
+        return success, e
 
 
 def get_current_api():

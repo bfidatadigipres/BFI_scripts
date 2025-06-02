@@ -178,19 +178,22 @@ def sort_dates(file_list: List[str], last_child_num: str) -> List[str]:
     '''
     Get modification date of files, and sort into newest first
     return with enumeration number
-    JMW this must handle adding new files into a list that are found
+    This must handle adding new files into a list that are found
     at a later date by sensing existing ITEM_ARCH childen and getting last 'num'
-    '''
+
     time_list = []
     for file_path in file_list:
         time = os.path.getmtime(file_path)
         time_list.append(f"{time} - {file_path}")
 
     time_list.sort()
+    '''
+    file_list.sort()
     enum_list = []
-    for i, name in enumerate(time_list):
+    for i, name in enumerate(file_list):
         i += last_child_num
-        enum_list.append(f"{name.split(' - ', 1)[-1]}, {i + 1}")
+        # enum_list.append(f"{name.split(' - ', 1)[-1]}, {i + 1}")
+        enum_list.append(f"{name}, {i + 1}")
     print(f"Enumerated list: {enum_list}")
     return enum_list
 
@@ -436,14 +439,13 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
             child_list.sort()
             last_child_num = child_list[-1].split('-')[-1]
             print(f"Last child number: {last_child_num}")
-            LOGGER.info("Children of record found. Passing last number to enumartion: %s", last_child_num)
+            LOGGER.info("Children of record found. Passing last number to enumeration: %s", last_child_num)
         else:
             last_child_num = '0'
         print(file_list)
         enum_files = sort_dates(file_list, int(last_child_num))
         file_order[f"{key}"] = enum_files
         LOGGER.info("%s files found to create Item Archive records: %s", len(file_order), ', '.join(file_order))
-
         # Create ITEM_ARCH records and rename files / move to new subfolders?
         item_priref_group = create_archive_item_record(file_order, key, p_priref, session, defaults_all)
         item_prirefs.append(item_priref_group)

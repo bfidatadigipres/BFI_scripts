@@ -51,4 +51,3 @@ for i in "${targets[@]}"; do
         # echo "${DATE_NOW} : ${i} has been moved into rna_mkv to be moved into autoingest" >> "${H22_POLICIES}rna_mkv_move.txt"
     done
 done
-

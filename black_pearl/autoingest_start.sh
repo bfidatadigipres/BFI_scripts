@@ -30,4 +30,3 @@ echo "==================" $date_FULL "Autoingest is running ====================
 
 # Output log to date prefix autoingest.log to retain for reference
 # "$PYENV311" autoingest.py | tee -a "${LOG_PATH}${date_FULL}_autoingest.log"
-

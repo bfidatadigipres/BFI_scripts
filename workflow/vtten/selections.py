@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Class needed for selecta.py
 script functionality
-'''
+"""
 
 import csv
 
 
-class Selections():
+class Selections:
 
     def __init__(self, input_file):
         self.input_file = input_file
@@ -29,12 +29,12 @@ class Selections():
             yield i
 
     def _write(self, data):
-        with open(self.input_file, 'a') as of:
+        with open(self.input_file, "a") as of:
             writer = csv.writer(of)
             writer.writerow(data)
 
     def add(self, **kwargs):
-        d = {i: kwargs[i] for i in ['package_number', 'can_ID'] if kwargs[i]}
+        d = {i: kwargs[i] for i in ["package_number", "can_ID"] if kwargs[i]}
         for type_ in sorted(d, reverse=True):
             id_ = d[type_]
 
@@ -49,7 +49,7 @@ class Selections():
                 self._write(row)
 
     def is_selected(self, id_, type_):
-        d = {'can_ID': 0, 'package_number': 1}
+        d = {"can_ID": 0, "package_number": 1}
 
         if id_ in self._get(d[type_]):
             return True
@@ -68,8 +68,7 @@ class Selections():
         rows = self.read()
         next(rows)
         for i in rows:
-            data = i[8].split(',')
+            data = i[8].split(",")
             items.extend(data)
 
         return items
-

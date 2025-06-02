@@ -1,6 +1,6 @@
 #!/usr/bin/ python3
 
-'''
+"""
 Script to retrieve folders of
 Platform separate 5.1 audio files named after
 CID Item record object_number.
@@ -25,58 +25,53 @@ CID Item record object_number.
 NOTES: Integrated with adlib_v3 for test
 
 2024
-'''
+"""
 
+import datetime
+import logging
 # Public packages
 import os
-import sys
 import shutil
-import logging
-import datetime
+import sys
 from time import sleep
 from typing import Any, Final, Optional
 
 # Local packages
-sys.path.append(os.environ['CODE'])
+sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
 
 # Global variables
-LOGS = os.environ.get('LOG_PATH')
-CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-PLATFORM_STORAGE = os.environ.get('PLATFORM_INGEST_PTH')
+LOGS = os.environ.get("LOG_PATH")
+CONTROL_JSON = os.path.join(LOGS, "downtime_control.json")
+PLATFORM_STORAGE = os.environ.get("PLATFORM_INGEST_PTH")
 CID_API = utils.get_current_api()
 
 # Setup logging
-LOGGER = logging.getLogger('document_augmented_platform_separate_audio')
-HDLR = logging.FileHandler(os.path.join(LOGS, 'document_augmented_platform_separate_audio.log'))
-FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+LOGGER = logging.getLogger("document_augmented_platform_separate_audio")
+HDLR = logging.FileHandler(
+    os.path.join(LOGS, "document_augmented_platform_separate_audio.log")
+)
+FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 STORAGE = {
-    'Netflix': f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/separate5_1/')}",
-    'Amazon': f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate_atmos/')}"
+    "Netflix": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/separate5_1/')}",
+    "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate_atmos/')}",
 }
 
-ORDER = {
-    'L': '01',
-    'R': '02',
-    'C': '03',
-    'LFE': '04',
-    'Ls': '05',
-    'Rs': '06'
-}
+ORDER = {"L": "01", "R": "02", "C": "03", "LFE": "04", "Ls": "05", "Rs": "06"}
 
 
 def cid_check_ob_num(object_number: str) -> Optional[dict[str, Optional[Any]]]:
-    '''
+    """
     Looks up object_number and retrieves title
     and other data for new separate 5.1 audio record
-    '''
+    """
     search = f"object_number='{object_number}'"
-    hits, record = adlib.retrieve_record(CID_API, 'items', search, '0')
+    hits, record = adlib.retrieve_record(CID_API, "items", search, "0")
     if hits is None:
         raise Exception(f"CID API was unreachable for Items search: {search}")
     if hits == 0:
@@ -85,10 +80,10 @@ def cid_check_ob_num(object_number: str) -> Optional[dict[str, Optional[Any]]]:
 
 
 def walk_folders(storage: str) -> list[str]:
-    '''
+    """
     Collect list of folderpaths
     for files named rename_<platform>
-    '''
+    """
     print(storage)
     folders = []
     for root, dirs, _ in os.walk(storage):
@@ -100,23 +95,27 @@ def walk_folders(storage: str) -> list[str]:
 
 
 def main():
-    '''
+    """
     Search for folders named after CID item records
     Check for contents and create new CID item record
     for each audio file within. Rename and move for ingest.
-    '''
+    """
 
-    LOGGER.info("== Document augmented streaming platform separate audio start ===================")
+    LOGGER.info(
+        "== Document augmented streaming platform separate audio start ==================="
+    )
     for key, value in STORAGE.items():
-        if not utils.check_control('pause_scripts'):
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if not utils.check_control("pause_scripts"):
+            LOGGER.info(
+                "Script run prevented by downtime_control.json. Script exiting."
+            )
+            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         if not utils.cid_check(CID_API):
             LOGGER.critical("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
 
         platform = key
-        autoingest, storage = value.split(', ')
+        autoingest, storage = value.split(", ")
 
         folder_list = walk_folders(storage)
         if len(folder_list) == 0:
@@ -131,32 +130,47 @@ def main():
             if not file_list:
                 LOGGER.warning("Skipping. No files found in folderpath: %s", fpath)
                 continue
-            if platform == 'Netflix' and len(file_list) != 6:
-                LOGGER.warning("Skipping. Incorrect amount of files found in Netflix path: %s", fpath)
+            if platform == "Netflix" and len(file_list) != 6:
+                LOGGER.warning(
+                    "Skipping. Incorrect amount of files found in Netflix path: %s",
+                    fpath,
+                )
                 continue
-            if platform == 'Amazon' and len(file_list) != 1:
-                LOGGER.warning("Skipping. Incorrect amount of files found in Amazon path: %s", fpath)
+            if platform == "Amazon" and len(file_list) != 1:
+                LOGGER.warning(
+                    "Skipping. Incorrect amount of files found in Amazon path: %s",
+                    fpath,
+                )
                 continue
-            LOGGER.info("File(s) found in target %s folder %s: %s", platform, object_number, ', '.join(file_list))
+            LOGGER.info(
+                "File(s) found in target %s folder %s: %s",
+                platform,
+                object_number,
+                ", ".join(file_list),
+            )
 
             # Check object number valid
             record = cid_check_ob_num(object_number)
             if record is None:
-                LOGGER.warning("Skipping: Record could not be matched with object_number")
+                LOGGER.warning(
+                    "Skipping: Record could not be matched with object_number"
+                )
                 continue
-            source_priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+            source_priref = adlib.retrieve_field_name(record[0], "priref")[0]
             if not source_priref:
                 continue
             print(f"Priref matched with retrieved folder name: {source_priref}")
-            LOGGER.info("Priref matched with %s folder name: %s", platform, source_priref)
+            LOGGER.info(
+                "Priref matched with %s folder name: %s", platform, source_priref
+            )
 
             # Create CID item record for batch of six audio files in folder
             item_record = create_new_item_record(source_priref, platform, record)
             if item_record is None:
                 continue
             print(item_record)
-            new_priref = adlib.retrieve_field_name(item_record, 'priref')[0]
-            new_ob_num = adlib.retrieve_field_name(item_record, 'object_number')[0]
+            new_priref = adlib.retrieve_field_name(item_record, "priref")[0]
+            new_ob_num = adlib.retrieve_field_name(item_record, "object_number")[0]
             LOGGER.info("** CID Item record created: %s - %s", new_priref, new_ob_num)
             print(f"CID Item record created: {new_priref}, {new_ob_num}")
 
@@ -169,41 +183,67 @@ def main():
                 old_fname = value
                 filename_dct[old_fname] = new_fname
 
-                if not old_fname.endswith(('.WAV', '.wav')):
-                    LOGGER.warning("File contained in separate audio folder that is not WAV/MOV: %s", old_fname)
+                if not old_fname.endswith((".WAV", ".wav")):
+                    LOGGER.warning(
+                        "File contained in separate audio folder that is not WAV/MOV: %s",
+                        old_fname,
+                    )
 
                 new_fpath = os.path.join(fpath, new_fname)
                 LOGGER.info("%s to be renamed %s", old_fname, new_fname)
-                rename_success = rename_or_move('rename', os.path.join(fpath, old_fname), new_fpath)
+                rename_success = rename_or_move(
+                    "rename", os.path.join(fpath, old_fname), new_fpath
+                )
                 if rename_success is False:
-                    LOGGER.warning("Unable to rename file: %s", os.path.join(fpath, old_fname))
+                    LOGGER.warning(
+                        "Unable to rename file: %s", os.path.join(fpath, old_fname)
+                    )
                 elif rename_success is True:
-                    LOGGER.info("File successfully renamed. Moving to %s ingest path", platform)
-                elif rename_success == 'Path error':
+                    LOGGER.info(
+                        "File successfully renamed. Moving to %s ingest path", platform
+                    )
+                elif rename_success == "Path error":
                     LOGGER.warning("Path error: %s", os.path.join(fpath, old_fname))
 
                 # Move file to new autoingest path
-                move_success = rename_or_move('move', new_fpath, os.path.join(autoingest, new_fname))
+                move_success = rename_or_move(
+                    "move", new_fpath, os.path.join(autoingest, new_fname)
+                )
                 if move_success is False:
-                    LOGGER.warning("Error with file move to autoingest, leaving in place for manual assistance")
+                    LOGGER.warning(
+                        "Error with file move to autoingest, leaving in place for manual assistance"
+                    )
                 elif move_success is True:
-                    LOGGER.info("File successfully moved to %s ingest path: %s\n", platform, autoingest)
-                elif move_success == 'Path error':
+                    LOGGER.info(
+                        "File successfully moved to %s ingest path: %s\n",
+                        platform,
+                        autoingest,
+                    )
+                elif move_success == "Path error":
                     LOGGER.warning("Path error: %s", new_fpath)
 
             # Write all dict names to digital.acquired_filename in CID item record
             success = create_digital_original_filenames(new_priref, filename_dct)
             if not success:
-                LOGGER.warning("Skipping further actions. Digital acquired filenames not written to CID item record: %s", new_priref)
+                LOGGER.warning(
+                    "Skipping further actions. Digital acquired filenames not written to CID item record: %s",
+                    new_priref,
+                )
                 continue
-            LOGGER.info("Digital Acquired Filename data added to CID item record %s", new_priref)
-            if platform == 'Netflix':
-                qual_comm = "5.1 audio supplied separately as IMP contains Dolby Atmos IAB."
+            LOGGER.info(
+                "Digital Acquired Filename data added to CID item record %s", new_priref
+            )
+            if platform == "Netflix":
+                qual_comm = (
+                    "5.1 audio supplied separately as IMP contains Dolby Atmos IAB."
+                )
             elif platform == "Amazon":
                 qual_comm = "Dolby Atmos supplied separately as 5.1 audio contained within supplied ProRes."
             success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
             if not success:
-                LOGGER.warning("Quality comments were not written to record: %s", new_priref)
+                LOGGER.warning(
+                    "Quality comments were not written to record: %s", new_priref
+                )
             LOGGER.info("Quality comments added to CID item record %s", new_priref)
 
             # Check fpath is empty and delete
@@ -212,22 +252,28 @@ def main():
                 LOGGER.info("Deleting empty folder: %s", fpath)
                 os.rmdir(fpath)
             else:
-                LOGGER.warning("Leaving folder %s in place as files still remaining in folder %s", object_number, os.listdir(fpath))
+                LOGGER.warning(
+                    "Leaving folder %s in place as files still remaining in folder %s",
+                    object_number,
+                    os.listdir(fpath),
+                )
 
-    LOGGER.info("== Document augmented streaming platform separate audio end =====================\n")
+    LOGGER.info(
+        "== Document augmented streaming platform separate audio end =====================\n"
+    )
 
 
 def build_fname_dct(file_list: list[str], ob_num: str, platform: str) -> dict[str, str]:
-    '''
+    """
     Take file list and build dict of names
-    '''
+    """
     file_names = {}
-    if platform == 'Netflix':
+    if platform == "Netflix":
         fallback_num = 1
         alt_numbering = False
         for file in file_list:
             # Build file name/new filename dict
-            channel, ext = file.split('.')[-2:]
+            channel, ext = file.split(".")[-2:]
             if alt_numbering:
                 part = str(fallback_num).zfill(2)
                 fallback_num += 1
@@ -242,9 +288,9 @@ def build_fname_dct(file_list: list[str], ob_num: str, platform: str) -> dict[st
             new_fname = f"{ob_num.replace('-', '_')}_{part}of06.{ext}"
             file_names[new_fname] = file
 
-    if platform == 'Amazon':
+    if platform == "Amazon":
         for file in file_list:
-            ext = file.split('.')[-1]
+            ext = file.split(".")[-1]
             new_fname = f"{ob_num.replace('-', '_')}_01of01.{ext}"
             file_names[new_fname] = file
 
@@ -252,67 +298,81 @@ def build_fname_dct(file_list: list[str], ob_num: str, platform: str) -> dict[st
 
 
 def build_record_defaults(platform: str) -> list[dict[str, str]]:
-    '''
+    """
     Return all record defaults
-    '''
-    record = ([{'input.name': 'datadigipres'},
-               {'input.date': str(datetime.datetime.now())[:10]},
-               {'input.time': str(datetime.datetime.now())[11:19]},
-               {'input.notes': f'{platform} metadata integration - automated bulk documentation for separate audio'},
-               {'record_access.user': 'BFIiispublic'},
-               {'record_access.rights': '0'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'System Management'},
-               {'record_access.rights': '3'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Information Specialist'},
-               {'record_access.rights': '3'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Digital Operations'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Documentation'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Curator'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Special Collections'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'},
-               {'record_access.user': 'Librarian'},
-               {'record_access.rights': '2'},
-               {'record_access.reason': 'SENSITIVE_LEGAL'}])
-               #{'record_access.user': '$REST'},
-               #{'record_access.rights': '1'},
-               #{'record_access.reason': 'SENSITIVE_LEGAL'}])
+    """
+    record = [
+        {"input.name": "datadigipres"},
+        {"input.date": str(datetime.datetime.now())[:10]},
+        {"input.time": str(datetime.datetime.now())[11:19]},
+        {
+            "input.notes": f"{platform} metadata integration - automated bulk documentation for separate audio"
+        },
+        {"record_access.user": "BFIiispublic"},
+        {"record_access.rights": "0"},
+        {"record_access.reason": "SENSITIVE_LEGAL"},
+        {"record_access.user": "System Management"},
+        {"record_access.rights": "3"},
+        {"record_access.reason": "SENSITIVE_LEGAL"},
+        {"record_access.user": "Information Specialist"},
+        {"record_access.rights": "3"},
+        {"record_access.reason": "SENSITIVE_LEGAL"},
+        {"record_access.user": "Digital Operations"},
+        {"record_access.rights": "2"},
+        {"record_access.reason": "SENSITIVE_LEGAL"},
+        {"record_access.user": "Documentation"},
+        {"record_access.rights": "2"},
+        {"record_access.reason": "SENSITIVE_LEGAL"},
+        {"record_access.user": "Curator"},
+        {"record_access.rights": "2"},
+        {"record_access.reason": "SENSITIVE_LEGAL"},
+        {"record_access.user": "Special Collections"},
+        {"record_access.rights": "2"},
+        {"record_access.reason": "SENSITIVE_LEGAL"},
+        {"record_access.user": "Librarian"},
+        {"record_access.rights": "2"},
+        {"record_access.reason": "SENSITIVE_LEGAL"},
+    ]
+    # {'record_access.user': '$REST'},
+    # {'record_access.rights': '1'},
+    # {'record_access.reason': 'SENSITIVE_LEGAL'}])
 
     return record
 
 
 def rename_or_move(arg: str, file_a: str, file_b: str) -> str | bool:
-    '''
+    """
     Use shutil or os to move/rename
     from file a to file b. Verify change
     before confirming success/failure
-    '''
+    """
 
     if not os.path.isfile(file_a):
-        return 'Path error'
+        return "Path error"
 
-    if arg == 'move':
+    if arg == "move":
         try:
             shutil.move(file_a, file_b)
         except Exception as err:
-            LOGGER.warning("rename_or_move(): Failed to %s file to new destination: \n%s\n%s", arg, file_a, file_b)
+            LOGGER.warning(
+                "rename_or_move(): Failed to %s file to new destination: \n%s\n%s",
+                arg,
+                file_a,
+                file_b,
+            )
             print(err)
             return False
 
-    if arg == 'rename':
+    if arg == "rename":
         try:
             os.rename(file_a, file_b)
         except Exception as err:
-            LOGGER.warning("rename_or_move(): Failed to %s file to new destination: \n%s\n%s", arg, file_a, file_b)
+            LOGGER.warning(
+                "rename_or_move(): Failed to %s file to new destination: \n%s\n%s",
+                arg,
+                file_a,
+                file_b,
+            )
             print(err)
             return False
 
@@ -321,83 +381,113 @@ def rename_or_move(arg: str, file_a: str, file_b: str) -> str | bool:
     return False
 
 
-def make_item_record_dict(priref: str, platform: str, record: list[dict[str, Optional[Any]]]):
-    '''
+def make_item_record_dict(
+    priref: str, platform: str, record: list[dict[str, Optional[Any]]]
+):
+    """
     Get CID item record for source and borrow data
     for creation of new CID item record
-    '''
+    """
 
-    if 'Acquisition_source' in str(record):
-        platform = adlib.retrieve_field_name(record[0], 'acquisition.source')[0]
+    if "Acquisition_source" in str(record):
+        platform = adlib.retrieve_field_name(record[0], "acquisition.source")[0]
         record_default = build_record_defaults(platform)
     else:
-        record_default = build_record_defaults('Streaming platform')
+        record_default = build_record_defaults("Streaming platform")
 
     item = []
     item.extend(record_default)
-    item.append({'record_type': 'ITEM'})
-    item.append({'item_type': 'DIGITAL'})
-    item.append({'copy_status': 'M'})
-    item.append({'copy_usage.lref': '131560'})
-    item.append({'accession_date': str(datetime.datetime.now())[:10]})
+    item.append({"record_type": "ITEM"})
+    item.append({"item_type": "DIGITAL"})
+    item.append({"copy_status": "M"})
+    item.append({"copy_usage.lref": "131560"})
+    item.append({"accession_date": str(datetime.datetime.now())[:10]})
 
-    if 'Title' in str(record):
-        title = adlib.retrieve_field_name(record[0], 'title')[0]
-        if platform == 'Netflix':
-            item.append({'title': f"{title} (5.1 audio)"})
-        elif platform == 'Amazon':
-            item.append({'title': f"{title} (Dolby Atmos)"})
-        if adlib.retrieve_field_name(record[0], 'title_article')[0]:
-            item.append({'title.article': adlib.retrieve_field_name(record[0], 'title_article')[0]})
-        item.append({'title.language': 'English'})
-        item.append({'title.type': '05_MAIN'})
+    if "Title" in str(record):
+        title = adlib.retrieve_field_name(record[0], "title")[0]
+        if platform == "Netflix":
+            item.append({"title": f"{title} (5.1 audio)"})
+        elif platform == "Amazon":
+            item.append({"title": f"{title} (Dolby Atmos)"})
+        if adlib.retrieve_field_name(record[0], "title_article")[0]:
+            item.append(
+                {
+                    "title.article": adlib.retrieve_field_name(
+                        record[0], "title_article"
+                    )[0]
+                }
+            )
+        item.append({"title.language": "English"})
+        item.append({"title.type": "05_MAIN"})
     else:
         LOGGER.warning("No title data retrieved. Aborting record creation")
         return None
-    if 'Part_of' in str(record):
-        parent_priref = adlib.retrieve_field_name(record[0]['Part_of'][0]['part_of_reference'][0], 'priref')[0]
-        item.append({'part_of_reference.lref': parent_priref})
+    if "Part_of" in str(record):
+        parent_priref = adlib.retrieve_field_name(
+            record[0]["Part_of"][0]["part_of_reference"][0], "priref"
+        )[0]
+        item.append({"part_of_reference.lref": parent_priref})
     else:
         LOGGER.warning("No part_of_reference data retrieved. Aborting record creation")
         return None
-    item.append({'related_object.reference.lref': priref})
+    item.append({"related_object.reference.lref": priref})
     if platform == "Netflix":
-        item.append({'related_object.notes': '5.1 audio for'})
-    elif platform == 'Amazon':
-        item.append({'related_object.notes': 'Dolby Atmos for'})
-    item.append({'file_type': 'WAV'})
-    item.append({'code_type': 'WAV'})
-    if 'acquisition.date' in str(record):
-        item.append({'acquisition.date': adlib.retrieve_field_name(record[0], 'acquisition.date')[0]})
-    if 'acquisition.method' in str(record):
-        item.append({'acquisition.method': adlib.retrieve_field_name(record[0], 'acquisition.method')[0]})
-    if 'Acquisition_source' in str(record):
-        if platform == 'Netflix':
-            item.append({'acquisition.source.lref': '143463'})
-            item.append({'acquisition.source.type': 'DONOR'})
-        elif platform == 'Amazon':
-            item.append({'acquisition.source.lref': '999923912'})
-            item.append({'acquisition.source.type': 'DONOR'})
-    item.append({'access_conditions': 'Access requests for this collection are subject to an approval process. '\
-                                      'Please raise a request via the Collections Systems Service Desk, describing your specific use.'})
-    item.append({'access_conditions.date': str(datetime.datetime.now())[:10]})
-    if 'grouping' in str(record):
-        item.append({'grouping': adlib.retrieve_field_name(record[0], 'grouping')[0]})
-    if 'language' in str(record):
-        item.append({'language': adlib.retrieve_field_name(record[0], 'language')[0]})
-        item.append({'language.type': adlib.retrieve_field_name(record[0], 'language.type')[0]})
+        item.append({"related_object.notes": "5.1 audio for"})
+    elif platform == "Amazon":
+        item.append({"related_object.notes": "Dolby Atmos for"})
+    item.append({"file_type": "WAV"})
+    item.append({"code_type": "WAV"})
+    if "acquisition.date" in str(record):
+        item.append(
+            {
+                "acquisition.date": adlib.retrieve_field_name(
+                    record[0], "acquisition.date"
+                )[0]
+            }
+        )
+    if "acquisition.method" in str(record):
+        item.append(
+            {
+                "acquisition.method": adlib.retrieve_field_name(
+                    record[0], "acquisition.method"
+                )[0]
+            }
+        )
+    if "Acquisition_source" in str(record):
+        if platform == "Netflix":
+            item.append({"acquisition.source.lref": "143463"})
+            item.append({"acquisition.source.type": "DONOR"})
+        elif platform == "Amazon":
+            item.append({"acquisition.source.lref": "999923912"})
+            item.append({"acquisition.source.type": "DONOR"})
+    item.append(
+        {
+            "access_conditions": "Access requests for this collection are subject to an approval process. "
+            "Please raise a request via the Collections Systems Service Desk, describing your specific use."
+        }
+    )
+    item.append({"access_conditions.date": str(datetime.datetime.now())[:10]})
+    if "grouping" in str(record):
+        item.append({"grouping": adlib.retrieve_field_name(record[0], "grouping")[0]})
+    if "language" in str(record):
+        item.append({"language": adlib.retrieve_field_name(record[0], "language")[0]})
+        item.append(
+            {"language.type": adlib.retrieve_field_name(record[0], "language.type")[0]}
+        )
 
     return item
 
 
-def create_digital_original_filenames(priref: str, asset_list_dct: dict[Any, Any]) -> bool:
-    '''
+def create_digital_original_filenames(
+    priref: str, asset_list_dct: dict[Any, Any]
+) -> bool:
+    """
     Create entries for digital.acquired_filename
     and append to the CID item record.
-    '''
+    """
     payload = f"<adlibXML><recordList><record priref='{priref}'>"
     for key, val in asset_list_dct.items():
-        filename = f'{key} - Renamed to: {val}'
+        filename = f"{key} - Renamed to: {val}"
         LOGGER.info("Writing to digital.acquired_filename: %s", filename)
         pay_mid = f"<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
         payload = payload + pay_mid
@@ -410,26 +500,32 @@ def create_digital_original_filenames(priref: str, asset_list_dct: dict[Any, Any
     LOGGER.info(payload)
 
     try:
-        result = adlib.post(CID_API, payload, 'items', 'updaterecord')
+        result = adlib.post(CID_API, payload, "items", "updaterecord")
         print(f"Item appended successful! {priref}\n{result}")
-        LOGGER.info("Successfully appended digital.acquired_filenames to Item record %s", priref)
+        LOGGER.info(
+            "Successfully appended digital.acquired_filenames to Item record %s", priref
+        )
         print(result)
         return True
     except Exception as err:
         print(err)
-        LOGGER.warning("Failed to append digital.acquired_filenames to Item record %s", priref)
+        LOGGER.warning(
+            "Failed to append digital.acquired_filenames to Item record %s", priref
+        )
         print(f"CID item record append FAILED!! {priref}")
         return False
 
 
-def create_new_item_record(priref: str, platform: str, record: dict[str, Optional[Any]]):
-    '''
+def create_new_item_record(
+    priref: str, platform: str, record: dict[str, Optional[Any]]
+):
+    """
     Build new CID item record from existing data and make CID item record
-    '''
+    """
     item_dct = make_item_record_dict(priref, platform, record)
     LOGGER.info(item_dct)
-    item_xml = adlib.create_record_data(CID_API, 'items', '', item_dct)
-    new_record = adlib.post(CID_API, item_xml, 'items', 'insertrecord')
+    item_xml = adlib.create_record_data(CID_API, "items", "", item_dct)
+    new_record = adlib.post(CID_API, item_xml, "items", "insertrecord")
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None
@@ -437,5 +533,5 @@ def create_new_item_record(priref: str, platform: str, record: dict[str, Optiona
     return new_record
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

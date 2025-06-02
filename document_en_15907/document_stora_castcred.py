@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Script to create People records from EPG metadata
 and attach to existing CID Work records
 
@@ -28,21 +28,22 @@ ready for update of STORA data to correct scheduling times
 
 2021
 Python 3.6+
-'''
+"""
 
+import codecs
+import datetime
+import glob
+import json
+import logging
 # Global packages
 import os
 import sys
-import json
-import glob
-import codecs
-import logging
-import datetime
+from typing import Any, Final, Generator, Iterable, Optional
+
 import requests
-from typing import Optional, Any, Final, Generator, Iterable
 
 # Local packages
-sys.path.append(os.environ['CODE'])
+sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib
 import utils
 
@@ -55,71 +56,116 @@ YEAR: Final = YEST[:4]
 MONTH: Final = YEST[5:7]
 # YEAR = '2024'
 # MONTH = '12'
-COMPLETE: Final = os.environ['STORA_COMPLETED']
+COMPLETE: Final = os.environ["STORA_COMPLETED"]
 ARCHIVE_PATH: Final = os.path.join(COMPLETE, YEAR, MONTH)
-LOG_PATH: Final = os.environ['LOG_PATH']
+LOG_PATH: Final = os.environ["LOG_PATH"]
 CID_API: Final = utils.get_current_api()
-CODEPTH: Final = os.environ['CODE']
-CONTROL_JSON: Final = os.path.join(LOG_PATH, 'downtime_control.json')
+CODEPTH: Final = os.environ["CODE"]
+CONTROL_JSON: Final = os.path.join(LOG_PATH, "downtime_control.json")
 
 # Setup logging
-LOGGER = logging.getLogger('document_stora_castcred')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'document_stora_castcred.log'))
-FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+LOGGER = logging.getLogger("document_stora_castcred")
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, "document_stora_castcred.log"))
+FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 # First val index CID cast.credit_type (Work),  activity_type (Person), term_code for sort.sequence (work)
-contributors: dict[str, list[str]] = {'actor': ['cast member', 'Cast', '73000'],
-                'co-host': ['host', 'Presentation', '72700'],
-                'coach': ['on-screen participant', 'Miscellaneous', '73010'],
-                'Commentator': ['commentator', 'Cast', '71500'],
-                'contestant': ['on-screen participant', 'Cast', '73010'],
-                'contributor': ['on-screen participant', 'Cast', '73010'],
-                'guest': ['on-screen participant', 'Cast', '73010'],
-                'host': ['host', 'Presentation', '72700'],
-                'judge': ['host', 'Presentation', '72700'],
-                'musical-guest': ['music performance', 'Music', '72600'],
-                'narrator': ['narrator', 'Cast', '72000'],
-                'pannelist': ['on-screen participant', 'Cast', '73010'],
-                'panelist': ['on-screen participant', 'Cast', '73010'],
-                'performer': ['on-screen participant', 'Cast', '73010'],
-                'presenter': ['presenter', 'Presentation', '70000'],
-                'reader': ['reader', 'Presentation', '72500'],
-                'reporter': ['news reporter', 'Presentation', '71100'],
-                'scorekeeper': ['on-screen participant', 'Presentation', '73010'],
-                'storyteller': ['narrator', 'Cast', '72000'],
-                'team-captain': ['on-screen participant', 'Cast', '73010']}
+contributors: dict[str, list[str]] = {
+    "actor": ["cast member", "Cast", "73000"],
+    "co-host": ["host", "Presentation", "72700"],
+    "coach": ["on-screen participant", "Miscellaneous", "73010"],
+    "Commentator": ["commentator", "Cast", "71500"],
+    "contestant": ["on-screen participant", "Cast", "73010"],
+    "contributor": ["on-screen participant", "Cast", "73010"],
+    "guest": ["on-screen participant", "Cast", "73010"],
+    "host": ["host", "Presentation", "72700"],
+    "judge": ["host", "Presentation", "72700"],
+    "musical-guest": ["music performance", "Music", "72600"],
+    "narrator": ["narrator", "Cast", "72000"],
+    "pannelist": ["on-screen participant", "Cast", "73010"],
+    "panelist": ["on-screen participant", "Cast", "73010"],
+    "performer": ["on-screen participant", "Cast", "73010"],
+    "presenter": ["presenter", "Presentation", "70000"],
+    "reader": ["reader", "Presentation", "72500"],
+    "reporter": ["news reporter", "Presentation", "71100"],
+    "scorekeeper": ["on-screen participant", "Presentation", "73010"],
+    "storyteller": ["narrator", "Cast", "72000"],
+    "team-captain": ["on-screen participant", "Cast", "73010"],
+}
 
 # First val index credit.type (Work), activity_type (Person), term_code for sort.sequence (work)
-production = {'abridged-by': ['Script', 'Scripting', '15500'],
-              'adapted-by': ['Script', 'Scripting', '15500'],
-              'deputy-editor': ['Deputy Editor', 'Production', '4600'],
-              'director': ['Director', 'Direction', '500'],
-              'dramatised-by': ['Script', 'Scripting', '15500'],
-              'editor': ['Editor', 'Editing', '37500'],
-              'executive-editor': ['Executive Story Editor', 'Production', '2500'],
-              'executive-producer': ['Executive Producer', 'Production', '2500'],
-              'producer': ['Producer', 'Production', '3010'],
-              'series-director': ['Series Director', 'Direction', '650'],
-              'series-editor': ['Series Editor', 'Production', '4500'],
-              'series-producer': ['Series Producer', 'Production', '4500'],
-              'writer-nf': ['Script', 'Scripting', '15500'],
-              'writer-f': ['Screenplay', 'Scripting', '15000']}
+production = {
+    "abridged-by": ["Script", "Scripting", "15500"],
+    "adapted-by": ["Script", "Scripting", "15500"],
+    "deputy-editor": ["Deputy Editor", "Production", "4600"],
+    "director": ["Director", "Direction", "500"],
+    "dramatised-by": ["Script", "Scripting", "15500"],
+    "editor": ["Editor", "Editing", "37500"],
+    "executive-editor": ["Executive Story Editor", "Production", "2500"],
+    "executive-producer": ["Executive Producer", "Production", "2500"],
+    "producer": ["Producer", "Production", "3010"],
+    "series-director": ["Series Director", "Direction", "650"],
+    "series-editor": ["Series Editor", "Production", "4500"],
+    "series-producer": ["Series Producer", "Production", "4500"],
+    "writer-nf": ["Script", "Scripting", "15500"],
+    "writer-f": ["Screenplay", "Scripting", "15000"],
+}
 
 
 def split_title(title_article: str) -> Optional[tuple[str, str]]:
-    '''
+    """
     Splits title where it finds a matching article to startswith() list
-    '''
-    if title_article.startswith(("A ", "An ", "Am ", "Al-", "As ", "Az ", "Bir ", "Das ", "De ", "Dei ", "Den ",
-                                 "Der ", "Det ", "Di ", "Dos ", "Een ", "Eene", "Ei ", "Ein ", "Eine", "Eit ",
-                                 "El ", "el-", "En ", "Et ", "Ett ", "Het ", "Il ", "Na ", "A'", "L'", "La ",
-                                 "Le ", "Les ", "Los ", "The ", "Un ", "Une ", "Uno ", "Y ", "Yr ")):
+    """
+    if title_article.startswith(
+        (
+            "A ",
+            "An ",
+            "Am ",
+            "Al-",
+            "As ",
+            "Az ",
+            "Bir ",
+            "Das ",
+            "De ",
+            "Dei ",
+            "Den ",
+            "Der ",
+            "Det ",
+            "Di ",
+            "Dos ",
+            "Een ",
+            "Eene",
+            "Ei ",
+            "Ein ",
+            "Eine",
+            "Eit ",
+            "El ",
+            "el-",
+            "En ",
+            "Et ",
+            "Ett ",
+            "Het ",
+            "Il ",
+            "Na ",
+            "A'",
+            "L'",
+            "La ",
+            "Le ",
+            "Les ",
+            "Los ",
+            "The ",
+            "Un ",
+            "Une ",
+            "Uno ",
+            "Y ",
+            "Yr ",
+        )
+    ):
         title_split = title_article.split()
         ttl = title_split[1:]
-        title = ' '.join(ttl)
+        title = " ".join(ttl)
         title_art = title_split[0]
         return title, title_art
 
@@ -127,10 +173,10 @@ def split_title(title_article: str) -> Optional[tuple[str, str]]:
 
 
 def title_filter(item_asset_title: str, item_title: str) -> tuple[str, str]:
-    '''
+    """
     Function to match actions of Py2 title processing
     Returns title, title_art where possible
-    '''
+    """
     title = ""
     title_art = ""
     title_1 = True
@@ -141,7 +187,7 @@ def title_filter(item_asset_title: str, item_title: str) -> tuple[str, str]:
     elif len(item_asset_title) == 0:
         title_1 = False
     else:
-        title_bare = ''.join(str for str in item_asset_title if str.isalnum())
+        title_bare = "".join(str for str in item_asset_title if str.isalnum())
         if title_bare.isnumeric():
             title_1 = False
 
@@ -168,10 +214,10 @@ def title_filter(item_asset_title: str, item_title: str) -> tuple[str, str]:
 
 
 def enum_list(creds: Iterable[str]) -> Generator[tuple[int, str], None, None]:
-    '''
+    """
     Change list to dictionary pairs for sort order
     Increments of 5, beginning at 50
-    '''
+    """
     n = 50
     for item in creds:
         yield n, item
@@ -179,14 +225,14 @@ def enum_list(creds: Iterable[str]) -> Generator[tuple[int, str], None, None]:
 
 
 def firstname_split(person: str) -> str:
-    '''
+    """
     Splits 'firstname surname' and returns 'surname, firstname'
-    '''
+    """
     name_list = person.split()
     count = len(person.split())
     if count > 2:
         firstname, *rest, surname = name_list
-        rest = ' '.join(rest)
+        rest = " ".join(rest)
         return surname + ", " + firstname + " " + rest
     if count > 1:
         firstname, surname = name_list
@@ -194,12 +240,12 @@ def firstname_split(person: str) -> str:
     return person
 
 
-def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list[str] ]:
-    '''
+def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list[str]]:
+    """
     Retrieve credits dct, asset/type and asset/category/code list
-    '''
+    """
 
-    with open(fullpath, 'r') as inf:
+    with open(fullpath, "r") as inf:
         lines = json.load(inf)
         for _ in lines.items():
 
@@ -207,11 +253,11 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
             try:
                 item_title = lines["item"][0]["title"]
             except (KeyError, IndexError):
-                item_title = ''
+                item_title = ""
             try:
                 item_asset_title = lines["item"][0]["asset"]["title"]
             except (KeyError, IndexError):
-                item_asset_title = ''
+                item_asset_title = ""
 
             # Get transmission time
             try:
@@ -219,23 +265,23 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
                 title_date_start = title_date_start_full[0:10]
                 print(f"Date of broadcast: {title_date_start}")
             except (KeyError, IndexError):
-                title_date_start = ''
+                title_date_start = ""
             try:
                 time_full = str(lines["item"][0]["dateTime"])
                 time = time_full[11:19]
                 print(f"Time of broadcast: {time}")
             except (KeyError, IndexError):
-                time = ''
+                time = ""
 
             # Get EPG category code
             try:
                 code1 = lines["item"][0]["asset"]["category"][0]["code"]
             except (KeyError, IndexError):
-                code1 = ''
+                code1 = ""
             try:
                 code2 = lines["item"][0]["asset"]["category"][1]["code"]
             except (KeyError, IndexError):
-                code2 = ''
+                code2 = ""
 
             # Filter topics for non-fiction/fiction
             if "factual-topics" in ((code1, code2)):
@@ -271,79 +317,87 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
             except (KeyError, IndexError):
                 credit_list = []
 
-        return (item_title, item_asset_title, nfa_category, work_type, title_date_start, time, credit_list)
+        return (
+            item_title,
+            item_asset_title,
+            nfa_category,
+            work_type,
+            title_date_start,
+            time,
+            credit_list,
+        )
 
 
 def retrieve_person(credit_list_raw: list[str], nfa_cat: str):
-    '''
+    """
     Receives credits dictionary from main(), iterates over entries and creates
     list of dictionaries for credit/cast enumerated (5,10,15) in order retrieved
     Returns dictionary of dictionary containing key role, value list of all other data
-    '''
+    """
     credit_list = []
     cred_list = []
     cast_list = []
     for dictionary in credit_list_raw:
         try:
-            cred_id = dictionary['id']
+            cred_id = dictionary["id"]
         except (KeyError, IndexError):
-            cred_id = ''
+            cred_id = ""
         try:
-            name = dictionary['name']
+            name = dictionary["name"]
         except (KeyError, IndexError):
-            name = ''
+            name = ""
         try:
-            dofb = dictionary['dob']
+            dofb = dictionary["dob"]
         except (KeyError, IndexError):
-            dofb = ''
+            dofb = ""
         try:
-            dofd = dictionary['dod']
+            dofd = dictionary["dod"]
         except (KeyError, IndexError):
-            dofd = ''
+            dofd = ""
         try:
-            home = dictionary['from']
+            home = dictionary["from"]
         except (KeyError, IndexError):
-            home = ''
+            home = ""
         try:
-            gender = dictionary['gender']
+            gender = dictionary["gender"]
         except (KeyError, IndexError):
-            gender = ''
+            gender = ""
         try:
-            character_type = dictionary['character'][0]['type']
+            character_type = dictionary["character"][0]["type"]
         except (KeyError, IndexError):
-            character_type = ''
+            character_type = ""
         try:
-            character_name = dictionary['character'][0]['name']
+            character_name = dictionary["character"][0]["name"]
         except (KeyError, IndexError):
-            character_name = ''
+            character_name = ""
         try:
-            roles = dictionary['role']  # List of strings
+            roles = dictionary["role"]  # List of strings
         except (KeyError, IndexError):
-            roles = ''
+            roles = ""
         try:
-            meta = dictionary['meta']
+            meta = dictionary["meta"]
         except (KeyError, IndexError):
-            meta = ''
+            meta = ""
         try:
-            known_for = meta['best-known-for']
-            known_for = known_for.replace("\'", "'")
+            known_for = meta["best-known-for"]
+            known_for = known_for.replace("'", "'")
         except (KeyError, IndexError):
-            known_for = ''
+            known_for = ""
         try:
-            early_life = meta['early-life']
-            early_life = early_life.replace("\'", "'")
+            early_life = meta["early-life"]
+            early_life = early_life.replace("'", "'")
         except (KeyError, IndexError):
-            early_life = ''
+            early_life = ""
         try:
-            career = meta['career']
-            career = career.replace("\'", "'")
+            career = meta["career"]
+            career = career.replace("'", "'")
         except (KeyError, IndexError):
-            career = ''
+            career = ""
         try:
-            trivia = meta['trivia']
-            trivia = trivia.replace("\'", "'")
+            trivia = meta["trivia"]
+            trivia = trivia.replace("'", "'")
         except (KeyError, IndexError):
-            trivia = ''
+            trivia = ""
 
         # Build lists to generate cast/credit_dct
         credit_list = list(
@@ -364,11 +418,11 @@ def retrieve_person(credit_list_raw: list[str], nfa_cat: str):
         )
 
         for role in roles:
-            if 'writer' in str(role):
-                if 'nf' in nfa_cat:
-                    role = 'writer-nf'
-                elif 'f' in nfa_cat:
-                    role = 'writer-f'
+            if "writer" in str(role):
+                if "nf" in nfa_cat:
+                    role = "writer-nf"
+                elif "f" in nfa_cat:
+                    role = "writer-f"
             if str(role) in contributors.keys():
                 cast_list.append({str(role): credit_list})
             if str(role) in production.keys():
@@ -388,27 +442,30 @@ def retrieve_person(credit_list_raw: list[str], nfa_cat: str):
 
 
 def cid_person_check(credit_id, session):
-    '''
+    """
     Retrieve if Person record with priref already exist for credit_entity_id
-    '''
+    """
     search = f"(utb.content='{credit_id}' WHEN utb.fieldname='PATV Person ID')"
     try:
-        result = adlib.retrieve_record(CID_API, 'people', search, '0', session)[1]
+        result = adlib.retrieve_record(CID_API, "people", search, "0", session)[1]
     except (KeyError, IndexError, TypeError):
-        LOGGER.exception("cid_person_check(): Unable to check for person record with credit id: %s", credit_id)
+        LOGGER.exception(
+            "cid_person_check(): Unable to check for person record with credit id: %s",
+            credit_id,
+        )
         result = None
     if result is None:
         return None, None, None
     try:
-        name = adlib.retrieve_field_name(result[0], 'name')[0]
-        priref = adlib.retrieve_field_name(result[0], 'priref')[0]
+        name = adlib.retrieve_field_name(result[0], "name")[0]
+        priref = adlib.retrieve_field_name(result[0], "priref")[0]
     except (KeyError, IndexError):
-        name = ''
-        priref = ''
+        name = ""
+        priref = ""
     try:
-        act_type = adlib.retrieve_field_name(result[0], 'activity_type')
+        act_type = adlib.retrieve_field_name(result[0], "activity_type")
     except (KeyError, IndexError):
-        return priref, name, ''
+        return priref, name, ""
 
     activity_types = []
     for count in range(0, len(act_type)):
@@ -420,44 +477,48 @@ def cid_person_check(credit_id, session):
 
 
 def cid_work_check(search, session):
-    '''
+    """
     Retrieve CID work record priref where search matches
-    '''
+    """
     prirefs = []
     edit_names = []
 
     try:
-        hits, record = adlib.retrieve_record(CID_API, 'works', search, '0', session, ['priref', 'input.notes, edit.name'])
+        hits, record = adlib.retrieve_record(
+            CID_API, "works", search, "0", session, ["priref", "input.notes, edit.name"]
+        )
         print(hits, record)
     except (KeyError, IndexError):
-        LOGGER.exception("cid_work_check(): Unable to check for person record with search %s", search)
+        LOGGER.exception(
+            "cid_work_check(): Unable to check for person record with search %s", search
+        )
     if hits is None:
         raise Exception(f"CID API was unreachable for Works search: {search}")
     if hits == 0:
         return None, None
 
     if hits == 1:
-        priref = adlib.retrieve_field_name(record[0], 'priref')[0]
-        input_note = adlib.retrieve_field_name(record[0], 'input.notes')[0]
-        edit_name = adlib.retrieve_field_name(record[0], 'edit.name')[0]
+        priref = adlib.retrieve_field_name(record[0], "priref")[0]
+        input_note = adlib.retrieve_field_name(record[0], "input.notes")[0]
+        edit_name = adlib.retrieve_field_name(record[0], "edit.name")[0]
 
-        if 'STORA off-air television capture' in str(input_note):
+        if "STORA off-air television capture" in str(input_note):
             return [priref], [edit_name]
 
     for num in range(0, hits):
         print("Fetch priref and edit_name from record")
         try:
-            priref = adlib.retrieve_field_name(record[num], 'priref')[0]
-            input_note = adlib.retrieve_field_name(record[num], 'input.notes')[0]
+            priref = adlib.retrieve_field_name(record[num], "priref")[0]
+            input_note = adlib.retrieve_field_name(record[num], "input.notes")[0]
         except (KeyError, IndexError, TypeError):
-            priref = ''
-            input_note = ''
+            priref = ""
+            input_note = ""
         try:
-            edit_name = adlib.retrieve_field_name(record[num], 'edit.name')[0]
+            edit_name = adlib.retrieve_field_name(record[num], "edit.name")[0]
         except (KeyError, IndexError):
-            edit_name = ''
+            edit_name = ""
 
-        if 'STORA off-air television capture' in str(input_note):
+        if "STORA off-air television capture" in str(input_note):
             prirefs.append(priref)
             edit_names.append(edit_name)
 
@@ -465,40 +526,49 @@ def cid_work_check(search, session):
 
 
 def cid_manifestation_check(priref, session):
-    '''
+    """
     Retrieve Manifestation transmission start time from parent priref
-    '''
+    """
     search = f"(part_of_reference.lref='{priref}')"
     try:
-        record = adlib.retrieve_record(CID_API, 'manifestations', search, '0', session, ['transmission_start_time'])[1]
+        record = adlib.retrieve_record(
+            CID_API, "manifestations", search, "0", session, ["transmission_start_time"]
+        )[1]
         print("-------------------")
         print(record)
     except (KeyError, IndexError):
-        LOGGER.exception("cid_manifestation_check(): Unable to check for record with priref: %s", priref)
+        LOGGER.exception(
+            "cid_manifestation_check(): Unable to check for record with priref: %s",
+            priref,
+        )
         record = None
     if not record:
         return None
     try:
-        start_time = adlib.retrieve_field_name(record[0], 'transmission_start_time')[0]
+        start_time = adlib.retrieve_field_name(record[0], "transmission_start_time")[0]
         return start_time
     except (KeyError, IndexError):
-        LOGGER.info("cid_manifestation_check(): Unable to extract start time for manifestation")
+        LOGGER.info(
+            "cid_manifestation_check(): Unable to extract start time for manifestation"
+        )
         return None
 
 
 def main():
-    '''
+    """
     Find all {filename}.json.document files and store in list
     Iterate list extracting cast/credit and other metadata
     Find CID Work with same name/date and time information
     Check in CID for existing People records and extract priref
     Create new People rec where needed and capture priref
     Link new/existing People priref to CID Work
-    '''
-    LOGGER.info("============= START document_stora_castcred script START =============")
-    if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    """
+    LOGGER.info(
+        "============= START document_stora_castcred script START ============="
+    )
+    if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
@@ -513,14 +583,16 @@ def main():
     session = adlib.create_session()
     for fullpath in file_list:
         root, file = os.path.split(fullpath)
-        if not file.endswith('json.documented'):
+        if not file.endswith("json.documented"):
             continue
-        if not utils.check_control('pause_scripts') or not utils.check_control('stora'):
-            LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-            sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+        if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
+            LOGGER.info(
+                "Script run prevented by downtime_control.json. Script exiting."
+            )
+            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
         LOGGER.info("New file found for processing: %s", fullpath)
-        credit_data = ''
+        credit_data = ""
         updates = False
         # Retrieve all data from EPG
         credit_data = retrieve_epg_data(fullpath)
@@ -536,8 +608,8 @@ def main():
             title, title_art = title_filter(item_asset_title, item_title)
             LOGGER.info("Title for search: %s %s", title_art, title)
         except Exception:
-            title = ''
-            title_art = ''
+            title = ""
+            title_art = ""
 
         # Get people data
         if len(credit_list) > 0:
@@ -556,18 +628,26 @@ def main():
         print(search)
         prirefs = cid_work_check(search, session)[0]
         if not prirefs:
-            LOGGER.info("SKIPPING: Likely repeat as no work record data found for %s transmitted on %s", title, date)
+            LOGGER.info(
+                "SKIPPING: Likely repeat as no work record data found for %s transmitted on %s",
+                title,
+                date,
+            )
             LOGGER.info("Renaming JSON with _castcred appended\n")
             rename(root, file, title)
             continue
 
-        work_priref = ''
+        work_priref = ""
         time_match = False
         # Iterate all potential matches for transmission time match
         if len(prirefs) > 0:
             for work_priref_check in prirefs:
-                LOGGER.info("Priref found that matches date/title: %s", work_priref_check)
-                LOGGER.info("Checking work manifestation to see if broadcast times match...")
+                LOGGER.info(
+                    "Priref found that matches date/title: %s", work_priref_check
+                )
+                LOGGER.info(
+                    "Checking work manifestation to see if broadcast times match..."
+                )
 
                 # Check manifestation for matching transmission time
                 transmission_time = cid_manifestation_check(work_priref_check, session)
@@ -575,18 +655,30 @@ def main():
                     continue
                 print(f"If {str(time)} == {str(transmission_time[:8])}:")
                 if str(time) == str(transmission_time)[:8]:
-                    LOGGER.info("Programme times match: %s and %s\n", time, transmission_time[0:8])
+                    LOGGER.info(
+                        "Programme times match: %s and %s\n",
+                        time,
+                        transmission_time[0:8],
+                    )
                     time_match = True
                     work_priref = work_priref_check
                     break
                 else:
-                    LOGGER.warning("Programme times DO NOT MATCH this work: %s and %s\n", time, transmission_time[:8])
+                    LOGGER.warning(
+                        "Programme times DO NOT MATCH this work: %s and %s\n",
+                        time,
+                        transmission_time[:8],
+                    )
                     time_match = False
-                    work_priref = ''
+                    work_priref = ""
                     continue
 
         if len(work_priref) == 0:
-            LOGGER.info("PROBLEM: Prirefs found but no transmission times matched for %s %s", title, date)
+            LOGGER.info(
+                "PROBLEM: Prirefs found but no transmission times matched for %s %s",
+                title,
+                date,
+            )
             LOGGER.info("Renaming JSON with _castcred appended\n")
             rename(root, file, title)
             continue
@@ -600,7 +692,7 @@ def main():
         cred_list = []
 
         # BEGIN CAST DATA GENERATION
-        person_priref, person_name, person_act_type = '', '', ''
+        person_priref, person_name, person_act_type = "", "", ""
         if len(cast_dct) > 0 and time_match:
             for key, val in cast_dct.items():
                 cast_sort = str(key)
@@ -613,9 +705,11 @@ def main():
                     print(cast_name, cast_id)
 
                     # Check person record exists
-                    person_priref, person_name, person_act_type = cid_person_check(cast_id, session)
+                    person_priref, person_name, person_act_type = cid_person_check(
+                        cast_id, session
+                    )
                     if person_priref is None:
-                        cast_dct_data = ''
+                        cast_dct_data = ""
                         # Create data for Person record creation
                         cast_dct_data = make_person_dct(val)
                         cast_dct_formatted = cast_dct_data[0]
@@ -627,23 +721,48 @@ def main():
                         # Make Person record
                         person_priref = make_person_record(session, cast_dct_formatted)
                         if not person_priref:
-                            LOGGER.warning("Failure to create person record for %s", cast_name)
+                            LOGGER.warning(
+                                "Failure to create person record for %s", cast_name
+                            )
                             continue
-                        LOGGER.info("** PERSON RECORD CREATION: %s - %s - %s", cast_type, person_priref, cast_name)
+                        LOGGER.info(
+                            "** PERSON RECORD CREATION: %s - %s - %s",
+                            cast_type,
+                            person_priref,
+                            cast_name,
+                        )
 
                         # Append biography and other data
                         if len(person_priref) > 5:
-                            payload = create_payload(person_priref, known_for, early_life, bio, trivia)
+                            payload = create_payload(
+                                person_priref, known_for, early_life, bio, trivia
+                            )
                             if len(payload) > 90:
                                 success = write_payload(payload, person_priref, session)
                                 if success:
-                                    LOGGER.info("** Payload data successfully written to Person record %s, %s", person_priref, person_name)
-                                    print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
+                                    LOGGER.info(
+                                        "** Payload data successfully written to Person record %s, %s",
+                                        person_priref,
+                                        person_name,
+                                    )
+                                    print(
+                                        f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}"
+                                    )
                                 else:
-                                    LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
-                                    print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
+                                    LOGGER.critical(
+                                        "Payload data write failed for %s, %s",
+                                        person_priref,
+                                        person_name,
+                                    )
+                                    print(
+                                        f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}"
+                                    )
                     elif len(person_priref) > 0:
-                        LOGGER.info("Person record already exists: %s %s", person_name, person_priref)
+                        LOGGER.info(
+                            "Person record already exists: %s %s",
+                            person_name,
+                            person_priref,
+                        )
                         for k_, v_ in contributors.items():
                             print("---------------")
                             print(k_, v_, cast_type)
@@ -651,11 +770,25 @@ def main():
                             if str(cast_type) == k_:
                                 activity_type = v_[1]
                                 if str(activity_type) in str(person_act_type):
-                                    LOGGER.info("MATCHED Activity types: %s with %s", activity_type, person_act_type)
+                                    LOGGER.info(
+                                        "MATCHED Activity types: %s with %s",
+                                        activity_type,
+                                        person_act_type,
+                                    )
                                 else:
-                                    LOGGER.info("** Activity type does not match. Appending NEW ACTIVITY TYPE: %s", activity_type)
-                                    append_activity_type(person_priref, person_act_type, activity_type, session)
-                        LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
+                                    LOGGER.info(
+                                        "** Activity type does not match. Appending NEW ACTIVITY TYPE: %s",
+                                        activity_type,
+                                    )
+                                    append_activity_type(
+                                        person_priref,
+                                        person_act_type,
+                                        activity_type,
+                                        session,
+                                    )
+                        LOGGER.info(
+                            "Cast Name/Priref extacted and will append to cast_dct_update"
+                        )
 
                     # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
                     for key_, val_ in contributors.items():
@@ -664,21 +797,27 @@ def main():
                             cast_credit_type = val_[0]
                     cast_sort = str(cast_sort)
                     cast_seq_sort = f"{cast_term_code}{cast_sort.zfill(4)}"
-                    cast_data = ([int(cast_seq_sort), int(cast_sort), person_priref, cast_credit_type, screen_name])
+                    cast_data = [
+                        int(cast_seq_sort),
+                        int(cast_sort),
+                        person_priref,
+                        cast_credit_type,
+                        screen_name,
+                    ]
                     cast_list.append(cast_data)
 
             cast_list.sort()
             cast_dct_sorted = sort_cast_dct(cast_list)
             # Append cast/credit and edit name blocks to work_append_dct
             LOGGER.info("** Appending cast data to work record now...")
-            cast_xml = adlib.create_grouped_data(work_priref, 'cast', cast_dct_sorted)
-            update_rec = adlib.post(CID_API, cast_xml, 'works', 'updaterecord', session)
+            cast_xml = adlib.create_grouped_data(work_priref, "cast", cast_dct_sorted)
+            update_rec = adlib.post(CID_API, cast_xml, "works", "updaterecord", session)
             updates = True
 
         else:
             LOGGER.info("No Cast dictionary information for work %s", title)
 
-        person_priref, person_name, person_act_type = '', '', ''
+        person_priref, person_name, person_act_type = "", "", ""
         # Create credit data records
         if len(cred_dct) > 0 and time_match:
             for key, val in cred_dct.items():
@@ -693,9 +832,11 @@ def main():
                     print(cred_name, cred_id)
 
                     # Check person record exists
-                    person_priref, person_name, person_act_type = cid_person_check(cred_id, session)
+                    person_priref, person_name, person_act_type = cid_person_check(
+                        cred_id, session
+                    )
                     if person_priref is None:
-                        cred_dct_data = ''
+                        cred_dct_data = ""
                         # Create data for Person record creation
                         cred_dct_data = make_person_dct(val)
                         cred_dct_formatted = cred_dct_data[0]
@@ -707,21 +848,46 @@ def main():
                         # Make Person record
                         person_priref = make_person_record(session, cred_dct_formatted)
                         if not person_priref:
-                            LOGGER.warning("Failure to create person record for %s", person_name)
+                            LOGGER.warning(
+                                "Failure to create person record for %s", person_name
+                            )
                             continue
 
-                        LOGGER.info("** PERSON RECORD CREATION: %s - %s - %s", cred_type, person_priref, cred_name)
+                        LOGGER.info(
+                            "** PERSON RECORD CREATION: %s - %s - %s",
+                            cred_type,
+                            person_priref,
+                            cred_name,
+                        )
                         # Append biography and other data
                         if len(person_priref) > 5:
-                            payload = create_payload(person_priref, cred_known_for, cred_early_life, cred_bio, cred_trivia)
+                            payload = create_payload(
+                                person_priref,
+                                cred_known_for,
+                                cred_early_life,
+                                cred_bio,
+                                cred_trivia,
+                            )
                         if len(payload) > 90:
                             success = write_payload(payload, person_priref, session)
                             if success:
-                                LOGGER.info("** Payload data successfully written to Person record %s, %s", person_priref, person_name)
-                                print(f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}")
+                                LOGGER.info(
+                                    "** Payload data successfully written to Person record %s, %s",
+                                    person_priref,
+                                    person_name,
+                                )
+                                print(
+                                    f"** PAYLOAD WRITTEN TO PERSON RECORD {person_priref}"
+                                )
                             else:
-                                LOGGER.critical("Payload data write failed for %s, %s", person_priref, person_name)
-                                print(f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}")
+                                LOGGER.critical(
+                                    "Payload data write failed for %s, %s",
+                                    person_priref,
+                                    person_name,
+                                )
+                                print(
+                                    f"PAYLOAD NOT WRITTEN TO PERSON RECORD {person_priref}"
+                                )
 
                     elif len(person_priref) > 0:
                         for k_, v_ in production.items():
@@ -731,17 +897,40 @@ def main():
                             if str(cred_type) == k_:
                                 activity_type_cred = v_[1]
                                 if str(activity_type_cred) in str(person_act_type):
-                                    print(f"Matched activity type {activity_type_cred} : {person_act_type}")
+                                    print(
+                                        f"Matched activity type {activity_type_cred} : {person_act_type}"
+                                    )
                                 else:
-                                    print(f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}")
-                                    success = append_activity_type(person_priref, person_act_type, activity_type_cred, session)
+                                    print(
+                                        f"Activity types do not match. Appending NEW ACTIVITY TYPE: {activity_type_cred}"
+                                    )
+                                    success = append_activity_type(
+                                        person_priref,
+                                        person_act_type,
+                                        activity_type_cred,
+                                        session,
+                                    )
                                     if success is True:
-                                        LOGGER.info("Activity type appended successfully to person: %s", person_priref)
+                                        LOGGER.info(
+                                            "Activity type appended successfully to person: %s",
+                                            person_priref,
+                                        )
                                     else:
-                                        LOGGER.warning("Activity type was not appended to person: %s", person_priref)
-                        print(f"** Person record already exists: {person_name} {person_priref}")
-                        LOGGER.info("** Person record already exists for %s: %s", person_name, person_priref)
-                        LOGGER.info("Cast Name/Priref extacted and will append to cast_dct_update")
+                                        LOGGER.warning(
+                                            "Activity type was not appended to person: %s",
+                                            person_priref,
+                                        )
+                        print(
+                            f"** Person record already exists: {person_name} {person_priref}"
+                        )
+                        LOGGER.info(
+                            "** Person record already exists for %s: %s",
+                            person_name,
+                            person_priref,
+                        )
+                        LOGGER.info(
+                            "Cast Name/Priref extacted and will append to cast_dct_update"
+                        )
 
                     # Build cred_list for sorting/creation of cred_dct_update to append to CID Work
                     for key_, val_ in production.items():
@@ -750,79 +939,100 @@ def main():
                             credit_type = val_[0]
                     cred_sort = str(cred_sort)
                     seq_sort = f"{term_code}{cred_sort.zfill(4)}"
-                    cred_data = ([int(seq_sort), int(cred_sort), person_priref, credit_type])
+                    cred_data = [
+                        int(seq_sort),
+                        int(cred_sort),
+                        person_priref,
+                        credit_type,
+                    ]
                     cred_list.append(cred_data)
 
             cred_list.sort()
             cred_dct_sorted = sort_cred_dct(cred_list)
             LOGGER.info("** Appending credit data to work record now...")
-            cred_xml = adlib.create_grouped_data(work_priref, 'credits', cred_dct_sorted)
+            cred_xml = adlib.create_grouped_data(
+                work_priref, "credits", cred_dct_sorted
+            )
             print(cred_xml)
-            update_rec = adlib.post(CID_API, cred_xml, 'works', 'updaterecord', session)
+            update_rec = adlib.post(CID_API, cred_xml, "works", "updaterecord", session)
             updates = True
 
         else:
             LOGGER.info("No Credit dictionary information for work %s", title)
 
         if updates is True:
-            work_edit_data = ([{'edit.date': TODAY_DATE},
-                               {'edit.name': 'datadigipres'},
-                               {'edit.notes': 'Automated cast and credit update from PATV augmented EPG metadata'},
-                               {'edit.time': str(datetime.datetime.now())[11:19]}])
-            edit_xml = adlib.create_grouped_data(work_priref, 'Edit', [work_edit_data])
-            update_rec = adlib.post(CID_API, edit_xml, 'works', 'updaterecord', session)
-            LOGGER.info("Cast/credit data successfully updated to Work %s\n", work_priref)
+            work_edit_data = [
+                {"edit.date": TODAY_DATE},
+                {"edit.name": "datadigipres"},
+                {
+                    "edit.notes": "Automated cast and credit update from PATV augmented EPG metadata"
+                },
+                {"edit.time": str(datetime.datetime.now())[11:19]},
+            ]
+            edit_xml = adlib.create_grouped_data(work_priref, "Edit", [work_edit_data])
+            update_rec = adlib.post(CID_API, edit_xml, "works", "updaterecord", session)
+            LOGGER.info(
+                "Cast/credit data successfully updated to Work %s\n", work_priref
+            )
 
         rename(root, file, work_priref)
 
-    LOGGER.info("=============== END document_stora_castcred script END ===============\n")
+    LOGGER.info(
+        "=============== END document_stora_castcred script END ===============\n"
+    )
 
 
 def sort_cast_dct(cast_list):
-    '''
+    """
     Make up new cast dct ordered
-    '''
+    """
     cast_dct_update = []
     for item in cast_list:
-        cast_dct_update.append([
-            {'cast.name.lref': item[2]},
-            {'cast.credit_type': item[3]},
-            {'cast.credit_on_screen': item[4]},
-            {'cast.sequence': str(item[1])},
-            {'cast.sequence.sort': str(item[0])},
-            {'cast.section': '[normal cast]'}])
+        cast_dct_update.append(
+            [
+                {"cast.name.lref": item[2]},
+                {"cast.credit_type": item[3]},
+                {"cast.credit_on_screen": item[4]},
+                {"cast.sequence": str(item[1])},
+                {"cast.sequence.sort": str(item[0])},
+                {"cast.section": "[normal cast]"},
+            ]
+        )
 
     return cast_dct_update
 
 
 def sort_cred_dct(cred_list):
-    '''
+    """
     Make up new credit dct ordered
-    '''
+    """
     cred_dct_update = []
     for item in cred_list:
-        cred_dct_update.append([
-            {'credit.name.lref': item[2]},
-            {'credit.type': item[3]},
-            {'credit.sequence': str(item[1])},
-            {'credit.sequence.sort': str(item[0])},
-            {'credit.section': '[normal credit]'}])
+        cred_dct_update.append(
+            [
+                {"credit.name.lref": item[2]},
+                {"credit.type": item[3]},
+                {"credit.sequence": str(item[1])},
+                {"credit.sequence.sort": str(item[0])},
+                {"credit.section": "[normal credit]"},
+            ]
+        )
 
     return cred_dct_update
 
 
 def append_activity_type(person_priref, old_act_type, activity_type, session):
-    '''
+    """
     Append activity type to person record if different
-    '''
-    act_type = [{'activity_type': activity_type}]
+    """
+    act_type = [{"activity_type": activity_type}]
     if old_act_type:
         for act in old_act_type:
-            act_type.append({'activity_type': act})
+            act_type.append({"activity_type": act})
 
     # Convert dict to xml using adlib
     print(act_type)
-    xml = adlib.create_record_data(CID_API, 'people', session, person_priref, act_type)
+    xml = adlib.create_record_data(CID_API, "people", session, person_priref, act_type)
     if xml:
         print(xml)
     else:
@@ -830,26 +1040,30 @@ def append_activity_type(person_priref, old_act_type, activity_type, session):
 
     # Create basic person record
     try:
-        LOGGER.info("Attempting to append activity type to Person record %s", person_priref)
-        record = adlib.post(CID_API, xml, 'people', 'updaterecord', session)
+        LOGGER.info(
+            "Attempting to append activity type to Person record %s", person_priref
+        )
+        record = adlib.post(CID_API, xml, "people", "updaterecord", session)
         if record is None:
             print("Unable to write activity type to Person record")
             return False
         return True
     except Exception as err:
-        if 'bool' in str(err):
-            LOGGER.critical('append_activity_type():Unable to update People record', err)
+        if "bool" in str(err):
+            LOGGER.critical(
+                "append_activity_type():Unable to update People record", err
+            )
             print(f"*** Unable to update activity_type to People record - error: {err}")
             return False
         print(f"*** Unable to update People record: {err}")
-        LOGGER.critical('append_activity_type():Unable to update People record', err)
+        LOGGER.critical("append_activity_type():Unable to update People record", err)
         raise
 
 
 def make_person_dct(dct=None):
-    '''
+    """
     Make a new person dct with supplied data
-    '''
+    """
     if dct is None:
         dct = []
         LOGGER.warning("make_person_dct(): Credit dictionary not received")
@@ -862,68 +1076,70 @@ def make_person_dct(dct=None):
         formatted_name = firstname_split(value[1])
         # Making person dictionary
         credit_dct.append({"name": f"{formatted_name}"})
-        credit_dct.append({'name.type': 'CASTCREDIT'})
-        credit_dct.append({'name.type': 'PERSON'})
-        credit_dct.append({'name.status': '5'})
+        credit_dct.append({"name.type": "CASTCREDIT"})
+        credit_dct.append({"name.type": "PERSON"})
+        credit_dct.append({"name.status": "5"})
         if len(value[2]) > 0:
-            credit_dct.append({'birth.date.start': value[2]})
+            credit_dct.append({"birth.date.start": value[2]})
         if len(value[3]) > 0:
-            credit_dct.append({'death.date.start': value[3]})
+            credit_dct.append({"death.date.start": value[3]})
         if len(value[4]) > 0:
-            credit_dct.append({'birth.place': value[4]})
+            credit_dct.append({"birth.place": value[4]})
         if len(value[5]) > 0:
-            credit_dct.append({'gender': value[5]})
-        credit_dct.append({'party.class': 'PERSON'})
-        credit_dct.append({'alternative_number': value[0]})
-        credit_dct.append({'alternative_number.type': 'PATV Person ID'})
-        credit_dct.append({'utb.content': value[0]})
-        credit_dct.append({'utb.fieldname': 'PATV Person ID'})
+            credit_dct.append({"gender": value[5]})
+        credit_dct.append({"party.class": "PERSON"})
+        credit_dct.append({"alternative_number": value[0]})
+        credit_dct.append({"alternative_number.type": "PATV Person ID"})
+        credit_dct.append({"utb.content": value[0]})
+        credit_dct.append({"utb.fieldname": "PATV Person ID"})
 
         # Key definition conversion using dictionary
         for k, v in contributors.items():
             if key == k:
-                credit_dct.append({'activity_type': v[1]})
+                credit_dct.append({"activity_type": v[1]})
         for k, v in production.items():
             if key == k:
-                credit_dct.append({'activity_type': v[1]})
-        credit_dct.append({'record_access.user': 'BFIiispublic'})
-        credit_dct.append({'record_access.rights': '0'})
-        credit_dct.append({'record_access.reason': 'SENSITIVE_LEGAL'})
-        credit_dct.append({'input.name': 'datadigipres'})
-        credit_dct.append({'input.notes': 'Automated creation from PATV augmented EPG metadata'})
-        credit_dct.append({'input.time': str(datetime.datetime.now())[11:19]})
-        credit_dct.append({'input.date': TODAY_DATE})
+                credit_dct.append({"activity_type": v[1]})
+        credit_dct.append({"record_access.user": "BFIiispublic"})
+        credit_dct.append({"record_access.rights": "0"})
+        credit_dct.append({"record_access.reason": "SENSITIVE_LEGAL"})
+        credit_dct.append({"input.name": "datadigipres"})
+        credit_dct.append(
+            {"input.notes": "Automated creation from PATV augmented EPG metadata"}
+        )
+        credit_dct.append({"input.time": str(datetime.datetime.now())[11:19]})
+        credit_dct.append({"input.date": TODAY_DATE})
         try:
-            known_for = codecs.decode(str(value[6]), 'unicode_escape')
+            known_for = codecs.decode(str(value[6]), "unicode_escape")
         except (KeyError, IndexError):
-            known_for = ''
+            known_for = ""
         try:
-            early_life = codecs.decode(str(value[8]), 'unicode_escape')
+            early_life = codecs.decode(str(value[8]), "unicode_escape")
         except (KeyError, IndexError):
-            early_life = ''
+            early_life = ""
         try:
-            biography = codecs.decode(str(value[7]), 'unicode_escape')
+            biography = codecs.decode(str(value[7]), "unicode_escape")
         except (KeyError, IndexError):
-            biography = ''
+            biography = ""
         try:
-            trivia = codecs.decode(str(value[9]), 'unicode_escape')
+            trivia = codecs.decode(str(value[9]), "unicode_escape")
         except (KeyError, IndexError):
-            trivia = ''
+            trivia = ""
 
     return (credit_dct, known_for, early_life, biography, trivia)
 
 
 def make_person_record(session, credit_dct=None):
-    '''
+    """
     Where person record does not exist create new one
     and return priref for person for addition to work record
-    '''
+    """
     if credit_dct is None:
         credit_dct = []
         LOGGER.warning("make_person_record(): Person record dictionary not received")
 
     # Convert dict to xml using adlib
-    credit_xml = adlib.create_record_data(CID_API, 'people', session, '', credit_dct)
+    credit_xml = adlib.create_record_data(CID_API, "people", session, "", credit_dct)
     if credit_xml:
         print("*************************")
         print(credit_xml)
@@ -933,12 +1149,12 @@ def make_person_record(session, credit_dct=None):
     # Create basic person record
     LOGGER.info("Attempting to create Person record for item")
     try:
-        record = adlib.post(CID_API, credit_xml, 'people', 'insertrecord', session)
+        record = adlib.post(CID_API, credit_xml, "people", "insertrecord", session)
     except (IndexError, TypeError, KeyError) as err:
-        LOGGER.critical('make_person_record():Unable to create People record', err)
+        LOGGER.critical("make_person_record():Unable to create People record", err)
         return None
     try:
-        credit_priref = adlib.retrieve_field_name(record, 'priref')[0]
+        credit_priref = adlib.retrieve_field_name(record, "priref")[0]
         if not credit_priref:
             print("Unable to write Person record")
             return None
@@ -948,11 +1164,11 @@ def make_person_record(session, credit_dct=None):
 
 
 def rename(root, file, info):
-    '''
+    """
     Rename {filename}.json.documented
     to {filename}.json.documented_castcred
     Confirm success
-    '''
+    """
     fullpath = os.path.join(root, file)
     new_fname = f"{file}_castcred"
     new_path = os.path.join(root, new_fname)
@@ -964,56 +1180,60 @@ def rename(root, file, info):
 
 
 def create_payload(priref: str, known_for, early_life, bio, trivia):
-    '''
+    """
     Take string blocks and wrap in xml for appending to CID person record
-    '''
+    """
     payload = []
-    payload1, payload2, payload4 = '', '', ''
+    payload1, payload2, payload4 = "", "", ""
     payload_head = f'<adlibXML><recordList><record priref="{priref}">'
     payload = payload_head
 
     if len(known_for) > 0 and len(early_life) > 0:
         string1 = f"Best known for: {known_for} "
         string2 = f"{early_life}"
-        payload1 = f'<name.note><![CDATA[{string1}{string2}]]></name.note>'
+        payload1 = f"<name.note><![CDATA[{string1}{string2}]]></name.note>"
         payload = payload + payload1
     elif len(known_for) > 0 and len(early_life) == 0:
         string1 = f"Best known for: {known_for}"
-        payload1 = f'<name.note><![CDATA[{string1}]]></name.note>'
+        payload1 = f"<name.note><![CDATA[{string1}]]></name.note>"
         payload = payload + payload1
     elif len(known_for) == 0 and len(early_life) > 0:
         string2 = f"Best known for: {early_life}"
-        payload1 = f'<name.note><![CDATA[{string2}]]></name.note>'
+        payload1 = f"<name.note><![CDATA[{string2}]]></name.note>"
         payload = payload + payload1
     if len(bio) > 0:
-        payload2 = f'<biography><![CDATA[{bio}]]></biography>'
+        payload2 = f"<biography><![CDATA[{bio}]]></biography>"
         payload = payload + payload2
     if len(trivia) > 0:
         string4 = f"Trivia: {trivia}"
-        payload4 = f'<general_context><![CDATA[{string4}]]></general_context>'
+        payload4 = f"<general_context><![CDATA[{string4}]]></general_context>"
         payload = payload + payload4
 
-    payload_tail = '</record></recordList></adlibXML>'
+    payload_tail = "</record></recordList></adlibXML>"
     payload = payload + payload_tail
     return payload
 
 
 def write_payload(payload: str, person_priref: str, session: requests.Session) -> bool:
-    '''
+    """
     Removed from main to avoid repetition
-    '''
-    print('Sending POST request to people database to lock record')
+    """
+    print("Sending POST request to people database to lock record")
 
     try:
-        record = adlib.post(CID_API, payload, 'people', 'updaterecord', session)
+        record = adlib.post(CID_API, payload, "people", "updaterecord", session)
         print(record)
     except Exception as err:
-        LOGGER.warning("write_payload(): WRITE TO CID PERSON RECORD %s FAILED:\n%s", person_priref, err)
+        LOGGER.warning(
+            "write_payload(): WRITE TO CID PERSON RECORD %s FAILED:\n%s",
+            person_priref,
+            err,
+        )
     if "error" in str(record):
         return False
     else:
         return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

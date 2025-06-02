@@ -32,24 +32,24 @@ If you would like to download and try some of the scripts in this repository the
 For more information visit the [Python VENV installation page.](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/)
 You may need to upgrade your version of pip before proceeding.
 
-`python3 -m pip install --user virtualenv`  
-`python3 -m venv ENV`  
-`source ENV/bin/activate`  
+`python3 -m pip install --user virtualenv`
+`python3 -m venv ENV`
+`source ENV/bin/activate`
 
 Once you've activated your ENV you can safely start to install the Python dependencies for the scripts in this repository.
 
 ### Install dependencies
-`python3 -m pip install requests`  
-`python3 -m pip install tenacity`  
-`python3 -m pip install dicttoxml`  
-`python3 -m pip install lxml`  
-`python3 -m pip install pytz`  
-`python3 -m pip install python-magic`  
+`python3 -m pip install requests`
+`python3 -m pip install tenacity`
+`python3 -m pip install dicttoxml`
+`python3 -m pip install lxml`
+`python3 -m pip install pytz`
+`python3 -m pip install python-magic`
 
 
 # Usage
 
-To use this code base for your own tests you will need to install dependencies required for each script. We recommend all Python dependencies are installed into a virtual environment (please see guide above). If installing open-source software that relies on FFmpeg then you should installed FFmpeg first before installing following packages. We recommend using Package Managers for easy install of open-source software, when supported. For Windows you can use https://chocolatey.org/install, and for Unix you can use https://brew.sh/.  
+To use this code base for your own tests you will need to install dependencies required for each script. We recommend all Python dependencies are installed into a virtual environment (please see guide above). If installing open-source software that relies on FFmpeg then you should installed FFmpeg first before installing following packages. We recommend using Package Managers for easy install of open-source software, when supported. For Windows you can use https://chocolatey.org/install, and for Unix you can use https://brew.sh/.
 
 This is live code so changes will be made to it frequently and as a result some bugs might appear from time to time! Please use this code in a save environment away from preservation critical workflows and files. Always grateful for feedback or suggestions so do get in touch! Thank you!
 
@@ -63,20 +63,20 @@ These scripts are available under the MIT licence. They are live code and theref
 
 # Script Overview
 
-The scripts are divided into different sub-directories to group together all scripts that together achieve an objective. A short overview of the directory is provided, followed by a brief description of each script and their relationship, if any. Please visit the scripts themselves for detailed information - found in the comments within the code.  
+The scripts are divided into different sub-directories to group together all scripts that together achieve an objective. A short overview of the directory is provided, followed by a brief description of each script and their relationship, if any. Please visit the scripts themselves for detailed information - found in the comments within the code.
 
-Any additional software/hardware needed for the operation of the scripts within their directory will be quickly noted at the top of each directory, if different to those listed in the [Install dependencies](###-Install-dependencies) section.  
+Any additional software/hardware needed for the operation of the scripts within their directory will be quickly noted at the top of each directory, if different to those listed in the [Install dependencies](###-Install-dependencies) section.
 
 ## access_copy_creation
 
 This directory contains the code that creates low-bitrate access copies of all video and image preservation master files ingested into the BFI National Archive's Digital Preservation Infrastructure (DPI). There are two Python scripts and two Bash launch scripts. They are generally identical but one set of scripts runs in our off-air TV recording context - which generates approximately 500 video files a day, and has different features to accommodate this.
 
-Dependencies:  
-[FFmpeg open-source video encoder/decoder, muxer and streaming tool.](https://ffmpeg.org)  
+Dependencies:
+[FFmpeg open-source video encoder/decoder, muxer and streaming tool.](https://ffmpeg.org)
 [GNU Parallel, parallelisation tool to maximise encoding throughput.](https://www.gnu.org/software/parallel/)
-[MediaInfo from Media Area. Open-source metadata extractor.](https://mediaarea.net/mediainfo)  
-[MediaConch from Media Area. Metadata compliance checker.](https://mediaarea.net/mediaconch)  
-[Graphic Magick image manipulation tool with CLI.](http://www.graphicsmagick.org/download.html)   
+[MediaInfo from Media Area. Open-source metadata extractor.](https://mediaarea.net/mediainfo)
+[MediaConch from Media Area. Metadata compliance checker.](https://mediaarea.net/mediaconch)
+[Graphic Magick image manipulation tool with CLI.](http://www.graphicsmagick.org/download.html)
 
 ### mp4_transcode_launch_script.sh / mp4_transcode_launch_script_stora.sh
 
@@ -91,8 +91,8 @@ For video source files, these scripts create one H.264 MP4 video rendition for v
 
 This directory contains scripts that directly interact with Black Pearl, a RESTful API gateway to the Spectra Logic data tape libraries used for long-term preservation storage in the BFI National Archive's Digital Preservation Infrastructure. To communicate they use the Spectra Logic Python SDK, a wrapper for the Spectra Logic DS3 Application Programming Interface (API) - link below. These scripts handle the writing of files to tape, the retrieval of information from the Black Pearl's database, and download of files from data tape. They manage deletion of files in the local network after bit-perfect storage to data tape - confirmed with MD5 checksum comparison. The associated download request scripts can be found in the [dpi_downloader and dpi_downloader_elastic_search](##-dpi_downloader-and-dpi_downloader_elastic_search) directories.
 
-Dependencies:  
-[Python DS3 SDK for SpectraLogic Black Pearl data tape library interactions.](https://github.com/SpectraLogic/ds3_python_sdk)  
+Dependencies:
+[Python DS3 SDK for SpectraLogic Black Pearl data tape library interactions.](https://github.com/SpectraLogic/ds3_python_sdk)
 
 
 ## document_en_15907

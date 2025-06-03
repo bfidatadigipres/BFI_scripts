@@ -31,9 +31,9 @@ import adlib
 import utils
 
 # Global variables
-LOGS = os.environ['LOG_PATH']
-LOG_PATH = os.path.join(LOGS, 'splitting_models.log')
-DPI_PATH = os.environ['DPI_API']
+LOGS = os.environ["LOG_PATH"]
+LOG_PATH = os.path.join(LOGS, "splitting_models.log")
+DPI_PATH = os.environ["DPI_API"]
 CID_API = utils.get_current_api()
 CID = adlib.Database(url=CID_API)
 

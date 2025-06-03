@@ -8,6 +8,7 @@ import base64
 import json
 import os
 import sys
+
 import requests
 
 LOCATION = os.environ.get("AM_TS_UUID")  # Transfer source
@@ -122,5 +123,3 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
     except ValueError:
         print("Response not supplied in JSON format")
         print(f"Response as text:\n{response.text}")
-
-

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import csv
-import os
-import pytest
 import io
 import json
+import os
 import subprocess
 import sys
 
@@ -596,32 +595,37 @@ def test_check_global_logs(filename, message, expected_output):
 
     assert result == expected_output
 
+
 def test_probe_metadata():
-    result = utils.probe_metadata('height', 'video', 'tests/MKV_sample.mkv')
+    result = utils.probe_metadata("height", "video", "tests/MKV_sample.mkv")
 
     # assert the file type to expected -> true
     assert result == 576
 
 
 def test_checksum_write(tmp_path):
-    checksum_filepath = tmp_path / 'sample.md5'
+    checksum_filepath = tmp_path / "sample.md5"
 
-    path = utils.checksum_write(checksum_filepath, '...','filename.mkv', '2025-05-14')
+    path = utils.checksum_write(checksum_filepath, "...", "filename.mkv", "2025-05-14")
 
     assert path == checksum_filepath
     assert checksum_filepath.exists()
 
-@pytest.mark.parametrize ("arg, output_type, out_pth_ext",
-        [
-           ('', 'XML', '.xml'),
-           ('', 'EBUCore', '.xml'),
-           ('', 'PBCore', '.xml'),
-           ('', 'TEXT', '.txt'),
-           ('-f', 'TEXT', '_FULL.txt'),
-           ('-f', 'JSON', '.json')
-         ]
+
+@pytest.mark.parametrize(
+    "arg, output_type, out_pth_ext",
+    [
+        ("", "XML", ".xml"),
+        ("", "EBUCore", ".xml"),
+        ("", "PBCore", ".xml"),
+        ("", "TEXT", ".txt"),
+        ("-f", "TEXT", "_FULL.txt"),
+        ("-f", "JSON", ".json"),
+    ],
 )
-def test_mediainfo_create(mocker, arg, create_mediainfo_folder, output_type, out_pth_ext):
+def test_mediainfo_create(
+    mocker, arg, create_mediainfo_folder, output_type, out_pth_ext
+):
     filename = os.path.basename(create_mediainfo_folder)
     dirname = os.path.dirname(create_mediainfo_folder)
     out_filename = f"{filename}_{output_type}{out_pth_ext}"
@@ -634,7 +638,9 @@ def test_mediainfo_create(mocker, arg, create_mediainfo_folder, output_type, out
             f.write("<xml>dummy</xml>")
         return 0
 
-    mocker_subprocess = mocker.patch("subprocess.call", side_effect=fake_subprocess_call)
+    mocker_subprocess = mocker.patch(
+        "subprocess.call", side_effect=fake_subprocess_call
+    )
 
     result = utils.mediainfo_create(arg, output_type, create_mediainfo_folder, dirname)
 
@@ -642,105 +648,115 @@ def test_mediainfo_create(mocker, arg, create_mediainfo_folder, output_type, out
     assert result == out_path
     assert os.path.getsize(result) > 0
     if arg:
-        mocker_subprocess.assert_called_once_with([
-            'mediainfo',
-            arg,
-            '--Details=0',
-            f'--Output={output_type}',
-            f'--LogFile={out_path}',
-            create_mediainfo_folder
-    ])
+        mocker_subprocess.assert_called_once_with(
+            [
+                "mediainfo",
+                arg,
+                "--Details=0",
+                f"--Output={output_type}",
+                f"--LogFile={out_path}",
+                create_mediainfo_folder,
+            ]
+        )
     else:
-        mocker_subprocess.assert_called_once_with([
-                'mediainfo',
-                '--Details=0',
-                f'--Output={output_type}',
-                f'--LogFile={out_path}',
-                create_mediainfo_folder
-        ])
+        mocker_subprocess.assert_called_once_with(
+            [
+                "mediainfo",
+                "--Details=0",
+                f"--Output={output_type}",
+                f"--LogFile={out_path}",
+                create_mediainfo_folder,
+            ]
+        )
 
-@pytest.mark.parametrize("fpath, fname, expected_results", 
-[
-    ("tests/", "MKV_sample.mkv", "tests/MKV_sample.mkv"),
-    ("tests/", "non_existent_file.txt", None),
-    ("no_existing_folder/","file_exists.md5", None),
-]
+
+@pytest.mark.parametrize(
+    "fpath, fname, expected_results",
+    [
+        ("tests/", "MKV_sample.mkv", "tests/MKV_sample.mkv"),
+        ("tests/", "non_existent_file.txt", None),
+        ("no_existing_folder/", "file_exists.md5", None),
+    ],
 )
 def test_local_file_search(fpath, fname, expected_results):
     outcome = utils.local_file_search(fpath, fname)
 
     assert outcome == expected_results
 
+
 def test_send_email(mocker, writing_csv):
-      
+
     # create an file
     mock_smtp = mocker.patch("smtplib.SMTP_SSL", autospec=True)
     mock_smtp_instance = mocker.MagicMock()
     mock_smtp.return_value.__enter__.return_value = mock_smtp_instance
 
-    mocker.patch('utils.EMAIL', 'test@bfi.org.uk')
-    mocker.patch('utils.PASSWORD', 'dumb_pass')
-    mocker.patch('utils.SMTP_SERVER', 'smtp.test.com')
-    mocker.patch('utils.SMTP_PORT', 465)
+    mocker.patch("utils.EMAIL", "test@bfi.org.uk")
+    mocker.patch("utils.PASSWORD", "dumb_pass")
+    mocker.patch("utils.SMTP_SERVER", "smtp.test.com")
+    mocker.patch("utils.SMTP_PORT", 465)
 
-    utils.send_email('reciver@email.com', 'Test subject', 'Test_body', writing_csv)
-    mock_smtp_instance.login.assert_called_once_with("test@bfi.org.uk", 'dumb_pass')
+    utils.send_email("reciver@email.com", "Test subject", "Test_body", writing_csv)
+    mock_smtp_instance.login.assert_called_once_with("test@bfi.org.uk", "dumb_pass")
     mock_smtp_instance.sendmail.assert_called_once()
     args = mock_smtp_instance.sendmail.call_args[0]
-    assert 'Test subject' in args[2]
+    assert "Test subject" in args[2]
+
 
 def test_send_email_oversized(mocker, oversized_file):
-      
+
     # create an file
     mock_smtp = mocker.patch("smtplib.SMTP_SSL", autospec=True)
     mock_smtp_instance = mocker.MagicMock()
     mock_smtp.return_value.__enter__.return_value = mock_smtp_instance
 
-    mocker.patch('utils.EMAIL', 'test@bfi.org.uk')
-    mocker.patch('utils.PASSWORD', 'dumb_pass')
-    mocker.patch('utils.SMTP_SERVER', 'smtp.test.com')
-    mocker.patch('utils.SMTP_PORT', 465)
+    mocker.patch("utils.EMAIL", "test@bfi.org.uk")
+    mocker.patch("utils.PASSWORD", "dumb_pass")
+    mocker.patch("utils.SMTP_SERVER", "smtp.test.com")
+    mocker.patch("utils.SMTP_PORT", 465)
 
-    utils.send_email('reciver@email.com', 'Test subject', 'Test_body', oversized_file)
-    mock_smtp_instance.login.assert_called_once_with("test@bfi.org.uk", 'dumb_pass')
+    utils.send_email("reciver@email.com", "Test subject", "Test_body", oversized_file)
+    mock_smtp_instance.login.assert_called_once_with("test@bfi.org.uk", "dumb_pass")
     mock_smtp_instance.sendmail.assert_called_once()
     args = mock_smtp_instance.sendmail.call_args[0]
-    assert 'Test subject' in args[2]
+    assert "Test subject" in args[2]
+
 
 def test_send_email_txt(mocker, writing_txt):
-    '''
-    ''' 
+    """ """
     # create an file
     mock_smtp = mocker.patch("smtplib.SMTP_SSL", autospec=True)
     mock_smtp_instance = mocker.MagicMock()
     mock_smtp.return_value.__enter__.return_value = mock_smtp_instance
 
-    mocker.patch('utils.EMAIL', 'test@bfi.org.uk')
-    mocker.patch('utils.PASSWORD', 'dumb_pass')
-    mocker.patch('utils.SMTP_SERVER', 'smtp.test.com')
-    mocker.patch('utils.SMTP_PORT', 465)
+    mocker.patch("utils.EMAIL", "test@bfi.org.uk")
+    mocker.patch("utils.PASSWORD", "dumb_pass")
+    mocker.patch("utils.SMTP_SERVER", "smtp.test.com")
+    mocker.patch("utils.SMTP_PORT", 465)
 
-    utils.send_email('reciver@email.com', 'Test subject', 'Test_body', writing_txt)
-    mock_smtp_instance.login.assert_called_once_with("test@bfi.org.uk", 'dumb_pass')
+    utils.send_email("reciver@email.com", "Test subject", "Test_body", writing_txt)
+    mock_smtp_instance.login.assert_called_once_with("test@bfi.org.uk", "dumb_pass")
     mock_smtp_instance.sendmail.assert_called_once()
     args = mock_smtp_instance.sendmail.call_args[0]
-    assert 'Test subject' in args[2]
+    assert "Test subject" in args[2]
+
 
 def test_get_current_api_failed(mocker):
-    '''
+    """
     testing get_current_api() function in utils where the json file doesnt exists
-    '''
-    mocker.patch('json.load', side_effect=FileNotFoundError)
+    """
+    mocker.patch("json.load", side_effect=FileNotFoundError)
 
     result = utils.get_current_api()
 
     assert result is None
 
+
 def test_get_current_api_no_env(mocker):
-    '''
+    """
     testing get_current_api() function in utils where the environmental variable
     doesnt exists
-    '''
+    """
     fake_json = {"current_api": "MY_API_KEYT"}
 
     mocker_control_json = io.StringIO(json.dumps(fake_json))
@@ -749,10 +765,11 @@ def test_get_current_api_no_env(mocker):
     result = utils.get_current_api()
     assert result is None
 
+
 def test_get_current_api_found(mocker):
-    '''
+    """
     testing get_current_api() function in utils
-    '''
+    """
     fake_json = {"current_api": "MY_API_KEYT"}
     mocker.patch(os.environ, {"MY_API_KEYT": "dummy_data"})
 

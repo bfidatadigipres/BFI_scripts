@@ -51,7 +51,7 @@ def send_as_transfer(fpath, priref):
         "paths[]": [encoded_path],
         "rows_id[]": [""],
     }
-
+    print(data_payload)
     print(f"Starting transfer... to {TRANSFER_NAME} {rel_path}")
     try:
         response = requests.post(TRANSFER_ENDPOINT, headers=headr, data=data_payload)

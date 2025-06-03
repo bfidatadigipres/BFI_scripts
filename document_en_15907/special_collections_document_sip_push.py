@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Script for testing Archivematica writes
 of SIP data
@@ -7,7 +8,6 @@ import base64
 import json
 import os
 import sys
-
 import requests
 
 LOCATION = os.environ.get("AM_TS_UUID")  # Transfer source
@@ -18,7 +18,6 @@ if not ARCH_URL or not API_NAME or not API_KEY:
     sys.exit(
         "Error: Please set AM_URL, AM_API (username), and AM_KEY (API key) environment variables."
     )
-
 TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
 PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package/")
 TRANSFER_NAME = "API Tests"
@@ -125,25 +124,3 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
         print(f"Response as text:\n{response.text}")
 
 
-if __name__ == "__main__":
-    # Dummy values for demonstration
-    test_file_path = (
-        "/path/to/your/test_file.txt"  # Replace with a real path on your system
-    )
-    dummy_priref = "12345"
-    dummy_access_system_id = "your-atom-slug"
-    dummy_auto_approve = True
-
-    # Example for send_as_transfer
-    # print("\n--- Testing send_as_transfer ---")
-    # send_as_transfer(test_file_path, dummy_priref)
-
-    # Example for send_as_package
-    # print("\n--- Testing send_as_package ---")
-    # send_as_package(test_file_path, dummy_access_system_id, dummy_auto_approve)
-
-    print("\nScript setup complete. Remember to uncomment function calls to test.")
-    print(
-        "Ensure 'LOCATION' variable is set to a valid Archivematica transfer source UUID."
-    )
-    print("Ensure environment variables AM_URL, AM_API, AM_KEY are set.")

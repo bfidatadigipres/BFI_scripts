@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''
+"""
 USES SYS.ARGV[] to receive path to item for TAR.
 Complete TAR wrapping using Python3 tarfile
 on folder or file supplied in tar watch folder.
@@ -21,41 +21,41 @@ Steps:
        for retry at later date.
 
 2022
-'''
+"""
 
-import os
-import sys
-import json
-import shutil
-import tarfile
-import logging
-import hashlib
 import datetime
+import hashlib
+import json
+import logging
+import os
+import shutil
+import sys
+import tarfile
 from typing import Final, Optional
 
-sys.path.append(os.environ['CODE'])
+sys.path.append(os.environ["CODE"])
 import utils
 
 # Global paths
-LOCAL_PATH: Final = os.environ['FILM_OPS']
-AUTO_TAR: Final = os.path.join(LOCAL_PATH, 'automation_tar')
-AUTOINGEST: Final = os.path.join(LOCAL_PATH, 'Finished', os.environ['AUTOINGEST_STORE'])
-LOG: Final = os.path.join(os.environ['LOG_PATH'], 'tar_wrapping_check_film_ops.log')
+LOCAL_PATH: Final = os.environ["FILM_OPS"]
+AUTO_TAR: Final = os.path.join(LOCAL_PATH, "automation_tar")
+AUTOINGEST: Final = os.path.join(LOCAL_PATH, "Finished", os.environ["AUTOINGEST_STORE"])
+LOG: Final = os.path.join(os.environ["LOG_PATH"], "tar_wrapping_check_film_ops.log")
 
 # Logging config
-LOGGER = logging.getLogger('tar_wrapping_check_film_ops')
+LOGGER = logging.getLogger("tar_wrapping_check_film_ops")
 hdlr = logging.FileHandler(LOG)
-formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 LOGGER.addHandler(hdlr)
 LOGGER.setLevel(logging.INFO)
 
 
 def tar_file(fpath: str) -> Optional[str]:
-    '''
+    """
     Make tar path from supplied filepath
     Use tarfile to create TAR
-    '''
+    """
     split_path = os.path.split(fpath)
     tfile = f"{split_path[1]}.tar"
     tar_path = os.path.join(split_path[0], tfile)
@@ -64,7 +64,7 @@ def tar_file(fpath: str) -> Optional[str]:
         return None
 
     try:
-        tarring = tarfile.open(tar_path, 'w:')
+        tarring = tarfile.open(tar_path, "w:")
         tarring.add(fpath, arcname=f"{split_path[1]}")
         tarring.close()
         return tar_path
@@ -76,10 +76,10 @@ def tar_file(fpath: str) -> Optional[str]:
 
 
 def get_tar_checksums(tar_path: str, folder) -> dict[str, str]:
-    '''
+    """
     Open tar file and read/generate MD5 sums
     and return dct {filename: hex}
-    '''
+    """
     data = {}
     tar = tarfile.open(tar_path, "r|")
 
@@ -89,15 +89,17 @@ def get_tar_checksums(tar_path: str, folder) -> dict[str, str]:
             continue
 
         pth, fname = os.path.split(item_name)
-        if fname in ['ASSETMAP','VOLINDEX']:
+        if fname in ["ASSETMAP", "VOLINDEX"]:
             folder_prefix = os.path.basename(pth)
-            fname = f'{folder_prefix}_{fname}'
+            fname = f"{folder_prefix}_{fname}"
         print(item_name, fname, item)
 
         try:
             f = tar.extractfile(item)
         except Exception as exc:
-            LOGGER.warning("get_tar_checksums(): Unable to extract from tar file\n%s", exc)
+            LOGGER.warning(
+                "get_tar_checksums(): Unable to extract from tar file\n%s", exc
+            )
             continue
 
         hash_md5 = hashlib.md5()
@@ -114,17 +116,17 @@ def get_tar_checksums(tar_path: str, folder) -> dict[str, str]:
 
 
 def get_checksum(fpath: str) -> dict[str, str]:
-    '''
+    """
     Using file path, generate file checksum
     return as list with filename
-    '''
+    """
     data = {}
     pth, file = os.path.split(fpath)
-    if file in ['ASSETMAP','VOLINDEX']:
+    if file in ["ASSETMAP", "VOLINDEX"]:
         folder_prefix = os.path.basename(pth)
-        file = f'{folder_prefix}_{file}'
+        file = f"{folder_prefix}_{file}"
     hash_md5 = hashlib.md5()
-    with open(fpath, 'rb') as f:
+    with open(fpath, "rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
             hash_md5.update(chunk)
         data[file] = hash_md5.hexdigest()
@@ -133,13 +135,13 @@ def get_checksum(fpath: str) -> dict[str, str]:
 
 
 def make_manifest(tar_path: str, md5_dct: dict[str, str]) -> str:
-    '''
+    """
     Output md5 to JSON file format and add to TAR file
-    '''
+    """
     md5_path = f"{tar_path}_manifest.md5"
 
     try:
-        with open(md5_path, 'w+') as json_file:
+        with open(md5_path, "w+") as json_file:
             json_file.write(json.dumps(md5_dct, indent=4))
             json_file.close()
     except Exception as exc:
@@ -150,17 +152,17 @@ def make_manifest(tar_path: str, md5_dct: dict[str, str]) -> str:
 
 
 def main():
-    '''
+    """
     Receive SYS.ARGV and check path exists or is file/folder
     Generate checksums for all folder contents/single file
     TAR Wrap, then make checksum for inside of TAR contents
     Compare checksum manifests, if match add into TAR and close.
     Delete original file, move TAR to autoingest path.
-    '''
+    """
 
-    if not utils.check_control('power_off_all'):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_control("power_off_all"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     if len(sys.argv) != 2:
         LOGGER.warning("SCRIPT EXIT: Error with shell script input:\n %s", sys.argv)
@@ -180,10 +182,10 @@ def main():
     tar_source = split_path[1]
 
     # Make paths for moving later
-    failures_path = os.path.join(AUTO_TAR, 'failures/')
-    delete_path = os.path.join(AUTO_TAR, 'to_delete/')
-    oversize_path = os.path.join(AUTO_TAR, 'oversize/')
-    checksum_path = os.path.join(AUTO_TAR, 'checksum_manifests/')
+    failures_path = os.path.join(AUTO_TAR, "failures/")
+    delete_path = os.path.join(AUTO_TAR, "to_delete/")
+    oversize_path = os.path.join(AUTO_TAR, "oversize/")
+    checksum_path = os.path.join(AUTO_TAR, "checksum_manifests/")
 
     # Calculate checksum manifest for supplied fullpath
     local_md5 = {}
@@ -192,7 +194,9 @@ def main():
         directory = True
 
     if directory:
-        files = [ x for x in os.listdir(fullpath) if os.path.isfile(os.path.join(fullpath, x)) ]
+        files = [
+            x for x in os.listdir(fullpath) if os.path.isfile(os.path.join(fullpath, x))
+        ]
         for root, _, files in os.walk(fullpath):
             LOGGER.info("Path is directory.")
             log.append("Path is directory.")
@@ -225,7 +229,7 @@ def main():
     if directory:
         tar_content_md5 = get_tar_checksums(tar_path, tar_source)
     else:
-        tar_content_md5 = get_tar_checksums(tar_path, '')
+        tar_content_md5 = get_tar_checksums(tar_path, "")
 
     log.append("Checksums from TAR wrapped contents:")
     LOGGER.info("Checksums for TAR wrapped contents:")
@@ -236,12 +240,14 @@ def main():
 
     # Compare manifests
     if local_md5 == tar_content_md5:
-        log.append("MD5 Manifests match, adding manifest to TAR file and moving to autoingest.")
+        log.append(
+            "MD5 Manifests match, adding manifest to TAR file and moving to autoingest."
+        )
         LOGGER.info("MD5 manifests match.")
         md5_manifest = make_manifest(tar_path, tar_content_md5)
         if not md5_manifest:
             LOGGER.warning("Failed to write TAR checksum manifest to JSON file.")
-            shutil.move(tar_path, os.path.join(failures_path, f'{tar_source}.tar'))
+            shutil.move(tar_path, os.path.join(failures_path, f"{tar_source}.tar"))
             for item in log:
                 local_logs(AUTO_TAR, item)
             sys.exit("Script exit: TAR file MD5 Manifest failed to create")
@@ -249,21 +255,26 @@ def main():
         LOGGER.info("TAR checksum manifest created. Adding to TAR file %s", tar_path)
         try:
             arc_path = os.path.split(md5_manifest)
-            tar = tarfile.open(tar_path, 'a:')
+            tar = tarfile.open(tar_path, "a:")
             tar.add(md5_manifest, arcname=f"{arc_path[1]}")
             tar.close()
         except Exception as exc:
-            LOGGER.warning("Unable to add MD5 manifest to TAR file. Moving TAR file to errors folder.\n%s", exc)
-            shutil.move(tar_path, os.path.join(failures_path, f'{tar_source}.tar'))
+            LOGGER.warning(
+                "Unable to add MD5 manifest to TAR file. Moving TAR file to errors folder.\n%s",
+                exc,
+            )
+            shutil.move(tar_path, os.path.join(failures_path, f"{tar_source}.tar"))
             # Write all log items in block
             for item in log:
                 local_logs(AUTO_TAR, item)
             sys.exit("Failed to add MD5 manifest To TAR file. Script exiting")
 
-        LOGGER.info("TAR MD5 manifest added to TAR file. Getting wholefile TAR checksum for logs")
+        LOGGER.info(
+            "TAR MD5 manifest added to TAR file. Getting wholefile TAR checksum for logs"
+        )
 
         # Get complete TAR wholefile Checksums for logs
-        tar_md5 = get_tar_checksums(tar_path, '')
+        tar_md5 = get_tar_checksums(tar_path, "")
         log.append(f"TAR checksum: {tar_md5} for TAR file: {tar_path}")
         LOGGER.info("TAR checksum: %s", tar_md5)
         # Get complete size of file following TAR wrap
@@ -271,11 +282,17 @@ def main():
         log.append(f"File size is {file_stats.st_size} bytes")
         LOGGER.info("File size is %s bytes.", file_stats.st_size)
         if file_stats.st_size > 1099511627770:
-            log.append("FILE IS TOO LARGE FOR INGEST TO BLACK PEARL. Moving to oversized folder path")
-            LOGGER.warning("MOVING TO OVERSIZE PATH: Filesize too large for ingest to DPI")
-            shutil.move(tar_path, os.path.join(oversize_path, f'{tar_source}.tar'))
+            log.append(
+                "FILE IS TOO LARGE FOR INGEST TO BLACK PEARL. Moving to oversized folder path"
+            )
+            LOGGER.warning(
+                "MOVING TO OVERSIZE PATH: Filesize too large for ingest to DPI"
+            )
+            shutil.move(tar_path, os.path.join(oversize_path, f"{tar_source}.tar"))
 
-        log.append("Moving TAR file to Autoingest, and moving source file to deletions path.")
+        log.append(
+            "Moving TAR file to Autoingest, and moving source file to deletions path."
+        )
         shutil.move(tar_path, AUTOINGEST)
         LOGGER.info("Moving original file to deletions folder: %s", fullpath)
         shutil.move(fullpath, os.path.join(delete_path, tar_source))
@@ -283,10 +300,14 @@ def main():
         shutil.move(md5_manifest, checksum_path)
 
     else:
-        LOGGER.warning("Manifests do not match.\nLocal:\n%s\nTAR:\n%s", local_md5, tar_content_md5)
+        LOGGER.warning(
+            "Manifests do not match.\nLocal:\n%s\nTAR:\n%s", local_md5, tar_content_md5
+        )
         LOGGER.warning("Moving TAR file to failures, leaving file/folder for retry.")
-        log.append("MD5 manifests do not match. Moving TAR file to failures folder for retry")
-        shutil.move(tar_path, os.path.join(failures_path, f'{tar_source}.tar'))
+        log.append(
+            "MD5 manifests do not match. Moving TAR file to failures folder for retry"
+        )
+        shutil.move(tar_path, os.path.join(failures_path, f"{tar_source}.tar"))
 
     log.append(f"==== Log actions complete: {fullpath} ====")
     # Write all log items in block
@@ -297,21 +318,21 @@ def main():
 
 
 def local_logs(fullpath: str, data: str) -> None:
-    '''
+    """
     Output local log data for team
     to monitor TAR wrap process
-    '''
-    local_log = os.path.join(fullpath, 'tar_wrapping_checksum.log')
+    """
+    local_log = os.path.join(fullpath, "tar_wrapping_checksum.log")
     timestamp = str(datetime.datetime.now())
 
     if not os.path.isfile(local_log):
-        with open(local_log, 'x') as log:
+        with open(local_log, "x") as log:
             log.close()
 
-    with open(local_log, 'a') as log:
+    with open(local_log, "a") as log:
         log.write(f"{timestamp[0:19]} - {data}\n")
         log.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

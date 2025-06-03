@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Fix C- N-prefix files in processing/segmented where CID Item creation has failed:
 1. Traverse subfolders in segmented folder
 2. find C- N- files
@@ -16,59 +16,63 @@ NOTE: Updated for Adlib V3
 
 June 2021
 Refactored 2023
-'''
+"""
 
+import glob
+import logging
 # Public imports
 import os
 import sys
-import glob
-import logging
 from datetime import datetime, timezone
+from typing import Any, Final, Optional
+
 import pytz
-from typing import Final, Optional, Any
 
 # Private imports
-sys.path.append(os.environ['CODE'])
-import adlib_v3 as adlib
-import utils
+sys.path.append(os.environ["CODE"])
 import document_item
 import models
 
+import adlib_v3 as adlib
+import utils
+
 # Logging
-LOGS: Final = os.environ['SCRIPT_LOG']
+LOGS: Final = os.environ["SCRIPT_LOG"]
 CID_API: Final = utils.get_current_api()
 
 # Setup logging, overwrite each time
-logger = logging.getLogger('split_mopup_segmented')
-hdlr = logging.FileHandler(os.path.join(LOGS, 'split_mopup_segmented.log'))
-formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+logger = logging.getLogger("split_mopup_segmented")
+hdlr = logging.FileHandler(os.path.join(LOGS, "split_mopup_segmented.log"))
+formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Targets (will look for 'segmented' subdirectory)
 TARGETS: Final = [
-    '/mnt/qnap_10/processing/',
-    '/mnt/qnap_02/processing/',
-    '/mnt/qnap_08/processing/',
-    '/mnt/qnap_08/memnon_processing/',
-    '/mnt/qnap_01/Public/F47/processing/'
+    "/mnt/qnap_10/processing/",
+    "/mnt/qnap_02/processing/",
+    "/mnt/qnap_08/processing/",
+    "/mnt/qnap_08/memnon_processing/",
+    "/mnt/qnap_01/Public/F47/processing/",
 ]
 
 
 def check_for_parts(ob_num: str) -> bool:
-    '''
+    """
     Call up CID for hits against
     part_of_reference for ob_num
-    '''
+    """
     search = f'part_of_reference="{ob_num}"'
-    hits, record = adlib.retrieve_record(CID_API, 'carriers', search, '0', ['object_number'])
+    hits, record = adlib.retrieve_record(
+        CID_API, "carriers", search, "0", ["object_number"]
+    )
     if not record or not hits:
-        logger.exception('CID check for carriers failed: %s', search)
+        logger.exception("CID check for carriers failed: %s", search)
         return False
     print(record[0])
-    if hits == 1 and 'object_number' in str(record[0]):
-        print(adlib.retrieve_field_name(record[0], 'object_number')[0])
+    if hits == 1 and "object_number" in str(record[0]):
+        print(adlib.retrieve_field_name(record[0], "object_number")[0])
         return True
     elif hits > 1:
         return "Model carrier check"
@@ -77,14 +81,14 @@ def check_for_parts(ob_num: str) -> bool:
 
 
 def check_media_record(fname: str) -> bool:
-    '''
+    """
     Check if CID media record
     already created for filename
-    '''
+    """
     search = f"imagen.media.original_filename='{fname}'"
-    hits = adlib.retrieve_record(CID_API, 'media', search, '0')[0]
+    hits = adlib.retrieve_record(CID_API, "media", search, "0")[0]
     if hits is None:
-        raise SystemExit(f'CID API cannot be reached using search: {search}')
+        raise SystemExit(f"CID API cannot be reached using search: {search}")
     if hits >= 1:
         return True
     else:
@@ -93,18 +97,20 @@ def check_media_record(fname: str) -> bool:
 
 
 def main():
-    '''
+    """
     Iterate targets looking for files that have not been
     renamed, check for CID item record, retrieve object
     number for naming. Check carriers dB for matching
     hits to source file name (N- C-). If hits == 1 then
     hardcode 01of01 filename. If hits > 1 use models.Carrier
     to generate part whole and print to log for test period
-    '''
+    """
     logger.info("======================== SPLIT MOPUP START ==========================")
-    if not utils.check_control('split_control_delete') or not utils.check_control('split_control_h22'):
-        logger.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_control("split_control_delete") or not utils.check_control(
+        "split_control_h22"
+    ):
+        logger.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         print("* Cannot establish CID session, exiting script")
         logger.critical("* Cannot establish CID session, exiting script")
@@ -114,9 +120,9 @@ def main():
     for media_target in TARGETS:
 
         # Path to source media
-        root = os.path.join(media_target, 'segmented')
+        root = os.path.join(media_target, "segmented")
         processing = os.path.split(media_target)[0]
-        autoingest = os.path.join(os.path.split(processing)[0], 'autoingest')
+        autoingest = os.path.join(os.path.split(processing)[0], "autoingest")
         print(f"** Targeting: {root}")
         logger.info("** Targeting: %s", root)
         logger.info("** Autoingest: %s", autoingest)
@@ -124,16 +130,16 @@ def main():
         # List files in recursive sub-directories
         files = []
         for directory, _, filenames in os.walk(root):
-            for filename in [f for f in filenames if f.startswith(('C-', 'N-'))]:
+            for filename in [f for f in filenames if f.startswith(("C-", "N-"))]:
                 files.append(os.path.join(directory, filename))
 
         # Process files sequentially
         for filepath in files:
             fpath, f = os.path.split(filepath)
             foldername = os.path.basename(fpath)
-            object_number, extension = f.split('.')
-            print(f'=== Current file: {filepath}')
-            logger.info('%s\tProcessing file\t%s', filepath, object_number)
+            object_number, extension = f.split(".")
+            print(f"=== Current file: {filepath}")
+            logger.info("%s\tProcessing file\t%s", filepath, object_number)
 
             # Test modified time of file against current date and time
             # Process file only if modified last 24 hrs ago
@@ -147,57 +153,80 @@ def main():
             diff = now - mod
             seconds = diff.seconds
             hours = (seconds / 60) // 60
-            logger.info('%s\tModified time is %s seconds ago. %s hours', filepath, seconds, hours)
-            print(f'{filepath}\tModified time is {seconds} seconds ago')
+            logger.info(
+                "%s\tModified time is %s seconds ago. %s hours",
+                filepath,
+                seconds,
+                hours,
+            )
+            print(f"{filepath}\tModified time is {seconds} seconds ago")
 
             if seconds < 36000:
-                logger.info('%s\tFile modified time is too recent, skipping file\t%s', filepath, os.path.basename(filepath))
-                print(f'{filepath}\tFile modified time is too recent, skipping file\t{f}')
+                logger.info(
+                    "%s\tFile modified time is too recent, skipping file\t%s",
+                    filepath,
+                    os.path.basename(filepath),
+                )
+                print(
+                    f"{filepath}\tFile modified time is too recent, skipping file\t{f}"
+                )
                 continue
 
             # Use object number to query CID and get existing / create new derived MKV Item
-            note = 'autocreated'
+            note = "autocreated"
             # New block to ensure correct grouping supplied for Item record creation
-            if '/mnt/qnap_10' in filepath or '/mnt/qnap_02' in filepath:
-                grouping = '398385'
+            if "/mnt/qnap_10" in filepath or "/mnt/qnap_02" in filepath:
+                grouping = "398385"
             else:
-                grouping = '397987'
+                grouping = "397987"
             try:
-                new_object = document_item.new_or_existing_no_segments_mopup(object_number, extension, grouping, note=note)
-                logger.info('%s\tGetting MKV CID Item ref for file: %s', filepath, object_number)
-                print(f'***** {filepath}\tGetting MKV CID Item ref for file: {object_number}')
+                new_object = document_item.new_or_existing_no_segments_mopup(
+                    object_number, extension, grouping, note=note
+                )
+                logger.info(
+                    "%s\tGetting MKV CID Item ref for file: %s", filepath, object_number
+                )
+                print(
+                    f"***** {filepath}\tGetting MKV CID Item ref for file: {object_number}"
+                )
             except Exception as err:
-                document_message = f'{filepath}\tFailed to get Matroska Item ref: {object_number}\t{err}'
+                document_message = f"{filepath}\tFailed to get Matroska Item ref: {object_number}\t{err}"
                 logger.warning(document_message)
                 print(document_message)
                 continue
 
             if not new_object:
-                object_message = f'{filepath}\tFailed to read object_number from MKV Item record'
+                object_message = (
+                    f"{filepath}\tFailed to read object_number from MKV Item record"
+                )
                 logger.warning(object_message)
                 print(object_message)
                 continue
 
-            logger.info("%s\tFound new object number using document_item.new_or_existing_no_segments_mopup: %s", filepath, new_object)
+            logger.info(
+                "%s\tFound new object number using document_item.new_or_existing_no_segments_mopup: %s",
+                filepath,
+                new_object,
+            )
 
             # Rename media object with N-* object_number and partWhole
-            new_object_under = new_object.replace('-', '_')
-            new_f = ''
+            new_object_under = new_object.replace("-", "_")
+            new_f = ""
 
             # Model identifier to obtain partWhole
             try:
                 i = models.PhysicalIdentifier(foldername)
                 logger.info(i)
                 style = i.type
-                logger.info('* Identifier is %s', style)
+                logger.info("* Identifier is %s", style)
             except Exception as err:
-                logger.warning('models.py error: %s\t%s\t%s', filepath, foldername, err)
+                logger.warning("models.py error: %s\t%s\t%s", filepath, foldername, err)
                 continue
             try:
                 carr = models.Carrier(**{style: foldername})
-                logger.info('* Carrier modelled ok')
+                logger.info("* Carrier modelled ok")
             except Exception as err:
-                logger.warning('models.py error: %s\t%s\t%s', filepath, foldername, err)
+                logger.warning("models.py error: %s\t%s\t%s", filepath, foldername, err)
                 print("Item parts couldn't be determined. Skipping")
                 logger.info("Item parts couldn't be determined from carrier. Skipping.")
                 continue
@@ -209,40 +238,69 @@ def main():
 
             part = str(carr.partwhole[0]).zfill(2)
             whole = str(carr.partwhole[1]).zfill(2)
-            logger.info("**** %s\tPart whole from model.Carriers: %s of %s", filepath, part, whole)
-            new_f = f'{new_object_under}_{part}of{whole}.{extension}'
+            logger.info(
+                "**** %s\tPart whole from model.Carriers: %s of %s",
+                filepath,
+                part,
+                whole,
+            )
+            new_f = f"{new_object_under}_{part}of{whole}.{extension}"
 
             # Check if filename already exists in CID/autoingest (don't rename if duplicate)
             check_result = check_media_record(new_f)
             if check_result is True:
                 logger.info("* Filename found to have persisted to DPI: %s", new_f)
-                logger.info("Deleting duplicate split file %s from folder: %s", f, fpath)
-                print(f"DELETING: Filename {new_f} persisted to BP, CID media record found")
+                logger.info(
+                    "Deleting duplicate split file %s from folder: %s", f, fpath
+                )
+                print(
+                    f"DELETING: Filename {new_f} persisted to BP, CID media record found"
+                )
                 os.remove(filepath)
                 continue
             match = glob.glob(f"{autoingest}/**/*/{new_f}", recursive=True)
             if new_f in str(match):
-                logger.info("* CID item record exists and file found in autoingest: %s", match[0])
-                logger.info("Deleting duplicate split file %s from folder: %s", f, fpath)
-                print(f"DELETING: CID item record exists and file found in autoingest: {match[0]}")
+                logger.info(
+                    "* CID item record exists and file found in autoingest: %s",
+                    match[0],
+                )
+                logger.info(
+                    "Deleting duplicate split file %s from folder: %s", f, fpath
+                )
+                print(
+                    f"DELETING: CID item record exists and file found in autoingest: {match[0]}"
+                )
                 os.remove(filepath)
                 continue
 
             logger.info("**** %s\tFile to be renamed %s -> %s", filepath, f, new_f)
             dst = os.path.join(fpath, new_f)
             try:
-                print(f'\t{filepath} --> {dst}')
+                print(f"\t{filepath} --> {dst}")
                 os.chmod(filepath, 0o777)
                 os.rename(filepath, dst)
-                logger.info('%s\tRenamed Matroska file with MKV Item object_number and partWhole: %s --> %s', filepath, f, new_f)
-                print(f'{filepath}\tRenamed Matroska file with MKV Item object_number and partWhole: {f} --> {new_f}')
+                logger.info(
+                    "%s\tRenamed Matroska file with MKV Item object_number and partWhole: %s --> %s",
+                    filepath,
+                    f,
+                    new_f,
+                )
+                print(
+                    f"{filepath}\tRenamed Matroska file with MKV Item object_number and partWhole: {f} --> {new_f}"
+                )
             except Exception:
-                logger.warning('%s\tFailed to rename Matroska file with MKV Item object_number and partWhole\t%s', filepath, f)
-                print(f'{filepath}\tFailed to rename Matroska file with MKV Item object_number and partWhole\t{f}')
+                logger.warning(
+                    "%s\tFailed to rename Matroska file with MKV Item object_number and partWhole\t%s",
+                    filepath,
+                    f,
+                )
+                print(
+                    f"{filepath}\tFailed to rename Matroska file with MKV Item object_number and partWhole\t{f}"
+                )
                 continue
 
     logger.info("======================== SPLIT MOPUP END ============================")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

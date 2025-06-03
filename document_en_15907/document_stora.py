@@ -15,16 +15,17 @@ using STORA created csv metadata source and traversing filesystem paths to files
 Refactored 2023
 """
 
+import csv
+import datetime
+import logging
 # Public packages
 import os
-import sys
-import csv
 import shutil
-import logging
-import datetime
-import requests
+import sys
 from time import sleep
-from typing import Optional, Final, Any
+from typing import Any, Final, Optional
+
+import requests
 
 # Private packages
 sys.path.append(os.environ["CODE"])
@@ -156,17 +157,34 @@ def generate_variables(data) -> tuple[str, str, str, str, int, int, int, str, st
     duration_minutes_integer = int(duration_minutes)
     duration_total = (duration_hours_integer * 60) + duration_minutes_integer
 
-    actual_duration = data['actual_duration']
-    if ':' in str(actual_duration):
-        actual_duration_hours, actual_duration_minutes, actual_duration_seconds = actual_duration.split(':')
-    elif '-' in str(actual_duration):
-        actual_duration_hours, actual_duration_minutes, actual_duration_seconds = actual_duration.split('-')
+    actual_duration = data["actual_duration"]
+    if ":" in str(actual_duration):
+        actual_duration_hours, actual_duration_minutes, actual_duration_seconds = (
+            actual_duration.split(":")
+        )
+    elif "-" in str(actual_duration):
+        actual_duration_hours, actual_duration_minutes, actual_duration_seconds = (
+            actual_duration.split("-")
+        )
     else:
-        return (title, description, title_date_start, time, duration_total, duration_total, 0, channel, broadcast_company, code_type)
+        return (
+            title,
+            description,
+            title_date_start,
+            time,
+            duration_total,
+            duration_total,
+            0,
+            channel,
+            broadcast_company,
+            code_type,
+        )
 
     actual_duration_hours_integer = int(actual_duration_hours)
     actual_duration_minutes_integer = int(actual_duration_minutes)
-    actual_duration_total = (actual_duration_hours_integer * 60) + actual_duration_minutes_integer
+    actual_duration_total = (
+        actual_duration_hours_integer * 60
+    ) + actual_duration_minutes_integer
     actual_duration_seconds_integer = int(actual_duration_seconds)
 
     return (
@@ -194,7 +212,13 @@ def build_defaults(
     channel: str,
     broadcast_company: str,
     code_type: str,
-) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]], list[object], list[dict[str, str]]]:
+) -> tuple[
+    list[dict[str, str]],
+    list[dict[str, str]],
+    list[dict[str, str]],
+    list[object],
+    list[dict[str, str]],
+]:
     """
     Get detailed information
     and build record_defaults dict
@@ -457,7 +481,12 @@ def main() -> None:
 
 
 def create_work(
-    fullpath: str, title: str, session: requests.Session, record_defaults: list[dict[str, str]], work_defaults: list[dict[str, str]], work_restricted_defaults: list[dict[str, str]]
+    fullpath: str,
+    title: str,
+    session: requests.Session,
+    record_defaults: list[dict[str, str]],
+    work_defaults: list[dict[str, str]],
+    work_restricted_defaults: list[dict[str, str]],
 ) -> Optional[str]:
     """
     Create CID record for Work
@@ -489,7 +518,10 @@ def create_work(
             )
             logger.info("%s\tWork record created with priref %s", fullpath, work_id)
         except (IndexError, TypeError, KeyError) as err:
-            logger.critical("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", title)
+            logger.critical(
+                "Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s",
+                title,
+            )
             raise Exception(
                 "Failed to retrieve Priref/Object Number from record creation."
             ).with_traceback(err.__traceback__)
@@ -507,7 +539,12 @@ def create_work(
 
 
 def create_manifestation(
-    work_id: str, fullpath: Optional[str], title: str, session: requests.Session, record_defaults: list[dict[str, str]], manifestation_defaults: list[dict[str, str]]
+    work_id: str,
+    fullpath: Optional[str],
+    title: str,
+    session: requests.Session,
+    record_defaults: list[dict[str, str]],
+    manifestation_defaults: list[dict[str, str]],
 ) -> str:
     """
     Create CID record for Manifestation
@@ -544,7 +581,10 @@ def create_manifestation(
                 manifestation_id,
             )
         except (IndexError, TypeError, KeyError) as err:
-            logger.critical("Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s", title)
+            logger.critical(
+                "Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s",
+                title,
+            )
             raise Exception(
                 "Failed to retrieve Priref/Object Number from record creation."
             ).with_traceback(err.__traceback__)
@@ -603,7 +643,7 @@ def create_item(
     session: requests.Session,
     acquired_filename: str,
     record_defaults: list[dict[str, str]],
-    item_defaults:list[dict[str, str]]
+    item_defaults: list[dict[str, str]],
 ):
     """
     Create item record, and if failure of item record
@@ -636,7 +676,10 @@ def create_item(
             )
             logger.info("%s\tItem record created with priref %s", fullpath, item_id)
         except (TypeError, IndexError, KeyError) as err:
-            logger.critical("Failed to retrieve Priref from record created using: 'works', 'insertrecord' %s", title)
+            logger.critical(
+                "Failed to retrieve Priref from record created using: 'works', 'insertrecord' %s",
+                title,
+            )
             raise Exception(
                 "Failed to retrieve Priref/Object Number from record creation."
             ).with_traceback(err.__traceback__)
@@ -654,7 +697,12 @@ def create_item(
     return item_id, item_object_number
 
 
-def mark_for_deletion(work_id: str, manifestation_id: Optional[str], fullpath: str, session: requests.Session) -> None:
+def mark_for_deletion(
+    work_id: str,
+    manifestation_id: Optional[str],
+    fullpath: str,
+    session: requests.Session,
+) -> None:
     """
     Update work and manifestation records with deletion prompt in title
     """
@@ -719,7 +767,9 @@ def mark_for_deletion(work_id: str, manifestation_id: Optional[str], fullpath: s
         )
 
 
-def push_payload(item_id: str, session: requests.Session, webvtt_payload: str) -> Optional[bool]:
+def push_payload(
+    item_id: str, session: requests.Session, webvtt_payload: str
+) -> Optional[bool]:
     """
     Push webvtt payload separately to Item record
     creation, to manage escape character injects

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Digital pick script collects files needed for DigiOps processing
 by looking in Workflow jobs for files that need to be retrieved
 from DPI Black Pearl tape library.
@@ -33,59 +33,74 @@ Script actions:
 NOTES: Updated to work with adlib_v3
 
 2022
-'''
+"""
 
+import csv
+import hashlib
+import json
+import logging
 # Python packages
 import os
 import sys
-import csv
-import json
-import hashlib
-import logging
-from xml.sax.saxutils import escape
-from typing import Optional, Any, Final, Union
 from datetime import datetime, timedelta
-from tenacity import retry, stop_after_attempt
+from typing import Any, Final, Optional, Union
+from xml.sax.saxutils import escape
 
 # Local package
 import bp_utils as bp
-sys.path.append(os.environ['CODE'])
+from tenacity import retry, stop_after_attempt
+
+sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
 
 # GLOBAL VARIABLES
-PICK_FOLDER: Final = os.environ['DIGITAL_PICK']
-PICK_CSV: Final = os.path.join(PICK_FOLDER, 'digital_pick.csv')
-PICK_TEXT: Final = os.path.join(PICK_FOLDER, 'checksum_failures.txt')
-LOG_PATH: Final = os.environ['LOG_PATH']
-CHECKSUM_PATH: Final = os.path.join(LOG_PATH, 'checksum_md5')
+PICK_FOLDER: Final = os.environ["DIGITAL_PICK"]
+PICK_CSV: Final = os.path.join(PICK_FOLDER, "digital_pick.csv")
+PICK_TEXT: Final = os.path.join(PICK_FOLDER, "checksum_failures.txt")
+LOG_PATH: Final = os.environ["LOG_PATH"]
+CHECKSUM_PATH: Final = os.path.join(LOG_PATH, "checksum_md5")
 CHECK_RANGE: Final = 14
-SEARCH_TERM: Final = 'DPIDL'
-USERNAME: Final = os.environ['USERNAME']
+SEARCH_TERM: Final = "DPIDL"
+USERNAME: Final = os.environ["USERNAME"]
 FMT: Final = "%Y-%m-%d"
 FORMAT: Final = "%Y-%m-%d %H:%M:%S"
 TODAY: Final = datetime.strftime(datetime.now(), FORMAT)
-CONTROL_JSON: Final = os.environ['CONTROL_JSON']
-HEADERS: Final = {'Content-Type': 'text/xml'}
+CONTROL_JSON: Final = os.environ["CONTROL_JSON"]
+HEADERS: Final = {"Content-Type": "text/xml"}
 CID_API: Final = utils.get_current_api()
 
 # Set up logging
-LOGGER = logging.getLogger('bp_get_digital_pick')
-HDLR = logging.FileHandler(os.path.join(LOG_PATH, 'black_pearl_digital_pick.log'))
-FORMATTER = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+LOGGER = logging.getLogger("bp_get_digital_pick")
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, "black_pearl_digital_pick.log"))
+FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
 def fetch_workflow_jobs() -> Optional[dict[str, list[str]]]:
-    '''
+    """
     Search for in target workflow jobs, compile into a
     dictionary and return to main()
-    '''
+    """
     todayd, endd = get_date_range()
-    search: str = f"request.details='*{SEARCH_TERM}*' and completion.date>'{todayd}' and completion.date<'{endd}' and status=InProgress sort completion.date ascending"
-    hits, records = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['priref', 'jobnumber', 'contact_person', 'request.details', 'request.from.name'])
+    search: str = (
+        f"request.details='*{SEARCH_TERM}*' and completion.date>'{todayd}' and completion.date<'{endd}' and status=InProgress sort completion.date ascending"
+    )
+    hits, records = adlib.retrieve_record(
+        CID_API,
+        "workflow",
+        search,
+        "0",
+        [
+            "priref",
+            "jobnumber",
+            "contact_person",
+            "request.details",
+            "request.from.name",
+        ],
+    )
     if hits is None:
         LOGGER.exception('"CID API was unreachable for Workflow search:\n%s', search)
         raise Exception(f"CID API was unreachable for Workflow search:\n{search}")
@@ -99,28 +114,34 @@ def fetch_workflow_jobs() -> Optional[dict[str, list[str]]]:
     workflow_jobs: dict[str, list[str]] = {}
     for num in range(0, hits):
         try:
-            priref = adlib.retrieve_field_name(records[num], 'priref')[0]
+            priref = adlib.retrieve_field_name(records[num], "priref")[0]
         except (IndexError, TypeError, KeyError):
-            priref = ''
+            priref = ""
         try:
-            jobnumber = adlib.retrieve_field_name(records[num], 'jobnumber')[0]
+            jobnumber = adlib.retrieve_field_name(records[num], "jobnumber")[0]
         except (IndexError, KeyError, TypeError):
-            jobnumber = ''
+            jobnumber = ""
         try:
-            contact_person = adlib.retrieve_field_name(records[num], 'contact_person')[0]
+            contact_person = adlib.retrieve_field_name(records[num], "contact_person")[
+                0
+            ]
         except (IndexError, KeyError, TypeError):
-            contact_person = ''
+            contact_person = ""
         try:
-            request_details = adlib.retrieve_field_name(records[num], 'request.details')[0]
+            request_details = adlib.retrieve_field_name(
+                records[num], "request.details"
+            )[0]
         except (IndexError, KeyError, TypeError):
-            request_details = ''
+            request_details = ""
         try:
-            request_from = adlib.retrieve_field_name(records[num], 'request.from.name')[0]
+            request_from = adlib.retrieve_field_name(records[num], "request.from.name")[
+                0
+            ]
         except (IndexError, KeyError, TypeError):
-            request_from = ''
+            request_from = ""
 
         if request_from:
-            request_from = request_from.replace(' ', '_').lower()
+            request_from = request_from.replace(" ", "_").lower()
 
         workflow_list = [jobnumber, contact_person, request_details, request_from]
         workflow_jobs[priref] = workflow_list
@@ -129,9 +150,9 @@ def fetch_workflow_jobs() -> Optional[dict[str, list[str]]]:
 
 
 def get_date_range() -> tuple[str, str]:
-    '''
+    """
     Return CHECK_RANGE day from today's date
-    '''
+    """
     today = datetime.now()
     dr = today + timedelta(days=CHECK_RANGE)
     todays_date = datetime.strftime(today, FMT)
@@ -141,36 +162,40 @@ def get_date_range() -> tuple[str, str]:
 
 
 def fetch_item_list(priref: str) -> Union[Optional[str], Optional[list[str]]]:
-    '''
+    """
     Fetch a workflow job's items list
-    '''
+    """
     search = f"parent_record={priref} and recordType=ObjectList"
-    records = adlib.retrieve_record(CID_API, 'workflow', search, '0')[1]
+    records = adlib.retrieve_record(CID_API, "workflow", search, "0")[1]
     if not records:
-        LOGGER.exception("fetch_workflow_jobs: Unable to retrieve workflow data upto: %s", priref)
+        LOGGER.exception(
+            "fetch_workflow_jobs: Unable to retrieve workflow data upto: %s", priref
+        )
         return None
     print(records)
 
     try:
-        children = adlib.retrieve_field_name(records[0], 'child')
+        children = adlib.retrieve_field_name(records[0], "child")
     except (IndexError, TypeError, KeyError):
-        children = ''
+        children = ""
     print(children, len(children))
     if children:
         return children
 
 
 def get_child_ob_num(priref: str) -> Optional[int]:
-    '''
+    """
     Retrieve the child's object number from workflow
-    '''
+    """
     search: str = f"priref={priref}"
-    records: str = adlib.retrieve_record(CID_API, 'workflow', search, '0', ['description'])[1]
+    records: str = adlib.retrieve_record(
+        CID_API, "workflow", search, "0", ["description"]
+    )[1]
     if not records:
         LOGGER.exception("get_child_ob_num: Unable to retrieve workflow data")
         return None
     try:
-        ob_num: int = adlib.retrieve_field_name(records[0], 'description')[0]
+        ob_num: int = adlib.retrieve_field_name(records[0], "description")[0]
         print(ob_num)
         return ob_num
     except (IndexError, TypeError, KeyError):
@@ -178,51 +203,65 @@ def get_child_ob_num(priref: str) -> Optional[int]:
 
 
 @retry(stop=stop_after_attempt(10))
-def get_media_original_filename(search: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
-    '''
+def get_media_original_filename(
+    search: str,
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """
     Retrieve the first returned media record
     for a match against object.object_number
     (may return many)
-    '''
-    records = adlib.retrieve_record(CID_API, 'media', search, '0', ['imagen.media.original_filename', 'reference_number', 'preservation_bucket'])[1]
+    """
+    records = adlib.retrieve_record(
+        CID_API,
+        "media",
+        search,
+        "0",
+        ["imagen.media.original_filename", "reference_number", "preservation_bucket"],
+    )[1]
     if not records:
         LOGGER.exception("get_media_original_filename: Unable to retrieve Media data")
         return None, None, None
 
     try:
-        orig_fname = adlib.retrieve_field_name(records[0], 'imagen.media.original_filename')[0]
+        orig_fname = adlib.retrieve_field_name(
+            records[0], "imagen.media.original_filename"
+        )[0]
     except (IndexError, TypeError, KeyError):
-        orig_fname = ''
+        orig_fname = ""
     try:
-        ref_num = adlib.retrieve_field_name(records[0], 'reference_number')[0]
+        ref_num = adlib.retrieve_field_name(records[0], "reference_number")[0]
     except (IndexError, TypeError, KeyError):
-        ref_num = ''
+        ref_num = ""
     try:
-        bucket = adlib.retrieve_field_name(records[0], 'preservation_bucket')[0]
+        bucket = adlib.retrieve_field_name(records[0], "preservation_bucket")[0]
     except (IndexError, TypeError, KeyError):
-        bucket = ''
+        bucket = ""
 
     if len(bucket) < 3:
-        bucket = 'imagen'
+        bucket = "imagen"
 
     return orig_fname, ref_num, bucket
 
 
 def bucket_check(bucket: str, filename: str) -> Optional[str]:
-    '''
+    """
     Check CID media record that bucket
     matches for all parts
-    '''
+    """
 
     search = f'reference_number="{filename}"'
-    records = adlib.retrieve_record(CID_API, 'media', search, '1', ['preservation_bucket'])[1]
+    records = adlib.retrieve_record(
+        CID_API, "media", search, "1", ["preservation_bucket"]
+    )[1]
     if not records:
         LOGGER.exception("bucket_check(): Unable to retrieve Media data")
         return None
     try:
-        download_bucket = adlib.retrieve_field_name(records[0], 'preservation_bucket')[0]
+        download_bucket = adlib.retrieve_field_name(records[0], "preservation_bucket")[
+            0
+        ]
     except (IndexError, TypeError, KeyError):
-        download_bucket = ''
+        download_bucket = ""
 
     if len(download_bucket) > 3:
         return download_bucket
@@ -231,51 +270,57 @@ def bucket_check(bucket: str, filename: str) -> Optional[str]:
 
 
 def get_missing_part_names(filename: str) -> Optional[list[str]]:
-    '''
+    """
     Extract range from part 01of*
     call up Digital Media record for
     each part retrieve ref number
     return "ref_name:filename"
-    '''
+    """
     fname_list: list[str] = []
     filename, ext = os.path.splitext(filename)
-    fname_split = filename.split('_')
+    fname_split = filename.split("_")
     part_whole = fname_split[-1]
-    fname = '_'.join(fname_split[:-1])
-    if 'of' not in part_whole:
+    fname = "_".join(fname_split[:-1])
+    if "of" not in part_whole:
         return None
-    part, whole = part_whole.split('of')
+    part, whole = part_whole.split("of")
 
     if len(part) == 2:
         for count in range(2, int(whole) + 1):
             new_fname = f"{fname}_{str(count).zfill(2)}of{whole}{ext}"
-            orig_name, ref_num, bucket = get_media_original_filename(f"imagen.media.original_filename={new_fname}")
+            orig_name, ref_num, bucket = get_media_original_filename(
+                f"imagen.media.original_filename={new_fname}"
+            )
             if not ref_num:
                 print("Skipping No Digital Media record found for file {new_fname}")
                 continue
-            print(f"CID Digital media record found. Ingest name {orig_name} Reference number {ref_num}")
+            print(
+                f"CID Digital media record found. Ingest name {orig_name} Reference number {ref_num}"
+            )
             fname_list.append(f"{new_fname}:{ref_num}:{bucket}")
     elif len(part) == 3:
         for count in range(2, int(whole) + 1):
             new_fname = f"{fname}_{str(count).zfill(3)}of{whole}{ext}"
-            orig_name, ref_num, bucket = get_media_original_filename(f"imagen.media.original_filename={new_fname}")
+            orig_name, ref_num, bucket = get_media_original_filename(
+                f"imagen.media.original_filename={new_fname}"
+            )
             if not ref_num:
                 print("Skipping No Digital Media record found for file {new_fname}")
                 continue
             fname_list.append(f"{new_fname}:{ref_num}:{bucket}")
     else:
-        print('Unanticpated part whole number length. Script update needed')
+        print("Unanticpated part whole number length. Script update needed")
 
     return fname_list
 
 
-def make_check_md5(fpath: str, fname: str, bucket: str) ->tuple[str, str]:
-    '''
+def make_check_md5(fpath: str, fname: str, bucket: str) -> tuple[str, str]:
+    """
     Generate MD5 for fpath
     Locate matching file in CID/checksum_md5 folder
     and see if checksums match. If not, write to log
-    '''
-    download_checksum: str = ''
+    """
+    download_checksum: str = ""
 
     try:
         hash_md5 = hashlib.md5()
@@ -287,53 +332,61 @@ def make_check_md5(fpath: str, fname: str, bucket: str) ->tuple[str, str]:
         print(err)
 
     local_checksum = bp.get_bp_md5(fname, bucket)
-    print(f"Created from download: {download_checksum} | Retrieved from BP: {local_checksum}")
+    print(
+        f"Created from download: {download_checksum} | Retrieved from BP: {local_checksum}"
+    )
     return str(download_checksum), str(local_checksum)
 
 
 def checksum_log(message: str) -> None:
-    '''
+    """
     Append checksum message to checksum
     log where no match found
-    '''
+    """
     datestamp: datetime = datetime.now()
     data: str = f"{datestamp}, {message}\n"
 
-    with open(PICK_TEXT, 'a+') as out_file:
+    with open(PICK_TEXT, "a+") as out_file:
         out_file.write(data)
 
 
 def check_csv(fname: str) -> Union[str, Any]:
-    '''
+    """
     Check CSV for evidence that fname already
     downloaded. Extract download date and return
     otherwise return None.
-    '''
-    with open(PICK_CSV, 'r') as csvread:
+    """
+    with open(PICK_CSV, "r") as csvread:
         readme = csv.DictReader(csvread)
         for row in readme:
             if str(fname) in str(row):
-                return row['date']
+                return row["date"]
 
 
 def main():
-    '''
+    """
     Start Workflow search, iterate results and build list
     of files for download from DPI. Map in digital_pick.csv
     to avoid repeating unecessary DPI downloads
-    '''
-    if not utils.check_control('black_pearl') or not utils.check_control('pause_scripts'):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    """
+    if not utils.check_control("black_pearl") or not utils.check_control(
+        "pause_scripts"
+    ):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
 
     workflow_jobs = fetch_workflow_jobs()
     if not workflow_jobs:
-        sys.exit("Script exiting. No workflow jobs found status=InProgress for next two weeks.")
+        sys.exit(
+            "Script exiting. No workflow jobs found status=InProgress for next two weeks."
+        )
     if len(workflow_jobs) == 0:
-        sys.exit("Script exiting. No workflow jobs found status=InProgress for next two weeks.")
+        sys.exit(
+            "Script exiting. No workflow jobs found status=InProgress for next two weeks."
+        )
 
     LOGGER.info("=========== Digital Pick script start ===========")
     LOGGER.info("Workflow jobs retrieved for next two weeks:\n%s", workflow_jobs)
@@ -355,9 +408,9 @@ def main():
 
         # Build folder name for BP file retrieval location
         if jobnumber and request_from:
-            outpath = os.path.join(PICK_FOLDER, f'{jobnumber}_{request_from}')
+            outpath = os.path.join(PICK_FOLDER, f"{jobnumber}_{request_from}")
         elif jobnumber:
-            outpath = os.path.join(PICK_FOLDER, f'{jobnumber}_{contact_person}')
+            outpath = os.path.join(PICK_FOLDER, f"{jobnumber}_{contact_person}")
         else:
             LOGGER.info("Skipping. No Workflow jobnumber found for priref: %s", priref)
             continue
@@ -366,33 +419,49 @@ def main():
         downloads = []
         for child_priref in children:
             child_ob_num = get_child_ob_num(child_priref)
-            LOGGER.info("Child object number returned from description field: <%s>", child_ob_num)
-            filename, ref_num, bucket = get_media_original_filename(f"object.object_number='{child_ob_num}'")
+            LOGGER.info(
+                "Child object number returned from description field: <%s>",
+                child_ob_num,
+            )
+            filename, ref_num, bucket = get_media_original_filename(
+                f"object.object_number='{child_ob_num}'"
+            )
             if not filename:
-                LOGGER.info("Skipping. No matching Media record object number / imagen original filename: %s", child_ob_num)
-                downloads.append('False')
+                LOGGER.info(
+                    "Skipping. No matching Media record object number / imagen original filename: %s",
+                    child_ob_num,
+                )
+                downloads.append("False")
                 continue
             print(child_priref, child_ob_num, filename, ref_num)
-            LOGGER.info("Looking at child object number %s - priref %s", child_ob_num, child_priref)
+            LOGGER.info(
+                "Looking at child object number %s - priref %s",
+                child_ob_num,
+                child_priref,
+            )
 
             # Check if file is first part of sequence of files
             parts_downloads = []
             filenames = [filename]
-            if '01of01' not in filename:
+            if "01of01" not in filename:
                 parts_downloads = get_missing_part_names(filename)
                 if not parts_downloads:
                     pass
                 else:
                     for parts in parts_downloads:
-                        filenames.append(parts.split(':')[0])
+                        filenames.append(parts.split(":")[0])
 
             downloaded_fnames = []
             for fname in filenames:
                 downloaded = check_csv(fname)
                 if downloaded:
                     downloaded_fnames.append(fname)
-                    LOGGER.info("DOWNLOADED: File %s already downloaded: %s", filename, downloaded)
-                    downloads.append('False')
+                    LOGGER.info(
+                        "DOWNLOADED: File %s already downloaded: %s",
+                        filename,
+                        downloaded,
+                    )
+                    downloads.append("False")
             if len(filenames) == len(downloaded_fnames):
                 LOGGER.info("All parts downloaded: %s", filenames)
                 continue
@@ -415,117 +484,209 @@ def main():
                 if os.path.exists(os.path.join(outpath, download_fname)):
                     # Write successful download to CSV
                     if umid:
-                        os.rename(os.path.join(outpath, download_fname), os.path.join(outpath, filename))
-                    download_checksum, bp_checksum = make_check_md5(os.path.join(outpath, filename), download_fname, bucket)
+                        os.rename(
+                            os.path.join(outpath, download_fname),
+                            os.path.join(outpath, filename),
+                        )
+                    download_checksum, bp_checksum = make_check_md5(
+                        os.path.join(outpath, filename), download_fname, bucket
+                    )
                     if len(bp_checksum) == 0 or len(download_checksum) == 0:
-                        LOGGER.warning("Checksums could not be retrieved %s | %s. Writing warning to checksum_failure.log", download_checksum, bp_checksum)
-                        checksum_log(f"Error accessing checksum for {filename} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}")
+                        LOGGER.warning(
+                            "Checksums could not be retrieved %s | %s. Writing warning to checksum_failure.log",
+                            download_checksum,
+                            bp_checksum,
+                        )
+                        checksum_log(
+                            f"Error accessing checksum for {filename} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}"
+                        )
                     elif bp_checksum.strip() != download_checksum.strip():
-                        LOGGER.warning("Checksums do not match %s | %s. Writing warning to checksum_failure.log", download_checksum, bp_checksum)
-                        checksum_log(f"Error accessing checksum for {filename} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}")
+                        LOGGER.warning(
+                            "Checksums do not match %s | %s. Writing warning to checksum_failure.log",
+                            download_checksum,
+                            bp_checksum,
+                        )
+                        checksum_log(
+                            f"Error accessing checksum for {filename} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}"
+                        )
                     else:
-                        LOGGER.info("Black Pearl checksum '%s' matches generated checksum for download file '%s'", bp_checksum, download_checksum)
-                    data = [filename, outpath, priref, jobnumber, contact_person, child_priref, child_ob_num, download_job_id, datetime.strftime(datetime.now(), FORMAT)]
+                        LOGGER.info(
+                            "Black Pearl checksum '%s' matches generated checksum for download file '%s'",
+                            bp_checksum,
+                            download_checksum,
+                        )
+                    data = [
+                        filename,
+                        outpath,
+                        priref,
+                        jobnumber,
+                        contact_person,
+                        child_priref,
+                        child_ob_num,
+                        download_job_id,
+                        datetime.strftime(datetime.now(), FORMAT),
+                    ]
                     write_to_csv(data)
                     LOGGER.info("File %s downloaded to %s", filename, outpath)
                     LOGGER.info("digital_pick.csv updated: %s", data)
-                    downloads.append('True')
+                    downloads.append("True")
                 else:
-                    LOGGER.warning("Skipping this item: BP download failed for file %s", filename)
-                    downloads.append('False')
+                    LOGGER.warning(
+                        "Skipping this item: BP download failed for file %s", filename
+                    )
+                    downloads.append("False")
 
             # Download other parts if they exist
             if parts_downloads:
-                LOGGER.info('Multiple parts need to be downloaded for this job')
+                LOGGER.info("Multiple parts need to be downloaded for this job")
                 for download_fname_part in parts_downloads:
-                    part_fname, part_umid, download_bucket = download_fname_part.split(':')
+                    part_fname, part_umid, download_bucket = download_fname_part.split(
+                        ":"
+                    )
                     if part_fname in downloaded_fnames:
-                        LOGGER.info("Skipping this item as already downloaded: %s", part_fname)
+                        LOGGER.info(
+                            "Skipping this item as already downloaded: %s", part_fname
+                        )
                         continue
                     if part_fname == part_umid:
                         dpart_fname = part_fname
                     else:
                         dpart_fname = part_umid
                     # check bucket for all parts, can't assume they match
-                    d_job_id = bp.download_bp_object(dpart_fname, outpath, download_bucket)
+                    d_job_id = bp.download_bp_object(
+                        dpart_fname, outpath, download_bucket
+                    )
                     if os.path.exists(os.path.join(outpath, dpart_fname)):
                         # Write successful download to CSV
                         if part_fname != dpart_fname:
-                            os.rename(os.path.join(outpath, dpart_fname), os.path.join(outpath, part_fname))
+                            os.rename(
+                                os.path.join(outpath, dpart_fname),
+                                os.path.join(outpath, part_fname),
+                            )
                         # Make checksum test
-                        download_checksum, bp_checksum = make_check_md5(os.path.join(outpath, part_fname), dpart_fname, download_bucket)
+                        download_checksum, bp_checksum = make_check_md5(
+                            os.path.join(outpath, part_fname),
+                            dpart_fname,
+                            download_bucket,
+                        )
                         if bp_checksum is None or download_checksum is None:
-                            LOGGER.warning("Checksums could not be retrieved %s | %s. Writing warning to checksum_failure.log", download_checksum, bp_checksum)
-                            checksum_log(f"Error accessing checksum for {part_fname} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}")
+                            LOGGER.warning(
+                                "Checksums could not be retrieved %s | %s. Writing warning to checksum_failure.log",
+                                download_checksum,
+                                bp_checksum,
+                            )
+                            checksum_log(
+                                f"Error accessing checksum for {part_fname} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}"
+                            )
                         elif bp_checksum.strip() != download_checksum.strip():
-                            LOGGER.warning("Checksums do not match %s | %s. Writing warning to checksum_failure.log", download_checksum, bp_checksum)
-                            checksum_log(f"Error accessing checksum for {part_fname} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}")
+                            LOGGER.warning(
+                                "Checksums do not match %s | %s. Writing warning to checksum_failure.log",
+                                download_checksum,
+                                bp_checksum,
+                            )
+                            checksum_log(
+                                f"Error accessing checksum for {part_fname} | BP checksum: {bp_checksum} | Downloaded file checksum: {download_checksum}"
+                            )
                         else:
-                            LOGGER.info("Black Pearl checksum '%s' matches generated checksum for download file '%s'", bp_checksum, download_checksum)
-                        data = [part_fname, outpath, priref, jobnumber, contact_person, child_priref, child_ob_num, d_job_id, datetime.strftime(datetime.now(), FORMAT)]
+                            LOGGER.info(
+                                "Black Pearl checksum '%s' matches generated checksum for download file '%s'",
+                                bp_checksum,
+                                download_checksum,
+                            )
+                        data = [
+                            part_fname,
+                            outpath,
+                            priref,
+                            jobnumber,
+                            contact_person,
+                            child_priref,
+                            child_ob_num,
+                            d_job_id,
+                            datetime.strftime(datetime.now(), FORMAT),
+                        ]
                         write_to_csv(data)
                         LOGGER.info("File %s downloaded to %s", filename, outpath)
                         LOGGER.info("digital_pick.csv updated: %s", data)
-                        downloads.append('True')
+                        downloads.append("True")
                     else:
-                        LOGGER.warning("Skipping this item: BP download failed for file %s", fname)
-                        downloads.append('False')
+                        LOGGER.warning(
+                            "Skipping this item: BP download failed for file %s", fname
+                        )
+                        downloads.append("False")
 
         # Check for any successful uploads
-        if 'True' not in downloads:
+        if "True" not in downloads:
             LOGGER.info("No items downloaded for this Workflow: %s", wf)
             continue
 
         # Update workflow request.details field when all completed
-        payload = build_payload(priref, request_details, datetime.strftime(datetime.now(), FORMAT))
+        payload = build_payload(
+            priref, request_details, datetime.strftime(datetime.now(), FORMAT)
+        )
         print(payload)
-        record = adlib.post(CID_API, payload, 'workflow', 'updaterecord')
+        record = adlib.post(CID_API, payload, "workflow", "updaterecord")
         if not record:
-            LOGGER.warning("FAILED: Payload write to CID workflow request.details field: %s", priref)
+            LOGGER.warning(
+                "FAILED: Payload write to CID workflow request.details field: %s",
+                priref,
+            )
         else:
-            LOGGER.info("Workflow %s - DPI download complete and request.details field updated", priref)
+            LOGGER.info(
+                "Workflow %s - DPI download complete and request.details field updated",
+                priref,
+            )
 
     LOGGER.info("=========== Digital Pick script end =============\n")
 
 
 def build_payload(priref: str, data: str, today: str) -> str:
-    '''
+    """
     Build payload info to write to Workflow record
-    '''
+    """
     cleaned_data = escape(data)
     payload_head: str = f"<adlibXML><recordList><record priref='{priref}'>"
-    payload_addition: str = f"<request.details>DPI Download completed {today}. {cleaned_data}</request.details>"
-    payload_edit: str = f"<edit.name>{USERNAME}</edit.name><edit.date>{today[:10]}</edit.date><edit.time>{today[11:]}</edit.time>"
+    payload_addition: str = (
+        f"<request.details>DPI Download completed {today}. {cleaned_data}</request.details>"
+    )
+    payload_edit: str = (
+        f"<edit.name>{USERNAME}</edit.name><edit.date>{today[:10]}</edit.date><edit.time>{today[11:]}</edit.time>"
+    )
     payload_end: str = "</record></recordList></adlibXML>"
     return payload_head + payload_addition + payload_edit + payload_end
 
 
 def write_payload(priref: str, payload: str) -> bool:
-    '''
+    """
     Recieve header, payload and priref and write
     to CID workflow record
-    '''
-    record = adlib.post(CID_API, payload, 'workflow', 'updaterecord')
+    """
+    record = adlib.post(CID_API, payload, "workflow", "updaterecord")
     if not record:
-        LOGGER.warning("write_payload: Error returned for requests.post for %s:\n%s", priref, payload)
+        LOGGER.warning(
+            "write_payload: Error returned for requests.post for %s:\n%s",
+            priref,
+            payload,
+        )
         return False
     else:
         print("write_payload() response:")
         print(record)
-        LOGGER.info("write_payload: No error returned in post_response.text. Payload successfully written.")
+        LOGGER.info(
+            "write_payload: No error returned in post_response.text. Payload successfully written."
+        )
         return True
 
 
 def write_to_csv(data: str) -> None:
-    '''
+    """
     Write all file data to CSV as confirmation
     of successful download.
-    '''
-    with open(PICK_CSV, 'a', newline='') as csvfile:
+    """
+    with open(PICK_CSV, "a", newline="") as csvfile:
         datawriter = csv.writer(csvfile)
         datawriter.writerow(data)
         csvfile.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

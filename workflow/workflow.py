@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Module used by workflow scripts submitta.py
 for F47 record creation
-'''
+"""
 
 # Public packages
 import os
@@ -11,44 +11,50 @@ import sys
 from datetime import datetime
 
 # Local packages
-sys.path.append(os.environ['CODE'])
+sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
-sys.path.append(os.environ['WORKFLOW'])
+
+sys.path.append(os.environ["WORKFLOW"])
 import records
 
 # Global variable
 CID_API = utils.get_current_api()
 
 
-class Activities():
+class Activities:
     # Class updates complete and tested
     def __init__(self):
         self.payloads = {}
 
-        query = {'database': 'workflow',
-                 'search': 'dataType>0',
-                 'limit': -1,
-                 'facets': 'dataType',
-                 'facetlimit': 100,
-                 'output': 'jsonv1'}
+        query = {
+            "database": "workflow",
+            "search": "dataType>0",
+            "limit": -1,
+            "facets": "dataType",
+            "facetlimit": 100,
+            "output": "jsonv1",
+        }
 
         records = adlib.get(CID_API, query)
-        dt_list = adlib.retrieve_facet_list(records, 'term')
+        dt_list = adlib.retrieve_facet_list(records, "term")
 
         for data_type in dt_list:
-            search = f'dataType={data_type} and payloadDatabase>0'
-            fields = ['payloadDatabase', 'description']
-            hits, record = adlib.retrieve_record(CID_API, 'workflow', search, '1', fields)
+            search = f"dataType={data_type} and payloadDatabase>0"
+            fields = ["payloadDatabase", "description"]
+            hits, record = adlib.retrieve_record(
+                CID_API, "workflow", search, "1", fields
+            )
             if hits is None:
                 continue
             if hits == 0:
                 continue
-            payload_database = adlib.retrieve_field_name(record[0], 'payloadDatabase')[0]
-            label = adlib.retrieve_field_name(record[0], 'description')[0]
+            payload_database = adlib.retrieve_field_name(record[0], "payloadDatabase")[
+                0
+            ]
+            label = adlib.retrieve_field_name(record[0], "description")[0]
 
-            d = {'label': label,
-                 'dataType': data_type}
+            d = {"label": label, "dataType": data_type}
 
             if payload_database in self.payloads:
                 self.payloads[payload_database].append(d)
@@ -56,59 +62,63 @@ class Activities():
                 self.payloads[payload_database] = [d]
 
     def get(self, activity):
-        '''
+        """
         Return payload and dataType for given activity label
-        '''
+        """
         for payload in self.payloads:
             for d in self.payloads[payload]:
-                if d['label'] == activity:
-                    detail = {'payloadDatabase': payload,
-                              'dataType': d['dataType'],
-                              'description': activity}
+                if d["label"] == activity:
+                    detail = {
+                        "payloadDatabase": payload,
+                        "dataType": d["dataType"],
+                        "description": activity,
+                    }
 
                     return detail
 
 
-class Task():
-    '''
+class Task:
+    """
     Suite of Workflow jobs and activities
-    '''
+    """
 
     def __init__(self, items=None, **kwargs):
         try:
             [int(i) for i in items]
         except Exception:
-            raise TypeError('Item IDs must be prirefs')
+            raise TypeError("Item IDs must be prirefs")
 
         self.items = items
         self.job_number = None
         self.last_activity_priref = None
         self.priref = None
         self.profiles = {
-                            'workflow': {
-                                'status': 'Started',
-                                'dataType': 'FolderData',
-                                'recordType': 'Folder'
-                            },
-                            'objectList': {
-                                'description': 'objects',
-                                'recordType': 'ObjectList',
-                                'status': 'Started'
-                            },
-                            'object': {
-                                'payloadDatabase': 'collect.inf',
-                                'recordType': 'Object',
-                                'status': 'Started'
-                            }
-                        }
+            "workflow": {
+                "status": "Started",
+                "dataType": "FolderData",
+                "recordType": "Folder",
+            },
+            "objectList": {
+                "description": "objects",
+                "recordType": "ObjectList",
+                "status": "Started",
+            },
+            "object": {
+                "payloadDatabase": "collect.inf",
+                "recordType": "Object",
+                "status": "Started",
+            },
+        }
 
         # Changed transpor.entry line to map to 'entry' instead of 'despatch' on 2020-07-13
         # To fix priref range problem in Workflow payload database (transpor.entry)
-        self.database_map = {'conserva.inf': 'conservation',
-                             'reprordr.inf': 'reproduction',
-                             'request.inf': 'request',
-                             'transpor.despatch': 'despatch',
-                             'transpor.entry': 'entry'}
+        self.database_map = {
+            "conserva.inf": "conservation",
+            "reprordr.inf": "reproduction",
+            "request.inf": "request",
+            "transpor.despatch": "despatch",
+            "transpor.entry": "entry",
+        }
 
         self.make_topnode(**kwargs)
         objectList_priref = self.make_objectList(self.priref)
@@ -122,57 +132,57 @@ class Task():
     def build_record(self, data):
         record = records.Record()
 
-        data['priref'] = '0'
-        data['input.name'] = 'collectionssystems'
-        data['input.date'] = self._date_time()[0]
-        data['input.time'] = self._date_time()[1]
+        data["priref"] = "0"
+        data["input.name"] = "collectionssystems"
+        data["input.date"] = self._date_time()[0]
+        data["input.time"] = self._date_time()[1]
 
         for i in data:
             record.append(field=records.Field(name=i, text=data[i]))
 
         return record
 
-    def write_record(self, database='workflow', record=None):
+    def write_record(self, database="workflow", record=None):
         data = record.to_xml(to_string=True)
-        payload = f'<adlibXML><recordList>{data}</recordList></adlibXML>'
-        response = adlib.post(CID_API, payload, database, 'insertrecord')
+        payload = f"<adlibXML><recordList>{data}</recordList></adlibXML>"
+        response = adlib.post(CID_API, payload, database, "insertrecord")
         print(response)
         return response
 
     def make_topnode(self, **kwargs):
-        wf = dict(self.profiles['workflow'])
+        wf = dict(self.profiles["workflow"])
 
         for k in kwargs:
             wf[k] = kwargs[k]
 
-        wf['topNode'] = 'x'
+        wf["topNode"] = "x"
 
         record = self.build_record(wf)
         response = self.write_record(record=record)
 
-        self.job_number = int(adlib.retrieve_field_name(response, 'jobnumber')[0])
-        self.priref = int(adlib.retrieve_field_name(response, 'priref')[0])
+        self.job_number = int(adlib.retrieve_field_name(response, "jobnumber")[0])
+        self.priref = int(adlib.retrieve_field_name(response, "priref")[0])
         self.last_activity_priref = self.priref
 
     def make_objectList(self, parent):
-        ol = dict(self.profiles['objectList'])
-        ol['parent'] = str(self.last_activity_priref)
+        ol = dict(self.profiles["objectList"])
+        ol["parent"] = str(self.last_activity_priref)
 
         record = self.build_record(ol)
         response = self.write_record(record=record)
 
-        priref = int(adlib.retrieve_field_name(response, 'priref')[0])
+        priref = int(adlib.retrieve_field_name(response, "priref")[0])
         return priref
 
     def make_objects(self, objectList_priref, items=None):
         count = 0
         if items is not None:
             for item in items:
-                d = dict(self.profiles['object'])
+                d = dict(self.profiles["object"])
 
-                d['description'] = get_object_number(item)
-                d['parent'] = str(objectList_priref)
-                d['payloadLink'] = str(item)
+                d["description"] = get_object_number(item)
+                d["parent"] = str(objectList_priref)
+                d["payloadLink"] = str(item)
 
                 record = self.build_record(d)
 
@@ -181,7 +191,7 @@ class Task():
                 except Exception:
                     continue
                 # Unsure about this piece, need to get hit response from self.write_record
-                if response['@attributes']:
+                if response["@attributes"]:
                     count += 1
                 else:
                     continue
@@ -197,27 +207,31 @@ class Task():
     def add_activity(self, activity, items=None, **payload_kwargs):
         a = activity_map.get(activity)
         if not a:
-            raise Exception('''Unknown activity label: "{}"
-                               or activity is not supported'''.format(activity))
+            raise Exception(
+                """Unknown activity label: "{}"
+                               or activity is not supported""".format(
+                    activity
+                )
+            )
 
         # Payload record
-        db = self.database_map[a['payloadDatabase']]
+        db = self.database_map[a["payloadDatabase"]]
         p = self.build_record(payload_kwargs)
         response = self.write_record(database=db, record=p)
-        payload_priref = int(adlib.retrieve_field_name(response, 'priref')[0])
+        payload_priref = int(adlib.retrieve_field_name(response, "priref")[0])
 
         # Workflow record
-        d = dict(self.profiles['workflow'])
-        d['recordType'] = 'WorkFlow'
-        d['payloadLink'] = str(payload_priref)
+        d = dict(self.profiles["workflow"])
+        d["recordType"] = "WorkFlow"
+        d["payloadLink"] = str(payload_priref)
 
         # payloadDatabase and dataType details
         for i in a:
             d[i] = a[i]
 
-        d['parent'] = str(self.last_activity_priref)
+        d["parent"] = str(self.last_activity_priref)
         wf = self.write_record(record=self.build_record(d))
-        wf_priref = int(adlib.retrieve_field_name(wf, 'priref')[0])
+        wf_priref = int(adlib.retrieve_field_name(wf, "priref")[0])
         self.last_activity_priref = wf_priref
 
         ol_priref = self.make_objectList(parent=str(self.last_activity_priref))
@@ -229,8 +243,8 @@ class Task():
             return False
 
 
-class Batch():
-    '''
+class Batch:
+    """
     Create a nested tree of Workflow activities for a list of items.
 
     Instantiate with, for example:
@@ -260,26 +274,26 @@ class Batch():
                          list and getting rid of kwargs['activities'];
                          just remember that the order of activities is
                          important
-    '''
+    """
 
     def __init__(self, items=None, **kwargs):
         if not items:
-            raise Exception('Required: list of item prirefs')
+            raise Exception("Required: list of item prirefs")
 
-        if 'activities' not in kwargs:
-            raise Exception('Required: list of case-sensitive activities in kwargs')
+        if "activities" not in kwargs:
+            raise Exception("Required: list of case-sensitive activities in kwargs")
 
-        if 'topNode' not in kwargs:
-            raise Exception('Required: dictionary of topNode field-values in kwargs')
+        if "topNode" not in kwargs:
+            raise Exception("Required: dictionary of topNode field-values in kwargs")
 
-        if 'payload' not in kwargs:
-            raise Exception('Required: dictionary of payload field-values in kwargs')
+        if "payload" not in kwargs:
+            raise Exception("Required: dictionary of payload field-values in kwargs")
 
-        self.task = Task(items, **kwargs['topNode'])
+        self.task = Task(items, **kwargs["topNode"])
 
         overall_status = []
-        for a in kwargs['activities']:
-            status = self.task.add_activity(a, items=items, **kwargs['payload'][a])
+        for a in kwargs["activities"]:
+            status = self.task.add_activity(a, items=items, **kwargs["payload"][a])
             overall_status.append(status)
 
         self.priref = self.task.priref
@@ -289,8 +303,8 @@ class Batch():
             self.successfully_completed = False
 
 
-class F47Batch():
-    '''
+class F47Batch:
+    """
     Create a tree of Workflow activities specific to F47 video encoding:
       - Pick
       - Encode
@@ -307,38 +321,30 @@ class F47Batch():
 
         # Create
         b = F47BatchDev(l, **topnode_metadata)
-    '''
+    """
 
     def __init__(self, items=None, **kwargs):
         # Default metadata
         d = {
-              'activities': [
-                'Pick items',
-                'Video Encoding',
-                'Return items'
-              ],
-              'topNode': {
-                'activity.code.lref': '108964',
-                'purpose': 'Preservation',
-                'request_type': 'VIDEOCOPY',
-                'final_destination': 'F47',
-                'request.details': 'Transfer to preservation and proxy formats',
-                'assigned_to': 'Television Operations'
-              },
-              'payload': {
-                'Pick items': {
-                  'destination': 'PBK06B03000000'
-                },
-                'Video Encoding': {
-                  'handling.name': 'Television Operations'
-                },
-                'Return items': {}
-              }
-            }
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "108964",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "F47",
+                "request.details": "Transfer to preservation and proxy formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK06B03000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
 
         # Add any additional metadata to the topNode
         for k in kwargs:
-            d['topNode'][k] = kwargs[k]
+            d["topNode"][k] = kwargs[k]
 
         # Create
         self.batch = Batch(items, **d)
@@ -348,8 +354,8 @@ class F47Batch():
         return self.batch.successfully_completed
 
 
-class twoInchBatch():
-    '''
+class twoInchBatch:
+    """
     Create a tree of Workflow activities specific to VT10 video encoding:
       - Pick
       - Encode
@@ -366,38 +372,30 @@ class twoInchBatch():
 
         # Create
         b = VT10Batch(l, **topnode_metadata)
-    '''
+    """
 
     def __init__(self, items=None, **kwargs):
         # Default metadata
         d = {
-              'activities': [
-                'Pick items',
-                'Video Encoding',
-                'Return items'
-              ],
-              'topNode': {
-                'activity.code.lref': '108964',
-                'purpose': 'Preservation',
-                'request_type': 'VIDEOCOPY',
-                'final_destination': '2inch - Video Copying',
-                'request.details': 'Transfer to preservation formats',
-                'assigned_to': 'Television Operations'
-              },
-              'payload': {
-                'Pick items': {
-                  'destination': 'PBK03A06000000'
-                },
-                'Video Encoding': {
-                  'handling.name': 'Television Operations'
-                },
-                'Return items': {}
-              }
-            }
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "108964",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "2inch - Video Copying",
+                "request.details": "Transfer to preservation formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK03A06000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
 
         # Add any additional metadata to the topNode
         for k in kwargs:
-            d['topNode'][k] = kwargs[k]
+            d["topNode"][k] = kwargs[k]
 
         # Create
         self.batch = Batch(items, **d)
@@ -406,8 +404,9 @@ class twoInchBatch():
     def successfully_completed(self):
         return self.batch.successfully_completed
 
-class VT10Batch():
-    '''
+
+class VT10Batch:
+    """
     Create a tree of Workflow activities specific to VT10 video encoding:
       - Pick
       - Encode
@@ -424,38 +423,30 @@ class VT10Batch():
 
         # Create
         b = VT10BatchDev(l, **topnode_metadata)
-    '''
+    """
 
     def __init__(self, items=None, **kwargs):
         # Default metadata
         d = {
-              'activities': [
-                'Pick items',
-                'Video Encoding',
-                'Return items'
-              ],
-              'topNode': {
-                'activity.code.lref': '108964',
-                'purpose': 'Preservation',
-                'request_type': 'VIDEOCOPY',
-                'final_destination': 'VTR 10 - Video Copying',
-                'request.details': 'Transfer to preservation formats',
-                'assigned_to': 'Television Operations'
-              },
-              'payload': {
-                'Pick items': {
-                  'destination': 'PBK03A06000000'
-                },
-                'Video Encoding': {
-                  'handling.name': 'Television Operations'
-                },
-                'Return items': {}
-              }
-            }
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "108964",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "VTR 10 - Video Copying",
+                "request.details": "Transfer to preservation formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK03A06000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
 
         # Add any additional metadata to the topNode
         for k in kwargs:
-            d['topNode'][k] = kwargs[k]
+            d["topNode"][k] = kwargs[k]
 
         # Create
         self.batch = Batch(items, **d)
@@ -464,8 +455,9 @@ class VT10Batch():
     def successfully_completed(self):
         return self.batch.successfully_completed
 
-class D3Batch():
-    '''
+
+class D3Batch:
+    """
     Create a tree of Workflow activities specific to D3 video encoding (currently modelled from VT10):
       - Pick
       - Encode
@@ -482,38 +474,30 @@ class D3Batch():
 
         # Create
         b = D3BatchDev(l, **topnode_metadata)
-    '''
+    """
 
     def __init__(self, items=None, **kwargs):
         # Default metadata
         d = {
-              'activities': [
-                'Pick items',
-                'Video Encoding',
-                'Return items'
-              ],
-              'topNode': {
-                'activity.code.lref': '108964',
-                'purpose': 'Preservation',
-                'request_type': 'VIDEOCOPY',
-                'final_destination': 'D3 - Video Copying',
-                'request.details': 'Transfer to preservation and proxy formats',
-                'assigned_to': 'Television Operations'
-              },
-              'payload': {
-                'Pick items': {
-                  'destination': 'PBK03A06000000'
-                },
-                'Video Encoding': {
-                  'handling.name': 'Television Operations'
-                },
-                'Return items': {}
-              }
-            }
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "108964",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "D3 - Video Copying",
+                "request.details": "Transfer to preservation and proxy formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK03A06000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
 
         # Add any additional metadata to the topNode
         for k in kwargs:
-            d['topNode'][k] = kwargs[k]
+            d["topNode"][k] = kwargs[k]
 
         # Create
         self.batch = Batch(items, **d)
@@ -524,24 +508,24 @@ class D3Batch():
 
 
 def get_object_number(priref):
-    search = f'priref={priref}'
-    record = adlib.retrieve_record(CID_API, 'items', search, '1', ['object_number'])[1]
-    ob_num = adlib.retrieve_field_name(record[0], 'object_number')[0]
+    search = f"priref={priref}"
+    record = adlib.retrieve_record(CID_API, "items", search, "1", ["object_number"])[1]
+    ob_num = adlib.retrieve_field_name(record[0], "object_number")[0]
     return ob_num
 
 
 def get_priref(object_number):
     search = f'object_number="{object_number}"'
-    record = adlib.retrieve_record(CID_API, 'items', search, '1', ['priref'])[1]
-    priref = adlib.retrieve_field_name(record[0], 'priref')[0]
+    record = adlib.retrieve_record(CID_API, "items", search, "1", ["priref"])[1]
+    priref = adlib.retrieve_field_name(record[0], "priref")[0]
     return priref
 
 
 def count_jobs_submitted(search):
     print(search)
-    hits = adlib.retrieve_record(CID_API, 'workflow', search, '-1')[0]
+    hits = adlib.retrieve_record(CID_API, "workflow", search, "-1")[0]
     if hits is None:
-        raise Exception(f'Workflow search failed to access API: {search}')
+        raise Exception(f"Workflow search failed to access API: {search}")
     return hits
 
 
@@ -549,4 +533,4 @@ try:
     activity_map = Activities()
 except Exception as exc:
     print(exc)
-    raise Exception('Unable to build map of Workflow databases')
+    raise Exception("Unable to build map of Workflow databases")

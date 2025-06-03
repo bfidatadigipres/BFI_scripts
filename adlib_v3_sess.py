@@ -1,101 +1,96 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Python interface for Adlib API v3.7.17094.1+
 (http://api.adlibsoft.com/site/api)
 
 2024
-'''
+"""
 
-import json
 import datetime
-import xmltodict
+import json
 from time import sleep
-from lxml import etree, html
-from dicttoxml import dicttoxml
-from requests import request, Session, exceptions
-from tenacity import retry, stop_after_attempt
-from typing import Final, Optional, Any, Iterable, Dict
+from typing import Any, Dict, Final, Iterable, Optional
 
-HEADERS = {
-    'Content-Type': 'text/xml'
-}
+import xmltodict
+from dicttoxml import dicttoxml
+from lxml import etree, html
+from requests import Session, exceptions, request
+from tenacity import retry, stop_after_attempt
+
+HEADERS = {"Content-Type": "text/xml"}
 
 
 # (api: str) -> Dict[Any, Any]:
 def check(api):
-    '''
+    """
     Check API responds
-    '''
-    query = {
-        'command': 'getversion',
-        'limit': 0,
-        'output': 'jsonv1'
-    }
+    """
+    query = {"command": "getversion", "limit": 0, "output": "jsonv1"}
 
     return get(api, query)
 
 
 # () -> Session:
 def create_session():
-    '''
+    """
     Start a requests session and return
-    '''
+    """
     session = Session()
     return session
 
 
 # (api: str, database: str, search: str, limit: str, session: Session=None, fields=None)-> tuple[Optional[int], Optional[list[Any]]]:
 def retrieve_record(api, database, search, limit, session, fields=None):
-    '''
+    """
     Retrieve data from CID using new API
-    '''
-    if search.startswith('priref='):
+    """
+    if search.startswith("priref="):
         search_new = search
     else:
-        if database == 'items':
-            search_new = f'(record_type=ITEM) and {search}'
-        elif database == 'works':
-            search_new = f'(record_type=WORK) and {search}'
-        elif database == 'manifestations':
-            search_new = f'(record_type=MANIFESTATION) and {search}'
+        if database == "items":
+            search_new = f"(record_type=ITEM) and {search}"
+        elif database == "works":
+            search_new = f"(record_type=WORK) and {search}"
+        elif database == "manifestations":
+            search_new = f"(record_type=MANIFESTATION) and {search}"
         else:
             search_new = search
 
     query = {
-        'database': database,
-        'search': search_new,
-        'limit': limit,
-        'output': 'jsonv1'
+        "database": database,
+        "search": search_new,
+        "limit": limit,
+        "output": "jsonv1",
     }
 
     if fields:
-        field_str = ', '.join(fields)
-        query['fields'] = field_str
+        field_str = ", ".join(fields)
+        query["fields"] = field_str
 
     record = get(api, query, session)
     if not record:
         return None, None
-    if record['adlibJSON']['diagnostic']['hits'] == 0:
+    if record["adlibJSON"]["diagnostic"]["hits"] == 0:
         return 0, None
-    if 'recordList' not in str(record):
+    if "recordList" not in str(record):
         try:
-            hits = int(record['adlibJSON']['diagnostic']['hits'])
+            hits = int(record["adlibJSON"]["diagnostic"]["hits"])
             return hits, record
         except (IndexError, KeyError, TypeError) as err:
             print(err)
             return 0, record
 
-    hits = int(record['adlibJSON']['diagnostic']['hits'])
-    return hits, record['adlibJSON']['recordList']['record']
+    hits = int(record["adlibJSON"]["diagnostic"]["hits"])
+    return hits, record["adlibJSON"]["recordList"]["record"]
 
 
 @retry(stop=stop_after_attempt(10))
 # (api: str, query: dict[str, object | str], session: Optional[Session]=None):
 def get(api, query, session):
-    '''
+    """
     Send a GET request
-    '''
+    """
     if not session:
         session = create_session()
     try:
@@ -120,23 +115,25 @@ def get(api, query, session):
 
 # (api: str, payload: Optional[str | bytes], database: str, method: str, session: Optional[Session]=None) -> Optional[dict[Any, Iterable[Any]]] | bool:
 def post(api, payload, database, method, session):
-    '''
+    """
     Send a POST request
-    '''
+    """
     params = {
-        'command': method,
-        'database': database,
-        'xmltype': 'grouped',
-        'output': 'jsonv1'
+        "command": method,
+        "database": database,
+        "xmltype": "grouped",
+        "output": "jsonv1",
     }
-    payload = payload.encode('utf-8')
+    payload = payload.encode("utf-8")
 
     if not session:
         session = create_session()
 
-    if method == 'insertrecord':
+    if method == "insertrecord":
         try:
-            response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+            response = session.post(
+                api, headers=HEADERS, params=params, data=payload, timeout=1200
+            )
             if response.status_code != 200:
                 raise Exception
         except exceptions.Timeout as err:
@@ -152,9 +149,11 @@ def post(api, payload, database, method, session):
             print(err)
             raise Exception from err
 
-    if method == 'updaterecord':
+    if method == "updaterecord":
         try:
-            response = session.post(api, headers=HEADERS, params=params, data=payload, timeout=1200)
+            response = session.post(
+                api, headers=HEADERS, params=params, data=payload, timeout=1200
+            )
             if response.status_code != 200:
                 raise Exception
         except exceptions.Timeout as err:
@@ -176,19 +175,19 @@ def post(api, payload, database, method, session):
     boolean = check_response(response.text, api)
     if boolean is True:
         return False
-    if 'recordList' in response.text:
+    if "recordList" in response.text:
         record = json.loads(response.text)
         try:
-            if isinstance(record['adlibJSON']['recordList']['record'], list):
-                return record['adlibJSON']['recordList']['record'][0]
+            if isinstance(record["adlibJSON"]["recordList"]["record"], list):
+                return record["adlibJSON"]["recordList"]["record"][0]
             else:
-                return record['adlibJSON']['recordList']['record']
+                return record["adlibJSON"]["recordList"]["record"]
         except (KeyError, IndexError, TypeError):
             return record
-    elif '@attributes' in response.text:
+    elif "@attributes" in response.text:
         record = json.loads(response.text)
         return record
-    elif 'error' in response.text:
+    elif "error" in response.text:
         return None
 
     return None
@@ -196,21 +195,21 @@ def post(api, payload, database, method, session):
 
 # (record: dict[str, str], fieldname: str) -> list[str]:
 def retrieve_field_name(record, fieldname):
-    '''
+    """
     Retrieve record, check for language data
     Alter retrieval method. record ==
     ['adlibJSON']['recordList']['record'][0]
-    '''
+    """
     field_list = []
 
     try:
-        for field in record[f'{fieldname}']:
+        for field in record[f"{fieldname}"]:
             if isinstance(field, str):
                 field_list.append(field)
             elif "'@lang'" in str(field):
-                field_list.append(field['value'][0]['spans'][0]['text'])
+                field_list.append(field["value"][0]["spans"][0]["text"])
             else:
-                field_list.append(field['spans'][0]['text'])
+                field_list.append(field["spans"][0]["text"])
     except KeyError:
         field_list = group_check(record, fieldname)
 
@@ -221,36 +220,36 @@ def retrieve_field_name(record, fieldname):
 
 # (record: list[dict[Any, Any]], fname: str) -> list[str]:
 def retrieve_facet_list(record, fname):
-    '''
+    """
     Retrieve list of facets
-    '''
+    """
     facets = []
-    for value in record['adlibJSON']['facetList'][0]['values']:
-        facets.append(value[fname]['spans'][0]['text'])
+    for value in record["adlibJSON"]["facetList"][0]["values"]:
+        facets.append(value[fname]["spans"][0]["text"])
 
     return facets
 
 
 # (record: Any, fname: str) -> Optional[list[str]]:
 def group_check(record, fname):
-    '''
+    """
     Get group that contains field key
-    '''
-    group_check = dict([ (k, v) for k, v in record.items() if f'{fname}' in str(v) ])
+    """
+    group_check = dict([(k, v) for k, v in record.items() if f"{fname}" in str(v)])
     fieldnames = []
     if len(group_check) == 1:
         first_key = next(iter(group_check))
-        for entry in group_check[f'{first_key}']:
+        for entry in group_check[f"{first_key}"]:
             for key, val in entry.items():
                 if str(key) == str(fname):
-                    if '@lang' in str(val):
+                    if "@lang" in str(val):
                         try:
-                            fieldnames.append(val[0]['value'][0]['spans'][0]['text'])
+                            fieldnames.append(val[0]["value"][0]["spans"][0]["text"])
                         except (IndexError, KeyError):
                             pass
                     else:
                         try:
-                            fieldnames.append(val[0]['spans'][0]['text'])
+                            fieldnames.append(val[0]["spans"][0]["text"])
                         except (IndexError, KeyError):
                             pass
         if fieldnames:
@@ -259,21 +258,21 @@ def group_check(record, fname):
     elif len(group_check) > 1:
         all_vals = []
         for kname in group_check:
-            for key, val in group_check[f'{kname}'][0].items():
+            for key, val in group_check[f"{kname}"][0].items():
                 if key == fname:
                     dictionary = {}
                     dictionary[fname] = val
                     all_vals.append(dictionary)
         if len(all_vals) == 1:
-            if '@lang' in str(all_vals):
+            if "@lang" in str(all_vals):
                 try:
-                    return all_vals[0][fname][0]['value'][0]['spans'][0]['text']
+                    return all_vals[0][fname][0]["value"][0]["spans"][0]["text"]
                 except KeyError:
                     print(f"Failed to extract value: {all_vals}")
                     return None
             else:
                 try:
-                    return all_vals[0][fname][0]['spans'][0]['text']
+                    return all_vals[0][fname][0]["spans"][0]["text"]
                 except KeyError:
                     print(f"Failed to extract value: {all_vals}")
                     return None
@@ -285,15 +284,11 @@ def group_check(record, fname):
 
 # (api: str, database: str, session: Session) -> dict[str, list[str]] | tuple[None, None]:
 def get_grouped_items(api, database, session):
-    '''
+    """
     Check dB for groupings and ensure
     these are added to XML configuration
-    '''
-    query = {
-        'command': 'getmetadata',
-        'database': database,
-        'limit': 0
-    }
+    """
+    query = {"command": "getmetadata", "database": database, "limit": 0}
     if not session:
         session = create_session()
     result = session.get(api, headers=HEADERS, params=query)
@@ -302,11 +297,11 @@ def get_grouped_items(api, database, session):
         return None, None
 
     grouped: dict[str, list[str]] = {}
-    mdata = metadata['adlibXML']['recordList']['record']
+    mdata = metadata["adlibXML"]["recordList"]["record"]
     for num in range(0, len(mdata)):
         try:
-            group = mdata[num]['group']
-            field_name = mdata[num]['fieldName']['value'][0]['#text']
+            group = mdata[num]["group"]
+            field_name = mdata[num]["fieldName"]["value"][0]["#text"]
             if group in grouped.keys():
                 grouped[group].append(field_name)
             else:
@@ -319,9 +314,9 @@ def get_grouped_items(api, database, session):
 
 # (api: str, database: str, session: Session, priref: str, data: list[Any]=None) -> bool | str:
 def create_record_data(api, database, session, priref, data=None):
-    '''
+    """
     Create a record from supplied dictionary (or list of dictionaries)
-    '''
+    """
     if not isinstance(data, list):
         data = [data]
 
@@ -352,27 +347,27 @@ def create_record_data(api, database, session, priref, data=None):
     if not frag:
         return False
 
-    record = etree.XML('<record></record>')
+    record = etree.XML("<record></record>")
     if not priref:
-        record.append(etree.fromstring('<priref>0</priref>'))
+        record.append(etree.fromstring("<priref>0</priref>"))
     else:
-        record.append(etree.fromstring(f'<priref>{priref}</priref>'))
+        record.append(etree.fromstring(f"<priref>{priref}</priref>"))
     for i in frag:
         record.append(etree.fromstring(i))
 
     # Convert XML object to string
     payload = etree.tostring(record)
-    payload = payload.decode('utf-8')
+    payload = payload.decode("utf-8")
 
-    return f'<adlibXML><recordList>{payload}</recordList></adlibXML>'
+    return f"<adlibXML><recordList>{payload}</recordList></adlibXML>"
 
 
 # (priref: str, grouping: str, field_pairs: list[list[dict[Any, Any]]]) -> Optional[str]:
 def create_grouped_data(priref, grouping, field_pairs):
-    '''
+    """
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append
-    '''
+    """
     if not priref:
         return None
 
@@ -402,11 +397,11 @@ def create_grouped_data(priref, grouping, field_pairs):
 
 # (obj: list[Any]):
 def get_fragments(obj):
-    '''
+    """
     Validate given XML string(s), or create valid XML
     fragment from dictionary / list of dictionaries
     Attribution @ Edward Anderson
-    '''
+    """
 
     if not isinstance(obj, list):
         obj = [obj]
@@ -421,23 +416,25 @@ def get_fragments(obj):
 
         # Append valid XML fragments to `data`
         try:
-            list_item = html.fragments_fromstring(sub_item, parser=etree.XMLParser(remove_blank_text=True))
+            list_item = html.fragments_fromstring(
+                sub_item, parser=etree.XMLParser(remove_blank_text=True)
+            )
             for itm in list_item:
                 xml = etree.fromstring(etree.tostring(itm))
                 data.append(etree.tostring(xml))
         except Exception as err:
-            raise TypeError(f'Invalid XML:\n{sub_item}') from err
+            raise TypeError(f"Invalid XML:\n{sub_item}") from err
 
     return data
 
 
 # (api: str, priref: str, comments: str, session: Optional[Session]=None) -> bool:
 def add_quality_comments(api, priref, comments, session):
-    '''
+    """
     Receive comments string
     convert to XML quality comments
     and updaterecord with data
-    '''
+    """
 
     p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
     date_now = str(datetime.datetime.now())[:10]
@@ -452,10 +449,16 @@ def add_quality_comments(api, priref, comments, session):
 
     response = session.post(
         api,
-        headers={'Content-Type': 'text/xml'},
-        params={'database': 'items', 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
+        headers={"Content-Type": "text/xml"},
+        params={
+            "database": "items",
+            "command": "updaterecord",
+            "xmltype": "grouped",
+            "output": "jsonv1",
+        },
         data=payload,
-        timeout=1200)
+        timeout=1200,
+    )
     if "error" in str(response.text):
         return False
     else:
@@ -464,14 +467,14 @@ def add_quality_comments(api, priref, comments, session):
 
 # (rec: str, api: str) -> Optional[bool]:
 def check_response(rec, api):
-    '''
+    """
     Collate list of received API failures
     and check for these reponses from post
     actions. Initiate recycle
-    '''
+    """
     failures = [
-        'A severe error occurred on the current command.',
-        'Execution Timout Expired. The timeout period elapsed'
+        "A severe error occurred on the current command.",
+        "Execution Timout Expired. The timeout period elapsed",
     ]
 
     for warning in failures:
@@ -482,12 +485,12 @@ def check_response(rec, api):
 
 # (api: str) -> None:
 def recycle_api(api):
-    '''
+    """
     Adds a search call to API which
     triggers Powershell recycle
-    '''
-    search = 'title=recycle.application.pool.data.test'
-    req = request('GET', api, headers=HEADERS, params=search)
+    """
+    search = "title=recycle.application.pool.data.test"
+    req = request("GET", api, headers=HEADERS, params=search)
     print(f"Search to trigger recycle sent: {req}")
     print("Pausing for 2 minutes")
     sleep(120)

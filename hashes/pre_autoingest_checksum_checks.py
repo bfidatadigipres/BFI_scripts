@@ -1,22 +1,21 @@
 """
-pre_autoingest_checsum_checks that checks if the supplied checksum provided 
+pre_autoingest_checsum_checks that checks if the supplied checksum provided
 by the suppliers (Amazon, Netflix and more) or their own tercopy transfer.
-for a media file is the same as the local generated checksum. 
+for a media file is the same as the local generated checksum.
 Documents/ all actions are stored in ingest_check.log stored inside ingest_check.
 
 This script is ran before running autoingest.py.
 
 """
 
+import datetime
+import logging
 import os
 import re
-import sys
 import shutil
-import logging
-import datetime
+import sys
 from pathlib import Path
-from typing import Union, Optional
-
+from typing import Optional, Union
 
 sys.path.append(os.environ["CODE"])
 import utils
@@ -42,7 +41,9 @@ def normalised_file(path: str) -> str:
     return path.replace("\\", "/")
 
 
-def process_file_for_match(filepath: str, hash_number: str, file_name: str) -> list[str]:
+def process_file_for_match(
+    filepath: str, hash_number: str, file_name: str
+) -> list[str]:
     """
     Based on the filename or checksum, this function will find either inside
     the checksum folder and returns a tuple containing the line in
@@ -95,7 +96,14 @@ def pygrep(checksum_folder: str, hash_value: str, file_name: str) -> list[str]:
     return lists_of_files
 
 
-def handle_different_file_matches(match: str, root: str, file: str, hash_number: str, filepath: str, file_dict: dict[str, Union[str, bool]]) -> dict[str, Union[str, bool]]:
+def handle_different_file_matches(
+    match: str,
+    root: str,
+    file: str,
+    hash_number: str,
+    filepath: str,
+    file_dict: dict[str, Union[str, bool]],
+) -> dict[str, Union[str, bool]]:
     """Handles logic if local checkusm matches with supplied checksum values"""
     doc_location: str = str(match).split(",")[-1]
     supplied_checksum: str = str(match).split(",")[0].split(" ")[0]
@@ -161,7 +169,12 @@ def handle_different_file_matches(match: str, root: str, file: str, hash_number:
 
 
 def move_file_based_on_outcome(
-    filepath: str, dpath: str, dir: str, no_match: bool, partial_match: bool, full_match: bool
+    filepath: str,
+    dpath: str,
+    dir: str,
+    no_match: bool,
+    partial_match: bool,
+    full_match: bool,
 ) -> str:
     """
     Moves file to specific directory based on the outcome of their checksum and
@@ -257,7 +270,9 @@ def move_file_based_on_outcome(
         return "File has been moved"
 
 
-def file_to_checksum_retrival(filepath: str, dir: Optional[str], ignore_folders: set[str]) -> dict[str, Union[str, bool]]:
+def file_to_checksum_retrival(
+    filepath: str, dir: Optional[str], ignore_folders: set[str]
+) -> dict[str, Union[str, bool]]:
     """This script goes through each file in ingest_check folder (ignoring the other folder) and
     find the checksum for each file and return s dictinary containing the line corresponding
     to the checksum file or false as a value and the file as the key"""
@@ -351,9 +366,9 @@ def main():
         LOGGER.error("Shell script failed to pass argument path via GNU parallel")
         sys.exit("Shell script failed to pass argument to Python script")
 
-    if not utils.check_control('power_off_all'):
-        LOGGER.info('Script run prevented by downtime_control.json. Script exiting.')
-        sys.exit('Script run prevented by downtime_control.json. Script exiting.')
+    if not utils.check_control("power_off_all"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     # the file path should refer to the ingest_check folder found in any qnap folders
     filepath = os.path.join(sys.argv[1], "ingest_check")

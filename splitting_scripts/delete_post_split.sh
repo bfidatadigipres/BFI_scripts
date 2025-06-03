@@ -48,4 +48,3 @@ echo "Completed deletion of H22 files identified for deletion: $(date)" >> "${LO
 echo "Completed deletion of F47 Ofcom files (Isilon video) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 echo "Completed deletion of F47 Ofcom files (QNAP Video) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 echo "Completed deletion of F47 Ofcom files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-

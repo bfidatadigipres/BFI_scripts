@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Autoingest script that checks for source file validity
 for ingest to Black Pearl data tapes, and then checks
 for source file copy persistence before deleting original
@@ -57,96 +57,87 @@ main():
 
 Joanna White
 2022
-'''
+"""
 
+import csv
+import datetime
+import json
+import logging
+import ntpath
 # Public packages
 import os
 import re
-import csv
-import sys
-import json
 import shutil
-import ntpath
-import logging
-import datetime
 import subprocess
+import sys
+
 import magic
 import yaml
 from ds3 import ds3
 
 # Private packages
-sys.path.append(os.environ['CODE'])
+sys.path.append(os.environ["CODE"])
 import adlib
 
 # Global paths
-LOGS = os.environ['LOG_PATH']
-CONTROL_JSON = os.path.join(LOGS, 'downtime_control.json')
-GLOBAL_LOG = os.path.join(LOGS, 'autoingest/global.log')
-PERS_LOG = os.path.join(LOGS, 'persistence_confirmation.log')
-PERS_QUEUE = os.path.join(LOGS, 'autoingest/persistence_queue.csv')
-PERS_QUEUE2 = os.path.join(LOGS, 'autoingest/persistence_queue2.csv')
-CONFIG = os.environ['CONFIG_YAML']
-DPI_BUCKETS = os.environ['DPI_BUCKET']
+LOGS = os.environ["LOG_PATH"]
+CONTROL_JSON = os.path.join(LOGS, "downtime_control.json")
+GLOBAL_LOG = os.path.join(LOGS, "autoingest/global.log")
+PERS_LOG = os.path.join(LOGS, "persistence_confirmation.log")
+PERS_QUEUE = os.path.join(LOGS, "autoingest/persistence_queue.csv")
+PERS_QUEUE2 = os.path.join(LOGS, "autoingest/persistence_queue2.csv")
+CONFIG = os.environ["CONFIG_YAML"]
+DPI_BUCKETS = os.environ["DPI_BUCKET"]
 
 # Setup logging
-logger = logging.getLogger('autoingest')
+logger = logging.getLogger("autoingest")
 hdlr = logging.FileHandler(GLOBAL_LOG)
-formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Setup CID/Black Pearl variables
-CID_API = os.environ['CID_API3']
+CID_API = os.environ["CID_API3"]
 CID = adlib.Database(url=CID_API)
 CUR = adlib.Cursor
 CLIENT = ds3.createClientFromEnv()
 
-PREFIX = [
-    'N',
-    'C',
-    'PD',
-    'SPD',
-    'PBS',
-    'PBM',
-    'PBL',
-    'SCR',
-    'CA'
-]
+PREFIX = ["N", "C", "PD", "SPD", "PBS", "PBM", "PBL", "SCR", "CA"]
 
 
 def check_control():
-    '''
+    """
     Check control_json isn't False
-    '''
+    """
     with open(CONTROL_JSON) as control:
         j = json.load(control)
-        if not j['autoingest']:
-            print('* Exit requested by downtime_control.json. Script exiting')
-            sys.exit('Exit requested by downtime_control.json. Script exiting')
+        if not j["autoingest"]:
+            print("* Exit requested by downtime_control.json. Script exiting")
+            sys.exit("Exit requested by downtime_control.json. Script exiting")
 
 
 def log_delete_message(pth, message, file):
-    '''
+    """
     Save deletion message to persistence_confirmation.log
-    '''
+    """
     datestamp = datetime.datetime.now()
     data = f"{datestamp} INFO\t{pth}\t{pth}\t{file}\t{message}\n"
-    with open(PERS_LOG, 'a+') as out_file:
+    with open(PERS_LOG, "a+") as out_file:
         out_file.write(data)
 
 
 def get_persistence_messages():
-    '''
+    """
     Collect current persistence messages
-    '''
+    """
     csv_reader = []
     messages = {}
-    with open(PERS_QUEUE, 'r') as pq:
+    with open(PERS_QUEUE, "r") as pq:
         csv_reader = list(csv.reader(pq))
 
     csv_reader2 = []
-    with open(PERS_QUEUE2, 'r') as pq:
+    with open(PERS_QUEUE2, "r") as pq:
         csv_reader2 = list(csv.reader(pq))
     csv_reader.extend(csv_reader2)
 
@@ -155,7 +146,7 @@ def get_persistence_messages():
             continue
         p_path = i[0]
         p_message = i[1]
-        print(f'{p_path}:\t{p_message}')
+        print(f"{p_path}:\t{p_message}")
         # Keep latest message in dictionary
         if p_path and p_message:
             messages[p_path] = p_message
@@ -164,17 +155,17 @@ def get_persistence_messages():
 
 
 def check_filename(fname):
-    '''
+    """
     Run series of checks against filename to see
     that it's well formatted
-    '''
+    """
     if not any(fname.startswith(px) for px in PREFIX):
         return False
     if not re.search("^[A-Za-z0-9_.]*$", fname):
         return False
-    if len(fname.split('.')) > 2:
+    if len(fname.split(".")) > 2:
         return False
-    sname = fname.split('_')
+    sname = fname.split("_")
     if len(sname) > 4 or len(sname) < 3:
         return False
     if len(sname) == 4 and len(sname[2]) != 1:
@@ -183,164 +174,184 @@ def check_filename(fname):
 
 
 def check_mime_type(fpath, log_paths):
-    '''
+    """
     Checks the mime type of the file
     and if stream media checks ffprobe
-    '''
-    if fpath.endswith(('.mxf', '.ts', '.mpg')):
-        mime = 'video'
-    elif fpath.endswith(('.srt', '.scc', '.xml', '.itt', '.stl', '.cap', '.dfxp', '.dxfp', '.vtt', '.ttml')):
-        mime = 'application'
+    """
+    if fpath.endswith((".mxf", ".ts", ".mpg")):
+        mime = "video"
+    elif fpath.endswith(
+        (
+            ".srt",
+            ".scc",
+            ".xml",
+            ".itt",
+            ".stl",
+            ".cap",
+            ".dfxp",
+            ".dxfp",
+            ".vtt",
+            ".ttml",
+        )
+    ):
+        mime = "application"
     else:
         mime = magic.from_file(fpath, mime=True)
     try:
-        type_ = mime.split('/')[0]
-        print(f'* mime type is {type_}')
+        type_ = mime.split("/")[0]
+        print(f"* mime type is {type_}")
     except IOError:
-        logger.warning('%s\tCannot open file, resource busy', log_paths)
+        logger.warning("%s\tCannot open file, resource busy", log_paths)
         return False
-    if type_ not in ['application', 'audio', 'image', 'video']:
+    if type_ not in ["application", "audio", "image", "video"]:
         print(f'* MIMEtype "{type_}" is not permitted...')
         logger.warning('%s\tMIMEtype "%s" is not permitted', log_paths, type_)
         return False
-    if type_ in ['audio', 'video']:
-        cmd = ['ffprobe',
-               '-i', fpath,
-               '-loglevel', '-8']
+    if type_ in ["audio", "video"]:
+        cmd = ["ffprobe", "-i", fpath, "-loglevel", "-8"]
         try:
             code = subprocess.call(cmd)
             if code != 0:
-                logger.warning('%s\tffprobe failed to read file: [%s] status', log_paths, code)
+                logger.warning(
+                    "%s\tffprobe failed to read file: [%s] status", log_paths, code
+                )
                 return False
-            print('* ffprobe read file successfully - status 0')
+            print("* ffprobe read file successfully - status 0")
         except Exception as err:
-            logger.warning('%s\tffprobe failed to read file', log_paths)
+            logger.warning("%s\tffprobe failed to read file", log_paths)
             print(err)
             return False
     return True
 
 
 def get_object_number(fname):
-    '''
+    """
     Extract object number and check CID for item record
-    '''
+    """
     if not any(fname.startswith(px) for px in PREFIX):
         return False
     try:
-        splits = fname.split('_')
-        object_number = '-'.join(splits[:-1])
+        splits = fname.split("_")
+        object_number = "-".join(splits[:-1])
     except Exception:
         object_number = None
     return object_number
 
 
 def check_part_whole(fname):
-    '''
+    """
     Check part whole well formed
-    '''
-    match = re.search(r'(?:_)(\d{2,4}of\d{2,4})(?:\.)', fname)
+    """
+    match = re.search(r"(?:_)(\d{2,4}of\d{2,4})(?:\.)", fname)
     if not match:
-        print('* Part-whole has illegal charcters...')
+        print("* Part-whole has illegal charcters...")
         return None, None
-    part, whole = [int(i) for i in match.group(1).split('of')]
-    len_check = fname.split('_')
-    len_check = len_check[-1].split('.')[0]
-    str_part, str_whole = len_check.split('of')
+    part, whole = [int(i) for i in match.group(1).split("of")]
+    len_check = fname.split("_")
+    len_check = len_check[-1].split(".")[0]
+    str_part, str_whole = len_check.split("of")
     if len(str_part) != len(str_whole):
         return None, None
     if part > whole:
-        print('* Part is larger than whole...')
+        print("* Part is larger than whole...")
         return None, None
     return (part, whole)
 
 
 def get_size(fpath):
-    '''
+    """
     Retrieve size of ingest file in bytes
-    '''
+    """
     return os.path.getsize(fpath)
 
 
 def process_image_archive(fname, log_paths):
-    '''
+    """
     Process special collections image
     archive filename structure
-    '''
+    """
     if any(fname.startswith(px) for px in PREFIX):
-        logger.warning('%s\tSpecial Collections path error. Cannot parse <object_number> from filename', log_paths)
-        print('* Special Collections path error. Cannot parse <object_number> from filename...')
+        logger.warning(
+            "%s\tSpecial Collections path error. Cannot parse <object_number> from filename",
+            log_paths,
+        )
+        print(
+            "* Special Collections path error. Cannot parse <object_number> from filename..."
+        )
         return None, None, None, None
-    split_name = fname.split('_')
-    object_number, part, whole, ext = '','','',''
-    if '-' in fname:
-        print('* Cannot parse <object_number> from filename...')
-        logger.warning('%s\tCannot parse <object_number> from filename', log_paths)
+    split_name = fname.split("_")
+    object_number, part, whole, ext = "", "", "", ""
+    if "-" in fname:
+        print("* Cannot parse <object_number> from filename...")
+        logger.warning("%s\tCannot parse <object_number> from filename", log_paths)
         return None, None, None, None
     try:
-        object_number = '-'.join(split_name[:-1])
+        object_number = "-".join(split_name[:-1])
     except Exception:
-        print('* Cannot parse <object_number> from filename...')
-        logger.warning('%s\tCannot parse <object_number> from filename', log_paths)
+        print("* Cannot parse <object_number> from filename...")
+        logger.warning("%s\tCannot parse <object_number> from filename", log_paths)
         return None, None, None, None
     try:
-        partwhole, ext = split_name[-1].split('.')
-        part, whole = partwhole.split('of')
+        partwhole, ext = split_name[-1].split(".")
+        part, whole = partwhole.split("of")
         if len(part) != len(whole):
-            print('* Cannot parse partWhole from filename...')
-            logger.warning('%s\tCannot parse partWhole from filename', log_paths)
+            print("* Cannot parse partWhole from filename...")
+            logger.warning("%s\tCannot parse partWhole from filename", log_paths)
             return None, None, None, None
         if len(part) > 4:
-            print('* Cannot parse partWhole from filename...')
-            logger.warning('%s\tCannot parse partWhole from filename', log_paths)
+            print("* Cannot parse partWhole from filename...")
+            logger.warning("%s\tCannot parse partWhole from filename", log_paths)
             return None, None, None, None
         if int(part) == 0:
-            print('* Cannot parse partWhole from filename...')
-            logger.warning('%s\tCannot parse partWhole from filename', log_paths)
+            print("* Cannot parse partWhole from filename...")
+            logger.warning("%s\tCannot parse partWhole from filename", log_paths)
             return None, None, None, None
         if int(part) > int(whole):
-            print('* Cannot parse partWhole from filename...')
-            logger.warning('%s\tCannot parse partWhole from filename', log_paths)
+            print("* Cannot parse partWhole from filename...")
+            logger.warning("%s\tCannot parse partWhole from filename", log_paths)
             return None, None, None, None
     except Exception as err:
-        print('* Cannot parse partWhole from filename...')
-        logger.warning('%s\tCannot parse partWhole from filename', log_paths)
+        print("* Cannot parse partWhole from filename...")
+        logger.warning("%s\tCannot parse partWhole from filename", log_paths)
         return None, None, None, None
 
     return (object_number, int(part), int(whole), ext)
 
 
 def get_item_priref(ob_num):
-    '''
+    """
     Retrieve item priref, title from CID
-    '''
+    """
     ob_num = ob_num.strip()
 
-    data = {'database': 'collect',
-            'search': f"object_number='{ob_num}'",
-            'fields': 'priref',
-            'output': 'json'}
+    data = {
+        "database": "collect",
+        "search": f"object_number='{ob_num}'",
+        "fields": "priref",
+        "output": "json",
+    }
 
     result = CID.get(data)
     try:
-        priref = int(result.records[0]['priref'][0])
+        priref = int(result.records[0]["priref"][0])
     except Exception:
-        priref = ''
+        priref = ""
         pass
     return priref
 
 
 def check_media_record(fname):
-    '''
+    """
     Check if CID media record
     already created for filename
-    '''
+    """
     search = f"imagen.media.original_filename='{fname}'"
     print(search)
     query = {
-        'database': 'media',
-        'search': search,
-        'limit': '0',
-        'output': 'json',
+        "database": "media",
+        "search": search,
+        "limit": "0",
+        "output": "json",
     }
 
     try:
@@ -355,20 +366,20 @@ def check_media_record(fname):
 
 
 def get_buckets(bucket_collection):
-    '''
+    """
     Read JSON list return
     key_value and list of others
-    '''
+    """
     bucket_list = []
 
     with open(DPI_BUCKETS) as data:
         bucket_data = json.load(data)
-    if bucket_collection == 'bfi':
+    if bucket_collection == "bfi":
         for key, _ in bucket_data.items():
-            if 'preservation' in key.lower():
+            if "preservation" in key.lower():
                 bucket_list.append(key)
             # Imagen path read only now
-            if 'imagen' in key:
+            if "imagen" in key:
                 bucket_list.append(key)
     else:
         for key, _ in bucket_data.items():
@@ -379,21 +390,21 @@ def get_buckets(bucket_collection):
 
 
 def check_bp_status(fname, bucket_list):
-    '''
+    """
     Look up filename in BP to avoid
     multiple ingests of files
-    '''
+    """
 
     for bucket in bucket_list:
         query = ds3.HeadObjectRequest(bucket, fname)
         result = CLIENT.head_object(query)
 
-        if 'DOESNTEXIST' in str(result.result):
+        if "DOESNTEXIST" in str(result.result):
             continue
 
         try:
-            md5 = result.response.msg['ETag']
-            length = result.response.msg['Content-Length']
+            md5 = result.response.msg["ETag"]
+            length = result.response.msg["Content-Length"]
             if int(length) > 1 and len(md5) > 30:
                 return True
         except (IndexError, TypeError, KeyError) as err:
@@ -401,49 +412,53 @@ def check_bp_status(fname, bucket_list):
 
 
 def ext_in_file_type(ext, priref, log_paths):
-    '''
+    """
     Check if ext matches file_type
-    '''
+    """
     ext = ext.lower()
-    dct = {'imp': 'mxf, xml',
-           'tar': 'dpx, dcp, dcdm, wav',
-           'mxf': 'mxf, 50i, imp',
-           'mpg': 'mpeg-1, mpeg-2',
-           'mp4': 'mp4',
-           'mov': 'mov, prores',
-           'mkv': 'mkv, dpx',
-           'wav': 'wav',
-           'tif': 'tif, tiff',
-           'tiff': 'tif, tiff',
-           'jpg': 'jpg, jpeg',
-           'jpeg': 'jpg, jpeg',
-           'ts': 'mpeg-ts',
-           'srt': 'srt',
-           'xml': 'xml, imp',
-           'scc': 'scc',
-           'itt': 'itt',
-           'stl': 'stl',
-           'cap': 'cap',
-           'dfxp': 'dfxp'}
+    dct = {
+        "imp": "mxf, xml",
+        "tar": "dpx, dcp, dcdm, wav",
+        "mxf": "mxf, 50i, imp",
+        "mpg": "mpeg-1, mpeg-2",
+        "mp4": "mp4",
+        "mov": "mov, prores",
+        "mkv": "mkv, dpx",
+        "wav": "wav",
+        "tif": "tif, tiff",
+        "tiff": "tif, tiff",
+        "jpg": "jpg, jpeg",
+        "jpeg": "jpg, jpeg",
+        "ts": "mpeg-ts",
+        "srt": "srt",
+        "xml": "xml, imp",
+        "scc": "scc",
+        "itt": "itt",
+        "stl": "stl",
+        "cap": "cap",
+        "dfxp": "dfxp",
+    }
 
     try:
         ftype = dct[ext]
-        ftype = ftype.split(', ')
+        ftype = ftype.split(", ")
     except Exception:
         print(f"Filetype not matched in dictionary: {ext}")
-        logger.warning('%s\tFile type is not recognised in autoingest', log_paths)
+        logger.warning("%s\tFile type is not recognised in autoingest", log_paths)
         return False
 
     print(ftype)
-    query = {'database': 'collect',
-             'search': f'priref={priref}',
-             'limit': 1,
-             'output': 'json',
-             'fields': 'file_type'}
+    query = {
+        "database": "collect",
+        "search": f"priref={priref}",
+        "limit": 1,
+        "output": "json",
+        "fields": "file_type",
+    }
 
     result = CID.get(query)
     try:
-        file_type = result.records[0]['file_type']
+        file_type = result.records[0]["file_type"]
     except (IndexError, KeyError):
         file_type = []
 
@@ -451,43 +466,50 @@ def ext_in_file_type(ext, priref, log_paths):
         for ft in ftype:
             ft = ft.strip()
             if ft == file_type[0].lower():
-                print(f'* extension matches <file_type> in record... {file_type}')
+                print(f"* extension matches <file_type> in record... {file_type}")
                 return True
-            elif ft == 'mxf' and ft in file_type[0].lower():
-                print(f'* extension matches <file_type> in record... {file_type}')
+            elif ft == "mxf" and ft in file_type[0].lower():
+                print(f"* extension matches <file_type> in record... {file_type}")
                 return True
-        logger.warning('%s\tExtension does not match <file_type> in record', log_paths)
-        print(f'* WARNING extension does not match file_type: {ftype} {file_type}')
+        logger.warning("%s\tExtension does not match <file_type> in record", log_paths)
+        print(f"* WARNING extension does not match file_type: {ftype} {file_type}")
         return False
     elif len(file_type) > 1:
-        logger.warning('%s\tInvalid <file_type> in Collect record. Just one should be present.', log_paths)
-        print(f'* WARNING more than one file_type in CID: {file_type}')
+        logger.warning(
+            "%s\tInvalid <file_type> in Collect record. Just one should be present.",
+            log_paths,
+        )
+        print(f"* WARNING more than one file_type in CID: {file_type}")
     else:
-        logger.warning('%s\tInvalid <file_type> in Collect record', log_paths)
+        logger.warning("%s\tInvalid <file_type> in Collect record", log_paths)
         return False
 
 
 def get_media_ingests(object_number):
-    '''
+    """
     Use object_number to retrieve all media records
-    '''
+    """
 
-    dct = {'database': 'media',
-           'search': f'object.object_number="{object_number}"',
-           'fields': 'imagen.media.original_filename',
-           'limit': 0,
-           'output': 'json'}
+    dct = {
+        "database": "media",
+        "search": f'object.object_number="{object_number}"',
+        "fields": "imagen.media.original_filename",
+        "limit": 0,
+        "output": "json",
+    }
 
     original_filenames = []
     result = CID.get(dct)
     if not result:
         return None
 
-    print(f'\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number')
+    print(
+        f"\t* MEDIA_RECORDS test - {result.hits} media records returned with matching object_number"
+    )
     print(result.records)
     for r in result.records:
         try:
-            filename = r['imagen.media.original_filename']
+            filename = r["imagen.media.original_filename"]
             print(f"File found with CID record: {filename}")
             original_filenames.append(filename[0])
         except KeyError as err:
@@ -497,35 +519,40 @@ def get_media_ingests(object_number):
 
 
 def get_ingests_from_log(fname):
-    '''
+    """
     Iterate global.log looking for
     filename and message match
     to prove ingest status of parts
-    '''
+    """
     ingest_files = []
-    with open(GLOBAL_LOG, 'r') as data:
+    with open(GLOBAL_LOG, "r") as data:
         lines = data.readlines()
-        target_lines = [ x for x in lines if fname in str(x) ]
+        target_lines = [x for x in lines if fname in str(x)]
         for line in target_lines:
-            data_line = line.split('\t')
+            data_line = line.split("\t")
             filename = data_line[4]
             mssg = data_line[5]
             # Get messages featuring filename
-            if 'Moved ingest-ready file to BlackPearl ingest folder' in str(mssg):
+            if "Moved ingest-ready file to BlackPearl ingest folder" in str(mssg):
                 ingest_files.append(filename)
 
     return ingest_files
 
 
 def asset_is_next_ingest(fname, previous_fname, black_pearl_folder):
-    '''
+    """
     New function that checks partWhole ingest order
     and looks for previous part in black_pearl_folder
-    '''
-    fsplit = fname.split('_')
-    file = '_'.join(fsplit[:-1])
+    """
+    fsplit = fname.split("_")
+    file = "_".join(fsplit[:-1])
 
-    ingest_fnames = [f for _,_,files in os.walk(black_pearl_folder) for f in files if f.startswith(file)]
+    ingest_fnames = [
+        f
+        for _, _, files in os.walk(black_pearl_folder)
+        for f in files
+        if f.startswith(file)
+    ]
 
     if previous_fname in str(ingest_fnames):
         return True
@@ -534,68 +561,80 @@ def asset_is_next_ingest(fname, previous_fname, black_pearl_folder):
 
 
 def asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder):
-    '''
+    """
     Check which files have persisted already and
     if this file is next in queue
-    '''
+    """
 
     if part == 1:
-        return 'True'
+        return "True"
 
-    fsplit = fname.split('_')
-    file = '_'.join(fsplit[:-1])
+    fsplit = fname.split("_")
+    file = "_".join(fsplit[:-1])
     range_whole = whole + 1
     filename_range = []
 
     # Netflix extensions vary within IMP so shouldn't be included in range check
-    if 'netflix_ingest' in black_pearl_folder or 'amazon_ingest' in black_pearl_folder:
-        fname_check = fname.split('.')[0]
+    if "netflix_ingest" in black_pearl_folder or "amazon_ingest" in black_pearl_folder:
+        fname_check = fname.split(".")[0]
         for num in range(1, range_whole):
             filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}")
     else:
         fname_check = fname
         for num in range(1, range_whole):
-            filename_range.append(f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}.{ext}")
+            filename_range.append(
+                f"{file}_{str(num).zfill(2)}of{str(whole).zfill(2)}.{ext}"
+            )
 
     # Get previous parts index (hence -2)
     previous = part - 2
     ingest_fnames = get_media_ingests(object_number)
 
     if not ingest_fnames:
-        in_bp_ingest_folder = asset_is_next_ingest(fname, filename_range[previous], black_pearl_folder)
+        in_bp_ingest_folder = asset_is_next_ingest(
+            fname, filename_range[previous], black_pearl_folder
+        )
         if in_bp_ingest_folder:
-            print(f"Is the asset in BP ingest folder: {in_bp_ingest_folder} {type(in_bp_ingest_folder)}")
-            return 'True'
-        return 'False'
+            print(
+                f"Is the asset in BP ingest folder: {in_bp_ingest_folder} {type(in_bp_ingest_folder)}"
+            )
+            return "True"
+        return "False"
 
     if fname_check in str(ingest_fnames):
-        return 'Ingested already'
+        return "Ingested already"
     elif filename_range[previous] in str(ingest_fnames):
-        print(f"Filename previous in ingest_fnames:{filename_range[previous]} {ingest_fnames}")
-        return 'True'
+        print(
+            f"Filename previous in ingest_fnames:{filename_range[previous]} {ingest_fnames}"
+        )
+        return "True"
     else:
-        in_bp_ingest_folder = asset_is_next_ingest(fname, filename_range[previous], black_pearl_folder)
+        in_bp_ingest_folder = asset_is_next_ingest(
+            fname, filename_range[previous], black_pearl_folder
+        )
         if in_bp_ingest_folder:
-            print(f"Is the asset in BP ingest folder: {in_bp_ingest_folder} {type(in_bp_ingest_folder)}")
-            return 'True'
-        return 'False'
+            print(
+                f"Is the asset in BP ingest folder: {in_bp_ingest_folder} {type(in_bp_ingest_folder)}"
+            )
+            return "True"
+        return "False"
 
 
 def load_yaml(file):
-    '''
+    """
     Safe open yaml and return as dict
-    '''
+    """
     with open(file) as config_file:
         d = yaml.safe_load(config_file)
         return d
 
 
 def get_mappings(pth, mappings):
-    '''
+    """
     Get files within config.yaml mappings
     Path limitations for slow storage
-    '''
-    if '/mnt/qnap_video/' in pth:
+    """
+    if "/mnt/qnap_video/" in pth:
         max_ = 1000
     else:
         max_ = 2000
@@ -605,9 +644,9 @@ def get_mappings(pth, mappings):
     for directory in mappings:
         directory_path = os.path.join(pth, directory)
         for root, _, files in os.walk(directory_path):
-            if os.path.split(directory_path)[1] == 'video':
+            if os.path.split(directory_path)[1] == "video":
                 # Skipping adjust path to avoid double ingest of subfolders
-                if 'adjust' in root:
+                if "adjust" in root:
                     continue
             for f in files:
                 fpath = os.path.join(root, f)
@@ -619,25 +658,25 @@ def get_mappings(pth, mappings):
 
 
 def main():
-    '''
+    """
     Iterate config hosts, using autoingest mappings
     navigate all autoingest paths and sort files for ingest
     or deletion.
-    '''
+    """
     messages = {}
     messages = get_persistence_messages()
-    print('* Finished collecting persistence_queue messages...')
+    print("* Finished collecting persistence_queue messages...")
 
-    print('* Collecting ingest sources from config.yaml...')
+    print("* Collecting ingest sources from config.yaml...")
     config_dict = load_yaml(CONFIG)
 
-    for host in config_dict['Hosts']:
+    for host in config_dict["Hosts"]:
         print(host)
         linux_host = list(host.keys())[0]
         tree = list(host.keys())[0]
 
         # Collect files
-        files = get_mappings(tree, config_dict['Mappings'])
+        files = get_mappings(tree, config_dict["Mappings"])
         print(files)
         for pth in files:
             check_control()
@@ -646,70 +685,84 @@ def main():
 
             # Allow path changes for black_pearl_ingest Netflix / Get buckets
             bucket_list = []
-            if 'ingest/netflix' in fpath:
-                logger.info('%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder')
-                black_pearl_folder = os.path.join(linux_host, os.environ['BP_INGEST_NETFLIX'])
-                bucket_list = get_buckets('netflix')
-            elif 'ingest/amazon' in fpath:
-                logger.info('%s\tIngest-ready file is from Netflix AMAZON path, setting Black Pearl Amazon ingest folder')
-                black_pearl_folder = os.path.join(linux_host, os.environ['BP_INGEST_AMAZON'])
-                bucket_list = get_buckets('amazon')
+            if "ingest/netflix" in fpath:
+                logger.info(
+                    "%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder"
+                )
+                black_pearl_folder = os.path.join(
+                    linux_host, os.environ["BP_INGEST_NETFLIX"]
+                )
+                bucket_list = get_buckets("netflix")
+            elif "ingest/amazon" in fpath:
+                logger.info(
+                    "%s\tIngest-ready file is from Netflix AMAZON path, setting Black Pearl Amazon ingest folder"
+                )
+                black_pearl_folder = os.path.join(
+                    linux_host, os.environ["BP_INGEST_AMAZON"]
+                )
+                bucket_list = get_buckets("amazon")
             else:
-                black_pearl_folder = os.path.join(linux_host, os.environ['BP_INGEST'])
-                bucket_list = get_buckets('bfi')
+                black_pearl_folder = os.path.join(linux_host, os.environ["BP_INGEST"])
+                bucket_list = get_buckets("bfi")
 
-            if '.DS_Store' in fname:
+            if ".DS_Store" in fname:
                 continue
-            if fname.endswith(('.txt', '.md5', '.log', '.mhl', '.ini', '.json')):
+            if fname.endswith((".txt", ".md5", ".log", ".mhl", ".ini", ".json")):
                 continue
-            ext = fname.split('.')[-1]
+            ext = fname.split(".")[-1]
 
-            print(f'\n====== CURRENT FILE: {fpath} ===========================')
+            print(f"\n====== CURRENT FILE: {fpath} ===========================")
 
             # Create paths and join for logs
             relative_nix_path = fpath.replace(tree, host[tree])
             relative_path = ntpath.normpath(relative_nix_path)
-            log_paths = '\t'.join([fpath, relative_path, fname])
+            log_paths = "\t".join([fpath, relative_path, fname])
 
-            if 'autoingest/completed/' in fpath:
+            if "autoingest/completed/" in fpath:
                 # Push completed/ paths straight to deletions checks
-                print('* Item is in completed/ path, moving to persistence checks')
+                print("* Item is in completed/ path, moving to persistence checks")
                 print(f"check_for_deletions({fpath}, {fname}, {log_paths}, {messages}")
                 boole = check_for_deletions(fpath, fname, log_paths, messages)
-                print(f'File successfully deleted: {boole}')
+                print(f"File successfully deleted: {boole}")
                 continue
 
-            elif 'special_collections' in fpath and 'proxy/image/archive/' in fpath:
-                print('* File is Special Collections archive image')
+            elif "special_collections" in fpath and "proxy/image/archive/" in fpath:
+                print("* File is Special Collections archive image")
                 # Simplified name check
                 if not re.search("^[A-Za-z0-9_.]*$", fname):
-                    print(f'* Filename formatted incorrectly {fname}')
+                    print(f"* Filename formatted incorrectly {fname}")
                     logger.warning("%s\tFilename formatted incorrectly", log_paths)
                     continue
-                object_number, part, whole, ext = process_image_archive(fname, log_paths)
+                object_number, part, whole, ext = process_image_archive(
+                    fname, log_paths
+                )
                 if not object_number or not part:
                     continue
 
-            elif not '/ingest/' in fpath:
-                print('* Filepath is not an ingest path')
+            elif not "/ingest/" in fpath:
+                print("* Filepath is not an ingest path")
                 continue
 
             else:
                 # NAME/PART WHOLE VALIDATIONS
                 if not check_filename(fname):
-                    print(f'* Filename formatted incorrectly {fname}')
+                    print(f"* Filename formatted incorrectly {fname}")
                     logger.warning("%s\tFilename formatted incorrectly", log_paths)
                     continue
                 part, whole = check_part_whole(fname)
                 if not part or not whole:
-                    print('* Cannot parse partWhole from filename')
-                    logger.warning('%s\tCannot parse partWhole from filename', log_paths)
+                    print("* Cannot parse partWhole from filename")
+                    logger.warning(
+                        "%s\tCannot parse partWhole from filename", log_paths
+                    )
                     continue
                 # Get object_number
                 object_number = get_object_number(fname)
                 if not object_number:
-                    print('* Cannot parse <object_number> from filename')
-                    logger.warning('%s\tCannot parse <object_number> from filename', log_paths)
+                    print("* Cannot parse <object_number> from filename")
+                    logger.warning(
+                        "%s\tCannot parse <object_number> from filename", log_paths
+                    )
                     continue
 
             # MIME/TYPE VALIDATIONS
@@ -719,10 +772,16 @@ def main():
             # CID checks
             priref = get_item_priref(object_number)
             if not priref:
-                print(f'* Cannot find record with <object_number>...<{object_number}>')
-                logger.warning('%s\tCannot find record with <object_number>... <%s>', log_paths, object_number)
+                print(f"* Cannot find record with <object_number>...<{object_number}>")
+                logger.warning(
+                    "%s\tCannot find record with <object_number>... <%s>",
+                    log_paths,
+                    object_number,
+                )
                 continue
-            print(f"* CID item record found with object number {object_number}: priref {priref}")
+            print(
+                f"* CID item record found with object number {object_number}: priref {priref}"
+            )
 
             # Ext in file_type and file_type validity in Collect database
             confirmed = ext_in_file_type(ext, priref, log_paths)
@@ -732,131 +791,174 @@ def main():
             # CID media record check
             media_check = check_media_record(fname)
             if media_check is True:
-                print(f'* Filename {fname} already has a CID Media record. Manual clean up needed.')
-                logger.warning('%s\tFilename already has a CID Media record: %s', log_paths, fname)
+                print(
+                    f"* Filename {fname} already has a CID Media record. Manual clean up needed."
+                )
+                logger.warning(
+                    "%s\tFilename already has a CID Media record: %s", log_paths, fname
+                )
                 continue
-            print(f'* File {fname} has no CID Media record.')
+            print(f"* File {fname} has no CID Media record.")
 
             # BP ingest check
             ingest_check = check_bp_status(fname, bucket_list)
             if ingest_check is True:
-                print(f'* Filename {fname} has already been ingested to DPI. Manual clean up needed.')
-                logger.warning('%s\tFilename has aleady been ingested to DPI: %s', log_paths, fname)
+                print(
+                    f"* Filename {fname} has already been ingested to DPI. Manual clean up needed."
+                )
+                logger.warning(
+                    "%s\tFilename has aleady been ingested to DPI: %s", log_paths, fname
+                )
                 continue
-            print(f'* File {fname} has not been ingested to DPI yet.')
+            print(f"* File {fname} has not been ingested to DPI yet.")
 
             # Begin ingest pass
             do_ingest = False
 
             # Move first part of incomplete scans
-            if '/incomplete_scans/' in fpath:
-                print('\n*** File is an incomplete scan. Moving for ingest ======')
+            if "/incomplete_scans/" in fpath:
+                print("\n*** File is an incomplete scan. Moving for ingest ======")
                 do_ingest = True
             else:
                 # Move items for ingest if they are single parts, first parts, or next in queue
-                print('\n*** TEST for ASSET_MULTIPART ======')
+                print("\n*** TEST for ASSET_MULTIPART ======")
                 if whole == 1:
-                    print('\t* file is not multipart...')
-                    print('\t* asset is single part and not yet ingested, preparing for ingest...')
+                    print("\t* file is not multipart...")
+                    print(
+                        "\t* asset is single part and not yet ingested, preparing for ingest..."
+                    )
                     do_ingest = True
                 elif part == 1:
-                    print('\t* file is multipart...')
-                    print('\t* asset is first part and not yet ingested, preparing for ingest...')
+                    print("\t* file is multipart...")
+                    print(
+                        "\t* asset is first part and not yet ingested, preparing for ingest..."
+                    )
                     do_ingest = True
                 else:
-                    print('\t* file is multi-part...')
-                    print('\t\t* === AUTOINGEST - TEST for ASSET_IS_NEXT ======')
-                    result = asset_is_next(fname, ext, object_number, part, whole, black_pearl_folder)
-                    if 'No index' in result:
-                        print('\t\t***** Indexing logic broken')
+                    print("\t* file is multi-part...")
+                    print("\t\t* === AUTOINGEST - TEST for ASSET_IS_NEXT ======")
+                    result = asset_is_next(
+                        fname, ext, object_number, part, whole, black_pearl_folder
+                    )
+                    if "No index" in result:
+                        print("\t\t***** Indexing logic broken")
                         continue
-                    if 'Ingested already' in result:
-                        print('\t\t* Already ingested! Not to be reingested')
-                        logger.warning('%s\tThis file name has already been ingested and has CID Media record', log_paths)
+                    if "Ingested already" in result:
+                        print("\t\t* Already ingested! Not to be reingested")
+                        logger.warning(
+                            "%s\tThis file name has already been ingested and has CID Media record",
+                            log_paths,
+                        )
                         continue
-                    if 'False' in result:
-                        print('\t\t* multi-part file, not suitable for ingest at this time...')
-                        logger.info('%s\tSkip object as previous part not yet ingested or queued for ingest', log_paths)
+                    if "False" in result:
+                        print(
+                            "\t\t* multi-part file, not suitable for ingest at this time..."
+                        )
+                        logger.info(
+                            "%s\tSkip object as previous part not yet ingested or queued for ingest",
+                            log_paths,
+                        )
                         continue
                     # Prepare multiparter ingest configuration
-                    print('\n*** TEST for ASSET_MULTIPART and ASSET_IS_NEXT ======')
-                    print('\t* asset is multipart and is next in queue...')
-                    print('\t\t* multi-part file, suitable for ingest...')
+                    print("\n*** TEST for ASSET_MULTIPART and ASSET_IS_NEXT ======")
+                    print("\t* asset is multipart and is next in queue...")
+                    print("\t\t* multi-part file, suitable for ingest...")
                     do_ingest = True
 
             # Check if path / no ingests to take place [PROBABLY CAN BE DEPRECATED]
             with open(CONTROL_JSON) as control_pth:
                 cp = json.load(control_pth)
-                if not cp['do_ingest']:
-                    print('* do_ingest set to false in control json, skipping')
+                if not cp["do_ingest"]:
+                    print("* do_ingest set to false in control json, skipping")
                     do_ingest = False
                 if not cp[tree]:
-                    print('* Path set to false in control json, turning ingest off')
+                    print("* Path set to false in control json, turning ingest off")
                     do_ingest = False
 
             # Perform ingest if under 1TB
             if do_ingest:
                 size = get_size(fpath)
                 if int(size) > 1099511627776:
-                    logger.warning('%s\tFile is larger than 1TB. Leaving in ingest folder', log_paths)
+                    logger.warning(
+                        "%s\tFile is larger than 1TB. Leaving in ingest folder",
+                        log_paths,
+                    )
                     continue
-                print('\t* file has not been ingested, so moving it into Black Pearl ingest folder...')
+                print(
+                    "\t* file has not been ingested, so moving it into Black Pearl ingest folder..."
+                )
                 try:
                     shutil.move(fpath, os.path.join(black_pearl_folder, fname))
-                    print(f'\t** File moved to {os.path.join(black_pearl_folder, fname)}')
-                    logger.info('%s\tMoved ingest-ready file to BlackPearl ingest folder', log_paths)
+                    print(
+                        f"\t** File moved to {os.path.join(black_pearl_folder, fname)}"
+                    )
+                    logger.info(
+                        "%s\tMoved ingest-ready file to BlackPearl ingest folder",
+                        log_paths,
+                    )
                 except Exception as err:
-                    print(f'Failed to move file to black_pearl_ingest: {err}')
-                    logger.warning('%s\tFailed to move ingest-ready file to BlackPearl ingest folder', log_paths)
+                    print(f"Failed to move file to black_pearl_ingest: {err}")
+                    logger.warning(
+                        "%s\tFailed to move ingest-ready file to BlackPearl ingest folder",
+                        log_paths,
+                    )
                 continue
 
 
 def check_for_deletions(fpath, fname, log_paths, messages):
-    '''
+    """
     Process files in completed/ folder by checking for persistence
     message that confirms deletion is allowed.
-    '''
+    """
 
     # Check if CID media record exists
     media_check = check_media_record(fname)
     if media_check is False:
-        print(f'* Filename {fname} has no CID Media record. Leaving for manual checks.')
-        logger.warning('%s\tCompleted file has no CID Media record: %s', log_paths, fname)
+        print(f"* Filename {fname} has no CID Media record. Leaving for manual checks.")
+        logger.warning(
+            "%s\tCompleted file has no CID Media record: %s", log_paths, fname
+        )
         return False
 
-    mssg_pth, message = '', ''
+    mssg_pth, message = "", ""
     print(messages)
     for key, value in messages.items():
         if fname in key:
             mssg_pth = key
             message = value
-            print(f'* Message: {mssg_pth} {message}')
+            print(f"* Message: {mssg_pth} {message}")
 
             # Get messages featuring filename
-            if message == '':
+            if message == "":
                 continue
 
             # Persistence validation failure
-            if message != 'Persistence checks passed: delete file':
+            if message != "Persistence checks passed: delete file":
                 continue
 
             # Clear to delete
-            elif message == 'Persistence checks passed: delete file':
+            elif message == "Persistence checks passed: delete file":
                 print(message)
-                logger.info('%s\t%s', log_paths, message)
+                logger.info("%s\t%s", log_paths, message)
                 if os.path.exists(fpath):
-                    print(f'* Deleting now: {fpath}')
+                    print(f"* Deleting now: {fpath}")
                     try:
                         os.remove(fpath)
-                        logger.info('%s\tSuccessfully deleted file', log_paths)
-                        log_delete_message(fpath, 'Successfully deleted file', fname)
-                        print('* successfully deleted file based on persistence result...')
+                        logger.info("%s\tSuccessfully deleted file", log_paths)
+                        log_delete_message(fpath, "Successfully deleted file", fname)
+                        print(
+                            "* successfully deleted file based on persistence result..."
+                        )
                         return True
                     except Exception as err:
-                        print(f'* File deletion failed despite filepath existing:\n{err}')
-                        logger.warning('%s\tFailed to delete file', log_paths)
+                        print(
+                            f"* File deletion failed despite filepath existing:\n{err}"
+                        )
+                        logger.warning("%s\tFailed to delete file", log_paths)
                 else:
-                    print('* File already absent from path. Check problem with persistence message')
+                    print(
+                        "* File already absent from path. Check problem with persistence message"
+                    )
     return False
 
 

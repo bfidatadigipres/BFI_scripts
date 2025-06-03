@@ -1,96 +1,96 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Script called by workflow.py for
 creation of OFCOM workflow records
 
 Updating to Python3.11
-'''
+"""
 
 # Public packges
 from lxml import etree
 
 
-class Field():
+class Field:
     # Possibly works okay, needs live test
     def __init__(self, xml=None, name=None, text=None, lang=None, field_type=str):
-        super(Field, self).__setattr__('data', {'values': {}, 'field_type': field_type})
+        super(Field, self).__setattr__("data", {"values": {}, "field_type": field_type})
 
         if xml is not None:
             self.from_xml(xml)
         else:
             if not field_type:
-                raise ValueError('argument: field_type is required')
+                raise ValueError("argument: field_type is required")
 
             if lang is None:
                 lang = self._update_language()
 
-            self.data['name'] = name
-            self.data['values'] = {lang: text}
+            self.data["name"] = name
+            self.data["values"] = {lang: text}
 
     def __getattr__(self, key):
-        if key == 'text':
-            values = [self.data['values'][i] for i in self.data['values']]
+        if key == "text":
+            values = [self.data["values"][i] for i in self.data["values"]]
             if len(values) > 1:
-                for i in ['', 'neutral']:
+                for i in ["", "neutral"]:
                     try:
-                        return self.data['values'][i]
+                        return self.data["values"][i]
                     except Exception:
                         pass
 
             return values[0]
-        elif key == 'fields':
+        elif key == "fields":
             return None
         else:
             return self.data[key]
 
     def __setattr__(self, key, value):
-        if key == 'text':
+        if key == "text":
             if isinstance(value, (str, int)):
                 lang = self._update_language()
-                self.data['values'] = {lang: value}
+                self.data["values"] = {lang: value}
             else:
-                self.data['values'] = value
+                self.data["values"] = value
         else:
-            raise ValueError('attribute: {} is not available'.format(key))
+            raise ValueError("attribute: {} is not available".format(key))
 
     def _update_language(self):
-        field_attributes = {'linked': '', 'enumeration': 'neutral'}
-        if self.data['field_type'] in field_attributes:
-            return field_attributes[self.data['field_type']]
+        field_attributes = {"linked": "", "enumeration": "neutral"}
+        if self.data["field_type"] in field_attributes:
+            return field_attributes[self.data["field_type"]]
 
     def from_xml(self, xml):
         if isinstance(xml, str):
             xml = etree.fromstring(xml)
 
-        self.data['name'] = xml.tag
+        self.data["name"] = xml.tag
         if xml.text is not None:
-            self.data['values'] = {None: xml.text}
+            self.data["values"] = {None: xml.text}
 
-        attributes_fields = {'': 'linked', 'neutral': 'enumeration'}
+        attributes_fields = {"": "linked", "neutral": "enumeration"}
 
         for element in xml:
-            lang = element.get('lang')
+            lang = element.get("lang")
             if lang in attributes_fields:
-                self.data['field_type'] = attributes_fields[lang]
-            self.data['values'][lang] = element.text
+                self.data["field_type"] = attributes_fields[lang]
+            self.data["values"][lang] = element.text
 
     def to_xml(self):
-        root = etree.Element(self.data['name'])
+        root = etree.Element(self.data["name"])
 
-        for i in self.data['values']:
+        for i in self.data["values"]:
             if i is not None:
-                e = etree.Element('value')
-                e.attrib['lang'] = i
-                e.text = self.data['values'][i]
+                e = etree.Element("value")
+                e.attrib["lang"] = i
+                e.text = self.data["values"][i]
                 root.append(e)
             else:
-                root.text = self.data['values'][i]
+                root.text = self.data["values"][i]
 
         return root
 
 
-class Group():
+class Group:
     # Possibly works okay, needs live test
     def __init__(self, xml=None, name=None, fields=None):
         self.fields = []
@@ -102,7 +102,7 @@ class Group():
 
             if fields:
                 if not isinstance(fields, list):
-                    raise TypeError('argument: fields must be type: list')
+                    raise TypeError("argument: fields must be type: list")
 
                 for item in fields:
                     self.append(**item)
@@ -137,7 +137,7 @@ class Group():
             return root
 
 
-class Record():
+class Record:
     # Possibly works okay, needs live test
     def __init__(self, xml=None, data=None):
         self.fields = []
@@ -152,14 +152,14 @@ class Record():
         return [i for i in self.fields if i.name == k]
 
     def get(self, k):
-        '''
+        """
         Get all fields in any group matching field k
-        '''
+        """
 
         matches = []
 
         for element in self.fields:
-            if type(element).__name__ == 'Group':
+            if type(element).__name__ == "Group":
                 for f in element.fields:
                     if f.name == k:
                         matches.append(f)
@@ -170,12 +170,12 @@ class Record():
         return matches
 
     def _is_grouped(self, field):
-        '''
+        """
         Determine if field is grouped by checking if it has child node <value>
-        '''
+        """
 
         for child in field:
-            if child.tag == 'value':
+            if child.tag == "value":
                 return False
 
         return True
@@ -203,7 +203,7 @@ class Record():
             if isinstance(v, dict):
                 # Grouped
                 names = v.keys()
-                fields = [{'name': n, 'text': v[n]} for n in names]
+                fields = [{"name": n, "text": v[n]} for n in names]
                 self.append(field=Group(name=k, fields=fields))
             else:
                 # Ungrouped
@@ -227,7 +227,7 @@ class Record():
             self.fields.append(field)
 
     def to_xml(self, to_string=False):
-        root = etree.Element('record')
+        root = etree.Element("record")
 
         for i in self.fields:
             root.append(i.to_xml())
@@ -238,8 +238,7 @@ class Record():
             return root
 
     def save(self, database=None):
-        '''
+        """
         Save changes to record with updaterecord
-        '''
+        """
         pass
-

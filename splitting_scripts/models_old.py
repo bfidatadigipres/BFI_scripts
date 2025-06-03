@@ -27,12 +27,13 @@ from PIL import Image
 # Private packages
 sys.path.append(os.environ['CODE'])
 import adlib
+import utils
 
 # Global variables
 LOGS = os.environ['LOG_PATH']
 LOG_PATH = os.path.join(LOGS, 'splitting_models.log')
 DPI_PATH = os.environ['DPI_API']
-CID_API = os.environ['CID_API3']
+CID_API = utils.get_current_api()
 CID = adlib.Database(url=CID_API)
 
 # Setup logging, overwrite each time

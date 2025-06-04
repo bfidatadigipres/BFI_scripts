@@ -43,14 +43,6 @@ def send_as_transfer(fpath, priref):
     headr = {
         "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
         "Content-Type": "application/json"
-<<<<<<< HEAD
-    }
-
-    params = {
-        "username": API_NAME,
-        "api_key": API_KEY
-=======
->>>>>>> bec5010 (Update latest version)
     }
 
     # Create payload and post

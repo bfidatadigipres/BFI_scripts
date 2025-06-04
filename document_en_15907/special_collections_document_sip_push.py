@@ -12,7 +12,7 @@ import requests
 from os import fsencode
 
 LOCATION = os.environ.get("AM_TS_UUID")  # Transfer source
-ARCH_URL = os.environ.get("AM_URL")  # Basic URL for bfi archivametica
+ARCH_URL = os.environ.get("AM_URL")  # Basic URL for bfi archivematica
 API_NAME = os.environ.get("AM_API")  # temp user / key
 API_KEY = os.environ.get("AM_KEY")
 if not ARCH_URL or not API_NAME or not API_KEY:
@@ -35,8 +35,8 @@ def send_as_transfer(fpath, priref):
         sys.exit(f"Path supplied cannot be found: {fpath}")
 
     # Build correct folder path
-    rel_path = os.path.basename(fpath)
-    path_str = f"{LOCATION}:{rel_path}"
+    folder_path = os.path.basename(fpath)
+    path_str = f"{LOCATION}:{fpath}"
     encoded_path = base64.b64encode(path_str.encode('utf-8')).decode('utf-8')
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")
@@ -44,11 +44,6 @@ def send_as_transfer(fpath, priref):
     headr = {
         "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
         "Content-Type": "application/json"
-    }
-
-    params = {
-        "username": API_NAME,
-        "api_key": API_KEY
     }
 
     # Create payload and post

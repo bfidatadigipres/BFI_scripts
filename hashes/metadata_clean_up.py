@@ -603,7 +603,7 @@ def manipulate_data(key: str, selection: Optional[str]) -> Optional[str]:
     if ".audio_codecs" in key and " / " in selection:
         all_codecs = selection.split(" / ")
         unique_codecs = list(set(all_codecs))
-        return ", ".join(unique_codecs.strip())
+        return ", ".join(unique_codecs)
     if ".codec_id" in key and " / " in selection:
         return selection.split(" / ")[0].strip()
     if ".sampling_rate" in key and selection.isnumeric():

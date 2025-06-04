@@ -20,10 +20,10 @@ writes mediainfo data to CID media record priref before deleting files.
 Python3.8+
 """
 
+# Global packages
 import csv
 import json
 import logging
-# Global packages
 import os
 import sys
 from typing import Any, Optional, Union
@@ -343,50 +343,32 @@ def build_metadata_xml(json_path: str, priref: str) -> str:
     Open JSON, dump to dict and create
     metadata XML for updaterecord
     """
-    videos = audio = other = text = ""
     with open(json_path, "r") as metadata:
         mdata = json.load(metadata)
 
-    for track in mdata["media"]["track"]:
-        if track["@type"] == "General":
-            print(f"General track: {track}")
-            gen = get_xml("container", track)
-            gen_xml = wrap_as_xml("Container", gen)
+    xml_dct = {
+        "General": "container",
+        "Video": "video",
+        "Audio": "audio",
+        "Other": "other",
+        "Text": "text"
+    }
 
-        elif track["@type"] == "Video":
-            print(f"Video track: {track}")
-            vid = get_video_xml(track)
-            vid_xml = wrap_as_xml("Video", vid)
-            if len(videos) > 0:
-                videos += vid_xml
-            else:
-                videos = vid_xml
-        elif track["@type"] == "Audio":
-            print(f"Audio track: {track}")
-            aud = get_xml("audio", track)
-            aud_xml = wrap_as_xml("Audio", aud)
-            if len(audio) > 0:
-                audio += aud_xml
-            else:
-                audio = aud_xml
-        elif track["@type"] == "Other":
-            oth = get_xml("other", track)
-            oth_xml = wrap_as_xml("Other", oth)
-            # Only pass one set of Other data to XML at this time
-            if len(other) == 0:
-                other = oth_xml
-            else:
-                # other += other_xml
-                pass
-        elif track["@type"] == "Text":
-            txt = get_xml("text", track)
-            txt_xml = wrap_as_xml("Text", txt)
-            if len(text) > 0:
-                text += txt_xml
-            else:
-                text = txt_xml
+    payload = ""
+    for key, value in xml_dct.items():
+        for track in mdata["media"]["track"]:
+            if track["@type"] == key:
+                print(f"{key} track: {track}")
+                if key == "Video":
+                    xml = get_video_xml(track)
+                else:
+                    xml = get_xml(value, track)
+                wrapped = wrap_as_xml(value.title(), xml)
+                if len(payload) > 0:
+                    payload += wrapped
+                else:
+                    payload = wrapped
 
-    payload = gen_xml + videos + audio + other + text
     payload_start = f"<adlibXML><recordList><record priref='{priref}'>"
     payload_end = "</record></recordList></adlibXML>"
 
@@ -474,6 +456,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
     for field in FIELDS:
         for key, val in field.items():
             # Temporarily convert text returned milliseconds to seconds
+            # MediaArea to deprecate this in future, returning seconds in text formats
             if key.endswith("duration.seconds"):
                 match = iterate_text_rows(gen_rows, val[1], key)
                 if match is None:
@@ -573,22 +556,22 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
             xml = wrap_as_xml("Audio", aud)
             payload += xml
 
-    oth = []
-    # Other tracks not repeatable in CID yet. Managing multiple Other tracks
-    if oth_count <= 1:
-        oth_rows = get_text_rows("Other", mdata)
-    else:
-        oth_rows = get_text_rows(f"Other \#1", mdata)
-    for field in FIELDS:
-        for key, val in field.items():
-            if key.startswith("other."):
-                match = iterate_text_rows(oth_rows, val[1], key)
-                if match is None:
-                    continue
-                oth.append(match)
-    if len(oth) > 0:
-        xml = wrap_as_xml("Other", oth)
-        payload += xml
+    for num in range(1, oth_count + 1):
+        if oth_count == 1:
+            oth_rows = get_text_rows("Other", mdata)
+        else:
+            oth_rows = get_text_rows(f"Other \#{num}", mdata)
+        oth = []
+        for field in FIELDS:
+            for key, val in field.items():
+                if key.startswith("other."):
+                    match = iterate_text_rows(oth_rows, val[1], key)
+                    if match is None:
+                        continue
+                    oth.append(match)
+        if len(oth) > 0:
+            xml = wrap_as_xml("Other", oth)
+            payload += xml
 
     txt = []
     txt_rows = get_text_rows("Text", mdata)
@@ -620,7 +603,7 @@ def manipulate_data(key: str, selection: Optional[str]) -> Optional[str]:
     if ".audio_codecs" in key and " / " in selection:
         all_codecs = selection.split(" / ")
         unique_codecs = list(set(all_codecs))
-        return ", ".join(unique_codecs.strip())
+        return ", ".join(unique_codecs)
     if ".codec_id" in key and " / " in selection:
         return selection.split(" / ")[0].strip()
     if ".sampling_rate" in key and selection.isnumeric():
@@ -783,42 +766,13 @@ def clean_up(filename: str, text_path: str) -> None:
     Clean up metadata
     """
     tfp, ep, pp, xp, jp, exfp = make_paths(filename)
-
-    try:
-        LOGGER.info("Deleting path: %s", text_path)
-        os.remove(text_path)
-    except Exception:
-        LOGGER.warning("Unable to delete file: %s", text_path)
-    try:
-        LOGGER.info("Deleting path: %s", tfp)
-        os.remove(tfp)
-    except Exception:
-        LOGGER.warning("Unable to delete file: %s", tfp)
-    try:
-        LOGGER.info("Deleting path: %s", ep)
-        os.remove(ep)
-    except Exception:
-        LOGGER.warning("Unable to delete file: %s", ep)
-    try:
-        LOGGER.info("Deleting path: %s", pp)
-        os.remove(pp)
-    except Exception:
-        LOGGER.warning("Unable to delete file: %s", pp)
-    try:
-        LOGGER.info("Deleting path: %s", xp)
-        os.remove(xp)
-    except Exception:
-        LOGGER.warning("Unable to delete file: %s", xp)
-    try:
-        LOGGER.info("Deleting path: %s", jp)
-        os.remove(jp)
-    except Exception:
-        LOGGER.warning("Unable to delete file: %s", jp)
-    try:
-        LOGGER.info("Deleting path: %s", exfp)
-        os.remove(exfp)
-    except Exception:
-        LOGGER.warning("Unable to delete file: %s", exfp)
+    path_lists = [text_path, tfp, ep, pp, xp, jp, exfp]
+    for pth in path_lists:
+        try:
+            LOGGER.info("Deleting path: %s", pth)
+            os.remove(pth)
+        except Exception:
+            LOGGER.warning("Unable to delete file: %s", pth)
 
 
 def make_header_data(text_path: str, filename: str, priref: str) -> str:
@@ -826,67 +780,29 @@ def make_header_data(text_path: str, filename: str, priref: str) -> str:
     Create the header tag data
     """
     tfp, ep, pp, xp, jp, exfp = make_paths(filename)
-    text = text_full = ebu = pb = xml = jsn = exif = ""
     if text_path.endswith("_EXIF.txt"):
         text_path = text_path.replace("_EXIF.txt", "_TEXT.txt")
 
-    # Processing metadata output for text path
-    try:
-        text_dump = utils.read_extract(text_path)
-        text = f"<Header_tags><header_tags.parser>MediaInfo text 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-    except Exception as err:
-        print(err)
-        LOGGER.warning("Failed to write Text dump to record %s", priref)
+    header_dct = {
+        "MediaInfo text 0": text_path,
+        "MediaInfo text 0 full": tfp,
+        "MediaInfo ebucore 0": ep,
+        "MediaInfo pbcore 0": pp,
+        "MediaInfo xml 0": xp,
+        "MediaInfo json 0": jp,
+        "Exiftool text": exfp
+    }
 
-    # Processing metadata output for text full path
-    try:
-        text_dump = utils.read_extract(tfp)
-        text_full = f"<Header_tags><header_tags.parser>MediaInfo text 0 full</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-    except Exception as err:
-        print(err)
-        LOGGER.warning("Failed to write Text Full dump to record %s", priref)
+    payload_data = ''
+    for key, value in header_dct.items():
+        try:
+            text_dump = utils.read_extract(value)
+            text = f"<Header_tags><header_tags.parser>{key}</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+            payload_data += text
+        except Exception as err:
+            print(err)
+            LOGGER.warning("Failed to write text dump for %s: %s", key, value)
 
-    # Processing metadata output for ebucore path
-    try:
-        text_dump = utils.read_extract(ep)
-        ebu = f"<Header_tags><header_tags.parser>MediaInfo ebucore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-    except Exception as err:
-        print(err)
-        LOGGER.warning("Failed to write EBUCore dump to record %s", priref)
-
-    # Processing metadata output for pbcore path
-    try:
-        text_dump = utils.read_extract(pp)
-        pb = f"<Header_tags><header_tags.parser>MediaInfo pbcore 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-    except Exception as err:
-        print(err)
-        LOGGER.warning("Failed to write PBCore dump to record %s", priref)
-
-    # Processing metadata output for pbcore path
-    try:
-        text_dump = utils.read_extract(xp)
-        xml = f"<Header_tags><header_tags.parser>MediaInfo xml 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-    except Exception as err:
-        print(err)
-        LOGGER.warning("Failed to write XML dump to record %s", priref)
-
-    # Processing metadata output for json path
-    try:
-        text_dump = utils.read_extract(jp)
-        jsn = f"<Header_tags><header_tags.parser>MediaInfo json 0</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-    except Exception as err:
-        print(err)
-        LOGGER.warning("Failed to write JSON dump to record %s", priref)
-
-    # Processing metadata output for special collections exif data
-    try:
-        text_dump = utils.read_extract(exfp)
-        exif = f"<Header_tags><header_tags.parser>Exiftool text</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-    except Exception as err:
-        print(err)
-        LOGGER.warning("Failed to write Exif dump to record %s", priref)
-
-    payload_data = text + text_full + ebu + pb + xml + jsn + exif
     return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
 
 

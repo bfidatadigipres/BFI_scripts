@@ -175,3 +175,4 @@ def get_location_uuids():
     except requests.exceptions.RequestException as err:
         print(err)
         return None
+

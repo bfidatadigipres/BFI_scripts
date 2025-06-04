@@ -270,7 +270,7 @@ def main():
                 "Failed to push regular metadata to the CID record. Writing to errors CSV"
             )
             write_to_errors_csv("media", CID_API, priref, mdata_xml, rec)
-
+        sys.exit("Run once only")
     elif text_file.endswith("_EXIF.txt"):
         filename = text_file.split("_EXIF.txt")[0]
         if len(filename) > 0 and filename.endswith(
@@ -302,7 +302,7 @@ def main():
                 "Failed to push EXIF metadata to the CID record. Writing to errors CSV"
             )
             write_to_errors_csv("media", CID_API, priref, image_xml, rec)
-
+        sys.exit("Run once only")
     # Write remaining metadata to header_tags and clean up
     header_payload = make_header_data(text_path, filename, priref)
     if not header_payload:
@@ -603,7 +603,7 @@ def manipulate_data(key: str, selection: Optional[str]) -> Optional[str]:
     if ".audio_codecs" in key and " / " in selection:
         all_codecs = selection.split(" / ")
         unique_codecs = list(set(all_codecs))
-        return ", ".join(unique_codecs.strip())
+        return ", ".join(unique_codecs)
     if ".codec_id" in key and " / " in selection:
         return selection.split(" / ")[0].strip()
     if ".sampling_rate" in key and selection.isnumeric():

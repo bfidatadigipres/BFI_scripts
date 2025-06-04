@@ -58,11 +58,7 @@ def send_as_transfer(fpath, priref):
     print(f"Starting transfer... to {TRANSFER_NAME} {rel_path}")
     try:
         response = requests.post(TRANSFER_ENDPOINT, headers=headr, json=data_payload)
-<<<<<<< HEAD
         print(response.raise_for_status())
-=======
-        response.raise_for_status()
->>>>>>> bec5010 (Update latest version)
         print(f"Transfer initiatied - status code {response.status_code}:")
         print(response.json())
     except requests.exceptions.HTTPError as err:

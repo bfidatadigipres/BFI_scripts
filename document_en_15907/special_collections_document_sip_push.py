@@ -4,11 +4,12 @@ Script for testing Archivematica writes
 of SIP data
 """
 
-import base64
-import json
 import os
 import sys
+import json
+import base64
 import requests
+from os import fsencode
 
 LOCATION = os.environ.get("AM_TS_UUID")  # Transfer source
 ARCH_URL = os.environ.get("AM_URL")  # Basic URL for bfi archivametica
@@ -36,28 +37,33 @@ def send_as_transfer(fpath, priref):
     # Build correct folder path
     rel_path = os.path.basename(fpath)
     path_str = f"{LOCATION}:{rel_path}"
-    encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
+    encoded_path = base64.b64encode(path_str.encode('utf-8')).decode('utf-8')
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")
 
     headr = {
         "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "application/json"
+    }
+
+    params = {
+        "username": API_NAME,
+        "api_key": API_KEY
     }
 
     # Create payload and post
     data_payload = {
-        "name": TRANSFER_NAME,
+        "name": rel_path,
         "type": "standard",
         "accession": f"CID_priref_{priref}",
-        "paths[]": [encoded_path],
-        "rows_id[]": [""],
+        "paths": [encoded_path],
+        "rows_id": [""],
     }
 
-    print(f"Starting transfer... to {TRANSFER_NAME} {rel_path}")
+    print(f"Starting transfer... {TRANSFER_NAME} {rel_path}")
     try:
-        response = requests.post(TRANSFER_ENDPOINT, headers=headr, data=data_payload)
-        response.raise_for_status()
+        response = requests.post(TRANSFER_ENDPOINT, headers=headr, json=data_payload)
+        print(response.raise_for_status())
         print(f"Transfer initiatied - status code {response.status_code}:")
         print(response.json())
     except requests.exceptions.HTTPError as err:

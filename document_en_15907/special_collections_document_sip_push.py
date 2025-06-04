@@ -60,7 +60,8 @@ def send_as_transfer(fpath, priref):
         "rows_id": [""],
     }
 
-    print(f"Starting transfer... {TRANSFER_NAME} {rel_path}")
+    print(data_payload)
+    print(f"Starting transfer... to {TRANSFER_NAME} {rel_path}")
     try:
         response = requests.post(TRANSFER_ENDPOINT, headers=headr, json=data_payload)
         print(response.raise_for_status())

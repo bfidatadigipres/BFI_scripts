@@ -351,7 +351,7 @@ def build_metadata_xml(json_path: str, priref: str) -> str:
         "Video": "video",
         "Audio": "audio",
         "Other": "other",
-        "Text": "text"
+        "Text": "text",
     }
 
     payload = ""
@@ -790,10 +790,10 @@ def make_header_data(text_path: str, filename: str, priref: str) -> str:
         "MediaInfo pbcore 0": pp,
         "MediaInfo xml 0": xp,
         "MediaInfo json 0": jp,
-        "Exiftool text": exfp
+        "Exiftool text": exfp,
     }
 
-    payload_data = ''
+    payload_data = ""
     for key, value in header_dct.items():
         try:
             text_dump = utils.read_extract(value)

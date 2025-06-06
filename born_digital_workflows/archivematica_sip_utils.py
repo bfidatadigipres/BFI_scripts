@@ -15,7 +15,7 @@ LOCATION = os.environ.get("AM_TS_UUID")  # Transfer source
 ARCH_URL = os.environ.get("AM_URL")  # Basic URL for bfi archivematica
 API_NAME = os.environ.get("AM_API")  # temp user / key
 API_KEY = os.environ.get("AM_KEY")
-TRANSFER_NAME = "API Tests"
+
 if not ARCH_URL or not API_NAME or not API_KEY:
     sys.exit(
         "Error: Please set AM_URL, AM_API (username), and AM_KEY (API key) environment variables."
@@ -34,6 +34,7 @@ def send_as_transfer(fpath, priref):
 
     # Build correct folder path
     TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
+    transfer_id = os.path.basename(fpath)
     folder_path = os.path.basename(fpath)
     path_str = f"{LOCATION}:{fpath}"
     encoded_path = base64.b64encode(path_str.encode('utf-8')).decode('utf-8')
@@ -55,9 +56,9 @@ def send_as_transfer(fpath, priref):
     }
 
     print(data_payload)
-    print(f"Starting transfer... to {TRANSFER_NAME} {rel_path}")
+    print(f"Starting transfer... to Archivematica {fpath}")
     try:
-        response = requests.post(TRANSFER_ENDPOINT, headers=headr, json=data_payload)
+        response = requests.post(TRANSFER_ENDPOINT, headers=headr, data=json.loads(data_payload))
         print(response.raise_for_status())
         print(f"Transfer initiatied - status code {response.status_code}:")
         print(response.json())

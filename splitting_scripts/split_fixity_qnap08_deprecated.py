@@ -38,11 +38,11 @@ from typing import Any, Final, Optional
 
 # Private packages
 sys.path.append(os.environ["CODE"])
+import adlib
 import clipmd5
 import document_item
 import models
 
-import adlib
 import utils
 
 # GLOBAL PATHS FROM SYS.ARGV

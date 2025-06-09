@@ -64,11 +64,10 @@ from ds3 import ds3, ds3Helpers
 
 # Local packages
 sys.path.append(os.environ["CODE"])
+import adlib
 from downloaded_transcode_mp4 import transcode_mp4
 from downloaded_transcode_mp4_watermark import transcode_mp4_access
 from downloaded_transcode_prores import transcode_mov
-
-import adlib
 
 # GLOBAL VARIABLES
 CID_API = os.environ["CID_API3"]

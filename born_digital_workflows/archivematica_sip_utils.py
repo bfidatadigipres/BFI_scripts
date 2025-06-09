@@ -59,7 +59,9 @@ def send_as_transfer(fpath, priref):
     print(data_payload)
     print(f"Starting transfer... to Archivematica {fpath}")
     try:
-        response = requests.post(TRANSFER_ENDPOINT, headers=headr, data=json.loads(data_payload))
+        response = requests.post(
+            TRANSFER_ENDPOINT, headers=headr, data=json.loads(data_payload)
+        )
         print(response.raise_for_status())
         print(f"Transfer initiatied - status code {response.status_code}:")
         print(response.json())

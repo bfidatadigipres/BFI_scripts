@@ -8,19 +8,43 @@ import base64
 import json
 import os
 import sys
-from os import fsencode
-
+import json
+import base64
+import paramiko
 import requests
 
-LOCATION = os.environ.get("AM_TS_UUID")  # Transfer source
+
+SFTP_UUID = os.environ.get("AM_TS_SFTP")
+SFTP_USR = os.environ.get("AM_SFTP_US")
+SFTP_KEY = os.environ.get("AM_SFTP_PW")
+REL_PATH = os.environ.get("AM_RELPATH")
 ARCH_URL = os.environ.get("AM_URL")  # Basic URL for bfi archivematica
 API_NAME = os.environ.get("AM_API")  # temp user / key
 API_KEY = os.environ.get("AM_KEY")
 
-if not ARCH_URL or not API_NAME or not API_KEY:
+if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_UUID or not SFTP_USR or not SFTP_KEY or not REL_PATH:
     sys.exit(
         "Error: Please set AM_URL, AM_API (username), and AM_KEY (API key) environment variables."
     )
+
+
+def send_to_sftp(fpath):
+    '''
+    First step SFTP into Storage Service, then check
+    content has made it into the folder 
+    '''
+    ssh_client = paramiko.SSHClient()
+    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh_client.connect(ARCH_URL.replace('https://', ''), '22', SFTP_USR, SFTP_KEY)
+    sftp = ssh_client.open_sftp()
+
+    # Send the SFTP, download directory to check present
+    folder = os.path.basename(fpath)
+    remote_path = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source", "API_Tests/", folder)
+    sftp.put(fpath, remote_path)
+    directory_check = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source", "API_Tests/")
+    files = sftp.listdir(directory_check)
+    return files
 
 
 def send_as_transfer(fpath, priref):
@@ -35,10 +59,9 @@ def send_as_transfer(fpath, priref):
 
     # Build correct folder path
     TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
-    transfer_id = os.path.basename(fpath)
     folder_path = os.path.basename(fpath)
-    path_str = f"{LOCATION}:{fpath}"
-    encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
+    path_str = f"{SFTP_UUID}:API_Tests/{folder_path}"
+    encoded_path = base64.b64encode(path_str.encode('utf-8')).decode('utf-8')
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")
 
@@ -59,7 +82,7 @@ def send_as_transfer(fpath, priref):
     print(data_payload)
     print(f"Starting transfer... to Archivematica {fpath}")
     try:
-        response = requests.post(TRANSFER_ENDPOINT, headers=headr, data=json.loads(data_payload))
+        response = requests.post(TRANSFER_ENDPOINT, headers=headr, data=json.dumps(data_payload))
         print(response.raise_for_status())
         print(f"Transfer initiatied - status code {response.status_code}:")
         print(response.json())
@@ -89,7 +112,7 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
     # Build correct folder path
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package/")
     folder_path = os.path.basename(fpath)
-    path_str = f"{LOCATION}:{fpath}"
+    path_str = f"{SFTP_UUID}:API_Tests/{folder_path}"
     encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")
@@ -101,7 +124,7 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
 
     # Create payload and post
     data_payload = {
-        "name": TRANSFER_NAME,  # Or folder_path?
+        "name": folder_path,
         "path": encoded_path,
         "type": "standard",
         "access_system_id": access_system_id,
@@ -109,7 +132,7 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
         "auto_approve": auto_approve_arg,
     }
 
-    print(f"Starting transfer... to {TRANSFER_NAME} {rel_path}")
+    print(f"Starting transfer... to {folder_path} {REL_PATH}")
     try:
         response = requests.post(PACKAGE_ENDPOINT, headers=headr, data=data_payload)
         response.raise_for_status()

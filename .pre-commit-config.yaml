@@ -20,6 +20,8 @@ repos:
     hooks:
     -   id: pylint
         language: python
-        entry: pylint
+        entry: bash -c 'changed_files=$(git diff --name-only HEAD~1 HEAD | grep "\.py$"); if [ -n "$changed_files" ]; then pylint --disable=C0103,C0111,C0301,C0114,C0116,R0801 $changed_files; else echo "No Python files changed"; fi'
+        always_run: true
+        pass_filenames: false
         args:
             ["--disable=C0103,C0111,C0301,C0114,C0116, R0801"]

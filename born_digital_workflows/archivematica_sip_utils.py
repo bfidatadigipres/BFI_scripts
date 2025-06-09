@@ -4,6 +4,8 @@ Script for testing Archivematica writes
 of SIP data
 """
 
+import base64
+import json
 import os
 import sys
 import json
@@ -65,7 +67,7 @@ def send_as_transfer(fpath, priref):
 
     headr = {
         "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     # Create payload and post
@@ -122,7 +124,7 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
 
     # Create payload and post
     data_payload = {
-        "name": folder_path, # Or folder_path?
+        "name": folder_path,
         "path": encoded_path,
         "type": "standard",
         "access_system_id": access_system_id,
@@ -150,16 +152,13 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
 
 
 def get_transfer_list():
-    '''
+    """
     Calls to retrieve UUID for
     transfers already in Archivematica
-    '''
+    """
     COMPLETED = os.path.join(ARCH_URL, "api/transfer/completed/")
     api_key = f"{API_NAME}:{API_KEY}"
-    headers = {
-        "Accept": "*/*",
-        "Authorization": f"ApiKey {api_key}"
-    }
+    headers = {"Accept": "*/*", "Authorization": f"ApiKey {api_key}"}
 
     try:
         response = requests.get(COMPLETED, headers=headers)
@@ -177,25 +176,21 @@ def get_transfer_list():
 
 
 def get_location_uuids():
-    '''
+    """
     Call the v2 locations to retrieve
-    UUID locations for different 
+    UUID locations for different
     Archivematica services
-    '''
+    """
     SS_END = f"{ARCH_URL}:8000/api/v2/location/"
     api_key = f"{API_NAME}:{API_KEY}"
-    headers = {
-        "Accept": "*/*",
-        "Authorization": f"ApiKey {api_key}"
-    }
+    headers = {"Accept": "*/*", "Authorization": f"ApiKey {api_key}"}
 
     try:
         respnse = requests.get(SS_END, header=headers)
         respnse.raise_for_status()
-        data =respnse.json()
+        data = respnse.json()
         if data and "results" in data:
             return data["results"]
     except requests.exceptions.RequestException as err:
         print(err)
         return None
-

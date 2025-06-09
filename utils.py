@@ -662,7 +662,6 @@ def send_email(
             )
 
         print(f"Email notification sent to {email}")
-        print("")
         success = True
         return success, ""
 

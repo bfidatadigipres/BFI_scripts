@@ -35,16 +35,13 @@ NOTES: Configured for adlib_v3, API will need
 import datetime
 import json
 import logging
-# Public packages
 import os
 import sys
 from typing import Any, Final, Optional, Sequence
-
 import pandas
 import yaml
-# Local packages
-from document_augmented_streaming_cast import create_contributors
 
+from document_augmented_streaming_cast import create_contributors
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
@@ -693,7 +690,11 @@ def main():
     prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
     LOGGER.info("=== Document augmented Amazon start ===============================")
+    count = 0
     for num in range(0, csv_range):
+        count += 1
+        if count > 1:
+            sys.exit("Just one item")
         # Capture CSV supplied data to vars
         title = prog_dct["title"][num]
         article = prog_dct["article"][num]

@@ -1076,7 +1076,9 @@ def make_episodes(
         ep_dct = {}
 
     # Make episodic work here
-    data_dct = make_work_dictionary(num, csv_data, ep_cat_dct, ep_dct)
+    episode_id = episode_folder.split("_")[-1]
+    print(f"** Episode ID: {episode_id} {title}")
+    data_dct = make_work_dictionary(num, episode_id, csv_data, ep_cat_dct, ep_dct)
     print(f"Dictionary for Work creation:\n{data_dct}")
     print("**************")
     record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)

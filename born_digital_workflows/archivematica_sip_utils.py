@@ -40,9 +40,9 @@ def send_to_sftp(fpath):
 
     # Send the SFTP, download directory to check present
     folder = os.path.basename(fpath)
-    remote_path = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source", "API_Tests/", folder)
+    remote_path = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source/", folder)
     sftp.put(fpath, remote_path)
-    directory_check = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source", "API_Tests/")
+    directory_check = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source/")
     files = sftp.listdir(directory_check)
     return files
 

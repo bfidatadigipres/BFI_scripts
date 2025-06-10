@@ -216,7 +216,6 @@ def main() -> None:
 
     prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
-
     for num in range(0, csv_range):
         # Capture CSV supplied data to vars
         platform = prog_dct["platform"][num]
@@ -300,7 +299,9 @@ def main() -> None:
                 catalogue_path,
             )
             for ep_asset_id, cat_details in asset_dict.items():
-                ep_cat_id, ep_num = cat_details.split(",")
+                cat_deets = cat_details.split(",")
+                ep_cat_id = cat_deets[0]
+                ep_num = cat_deets[-1]
 
                 # Fetch all assetIDs to build folders
                 episode_dct = fetch(cat_id, "asset", ep_asset_id, "")
@@ -418,10 +419,10 @@ def main() -> None:
                 catalogue_path,
             )
             for ep_asset_id, cat_details in asset_dict.items():
-                if not ',' in cat_details:
-                    print(ep_asset_id, cat_details)
-                    continue
-                ep_cat_id, title = cat_details.split(",")
+                cat_deets = cat_details.split(",")
+                ep_cat_id = cat_deets[0]
+                ep_num = cat_deets[-1]
+
                 LOGGER.info("Monographic item found: %s", title)
                 # Fetch all assetIDs to build folder
                 episode_dct = fetch(cat_id, "asset", ep_asset_id, "")

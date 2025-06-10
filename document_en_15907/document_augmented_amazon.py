@@ -42,7 +42,7 @@ import pandas
 import yaml
 
 from document_augmented_streaming_cast import create_contributors
-sys.path.append(os.environ["CODE"])
+sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
 
@@ -52,7 +52,7 @@ AMAZON: Final = os.path.join(STORAGE, "AMAZON")
 CAT_ID: Final = os.environ.get("PA_AMAZON")
 ADMIN: Final = os.environ.get("ADMIN")
 LOGS: Final = os.path.join(ADMIN, "Logs")
-CODE: Final = os.environ.get("CODE_PATH")
+CODE: Final = os.environ.get("CODE")
 GENRE_MAP: Final = os.path.join(CODE, "document_en_15907/EPG_genre_mapping.yaml")
 CONTROL_JSON: Final = os.path.join(LOGS, "downtime_control.json")
 CID_API: Final = utils.get_current_api()
@@ -690,11 +690,7 @@ def main():
     prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
     LOGGER.info("=== Document augmented Amazon start ===============================")
-    count = 0
     for num in range(0, csv_range):
-        count += 1
-        if count > 1:
-            sys.exit("Just one item")
         # Capture CSV supplied data to vars
         title = prog_dct["title"][num]
         article = prog_dct["article"][num]
@@ -1129,7 +1125,7 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
     """
     start_date_str: str = data.get("title_date_start")
     if "-" in start_date_str:
-        start_date = datetime.datetime.stprtime(start_date_str, FORMAT)
+        start_date = datetime.datetime.strptime(start_date_str, FORMAT)
     else:
         start_date = datetime.date.today()
     new_date = start_date + datetime.timedelta(days=2927)

@@ -26,11 +26,9 @@ Platform agnostic, this data take from CSV input
 import datetime
 import json
 import logging
-# Public packages
 import os
 import sys
 from typing import Any, Final, Optional
-
 import pandas
 import requests
 import tenacity
@@ -422,6 +420,9 @@ def main() -> None:
                 catalogue_path,
             )
             for ep_asset_id, cat_details in asset_dict.items():
+                if not ',' in cat_details:
+                    print(ep_asset_id, cat_details)
+                    continue
                 ep_cat_id, title = cat_details.split(",")
                 LOGGER.info("Monographic item found: %s", title)
                 # Fetch all assetIDs to build folder

@@ -44,7 +44,7 @@ import utils
 # Global variables
 LOGS = os.environ.get("LOG_PATH")
 CONTROL_JSON = os.path.join(LOGS, "downtime_control.json")
-FF_STORAGE = os.environ.get("PLATFORM_INGEST_PTH") # FILM FUND PATH
+FF_STORAGE = os.environ.get("PLATFORM_INGEST_PTH")  # FILM FUND PATH
 CID_API = utils.get_current_api()
 
 # Setup logging

@@ -84,7 +84,7 @@ def send_to_sftp(fpath):
     if os.path.exists(metadata_fpath):
         success = sftp_mkdir(sftp, m_relpath)
         if not success:
-            print(f"Failed to make new directory for {root}")
+            print(f"Failed to make new directory for {m_relpath}")
             return None
         response = sftp_put(sftp, metadata_fpath, os.path.join(m_relpath, 'metadata.csv'))
         if response is False:
@@ -126,6 +126,7 @@ def sftp_mkdir(sftp_object, relpath):
         print(f"Error attempting to MKDIR metadata/")
         return None
 
+    relpath = relpath.rstrip('/')
     root, fold = os.path.split(relpath)
     content = sftp_object.listdir(root)
     print(content)

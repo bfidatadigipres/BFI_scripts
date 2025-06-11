@@ -42,21 +42,6 @@ def send_to_sftp(fpath):
     # Create ssh / sftp object
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-<<<<<<< HEAD
-    ssh_client.connect(ARCH_URL.lstrip('https://'), '22', SFTP_USR, SFTP_KEY)
-    sftp = ssh_client.open_sftp()
-
-    # Send the SFTP, download directory to check present
-    print(fpath)
-    folder = os.path.basename(fpath)
-    print(folder)
-    remote_path = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source/", folder)
-    print(remote_path)
-    sftp.put(fpath, remote_path)
-    #sftp.put(remote_path, fpath)
-    directory_check = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source/")
-    files = sftp.listdir(directory_check)
-=======
     ssh_client.connect(ARCH_URL.lstrip('https://', ''), '22', SFTP_USR, SFTP_KEY)
     sftp = ssh_client.open_sftp()
 

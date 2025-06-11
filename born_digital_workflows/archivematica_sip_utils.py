@@ -33,8 +33,16 @@ def send_to_sftp(fpath):
     First step SFTP into Storage Service, then check
     content has made it into the folder
     '''
+
+    relpath = fpath.split("GUR-2_sub-fonds_Born-Digital")[-1]
+    whole_path, file = os.path.split(relpath)
+    root, container = os.path.split(whole_path)
+    remote_path = os.path.join("sftp-transfer-source/API_Uploads", root)
+
+    # Create ssh / sftp object
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+<<<<<<< HEAD
     ssh_client.connect(ARCH_URL.lstrip('https://'), '22', SFTP_USR, SFTP_KEY)
     sftp = ssh_client.open_sftp()
 
@@ -48,7 +56,79 @@ def send_to_sftp(fpath):
     #sftp.put(remote_path, fpath)
     directory_check = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source/")
     files = sftp.listdir(directory_check)
+=======
+    ssh_client.connect(ARCH_URL.lstrip('https://', ''), '22', SFTP_USR, SFTP_KEY)
+    sftp = ssh_client.open_sftp()
+
+    try:
+        root_contents = sftp.listdir(root)
+    except OSError as err:
+        print(f"Error attempting to retrieve path {root}")
+        root_contents = ''
+        success = sftp_mkdir(sftp, root)
+        if not success:
+            print(f"Failed to make new directory for {root}")
+            return None
+
+    if container not in root_contents:
+        success = sftp_mkdir(sftp, whole_path)
+        if not success:
+            print(f"Failed to make new directory for {whole_path}")
+            return None
+    else:
+        print(f"Folder {container} found in Archivematica already")
+
+    print(f"Moving file {file} into Archivematica path {whole_path}")
+    try:
+        sftp.put(fpath, os.path.join(whole_path, file))
+    except FileNotFoundError as err:
+        print(f"File {container}/{file} was not found.")
+        return None
+    except OSError as err:
+        print(f"Error attempting to PUT folder {container}/{file}")
+        return None
+
+    print("Making CSV folder...")
+    m_relpath = os.path.join(whole_path, 'metadata/')
+    mpath = os.path.join(os.path.split(fpath)[0], 'metadata/')
+    metadata_fpath = os.path.join(mpath, 'metadata.csv')
+    if os.path.exists(metadata_fpath):
+        success = sftp_mkdir(sftp, m_relpath)
+        if not success:
+            print(f"Failed to make new directory for {root}")
+            return None
+        try:
+            sftp.put(metadata_fpath, os.path.join(m_relpath, 'metadata.csv'))
+        except FileNotFoundError as err:
+            print(f"File {metadata_fpath} was not found.")
+            return None
+        except OSError as err:
+            print(f"Error attempting to PUT folder {metadata_fpath}")
+            return None
+
+    files = sftp.listdir(whole_path)
+    sftp.close()
+>>>>>>> e417a791d431c380344c5bf73e703d639395f2e9
     return files
+
+
+
+def sftp_mkdir(sftp_object, relpath):
+    '''
+    Handle making directory
+    '''
+    try:
+        sftp_object.mkdir(relpath)
+    except OSError as err:
+        print(f"Error attempting to MKDIR metadata/")
+        return None
+
+    root, fold = os.path.split(relpath)
+    content = sftp_object.lisdir(root)
+    if fold in content:
+        return content
+
+    return None
 
 
 def send_as_transfer(fpath, priref):

@@ -108,7 +108,7 @@ def sftp_mkdir(sftp_object, relpath):
         return None
 
     root, fold = os.path.split(relpath)
-    content = sftp_object.lisdir(root)
+    content = sftp_object.listdir(root)
     if fold in content:
         return content
 

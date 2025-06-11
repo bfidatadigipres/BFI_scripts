@@ -34,7 +34,7 @@ def send_to_sftp(fpath):
     content has made it into the folder
     '''
 
-    relpath = fpath.split("GUR-2_sub-fonds_Born-Digital")[-1]
+    relpath = fpath.split("GUR-2_sub-fonds_Born-Digital/")[-1]
     whole_path, file = os.path.split(relpath)
     root, container = os.path.split(whole_path)
     remote_path = os.path.join("sftp-transfer-source/API_Uploads", root)
@@ -46,26 +46,26 @@ def send_to_sftp(fpath):
     sftp = ssh_client.open_sftp()
 
     try:
-        root_contents = sftp.listdir(root)
+        root_contents = sftp.listdir(remote_path)
     except OSError as err:
-        print(f"Error attempting to retrieve path {root}")
+        print(f"Error attempting to retrieve path {remote_path}")
         root_contents = ''
-        success = sftp_mkdir(sftp, root)
+        success = sftp_mkdir(sftp, remote_path)
         if not success:
-            print(f"Failed to make new directory for {root}")
+            print(f"Failed to make new directory for {remote_path}")
             return None
 
     if container not in root_contents:
-        success = sftp_mkdir(sftp, whole_path)
+        success = sftp_mkdir(sftp, os.path.join(remote_path, container))
         if not success:
-            print(f"Failed to make new directory for {whole_path}")
+            print(f"Failed to make new directory for {os.path.join(remote_path, container)}")
             return None
     else:
         print(f"Folder {container} found in Archivematica already")
 
-    print(f"Moving file {file} into Archivematica path {whole_path}")
+    print(f"Moving file {file} into Archivematica path {os.path.join(remote_path, container)}")
     try:
-        sftp.put(fpath, os.path.join(whole_path, file))
+        sftp.put(fpath, os.path.join(remote_path, container, file))
     except FileNotFoundError as err:
         print(f"File {container}/{file} was not found.")
         return None
@@ -74,7 +74,7 @@ def send_to_sftp(fpath):
         return None
 
     print("Making CSV folder...")
-    m_relpath = os.path.join(whole_path, 'metadata/')
+    m_relpath = os.path.join(remote_path, container, 'metadata/')
     mpath = os.path.join(os.path.split(fpath)[0], 'metadata/')
     metadata_fpath = os.path.join(mpath, 'metadata.csv')
     if os.path.exists(metadata_fpath):
@@ -91,7 +91,7 @@ def send_to_sftp(fpath):
             print(f"Error attempting to PUT folder {metadata_fpath}")
             return None
 
-    files = sftp.listdir(whole_path)
+    files = sftp.listdir(os.path.join(remote_path, container))
     sftp.close()
     return files
 

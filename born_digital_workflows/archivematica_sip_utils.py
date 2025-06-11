@@ -42,7 +42,7 @@ def send_to_sftp(fpath):
     # Create ssh / sftp object
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh_client.connect(ARCH_URL.lstrip('https://', ''), '22', SFTP_USR, SFTP_KEY)
+    ssh_client.connect(ARCH_URL.lstrip('https://'), '22', SFTP_USR, SFTP_KEY)
     sftp = ssh_client.open_sftp()
 
     try:

@@ -31,17 +31,21 @@ if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_UUID or not SFTP_USR 
 def send_to_sftp(fpath):
     '''
     First step SFTP into Storage Service, then check
-    content has made it into the folder 
+    content has made it into the folder
     '''
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh_client.connect(ARCH_URL.replace('https://', ''), '22', SFTP_USR, SFTP_KEY)
+    ssh_client.connect(ARCH_URL.lstrip('https://'), '22', SFTP_USR, SFTP_KEY)
     sftp = ssh_client.open_sftp()
 
     # Send the SFTP, download directory to check present
+    print(fpath)
     folder = os.path.basename(fpath)
+    print(folder)
     remote_path = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source/", folder)
+    print(remote_path)
     sftp.put(fpath, remote_path)
+    #sftp.put(remote_path, fpath)
     directory_check = os.path.join("mnt/sto_bfi_processing/sftp-transfer-source/")
     files = sftp.listdir(directory_check)
     return files

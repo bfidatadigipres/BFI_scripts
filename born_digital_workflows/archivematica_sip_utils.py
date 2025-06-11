@@ -28,6 +28,16 @@ if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_UUID or not SFTP_USR 
     )
 
 
+def sftp_connect():
+    '''
+    Make connection
+    '''
+    ssh_client = paramiko.SSHClient()
+    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh_client.connect(ARCH_URL.lstrip('https://'), '22', SFTP_USR, SFTP_KEY)
+    return ssh_client.open_sftp()
+
+
 def send_to_sftp(fpath):
     '''
     First step SFTP into Storage Service, then check
@@ -40,10 +50,7 @@ def send_to_sftp(fpath):
     remote_path = os.path.join("sftp-transfer-source/API_Uploads", root)
 
     # Create ssh / sftp object
-    ssh_client = paramiko.SSHClient()
-    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh_client.connect(ARCH_URL.lstrip('https://'), '22', SFTP_USR, SFTP_KEY)
-    sftp = ssh_client.open_sftp()
+    sftp = sftp_connect()
 
     try:
         root_contents = sftp.listdir(remote_path)
@@ -109,7 +116,8 @@ def sftp_mkdir(sftp_object, relpath):
 
     root, fold = os.path.split(relpath)
     content = sftp_object.listdir(root)
-    if fold in content:
+    print(content)
+    if fold in str(content):
         return content
 
     return None

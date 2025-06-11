@@ -93,7 +93,6 @@ def send_to_sftp(fpath):
 
     files = sftp.listdir(whole_path)
     sftp.close()
->>>>>>> e417a791d431c380344c5bf73e703d639395f2e9
     return files
 
 

@@ -71,15 +71,12 @@ def send_to_sftp(fpath):
         print(f"Folder {container} found in Archivematica already")
 
     print(f"Moving file {file} into Archivematica path {os.path.join(remote_path, container)}")
-    try:
-        sftp.put(fpath, os.path.join(remote_path, container, file))
-    except FileNotFoundError as err:
-        print(f"File {container}/{file} was not found.")
+    response = sftp_put(sftp, fpath, os.path.join(remote_path, container, file))
+    if response is False:
+        print(f"Failed to send file to SFTP: {file} / {fpath}")
         return None
-    except OSError as err:
-        print(f"Error attempting to PUT folder {container}/{file}")
-        return None
-
+    else:
+        print(f"File {file} successfully PUT to {os.path.join(remote_path, container, file)}")
     print("Making CSV folder...")
     m_relpath = os.path.join(remote_path, container, 'metadata/')
     mpath = os.path.join(os.path.split(fpath)[0], 'metadata/')
@@ -89,19 +86,34 @@ def send_to_sftp(fpath):
         if not success:
             print(f"Failed to make new directory for {root}")
             return None
-        try:
-            sftp.put(metadata_fpath, os.path.join(m_relpath, 'metadata.csv'))
-        except FileNotFoundError as err:
-            print(f"File {metadata_fpath} was not found.")
+        response = sftp_put(sftp, metadata_fpath, os.path.join(m_relpath, 'metadata.csv'))
+        if response is False:
+            print(f"Failed to send file to SFTP: 'metadata.csv' / {m_relpath}")
             return None
-        except OSError as err:
-            print(f"Error attempting to PUT folder {metadata_fpath}")
-            return None
+        else:
+            print(f"File 'metadata.csv' successfully PUT to {m_relpath}")
 
     files = sftp.listdir(os.path.join(remote_path, container))
     sftp.close()
     return files
 
+
+def sftp_put(sftp_object, fpath, relpath):
+    '''
+    Handle PUT to sftp
+    '''
+    print(f"PUT request received:\n{fpath}\n{relpath}")
+
+    try:
+        data = sftp_object.put(fpath, relpath)
+        if 'SFTPAttributes' in str(data):
+            return True
+    except FileNotFoundError as err:
+        print(f"File {fpath} was not found.")
+        return False
+    except OSError as err:
+        print(f"Error attempting to PUT {fpath}")
+        return False
 
 
 def sftp_mkdir(sftp_object, relpath):

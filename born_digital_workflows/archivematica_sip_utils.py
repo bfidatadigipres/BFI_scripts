@@ -274,7 +274,10 @@ def get_location_uuids():
     """
     SS_END = f"{ARCH_URL}:8000/api/v2/location/"
     api_key = f"{SS_NAME}:{SS_KEY}"
-    headers = {"Accept": "*/*", "Authorization": f"ApiKey {api_key}"}
+    headers = {
+        "Accept": "*/*", "Authorization": f"ApiKey {api_key}",
+        "Content-type": "application/json"
+    }
 
     try:
         respnse = requests.get(SS_END, header=headers)

@@ -162,14 +162,6 @@ def send_as_transfer(fpath, priref):
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")
 
-<<<<<<< HEAD
-    headr = {
-        "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
-        "Content-Type": "application/json",
-    }
-
-=======
->>>>>>> 40819c80572c3335af1f32aa2cc1956e26add2d6
     # Create payload and post
     data_payload = {
         "name": folder_path,
@@ -204,7 +196,6 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
     Send a package using v2beta package
     with access system id to link in atom.
     Args, ab path, ATOM slug, bool auto approve true/false
-    
 
     if not os.path.exists(fpath):
         sys.exit(f"Path supplied cannot be found: {fpath}")
@@ -212,11 +203,7 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
     # Build correct folder path
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package/")
     folder_path = os.path.basename(fpath)
-<<<<<<< HEAD
-    path_str = f"{SFTP_UUID}:{fpath}"
-=======
     path_str = f"{TS_UUID}:{fpath}"
->>>>>>> 40819c80572c3335af1f32aa2cc1956e26add2d6
     encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")

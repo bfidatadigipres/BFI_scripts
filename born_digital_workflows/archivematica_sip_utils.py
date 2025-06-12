@@ -145,13 +145,15 @@ def send_as_transfer(fpath, priref):
     post to Archivematica TestAPI/
     folder for review
     """
-    if not os.path.exists(fpath):
-        sys.exit(f"Path supplied cannot be found: {fpath}")
+    sftp = sftp_connect()
+    root_contents = sftp.listdir(fpath)
+    if not root_contents:
+        sys.exit(f"Supplied path to SFTP object not found: {fpath}")
 
     # Build correct folder path
     TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
     folder_path = os.path.basename(fpath)
-    path_str = f"{SFTP_UUID}:API_Tests/{folder_path}"
+    path_str = f"{SFTP_UUID}:{folder_path}"
     encoded_path = base64.b64encode(path_str.encode('utf-8')).decode('utf-8')
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")

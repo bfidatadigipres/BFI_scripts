@@ -146,7 +146,7 @@ def send_as_transfer(fpath, priref):
     folder for review
     """
     sftp = sftp_connect()
-    root_contents = sftp.listdir(fpath.lstrip("/home/bfi-sftp/"))
+    root_contents = sftp.listdir(fpath.split("/home/bfi-sftp/")[-1])
     if not root_contents:
         sys.exit(f"Supplied path to SFTP object not found: {fpath}")
     print(f"Objects for transfer found: {', '.join(root_contents)}")

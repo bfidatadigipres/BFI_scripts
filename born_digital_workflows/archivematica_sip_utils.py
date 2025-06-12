@@ -21,6 +21,8 @@ REL_PATH = os.environ.get("AM_RELPATH")
 ARCH_URL = os.environ.get("AM_URL")  # Basic URL for bfi archivematica
 API_NAME = os.environ.get("AM_API")  # temp user / key
 API_KEY = os.environ.get("AM_KEY")
+SS_NAME = os.environ.get("AMSS_USR")
+SS_KEY = os.environ.get("AMSS_KEY")
 
 if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_UUID or not SFTP_USR or not SFTP_KEY or not REL_PATH:
     sys.exit(
@@ -271,7 +273,7 @@ def get_location_uuids():
     Archivematica services
     """
     SS_END = f"{ARCH_URL}:8000/api/v2/location/"
-    api_key = f"{API_NAME}:{API_KEY}"
+    api_key = f"{SS_NAME}:{SS_KEY}"
     headers = {"Accept": "*/*", "Authorization": f"ApiKey {api_key}"}
 
     try:

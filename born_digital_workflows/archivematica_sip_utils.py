@@ -218,7 +218,7 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
         "type": "standard",
         "access_system_id": access_system_id,
         "processing_config": "automated",
-        "auto_approve": auto_approve_arg,
+        "auto_approve": True,
     }
 
     print(f"Starting transfer... to {folder_path} {REL_PATH}")

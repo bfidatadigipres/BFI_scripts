@@ -148,13 +148,12 @@ def send_as_transfer(fpath, priref):
     convert to data payload then
     post to Archivematica TestAPI/
     folder for review
-    """
     sftp = sftp_connect()
     root_contents = sftp.listdir(fpath.split("/home/bfi-sftp/")[-1])
     if not root_contents:
         sys.exit(f"Supplied path to SFTP object not found: {fpath}")
     print(f"Objects for transfer found: {', '.join(root_contents)}")
-
+    """
     # Build correct folder path
     TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
     folder_path = os.path.basename(fpath)
@@ -197,11 +196,10 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
     Send a package using v2beta package
     with access system id to link in atom.
     Args, ab path, ATOM slug, bool auto approve true/false
-    """
 
     if not os.path.exists(fpath):
         sys.exit(f"Path supplied cannot be found: {fpath}")
-
+    """
     # Build correct folder path
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package/")
     folder_path = os.path.basename(fpath)

@@ -146,9 +146,10 @@ def send_as_transfer(fpath, priref):
     folder for review
     """
     sftp = sftp_connect()
-    root_contents = sftp.listdir(fpath)
+    root_contents = sftp.listdir(fpath.lstrip("/home/bfi-sftp/"))
     if not root_contents:
         sys.exit(f"Supplied path to SFTP object not found: {fpath}")
+    print(f"Objects for transfer found: {', '.join(root_contents)}")
 
     # Build correct folder path
     TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
@@ -159,7 +160,7 @@ def send_as_transfer(fpath, priref):
     print(f"to base64 {encoded_path}")
 
     headr = {
-        "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
+        "Authorization": f"ApiKey {SS_NAME}:{SS_KEY}",
         "Content-Type": "application/json",
     }
 

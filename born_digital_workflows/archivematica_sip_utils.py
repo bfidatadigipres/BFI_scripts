@@ -203,11 +203,8 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
     # Build correct folder path
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package/")
     folder_path = os.path.basename(fpath)
-    path_str = f"{TS_UUID}:{fpath}"
+    path_str = f"{SFTP_UUID}:{fpath}"
     encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
-    print(f"Changed local path {path_str}")
-    print(f"to base64 {encoded_path}")
-
 
     # Create payload and post
     data_payload = {
@@ -218,8 +215,8 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
         "processing_config": "automated",
         "auto_approve": True,
     }
-
-    print(f"Starting transfer... to {folder_path} {REL_PATH}")
+    print(json.dumps(data_payload))
+    print(f"Starting transfer of {path_str}")
     try:
         response = requests.post(PACKAGE_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
         response.raise_for_status()

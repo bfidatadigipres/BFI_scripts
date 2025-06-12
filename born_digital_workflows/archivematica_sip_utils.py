@@ -153,7 +153,7 @@ def send_as_transfer(fpath, priref):
     # Build correct folder path
     TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
     folder_path = os.path.basename(fpath)
-    path_str = f"{SFTP_UUID}:{folder_path}"
+    path_str = f"{SFTP_UUID}:{fpath}"
     encoded_path = base64.b64encode(path_str.encode('utf-8')).decode('utf-8')
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")

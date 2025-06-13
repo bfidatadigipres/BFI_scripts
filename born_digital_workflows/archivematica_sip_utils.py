@@ -8,8 +8,7 @@ import base64
 import json
 import os
 import sys
-import json
-import base64
+
 import paramiko
 import requests
 
@@ -28,27 +27,35 @@ HEADER = {
     "Content-Type": "application/json",
 }
 
-if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_UUID or not SFTP_USR or not SFTP_KEY or not REL_PATH:
+if (
+    not ARCH_URL
+    or not API_NAME
+    or not API_KEY
+    or not SFTP_UUID
+    or not SFTP_USR
+    or not SFTP_KEY
+    or not REL_PATH
+):
     sys.exit(
         "Error: Please set AM_URL, AM_API (username), and AM_KEY (API key) environment variables."
     )
 
 
 def sftp_connect():
-    '''
+    """
     Make connection
-    '''
+    """
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh_client.connect(ARCH_URL.lstrip('https://'), '22', SFTP_USR, SFTP_KEY)
+    ssh_client.connect(ARCH_URL.lstrip("https://"), "22", SFTP_USR, SFTP_KEY)
     return ssh_client.open_sftp()
 
 
 def send_to_sftp(fpath):
-    '''
+    """
     First step SFTP into Storage Service, then check
     content has made it into the folder
-    '''
+    """
 
     relpath = fpath.split("GUR-2_sub-fonds_Born-Digital/")[-1]
     whole_path, file = os.path.split(relpath)
@@ -62,7 +69,7 @@ def send_to_sftp(fpath):
         root_contents = sftp.listdir(remote_path)
     except OSError as err:
         print(f"Error attempting to retrieve path {remote_path}")
-        root_contents = ''
+        root_contents = ""
         success = sftp_mkdir(sftp, remote_path)
         if not success:
             print(f"Failed to make new directory for {remote_path}")
@@ -71,28 +78,36 @@ def send_to_sftp(fpath):
     if container not in root_contents:
         success = sftp_mkdir(sftp, os.path.join(remote_path, container))
         if not success:
-            print(f"Failed to make new directory for {os.path.join(remote_path, container)}")
+            print(
+                f"Failed to make new directory for {os.path.join(remote_path, container)}"
+            )
             return None
     else:
         print(f"Folder {container} found in Archivematica already")
 
-    print(f"Moving file {file} into Archivematica path {os.path.join(remote_path, container)}")
+    print(
+        f"Moving file {file} into Archivematica path {os.path.join(remote_path, container)}"
+    )
     response = sftp_put(sftp, fpath, os.path.join(remote_path, container, file))
     if response is False:
         print(f"Failed to send file to SFTP: {file} / {fpath}")
         return None
     else:
-        print(f"File {file} successfully PUT to {os.path.join(remote_path, container, file)}")
+        print(
+            f"File {file} successfully PUT to {os.path.join(remote_path, container, file)}"
+        )
     print("Making CSV folder...")
-    m_relpath = os.path.join(remote_path, container, 'metadata/')
-    mpath = os.path.join(os.path.split(fpath)[0], 'metadata/')
-    metadata_fpath = os.path.join(mpath, 'metadata.csv')
+    m_relpath = os.path.join(remote_path, container, "metadata/")
+    mpath = os.path.join(os.path.split(fpath)[0], "metadata/")
+    metadata_fpath = os.path.join(mpath, "metadata.csv")
     if os.path.exists(metadata_fpath):
         success = sftp_mkdir(sftp, m_relpath)
         if not success:
             print(f"Failed to make new directory for {m_relpath}")
             return None
-        response = sftp_put(sftp, metadata_fpath, os.path.join(m_relpath, 'metadata.csv'))
+        response = sftp_put(
+            sftp, metadata_fpath, os.path.join(m_relpath, "metadata.csv")
+        )
         if response is False:
             print(f"Failed to send file to SFTP: 'metadata.csv' / {m_relpath}")
             return None
@@ -105,14 +120,14 @@ def send_to_sftp(fpath):
 
 
 def sftp_put(sftp_object, fpath, relpath):
-    '''
+    """
     Handle PUT to sftp
-    '''
+    """
     print(f"PUT request received:\n{fpath}\n{relpath}")
 
     try:
         data = sftp_object.put(fpath, relpath)
-        if 'SFTPAttributes' in str(data):
+        if "SFTPAttributes" in str(data):
             return True
     except FileNotFoundError as err:
         print(f"File {fpath} was not found.")
@@ -123,16 +138,16 @@ def sftp_put(sftp_object, fpath, relpath):
 
 
 def sftp_mkdir(sftp_object, relpath):
-    '''
+    """
     Handle making directory
-    '''
+    """
     try:
         sftp_object.mkdir(relpath)
     except OSError as err:
         print(f"Error attempting to MKDIR metadata/")
         return None
 
-    relpath = relpath.rstrip('/')
+    relpath = relpath.rstrip("/")
     root, fold = os.path.split(relpath)
     content = sftp_object.listdir(root)
     print(content)
@@ -158,7 +173,7 @@ def send_as_transfer(fpath, priref):
     TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
     folder_path = os.path.basename(fpath)
     path_str = f"{TS_UUID}:{fpath}"
-    encoded_path = base64.b64encode(path_str.encode('utf-8')).decode('utf-8')
+    encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")
 
@@ -174,7 +189,9 @@ def send_as_transfer(fpath, priref):
     print(data_payload)
     print(f"Starting transfer... to Archivematica {fpath}")
     try:
-        response = requests.post(TRANSFER_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
+        response = requests.post(
+            TRANSFER_ENDPOINT, headers=HEADER, data=json.dumps(data_payload)
+        )
         print(response.raise_for_status())
         print(f"Transfer initiatied - status code {response.status_code}:")
         print(response.json())
@@ -208,7 +225,6 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")
 
-
     # Create payload and post
     data_payload = {
         "name": folder_path,
@@ -221,7 +237,9 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
 
     print(f"Starting transfer... to {folder_path} {REL_PATH}")
     try:
-        response = requests.post(PACKAGE_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
+        response = requests.post(
+            PACKAGE_ENDPOINT, headers=HEADER, data=json.dumps(data_payload)
+        )
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
         print(response.json())
@@ -271,8 +289,9 @@ def get_location_uuids():
     SS_END = f"{ARCH_URL}:8000/api/v2/location/schema/"
     api_key = f"{SS_NAME}:{SS_KEY}"
     headers = {
-        "Accept": "*/*", "Authorization": f"ApiKey {api_key}",
-        "Content-type": "application/json"
+        "Accept": "*/*",
+        "Authorization": f"ApiKey {api_key}",
+        "Content-type": "application/json",
     }
 
     try:

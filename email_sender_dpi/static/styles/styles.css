@@ -22,10 +22,10 @@ body{
     margin-top: 30px;
     width: auto;
     background-color: lightblue;
-    border: 2px gray; 
+    border: 2px gray;
     border-radius: 12px;
-    padding: 8px 20px; 
-    cursor: pointer; 
+    padding: 8px 20px;
+    cursor: pointer;
   }
 
   input,textarea{
@@ -33,7 +33,7 @@ body{
     padding: 12px 20px;
     border: 2px medium gray
   }
-  
+
 
   .alert{
     padding:.6px 1px;

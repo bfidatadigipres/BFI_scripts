@@ -13,16 +13,20 @@ import base64
 import paramiko
 import requests
 
-
+TS_UUID = os.environ.get("AM_TS_UUID")
 SFTP_UUID = os.environ.get("AM_TS_SFTP")
 SFTP_USR = os.environ.get("AM_SFTP_US")
 SFTP_KEY = os.environ.get("AM_SFTP_PW")
 REL_PATH = os.environ.get("AM_RELPATH")
-ARCH_URL = os.environ.get("AM_URL")  # Basic URL for bfi archivematica
-API_NAME = os.environ.get("AM_API")  # temp user / key
+ARCH_URL = os.environ.get("AM_URL")
+API_NAME = os.environ.get("AM_API")
 API_KEY = os.environ.get("AM_KEY")
 SS_NAME = os.environ.get("AMSS_USR")
 SS_KEY = os.environ.get("AMSS_KEY")
+HEADER = {
+    "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
+    "Content-Type": "application/json",
+}
 
 if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_UUID or not SFTP_USR or not SFTP_KEY or not REL_PATH:
     sys.exit(
@@ -144,25 +148,19 @@ def send_as_transfer(fpath, priref):
     convert to data payload then
     post to Archivematica TestAPI/
     folder for review
-    """
     sftp = sftp_connect()
     root_contents = sftp.listdir(fpath.split("/home/bfi-sftp/")[-1])
     if not root_contents:
         sys.exit(f"Supplied path to SFTP object not found: {fpath}")
     print(f"Objects for transfer found: {', '.join(root_contents)}")
-
+    """
     # Build correct folder path
     TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
     folder_path = os.path.basename(fpath)
-    path_str = f"{SFTP_UUID}:{fpath}"
+    path_str = f"{TS_UUID}:{fpath}"
     encoded_path = base64.b64encode(path_str.encode('utf-8')).decode('utf-8')
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")
-
-    headr = {
-        "Authorization": f"ApiKey {SS_NAME}:{SS_KEY}",
-        "Content-Type": "application/json",
-    }
 
     # Create payload and post
     data_payload = {
@@ -176,7 +174,7 @@ def send_as_transfer(fpath, priref):
     print(data_payload)
     print(f"Starting transfer... to Archivematica {fpath}")
     try:
-        response = requests.post(TRANSFER_ENDPOINT, headers=headr, data=json.dumps(data_payload))
+        response = requests.post(TRANSFER_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
         print(response.raise_for_status())
         print(f"Transfer initiatied - status code {response.status_code}:")
         print(response.json())
@@ -198,23 +196,18 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
     Send a package using v2beta package
     with access system id to link in atom.
     Args, ab path, ATOM slug, bool auto approve true/false
-    """
 
     if not os.path.exists(fpath):
         sys.exit(f"Path supplied cannot be found: {fpath}")
-
+    """
     # Build correct folder path
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package/")
     folder_path = os.path.basename(fpath)
-    path_str = f"{SFTP_UUID}:API_Tests/{folder_path}"
+    path_str = f"{TS_UUID}:{fpath}"
     encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
     print(f"Changed local path {path_str}")
     print(f"to base64 {encoded_path}")
 
-    headr = {
-        "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
-        "Content-Type": "application/json",
-    }
 
     # Create payload and post
     data_payload = {
@@ -223,12 +216,12 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
         "type": "standard",
         "access_system_id": access_system_id,
         "processing_config": "automated",
-        "auto_approve": auto_approve_arg,
+        "auto_approve": True,
     }
 
     print(f"Starting transfer... to {folder_path} {REL_PATH}")
     try:
-        response = requests.post(PACKAGE_ENDPOINT, headers=headr, data=data_payload)
+        response = requests.post(PACKAGE_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
         print(response.json())

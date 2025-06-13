@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css" href="../static/styles/styles.css">
+    <meta charset="utf-8">
+    <title> Screenshot email sender</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<header>
+    <br>
+  <h2> Send screenshot to email</h2>
+</header>
+
+{% with msgs = get_flashed_messages(with_categories=true) %}
+  {% if msgs %}
+     {% for cat,msg in msgs %}
+       <div class="alert {{cat}}">{{msg}}</div>
+     {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<form action="/" method="POST" id="emailForm" enctype="multipart/form-data">
+    <label>Send email to: </label>
+    <input id="email" name="email" type="text" placeholder="other@company.org.uk">
+    <br>
+    <label>Subject: </label>
+    <input id="subject" name="subject" type="text" placeholder="subject">
+    <br>
+    <label> Body: </label>
+    <textarea id="body" name="body" rows="4" cols="50" placeholder="Send some text"></textarea>
+    <br>
+    <label for="imageInput">Load image: </label> <br>
+    <input id="file" name="file" type="text" placeholder="/mnt/bp_nas/email">
+    <br>
+    <input type="submit" value="Submit">
+    <br>
+    <div id="responseMessage" style="margin-top: 20px;"></div>
+</form>
+</body>
+</html>

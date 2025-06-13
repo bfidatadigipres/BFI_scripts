@@ -1,0 +1,48 @@
+
+body{
+    font-family: "Gill Sans", sans-serif;
+    margin:auto;
+    max-width:40rem;
+    border-top: 10rem;
+  }
+
+  header {
+    text-align: left;
+    color: black;
+    font-size: 20px;
+  }
+
+  label{
+    display:block;
+    font-weight:600;
+    margin-top:.7rem;
+  }
+
+  input[type="submit"] {
+    margin-top: 30px;
+    width: auto;
+    background-color: lightblue;
+    border: 2px gray; 
+    border-radius: 12px;
+    padding: 8px 20px; 
+    cursor: pointer; 
+  }
+
+  input,textarea{
+    width:35rem;
+    padding: 12px 20px;
+    border: 2px medium gray
+  }
+  
+
+  .alert{
+    padding:.6px 1px;
+    margin: top 1px;
+  }
+
+  .alert.success{
+    background:#d4edda;
+  }
+  .alert.error{
+    background:#d18288;
+  }

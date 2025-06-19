@@ -191,35 +191,29 @@ def send_as_transfer(fpath, priref):
         print("Response as text:\n{response.text}")
 
 
-def send_as_package(fpath, access_system_id, auto_approve_arg):
+def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_arg):
     """
-    Send a package using v2beta package
-    with access system id to link in atom.
-    Args, ab path, ATOM slug, bool auto approve true/false
-
-    if not os.path.exists(fpath):
-        sys.exit(f"Path supplied cannot be found: {fpath}")
+    Send a package using v2beta package, subject to change
+    Args: Path from top series, AToM slug, CID priref, OpenRecords or ClosedRecords, bool
     """
     # Build correct folder path
-    PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package/")
+    PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package")
     folder_path = os.path.basename(fpath)
-    path_str = f"{TS_UUID}:{fpath}"
+    path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{fpath}"
     encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
-    print(f"Changed local path {path_str}")
-    print(f"to base64 {encoded_path}")
-
 
     # Create payload and post
     data_payload = {
         "name": folder_path,
         "path": encoded_path,
         "type": "standard",
-        "access_system_id": access_system_id,
-        "processing_config": "automated",
-        "auto_approve": True,
+        "processing_config": "OpenRecords",
+        "accession": item_priref,
+        "access_system_id": atom_slug,
+        "auto_approve": auto_approve_arg,
     }
-
-    print(f"Starting transfer... to {folder_path} {REL_PATH}")
+    print(json.dumps(data_payload))
+    print(f"Starting transfer of {path_str}")
     try:
         response = requests.post(PACKAGE_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
         response.raise_for_status()
@@ -236,6 +230,31 @@ def send_as_package(fpath, access_system_id, auto_approve_arg):
     except ValueError:
         print("Response not supplied in JSON format")
         print(f"Response as text:\n{response.text}")
+
+
+def get_transfer_status(uuid):
+    '''
+    Look for transfer status of new
+    transfer/package
+    '''
+    status_endpoint = os.path.join(ARCH_URL, f"api/transfer/status/{uuid.strip()}")
+    try:
+        response = requests.get(status_endpoint, headers=HEADER)
+        response.raise_for_status()
+        print(response.text)
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+    return None
 
 
 def get_transfer_list():

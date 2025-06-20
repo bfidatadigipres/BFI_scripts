@@ -207,7 +207,7 @@ def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_
         "name": folder_path,
         "path": encoded_path,
         "type": "standard",
-        "processing_config": "OpenRecords",
+        "processing_config": process_config,
         "accession": item_priref,
         "access_system_id": atom_slug,
         "auto_approve": auto_approve_arg,

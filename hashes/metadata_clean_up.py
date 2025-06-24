@@ -494,7 +494,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         if vid_count == 1:
             vid_rows = get_text_rows("Video", mdata)
         else:
-            vid_rows = get_text_rows(f"Video \#{num}", mdata)
+            vid_rows = get_text_rows(f"Video #{num}", mdata)
         vid = []
         for field in FIELDS:
             for key, val in field.items():
@@ -532,7 +532,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         if aud_count == 1:
             aud_rows = get_text_rows("Audio", mdata)
         else:
-            aud_rows = get_text_rows(f"Audio \#{num}", mdata)
+            aud_rows = get_text_rows(f"Audio #{num}", mdata)
         aud = []
         for field in FIELDS:
             for key, val in field.items():
@@ -560,7 +560,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
         if oth_count == 1:
             oth_rows = get_text_rows("Other", mdata)
         else:
-            oth_rows = get_text_rows(f"Other \#{num}", mdata)
+            oth_rows = get_text_rows(f"Other #{num}", mdata)
         oth = []
         for field in FIELDS:
             for key, val in field.items():

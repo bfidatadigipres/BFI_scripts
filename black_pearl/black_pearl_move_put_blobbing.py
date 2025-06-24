@@ -423,7 +423,8 @@ def main():
         if object_number is None:
             object_number = ""
 
-        duration_size_log(fname, object_number, duration, byte_size, duration_ms)
+        # Deprecated
+        # duration_size_log(fname, object_number, duration, byte_size, duration_ms)
 
         # Make global log message
         LOGGER.info("Writing persistence checking message to persistence_queue.csv.")
@@ -569,7 +570,6 @@ def duration_size_log(
             )
 
 
-##
 def create_media_record(
     ob_num: str, duration: str, byte_size: str, filename: str, bucket: str
 ) -> Optional[str]:

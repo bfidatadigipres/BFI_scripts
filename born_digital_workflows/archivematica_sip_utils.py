@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-Script for testing Archivematica writes
-of SIP data
+Utility script for API POST/GETs from Archivematica
+SFTP and Archivemtica storage service API, plus
+API calls to AtoM API
+
+To be used for born digital workflows for OSH3
+2025
 """
 
 import base64
@@ -23,10 +27,18 @@ API_NAME = os.environ.get("AM_API")
 API_KEY = os.environ.get("AM_KEY")
 SS_NAME = os.environ.get("AMSS_USR")
 SS_KEY = os.environ.get("AMSS_KEY")
+ATOM_URL = os.environ.get("ATOM_URL") # Upto api/
+ATOM_KEY = os.environ.get("ATOM_KEY_META")
+ATOM_AUTH = os.environ.get("ATOM_AUTH")
 HEADER = {
     "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
     "Content-Type": "application/json",
 }
+ATOM_HEADER = {
+    'REST-API-Key': ATOM_KEY,
+    'Accept': 'application/json'
+}
+
 
 if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_UUID or not SFTP_USR or not SFTP_KEY or not REL_PATH:
     sys.exit(
@@ -303,3 +315,69 @@ def get_location_uuids():
     except requests.exceptions.RequestException as err:
         print(err)
         return None
+
+
+def get_atom_objects(skip_path):
+    '''
+    Return json dict containting
+    objects (max 10 return, skip)
+    '''
+    
+    try:
+        response = requests.get(skip_path, auth=("bfi", ATOM_AUTH), headers=ATOM_HEADER, accept_redirect=True)
+        objects = json.loads(response.text)
+        print(f"Objects received: {objects}")
+        if objects.get('results', None):
+            return objects
+
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+        return None
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+        return None
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+        return None
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+        return None
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+        return None
+
+
+def get_all_atom_objects():
+    '''
+    Handle skip iteration through all available
+    information objects, call get_atom_objects
+    with interative skip numbers from totals
+    '''
+
+    endpoint = os.path.join(ATOM_URL, "informationobjects")
+    objects = get_atom_objects(endpoint)
+    if not objects:
+        print("Warning, unable to find any informationobjects")
+        return None
+
+    total_obs = objects.get("total", None)
+    if not isinstance(total_obs, int):
+        print(f"Warning, unable to get total information objects from API: {objects}")
+        return None    
+
+    all_list = []
+    for item in objects['results']:
+        all_list.append(item)
+
+    runs = total_obs // 10
+    for num in range(1, runs+1):
+        skip_endpoint = f"{endpoint}?skip={num}0"
+        new_ob = get_atom_objects(skip_endpoint)
+        if not new_ob:
+            continue
+        for item in new_ob['results']:
+            all_list.append(item)
+    if len(all_list) != total_obs:
+        print(f"May not have retrieved all information objects correctly!")
+    return all_list

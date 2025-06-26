@@ -400,7 +400,7 @@ def reingest_aip(aip_uuid, type, process_config):
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
     type = 'FULL', 'OBJECT', 'METADATA_ONLY'
-    Full needed to supply processing_config update (Closed to Open)
+    Full needed to supply processing_config update (Closed_to_Open)
     '''
     PACKAGE_ENDPOINT = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/reingest/"
 
@@ -419,6 +419,8 @@ def reingest_aip(aip_uuid, type, process_config):
         return response.json()
     except requests.exceptions.HTTPError as err:
         print(f"HTTP error: {err}")
+        print(f"Response status code: {response.status_code}")
+        print(f"Response headers: {response.headers}")
     except requests.exceptions.ConnectionError as err:
         print(f"Connection error: {err}")
     except requests.exceptions.Timeout as err:

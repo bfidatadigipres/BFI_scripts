@@ -33,13 +33,16 @@ ATOM_KEY = os.environ.get("ATOM_KEY_META")
 ATOM_AUTH = os.environ.get("ATOM_AUTH")
 HEADER = {
     "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
-    "Content-Type": "application/json",
+    "Content-Type": "application/json"
 }
 ATOM_HEADER = {
     'REST-API-Key': ATOM_KEY,
     'Accept': 'application/json'
 }
-
+SS_HEADER = {
+    "Authorization": f"ApiKey {SS_NAME}:{SS_KEY}",
+    "Content-Type": "application/json"
+}
 
 if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_UUID or not SFTP_USR or not SFTP_KEY or not REL_PATH:
     sys.exit(
@@ -410,7 +413,7 @@ def reingest_aip(aip_uuid, type, process_config):
     print(json.dumps(data_payload))
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
-        response = requests.post(PACKAGE_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
+        response = requests.post(PACKAGE_ENDPOINT, headers=SS_HEADER, data=json.dumps(data_payload))
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
         return response.json()

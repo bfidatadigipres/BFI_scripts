@@ -14,7 +14,7 @@ PATH_INSERT="${1//['/']/_}"
 # Paths from environmental variables
 LOG_LEAD="$LOG_PATH"
 CODE_LEAD="$CODE"
-PY3_LAUNCH="$PYENV311"
+PY3_LAUNCH="$PYENV313"
 LOG="${LOG_LEAD}checksum_maker${PATH_INSERT}launch.log"
 AUTOINGEST="${PTH}autoingest/black_pearl_ingest/"
 HASHES="$HASH_PATH"

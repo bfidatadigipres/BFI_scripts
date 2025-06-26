@@ -25,6 +25,7 @@ REL_PATH = os.environ.get("AM_RELPATH")
 ARCH_URL = os.environ.get("AM_URL")
 API_NAME = os.environ.get("AM_API")
 API_KEY = os.environ.get("AM_KEY")
+SS_PIPE = os.environ.get("AM_SS_UUID")
 SS_NAME = os.environ.get("AMSS_USR")
 SS_KEY = os.environ.get("AMSS_KEY")
 ATOM_URL = os.environ.get("ATOM_URL") # Upto api/
@@ -32,13 +33,16 @@ ATOM_KEY = os.environ.get("ATOM_KEY_META")
 ATOM_AUTH = os.environ.get("ATOM_AUTH")
 HEADER = {
     "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
-    "Content-Type": "application/json",
+    "Content-Type": "application/json"
 }
 ATOM_HEADER = {
     'REST-API-Key': ATOM_KEY,
     'Accept': 'application/json'
 }
-
+SS_HEADER = {
+    "Authorization": f"ApiKey {SS_NAME}:{SS_KEY}",
+    "Content-Type": "application/json"
+}
 
 if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_UUID or not SFTP_USR or not SFTP_KEY or not REL_PATH:
     sys.exit(
@@ -56,13 +60,13 @@ def sftp_connect():
     return ssh_client.open_sftp()
 
 
-def send_to_sftp(fpath):
+def send_to_sftp(fpath, top_folder):
     '''
     First step SFTP into Storage Service, then check
     content has made it into the folder
     '''
 
-    relpath = fpath.split("GUR-2_sub-fonds_Born-Digital/")[-1]
+    relpath = fpath.split(top_folder)[-1]
     whole_path, file = os.path.split(relpath)
     root, container = os.path.split(whole_path)
     remote_path = os.path.join("sftp-transfer-source/API_Uploads", root)
@@ -208,7 +212,7 @@ def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_
     Send a package using v2beta package, subject to change
     Args: Path from top series, AToM slug, CID priref, OpenRecords or ClosedRecords, bool
     """
-    # Build correct folder path
+    # Build correct folder paths
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package")
     folder_path = os.path.basename(fpath)
     path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{fpath}"
@@ -247,7 +251,19 @@ def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_
 def get_transfer_status(uuid):
     '''
     Look for transfer status of new
-    transfer/package
+    transfer/package. Returns:
+    {
+        "type": "transfer",
+        "path": "/var/archivematica/sharedDirectory/currentlyProcessing/FILENAME5-66312695-e8af-441f-a867-aa9460436434/",
+        "directory": "FILENAME5-66312695-e8af-441f-a867-aa9460436434",
+        "name": "FILENAME5",
+        "uuid": "66312695-e8af-441f-a867-aa9460436434",
+        "microservice": "Create SIP from transfer objects",
+        "status": "COMPLETE",
+        "sip_uuid": "d2edd55f-9ab4--bff2-ad2d9573614d",
+        "message": "Fetched status for 66312695-e8af-441f-a867-aa9460436434 successfully."
+    }
+    sip_uuid == aip_uuid needed for reingest
     '''
     status_endpoint = os.path.join(ARCH_URL, f"api/transfer/status/{uuid.strip()}")
     try:
@@ -287,10 +303,9 @@ def get_transfer_list():
             return data["results"]
         else:
             print("Error: 'results' key not found in the response.")
-            return None
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
-        return None
+    return None
 
 
 def get_location_uuids():
@@ -332,20 +347,16 @@ def get_atom_objects(skip_path):
 
     except requests.exceptions.HTTPError as err:
         print(f"HTTP error: {err}")
-        return None
     except requests.exceptions.ConnectionError as err:
         print(f"Connection error: {err}")
-        return None
     except requests.exceptions.Timeout as err:
         print(f"Timeout error: {err}")
-        return None
     except requests.exceptions.RequestException as err:
         print(f"Request exception: {err}")
-        return None
     except ValueError:
         print("Response not supplied in JSON format")
         print(f"Response as text:\n{response.text}")
-        return None
+    return None
 
 
 def get_all_atom_objects():
@@ -380,4 +391,41 @@ def get_all_atom_objects():
             all_list.append(item)
     if len(all_list) != total_obs:
         print(f"May not have retrieved all information objects correctly!")
+
     return all_list
+
+
+def reingest_aip(aip_uuid, type, process_config):
+    '''
+    Function for reingesting an AIP to create
+    an open DIP for AtoM revision
+    type = 'FULL', 'OBJECT', 'METADATA_ONLY'
+    Full needed to supply processing_config update (Closed to Open)
+    '''
+    PACKAGE_ENDPOINT = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/reingest/"
+
+    # Create payload and post
+    data_payload = {
+        "pipeline": TS_UUID,
+        "reingest_type": type,
+        "processing_config": process_config
+    }
+    print(json.dumps(data_payload))
+    print(f"Starting reingest of AIP UUID: {aip_uuid}")
+    try:
+        response = requests.post(PACKAGE_ENDPOINT, headers=SS_HEADER, data=json.dumps(data_payload))
+        response.raise_for_status()
+        print(f"Package transfer initiatied - status code {response.status_code}:")
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+    return None

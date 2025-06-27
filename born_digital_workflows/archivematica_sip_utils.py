@@ -395,6 +395,35 @@ def get_all_atom_objects():
     return all_list
 
 
+def delete_sip(sip_uuid):
+    '''
+    Remove a SIP from Archivematica
+    after it's been transfered in error
+    '''
+    ENDPOINT = f"{ARCH_URL}/api/transfer/status/{sip_uuid}"
+    try:
+        response = requests.delete(ENDPOINT, headers=HEADER)
+        response.raise_for_status()
+        print(f"Package deletion success: {response.text}:")
+        return response.text
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+        print(f"Response status code: {response.status_code}")
+        print(f"Response headers: {response.headers}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+    return None
+
+
+
+
 def reingest_aip(aip_uuid, type, process_config):
     '''
     Function for reingesting an AIP to create

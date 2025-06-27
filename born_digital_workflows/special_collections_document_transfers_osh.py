@@ -165,18 +165,29 @@ def main():
                 transfer_dict = check_transfer_status(transfer_uuid, directory)
                 if not transfer_dict:
                     LOGGER.warning("Transfer confirmation not found after 10 minutes for directory %s", directory)
+                    LOGGER.warning("Manual assistance needed to update UUIDs to CID item record")
+                    continue
+                sip_uuid = transfer_dict.get('sip_uuid')
+                LOGGER.info(transfer_dict)
+                ingest_dict = check_ingest_status(sip_uuid, directory)
+                if not ingest_dict:
+                    LOGGER.warning("Ingest confirmation not found after 10 minutes for directory %s", directory)
                     LOGGER.warning("Manual assistance needed to update AIP UUID to CID item record")
                     continue
-                aip_uuid = transfer_dict.get('sip_uuid')
-                LOGGER.info(transfer_dict)
+                aip_uuid = ingest_dict.get('uuid')
+                LOGGER.info(ingest_dict)
 
-                # Update transfer UUID and AIP UUID to CID item record
+                # Update transfer, SIP and AIP UUID to CID item record
                 # JMW: If adopted new enumeration needed for label.type
                 uuid = [
                     {"label.type": "ARTEFACTUALUUID"},
                     {"label.source": "Transfer UUID"},
                     {"label.date":str(datetime.datetime.now())[:10]},
                     {"label.text": transfer_uuid},
+                    {"label.type": "ARTEFACTUALUUID"},
+                    {"label.source": "SIP UUID"},
+                    {"label.date":str(datetime.datetime.now())[:10]},
+                    {"label.text": sip_uuid}
                     {"label.type": "ARTEFACTUALUUID"},
                     {"label.source": "AIP UUID"},
                     {"label.date":str(datetime.datetime.now())[:10]},
@@ -216,7 +227,7 @@ def check_transfer_status(uuid, directory):
     times, or until retrieved
     '''
     trans_dict = am_utils.get_transfer_status(uuid)
-    
+
     if trans_dict.get('status') == 'COMPLETE' and len(trans_dict.get('sip_uuid')) > 0:
         LOGGER.info("Transfer of package completed: %s", trans_dict.get('directory', directory))
         return trans_dict
@@ -224,6 +235,22 @@ def check_transfer_status(uuid, directory):
         sleep(60)
         raise Exception
 
+
+@tenacity.retry(tenacity.stop_after_attempt(10))
+def check_ingest_status(uuid, directory):
+    '''
+    Check status of transfer up to 10
+    times, or until retrieved
+    '''
+    ingest_dict = am_utils.get_ingest_status(uuid)
+
+    if ingest_dict.get('status') == 'COMPLETE' and len(ingest_dict.get('uuid')) > 0:
+        LOGGER.info("Ingest of package completed: %s", ingest_dict.get('directory', directory))
+        return ingest_dict
+    else:
+        sleep(60)
+        raise Exception
+    
 
 if __name__ == "__main__":
     main()

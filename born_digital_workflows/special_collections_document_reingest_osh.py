@@ -6,6 +6,7 @@ Moving renamed folders to SFTP / Archivematica
 
 Script stages:
 MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
+LAUNCHES FROM CRONTAB ONCE EACH NIGHT TO CHECK FOR NEW "OPEN/CLOSED" RECS
 
 Iterate through CID records from sub-fond level down:
 1. Look for CID record flag to indicate if an Item can be reingested
@@ -19,6 +20,7 @@ Iterate through CID records from sub-fond level down:
    and new metadata.csv for DIP creation
 6. When reingest completed, check for transfer status
 7. Capture progress to CID item record, and to logs.
+8. JMW: Possibility to save URL for AtoM to CID item record?
 
 NOTES:
 Some assumptions in code 

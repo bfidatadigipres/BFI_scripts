@@ -238,6 +238,41 @@ def get_transfer_status(uuid):
     return None
 
 
+def get_ingest_status(sip_uuid):
+    '''
+    Look for transfer status of new
+    transfer/package. Returns:
+    {
+        "directory": "FILENAME5-66312695-e8af-441f-a867-aa9460436434",
+        "message": "Fetched status for 66312695-e8af-441f-a867-aa9460436434 successfully.",
+        "microservice": "Remove the processing directory",
+        "name": "FILENAME5",
+        "path": "/var/archivematica/sharedDirectory/currentlyProcessing/FILENAME5-66312695-e8af-441f-a867-aa9460436434/",
+        "status": "COMPLETE",
+        "type": "SIP",
+        "uuid": "66312695-e8af-441f-a867-aa9460436434" 
+    }
+    uuid == aip_uuid needed for reingest
+    '''
+    status_endpoint = os.path.join(ARCH_URL, f"api/ingest/status/{sip_uuid.strip()}")
+    try:
+        response = requests.get(status_endpoint, headers=HEADER)
+        response.raise_for_status()
+        print(response.text)
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+    return None
+
 def get_transfer_list():
     """
     Calls to retrieve UUID for

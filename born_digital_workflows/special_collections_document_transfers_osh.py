@@ -19,12 +19,13 @@ Iterate through supplied sys.argv[1] folder path completing:
 4. Check that the transfer status is complete
 5. Upload SIP UUID / AIP UUID to CID item record
    JMW: Field location to be identified? label.type (enum needed)
+   JMW: Do we want other statement of AIP in Archivematica in CID?
 6. Capture all outputs to logs
 
 NOTES:
 Some assumptions in code 
-1. That to make AtoM slug we may need an additional stage
-2. That we do not PUT folders with 'fonds' to 'sub-sub-sub-series' levels, jus
+1. That to make AtoM slug we may need an additional stage  / manual work
+2. That we do not PUT folders with 'fonds' to 'sub-sub-sub-series' levels, just
    use them to inform SFTP folder structures, and (when known) slug names for AtoM
 3. That the slug will be named after the CID object number of parent folder
 4. That we will write the transfer / aip UUIDs to the CID label text fields
@@ -215,14 +216,13 @@ def check_transfer_status(uuid, directory):
     times, or until retrieved
     '''
     trans_dict = am_utils.get_transfer_status(uuid)
-    try:
-        if trans_dict.get('status') == 'COMPLETE':
-            LOGGER.info("Transfer of package completed: %s", trans_dict.get('directory', directory))
-            return trans_dict
-    except Exception as err:
-        print(err)
+    
+    if trans_dict.get('status') == 'COMPLETE' and len(trans_dict.get('sip_uuid')) > 0:
+        LOGGER.info("Transfer of package completed: %s", trans_dict.get('directory', directory))
+        return trans_dict
+    else:
         sleep(60)
-        raise
+        raise Exception
 
 
 if __name__ == "__main__":

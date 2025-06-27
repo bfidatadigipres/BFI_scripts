@@ -36,7 +36,6 @@ import os
 import sys
 import tenacity
 from time import sleep
-from typing import Any, Dict, List, Optional
 
 # Private packages
 import archivematica_sip_utils as am_utils

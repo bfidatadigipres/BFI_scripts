@@ -42,7 +42,6 @@ import os
 import sys
 import tenacity
 from time import sleep
-from typing import Any, Dict, List, Optional
 
 # Private packages
 import archivematica_sip_utils as am_utils
@@ -101,7 +100,7 @@ def main():
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
-    if sys.arg < 3:
+    if sys.argv < 3:
         print("Path has not been supplied to script. Exiting.")
     base_dir = sys.argv[1]  # Always sub_fond level path
     top_level_folder = sys.argv[2] # Specified SFTP top level folder
@@ -216,11 +215,12 @@ def check_transfer_status(uuid, directory):
     times, or until retrieved
     '''
     trans_dict = am_utils.get_transfer_status(uuid)
-
-    if trans_dict.get('status') == 'COMPLETE':
-        LOGGER.info("Transfer of package completed: %s", trans_dict.get('directory', directory))
-        return trans_dict
-    else:
+    try:
+        if trans_dict.get('status') == 'COMPLETE':
+            LOGGER.info("Transfer of package completed: %s", trans_dict.get('directory', directory))
+            return trans_dict
+    except Exception as err:
+        print(err)
         sleep(60)
         raise
 

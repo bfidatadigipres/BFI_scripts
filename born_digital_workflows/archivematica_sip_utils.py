@@ -60,13 +60,13 @@ def sftp_connect():
     return ssh_client.open_sftp()
 
 
-def send_to_sftp(fpath, top_folder):
+def send_to_sftp(fpath, top_level_folder):
     '''
     First step SFTP into Storage Service, then check
     content has made it into the folder
     '''
 
-    relpath = fpath.split(top_folder)[-1]
+    relpath = fpath.split(top_level_folder)[-1]
     whole_path, file = os.path.split(relpath)
     root, container = os.path.split(whole_path)
     remote_path = os.path.join("sftp-transfer-source/API_Uploads", root)
@@ -158,55 +158,6 @@ def sftp_mkdir(sftp_object, relpath):
     return None
 
 
-def send_as_transfer(fpath, priref):
-    """
-    Receive args from test run
-    convert to data payload then
-    post to Archivematica TestAPI/
-    folder for review
-    sftp = sftp_connect()
-    root_contents = sftp.listdir(fpath.split("/home/bfi-sftp/")[-1])
-    if not root_contents:
-        sys.exit(f"Supplied path to SFTP object not found: {fpath}")
-    print(f"Objects for transfer found: {', '.join(root_contents)}")
-    """
-    # Build correct folder path
-    TRANSFER_ENDPOINT = os.path.join(ARCH_URL, "api/transfer/start_transfer/")
-    folder_path = os.path.basename(fpath)
-    path_str = f"{TS_UUID}:{fpath}"
-    encoded_path = base64.b64encode(path_str.encode('utf-8')).decode('utf-8')
-    print(f"Changed local path {path_str}")
-    print(f"to base64 {encoded_path}")
-
-    # Create payload and post
-    data_payload = {
-        "name": folder_path,
-        "type": "standard",
-        "accession": f"CID_priref_{priref}",
-        "paths": [encoded_path],
-        "rows_id": [""],
-    }
-
-    print(data_payload)
-    print(f"Starting transfer... to Archivematica {fpath}")
-    try:
-        response = requests.post(TRANSFER_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
-        print(response.raise_for_status())
-        print(f"Transfer initiatied - status code {response.status_code}:")
-        print(response.json())
-    except requests.exceptions.HTTPError as err:
-        print(f"HTTP error: {err}")
-    except requests.exceptions.ConnectionError as err:
-        print(f"Connection error: {err}")
-    except requests.exceptions.Timeout as err:
-        print(f"Timeout error: {err}")
-    except requests.exceptions.RequestException as err:
-        print(f"Request exception: {err}")
-    except ValueError:
-        print("Response not supplied in JSON format")
-        print("Response as text:\n{response.text}")
-
-
 def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_arg):
     """
     Send a package using v2beta package, subject to change
@@ -234,7 +185,7 @@ def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_
         response = requests.post(PACKAGE_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
-        print(response.json())
+        return response.json()
     except requests.exceptions.HTTPError as err:
         print(f"HTTP error: {err}")
     except requests.exceptions.ConnectionError as err:
@@ -246,6 +197,7 @@ def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_
     except ValueError:
         print("Response not supplied in JSON format")
         print(f"Response as text:\n{response.text}")
+    return None
 
 
 def get_transfer_status(uuid):
@@ -422,8 +374,6 @@ def delete_sip(sip_uuid):
     return None
 
 
-
-
 def reingest_aip(aip_uuid, type, process_config):
     '''
     Function for reingesting an AIP to create
@@ -460,3 +410,4 @@ def reingest_aip(aip_uuid, type, process_config):
         print("Response not supplied in JSON format")
         print(f"Response as text:\n{response.text}")
     return None
+

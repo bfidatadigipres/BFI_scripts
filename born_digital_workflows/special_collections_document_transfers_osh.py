@@ -69,7 +69,7 @@ LEVEL = [
 ]
 
 
-def top_folder_split(fname):
+def top_folder_split(fname, prefix):
     """
     Split folder name into parts
     """
@@ -78,7 +78,7 @@ def top_folder_split(fname):
         LOGGER.warning("Folder has not split as anticipated: %s", fsplit)
         return None, None, None
     ob_num, record_type, title = fsplit
-    if not ob_num.startswith(("GUR", "")):
+    if not ob_num.startswith(prefix):
         LOGGER.warning("Object number is not formatted as anticipated: %s", ob_num)
         return None, None, None
 
@@ -99,7 +99,7 @@ def main():
     if sys.arg < 3:
         print("Path has not been supplied to script. Exiting.")
     base_dir = sys.argv[1]  # Always sub_fond level path
-    top_level_folder = sys.argv[2]
+    top_level_folder = sys.argv[2] # Specified SFTP top level folder
 
     if not os.path.exists(base_dir):
         sys.exit(f"Exiting. Path could not be found: {base_dir}")
@@ -117,7 +117,7 @@ def main():
             dpath = os.path.join(root, directory)
             record_type = None
             if any(x in directory for x in LEVEL):
-                ob_num, record_type, title = top_folder_split(directory)
+                ob_num, record_type, title = top_folder_split(directory, top_level_folder.split('-', 1)[0])
             else:
                 ob_num, title = directory.split('_', 1)
 

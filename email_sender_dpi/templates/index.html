@@ -4,7 +4,6 @@
     <link rel="stylesheet" type="text/css" href="../static/styles/styles.css">
     <meta charset="utf-8">
     <title> Screenshot email sender</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
 <header>
@@ -12,13 +11,6 @@
   <h2> Send screenshot to email</h2>
 </header>
 
-{% with msgs = get_flashed_messages(with_categories=true) %}
-  {% if msgs %}
-     {% for cat,msg in msgs %}
-       <div class="alert {{cat}}">{{msg}}</div>
-     {% endfor %}
-  {% endif %}
-{% endwith %}
 
 <form action="/" method="POST" id="emailForm" enctype="multipart/form-data">
     <label>Send email to: </label>
@@ -32,10 +24,13 @@
     <br>
     <label for="imageInput">Load image: </label> <br>
     <input id="file" name="file" type="text" placeholder="/mnt/bp_nas/email">
-    <br>
+
+    <!-- <label>Screengrab</label>
+  <div id="paste-zone" tabindex="0">Click here and paste (Ctrl+V)</div>
+  <img id="preview" alt="image preview"> -->
+  <br>
     <input type="submit" value="Submit">
-    <br>
-    <div id="responseMessage" style="margin-top: 20px;"></div>
+
 </form>
 </body>
 </html>

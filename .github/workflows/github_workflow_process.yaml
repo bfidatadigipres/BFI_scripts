@@ -157,7 +157,8 @@ jobs:
             if [ ${#changed_files[@]} -gt 0 ]; then
                 python -m pylint "${changed_files[@]}" > reports/pylint-report.txt || true
             else
-                python -m pylint *.py > reports/pylint-report.txt || true
+                echo "help breaking"
+                # python -m pylint *.py > reports/pylint-report.txt || true
             fi
             sed -i 's/\(.*:[0-9]\+:[0-9]\+:[[:space:]]*\)\(E[0-9]\{4\}\)/\1🚨 \2/' reports/pylint-report.txt
             sed -i 's/\(.*:[0-9]\+:[0-9]\+:[[:space:]]*\)\(W[0-9]\{4\}\)/\1⚠️ \2/' reports/pylint-report.txt

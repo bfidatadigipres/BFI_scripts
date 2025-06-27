@@ -6,6 +6,7 @@ Moving renamed folders to SFTP / Archivematica
 
 Script stages:
 MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
+AND SYS.ARGV[2] AT SFTP/ARCHIVEMATICA TOP FOLDER LEVEL
 
 Iterate through supplied sys.argv[1] folder path completing:
 1. For each subfolder split folder name: ob_num / ISAD(G) level / Title
@@ -170,6 +171,7 @@ def main():
                 LOGGER.info(transfer_dict)
 
                 # Update transfer UUID and AIP UUID to CID item record
+                # JMW: If adopted new enumeration needed for label.type
                 uuid = [
                     {"label.type": "ARTEFACTUALUUID"},
                     {"label.source": "Transfer UUID"},

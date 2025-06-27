@@ -348,6 +348,28 @@ def get_all_atom_objects():
     return all_list
 
 
+def get_slug_match(slug_match):
+    '''
+    Handles retrieval of all AtoM information objects
+    then builds list of slugs and attempts match
+    '''
+    list_of_objects = get_all_atom_objects()
+    if list_of_objects is None:
+        return None
+    
+    for item in list_of_objects:
+        try:
+            slug = item.get('slug', None)
+        except (KeyError, TypeError) as err:
+            print(err)
+            continue
+        if slug is None:
+            continue
+        elif slug == slug_match:
+            return True
+    return False
+
+
 def delete_sip(sip_uuid):
     '''
     Remove (hide) a SIP from Archivematica

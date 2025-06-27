@@ -27,6 +27,9 @@ Some assumptions in code
    use them to inform SFTP folder structures, and (when known) slug names for AtoM
 3. That the slug will be named after the CID object number of parent folder
 4. That we will write the transfer / aip UUIDs to the CID label text fields
+5. AtoM records already existing, won't need recreating as CLOSED?
+6. Slug creation needs considering where sub-sub-series and lower levels are not
+   supported in AtoM
 
 2025
 """
@@ -65,7 +68,8 @@ LEVEL = [
     '_series_',
     '_sub-series_',
     '_sub-sub-series_',
-    '_sub-sub-sub-series_'
+    '_sub-sub-sub-series_',
+    '_file_'
 ]
 
 
@@ -140,6 +144,11 @@ def main():
                 am_path = os.path.join(top_level_folder, dpath_split)
                 # JMW: Decision still forthcoming regarding slug name / ob_num - if former matching may be needed
                 atom_slug = os.path.basename(os.path.split(am_path)[0]).split('_', 1)[0].lower()
+                if am_utils.get_slug_match(atom_slug) is False:
+                    LOGGER.warning("Supposed slug cannot be found in AtoM objects.")
+                    # JMW: Make slug here?
+                    continue
+
                 item_rec = adlib.retrieve_record(CID_API, 'archivescatalogue', f'object_number="{ob_num}"', 1, ['priref'])[1]
                 item_priref = adlib.retrieve_field_name(item_rec[0], 'priref')[1]
 

@@ -216,7 +216,7 @@ def get_transfer_status(uuid):
         "sip_uuid": "d2edd55f-9ab4--bff2-ad2d9573614d",
         "message": "Fetched status for 66312695-e8af-441f-a867-aa9460436434 successfully."
     }
-    sip_uuid == aip_uuid needed for reingest
+    sip_uuid == sip_uuid needed for ingest status check
     '''
     status_endpoint = os.path.join(ARCH_URL, f"api/transfer/status/{uuid.strip()}")
     try:

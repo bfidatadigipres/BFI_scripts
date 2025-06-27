@@ -62,6 +62,7 @@ def sftp_connect():
 
 def send_to_sftp(fpath, top_level_folder):
     '''
+    Check for parent folder, if absent mkdir
     First step SFTP into Storage Service, then check
     content has made it into the folder
     '''
@@ -349,7 +350,7 @@ def get_all_atom_objects():
 
 def delete_sip(sip_uuid):
     '''
-    Remove a SIP from Archivematica
+    Remove (hide) a SIP from Archivematica
     after it's been transfered in error
     '''
     ENDPOINT = f"{ARCH_URL}/api/ingest/{sip_uuid}/delete/"

@@ -20,6 +20,14 @@ Iterate through supplied sys.argv[1] folder path completing:
    JMW: Field location to be identified? label.type (enum needed)
 6. Capture all outputs to logs
 
+NOTES:
+Some assumptions in code 
+1. That to make AtoM slug we may need an additional stage
+2. That we do not PUT folders with 'fonds' to 'sub-sub-sub-series' levels, jus
+   use them to inform SFTP folder structures, and (when known) slug names for AtoM
+3. That the slug will be named after the CID object number of parent folder
+4. That we will write the transfer / aip UUIDs to the CID label text fields
+
 2025
 """
 
@@ -113,79 +121,77 @@ def main():
             else:
                 ob_num, title = directory.split('_', 1)
 
-            # PUT to SFTP
-            LOGGER.info("Folder identified for ob num %s, title %s - type: %s", ob_num, title, record_type)
-            put_files = am_utils.send_to_sftp(dpath, top_level_folder)
-            if put_files is None:
-                LOGGER.warning("SFTP PUT failed for folder: %s %s", ob_num, dpath)
-                continue
-            files = os.listdir(dpath)
-            if put_files[0] in files:
-                LOGGER.info("SFTP Put successful: %s moved to Archivematica", put_files)
+            # PUT objects only to SFTP
+            if record_type is None:
+                LOGGER.info("Folder identified for ob num %s, title %s - type: %s", ob_num, title, record_type)
+                put_files = am_utils.send_to_sftp(dpath, top_level_folder)
+                if put_files is None:
+                    LOGGER.warning("SFTP PUT failed for folder: %s %s", ob_num, dpath)
+                    continue
+                files = os.listdir(dpath)
+                if put_files[0] in files:
+                    LOGGER.info("SFTP Put successful: %s moved to Archivematica", put_files)
+                else:
+                    LOGGER.warning("Problem with files put in folder %s: %s", directory, put_files)
+                    continue
+
+                # Make vars for Archivematica / Slug
+                dpath_split = dpath.split(top_level_folder)[-1]
+                am_path = os.path.join(top_level_folder, dpath_split)
+                # JMW: Decision still forthcoming regarding slug name / ob_num - if former matching may be needed
+                atom_slug = os.path.basename(os.path.split(am_path)[0]).split('_', 1)[0].lower()
+                item_rec = adlib.retrieve_record(CID_API, 'archivescatalogue', f'object_number="{ob_num}"', 1, ['priref'])[1]
+                item_priref = adlib.retrieve_field_name(item_rec[0], 'priref')[1]
+
+                # Move to Archivematica
+                processing_config = 'ClosedRecords' # Fixed as closed in this code
+                LOGGER.info("Moving SFTP directory %s to Archivematica as %s", directory, processing_config)
+                response = am_utils.send_as_package(am_path, atom_slug, item_priref, processing_config, True)
+                if 'id' not in response:
+                    LOGGER.warning("Possible failure for Archivematica creation: %s", response)
+                    continue
+
+                transfer_uuid = response.get('id')
+                transfer_dict = check_transfer_status(transfer_uuid, directory)
+                if not transfer_dict:
+                    LOGGER.warning("Transfer confirmation not found after 10 minutes for directory %s", directory)
+                    LOGGER.warning("Manual assistance needed to update AIP UUID to CID item record")
+                    continue
+                aip_uuid = transfer_dict.get('sip_uuid')
+                LOGGER.info(transfer_dict)
+
+                # Update transfer UUID and AIP UUID to CID item record
+                uuid = [
+                    {"label.type": "ARTEFACTUALUUID"},
+                    {"label.source": "Transfer UUID"},
+                    {"label.date":str(datetime.datetime.now())[:10]},
+                    {"label.text": transfer_uuid},
+                    {"label.type": "ARTEFACTUALUUID"},
+                    {"label.source": "AIP UUID"},
+                    {"label.date":str(datetime.datetime.now())[:10]},
+                    {"label.text": aip_uuid}
+                ]
+                print(f"Label values:\n{uuid}")
+
+                # Start creating CID Work Series record
+                uuid_xml = adlib.create_record_data(CID_API, "archivescatalogue", item_priref, uuid)
+                print(uuid_xml)
+                try:
+                    print("Attempting to create CID record")
+                    rec = adlib.post(CID_API, uuid_xml, "archivescatalogue", "updaterecord")
+                    if rec is None:
+                        LOGGER.warning("Failed to update record:\n%s", uuid_xml)
+                        return None
+                    if "priref" not in str(rec):
+                        LOGGER.warning("Failed to update new record:\n%s", item_priref)
+                        return None
+
+                except Exception as err:
+                    LOGGER.warning("Unable to update UUID data to record: %s", err)
+
+                LOGGER.info("Completed upload of %s\n", directory)
             else:
-                LOGGER.warning("Problem with files put in folder %s: %s", directory, put_files)
-                continue
-
-            # Make vars for Archivematica / Slug
-            dpath_split = dpath.split(top_level_folder)[-1]
-            am_path = os.path.join(top_level_folder, dpath_split)
-            # JMW: Decision still forthcoming regarding slug name / ob_num - if former matching may be needed
-            atom_slug = os.path.basename(os.path.split(am_path)[0]).split('_', 1)[0].lower()
-            item_rec = adlib.retrieve_record(CID_API, 'archivescatalogue', f'object_number="{ob_num}"', 1, ['priref'])[1]
-            item_priref = adlib.retrieve_field_name(item_rec[0], 'priref')[1]
-
-            # This based on assumption fonds/series level need AIP/DIP for AtoM object creation
-            if not record_type:
-                processing_config = 'ClosedRecords'
-            else:
-                processing_config = 'OpenRecords'
-
-            # Move to Archivematica
-            LOGGER.info("Moving SFTP directory %s to Archivematica as %s", directory, processing_config)
-            response = am_utils.send_as_package(am_path, atom_slug, item_priref, processing_config, True)
-            if 'id' not in response:
-                LOGGER.warning("Possible failure for Archivematica creation: %s", response)
-                continue
-
-            transfer_uuid = response.get('id')
-            transfer_dict = check_transfer_status(transfer_uuid, directory)
-            if not transfer_dict:
-                LOGGER.warning("Transfer confirmation not found after 10 minutes for directory %s", directory)
-                LOGGER.warning("Manual assistance needed to update AIP UUID to CID item record")
-                continue
-            aip_uuid = transfer_dict.get('sip_uuid')
-            LOGGER.info(transfer_dict)
-
-            # Update transfer UUID and AIP UUID to CID item record
-            uuid = [
-                {"label.type": "ARTEFACTUALUUID"},
-                {"label.source": "Transfer UUID"},
-                {"label.date":str(datetime.datetime.now())[:10]},
-                {"label.text": transfer_uuid},
-                {"label.type": "ARTEFACTUALUUID"},
-                {"label.source": "AIP UUID"},
-                {"label.date":str(datetime.datetime.now())[:10]},
-                {"label.text": aip_uuid}
-            ]
-            print(f"Label values:\n{uuid}")
-
-            # Start creating CID Work Series record
-            uuid_xml = adlib.create_record_data(CID_API, "archivescatalogue", item_priref, uuid)
-            print(uuid_xml)
-            try:
-                print("Attempting to create CID record")
-                rec = adlib.post(CID_API, uuid_xml, "archivescatalogue", "updaterecord")
-                if rec is None:
-                    LOGGER.warning("Failed to update record:\n%s", uuid_xml)
-                    return None
-                if "priref" not in str(rec):
-                    LOGGER.warning("Failed to update new record:\n%s", item_priref)
-                    return None
-
-            except Exception as err:
-                LOGGER.warning("Unable to update UUID data to record: %s", err)
-
-            LOGGER.info("Completed upload of %s\n", directory)
+                LOGGER.info("Skipping PUT of %s - no objects enclosed", directory)
 
     LOGGER.info(
         "=========== Special Collections Archivematica - Document Transfer OSH END =============="
@@ -203,7 +209,7 @@ def check_transfer_status(uuid, directory):
     if trans_dict.get('status') == 'COMPLETE':
         LOGGER.info("Transfer of package completed: %s", trans_dict.get('directory', directory))
         return trans_dict
-    else
+    else:
         sleep(60)
         raise
 

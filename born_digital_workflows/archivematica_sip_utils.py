@@ -400,7 +400,7 @@ def delete_sip(sip_uuid):
     Remove a SIP from Archivematica
     after it's been transfered in error
     '''
-    ENDPOINT = f"{ARCH_URL}/api/transfer/status/{sip_uuid}"
+    ENDPOINT = f"{ARCH_URL}/api/ingest/{sip_uuid}/delete/"
     try:
         response = requests.delete(ENDPOINT, headers=HEADER)
         response.raise_for_status()

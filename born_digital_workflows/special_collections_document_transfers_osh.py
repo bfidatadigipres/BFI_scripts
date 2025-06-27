@@ -187,7 +187,7 @@ def main():
                     {"label.type": "ARTEFACTUALUUID"},
                     {"label.source": "SIP UUID"},
                     {"label.date":str(datetime.datetime.now())[:10]},
-                    {"label.text": sip_uuid}
+                    {"label.text": sip_uuid},
                     {"label.type": "ARTEFACTUALUUID"},
                     {"label.source": "AIP UUID"},
                     {"label.date":str(datetime.datetime.now())[:10]},

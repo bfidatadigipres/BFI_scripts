@@ -273,6 +273,7 @@ def get_ingest_status(sip_uuid):
         print(f"Response as text:\n{response.text}")
     return None
 
+
 def get_transfer_list():
     """
     Calls to retrieve UUID for

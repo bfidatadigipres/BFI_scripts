@@ -29,6 +29,7 @@ import logging
 import os
 import sys
 from typing import Any, Final, Optional
+
 import pandas
 import requests
 import tenacity
@@ -57,7 +58,10 @@ LOGGER.setLevel(logging.INFO)
 # PATV API details including unique identifiers for Netflix catalogue
 URL = os.environ.get("PATV_STREAM_URL")
 HEADERS = {"accept": "application/json", "apikey": os.environ.get("PATV_KEY")}
-STREAM_KEYS = {"Netflix": os.environ.get("PA_NETFLIX"), "Amazon": os.environ.get("PA_AMAZON")}
+STREAM_KEYS = {
+    "Netflix": os.environ.get("PA_NETFLIX"),
+    "Amazon": os.environ.get("PA_AMAZON"),
+}
 
 
 def read_csv_to_dict(csv_path: str) -> dict[str, list[str]]:

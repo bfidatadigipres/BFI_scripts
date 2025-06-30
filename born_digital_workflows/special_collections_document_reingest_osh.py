@@ -23,7 +23,7 @@ Iterate through CID records from sub-fond level down:
 8. JMW: Possibility to save URL for AtoM to CID item record?
 
 NOTES:
-Some assumptions in code 
+Some assumptions in code
 1. That we can write the slug into a reingest
 2. That reingest via the v2 api allows package reingesting
 3. That metadata can be updated in this fashing in a 'FULL' reingest
@@ -36,11 +36,12 @@ import datetime
 import logging
 import os
 import sys
-import tenacity
 from time import sleep
 
 # Private packages
 import archivematica_sip_utils as am_utils
+import tenacity
+
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
@@ -59,13 +60,13 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 LEVEL = [
-    '_fonds_',
-    '_sub-fonds_',
-    '_series_',
-    '_sub-series_',
-    '_sub-sub-series_',
-    '_sub-sub-sub-series_',
-    '_file_'
+    "_fonds_",
+    "_sub-fonds_",
+    "_series_",
+    "_sub-series_",
+    "_sub-sub-series_",
+    "_sub-sub-sub-series_",
+    "_file_",
 ]
 
 
@@ -78,14 +79,16 @@ def main():
 
 @tenacity.retry(tenacity.stop_after_attempt(10))
 def check_transfer_status(uuid, directory):
-    '''
+    """
     Check status of transfer up to 10
     times, or until retrieved
-    '''
-    trans_dict = am_utils.get_ingest_status(uuid)
+    """
+    trans_dict = am_utils.get_transfer_status(uuid)
 
-    if trans_dict.get('status') == 'COMPLETE':
-        LOGGER.info("Transfer of package completed: %s", trans_dict.get('directory', directory))
+    if trans_dict.get("status") == "COMPLETE":
+        LOGGER.info(
+            "Transfer of package completed: %s", trans_dict.get("directory", directory)
+        )
         return trans_dict
     else:
         sleep(60)

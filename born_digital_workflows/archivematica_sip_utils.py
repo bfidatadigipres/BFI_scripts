@@ -64,29 +64,30 @@ def sftp_connect():
     return ssh_client.open_sftp()
 
 
-def send_to_sftp(fpath, top_level_folder):
+def send_to_sftp(fpath, top_folder):
     """
     Check for parent folder, if absent mkdir
     First step SFTP into Storage Service, then check
     content has made it into the folder
+    Supply top_folder with /: Name_of_folder/
     """
 
-    relpath = fpath.split(top_level_folder)[-1]
+    relpath = fpath.split(top_folder)[-1]
     whole_path, file = os.path.split(relpath)
     print(whole_path, file)
     root, container = os.path.split(whole_path)
     print(f"Root: {root}, Container: {container}")
-    remote_path = os.path.join(f"sftp-transfer-source/API_Uploads/{top_level_folder}", root)
+    remote_path = f"sftp-transfer-source/API_Uploads/{top_folder}/{root}"
     print(remote_path)
 
     # Create ssh / sftp object
     sftp = sftp_connect()
     check_folder = sftp.listdir('sftp-transfer-source/API_Uploads')
     print(f"Check folder contents: {check_folder}")
-    if top_level_folder not in str(check_folder):
-        success = sftp_mkdir(sftp, f"sftp-transfer-source/API_Uploads/{top_level_folder}")
+    if top_folder not in str(check_folder):
+        success = sftp_mkdir(sftp, f"sftp-transfer-source/API_Uploads/{top_folder}")
         if not success:
-            print(f"Failed to make new top level folder: {top_level_folder}")
+            print(f"Failed to make new top level folder: {top_folder}")
             return None
     try:
         root_contents = sftp.listdir(remote_path)

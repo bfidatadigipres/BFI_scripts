@@ -168,7 +168,7 @@ def sftp_mkdir(sftp_object, relpath):
     try:
         sftp_object.mkdir(relpath)
     except OSError as err:
-        print(f"Error attempting to MKDIR metadata/")
+        print(f"Error attempting to MKDIR {relpath}")
         return None
 
     relpath = relpath.rstrip("/")

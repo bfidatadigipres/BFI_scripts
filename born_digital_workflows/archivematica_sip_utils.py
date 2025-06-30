@@ -73,9 +73,11 @@ def send_to_sftp(fpath, top_level_folder):
 
     relpath = fpath.split(top_level_folder)[-1]
     whole_path, file = os.path.split(relpath)
+    print(whole_path, file)
     root, container = os.path.split(whole_path)
-    remote_path = os.path.join("sftp-transfer-source/API_Uploads", root)
-
+    print(root, container)
+    remote_path = os.path.join(f"sftp-transfer-source/API_Uploads/{top_level_folder}", root)
+    print(remote_path)
     # Create ssh / sftp object
     sftp = sftp_connect()
     check_folder = sftp.listdir('sftp-transfer-source/API_Uploads')
@@ -86,6 +88,7 @@ def send_to_sftp(fpath, top_level_folder):
             return None
     try:
         root_contents = sftp.listdir(remote_path)
+        print(f"Root of remote_path: {root_contents}")
     except OSError as err:
         print(f"Error attempting to retrieve path {remote_path}")
         root_contents = ""

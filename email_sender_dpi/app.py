@@ -7,7 +7,7 @@ import utils
 app = Flask(__name__, template_folder="templates")
 
 logger = logging.getLogger("flask_logger")
-hdlr = logging.FileHandler("/Users/mohameds/email_temp/app.log")
+hdlr = logging.FileHandler("")
 formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)

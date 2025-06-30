@@ -23,7 +23,7 @@ Iterate through supplied sys.argv[1] folder path completing:
 6. Capture all outputs to logs
 
 NOTES:
-Some assumptions in code 
+Some assumptions in code
 1. That to make AtoM slug we may need an additional stage  / manual work
 2. That we do not PUT folders with 'fonds' to 'sub-sub-sub-series' levels, just
    use them to inform SFTP folder structures, and (when known) slug names for AtoM
@@ -41,11 +41,12 @@ import datetime
 import logging
 import os
 import sys
-import tenacity
 from time import sleep
 
 # Private packages
 import archivematica_sip_utils as am_utils
+import tenacity
+
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
@@ -64,13 +65,13 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 LEVEL = [
-    '_fonds_',
-    '_sub-fonds_',
-    '_series_',
-    '_sub-series_',
-    '_sub-sub-series_',
-    '_sub-sub-sub-series_',
-    '_file_'
+    "_fonds_",
+    "_sub-fonds_",
+    "_series_",
+    "_sub-series_",
+    "_sub-sub-series_",
+    "_sub-sub-sub-series_",
+    "_file_",
 ]
 
 
@@ -104,12 +105,14 @@ def main():
     if sys.argv < 3:
         print("Path has not been supplied to script. Exiting.")
     base_dir = sys.argv[1]  # Always sub_fond level path
-    top_level_folder = sys.argv[2] # Specified SFTP top level folder
+    top_level_folder = sys.argv[2]  # Specified SFTP top level folder
 
     if not os.path.exists(base_dir):
         sys.exit(f"Exiting. Path could not be found: {base_dir}")
     if top_level_folder not in base_dir:
-        sys.exit("Exiting, folder name {top_level_folder} or path formatted incorrectly {base_dir}")
+        sys.exit(
+            "Exiting, folder name {top_level_folder} or path formatted incorrectly {base_dir}"
+        )
 
     LOGGER.info(
         "=========== Special Collections Archivematica - Document Transfer OSH START ============"
@@ -122,59 +125,96 @@ def main():
             dpath = os.path.join(root, directory)
             record_type = None
             if any(x in directory for x in LEVEL):
-                ob_num, record_type, title = top_folder_split(directory, top_level_folder.split('-', 1)[0])
+                ob_num, record_type, title = top_folder_split(
+                    directory, top_level_folder.split("-", 1)[0]
+                )
             else:
-                ob_num, title = directory.split('_', 1)
+                ob_num, title = directory.split("_", 1)
 
             # PUT objects only to SFTP
             if record_type is None:
-                LOGGER.info("Folder identified for ob num %s, title %s - type: %s", ob_num, title, record_type)
+                LOGGER.info(
+                    "Folder identified for ob num %s, title %s - type: %s",
+                    ob_num,
+                    title,
+                    record_type,
+                )
                 put_files = am_utils.send_to_sftp(dpath, top_level_folder)
                 if put_files is None:
                     LOGGER.warning("SFTP PUT failed for folder: %s %s", ob_num, dpath)
                     continue
                 files = os.listdir(dpath)
                 if put_files[0] in files:
-                    LOGGER.info("SFTP Put successful: %s moved to Archivematica", put_files)
+                    LOGGER.info(
+                        "SFTP Put successful: %s moved to Archivematica", put_files
+                    )
                 else:
-                    LOGGER.warning("Problem with files put in folder %s: %s", directory, put_files)
+                    LOGGER.warning(
+                        "Problem with files put in folder %s: %s", directory, put_files
+                    )
                     continue
 
                 # Make vars for Archivematica / Slug
                 dpath_split = dpath.split(top_level_folder)[-1]
                 am_path = os.path.join(top_level_folder, dpath_split)
                 # JMW: Decision still forthcoming regarding slug name / ob_num - if former matching may be needed
-                atom_slug = os.path.basename(os.path.split(am_path)[0]).split('_', 1)[0].lower()
+                atom_slug = (
+                    os.path.basename(os.path.split(am_path)[0]).split("_", 1)[0].lower()
+                )
                 if am_utils.get_slug_match(atom_slug) is False:
                     LOGGER.warning("Supposed slug cannot be found in AtoM objects.")
                     # JMW: Make slug here?
                     continue
 
-                item_rec = adlib.retrieve_record(CID_API, 'archivescatalogue', f'object_number="{ob_num}"', 1, ['priref'])[1]
-                item_priref = adlib.retrieve_field_name(item_rec[0], 'priref')[1]
+                item_rec = adlib.retrieve_record(
+                    CID_API,
+                    "archivescatalogue",
+                    f'object_number="{ob_num}"',
+                    1,
+                    ["priref"],
+                )[1]
+                item_priref = adlib.retrieve_field_name(item_rec[0], "priref")[1]
 
                 # Move to Archivematica
-                processing_config = 'ClosedRecords' # Fixed as closed in this code
-                LOGGER.info("Moving SFTP directory %s to Archivematica as %s", directory, processing_config)
-                response = am_utils.send_as_package(am_path, atom_slug, item_priref, processing_config, True)
-                if 'id' not in response:
-                    LOGGER.warning("Possible failure for Archivematica creation: %s", response)
+                processing_config = "ClosedRecords"  # Fixed as closed in this code
+                LOGGER.info(
+                    "Moving SFTP directory %s to Archivematica as %s",
+                    directory,
+                    processing_config,
+                )
+                response = am_utils.send_as_package(
+                    am_path, atom_slug, item_priref, processing_config, True
+                )
+                if "id" not in response:
+                    LOGGER.warning(
+                        "Possible failure for Archivematica creation: %s", response
+                    )
                     continue
 
-                transfer_uuid = response.get('id')
+                transfer_uuid = response.get("id")
                 transfer_dict = check_transfer_status(transfer_uuid, directory)
                 if not transfer_dict:
-                    LOGGER.warning("Transfer confirmation not found after 10 minutes for directory %s", directory)
-                    LOGGER.warning("Manual assistance needed to update UUIDs to CID item record")
+                    LOGGER.warning(
+                        "Transfer confirmation not found after 10 minutes for directory %s",
+                        directory,
+                    )
+                    LOGGER.warning(
+                        "Manual assistance needed to update UUIDs to CID item record"
+                    )
                     continue
-                sip_uuid = transfer_dict.get('sip_uuid')
+                sip_uuid = transfer_dict.get("sip_uuid")
                 LOGGER.info(transfer_dict)
                 ingest_dict = check_ingest_status(sip_uuid, directory)
                 if not ingest_dict:
-                    LOGGER.warning("Ingest confirmation not found after 10 minutes for directory %s", directory)
-                    LOGGER.warning("Manual assistance needed to update AIP UUID to CID item record")
+                    LOGGER.warning(
+                        "Ingest confirmation not found after 10 minutes for directory %s",
+                        directory,
+                    )
+                    LOGGER.warning(
+                        "Manual assistance needed to update AIP UUID to CID item record"
+                    )
                     continue
-                aip_uuid = ingest_dict.get('uuid')
+                aip_uuid = ingest_dict.get("uuid")
                 LOGGER.info(ingest_dict)
 
                 # Update transfer, SIP and AIP UUID to CID item record
@@ -182,25 +222,29 @@ def main():
                 uuid = [
                     {"label.type": "ARTEFACTUALUUID"},
                     {"label.source": "Transfer UUID"},
-                    {"label.date":str(datetime.datetime.now())[:10]},
+                    {"label.date": str(datetime.datetime.now())[:10]},
                     {"label.text": transfer_uuid},
                     {"label.type": "ARTEFACTUALUUID"},
                     {"label.source": "SIP UUID"},
-                    {"label.date":str(datetime.datetime.now())[:10]},
+                    {"label.date": str(datetime.datetime.now())[:10]},
                     {"label.text": sip_uuid},
                     {"label.type": "ARTEFACTUALUUID"},
                     {"label.source": "AIP UUID"},
-                    {"label.date":str(datetime.datetime.now())[:10]},
-                    {"label.text": aip_uuid}
+                    {"label.date": str(datetime.datetime.now())[:10]},
+                    {"label.text": aip_uuid},
                 ]
                 print(f"Label values:\n{uuid}")
 
                 # Start creating CID Work Series record
-                uuid_xml = adlib.create_record_data(CID_API, "archivescatalogue", item_priref, uuid)
+                uuid_xml = adlib.create_record_data(
+                    CID_API, "archivescatalogue", item_priref, uuid
+                )
                 print(uuid_xml)
                 try:
                     print("Attempting to create CID record")
-                    rec = adlib.post(CID_API, uuid_xml, "archivescatalogue", "updaterecord")
+                    rec = adlib.post(
+                        CID_API, uuid_xml, "archivescatalogue", "updaterecord"
+                    )
                     if rec is None:
                         LOGGER.warning("Failed to update record:\n%s", uuid_xml)
                         return None
@@ -222,14 +266,16 @@ def main():
 
 @tenacity.retry(tenacity.stop_after_attempt(10))
 def check_transfer_status(uuid, directory):
-    '''
+    """
     Check status of transfer up to 10
     times, or until retrieved
-    '''
+    """
     trans_dict = am_utils.get_transfer_status(uuid)
 
-    if trans_dict.get('status') == 'COMPLETE' and len(trans_dict.get('sip_uuid')) > 0:
-        LOGGER.info("Transfer of package completed: %s", trans_dict.get('directory', directory))
+    if trans_dict.get("status") == "COMPLETE" and len(trans_dict.get("sip_uuid")) > 0:
+        LOGGER.info(
+            "Transfer of package completed: %s", trans_dict.get("directory", directory)
+        )
         return trans_dict
     else:
         sleep(60)
@@ -238,19 +284,21 @@ def check_transfer_status(uuid, directory):
 
 @tenacity.retry(tenacity.stop_after_attempt(10))
 def check_ingest_status(uuid, directory):
-    '''
+    """
     Check status of transfer up to 10
     times, or until retrieved
-    '''
+    """
     ingest_dict = am_utils.get_ingest_status(uuid)
 
-    if ingest_dict.get('status') == 'COMPLETE' and len(ingest_dict.get('uuid')) > 0:
-        LOGGER.info("Ingest of package completed: %s", ingest_dict.get('directory', directory))
+    if ingest_dict.get("status") == "COMPLETE" and len(ingest_dict.get("uuid")) > 0:
+        LOGGER.info(
+            "Ingest of package completed: %s", ingest_dict.get("directory", directory)
+        )
         return ingest_dict
     else:
         sleep(60)
         raise Exception
-    
+
 
 if __name__ == "__main__":
     main()

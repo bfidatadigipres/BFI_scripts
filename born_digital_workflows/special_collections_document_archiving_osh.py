@@ -29,6 +29,7 @@ import logging
 import os
 import sys
 from typing import Any, Dict, List, Optional
+
 import magic
 import requests
 
@@ -311,7 +312,7 @@ def build_defaults():
     records_all = [
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
-        # ? {"record_access.reason": "Temporary restriction while OSH New Voices in the Archive project completes, to be removed for public access later in project"}, 
+        # ? {"record_access.reason": "Temporary restriction while OSH New Voices in the Archive project completes, to be removed for public access later in project"},
         {"institution.name.lref": "999570701"},
         {"analogue_or_digital": "DIGITAL"},
         {"digital.born_or_derived": "BORN_DIGITAL"},

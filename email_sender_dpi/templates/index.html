@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css" href="../static/styles/styles.css">
+    <meta charset="utf-8">
+    <title> Screenshot email sender</title>
+</head>
+<body>
+<header>
+    <br>
+  <h2> Send screenshot to email</h2>
+</header>
+
+
+<form action="/" method="POST" id="emailForm" enctype="multipart/form-data">
+    <label>Send email to: </label>
+    <input id="email" name="email" type="text" placeholder="other@company.org.uk">
+    <br>
+    <label>Subject: </label>
+    <input id="subject" name="subject" type="text" placeholder="subject">
+    <br>
+    <label> Body: </label>
+    <textarea id="body" name="body" rows="4" cols="50" placeholder="Send some text"></textarea>
+    <br>
+    <label for="imageInput">Load image: </label> <br>
+    <input id="file" name="file" type="text" placeholder="/mnt/bp_nas/email">
+
+    <!-- <label>Screengrab</label>
+  <div id="paste-zone" tabindex="0">Click here and paste (Ctrl+V)</div>
+  <img id="preview" alt="image preview"> -->
+  <br>
+    <input type="submit" value="Submit">
+
+</form>
+</body>
+</html>

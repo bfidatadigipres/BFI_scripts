@@ -82,7 +82,7 @@ def check_transfer_status(uuid, directory):
     Check status of transfer up to 10
     times, or until retrieved
     '''
-    trans_dict = am_utils.get_transfer_status(uuid)
+    trans_dict = am_utils.get_ingest_status(uuid)
 
     if trans_dict.get('status') == 'COMPLETE':
         LOGGER.info("Transfer of package completed: %s", trans_dict.get('directory', directory))

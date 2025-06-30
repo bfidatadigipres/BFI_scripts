@@ -24,4 +24,4 @@ repos:
 #         always_run: true
 #         pass_filenames: false
 #         args:
-#             ["--disable=C0103,C0111,C0301,C0114,C0116,R0801,E0401"]
+#             ["--disable=C0103,C0111,C0301,C0114,C0116,W1203"]

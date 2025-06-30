@@ -185,7 +185,8 @@ def sftp_mkdir(sftp_object, relpath):
 def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_arg):
     """
     Send a package using v2beta package, subject to change
-    Args: Path from top series, AToM slug, CID priref, OpenRecords or ClosedRecords, bool
+    Args: Path from top level no trailing /, AToM slug if known,
+    CID priref, OpenRecords or ClosedRecords, bool
     """
     # Build correct folder paths
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package")
@@ -195,7 +196,7 @@ def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_
 
     # Create payload and post
     data_payload = {
-        "name": folder_path,
+        "name": f"{folder_path}",
         "path": encoded_path,
         "type": "standard",
         "processing_config": process_config,
@@ -340,6 +341,7 @@ def get_location_uuids():
         respnse = requests.get(SS_END, headers=headers)
         respnse.raise_for_status()
         data = respnse.json()
+        print(data)
         if data and "results" in data:
             return data["results"]
     except requests.exceptions.RequestException as err:
@@ -464,7 +466,7 @@ def delete_sip(sip_uuid):
     return None
 
 
-def reingest_aip(aip_uuid, type, process_config):
+def reingest_aip(aip_uuid, type, slug, process_config):
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
@@ -477,6 +479,7 @@ def reingest_aip(aip_uuid, type, process_config):
     data_payload = {
         "pipeline": TS_UUID,
         "reingest_type": type,
+        "access_system_id": slug,
         "processing_config": process_config,
     }
     print(json.dumps(data_payload))

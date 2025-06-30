@@ -75,12 +75,14 @@ def send_to_sftp(fpath, top_level_folder):
     whole_path, file = os.path.split(relpath)
     print(whole_path, file)
     root, container = os.path.split(whole_path)
-    print(root, container)
+    print(f"Root: {root}, Container: {container}")
     remote_path = os.path.join(f"sftp-transfer-source/API_Uploads/{top_level_folder}", root)
     print(remote_path)
+
     # Create ssh / sftp object
     sftp = sftp_connect()
     check_folder = sftp.listdir('sftp-transfer-source/API_Uploads')
+    print(f"Check folder contents: {check_folder}")
     if top_level_folder not in str(check_folder):
         success = sftp_mkdir(sftp, f"sftp-transfer-source/API_Uploads/{top_level_folder}")
         if not success:

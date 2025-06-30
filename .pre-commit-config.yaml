@@ -10,18 +10,20 @@ repos:
     hooks:
     -   id: black
 
--   repo: https://github.com/pycqa/isort
-    rev: 6.0.1
-    hooks:
-    -   id: isort
-
-# -   repo: https://github.com/pylint-dev/pylint
-#     rev: v3.1.0
+# -   repo: https://github.com/pycqa/isort
+#     rev: 6.0.1
 #     hooks:
-#     -   id: pylint
-#         language: python
-#         entry: bash -c 'changed_files=$(git diff --name-only HEAD~1 HEAD | grep "\.py$"); if [ -n "$changed_files" ]; then pylint --disable=C0103,C0111,C0301,C0114,C0116,R0801 $changed_files; else echo "No Python files changed"; fi'
-#         always_run: true
-#         pass_filenames: false
-#         args:
-#             ["--disable=C0103,C0111,C0301,C0114,C0116,W1203"]
+#     -   id: isort
+
+-   repo: https://github.com/pylint-dev/pylint
+    rev: v3.1.0
+    hooks:
+    -   id: pylint
+        language: python
+        entry: bash -c 'changed_files=$(git diff --name-only HEAD~1 HEAD | grep "\.py$"); if [ -n "$changed_files" ]; then pylint --disable=C0103,C0111,C0301,C0114,C0116,R0801,W1203,E0401 $changed_files; else echo "No Python files changed"; fi'
+        always_run: true
+        pass_filenames: false
+        args:
+            [
+                "--disable=W1203,E0401,C0103,C0111,C0301,C0114,C0116"
+            ]

@@ -52,11 +52,16 @@ def send_screenshot():
                 f"Email successfully sent to {email} with subject {subject}", "success"
             )
 
-        except Exception as e:
-            logger.critical(f"Email not sent due to reason: {str(e)}")
+        except ValueError as e:
+            logger.critical("Email not sent due to reason: %s", str(e))
             flash(f"Email not sent due to reason: {str(e)}", "error")
-
             return render_template("error_page.html")
+
+        # except Exception as e:
+        #     logger.critical(f"Email not sent due to reason: {str(e)}")
+        #     flash(f"Email not sent due to reason: {str(e)}", "error")
+
+        #     return render_template("error_page.html")
     return render_template("index.html")
 
 

@@ -36,14 +36,12 @@ NOTES: Dependency for cast create_contributors()
 import datetime
 import json
 import logging
-# Public packages
 import os
 import sys
 from typing import Any, Final, Iterable, Optional
 
 import pandas
 import yaml
-# Local packages
 from document_augmented_streaming_cast import create_contributors
 
 sys.path.append(os.environ["CODE"])
@@ -690,6 +688,8 @@ def main():
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
 
+    if len(sys.argv) < 2:
+        sys.exit(f"Please try to launch this script again with the path to the CSV...")
     csv_path = sys.argv[1]
     if not os.path.isfile(csv_path):
         sys.exit(f"Problem with supplied CSV path {csv_path}")

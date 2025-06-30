@@ -445,7 +445,7 @@ def process_files(
             duration_ms = ""
         if not byte_size:
             byte_size = ""
-        duration_size_log(file, object_number, duration, byte_size, duration_ms)
+        print(file, object_number, duration, byte_size, duration_ms)
 
         # Run series of BP checks here - any failures no CID media record made
         confirmed, remote_md5, length = bp.get_confirmation_length_md5(
@@ -677,6 +677,7 @@ def duration_size_log(
     filename: str, ob_num: str, duration: str, size: int, ms: int
 ) -> None:
     """
+    DEPRECATED
     Save outcome message to duration_size_media_records.csv
     """
     datestamp = str(datetime.now())[:-7]

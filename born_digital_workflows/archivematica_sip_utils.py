@@ -78,7 +78,12 @@ def send_to_sftp(fpath, top_level_folder):
 
     # Create ssh / sftp object
     sftp = sftp_connect()
-
+    check_folder = sftp.listdir('sftp-transfer-source/API_Uploads')
+    if top_level_folder not in str(check_folder):
+        success = sftp_mkdir(sftp, f"sftp-transfer-source/API_Uploads/{top_level_folder}")
+        if not success:
+            print(f"Failed to make new top level folder: {top_level_folder}")
+            return None
     try:
         root_contents = sftp.listdir(remote_path)
     except OSError as err:
@@ -491,3 +496,41 @@ def reingest_aip(aip_uuid, type, process_config):
         print("Response not supplied in JSON format")
         print(f"Response as text:\n{response.text}")
     return None
+
+
+def metadata_copy_reingest(aip_uuid, source_mdata_path):
+    """
+    Where metadata reingest occurs, set copy metadata
+    call to requests. Path is whole path to metadata.csv
+    for the given item's correlating aip uuid
+    """
+
+    MDATA_ENDPOINT = os.path.join(ARCH_URL, "api/ingest/copy_metadata_files/")
+    mdata_path_str = f"{TS_UUID}:{source_mdata_path}"
+    encoded_path = base64.b64encode(mdata_path_str.encode("utf-8")).decode("utf-8")
+
+    data_payload = {
+        "sip_uuid": aip_uuid,
+        "source_paths": encoded_path
+    }
+
+    print(json.dumps(data_payload))
+    print(f"Starting transfer of {mdata_path_str}")
+    try:
+        response = requests.post(MDATA_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
+        response.raise_for_status()
+        print(f"Metadata copy initiatied - status code {response.status_code}")
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+    return None
+

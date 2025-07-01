@@ -19,7 +19,7 @@ from requests import Session, exceptions, request
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
-
+TIMEOUT = 30
 
 # (api: str) -> Dict[Any, Any]:
 def check(api):
@@ -94,7 +94,7 @@ def get(api, query, session):
     if not session:
         session = create_session()
     try:
-        req = session.get(api, headers=HEADERS, params=query)
+        req = session.get(api, headers=HEADERS, params=query, timeout=TIMEOUT)
         if req.status_code != 200:
             raise Exception
         dct = json.loads(req.text)
@@ -132,7 +132,7 @@ def post(api, payload, database, method, session):
     if method == "insertrecord":
         try:
             response = session.post(
-                api, headers=HEADERS, params=params, data=payload, timeout=1200
+                api, headers=HEADERS, params=params, data=payload, timeout=TIMEOUT
             )
             if response.status_code != 200:
                 raise Exception
@@ -152,7 +152,7 @@ def post(api, payload, database, method, session):
     if method == "updaterecord":
         try:
             response = session.post(
-                api, headers=HEADERS, params=params, data=payload, timeout=1200
+                api, headers=HEADERS, params=params, data=payload, timeout=TIMEOUT
             )
             if response.status_code != 200:
                 raise Exception
@@ -291,7 +291,7 @@ def get_grouped_items(api, database, session):
     query = {"command": "getmetadata", "database": database, "limit": 0}
     if not session:
         session = create_session()
-    result = session.get(api, headers=HEADERS, params=query)
+    result = session.get(api, headers=HEADERS, params=query, timeout=TIMEOUT)
     metadata = xmltodict.parse(result.text)
     if not isinstance(metadata, dict):
         return None, None
@@ -457,7 +457,7 @@ def add_quality_comments(api, priref, comments, session):
             "output": "jsonv1",
         },
         data=payload,
-        timeout=1200,
+        timeout=TIMEOUT,
     )
     if "error" in str(response.text):
         return False
@@ -490,7 +490,7 @@ def recycle_api(api):
     triggers Powershell recycle
     """
     search = "title=recycle.application.pool.data.test"
-    req = request("GET", api, headers=HEADERS, params=search)
+    req = request("GET", api, headers=HEADERS, params=search, timeout=TIMEOUT)
     print(f"Search to trigger recycle sent: {req}")
     print("Pausing for 2 minutes")
     sleep(120)

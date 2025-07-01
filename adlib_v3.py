@@ -19,7 +19,7 @@ from lxml import etree, html
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
-
+TIMEOUT = 30
 
 # (api: str) -> dict[Any, Any]:
 def check(api):
@@ -84,7 +84,7 @@ def get(api, query):
     Send a GET request
     """
     try:
-        req = requests.request("GET", api, headers=HEADERS, params=query)
+        req = requests.request("GET", api, headers=HEADERS, params=query, timeout=TIMEOUT)
         if req.status_code != 200:
             raise Exception
         dct = json.loads(req.text)
@@ -119,7 +119,7 @@ def post(api, payload, database, method):
 
     try:
         response = requests.request(
-            "POST", api, headers=HEADERS, params=params, data=payload, timeout=1200
+            "POST", api, headers=HEADERS, params=params, data=payload, timeout=TIMEOUT
         )
     except requests.exceptions.Timeout as err:
         print(err)
@@ -286,7 +286,7 @@ def get_grouped_items(api, database):
     these are added to XML configuration
     """
     query = {"command": "getmetadata", "database": database, "limit": 0}
-    result = requests.request("GET", api, headers=HEADERS, params=query)
+    result = requests.request("GET", api, headers=HEADERS, params=query, timeout=TIMEOUT)
     metadata = xmltodict.parse(result.text)
     if not isinstance(metadata, dict):
         return None, None
@@ -479,7 +479,7 @@ def recycle_api(api):
     triggers Powershell recycle
     """
     search = "title=recycle.application.pool.data.test"
-    req = requests.request("GET", api, headers=HEADERS, params=search)
+    req = requests.request("GET", api, headers=HEADERS, params=search, timeout=TIMEOUT)
     print(f"Search to trigger recycle sent: {req}")
     print("Pausing for 2 minutes")
     sleep(120)

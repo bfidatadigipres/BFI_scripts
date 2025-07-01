@@ -329,7 +329,7 @@ def get_location_uuids():
     UUID locations for different
     Archivematica services
     """
-    SS_END = f"{ARCH_URL}:8000/api/v2/location/schema/"
+    SS_END = f"{ARCH_URL}:8000/api/v2/location/"
     api_key = f"{SS_NAME}:{SS_KEY}"
     headers = {
         "Accept": "*/*",
@@ -341,9 +341,8 @@ def get_location_uuids():
         respnse = requests.get(SS_END, headers=headers)
         respnse.raise_for_status()
         data = respnse.json()
-        print(data)
-        if data and "results" in data:
-            return data["results"]
+        if 'objects' in data:
+            return data["objects"]
     except requests.exceptions.RequestException as err:
         print(err)
         return None

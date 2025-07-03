@@ -479,14 +479,14 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     data_payload = {
         "pipeline": TS_UUID,
         "reingest_type": type,
-        "access_system_id": slug,
-        "processing_config": process_config,
+       # "access_system_id": slug,
+       # "processing_config": process_config,
     }
     print(json.dumps(data_payload))
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
         response = requests.post(
-            PACKAGE_ENDPOINT, headers=SS_HEADER, data=json.dumps(data_payload)
+            PACKAGE_ENDPOINT, headers=HEADER, data=data_payload
         )
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")

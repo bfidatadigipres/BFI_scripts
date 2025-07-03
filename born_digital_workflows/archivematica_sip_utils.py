@@ -34,6 +34,10 @@ HEADER = {
     "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
     "Content-Type": "application/json",
 }
+HEADER_META = {
+    "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
+    "Content-Type": "application/x-www-form-urlencoded",
+}
 ATOM_HEADER = {"REST-API-Key": ATOM_KEY, "Accept": "application/json"}
 SS_HEADER = {
     "Authorization": f"ApiKey {SS_NAME}:{SS_KEY}",
@@ -69,7 +73,7 @@ def send_to_sftp(fpath, top_folder):
     Check for parent folder, if absent mkdir
     First step SFTP into Storage Service, then check
     content has made it into the folder
-    Supply top_folder with /: Name_of_folder/
+    Supply top_folder without /: Name_of_folder
     """
 
     relpath = fpath.split(top_folder)[-1]
@@ -471,6 +475,9 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     an open DIP for AtoM revision
     type = 'FULL', 'OBJECT', 'METADATA_ONLY'
     Full needed to supply processing_config update (Closed_to_Open)
+    No auuto approve with this - we need to upload metadata first
+    Returns 'reingest_uuid' needed for metadata upload:
+    response['reingest_uuid'] once converted to JSON
     """
     PACKAGE_ENDPOINT = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/reingest/"
 
@@ -478,18 +485,18 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     data_payload = {
         "pipeline": SS_PIPE,
         "reingest_type": type,
-        # "access_system_id": slug,
-        # "processing_config": process_config,
+        "access_system_id": slug,
+        "processing_config": process_config
     }
-    print(json.dumps(data_payload))
+    payload = json.dumps(data_payload)
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
         response = requests.post(
-            PACKAGE_ENDPOINT, headers=HEADER, data=data_payload
+            PACKAGE_ENDPOINT, headers=SS_HEADER, data=payload
         )
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
-        return response.json()
+        return json.loads(response)
     except requests.exceptions.HTTPError as err:
         print(f"HTTP error: {err}")
         print(f"Response status code: {response.status_code}")
@@ -508,18 +515,19 @@ def reingest_aip(aip_uuid, type, slug, process_config):
 
 def metadata_copy_reingest(aip_uuid, source_mdata_path):
     """
+    Path from top level folder to completion only
     Where metadata reingest occurs, set copy metadata
     call to requests. Path is whole path to metadata.csv
     for the given item's correlating aip uuid
     """
 
     MDATA_ENDPOINT = os.path.join(ARCH_URL, "api/ingest/copy_metadata_files/")
-    mdata_path_str = f"{TS_UUID}:{source_mdata_path}"
+    mdata_path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
     encoded_path = base64.b64encode(mdata_path_str.encode("utf-8")).decode("utf-8")
 
     data_payload = {
         "sip_uuid": aip_uuid,
-        "source_paths": encoded_path
+        "source_paths": [encoded_path]
     }
 
     print(json.dumps(data_payload))

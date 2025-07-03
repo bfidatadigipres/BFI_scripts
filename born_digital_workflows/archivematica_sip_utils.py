@@ -557,13 +557,13 @@ def approve_aip_reingest(uuid):
     Send approval for ingest
     """
     END = f"{ARCH_URL}/api/ingest/reingest/approve/"
-    
-    payload = {
+    from urllib.parse import urlencode
+    payload =  urlencode({
         "uuid": uuid
-    }
+    })
 
     try:
-        response = requests.post(END, headers=HEADER, data=payload)
+        response = requests.post(END, headers=HEADER_META, data=payload)
         response.raise_for_status()
         print(f"AIP reingest started {response.status_code}")
         print(response.text)

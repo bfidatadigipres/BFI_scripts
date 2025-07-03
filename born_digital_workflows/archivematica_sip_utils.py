@@ -332,15 +332,15 @@ def get_location_uuids():
     SS_END = f"{ARCH_URL}:8000/api/v2/location/"
     api_key = f"{SS_NAME}:{SS_KEY}"
     headers = {
-        "Accept": "*/*",
         "Authorization": f"ApiKey {api_key}",
         "Content-type": "application/json",
+        "Accept": "*/*",    
     }
 
     try:
         respnse = requests.get(SS_END, headers=headers)
         respnse.raise_for_status()
-        data = respnse.json()
+        data = json.loads(respnse.text)
         if 'objects' in data:
             return data["objects"]
     except requests.exceptions.RequestException as err:
@@ -476,10 +476,10 @@ def reingest_aip(aip_uuid, type, slug, process_config):
 
     # Create payload and post
     data_payload = {
-        "pipeline": TS_UUID,
+        "pipeline": SS_PIPE,
         "reingest_type": type,
-        "access_system_id": slug,
-        "processing_config": process_config,
+        # "access_system_id": slug,
+        # "processing_config": process_config,
     }
     print(json.dumps(data_payload))
     print(f"Starting reingest of AIP UUID: {aip_uuid}")

@@ -12,7 +12,6 @@ import base64
 import json
 import os
 import sys
-
 import paramiko
 import requests
 
@@ -492,6 +491,7 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
         response = requests.post(
+
             PACKAGE_ENDPOINT, headers=SS_HEADER, data=payload
         )
         response.raise_for_status()
@@ -513,7 +513,7 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     return None
 
 
-def metadata_copy_reingest(aip_uuid, source_mdata_path):
+def metadata_copy_reingest(sip_uuid, source_mdata_path):
     """
     Path from top level folder to completion only
     Where metadata reingest occurs, set copy metadata
@@ -526,7 +526,7 @@ def metadata_copy_reingest(aip_uuid, source_mdata_path):
     encoded_path = base64.b64encode(mdata_path_str.encode("utf-8")).decode("utf-8")
 
     data_payload = {
-        "sip_uuid": aip_uuid,
+        "sip_uuid": sip_uuid,
         "source_paths": [encoded_path]
     }
 
@@ -536,6 +536,7 @@ def metadata_copy_reingest(aip_uuid, source_mdata_path):
         response = requests.post(MDATA_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
         response.raise_for_status()
         print(f"Metadata copy initiatied - status code {response.status_code}")
+        print(response.text)
         return response.json()
     except requests.exceptions.HTTPError as err:
         print(f"HTTP error: {err}")

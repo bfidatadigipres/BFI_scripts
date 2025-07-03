@@ -491,7 +491,6 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
         response = requests.post(
-
             PACKAGE_ENDPOINT, headers=SS_HEADER, data=payload
         )
         response.raise_for_status()
@@ -523,7 +522,7 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     from urllib.parse import urlencode
 
     MDATA_ENDPOINT = os.path.join(ARCH_URL, "api/ingest/copy_metadata_files/")
-    mdata_path_str = f"{SS_PIPE}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
+    mdata_path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
     encoded_path = base64.b64encode(mdata_path_str.encode("utf-8")).decode("utf-8")
 
     data_payload = urlencode({

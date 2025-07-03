@@ -472,7 +472,7 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
-    type = 'FULL', 'OBJECT', 'METADATA_ONLY'
+    type = 'OBJECTS'
     Full needed to supply processing_config update (Closed_to_Open)
     No auuto approve with this - we need to upload metadata first
     Returns 'reingest_uuid' needed for metadata upload:
@@ -551,3 +551,32 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
         print(f"Response as text:\n{response.text}")
     return None
 
+
+def approve_aip_reingest(uuid):
+    """
+    Send approval for ingest
+    """
+    END = f"{ARCH_URL}/api/ingest/reingest/approve/"
+    
+    payload = {
+        "uuid": uuid
+    }
+
+    try:
+        response = requests.post(END, headers=HEADER, data=payload)
+        response.raise_for_status()
+        print(f"AIP reingest started {response.status_code}")
+        print(response.text)
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+    return None

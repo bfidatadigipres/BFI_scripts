@@ -520,20 +520,21 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     call to requests. Path is whole path to metadata.csv
     for the given item's correlating aip uuid
     """
+    from urllib.parse import urlencode
 
     MDATA_ENDPOINT = os.path.join(ARCH_URL, "api/ingest/copy_metadata_files/")
     mdata_path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
     encoded_path = base64.b64encode(mdata_path_str.encode("utf-8")).decode("utf-8")
 
-    data_payload = {
+    data_payload = urlencode({
         "sip_uuid": sip_uuid,
-        "source_paths": [encoded_path]
-    }
+        "source_paths[]": encoded_path
+    })
 
     print(json.dumps(data_payload))
     print(f"Starting transfer of {mdata_path_str}")
     try:
-        response = requests.post(MDATA_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
+        response = requests.post(MDATA_ENDPOINT, headers=HEADER_META, data=data_payload)
         response.raise_for_status()
         print(f"Metadata copy initiatied - status code {response.status_code}")
         print(response.text)

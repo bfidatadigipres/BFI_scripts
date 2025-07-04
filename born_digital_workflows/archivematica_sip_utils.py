@@ -608,7 +608,7 @@ def approve_transfer(dir_name):
         print("Response not supplied in JSON format")
         print(f"Response as text:\n{response.text}")
 
-    dct = response.text
+    dct = json.loads(response.text)
     print(type(dct))
     for lst in dct["results"]:
         for key, value in lst.items():

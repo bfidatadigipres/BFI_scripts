@@ -581,3 +581,55 @@ def approve_aip_reingest(uuid):
         print("Response not supplied in JSON format")
         print(f"Response as text:\n{response.text}")
     return None
+
+
+def approve_transfer(dir_name):
+    '''
+    Find transfer that needs approval
+    And approve if dir-name matches
+    '''
+    GET_UNAPPROVED = f"{ARCH_URL}/api/transfer/unapproved/"
+    APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"
+
+    try:
+        response = requests.post(GET_UNAPPROVED, headers=HEADER)
+        response.raise_for_status()
+        print(f"Tranfers unapproved: {response.status_code}")
+        print(response.text)
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+
+    dict = response.json()
+    for key, value in dict['results'].items():
+        if key == 'directory' and value == dir_name:
+            pay = {
+                "directory": value,
+                "type": "standard",
+            }
+            payload = json.dumps(pay)
+            try:
+                response = requests.post(APPROVE_TRANSFER, headers=HEADER, data=payload)
+                response.raise_for_status()
+                print(f"Tranfers unapproved: {response.status_code}")
+                print(response.text)
+                return response.json()
+            except requests.exceptions.HTTPError as err:
+                print(f"HTTP error: {err}")
+            except requests.exceptions.ConnectionError as err:
+                print(f"Connection error: {err}")
+            except requests.exceptions.Timeout as err:
+                print(f"Timeout error: {err}")
+            except requests.exceptions.RequestException as err:
+                print(f"Request exception: {err}")
+            except ValueError:
+                print("Response not supplied in JSON format")
+                print(f"Response as text:\n{response.text}")

@@ -609,6 +609,7 @@ def approve_transfer(dir_name):
         print(f"Response as text:\n{response.text}")
 
     dct = response.text
+    print(type(dct))
     for lst in dct["results"]:
         for key, value in lst.items():
             if key == 'directory' and value == dir_name:

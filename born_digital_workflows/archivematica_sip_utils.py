@@ -495,7 +495,8 @@ def reingest_aip(aip_uuid, type, slug, process_config):
         )
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
-        return json.loads(response)
+        print(response.text)
+        return response.json()
     except requests.exceptions.HTTPError as err:
         print(f"HTTP error: {err}")
         print(f"Response status code: {response.status_code}")

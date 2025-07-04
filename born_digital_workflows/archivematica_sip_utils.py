@@ -619,7 +619,7 @@ def approve_transfer(dir_name):
                 }
                 payload = json.dumps(pay)
                 try:
-                    response = requests.get(APPROVE_TRANSFER, headers=HEADER, data=payload)
+                    response = requests.post(APPROVE_TRANSFER, headers=HEADER, data=payload)
                     response.raise_for_status()
                     print(f"Tranfers unapproved: {response.status_code}")
                     print(response.text)

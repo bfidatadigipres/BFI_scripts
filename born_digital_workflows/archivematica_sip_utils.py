@@ -592,7 +592,7 @@ def approve_transfer(dir_name):
     APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"
 
     try:
-        response = requests.post(GET_UNAPPROVED, headers=HEADER_META)
+        response = requests.get(GET_UNAPPROVED, headers=HEADER_META)
         response.raise_for_status()
         print(f"Tranfers unapproved: {response.status_code}")
         print(response.text)
@@ -617,7 +617,7 @@ def approve_transfer(dir_name):
             }
             payload = json.dumps(pay)
             try:
-                response = requests.post(APPROVE_TRANSFER, headers=HEADER, data=payload)
+                response = requests.get(APPROVE_TRANSFER, headers=HEADER, data=payload)
                 response.raise_for_status()
                 print(f"Tranfers unapproved: {response.status_code}")
                 print(response.text)

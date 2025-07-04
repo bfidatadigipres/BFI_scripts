@@ -592,7 +592,7 @@ def approve_transfer(dir_name):
     APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"
 
     try:
-        response = requests.post(GET_UNAPPROVED, headers=HEADER)
+        response = requests.post(GET_UNAPPROVED, headers=HEADER_META)
         response.raise_for_status()
         print(f"Tranfers unapproved: {response.status_code}")
         print(response.text)

@@ -14,6 +14,7 @@ import os
 import sys
 import paramiko
 import requests
+from urllib.parse import urlencode
 
 TS_UUID = os.environ.get("AM_TS_UUID")
 SFTP_UUID = os.environ.get("AM_TS_SFTP")
@@ -558,7 +559,7 @@ def approve_aip_reingest(uuid):
     Send approval for ingest
     """
     END = f"{ARCH_URL}/api/ingest/reingest/approve/"
-    from urllib.parse import urlencode
+
     payload =  urlencode({
         "uuid": uuid
     })
@@ -613,13 +614,12 @@ def approve_transfer(dir_name):
     for lst in dct["results"]:
         for key, value in lst.items():
             if key == 'directory' and value.startswith(dir_name):
-                pay = {
+                payload = urlencode({
                     "directory": value,
                     "type": "standard",
-                }
-                payload = json.dumps(pay)
+                })
                 try:
-                    response = requests.post(APPROVE_TRANSFER, headers=HEADER, data=payload)
+                    response = requests.post(APPROVE_TRANSFER, headers=HEADER_META, data=payload)
                     response.raise_for_status()
                     print(f"Tranfers unapproved: {response.status_code}")
                     print(response.text)

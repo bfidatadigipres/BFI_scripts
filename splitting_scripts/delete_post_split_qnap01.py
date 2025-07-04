@@ -123,7 +123,7 @@ def main():
         for filepath in files:
             f = os.path.split(filepath)[1]
             if f'source/{f}' in filepath:
-                print(f"Skipping, file not in numbered subfolder: {filepath}"
+                print(f"Skipping, file not in numbered subfolder: {filepath}")
                 continue
             print(f"Current file: {filepath}\t{f}")
 

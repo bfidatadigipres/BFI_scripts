@@ -753,7 +753,7 @@ def get_height(fullpath: str) -> str:
     reg_height = utils.get_metadata("Video", "Height", fullpath)
 
     try:
-        int(sampled_height)
+        sampled_height_int = int(sampled_height)
     except ValueError:
         sampled_height_int = 0
 

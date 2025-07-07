@@ -1,21 +1,23 @@
 import logging
-
+import sys
+import os
 from flask import Flask, flash, render_template, request
 
+sys.path.append(os.environ['CODE'])
 import utils
 
 app = Flask(__name__, template_folder="templates")
 
 logger = logging.getLogger("flask_logger")
-hdlr = logging.FileHandler("/Users/mohameds/email_temp/app.log")
+hdlr = logging.FileHandler("/mnt/bp_nas/admin/automation_logs/Logs/email_sender_dpi.log")
 formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max file size
-app.secret_key = "*********"
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+app.secret_key = os.environ['flask_key']
 
 
 @app.route("/", methods=["GET"])
@@ -33,12 +35,16 @@ def send_screenshot():
             image_path = request.form.get("file")
 
             if email[-10:] != "bfi.org.uk":
-                logger.error("Invalid email, please enter valid email!")
+                logger.error(f"Invalid email: {email}, please enter valid email!")
                 raise ValueError("Invalid email, please enter valid email!")
 
-            if not image_path:
-                logger.error("User did not add an image at all!")
-                raise ValueError("filepath is required")
+            if image_path is None:
+                logger.error("User did not add an image path at all!")
+                raise ValueError("Filepath is required")
+
+            if not os.path.exists(image_path):
+               logger.error(f"Invalid path: filepath provided does not exist -> {image_path}")
+               raise ValueError("Invalid path: Please check if the filepath does exist.")
 
             if "bp_nas" not in image_path:
                 # app.logger.critical()
@@ -47,7 +53,7 @@ def send_screenshot():
 
             utils.send_email(email, subject, body, image_path)
 
-            logger.info(f"Email successfully sent to {email}", "success")
+            logger.info(f"Email successfully sent to {email}")
             flash(
                 f"Email successfully sent to {email} with subject {subject}", "success"
             )
@@ -61,4 +67,4 @@ def send_screenshot():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", debug=True, port=8000)

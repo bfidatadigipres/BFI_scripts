@@ -11,11 +11,11 @@ an email notification of the file's completed download
 and transcode.
 
 2023
-"""
 
+"""
+# Python packages
 import datetime
 import logging
-# Python packages
 import os
 import re
 import shutil
@@ -23,7 +23,6 @@ import subprocess
 import sys
 import time
 from typing import Any, Final, Optional, Union
-
 import pytz
 import tenacity
 
@@ -40,6 +39,8 @@ LOG_FILE: Final = os.path.join(
 )
 CID_API: Final = utils.get_current_api()
 TRANSCODE: Final = os.environ["TRANSCODING"]
+if not os.path.ismount(TRANSCODE):
+    sys.exit(f"{TRANSCODE} path is not mounted. Script exiting.")
 # TRANSCODE = os.path.join(os.environ['QNAP_REND1'], 'mp4_transcoding_backup/')
 
 # Setup logging
@@ -170,6 +171,8 @@ def transcode_mp4(fpath: str) -> str:
         return "no item record"
 
     date_pth = input_date.replace("-", "")[:6]
+    if len(date_pth) >= 5:
+        sys.exit(f"Error with date path: {date_pth}. Script exiting.")
     if "H22: Video Digitisation: Item Outcomes" in str(groupings) and source:
         log_build.append(
             f"{local_time()}\tINFO\t** Source for H22 video: {source} ****"

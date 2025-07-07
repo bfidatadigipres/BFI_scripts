@@ -170,10 +170,18 @@ def main():
         for key, val in SUPPLIERS.items():
             if key in str(source):
                 rna_pth = val
-        transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
+        transcode_pth_check = os.path.join(TRANSCODE, rna_pth)
     else:
-        transcode_pth = os.path.join(TRANSCODE, "bfi", date_pth)
+        transcode_pth_check = os.path.join(TRANSCODE, "bfi")
 
+    # Check if path is mounted / check date path is populated. Else exit
+    if not os.path.exists(transcode_pth_check):
+        LOGGER.warning("Path to RNA/BFI folder cannot be found. Likely QNAP-11 unmounted. Script exiting")
+        sys.exit(f"{transcode_pth_check} not found. Exiting.")
+    if len(date_pth) == "":
+        sys.exit(f"Date path does not exist for file {file}. Script exiting.")
+
+    transcode_pth = os.path.join(transcode_pth_check, date_pth)
     check_name = os.path.join(transcode_pth, fname)
     if os.path.exists(f"{check_name}.mp4"):
         delete_confirm = check_mod_time(f"{check_name}.mp4")

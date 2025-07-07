@@ -74,6 +74,7 @@ def send_to_sftp(fpath, top_folder):
     First step SFTP into Storage Service, then check
     content has made it into the folder
     Supply top_folder without /: Name_of_folder
+    Supply fpath to the file level
     """
 
     relpath = fpath.split(top_folder)[-1]
@@ -189,7 +190,7 @@ def sftp_mkdir(sftp_object, relpath):
 def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_arg):
     """
     Send a package using v2beta package, subject to change
-    Args: Path from top level no trailing /, AToM slug if known,
+    Args: Path from top level folder no trailing /, AToM slug if known,
     CID priref, OpenRecords or ClosedRecords, bool
     """
     # Build correct folder paths
@@ -519,7 +520,8 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     Path from top level folder to completion only
     Where metadata reingest occurs, set copy metadata
     call to requests. Path is whole path to metadata.csv
-    for the given item's correlating aip uuid
+    for the given item's correlating aip uuid.
+    Needed for reingest that is not FULL
     """
     from urllib.parse import urlencode
 
@@ -557,6 +559,7 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
 def approve_aip_reingest(uuid):
     """
     Send approval for ingest
+    Authorisation needed for 'OBJECTS' reingests
     """
     END = f"{ARCH_URL}/api/ingest/reingest/approve/"
 
@@ -588,6 +591,8 @@ def approve_transfer(dir_name):
     '''
     Find transfer that needs approval
     And approve if dir-name matches
+    Use same UUID as provided in reingest command
+    Authorisation needed for 'FULL' reingest
     '''
     GET_UNAPPROVED = f"{ARCH_URL}/api/transfer/unapproved/"
     APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"

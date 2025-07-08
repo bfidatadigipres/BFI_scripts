@@ -171,7 +171,7 @@ def transcode_mp4(fpath: str) -> str:
         return "no item record"
 
     date_pth = input_date.replace("-", "")[:6]
-    if len(date_pth) >= 5:
+    if len(date_pth) <= 5:
         sys.exit(f"Error with date path: {date_pth}. Script exiting.")
     if "H22: Video Digitisation: Item Outcomes" in str(groupings) and source:
         log_build.append(

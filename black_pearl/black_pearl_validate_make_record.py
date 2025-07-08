@@ -47,8 +47,6 @@ import shutil
 import sys
 from datetime import datetime
 from typing import Optional
-
-# Local import
 import bp_utils as bp
 import requests
 

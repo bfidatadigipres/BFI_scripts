@@ -104,7 +104,7 @@ def date_range(start_date, end_date):
         yield start_date + datetime.timedelta(n)
 
 
-@tenacity.retry(stop=tenacity.stop_after_attempt(5)))
+@tenacity.retry(stop=tenacity.stop_after_attempt(5))
 def fetch(value, start, end) -> Optional[dict[str, str]]:
     """
     Retrieval of EPG metadata here

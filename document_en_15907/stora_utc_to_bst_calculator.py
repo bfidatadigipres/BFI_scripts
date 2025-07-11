@@ -45,11 +45,13 @@ def check_bst_adjustment(utc_datetime_str: str) -> bool:
 
     try:
         dt_utc = datetime.strptime(utc_datetime_str, FORMAT).replace(tzinfo=timezone.utc)
+        print(dt_utc)
     except ValueError as e:
         raise ValueError(f"Invalid datetime string format: {e}. Expected '%Y-%m-%d %H:%M:%S'")
 
     london_tz = ZoneInfo("Europe/London")
     dt_london = dt_utc.astimezone(london_tz)
+    print(dt_london)
 
     return dt_london.utcoffset()
 

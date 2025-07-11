@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 
 """
-Iterate through CID manifestations to identify STORA records
-with broadcast date that matches BST_DCT dates. Where
-found move broadcast time into UCT_timestamp field and add
-+1 hour to the existing time in transmission_start_time.
-Where a time moves beyond midnight, the transmission_date
-will also need an extra day adding and updating the field.
+This script requires CID CSV exports of STORA manifestations
+that contain 'priref', 'transmission_start_time' and
+'transmission_date'.
 
-Time formatted HH:MM:SS
-Date formatted YYYY-MM-DD
+1. Iterate through the CSV building a concatenated 'UTC_timestamp'
+   for all entries
+
+2. Where a date/time fall within BST - pass date and time strings 
+   to check_bst_adjustment() and get back adjusted date/time - use
+   these to replace existing 'transmissions_start_time' and '_date' fields.
+
+3. Populate new CSV with 'priref', original or new date/time fields
+   and new 'UTC_timestamp' field. Return to CID team to ingest to CID.
+
+CID field transmission_start_time formatted HH:MM:SS
+CID transmission_date formatted YYYY-MM-DD
 
 DR-573
 
@@ -18,6 +25,7 @@ DR-573
 
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+import csv
 from typing import Any, Final, Optional
 
 FORMAT = "%Y-%m-%d %H:%M:%S"

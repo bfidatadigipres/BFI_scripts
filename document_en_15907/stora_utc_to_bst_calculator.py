@@ -53,5 +53,5 @@ def check_bst_adjustment(utc_datetime_str: str) -> bool:
     dt_london = dt_utc.astimezone(london_tz)
     print(dt_london)
 
-    return dt_london.utcoffset()
+    return dt_london
 

@@ -188,16 +188,19 @@ def main() -> None:
         for key, value in CHANNEL.items():
             item_path = os.path.join(pth, key)
             print(f"Making path for: {item_path}")
-            if not os.path.exists(item_path):
-                os.makedirs(item_path, mode=0o777, exist_ok=True)
 
             result = check_api(date_start, date_end, value)
+            print(result)
             if not result:
+                print(f"Cannot establish connectino with {key} for date {date_start}")
                 logger.warning(
                     "Unable to establish contact with PATV API for channel %s. Script exitings",
                     key,
                 )
                 continue
+
+            if not os.path.exists(item_path):
+                os.makedirs(item_path, mode=0o777, exist_ok=True)
             jdct = fetch(value, date_start, date_end)
             retrieve_dct_data(date_start, date_end, key, value, pth, jdct)
             logger.info("Path for move actions: %s", item_path)

@@ -83,7 +83,7 @@ def check_api(start: str, end: str, value: str) -> Optional[bool]:
     """
     params = {"channelId": f"{value}", "start": start, "end": end, "aliases": "True"}
     req = requests.request("GET", URL, headers=HEADERS, params=params, timeout=120)
-    print(req)
+    print(req.text)
     if req.status_code == 200:
         return True
     logger.info("PATV API return status code: %s", req.status_code)
@@ -118,6 +118,7 @@ def fetch(value, start, end) -> Optional[dict[str, str]]:
         logger.info("fetch(): %s", params)
         req = requests.request("GET", URL, headers=HEADERS, params=params, timeout=120)
         jdct = json.loads(req.text)
+        print(jdct)
     except Exception as err:
         print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
         logger.critical("**** PROBLEM: Cannot fetch EPG metadata. **** \n%s", err)
@@ -190,7 +191,6 @@ def main() -> None:
             print(f"Making path for: {item_path}")
 
             result = check_api(date_start, date_end, value)
-            print(result)
             if not result:
                 print(f"Cannot establish connectino with {key} for date {date_start}")
                 logger.warning(
@@ -201,6 +201,7 @@ def main() -> None:
 
             if not os.path.exists(item_path):
                 os.makedirs(item_path, mode=0o777, exist_ok=True)
+
             jdct = fetch(value, date_start, date_end)
             retrieve_dct_data(date_start, date_end, key, value, pth, jdct)
             logger.info("Path for move actions: %s", item_path)

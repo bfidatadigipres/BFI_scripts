@@ -25,7 +25,7 @@ STORAGE_PATH: Final = os.environ["HISTORICAL_PATH"]
 LOG_PATH: Final = os.environ["LOG_PATH"]
 CODE_PATH: Final = os.environ["CODE"]
 CONTROL: Final = os.path.join(LOG_PATH, "downtime_control.json")
-START = datetime.date(2015, 1, 1)
+START = datetime.date(2015, 9, 9)
 END = datetime.date(2022, 1, 20)
 
 # Setup logging
@@ -146,7 +146,8 @@ def json_split(pth: str, jdct: dict[str, Any], key: str) -> None:
                 # Outputs split files in subdct when dateTime present to storage_path/dump_path/
                 dt_item = subdct["dateTime"]
                 fname = os.path.join(dump_to, f"info_{dt_item}.json")
-                with open(fname, "w") as f:
+                print(fname)
+                with open(fname, "w+") as f:
                     json.dump({"item": [subdct]}, f, indent=4)
             except Exception as e:
                 print(
@@ -159,7 +160,7 @@ def json_split(pth: str, jdct: dict[str, Any], key: str) -> None:
                 )
             else:
                 logger.info(
-                    "Splitting has been successful. Saving to top folder %s", dump_to
+                    "Splitting has been successful. Saving to top folder %s", fname
                 )
 
 

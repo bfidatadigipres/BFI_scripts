@@ -42,25 +42,25 @@ URL = os.environ["PATV_URL"]
 HEADERS = {"accept": "application/json", "apikey": os.environ["PATV_HISTORIC"]}
 
 CHANNEL = {
-    "bbconehd": os.environ["PA_BBCONE"],
-    "bbctwohd": os.environ["PA_BBCTWO"],
-    "bbcthree": os.environ["PA_BBCTHREE"],
-    "bbcfourhd": os.environ["PA_BBCFOUR"],
-    "bbcnewshd": os.environ["PA_BBCNEWS"],
-    "cbbchd": os.environ["PA_CBBC"],
-    "cbeebieshd": os.environ["PA_CBEEBIES"],
-    "itv1": os.environ["PA_ITV1"],
-    "itv2": os.environ["PA_ITV2"],
-    "itv3": os.environ["PA_ITV3"],
-    "itv4": os.environ["PA_ITV4"],
-    "itvbe": os.environ["PA_ITVBE"],
+    "bbconehd": os.environ.get("PA_BBCONE"),
+    "bbctwohd": os.environ.get("PA_BBCTWO"),
+    "bbcthree": os.environ.get("PA_BBCTHREE"),
+    "bbcfourhd": os.environ.get("PA_BBCFOUR"),
+    "bbcnewshd": os.environ.get("PA_BBCNEWS"),
+    "cbbchd": os.environ.get("PA_CBBC"),
+    "cbeebieshd": os.environ.get("PA_CBEEBIES"),
+    "itv1": os.environ.get("PA_ITV1"),
+    "itv2": os.environ.get("PA_ITV2"),
+    "itv3": os.environ.get("PA_ITV3"),
+    "itv4": os.environ.get("PA_ITV4"),
+    "itvbe": os.environ.get("PA_ITVBE"),
     "citv": os.environ.get("PA_CITV"),
-    "channel4": os.environ["PA_CHANNEL4"],
-    "more4": os.environ["PA_MORE4"],
-    "e4": os.environ["PA_E4"],
-    "film4": os.environ["PA_FILM4"],
-    "five": os.environ["PA_FIVE"],
-    "5star": os.environ["PA_5STAR"],
+    "channel4": os.environ.get("PA_CHANNEL4"),
+    "more4": os.environ.get("PA_MORE4"),
+    "e4": os.environ.get("PA_E4"),
+    "film4": os.environ.get("PA_FILM4"),
+    "five": os.environ.get("PA_FIVE"),
+    "5star": os.environ.get("PA_5STAR"),
 }
 
 
@@ -101,7 +101,7 @@ def date_range(start_date, end_date):
 
     days = int((end_date - start_date).days)
     for n in range(days):
-        yield start_date + datetime.timedelta(n)
+        yield str(start_date + datetime.timedelta(n))
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(5))

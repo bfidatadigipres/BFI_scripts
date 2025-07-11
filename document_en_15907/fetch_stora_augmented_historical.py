@@ -228,6 +228,7 @@ def move(path_move: str, item: str) -> None:
             filename = os.path.basename(file)
             trim = filename[16:21].replace(":", "-")
             file_trim.update({trim: path_move + "/" + filename})
+            print(file, file_trim)
         else:
             print(f"move(): Skipping {file} as file is not JSON: {path_move}")
             logger.info(

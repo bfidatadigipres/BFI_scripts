@@ -37,11 +37,12 @@ BST_DCT = {
 
 
 
-def check_bst_adjustment(utc_datetime_str: str) -> bool:
+def check_bst_adjustment(date_utc: str, time_utc: str) -> bool:
     """
     Determines if a given UTC datetime string falls within BST
     adds +1 where needed
     """
+    utc_datetime_str = f"{date_utc} {time_utc}"
 
     try:
         dt_utc = datetime.strptime(utc_datetime_str, FORMAT).replace(tzinfo=timezone.utc)
@@ -51,7 +52,6 @@ def check_bst_adjustment(utc_datetime_str: str) -> bool:
 
     london_tz = ZoneInfo("Europe/London")
     dt_london = dt_utc.astimezone(london_tz)
-    print(dt_london)
-
-    return dt_london
+    string_bst = datetime.strftime(dt_london, FORMAT)
+    return string_bst.split(" ")
 

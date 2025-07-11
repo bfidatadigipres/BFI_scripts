@@ -198,7 +198,7 @@ def main() -> None:
                     key,
                 )
                 continue
-            jdct = fetch(value)
+            jdct = fetch(value, date_start, date_end)
             retrieve_dct_data(date_start, date_end, key, value, pth, jdct)
             logger.info("Path for move actions: %s", item_path)
             move(item_path, key)

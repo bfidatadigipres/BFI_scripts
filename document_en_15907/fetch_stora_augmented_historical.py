@@ -223,8 +223,8 @@ def move(path_move: str, item: str) -> None:
     into correct date/channel paths
     """
     file_trim = {}
-    for file in os.scandir(path_move):
-        if file.path.endswith(".json"):
+    for file in os.listdir(path_move):
+        if file.endswith(".json"):
             filename = os.path.basename(file)
             trim = filename[16:21].replace(":", "-")
             file_trim.update({trim: path_move + "/" + filename})

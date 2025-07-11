@@ -200,7 +200,7 @@ def main() -> None:
                 continue
 
             jdct = fetch(value, date_start, date_end)
-            if not jdct:
+            if not jdct['item']:
                 continue
 
             if not os.path.exists(item_path):

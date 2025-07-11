@@ -189,7 +189,7 @@ def main() -> None:
             item_path = os.path.join(pth, key)
             print(f"Making path for: {item_path}")
             if not os.path.exists(item_path):
-                os.makedirs(item_path, mode=0o777, exists_ok=True)
+                os.makedirs(item_path, mode=0o777, exist_ok=True)
 
             result = check_api(date_start, date_end, value)
             if not result:

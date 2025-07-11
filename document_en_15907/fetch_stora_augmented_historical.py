@@ -24,7 +24,7 @@ import tenacity
 STORAGE_PATH: Final = os.environ["HISTORICAL_PATH"]
 LOG_PATH: Final = os.environ["LOG_PATH"]
 CODE_PATH: Final = os.environ["CODE"]
-CONTROL: Final = os.path.join(CODE_PATH, "downtime_control.json")
+CONTROL: Final = os.path.join(LOG_PATH, "downtime_control.json")
 START = datetime.date(2015, 1, 1)
 END = datetime.date(2022, 1, 20)
 

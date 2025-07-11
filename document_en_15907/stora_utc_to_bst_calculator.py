@@ -16,19 +16,11 @@ DR-573
 2025
 """
 
-import datetime
-import errno
-import json
-import logging
-import os
-import shutil
-import sys
-import time
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import Any, Final, Optional
-import requests
-import tenacity
 
-
+FORMAT = "%Y-%m-%d %H:%M:%S"
 BST_DCT = {
     "2015": ["2015-03-29", "2015-10-25"],
     "2016": ["2016-03-27", "2016-10-30"],
@@ -42,3 +34,22 @@ BST_DCT = {
     "2024": ["2024-03-31", "2024-10-27"],
     "2025": ["2025-03-30", "2025-10-26"]
 }
+
+
+
+def check_bst_adjustment(utc_datetime_str: str) -> bool:
+    """
+    Determines if a given UTC datetime string falls within BST
+    adds +1 where needed
+    """
+
+    try:
+        dt_utc = datetime.strptime(utc_datetime_str, FORMAT).replace(tzinfo=timezone.utc)
+    except ValueError as e:
+        raise ValueError(f"Invalid datetime string format: {e}. Expected '%Y-%m-%d %H:%M:%S'")
+
+    london_tz = ZoneInfo("Europe/London")
+    dt_london = dt_utc.astimezone(london_tz)
+
+    return dt_london.utcoffset() == timedelta(hours=1)
+

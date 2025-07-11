@@ -175,10 +175,10 @@ def main() -> None:
     )
 
     for target_date in date_range(START, END):
-        date_start = f"{datetime.strftime(target_date)}T00:00:00"
-        date_end = f"{datetime.strftime(target_date)}T23:59:00"
-        target_date = date_start[0:4] + "/" + date_start[5:7] + "/" + date_start[8:10]
-        pth = os.path.join(STORAGE_PATH, target_date)
+        date_start = f"{target_date}T00:00:00"
+        date_end = f"{target_date}T23:59:00"
+        folder_date = target_date.replace('-', '/')
+        pth = os.path.join(STORAGE_PATH, folder_date)
 
         logger.info(
             "Requests will now attempt to retrieve the EPG channel metadata from start=%s to end=%s",

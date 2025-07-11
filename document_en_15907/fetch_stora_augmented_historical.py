@@ -10,7 +10,6 @@ main():
 """
 
 import datetime
-import errno
 import json
 import logging
 import os
@@ -25,7 +24,7 @@ import tenacity
 STORAGE_PATH: Final = os.environ["HISTORICAL_PATH"]
 LOG_PATH: Final = os.environ["LOG_PATH"]
 CODE_PATH: Final = os.environ["CODE"]
-STORA_CONTROL: Final = os.path.join(CODE_PATH, "stora_control.json")
+CONTROL: Final = os.path.join(CODE_PATH, "downtime_control.json")
 START = datetime.date(2015, 1, 1)
 END = datetime.date(2022, 1, 20)
 
@@ -68,9 +67,9 @@ def check_control() -> None:
     """
     Check control JSON for downtime request
     """
-    with open(STORA_CONTROL) as control:
+    with open(CONTROL) as control:
         j = json.load(control)
-        if not j["stora_qnap04"]:
+        if not j["pause_scripts"]:
             logger.info(
                 "Script run prevented by downtime_control.json. Script exiting."
             )

@@ -208,7 +208,7 @@ def main() -> None:
                 os.makedirs(item_path, mode=0o777, exist_ok=True)
             retrieve_dct_data(date_start, date_end, key, value, pth, jdct)
             logger.info("Path for move actions: %s", item_path)
-            move(item_path, key)
+            # move(item_path, key)
 
 
 

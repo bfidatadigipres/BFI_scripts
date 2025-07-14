@@ -8,11 +8,11 @@ in the ONS baby names dataset.
 Updated fro Py3.11 2024 / Adlib V3
 """
 
+# Public packages
 import csv
 import datetime
 import json
 import logging
-# Public packages
 import os
 import sys
 from typing import Final, Optional

@@ -9,11 +9,9 @@ that contain 'priref', 'transmission_start_time' and
 
 1. Iterate through the CSV building a concatenated 'UTC_timestamp'
    for all entries
-
 2. Where a date/time fall within BST - pass date and time strings 
-   to check_bst_adjustment() and get back adjusted date/time - use
+   to utils.check_bst_adjustment() and get back adjusted date/time - use
    these to replace existing 'transmissions_start_time' and '_date' fields.
-
 3. Populate new CSV with 'priref', original or new date/time fields
    and new 'UTC_timestamp' field. Return to CID team to ingest to CID.
 
@@ -32,6 +30,9 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import csv
 from typing import Any, Final, Optional
+
+sys.path.append(os.environ.get("CODE"))
+import utils
 
 FORMAT = "%Y-%m-%d %H:%M:%S"
 LOGS = os.environ.get("LOG_PATH")
@@ -68,24 +69,6 @@ def yield_rows(csv_path):
         row_data = csv.reader(data)
         for row in row_data:
             yield row
-
-
-def check_bst_adjustment(utc_datetime_str: str) -> bool:
-    """
-    Determines if a given UTC datetime string falls within BST
-    adds +1 where needed
-    """
-
-    try:
-        dt_utc = datetime.strptime(utc_datetime_str, FORMAT).replace(tzinfo=timezone.utc)
-        print(dt_utc)
-    except ValueError as e:
-        raise ValueError(f"Invalid datetime string format: {e}. Expected '%Y-%m-%d %H:%M:%S'")
-
-    london_tz = ZoneInfo("Europe/London")
-    dt_london = dt_utc.astimezone(london_tz)
-    string_bst = datetime.strftime(dt_london, FORMAT)
-    return string_bst.split(" ")
 
 
 def main():
@@ -136,7 +119,7 @@ def main():
             LOGGER.warning("Failed to process: %s", row)
             continue
 
-        bst_data = check_bst_adjustment(utc_timestamp)
+        bst_data = utils.check_bst_adjustment(utc_timestamp)
         if not bst_data:
             LOGGER.warning("Failed to process: %s", row)
             continue

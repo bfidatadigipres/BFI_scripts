@@ -21,6 +21,7 @@ from tenacity import retry, stop_after_attempt
 HEADERS = {"Content-Type": "text/xml"}
 TIMEOUT = 30
 
+
 # (api: str) -> dict[Any, Any]:
 def check(api):
     """
@@ -84,7 +85,9 @@ def get(api, query):
     Send a GET request
     """
     try:
-        req = requests.request("GET", api, headers=HEADERS, params=query, timeout=TIMEOUT)
+        req = requests.request(
+            "GET", api, headers=HEADERS, params=query, timeout=TIMEOUT
+        )
         if req.status_code != 200:
             raise Exception
         dct = json.loads(req.text)
@@ -286,7 +289,9 @@ def get_grouped_items(api, database):
     these are added to XML configuration
     """
     query = {"command": "getmetadata", "database": database, "limit": 0}
-    result = requests.request("GET", api, headers=HEADERS, params=query, timeout=TIMEOUT)
+    result = requests.request(
+        "GET", api, headers=HEADERS, params=query, timeout=TIMEOUT
+    )
     metadata = xmltodict.parse(result.text)
     if not isinstance(metadata, dict):
         return None, None

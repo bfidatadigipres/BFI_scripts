@@ -23,6 +23,7 @@ import shutil
 import sys
 from time import sleep
 from typing import Any, Final, Optional
+
 import requests
 
 # Private packages
@@ -227,7 +228,9 @@ def build_defaults(
     if len(utc_timestamp) > 1:
         bst_data = utils.check_bst_adjustment(utc_timestamp)
         if len(bst_data) != 2:
-            LOGGER.warning("BST date time conversion failed. Resorting to UTC time stamps")
+            LOGGER.warning(
+                "BST date time conversion failed. Resorting to UTC time stamps"
+            )
             bst_date = title_date_start
             bst_time = time
         else:

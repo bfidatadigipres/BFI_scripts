@@ -9,7 +9,7 @@ that contain 'priref', 'transmission_start_time' and
 
 1. Iterate through the CSV building a concatenated 'UTC_timestamp'
    for all entries
-2. Where a date/time fall within BST - pass date and time strings 
+2. Where a date/time fall within BST - pass date and time strings
    to utils.check_bst_adjustment() and get back adjusted date/time - use
    these to replace existing 'transmissions_start_time' and '_date' fields.
 3. Populate new CSV with 'priref', original or new date/time fields
@@ -23,13 +23,13 @@ DR-573
 2025
 """
 
+import csv
+import logging
 import os
 import sys
-import logging
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
-import csv
 from typing import Any, Final, Optional
+from zoneinfo import ZoneInfo
 
 sys.path.append(os.environ.get("CODE"))
 import utils
@@ -48,7 +48,7 @@ BST_DCT = {
     "2022": ["2022-03-27", "2022-10-30"],
     "2023": ["2023-03-26", "2023-10-29"],
     "2024": ["2024-03-31", "2024-10-27"],
-    "2025": ["2025-03-30", "2025-10-26"]
+    "2025": ["2025-03-30", "2025-10-26"],
 }
 
 # Setup logging
@@ -65,7 +65,7 @@ def yield_rows(csv_path):
     Open and read a CSV, yielding
     one line at a time for processing
     """
-    with open(csv_path, 'r') as data:
+    with open(csv_path, "r") as data:
         row_data = csv.reader(data)
         for row in row_data:
             yield row
@@ -83,7 +83,9 @@ def main():
     """
 
     if not len(sys.argv) == 2:
-        sys.exit("Exiting. Missing CSV path, please try again with filepath to CSV file")
+        sys.exit(
+            "Exiting. Missing CSV path, please try again with filepath to CSV file"
+        )
     if not os.path.isfile(sys.argv[1]):
         sys.exit(f"Exiting. Supplied CSV path non readable in code: {sys.argv[1]}")
 

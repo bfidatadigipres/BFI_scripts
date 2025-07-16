@@ -34,31 +34,31 @@
     white-space: normal;
 }
 .search-bar {
-    border-radius: 50px; 
-    padding-left: 20px;  
-    padding-right: 20px; 
-    height: 40px;        
-    width: 100%;         
-    max-width: 500px;    
-    margin-right: 10px;  
+    border-radius: 50px;
+    padding-left: 20px;
+    padding-right: 20px;
+    height: 40px;
+    width: 100%;
+    max-width: 500px;
+    margin-right: 10px;
 }
 
 .search-button {
-    background-color: #007bff; 
-    color: white;               
-    border-radius: 50px;       
-    padding: 8px 20px;          
-    height: 40px;               
-    border: none;              
-    cursor: pointer;           
-    transition: background-color 0.3s ease; 
+    background-color: #007bff;
+    color: white;
+    border-radius: 50px;
+    padding: 8px 20px;
+    height: 40px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
 .search-button:hover {
-    background-color: #0056b3; 
+    background-color: #0056b3;
 }
 
 .search-bar:focus {
     outline: none;
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); 
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }

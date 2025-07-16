@@ -7,6 +7,7 @@ import os
 
 ELASTIC_PASS = os.environ['ELASTIC_PASS']
 ELASTIC_PATH = os.environ['ELASTIC_PATH']
+ELASIC_USERNAME = os.environ['ELASIC_USERNAME']
 
 st.set_page_config(page_title='Filename Search Engine', page_icon='', layout='wide')
 text_search = st.text_input("Search Filename", value='')

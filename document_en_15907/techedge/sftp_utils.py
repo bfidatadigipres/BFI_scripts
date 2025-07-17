@@ -11,7 +11,7 @@ import os
 import paramiko
 from typing import Optional
 
-DESTINATION = os.environ.get("adverts_folder")
+DESTINATION = os.environ.get("ADVERTS_PATH")
 TE_URL = os.environ.get("TECHEDGE_FTP_URL")
 SFTP_USR = os.environ.get("TE_SFTP_USR")
 SFTP_KEY = os.environ.get("TE_SFTP_KEY")

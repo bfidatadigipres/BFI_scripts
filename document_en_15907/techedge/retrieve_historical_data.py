@@ -13,7 +13,11 @@ import logging
 import os
 import sys
 from typing import Final
-import stfp_utils as util
+
+# Local import
+CODE_PATH = os.path.join(os.environ.get('CODE'), "document_en_15907/techedge")
+sys.path.append(CODE_PATH)
+from sftp_utils import get_metadata
 
 # Global variables
 STORAGE_PATH: Final = os.environ["ADVERTS_PATH"]
@@ -70,7 +74,7 @@ def main() -> None:
     )
 
     for target_date in date_range(START, END):
-        download_path = util.get_metadata(target_date)
+        download_path = get_metadata(target_date)
         if os.path.isfile(download_path):
             logger.info("New download: %s", download_path)
         else:

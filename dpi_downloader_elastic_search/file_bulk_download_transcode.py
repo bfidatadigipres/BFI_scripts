@@ -59,13 +59,16 @@ import os
 import sys
 from datetime import datetime
 from typing import Any, Final, Optional, Union
+
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import (ConflictError, NotFoundError,
                                       RequestError, TransportError)
+
 # Local packages
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
+
 sys.path.append(os.path.join(os.environ["CODE"], "black_pearl/"))
 import bp_utils as bp
 from downloaded_transcode_mp4 import transcode_mp4

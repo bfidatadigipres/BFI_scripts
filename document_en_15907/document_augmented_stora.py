@@ -1519,8 +1519,10 @@ def build_defaults(epg_dict):
     """
 
     # BST time conversion
-    utc_timestamp = f"{epg_dict.get("title_date_start")} {epg_dict.get("time")}"
-    if len(utc_timestamp) > 1:
+    utc_date = epg_dict.get('title_date_start')
+    utc_time = epg_dict.get('time')
+    if len(utc_date) > 4 and len(utc_time) > 4:
+        utc_timestamp = f"{utc_date} {utc_time}"
         bst_data = utils.check_bst_adjustment(utc_timestamp)
         if len(bst_data) != 2:
             LOGGER.warning("BST date time conversion failed. Resorting to UTC time stamps")
@@ -1598,14 +1600,12 @@ def build_defaults(epg_dict):
         {"transmission_date": bst_date},
         #{"transmission_start_time": epg_dict["time"]},
         {"transmission_start_time": bst_time},
-        {"utc_timestamp": utc_timestamp},
+        {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": epg_dict["channel"]},
         {"transmission_coverage": "DIT"},
         {"aspect_ratio": "16:9"},
         {"country_manifestation": "United Kingdom"},
-        {
-            "notes": "Manifestation representing the UK Freeview television broadcast of the Work."
-        },
+        {"notes": "Manifestation representing the UK Freeview television broadcast of the Work."}
     ]
 
     item = [

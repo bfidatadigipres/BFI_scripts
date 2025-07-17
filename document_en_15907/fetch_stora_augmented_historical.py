@@ -25,7 +25,7 @@ STORAGE_PATH: Final = os.environ["HISTORICAL_PATH"]
 LOG_PATH: Final = os.environ["LOG_PATH"]
 CODE_PATH: Final = os.environ["CODE"]
 CONTROL: Final = os.path.join(LOG_PATH, "downtime_control.json")
-START = datetime.date(2015, 9, 9)
+START = datetime.date(2018, 2, 7) # From 9-9-2015
 END = datetime.date(2022, 1, 20)
 
 # Setup logging

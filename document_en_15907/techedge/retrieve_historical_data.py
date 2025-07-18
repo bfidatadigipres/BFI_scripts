@@ -67,8 +67,8 @@ def main() -> None:
     Checks if all channel folders exist in storage_path
     Populates channel folders that do with cut up schedules
     Matches to programme folders where possible
-    """
     check_control()
+    """
     logger.info(
         "========== Fetch historical adverts data script STARTED ==============================================="
     )

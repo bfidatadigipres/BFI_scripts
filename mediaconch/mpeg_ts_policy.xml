@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<policy type="and" name="STORA MPEG TS validation">
+  <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+  <rule name="General/AudioCount is 2" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+  <rule name="General/FileExtension is ts" value="FileExtension" tracktype="General" occurrence="*" operator="=">ts</rule>
+  <rule name="General/Format is MPEG-TS" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-TS</rule>
+  <rule name="General/Duration_Start exists" value="Duration_Start" tracktype="General" occurrence="*" operator="exists"></rule>
+  <rule name="General/Duration_End exists" value="Duration_End" tracktype="General" occurrence="*" operator="exists"></rule>
+  <rule name="General/OverallBitRate_Mode is VBR" value="OverallBitRate_Mode" tracktype="General" occurrence="*" operator="=">VBR</rule>
+  <rule name="General/FrameRate is 25.000" value="FrameRate" tracktype="General" occurrence="*" operator="=">25.000</rule>
+  <policy type="or" name="Video format is MPEG Video / AVC">
+    <rule name="Video/Format is MPEG Video" value="Format" tracktype="Video" occurrence="*" operator="=">MPEG Video</rule>
+    <rule name="Video/Format is AVC" value="Format" tracktype="Video" occurrence="*" operator="=">AVC</rule>
+  </policy>
+  <policy type="or" name="Video width">
+    <rule name="Video/Width is 704" value="Width" tracktype="Video" occurrence="*" operator="=">704</rule>
+    <rule name="Video/Width is 1920" value="Width" tracktype="Video" occurrence="*" operator="=">1920</rule>
+  </policy>
+  <policy type="or" name="Video height">
+    <rule name="Video/Height is 576" value="Height" tracktype="Video" occurrence="*" operator="=">576</rule>
+    <rule name="Video/Height is 1080" value="Height" tracktype="Video" occurrence="*" operator="=">1080</rule>
+  </policy>
+  <rule name="Video/FrameRate is 25.000" value="FrameRate" tracktype="Video" occurrence="*" operator="=">25.000</rule>
+  <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="=">YUV</rule>
+  <rule name="Video/ChromaSubsampling is 4:2:0" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:0</rule>
+  <rule name="Video/BitDepth is 8" value="BitDepth" tracktype="Video" occurrence="*" operator="=">8</rule>
+  <policy type="or" name="Audio format">
+    <rule name="Audio/Format is MPEG Audio" value="Format" tracktype="Audio" occurrence="*" operator="=">MPEG Audio</rule>
+    <rule name="Audio/Format is AC-3" value="Format" tracktype="Audio" occurrence="*" operator="=">AC-3</rule>
+  </policy>
+  <rule name="Audio/BitRate_Mode is CBR" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="=">CBR</rule>
+  <rule name="Audio/Compression_Mode is Lossy" value="Compression_Mode" tracktype="Audio" occurrence="*" operator="=">Lossy</rule>
+</policy>

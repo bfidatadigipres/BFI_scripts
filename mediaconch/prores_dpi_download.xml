@@ -1,0 +1,25 @@
+<policy type="or" name="BFI ProRes Quicktime conformance checker" license="CC-BY-SA-4.0+">
+  <description>Checks ProRes conformance for DPI download/transcode</description>
+  <policy type="and" name="BFINetwork_Pre-Acquisition_ProResXQ UHD">
+    <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+    <rule name="General/FileExtension is mov" value="FileExtension" tracktype="General" occurrence="*" operator="=">mov</rule>
+    <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
+    <rule name="General/Format_Profile is QuickTime" value="Format_Profile" tracktype="General" occurrence="*" operator="=">QuickTime</rule>
+    <rule name="General/CodecID is qt  " value="CodecID" tracktype="General" occurrence="*" operator="=">qt  </rule>
+    <rule name="General/FrameRate is 16 or greater" value="FrameRate" tracktype="General" occurrence="*" operator=">=">16</rule>
+    <rule name="General/HeaderSize exists" value="HeaderSize" tracktype="General" occurrence="*" operator="exists">10</rule>
+    <rule name="General/DataSize is 1 or greater" value="DataSize" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FooterSize is 0 or greater" value="FooterSize" tracktype="General" occurrence="*" operator=">=">0</rule>
+    <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
+    <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
+    <rule name="Video/Format_Profile is 422 HQ" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">422 HQ</rule>
+    <rule name="Video/BitRate_Mode exists" value="BitRate_Mode" tracktype="Video" occurrence="*" operator="exists">VBR</rule>
+    <rule name="Video/Width is greater than 200" value="Width" tracktype="Video" occurrence="*" operator=">=">200</rule>
+    <rule name="Video/Height is greater than 200" value="Height" tracktype="Video" occurrence="*" operator=">=">200</rule>
+    <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+    <rule name="Video/FrameRate is 16 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">16</rule>
+    <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
+    <rule name="Video/ChromaSubsampling is 4:2:2" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:2</rule>
+    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+  </policy>
+</policy>

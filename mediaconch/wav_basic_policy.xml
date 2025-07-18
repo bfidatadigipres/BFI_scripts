@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<policy type="and" name="BFI conformance check for WAV file">
+  <rule name="General/AudioCount is 1 or more" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+  <rule name="General/FileExtension is wav" value="FileExtension" tracktype="General" occurrence="*" operator="=">wav</rule>
+  <rule name="General/Format is Wave" value="Format" tracktype="General" occurrence="*" operator="=">Wave</rule>
+  <rule name="General/OverallBitRate_Mode is CBR" value="OverallBitRate_Mode" tracktype="General" occurrence="*" operator="=">CBR</rule>
+  <rule name="General/File_Modified_Date is UTC 2024-05-09 07:34:23" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists">U</rule>
+  <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+  <rule name="Audio/BitRate_Mode is CBR" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="=">CBR</rule>
+  <rule name="Audio/Channels is 1 or more" value="Channels" tracktype="Audio" occurrence="*" operator=">=">1</rule>
+  <rule name="Audio/SamplingRate is equal / greater than 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator=">=">48000</rule>
+  <rule name="Audio/BitDepth is minimum 24" value="BitDepth" tracktype="Audio" occurrence="*" operator=">=">24</rule>
+</policy>

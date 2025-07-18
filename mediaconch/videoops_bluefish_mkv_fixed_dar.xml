@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<policy type="and" name="Video Ops Bluefisk MKV DAR">
+  <description>To check Video Operations Matroskas that have changed PAR.</description>
+  <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+  <rule name="General/FileExtension is mkv" value="FileExtension" tracktype="General" occurrence="*" operator="=">mkv</rule>
+  <rule name="General/FrameRate is 25.000" value="FrameRate" tracktype="General" occurrence="*" operator="=">25.000</rule>
+  <rule name="Video/Format is FFV1" value="Format" tracktype="Video" occurrence="*" operator="=">FFV1</rule>
+  <rule name="Video/CodecID is  V_MS/VFW/FOURCC / FFV1" value="CodecID" tracktype="Video" occurrence="*" operator="=">V_MS/VFW/FOURCC / FFV1</rule>
+  <rule name="Video/Height is 576" value="Height" tracktype="Video" occurrence="*" operator="=">576</rule>
+  <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+  <rule name="Video/FrameRate is 25.000" value="FrameRate" tracktype="Video" occurrence="*" operator="=">25.000</rule>
+  <rule name="Video/Standard is PAL (NTSC checked in separate policy)" value="Standard" tracktype="Video" occurrence="*" operator="=">PAL</rule>
+  <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="=">YUV</rule>
+  <rule name="Video/ChromaSubsampling is 4:2:2" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:2</rule>
+  <rule name="Video/BitDepth is 10" value="BitDepth" tracktype="Video" occurrence="*" operator="=">10</rule>
+  <rule name="Video/ScanType is Interlaced" value="ScanType" tracktype="Video" occurrence="*" operator="=">Interlaced</rule>
+  <rule name="Video/ScanOrder is TFF" value="ScanOrder" tracktype="Video" occurrence="*" operator="=">TFF</rule>
+  <rule name="Video/Compression_Mode is Lossless" value="Compression_Mode" tracktype="Video" occurrence="*" operator="=">Lossless</rule>
+  <rule name="Audio/SamplingRate is 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator="=">48000</rule>
+  <policy type="or" name="Audio/BitDepth is 16 or 24">
+    <rule name="Audio BitDepth 16" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">16</rule>
+    <rule name="Audio BitDepth 24" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">24</rule>
+  </policy>
+  <policy type="or" name="Video/PixelAspectRatio is permitted value">
+    <rule name="PAR 16:11 aka 1.455" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.455</rule>
+    <rule name="PAR 12:11 aka 1.09*" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="starts with">1.09</rule>
+    <rule name="PAR 16:15 aka 1.067" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.067</rule>
+    <rule name="PAR 118:81 aka 1.457" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.457</rule>
+    <rule name="PAR 64:45 aka 1.422" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.422</rule>
+  </policy>
+  <policy type="or" name="Video/DisplayAspectRatio is permitted value">
+    <rule name="DAR 16:9 1.7*" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="starts with">1.7</rule>
+    <rule name="DAR 4:3 aka 1.3*" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="starts with">1.3</rule>
+    <rule name="DAR 4:3 aka 1.29*" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="starts with">1.29</rule>
+    <rule name="DAR 16:9 1.8*" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="starts with">1.8</rule>
+  </policy>
+  <policy type="or" name="Video/Width is 720 or 1080">
+    <rule name="720" value="Width" tracktype="Video" occurrence="*" operator="=">720</rule>
+    <rule name="1080" value="Width" tracktype="Video" occurrence="*" operator="=">1080</rule>
+  </policy>
+  <policy type="or" name="Video/Colour Primaries BT.601 PAL or BT.709">
+    <rule name="Colour Primaries BT.601 PAL" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.601 PAL</rule>
+    <rule name="Colour Primaries BT.709" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+  </policy>
+  <policy type="or" name="Video/Colour Transfer Characteristics BT.601 or BT.709">
+    <rule name="Transfer Characteristics BT.709" value="transfer_characteristics" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+    <rule name="Transfer Characteristics BT.601" value="transfer_characteristics" tracktype="Video" occurrence="*" operator="=">BT.601</rule>
+  </policy>
+  <policy type="or" name="Video/Colour Matrix Coefficients BT.601, BT.470 or BT.709">
+    <rule name="Matrix Coefficients BT.601" value="matrix_coefficients" tracktype="Video" occurrence="*" operator="starts with">BT.601</rule>
+    <rule name="Matrix Coefficients BT.709" value="matrix_coefficients" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+    <rule name="Matrix Coefficients BT.470 B/G" value="matrix_coefficients" tracktype="Video" occurrence="*" operator="=">BT.470 System B/G</rule>
+  </policy>
+  <rule name="General/Format is Matroska" value="Format" tracktype="General" occurrence="*" operator="=">Matroska</rule>
+  <rule name="Video/Format_Settings_GOP, N=1" value="Format_Settings_GOP" tracktype="Video" occurrence="*" operator="=">N=1</rule>
+  <rule name="Video/ErrorDetectionType is Per slice" value="extra/ErrorDetectionType" tracktype="Video" occurrence="*" operator="=">Per slice</rule>
+  <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+  <rule name="Audio/CodecID is A_PCM/INT/LIT" value="CodecID" tracktype="Audio" occurrence="*" operator="=">A_PCM/INT/LIT</rule>
+  <rule name="General/AudioCount is greater than equal to 1" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+  <rule name="Audio/Default is Yes" value="Default" tracktype="Audio" occurrence="*" operator="=">Yes</rule>
+  <rule name="Audio/Forced is No" value="Forced" tracktype="Audio" occurrence="*" operator="=">No</rule>
+  <rule name="Video/Slice Count is 24" value="extra/MaxSlicesCount" tracktype="Video" occurrence="*" operator="=">24</rule>
+  <rule name="Video/colour_range is Limited" value="colour_range" tracktype="Video" occurrence="*" operator="=">Limited</rule>
+</policy>

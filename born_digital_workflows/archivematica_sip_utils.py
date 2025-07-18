@@ -12,9 +12,9 @@ import base64
 import json
 import os
 import sys
-
 import paramiko
 import requests
+from urllib.parse import urlencode
 
 TS_UUID = os.environ.get("AM_TS_UUID")
 SFTP_UUID = os.environ.get("AM_TS_SFTP")
@@ -33,6 +33,10 @@ ATOM_AUTH = os.environ.get("ATOM_AUTH")
 HEADER = {
     "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
     "Content-Type": "application/json",
+}
+HEADER_META = {
+    "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
+    "Content-Type": "application/x-www-form-urlencoded",
 }
 ATOM_HEADER = {"REST-API-Key": ATOM_KEY, "Accept": "application/json"}
 SS_HEADER = {
@@ -69,7 +73,7 @@ def send_to_sftp(fpath, top_folder):
     Check for parent folder, if absent mkdir
     First step SFTP into Storage Service, then check
     content has made it into the folder
-    Supply top_folder with /: Name_of_folder/
+    Supply top_folder without /: Name_of_folder
     """
 
     relpath = fpath.split(top_folder)[-1]
@@ -332,15 +336,15 @@ def get_location_uuids():
     SS_END = f"{ARCH_URL}:8000/api/v2/location/"
     api_key = f"{SS_NAME}:{SS_KEY}"
     headers = {
-        "Accept": "*/*",
         "Authorization": f"ApiKey {api_key}",
         "Content-type": "application/json",
+        "Accept": "*/*",    
     }
 
     try:
         respnse = requests.get(SS_END, headers=headers)
         respnse.raise_for_status()
-        data = respnse.json()
+        data = json.loads(respnse.text)
         if 'objects' in data:
             return data["objects"]
     except requests.exceptions.RequestException as err:
@@ -469,26 +473,30 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
-    type = 'FULL', 'OBJECT', 'METADATA_ONLY'
+    type = 'OBJECTS'
     Full needed to supply processing_config update (Closed_to_Open)
+    No auuto approve with this - we need to upload metadata first
+    Returns 'reingest_uuid' needed for metadata upload:
+    response['reingest_uuid'] once converted to JSON
     """
     PACKAGE_ENDPOINT = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/reingest/"
 
     # Create payload and post
     data_payload = {
-        "pipeline": TS_UUID,
+        "pipeline": SS_PIPE,
         "reingest_type": type,
         "access_system_id": slug,
-        "processing_config": process_config,
+        "processing_config": process_config
     }
-    print(json.dumps(data_payload))
+    payload = json.dumps(data_payload)
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
         response = requests.post(
-            PACKAGE_ENDPOINT, headers=SS_HEADER, data=json.dumps(data_payload)
+            PACKAGE_ENDPOINT, headers=SS_HEADER, data=payload
         )
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
+        print(response.text)
         return response.json()
     except requests.exceptions.HTTPError as err:
         print(f"HTTP error: {err}")
@@ -506,28 +514,31 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     return None
 
 
-def metadata_copy_reingest(aip_uuid, source_mdata_path):
+def metadata_copy_reingest(sip_uuid, source_mdata_path):
     """
+    Path from top level folder to completion only
     Where metadata reingest occurs, set copy metadata
     call to requests. Path is whole path to metadata.csv
     for the given item's correlating aip uuid
     """
+    from urllib.parse import urlencode
 
     MDATA_ENDPOINT = os.path.join(ARCH_URL, "api/ingest/copy_metadata_files/")
-    mdata_path_str = f"{TS_UUID}:{source_mdata_path}"
+    mdata_path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
     encoded_path = base64.b64encode(mdata_path_str.encode("utf-8")).decode("utf-8")
 
-    data_payload = {
-        "sip_uuid": aip_uuid,
-        "source_paths": encoded_path
-    }
+    data_payload = urlencode({
+        "sip_uuid": sip_uuid,
+        "source_paths[]": encoded_path
+    })
 
     print(json.dumps(data_payload))
     print(f"Starting transfer of {mdata_path_str}")
     try:
-        response = requests.post(MDATA_ENDPOINT, headers=HEADER, data=json.dumps(data_payload))
+        response = requests.post(MDATA_ENDPOINT, headers=HEADER_META, data=data_payload)
         response.raise_for_status()
         print(f"Metadata copy initiatied - status code {response.status_code}")
+        print(response.text)
         return response.json()
     except requests.exceptions.HTTPError as err:
         print(f"HTTP error: {err}")
@@ -542,3 +553,85 @@ def metadata_copy_reingest(aip_uuid, source_mdata_path):
         print(f"Response as text:\n{response.text}")
     return None
 
+
+def approve_aip_reingest(uuid):
+    """
+    Send approval for ingest
+    """
+    END = f"{ARCH_URL}/api/ingest/reingest/approve/"
+
+    payload =  urlencode({
+        "uuid": uuid
+    })
+
+    try:
+        response = requests.post(END, headers=HEADER_META, data=payload)
+        response.raise_for_status()
+        print(f"AIP reingest started {response.status_code}")
+        print(response.text)
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+    return None
+
+
+def approve_transfer(dir_name):
+    '''
+    Find transfer that needs approval
+    And approve if dir-name matches
+    '''
+    GET_UNAPPROVED = f"{ARCH_URL}/api/transfer/unapproved/"
+    APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"
+
+    try:
+        response = requests.get(GET_UNAPPROVED, headers=HEADER_META)
+        response.raise_for_status()
+        print(f"Tranfers unapproved: {response.status_code}")
+        print(response.text)
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+
+    dct = json.loads(response.text)
+    print(type(dct))
+    for lst in dct["results"]:
+        for key, value in lst.items():
+            if key == 'directory' and value.startswith(dir_name):
+                payload = urlencode({
+                    "directory": value,
+                    "type": "standard",
+                })
+                try:
+                    response = requests.post(APPROVE_TRANSFER, headers=HEADER_META, data=payload)
+                    response.raise_for_status()
+                    print(f"Tranfers unapproved: {response.status_code}")
+                    print(response.text)
+                    return response.json()
+                except requests.exceptions.HTTPError as err:
+                    print(f"HTTP error: {err}")
+                except requests.exceptions.ConnectionError as err:
+                    print(f"Connection error: {err}")
+                except requests.exceptions.Timeout as err:
+                    print(f"Timeout error: {err}")
+                except requests.exceptions.RequestException as err:
+                    print(f"Request exception: {err}")
+                except ValueError:
+                    print("Response not supplied in JSON format")
+                    print(f"Response as text:\n{response.text}")

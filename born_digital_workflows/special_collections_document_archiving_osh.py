@@ -237,7 +237,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
                 )
             },
             {
-                "production.date.start": datetime.datetime.fromtimestamp(date).strftime(
+                "production.date.end": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d"
                 )
             },
@@ -258,7 +258,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
                 )
             },
             {
-                "production.date.start": datetime.datetime.fromtimestamp(date).strftime(
+                "production.date.end": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d"
                 )
             },
@@ -290,7 +290,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
                 image_dict.append({f"{cid_field}": value.strip()})
                 try:
                     date = value.strip().split(" ", 1)[0].replace(":", "-")
-                    image_dict.append({"production.date.start": date})
+                    image_dict.append({"production.date.end": date})
                 except IndexError as err:
                     LOGGER.warning("Error splitting date: %s", err)
             elif exif_field == field.strip():

@@ -6,7 +6,6 @@ to one utils.py document
 """
 
 import csv
-import datetime
 import hashlib
 import json
 import logging
@@ -15,12 +14,13 @@ import re
 import smtplib
 import ssl
 import subprocess
+from zoneinfo import ZoneInfo
+from datetime import datetime, date, timedelta, timezone
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Final, Iterator, Optional
-
 import ffmpeg
 import yaml
 
@@ -549,7 +549,7 @@ def checksum_write(checksum_path, checksum, filepath, filename):
     This function writes the checksum into a txt file with correct
     formatting and returns the path to that document
     """
-    date_string: str = str(datetime.date.today())
+    date_string: str = str(date.today())
     try:
         with open(checksum_path, "w") as fname:
             fname.write(f"{checksum} - {filepath} - {date_string}")
@@ -668,6 +668,26 @@ def send_email(
     except Exception as e:
         print(f"Email notification failed in sending: {email}\n{e}")
         return success, e
+
+
+def check_bst_adjustment(utc_datetime_str: str) -> Optional[list[str]]:
+    """
+    Passes datetime through timezone change
+    for London, adding +1 hours during BST
+    """
+    format = "%Y-%m-%d %H:%M:%S"
+    try:
+        dt_utc = datetime.strptime(utc_datetime_str, format).replace(tzinfo=timezone.utc)
+        print(dt_utc)
+    except ValueError as err:
+        raise ValueError(
+            f"Invalid datetime string format: {err}. Expected '%Y-%m-%d %H:%M:%S'"
+        )
+
+    london_tz = ZoneInfo("Europe/London")
+    dt_london = dt_utc.astimezone(london_tz)
+    string_bst = datetime.strftime(dt_london, format)
+    return string_bst.split(" ")
 
 
 def get_current_api():

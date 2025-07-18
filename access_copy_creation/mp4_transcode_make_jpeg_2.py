@@ -31,9 +31,8 @@ to determine correct transcode paths (RNA or BFI).
 2022
 Python 3.6+
 """
-
-import logging
 # Public packages
+import logging
 import os
 import re
 import shutil
@@ -42,7 +41,6 @@ import sys
 import time
 from datetime import datetime, timezone
 from typing import Final, Iterable, Optional, Tuple, Union
-
 import pytz
 import tenacity
 
@@ -58,6 +56,8 @@ FLLPTH: Final = sys.argv[1].split("/")[:4]
 LOG_PREFIX: Final = "_".join(FLLPTH)
 LOG_FILE: Final = os.path.join(LOG_PATH, f"mp4_transcode{LOG_PREFIX}.log")
 TRANSCODE: Final = os.environ["TRANSCODING"]
+if not os.path.ismount(TRANSCODE):
+    sys.exit(f"{TRANSCODE} path is not mounted. Script exiting.")
 # TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
 CID_API: Final = utils.get_current_api()
 HOST: Final = os.uname()[1]
@@ -164,6 +164,8 @@ def main():
         sys.exit(f"EXITING: Unable to retrieve item details from CID: {object_number}")
 
     date_pth = input_date.replace("-", "")[:6]
+    if len(date_pth) <= 5:
+        sys.exit(f"Error with date path: {date_pth}. Script exiting.")
     if "H22: Video Digitisation: Item Outcomes" in str(groupings) and source:
         log_build.append(
             f"{local_time()}\tINFO\t** Source for H22 video: {source} ****"

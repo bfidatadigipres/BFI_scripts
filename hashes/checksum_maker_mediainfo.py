@@ -19,13 +19,12 @@ Actions of the script:
 2021
 """
 
+# External Libraries
 import datetime
 import logging
-# External Libraries
 import os
 import sys
 from typing import Final, Optional
-
 import tenacity
 
 # Custom Libraries
@@ -91,7 +90,7 @@ def make_output_md5(filepath: str, filename: str) -> Optional[str]:
         return None
 
 
-def checksum_test(CHECKSUM_PATH: str, check: str) -> Optional[bool]:
+def checksum_test(check: str) -> Optional[bool]:
     """
     Check for 'None' where checksum should be
     """

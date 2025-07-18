@@ -36,10 +36,9 @@ video and audio desc also MOV wrapped.
 
 2024
 """
-
+# Public packages
 import datetime
 import logging
-# Public packages
 import os
 import shutil
 import subprocess
@@ -57,8 +56,7 @@ AMZ_PTH: Final = os.environ.get("AMAZON_PATH")
 AMZ_INGEST: Final = os.environ.get("AMAZON_INGEST")
 AUTOINGEST: Final = os.path.join(STORAGE_PTH, AMZ_INGEST)
 STORAGE: Final = os.path.join(STORAGE_PTH, AMZ_PTH)
-ADMIN: Final = os.environ.get("ADMIN")
-LOGS: Final = os.path.join(ADMIN, "Logs")
+LOGS: Final = os.environ.get("LOG_PATH")
 CODE: Final = os.environ.get("CODE_PATH")
 CONTROL_JSON: Final = os.path.join(LOGS, "downtime_control.json")
 CID_API: Final = utils.get_current_api()

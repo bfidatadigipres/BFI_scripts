@@ -14,17 +14,15 @@ using STORA created csv metadata source and traversing filesystem paths to files
 
 Refactored 2023
 """
-
+# Public packages
 import csv
 import datetime
 import logging
-# Public packages
 import os
 import shutil
 import sys
 from time import sleep
 from typing import Any, Final, Optional
-
 import requests
 
 # Private packages
@@ -223,6 +221,19 @@ def build_defaults(
     Get detailed information
     and build record_defaults dict
     """
+
+    # BST time conversion
+    utc_timestamp = f"{title_date_start} {time}"
+    if len(utc_timestamp) > 10:
+        bst_data = utils.check_bst_adjustment(utc_timestamp)
+        if len(bst_data) != 2:
+            LOGGER.warning("BST date time conversion failed. Resorting to UTC time stamps")
+            bst_date = title_date_start
+            bst_time = time
+        else:
+            bst_date = bst_data[0]
+            bst_time = bst_data[1]
+
     record = [
         {"input.name": "datadigipres"},
         {"input.date": str(datetime.datetime.now())[:10]},
@@ -244,7 +255,7 @@ def build_defaults(
         {"worklevel_type": "MONOGRAPHIC"},
         {"work_type": "T"},
         {"description.type.lref": "100298"},
-        {"title_date_start": title_date_start},
+        {"title_date_start": bst_date},
         {"title_date.type": "04_T"},
         {"description": description},
         {"description.type": "Synopsis"},
@@ -271,8 +282,9 @@ def build_defaults(
         {"sound_manifestation": "SOUN"},
         {"language.lref": "74129"},
         {"language.type": "DIALORIG"},
-        {"transmission_date": title_date_start},
-        {"transmission_start_time": time},
+        {"UTC_timestamp": utc_timestamp},
+        {"transmission_date": bst_date},
+        {"transmission_start_time": bst_time},
         {"transmission_duration": duration_total},
         {"runtime": actual_duration_total},
         {"runtime_seconds": actual_duration_seconds_integer},
@@ -305,10 +317,10 @@ def main() -> None:
     Iterate through all info.csv.redux / info.csv.stora
     which have no matching EPG data. Create CID work - manifestation - item records
     """
-
     if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+
     if not utils.cid_check(CID_API):
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
@@ -328,6 +340,7 @@ def main() -> None:
                 sys.exit(
                     "Multiple CID item record creation failures detected. Script exiting."
                 )
+
             # Check control json for STORA false
             if not utils.check_control("pause_scripts") or not utils.check_control(
                 "stora"

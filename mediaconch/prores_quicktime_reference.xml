@@ -1,0 +1,491 @@
+<policy type="or" name="BFI NETWORK ProRes Quicktime metadata conformance checker" license="CC-BY-SA-4.0+">
+  <description>Checks ProRes conformance to BFI Network specification</description>
+  <policy type="and" name="BFINetwork_Pre-Acquisition_ProRes4444 HD">
+    <tag/>
+    <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+    <rule name="General/AudioCount is 1 or greater" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FileExtension is mov" value="FileExtension" tracktype="General" occurrence="*" operator="=">mov</rule>
+    <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
+    <rule name="General/Format_Profile is QuickTime" value="Format_Profile" tracktype="General" occurrence="*" operator="=">QuickTime</rule>
+    <rule name="General/CodecID is qt " value="CodecID" tracktype="General" occurrence="*" operator="=">qt </rule>
+    <rule name="General/FrameRate is 24 or greater" value="FrameRate" tracktype="General" occurrence="*" operator=">=">24</rule>
+    <rule name="General/HeaderSize exists" value="HeaderSize" tracktype="General" occurrence="*" operator="exists">10</rule>
+    <rule name="General/DataSize is 1 or greater" value="DataSize" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FooterSize is 0 or greater" value="FooterSize" tracktype="General" occurrence="*" operator=">=">0</rule>
+    <rule name="General/File_Created_Date exists" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="Video/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/ID exists" value="ID" tracktype="Video" occurrence="*" operator="exists">1</rule>
+    <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
+    <rule name="Video/Format_Version is 0" value="Format_Version" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/Format_Profile is 4444" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">4444</rule>
+    <rule name="Video/CodecID is ap4h" value="CodecID" tracktype="Video" occurrence="*" operator="=">ap4h</rule>
+    <rule name="Video/BitRate_Mode exists" value="BitRate_Mode" tracktype="Video" occurrence="*" operator="exists">VBR</rule>
+    <rule name="Video/Width is 1920" value="Width" tracktype="Video" occurrence="*" operator="=">1920</rule>
+    <rule name="Video/Height is 1080" value="Height" tracktype="Video" occurrence="*" operator="=">1080</rule>
+    <rule name="Video/PixelAspectRatio is 1.000" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.000</rule>
+    <rule name="Video/DisplayAspectRatio exists" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="exists">1.778</rule>
+    <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+    <rule name="Video/FrameRate is 1 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">1</rule>
+    <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
+    <rule name="Video/ChromaSubsampling is 4:4:4" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:4:4</rule>
+    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+    <rule name="Audio/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Audio" occurrence="*" operator=">=">0</rule>
+    <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+    <rule name="Audio/Format_Settings_Endianness exists" value="Format_Settings_Endianness" tracktype="Audio" occurrence="*" operator="exists">Little</rule>
+    <rule name="Audio/Format_Settings_Sign exists" value="Format_Settings_Sign" tracktype="Audio" occurrence="*" operator="exists">Signed</rule>
+    <rule name="Audio/CodecID exists" value="CodecID" tracktype="Audio" occurrence="*" operator="exists">sowt</rule>
+    <rule name="Audio/BitRate_Mode exists" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="exists">CBR</rule>
+    <rule name="Audio/Channels is 1 or greater" value="Channels" tracktype="Audio" occurrence="*" operator=">=">1</rule>
+    <rule name="Audio/SamplingRate is 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator="=">48000</rule>
+    <rule name="Audio/SamplingCount exists" value="SamplingCount" tracktype="Audio" occurrence="*" operator="exists">84848640</rule>
+    <rule name="Audio/Encoded_Date exists" value="Encoded_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <rule name="Audio/Tagged_Date exists" value="Tagged_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <policy type="or" name="Audio BitDepth">
+      <rule name="Audio/BitDepth is 16" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">16</rule>
+      <rule name="Audio/BitDepth is 24" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">24</rule>
+    </policy>
+    <policy type="or" name="Moov atom present">
+      <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
+      <rule name="General/IsStreamable is No" value="IsStreamable" tracktype="General" occurrence="*" operator="=">No</rule>
+    </policy>
+    <policy type="or" name="Timecode Track present">
+      <rule name="Other/Type is Time code" value="Type" tracktype="Other" occurrence="*" operator="exists">Time code</rule>
+      <rule name="Other/Type does not exist" value="Type" tracktype="Other" occurrence="*" operator="must not exist">Time code</rule>
+    </policy>
+    <policy type="or" name="Video/ColorPrimaries">
+      <description>Identify color primaries</description>
+      <rule name="Video/ColorPrimaries are Rec709" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+      <rule name="Video/ColorPrimaries are Display P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">Display P3</rule>
+      <rule name="Video/ColorPrimaries are DCI P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">DCI P3</rule>
+      <rule name="Video/ColorPrimaries are Rec2020" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.2020</rule>
+    </policy>
+  </policy>
+  <policy type="and" name="BFINetwork_Pre-Acquisition_ProRes4444 UHD">
+    <tag/>
+    <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+    <rule name="General/AudioCount is 1 or greater" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FileExtension is mov" value="FileExtension" tracktype="General" occurrence="*" operator="=">mov</rule>
+    <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
+    <rule name="General/Format_Profile is QuickTime" value="Format_Profile" tracktype="General" occurrence="*" operator="=">QuickTime</rule>
+    <rule name="General/CodecID is qt " value="CodecID" tracktype="General" occurrence="*" operator="=">qt </rule>
+    <rule name="General/FrameRate is 24 or greater" value="FrameRate" tracktype="General" occurrence="*" operator=">=">24</rule>
+    <rule name="General/HeaderSize exists" value="HeaderSize" tracktype="General" occurrence="*" operator="exists">10</rule>
+    <rule name="General/DataSize is 1 or greater" value="DataSize" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FooterSize is 0 or greater" value="FooterSize" tracktype="General" occurrence="*" operator=">=">0</rule>
+    <rule name="General/File_Created_Date exists" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="Video/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/ID exists" value="ID" tracktype="Video" occurrence="*" operator="exists">1</rule>
+    <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
+    <rule name="Video/Format_Version is 0" value="Format_Version" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/Format_Profile is 4444" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">4444</rule>
+    <rule name="Video/CodecID is ap4h" value="CodecID" tracktype="Video" occurrence="*" operator="=">ap4h</rule>
+    <rule name="Video/BitRate_Mode exists" value="BitRate_Mode" tracktype="Video" occurrence="*" operator="exists">VBR</rule>
+    <rule name="Video/Width is 3840" value="Width" tracktype="Video" occurrence="*" operator="=">3840</rule>
+    <rule name="Video/Height is 2160" value="Height" tracktype="Video" occurrence="*" operator="=">2160</rule>
+    <rule name="Video/PixelAspectRatio is 1.000" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.000</rule>
+    <rule name="Video/DisplayAspectRatio exists" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="exists">1.778</rule>
+    <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+    <rule name="Video/FrameRate is 1 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">1</rule>
+    <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
+    <rule name="Video/ChromaSubsampling is 4:4:4" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:4:4</rule>
+    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+    <rule name="Audio/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Audio" occurrence="*" operator=">=">0</rule>
+    <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+    <rule name="Audio/Format_Settings_Endianness exists" value="Format_Settings_Endianness" tracktype="Audio" occurrence="*" operator="exists">Little</rule>
+    <rule name="Audio/Format_Settings_Sign exists" value="Format_Settings_Sign" tracktype="Audio" occurrence="*" operator="exists">Signed</rule>
+    <rule name="Audio/CodecID exists" value="CodecID" tracktype="Audio" occurrence="*" operator="exists">sowt</rule>
+    <rule name="Audio/BitRate_Mode exists" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="exists">CBR</rule>
+    <rule name="Audio/Channels is 1 or greater" value="Channels" tracktype="Audio" occurrence="*" operator=">=">1</rule>
+    <rule name="Audio/SamplingRate is 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator="=">48000</rule>
+    <rule name="Audio/SamplingCount exists" value="SamplingCount" tracktype="Audio" occurrence="*" operator="exists">84848640</rule>
+    <rule name="Audio/Encoded_Date exists" value="Encoded_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <rule name="Audio/Tagged_Date exists" value="Tagged_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <policy type="or" name="Audio BitDepth">
+      <rule name="Audio/BitDepth is 16" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">16</rule>
+      <rule name="Audio/BitDepth is 24" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">24</rule>
+    </policy>
+    <policy type="or" name="Moov atom present">
+      <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
+      <rule name="General/IsStreamable is No" value="IsStreamable" tracktype="General" occurrence="*" operator="=">No</rule>
+    </policy>
+    <policy type="or" name="Timecode Track present">
+      <rule name="Other/Type is Time code" value="Type" tracktype="Other" occurrence="*" operator="exists">Time code</rule>
+      <rule name="Other/Type does not exist" value="Type" tracktype="Other" occurrence="*" operator="must not exist">Time code</rule>
+    </policy>
+    <policy type="or" name="Video/ColorPrimaries">
+      <description>Identify color primaries</description>
+      <rule name="Video/ColorPrimaries are Rec709" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+      <rule name="Video/ColorPrimaries are Display P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">Display P3</rule>
+      <rule name="Video/ColorPrimaries are DCI P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">DCI P3</rule>
+      <rule name="Video/ColorPrimaries are Rec2020" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.2020</rule>
+    </policy>
+  </policy>
+  <policy type="and" name="BFINetwork_Pre-Acquisition_ProRes4444 2K Full">
+    <tag/>
+    <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+    <rule name="General/AudioCount is 1 or greater" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FileExtension is mov" value="FileExtension" tracktype="General" occurrence="*" operator="=">mov</rule>
+    <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
+    <rule name="General/Format_Profile is QuickTime" value="Format_Profile" tracktype="General" occurrence="*" operator="=">QuickTime</rule>
+    <rule name="General/CodecID is qt " value="CodecID" tracktype="General" occurrence="*" operator="=">qt </rule>
+    <rule name="General/FrameRate is 24 or greater" value="FrameRate" tracktype="General" occurrence="*" operator=">=">24</rule>
+    <rule name="General/HeaderSize exists" value="HeaderSize" tracktype="General" occurrence="*" operator="exists">10</rule>
+    <rule name="General/DataSize is 1 or greater" value="DataSize" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FooterSize is 0 or greater" value="FooterSize" tracktype="General" occurrence="*" operator=">=">0</rule>
+    <rule name="General/File_Created_Date exists" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="Video/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/ID exists" value="ID" tracktype="Video" occurrence="*" operator="exists">1</rule>
+    <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
+    <rule name="Video/Format_Version is 0" value="Format_Version" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/Format_Profile is 4444" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">4444</rule>
+    <rule name="Video/CodecID is ap4h" value="CodecID" tracktype="Video" occurrence="*" operator="=">ap4h</rule>
+    <rule name="Video/BitRate_Mode exists" value="BitRate_Mode" tracktype="Video" occurrence="*" operator="exists">VBR</rule>
+    <rule name="Video/Width is 2K Full" value="Width" tracktype="Video" occurrence="*" operator="=">2048</rule>
+    <rule name="Video/Height is 2K Full" value="Height" tracktype="Video" occurrence="*" operator="=">1080</rule>
+    <rule name="Video/PixelAspectRatio is 1.000" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.000</rule>
+    <rule name="Video/DisplayAspectRatio exists" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="exists">1.778</rule>
+    <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+    <rule name="Video/FrameRate is 1 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">1</rule>
+    <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
+    <rule name="Video/ChromaSubsampling is 4:4:4" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:4:4</rule>
+    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+    <rule name="Audio/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Audio" occurrence="*" operator=">=">0</rule>
+    <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+    <rule name="Audio/Format_Settings_Endianness exists" value="Format_Settings_Endianness" tracktype="Audio" occurrence="*" operator="exists">Little</rule>
+    <rule name="Audio/Format_Settings_Sign exists" value="Format_Settings_Sign" tracktype="Audio" occurrence="*" operator="exists">Signed</rule>
+    <rule name="Audio/CodecID exists" value="CodecID" tracktype="Audio" occurrence="*" operator="exists">sowt</rule>
+    <rule name="Audio/BitRate_Mode exists" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="exists">CBR</rule>
+    <rule name="Audio/Channels is 1 or greater" value="Channels" tracktype="Audio" occurrence="*" operator=">=">1</rule>
+    <rule name="Audio/SamplingRate is 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator="=">48000</rule>
+    <rule name="Audio/SamplingCount exists" value="SamplingCount" tracktype="Audio" occurrence="*" operator="exists">84848640</rule>
+    <rule name="Audio/Encoded_Date exists" value="Encoded_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <rule name="Audio/Tagged_Date exists" value="Tagged_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <policy type="or" name="Audio BitDepth">
+      <rule name="Audio/BitDepth is 16" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">16</rule>
+      <rule name="Audio/BitDepth is 24" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">24</rule>
+    </policy>
+    <policy type="or" name="Moov atom present">
+      <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
+      <rule name="General/IsStreamable is No" value="IsStreamable" tracktype="General" occurrence="*" operator="=">No</rule>
+    </policy>
+    <policy type="or" name="Timecode Track present">
+      <rule name="Other/Type is Time code" value="Type" tracktype="Other" occurrence="*" operator="exists">Time code</rule>
+      <rule name="Other/Type does not exist" value="Type" tracktype="Other" occurrence="*" operator="must not exist">Time code</rule>
+    </policy>
+    <policy type="or" name="Video/ColorPrimaries">
+      <description>Identify color primaries</description>
+      <rule name="Video/ColorPrimaries are Rec709" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+      <rule name="Video/ColorPrimaries are Display P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">Display P3</rule>
+      <rule name="Video/ColorPrimaries are DCI P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">DCI P3</rule>
+      <rule name="Video/ColorPrimaries are Rec2020" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.2020</rule>
+    </policy>
+  </policy>
+  <policy type="and" name="BFINetwork_Pre-Acquisition_ProRes4444 4K Full">
+    <tag/>
+    <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+    <rule name="General/AudioCount is 1 or greater" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FileExtension is mov" value="FileExtension" tracktype="General" occurrence="*" operator="=">mov</rule>
+    <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
+    <rule name="General/Format_Profile is QuickTime" value="Format_Profile" tracktype="General" occurrence="*" operator="=">QuickTime</rule>
+    <rule name="General/CodecID is qt " value="CodecID" tracktype="General" occurrence="*" operator="=">qt </rule>
+    <rule name="General/FrameRate is 24 or greater" value="FrameRate" tracktype="General" occurrence="*" operator=">=">24</rule>
+    <rule name="General/HeaderSize exists" value="HeaderSize" tracktype="General" occurrence="*" operator="exists">10</rule>
+    <rule name="General/DataSize is 1 or greater" value="DataSize" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FooterSize is 0 or greater" value="FooterSize" tracktype="General" occurrence="*" operator=">=">0</rule>
+    <rule name="General/File_Created_Date exists" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="Video/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/ID exists" value="ID" tracktype="Video" occurrence="*" operator="exists">1</rule>
+    <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
+    <rule name="Video/Format_Version is 0" value="Format_Version" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/Format_Profile is 4444" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">4444</rule>
+    <rule name="Video/CodecID is ap4h" value="CodecID" tracktype="Video" occurrence="*" operator="=">ap4h</rule>
+    <rule name="Video/BitRate_Mode exists" value="BitRate_Mode" tracktype="Video" occurrence="*" operator="exists">VBR</rule>
+    <rule name="Video/Width is DCI 4K Full" value="Width" tracktype="Video" occurrence="*" operator="=">4096</rule>
+    <rule name="Video/Height is DCI 4K Full" value="Height" tracktype="Video" occurrence="*" operator="=">2160</rule>
+    <rule name="Video/PixelAspectRatio is 1.000" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.000</rule>
+    <rule name="Video/DisplayAspectRatio exists" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="exists">1.778</rule>
+    <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+    <rule name="Video/FrameRate is 1 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">1</rule>
+    <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
+    <rule name="Video/ChromaSubsampling is 4:4:4" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:4:4</rule>
+    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+    <rule name="Audio/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Audio" occurrence="*" operator=">=">0</rule>
+    <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+    <rule name="Audio/Format_Settings_Endianness exists" value="Format_Settings_Endianness" tracktype="Audio" occurrence="*" operator="exists">Little</rule>
+    <rule name="Audio/Format_Settings_Sign exists" value="Format_Settings_Sign" tracktype="Audio" occurrence="*" operator="exists">Signed</rule>
+    <rule name="Audio/CodecID exists" value="CodecID" tracktype="Audio" occurrence="*" operator="exists">sowt</rule>
+    <rule name="Audio/BitRate_Mode exists" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="exists">CBR</rule>
+    <rule name="Audio/Channels is 1 or greater" value="Channels" tracktype="Audio" occurrence="*" operator=">=">1</rule>
+    <rule name="Audio/SamplingRate is 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator="=">48000</rule>
+    <rule name="Audio/SamplingCount exists" value="SamplingCount" tracktype="Audio" occurrence="*" operator="exists">84848640</rule>
+    <rule name="Audio/Encoded_Date exists" value="Encoded_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <rule name="Audio/Tagged_Date exists" value="Tagged_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <policy type="or" name="Audio BitDepth">
+      <rule name="Audio/BitDepth is 16" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">16</rule>
+      <rule name="Audio/BitDepth is 24" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">24</rule>
+    </policy>
+    <policy type="or" name="Moov atom present">
+      <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
+      <rule name="General/IsStreamable is No" value="IsStreamable" tracktype="General" occurrence="*" operator="=">No</rule>
+    </policy>
+    <policy type="or" name="Timecode Track present">
+      <rule name="Other/Type is Time code" value="Type" tracktype="Other" occurrence="*" operator="exists">Time code</rule>
+      <rule name="Other/Type does not exist" value="Type" tracktype="Other" occurrence="*" operator="must not exist">Time code</rule>
+    </policy>
+    <policy type="or" name="Video/ColorPrimaries">
+      <description>Identify color primaries</description>
+      <rule name="Video/ColorPrimaries are Rec709" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+      <rule name="Video/ColorPrimaries are Display P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">Display P3</rule>
+      <rule name="Video/ColorPrimaries are DCI P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">DCI P3</rule>
+      <rule name="Video/ColorPrimaries are Rec2020" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.2020</rule>
+    </policy>
+  </policy>
+  <policy type="and" name="BFINetwork_Pre-Acquisition_ProResXQ HD">
+    <tag/>
+    <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+    <rule name="General/AudioCount is 1 or greater" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FileExtension is mov" value="FileExtension" tracktype="General" occurrence="*" operator="=">mov</rule>
+    <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
+    <rule name="General/Format_Profile is QuickTime" value="Format_Profile" tracktype="General" occurrence="*" operator="=">QuickTime</rule>
+    <rule name="General/CodecID is qt " value="CodecID" tracktype="General" occurrence="*" operator="=">qt </rule>
+    <rule name="General/FrameRate is 24 or greater" value="FrameRate" tracktype="General" occurrence="*" operator=">=">24</rule>
+    <rule name="General/HeaderSize exists" value="HeaderSize" tracktype="General" occurrence="*" operator="exists">10</rule>
+    <rule name="General/DataSize is 1 or greater" value="DataSize" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FooterSize is 0 or greater" value="FooterSize" tracktype="General" occurrence="*" operator=">=">0</rule>
+    <rule name="General/File_Created_Date exists" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="Video/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/ID exists" value="ID" tracktype="Video" occurrence="*" operator="exists">1</rule>
+    <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
+    <rule name="Video/Format_Version is 0" value="Format_Version" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/Format_Profile is 4444 XQ" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">4444 XQ</rule>
+    <rule name="Video/CodecID is ap4x" value="CodecID" tracktype="Video" occurrence="*" operator="=">ap4x</rule>
+    <rule name="Video/BitRate_Mode exists" value="BitRate_Mode" tracktype="Video" occurrence="*" operator="exists">VBR</rule>
+    <rule name="Video/Width is 1920" value="Width" tracktype="Video" occurrence="*" operator="=">1920</rule>
+    <rule name="Video/Height is 1080" value="Height" tracktype="Video" occurrence="*" operator="=">1080</rule>
+    <rule name="Video/PixelAspectRatio is 1.000" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.000</rule>
+    <rule name="Video/DisplayAspectRatio exists" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="exists">1.778</rule>
+    <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+    <rule name="Video/FrameRate is 1 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">1</rule>
+    <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
+    <rule name="Video/ChromaSubsampling is 4:4:4" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:4:4</rule>
+    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+    <rule name="Audio/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Audio" occurrence="*" operator=">=">0</rule>
+    <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+    <rule name="Audio/Format_Settings_Endianness exists" value="Format_Settings_Endianness" tracktype="Audio" occurrence="*" operator="exists">Little</rule>
+    <rule name="Audio/Format_Settings_Sign exists" value="Format_Settings_Sign" tracktype="Audio" occurrence="*" operator="exists">Signed</rule>
+    <rule name="Audio/CodecID exists" value="CodecID" tracktype="Audio" occurrence="*" operator="exists">sowt</rule>
+    <rule name="Audio/BitRate_Mode exists" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="exists">CBR</rule>
+    <rule name="Audio/Channels is 1 or greater" value="Channels" tracktype="Audio" occurrence="*" operator=">=">1</rule>
+    <rule name="Audio/SamplingRate is 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator="=">48000</rule>
+    <rule name="Audio/SamplingCount exists" value="SamplingCount" tracktype="Audio" occurrence="*" operator="exists">84848640</rule>
+    <rule name="Audio/Encoded_Date exists" value="Encoded_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <rule name="Audio/Tagged_Date exists" value="Tagged_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <policy type="or" name="Audio BitDepth">
+      <rule name="Audio/BitDepth is 16" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">16</rule>
+      <rule name="Audio/BitDepth is 24" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">24</rule>
+    </policy>
+    <policy type="or" name="Moov atom present">
+      <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
+      <rule name="General/IsStreamable is No" value="IsStreamable" tracktype="General" occurrence="*" operator="=">No</rule>
+    </policy>
+    <policy type="or" name="Timecode Track present">
+      <rule name="Other/Type is Time code" value="Type" tracktype="Other" occurrence="*" operator="exists">Time code</rule>
+      <rule name="Other/Type does not exist" value="Type" tracktype="Other" occurrence="*" operator="must not exist">Time code</rule>
+    </policy>
+    <policy type="or" name="Video/ColorPrimaries">
+      <description>Identify color primaries</description>
+      <rule name="Video/ColorPrimaries are Rec709" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+      <rule name="Video/ColorPrimaries are Display P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">Display P3</rule>
+      <rule name="Video/ColorPrimaries are DCI P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">DCI P3</rule>
+      <rule name="Video/ColorPrimaries are Rec2020" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.2020</rule>
+    </policy>
+  </policy>
+  <policy type="and" name="BFINetwork_Pre-Acquisition_ProResXQ UHD">
+    <tag/>
+    <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+    <rule name="General/AudioCount is 1 or greater" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FileExtension is mov" value="FileExtension" tracktype="General" occurrence="*" operator="=">mov</rule>
+    <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
+    <rule name="General/Format_Profile is QuickTime" value="Format_Profile" tracktype="General" occurrence="*" operator="=">QuickTime</rule>
+    <rule name="General/CodecID is qt " value="CodecID" tracktype="General" occurrence="*" operator="=">qt </rule>
+    <rule name="General/FrameRate is 24 or greater" value="FrameRate" tracktype="General" occurrence="*" operator=">=">24</rule>
+    <rule name="General/HeaderSize exists" value="HeaderSize" tracktype="General" occurrence="*" operator="exists">10</rule>
+    <rule name="General/DataSize is 1 or greater" value="DataSize" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FooterSize is 0 or greater" value="FooterSize" tracktype="General" occurrence="*" operator=">=">0</rule>
+    <rule name="General/File_Created_Date exists" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="Video/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/ID exists" value="ID" tracktype="Video" occurrence="*" operator="exists">1</rule>
+    <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
+    <rule name="Video/Format_Version is 0" value="Format_Version" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/Format_Profile is 4444 XQ" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">4444 XQ</rule>
+    <rule name="Video/CodecID is ap4x" value="CodecID" tracktype="Video" occurrence="*" operator="=">ap4x</rule>
+    <rule name="Video/BitRate_Mode exists" value="BitRate_Mode" tracktype="Video" occurrence="*" operator="exists">VBR</rule>
+    <rule name="Video/Width is 3840" value="Width" tracktype="Video" occurrence="*" operator="=">3840</rule>
+    <rule name="Video/Height is 2160" value="Height" tracktype="Video" occurrence="*" operator="=">2160</rule>
+    <rule name="Video/PixelAspectRatio is 1.000" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.000</rule>
+    <rule name="Video/DisplayAspectRatio exists" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="exists">1.778</rule>
+    <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+    <rule name="Video/FrameRate is 1 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">1</rule>
+    <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
+    <rule name="Video/ChromaSubsampling is 4:4:4" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:4:4</rule>
+    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+    <rule name="Audio/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Audio" occurrence="*" operator=">=">0</rule>
+    <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+    <rule name="Audio/Format_Settings_Endianness exists" value="Format_Settings_Endianness" tracktype="Audio" occurrence="*" operator="exists">Little</rule>
+    <rule name="Audio/Format_Settings_Sign exists" value="Format_Settings_Sign" tracktype="Audio" occurrence="*" operator="exists">Signed</rule>
+    <rule name="Audio/CodecID exists" value="CodecID" tracktype="Audio" occurrence="*" operator="exists">sowt</rule>
+    <rule name="Audio/BitRate_Mode exists" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="exists">CBR</rule>
+    <rule name="Audio/Channels is 1 or greater" value="Channels" tracktype="Audio" occurrence="*" operator=">=">1</rule>
+    <rule name="Audio/SamplingRate is 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator="=">48000</rule>
+    <rule name="Audio/SamplingCount exists" value="SamplingCount" tracktype="Audio" occurrence="*" operator="exists">84848640</rule>
+    <rule name="Audio/Encoded_Date exists" value="Encoded_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <rule name="Audio/Tagged_Date exists" value="Tagged_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <policy type="or" name="Audio BitDepth">
+      <rule name="Audio/BitDepth is 16" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">16</rule>
+      <rule name="Audio/BitDepth is 24" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">24</rule>
+    </policy>
+    <policy type="or" name="Moov atom present">
+      <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
+      <rule name="General/IsStreamable is No" value="IsStreamable" tracktype="General" occurrence="*" operator="=">No</rule>
+    </policy>
+    <policy type="or" name="Timecode Track present">
+      <rule name="Other/Type is Time code" value="Type" tracktype="Other" occurrence="*" operator="exists">Time code</rule>
+      <rule name="Other/Type does not exist" value="Type" tracktype="Other" occurrence="*" operator="must not exist">Time code</rule>
+    </policy>
+    <policy type="or" name="Video/ColorPrimaries">
+      <description>Identify color primaries</description>
+      <rule name="Video/ColorPrimaries are Rec709" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+      <rule name="Video/ColorPrimaries are Display P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">Display P3</rule>
+      <rule name="Video/ColorPrimaries are DCI P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">DCI P3</rule>
+      <rule name="Video/ColorPrimaries are Rec2020" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.2020</rule>
+    </policy>
+  </policy>
+  <policy type="and" name="BFINetwork_Pre-Acquisition_ProResXQ 2K Full">
+    <tag/>
+    <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+    <rule name="General/AudioCount is 1 or greater" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FileExtension is mov" value="FileExtension" tracktype="General" occurrence="*" operator="=">mov</rule>
+    <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
+    <rule name="General/Format_Profile is QuickTime" value="Format_Profile" tracktype="General" occurrence="*" operator="=">QuickTime</rule>
+    <rule name="General/CodecID is qt " value="CodecID" tracktype="General" occurrence="*" operator="=">qt </rule>
+    <rule name="General/FrameRate is 24 or greater" value="FrameRate" tracktype="General" occurrence="*" operator=">=">24</rule>
+    <rule name="General/HeaderSize exists" value="HeaderSize" tracktype="General" occurrence="*" operator="exists">10</rule>
+    <rule name="General/DataSize is 1 or greater" value="DataSize" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FooterSize is 0 or greater" value="FooterSize" tracktype="General" occurrence="*" operator=">=">0</rule>
+    <rule name="General/File_Created_Date exists" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="Video/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/ID exists" value="ID" tracktype="Video" occurrence="*" operator="exists">1</rule>
+    <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
+    <rule name="Video/Format_Version is 0" value="Format_Version" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/Format_Profile is 4444 XQ" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">4444 XQ</rule>
+    <rule name="Video/CodecID is ap4x" value="CodecID" tracktype="Video" occurrence="*" operator="=">ap4x</rule>
+    <rule name="Video/BitRate_Mode exists" value="BitRate_Mode" tracktype="Video" occurrence="*" operator="exists">VBR</rule>
+    <rule name="Video/Width is 2K Full" value="Width" tracktype="Video" occurrence="*" operator="=">2048</rule>
+    <rule name="Video/Height is 2K Full" value="Height" tracktype="Video" occurrence="*" operator="=">1080</rule>
+    <rule name="Video/PixelAspectRatio is 1.000" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.000</rule>
+    <rule name="Video/DisplayAspectRatio exists" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="exists">1.778</rule>
+    <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+    <rule name="Video/FrameRate is 1 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">1</rule>
+    <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
+    <rule name="Video/ChromaSubsampling is 4:4:4" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:4:4</rule>
+    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+    <rule name="Audio/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Audio" occurrence="*" operator=">=">0</rule>
+    <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+    <rule name="Audio/Format_Settings_Endianness exists" value="Format_Settings_Endianness" tracktype="Audio" occurrence="*" operator="exists">Little</rule>
+    <rule name="Audio/Format_Settings_Sign exists" value="Format_Settings_Sign" tracktype="Audio" occurrence="*" operator="exists">Signed</rule>
+    <rule name="Audio/CodecID exists" value="CodecID" tracktype="Audio" occurrence="*" operator="exists">sowt</rule>
+    <rule name="Audio/BitRate_Mode exists" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="exists">CBR</rule>
+    <rule name="Audio/Channels is 1 or greater" value="Channels" tracktype="Audio" occurrence="*" operator=">=">1</rule>
+    <rule name="Audio/SamplingRate is 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator="=">48000</rule>
+    <rule name="Audio/SamplingCount exists" value="SamplingCount" tracktype="Audio" occurrence="*" operator="exists">84848640</rule>
+    <rule name="Audio/Encoded_Date exists" value="Encoded_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <rule name="Audio/Tagged_Date exists" value="Tagged_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <policy type="or" name="Audio BitDepth">
+      <rule name="Audio/BitDepth is 16" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">16</rule>
+      <rule name="Audio/BitDepth is 24" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">24</rule>
+    </policy>
+    <policy type="or" name="Moov atom present">
+      <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
+      <rule name="General/IsStreamable is No" value="IsStreamable" tracktype="General" occurrence="*" operator="=">No</rule>
+    </policy>
+    <policy type="or" name="Timecode Track present">
+      <rule name="Other/Type is Time code" value="Type" tracktype="Other" occurrence="*" operator="exists">Time code</rule>
+      <rule name="Other/Type does not exist" value="Type" tracktype="Other" occurrence="*" operator="must not exist">Time code</rule>
+    </policy>
+    <policy type="or" name="Video/ColorPrimaries">
+      <description>Identify color primaries</description>
+      <rule name="Video/ColorPrimaries are Rec709" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+      <rule name="Video/ColorPrimaries are Display P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">Display P3</rule>
+      <rule name="Video/ColorPrimaries are DCI P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">DCI P3</rule>
+      <rule name="Video/ColorPrimaries are Rec2020" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.2020</rule>
+    </policy>
+  </policy>
+  <policy type="and" name="BFINetwork_Pre-Acquisition_ProResXQ 4K Full">
+    <tag/>
+    <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+    <rule name="General/AudioCount is 1 or greater" value="AudioCount" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FileExtension is mov" value="FileExtension" tracktype="General" occurrence="*" operator="=">mov</rule>
+    <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
+    <rule name="General/Format_Profile is QuickTime" value="Format_Profile" tracktype="General" occurrence="*" operator="=">QuickTime</rule>
+    <rule name="General/CodecID is qt " value="CodecID" tracktype="General" occurrence="*" operator="=">qt </rule>
+    <rule name="General/FrameRate is 24 or greater" value="FrameRate" tracktype="General" occurrence="*" operator=">=">24</rule>
+    <rule name="General/HeaderSize exists" value="HeaderSize" tracktype="General" occurrence="*" operator="exists">10</rule>
+    <rule name="General/DataSize is 1 or greater" value="DataSize" tracktype="General" occurrence="*" operator=">=">1</rule>
+    <rule name="General/FooterSize is 0 or greater" value="FooterSize" tracktype="General" occurrence="*" operator=">=">0</rule>
+    <rule name="General/File_Created_Date exists" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists">UTC 2016-07-08 14:11:18.000</rule>
+    <rule name="Video/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/ID exists" value="ID" tracktype="Video" occurrence="*" operator="exists">1</rule>
+    <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
+    <rule name="Video/Format_Version is 0" value="Format_Version" tracktype="Video" occurrence="*" operator=">=">0</rule>
+    <rule name="Video/Format_Profile is 4444 XQ" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">4444 XQ</rule>
+    <rule name="Video/CodecID is ap4x" value="CodecID" tracktype="Video" occurrence="*" operator="=">ap4x</rule>
+    <rule name="Video/BitRate_Mode exists" value="BitRate_Mode" tracktype="Video" occurrence="*" operator="exists">VBR</rule>
+    <rule name="Video/Width is DCI 4K Full" value="Width" tracktype="Video" occurrence="*" operator="=">4096</rule>
+    <rule name="Video/Height is DCI 4K Full" value="Height" tracktype="Video" occurrence="*" operator="=">2160</rule>
+    <rule name="Video/PixelAspectRatio is 1.000" value="PixelAspectRatio" tracktype="Video" occurrence="*" operator="=">1.000</rule>
+    <rule name="Video/DisplayAspectRatio exists" value="DisplayAspectRatio" tracktype="Video" occurrence="*" operator="exists">1.778</rule>
+    <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
+    <rule name="Video/FrameRate is 1 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">1</rule>
+    <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
+    <rule name="Video/ChromaSubsampling is 4:4:4" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:4:4</rule>
+    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+    <rule name="Audio/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Audio" occurrence="*" operator=">=">0</rule>
+    <rule name="Audio/Format is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>
+    <rule name="Audio/Format_Settings_Endianness exists" value="Format_Settings_Endianness" tracktype="Audio" occurrence="*" operator="exists">Little</rule>
+    <rule name="Audio/Format_Settings_Sign exists" value="Format_Settings_Sign" tracktype="Audio" occurrence="*" operator="exists">Signed</rule>
+    <rule name="Audio/CodecID exists" value="CodecID" tracktype="Audio" occurrence="*" operator="exists">sowt</rule>
+    <rule name="Audio/BitRate_Mode exists" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="exists">CBR</rule>
+    <rule name="Audio/Channels is 1 or greater" value="Channels" tracktype="Audio" occurrence="*" operator=">=">1</rule>
+    <rule name="Audio/SamplingRate is 48000" value="SamplingRate" tracktype="Audio" occurrence="*" operator="=">48000</rule>
+    <rule name="Audio/SamplingCount exists" value="SamplingCount" tracktype="Audio" occurrence="*" operator="exists">84848640</rule>
+    <rule name="Audio/Encoded_Date exists" value="Encoded_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <rule name="Audio/Tagged_Date exists" value="Tagged_Date" tracktype="Audio" occurrence="*" operator="exists">UTC 2016-07-07 09:47:20</rule>
+    <policy type="or" name="Audio BitDepth">
+      <rule name="Audio/BitDepth is 16" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">16</rule>
+      <rule name="Audio/BitDepth is 24" value="BitDepth" tracktype="Audio" occurrence="*" operator="=">24</rule>
+    </policy>
+    <policy type="or" name="Moov atom present">
+      <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
+      <rule name="General/IsStreamable is No" value="IsStreamable" tracktype="General" occurrence="*" operator="=">No</rule>
+    </policy>
+    <policy type="or" name="Timecode Track present">
+      <rule name="Other/Type is Time code" value="Type" tracktype="Other" occurrence="*" operator="exists">Time code</rule>
+      <rule name="Other/Type does not exist" value="Type" tracktype="Other" occurrence="*" operator="must not exist">Time code</rule>
+    </policy>
+    <policy type="or" name="Video/ColorPrimaries">
+    <description>Identify color primaries</description>
+      <rule name="Video/ColorPrimaries are Rec709" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.709</rule>
+      <rule name="Video/ColorPrimaries are Display P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">Display P3</rule>
+      <rule name="Video/ColorPrimaries are DCI P3" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">DCI P3</rule>
+      <rule name="Video/ColorPrimaries are Rec2020" value="colour_primaries" tracktype="Video" occurrence="*" operator="=">BT.2020</rule>
+    </policy>
+  </policy>
+</policy>

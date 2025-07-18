@@ -22,11 +22,10 @@ NOTES: Can in time be used for other streaming platforms
 
 2023
 """
-
+# Global packages
 import codecs
 import datetime
 import logging
-# Global packages
 import os
 import sys
 

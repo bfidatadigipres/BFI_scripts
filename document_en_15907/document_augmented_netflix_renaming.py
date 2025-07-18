@@ -43,15 +43,13 @@ Note: Configured for adlib_v3 and will require API update
 
 2023
 """
-
+# Public packages
 import datetime
 import logging
-# Public packages
 import os
 import shutil
 import sys
 from typing import Any, Final, Iterable, Optional
-
 import xmltodict
 
 # Local packages
@@ -65,8 +63,7 @@ NETFLIX_PTH: Final = os.environ.get("NETFLIX_PATH")
 NET_INGEST: Final = os.environ.get("NETFLIX_INGEST")
 AUTOINGEST: Final = os.path.join(STORAGE_PTH, NET_INGEST)
 STORAGE: Final = os.path.join(STORAGE_PTH, NETFLIX_PTH)
-ADMIN: Final = os.environ.get("ADMIN")
-LOGS: Final = os.path.join(ADMIN, "Logs")
+LOGS: Final = os.environ.get("LOG_PATH")
 CODE: Final = os.environ.get("CODE_PATH")
 CONTROL_JSON: Final = os.path.join(LOGS, "downtime_control.json")
 CID_API: Final = utils.get_current_api()

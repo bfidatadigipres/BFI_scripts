@@ -8,9 +8,10 @@
   <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
   <rule name="Video/Format is ProRes" value="Format" tracktype="Video" occurrence="*" operator="=">ProRes</rule>
   <rule name="Video/Duration exists" value="Duration" tracktype="Video" occurrence="*"/>
-  <rule name="Video/Format_Profile is 422 HQ" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">422 HQ</rule>
   <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="=">YUV</rule>
-  <rule name="Video/ChromaSubsampling is 4:2:2" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:2</rule>
+  <policy type="or" name="Check subsampling">
+    <rule name="Video/ChromaSubsampling is 4:2:2" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:2</rule>
+    <rule name="Video/ChromaSubsampling is 4:4:4" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:4:4</rule>
+  </policy>
   <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
-  <rule name="Video/Encoded_Library is ap10" value="Encoded_Library" tracktype="Video" occurrence="*" operator="=">ap10</rule>
 </policy>

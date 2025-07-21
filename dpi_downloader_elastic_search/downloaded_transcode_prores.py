@@ -32,7 +32,7 @@ import utils
 # Global paths from server environmental variables
 PATH_POLICY: Final = os.environ["MEDIACONCH"]
 PRORES_POLICY: Final = os.path.join(
-    PATH_POLICY, "BFI_download_transcode_basic_prores.xml"
+    PATH_POLICY, "prores_dpi_download.xml"
 )
 LOG: Final = os.environ["LOG_PATH"]
 CONTROL_JSON: Final = os.path.join(LOG, "downtime_control.json")

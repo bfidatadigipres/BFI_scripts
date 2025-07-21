@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<policy type="and" name="Source delay error identification" license="MIT">
+  <description>Test if there are source delay timings in audio trackts for a given
+- SD PAL capture. Where present the MediaConch policy will fail, notifying that the
+- given MOV will not transcode to FFV1 Matroska and sould be recaptured.</description>
+  <policy type="and" name="Find source delay in audio track">
+    <rule name="Track Width = 0" value="File header/Track/Tracker Header/Track width" occurrence="*" operator="=" scope="mmt">0.000</rule>
+    <rule name="Track Volume gt 0" value="File header/Track/Tracker Header/Volume" occurrence="*" operator=">" scope="mmt">0</rule>
+    <rule name="Track source_delay = 0" value="File header/Track/Edit/Edit List/Entry/Media time" occurrence="*" operator="=" scope="mmt">0</rule>
+  </policy>
+</policy>
+

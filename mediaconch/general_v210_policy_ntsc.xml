@@ -14,15 +14,12 @@
     <rule name="Video/BitDepth is 10" value="BitDepth" tracktype="Video" occurrence="*" operator="=">10</rule>
     <rule name="Video/Compression_Mode is Lossless" value="Compression_Mode" tracktype="Video" occurrence="*" operator="=">Lossless</rule>
     <rule name="Video/Duration exists" value="Duration" tracktype="Video" occurrence="*" operator="exists"/>
-    <policy type="or" name="Framerate is 25.000 or 29.970">
-      <rule name="Video/FrameRate is 25.000" value="FrameRate" tracktype="Video" occurrence="*" operator="=">25.000</rule>
-      <rule name="General/FrameRate is 29.000" value="FrameRate" tracktype="General" occurrence="*" operator="=">29.000</rule>
+    <policy type="or" name="Framerate is 29.970">
       <rule name="Video/FrameRate is 29.970" value="FrameRate" tracktype="Video" occurrence="*" operator="=">29.970</rule>      
     </policy>
     <policy type="or" name="ScanType is eith progressive, interlaced, ScanOrder is TFF or BFF">
       <rule name="FFV1 is progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
       <rule name="FFV1 is interlaced" value="ScanType" tracktype="Video" occurrence="*" operator="=">Interlaced</rule>
-      <rule name="Video/ScanOrder is TFF" value="ScanOrder" tracktype="Video" occurrence="*" operator="=">TFF</rule>
       <rule name="Video/ScanOrder is BFF" value="ScanOrder" tracktype="Video" occurrence="*" operator="=">BFF</rule>
     </policy>
     <rule name="Video/Width is 720" value="Width" tracktype="Video" occurrence="*" operator="=">720</rule>

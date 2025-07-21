@@ -4,7 +4,7 @@
   <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
   <rule name="General/Format_Profile is Base Media" value="Format_Profile" tracktype="General" occurrence="*" operator="=">Base Media</rule>
   <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
-  <rule name="General/File_Modified_Date is UTC 2025-07-13 09:48:45" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists"></rule>
+  <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists"></rule>
   <rule name="General/Duration exists" value="Duration" tracktype="General" occurrence="*" operator="exists"></rule>
   <rule name="Video/Format is AVC" value="Format" tracktype="Video" occurrence="*" operator="=">AVC</rule>
   <rule name="Video/Format_Profile is High" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">High</rule>

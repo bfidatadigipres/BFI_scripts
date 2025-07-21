@@ -14,13 +14,14 @@ import re
 import smtplib
 import ssl
 import subprocess
-from zoneinfo import ZoneInfo
-from datetime import datetime, date, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Final, Iterator, Optional
+from zoneinfo import ZoneInfo
+
 import ffmpeg
 import yaml
 
@@ -677,7 +678,9 @@ def check_bst_adjustment(utc_datetime_str: str) -> Optional[list[str]]:
     """
     format = "%Y-%m-%d %H:%M:%S"
     try:
-        dt_utc = datetime.strptime(utc_datetime_str, format).replace(tzinfo=timezone.utc)
+        dt_utc = datetime.strptime(utc_datetime_str, format).replace(
+            tzinfo=timezone.utc
+        )
         print(dt_utc)
     except ValueError as err:
         raise ValueError(

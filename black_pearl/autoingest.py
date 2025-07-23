@@ -609,6 +609,7 @@ def main():
         # Collect files
         files = get_mappings(tree, config_dict["Mappings"])
         print(files)
+        ##########
         for pth in files:
             if not utils.check_control("autoingest"):
                 logger.info(

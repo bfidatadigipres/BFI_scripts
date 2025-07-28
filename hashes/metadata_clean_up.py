@@ -795,15 +795,17 @@ def make_header_data(text_path: str, filename: str, priref: str) -> str:
 
     payload_data = ""
     for key, value in header_dct.items():
-        try:
-            text_dump = utils.read_extract(value)
-            text = f"<Header_tags><header_tags.parser>{key}</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
-            payload_data += text
-        except Exception as err:
-            print(err)
-            LOGGER.warning("Failed to write text dump for %s: %s", key, value)
-
-    return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
+        if os.path.isfile(value):
+            try:
+                text_dump = utils.read_extract(value)
+                text = f"<Header_tags><header_tags.parser>{key}</header_tags.parser><header_tags><![CDATA[{text_dump}]]></header_tags></Header_tags>"
+                payload_data += text
+            except Exception as err:
+                print(err)
+                LOGGER.warning("Failed to write text dump for %s: %s", key, value)
+    if len(payload_data) > 10:
+        return f"<adlibXML><recordList><record priref='{priref}'>{payload_data}</record></recordList></adlibXML>"
+    return None
 
 
 def write_payload(

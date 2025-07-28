@@ -12,9 +12,10 @@ import base64
 import json
 import os
 import sys
+from urllib.parse import urlencode
+
 import paramiko
 import requests
-from urllib.parse import urlencode
 
 TS_UUID = os.environ.get("AM_TS_UUID")
 SFTP_UUID = os.environ.get("AM_TS_SFTP")
@@ -86,7 +87,7 @@ def send_to_sftp(fpath, top_folder):
 
     # Create ssh / sftp object
     sftp = sftp_connect()
-    check_folder = sftp.listdir('sftp-transfer-source/API_Uploads')
+    check_folder = sftp.listdir("sftp-transfer-source/API_Uploads")
     print(f"Check folder contents: {check_folder}")
     if top_folder not in str(check_folder):
         success = sftp_mkdir(sftp, f"sftp-transfer-source/API_Uploads/{top_folder}")
@@ -338,14 +339,14 @@ def get_location_uuids():
     headers = {
         "Authorization": f"ApiKey {api_key}",
         "Content-type": "application/json",
-        "Accept": "*/*",    
+        "Accept": "*/*",
     }
 
     try:
         respnse = requests.get(SS_END, headers=headers)
         respnse.raise_for_status()
         data = json.loads(respnse.text)
-        if 'objects' in data:
+        if "objects" in data:
             return data["objects"]
     except requests.exceptions.RequestException as err:
         print(err)
@@ -486,14 +487,12 @@ def reingest_aip(aip_uuid, type, slug, process_config):
         "pipeline": SS_PIPE,
         "reingest_type": type,
         "access_system_id": slug,
-        "processing_config": process_config
+        "processing_config": process_config,
     }
     payload = json.dumps(data_payload)
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
-        response = requests.post(
-            PACKAGE_ENDPOINT, headers=SS_HEADER, data=payload
-        )
+        response = requests.post(PACKAGE_ENDPOINT, headers=SS_HEADER, data=payload)
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
         print(response.text)
@@ -524,13 +523,12 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     from urllib.parse import urlencode
 
     MDATA_ENDPOINT = os.path.join(ARCH_URL, "api/ingest/copy_metadata_files/")
-    mdata_path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
+    mdata_path_str = (
+        f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
+    )
     encoded_path = base64.b64encode(mdata_path_str.encode("utf-8")).decode("utf-8")
 
-    data_payload = urlencode({
-        "sip_uuid": sip_uuid,
-        "source_paths[]": encoded_path
-    })
+    data_payload = urlencode({"sip_uuid": sip_uuid, "source_paths[]": encoded_path})
 
     print(json.dumps(data_payload))
     print(f"Starting transfer of {mdata_path_str}")
@@ -560,9 +558,7 @@ def approve_aip_reingest(uuid):
     """
     END = f"{ARCH_URL}/api/ingest/reingest/approve/"
 
-    payload =  urlencode({
-        "uuid": uuid
-    })
+    payload = urlencode({"uuid": uuid})
 
     try:
         response = requests.post(END, headers=HEADER_META, data=payload)
@@ -585,10 +581,10 @@ def approve_aip_reingest(uuid):
 
 
 def approve_transfer(dir_name):
-    '''
+    """
     Find transfer that needs approval
     And approve if dir-name matches
-    '''
+    """
     GET_UNAPPROVED = f"{ARCH_URL}/api/transfer/unapproved/"
     APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"
 
@@ -613,13 +609,17 @@ def approve_transfer(dir_name):
     print(type(dct))
     for lst in dct["results"]:
         for key, value in lst.items():
-            if key == 'directory' and value.startswith(dir_name):
-                payload = urlencode({
-                    "directory": value,
-                    "type": "standard",
-                })
+            if key == "directory" and value.startswith(dir_name):
+                payload = urlencode(
+                    {
+                        "directory": value,
+                        "type": "standard",
+                    }
+                )
                 try:
-                    response = requests.post(APPROVE_TRANSFER, headers=HEADER_META, data=payload)
+                    response = requests.post(
+                        APPROVE_TRANSFER, headers=HEADER_META, data=payload
+                    )
                     response.raise_for_status()
                     print(f"Tranfers unapproved: {response.status_code}")
                     print(response.text)

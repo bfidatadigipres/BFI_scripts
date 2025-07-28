@@ -212,6 +212,11 @@ def main():
         # This path has own script
         if not "/mnt/qnap_04" in str(host):
             continue
+        if not utils.check_storage(host):
+            logger.info(
+                f"The storage_control.json returned ‘False’ for path {host} Script is exiting"
+            )
+            sys.exit("Script run prevented by storage_control.json. Script exiting.")
         # Build autoingest list for separate iteration
         for pth in host.keys():
             autoingest_list.append(os.path.join(pth, BPINGEST))

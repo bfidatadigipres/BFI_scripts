@@ -179,6 +179,13 @@ def main():
         hosts = data_sizes["Host_size"]
         for host in hosts:
             for key, val in host.items():
+                if not utils.check_storage(key):
+                    logger.info(
+                        f"The storage_control.json returned ‘False’ for path {key} Script is exiting"
+                    )
+                    sys.exit(
+                        "Script run prevented by storage_control.json. Script exiting."
+                    )
                 if str(sys.argv[1]) in key:
                     fullpath = key
                     upload_size = int(val)

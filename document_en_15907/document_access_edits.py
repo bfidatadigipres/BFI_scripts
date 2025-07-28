@@ -12,6 +12,7 @@ NOTES: Integrated with adlib_v3 for test
 
 import datetime
 import logging
+
 # Public packages
 import os
 import shutil
@@ -106,6 +107,13 @@ def main():
         if not utils.cid_check(CID_API):
             LOGGER.critical("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
+
+        if not utils.check_storage(file):
+            LOGGER.info(
+                "Storage check failed for %s. Please check storage is available.",
+                fullpath,
+            )
+            sys.exit("Storage check failed. Please check storage is available.")
         fpath = os.path.join(STORAGE, file)
         LOGGER.info("File found to process: %s", fpath)
         if not os.path.isfile(fpath):

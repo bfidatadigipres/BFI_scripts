@@ -721,5 +721,8 @@ def check_storage(filepath):
     check if storage is avaliable for use
     """
     with open(STORAGE_JSON, "r") as storage:
-        j: dict[str, str] = json.load(storage)
-        return j[filepath]
+        storage_dict: dict[str, str] = json.load(storage)
+        for key in storage_dict.keys():
+            if key.startswith(filepath):
+                return storage_dict[key]
+        return "Storage not found"

@@ -3,13 +3,15 @@ import sys
 import os
 from flask import Flask, flash, render_template, request
 
-sys.path.append(os.environ['CODE'])
+sys.path.append(os.environ["CODE"])
 import utils
 
 app = Flask(__name__, template_folder="templates")
 
 logger = logging.getLogger("flask_logger")
-hdlr = logging.FileHandler("/mnt/bp_nas/admin/automation_logs/Logs/email_sender_dpi.log")
+hdlr = logging.FileHandler(
+    "/mnt/bp_nas/admin/automation_logs/Logs/email_sender_dpi.log"
+)
 formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -17,7 +19,7 @@ logger.setLevel(logging.INFO)
 
 
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
-app.secret_key = os.environ['flask_key']
+app.secret_key = os.environ["flask_key"]
 
 
 @app.route("/", methods=["GET"])
@@ -43,8 +45,12 @@ def send_screenshot():
                 raise ValueError("Filepath is required")
 
             if not os.path.exists(image_path):
-               logger.error(f"Invalid path: filepath provided does not exist -> {image_path}")
-               raise ValueError("Invalid path: Please check if the filepath does exist.")
+                logger.error(
+                    f"Invalid path: filepath provided does not exist -> {image_path}"
+                )
+                raise ValueError(
+                    "Invalid path: Please check if the filepath does exist."
+                )
 
             if "bp_nas" not in image_path:
                 # app.logger.critical()

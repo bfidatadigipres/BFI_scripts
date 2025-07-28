@@ -15,7 +15,7 @@ import sys
 from typing import Final
 
 # Local import
-CODE_PATH = os.path.join(os.environ.get('CODE'), "document_en_15907/techedge")
+CODE_PATH = os.path.join(os.environ.get("CODE"), "document_en_15907/techedge")
 sys.path.append(CODE_PATH)
 from sftp_utils import get_metadata
 

@@ -17,7 +17,7 @@ from typing import Final
 # Local import
 CODE_PATH = os.path.join(os.environ.get('CODE'), "document_en_15907/techedge")
 sys.path.append(CODE_PATH)
-from sftp_utils import get_metadata
+import sftp_utils as ut
 
 # Global variables
 STORAGE_PATH: Final = os.environ["ADVERTS_PATH"]
@@ -62,6 +62,18 @@ def date_range(start_date, end_date):
         yield str(start_date + datetime.timedelta(n))
 
 
+def check_for_existing(target_date):
+    """
+    See if match already in ADVERTS path
+    """
+    files = [ x for x in os.listdir(STORAGE_PATH) ]
+    for file in files:
+        if file.startswith(target_date):
+            return True
+
+    return False
+
+
 def main() -> None:
     """
     Checks if all channel folders exist in storage_path
@@ -69,12 +81,17 @@ def main() -> None:
     Matches to programme folders where possible
     check_control()
     """
+    
+    sftp = ut.sftp_connect()
     logger.info(
         "========== Fetch historical adverts data script STARTED ==============================================="
     )
 
     for target_date in date_range(START, END):
-        download_path = get_metadata(target_date)
+        check = check_for_existing(target_date)
+        if check is True:
+            continue
+        download_path = ut.get_metadata(target_date, sftp)
         if not download_path:
             logger.warning("Match for date path was not found: %s", target_date)
         elif os.path.isfile(download_path):

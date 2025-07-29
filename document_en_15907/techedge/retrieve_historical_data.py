@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 from typing import Final
+from time import sleep
 
 # Local import
 CODE_PATH = os.path.join(os.environ.get('CODE'), "document_en_15907/techedge")
@@ -90,6 +91,7 @@ def main() -> None:
     for target_date in date_range(START, END):
         count += 1
         if count > 13:
+            sleep(10)
             sftp = ut.sftp_connect()
             count = 0
 

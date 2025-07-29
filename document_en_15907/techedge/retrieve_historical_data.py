@@ -86,8 +86,13 @@ def main() -> None:
     logger.info(
         "========== Fetch historical adverts data script STARTED ==============================================="
     )
-
+    count = 0
     for target_date in date_range(START, END):
+        count += 1
+        if count > 13:
+            sftp = ut.sftp_connect()
+            count = 0
+
         check = check_for_existing(target_date)
         if check is True:
             continue

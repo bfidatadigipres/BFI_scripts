@@ -9,6 +9,7 @@ off-air television advertisements
 
 import os
 import paramiko
+import tenacity
 from typing import Optional
 
 DESTINATION = os.environ.get("ADVERTS_PATH")
@@ -28,6 +29,7 @@ def sftp_connect() -> paramiko.sftp_client.SFTPClient:
     return ssh_client.open_sftp()
 
 
+@tenacity.retry(wait=tenacity.wait_fixed(10))
 def get_metadata(target_day: str, sftp: paramiko.SSHClient) -> Optional[str]:
     """
     Connect using sftp_connect

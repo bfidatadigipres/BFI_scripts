@@ -35,7 +35,6 @@ def get_metadata(target_day: str, sftp: paramiko.SSHClient) -> Optional[str]:
     to retrieve target date path
     target day YYYY-MM-DD format
     """
-    sftp = sftp_connect()
     files = sftp.listdir("/Export")
 
     for file in files:

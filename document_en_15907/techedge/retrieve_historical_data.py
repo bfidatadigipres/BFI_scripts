@@ -74,8 +74,12 @@ def main() -> None:
     )
 
     for target_date in date_range(START, END):
+        print(target_date)
+        print(type(target)date)
         download_path = get_metadata(target_date)
-        if os.path.isfile(download_path):
+        if not download_path:
+            logger.warning("Match for date path was not found: %s", target_date)
+        elif os.path.isfile(download_path):
             logger.info("New download: %s", download_path)
         else:
             logger.warning("*** Failed to download %s", target_date)

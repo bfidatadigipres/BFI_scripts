@@ -24,12 +24,12 @@ STORAGE_PATH: Final = os.environ["ADVERTS_PATH"]
 LOG_PATH: Final = os.environ["LOG_PATH"]
 CODE_PATH: Final = os.environ["CODE"]
 CONTROL: Final = os.path.join(LOG_PATH, "downtime_control.json")
-START = datetime.date(2024, 2, 24)
-END = datetime.date(2025, 7, 17)
+START = datetime.date(2024, 2, 25)
+END = datetime.date(2025, 7, 29)
 
 # Setup logging
 logger = logging.getLogger("retrieve_historical_data")
-hdlr = logging.FileHandler(os.path.join(LOG_PATH, "retrieve_historical_data.log"))
+hdlr = logging.FileHandler(os.path.join(LOG_PATH, "retrieve_historical_adverts_metadata.log"))
 formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)

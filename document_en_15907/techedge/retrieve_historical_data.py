@@ -62,6 +62,18 @@ def date_range(start_date, end_date):
         yield str(start_date + datetime.timedelta(n))
 
 
+def check_for_existing(target_date):
+    """
+    See if match already in ADVERTS path
+    """
+    files = [ x for x in os.listdir(STORAGE_PATH) ]
+    for file in files:
+        if file.startswith(target_date):
+            return True
+
+    return False
+
+
 def main() -> None:
     """
     Checks if all channel folders exist in storage_path
@@ -76,6 +88,9 @@ def main() -> None:
     )
 
     for target_date in date_range(START, END):
+        check = check_for_existing(target_date)
+        if check is True:
+            continue
         download_path = ut.get_metadata(target_date, sftp)
         if not download_path:
             logger.warning("Match for date path was not found: %s", target_date)

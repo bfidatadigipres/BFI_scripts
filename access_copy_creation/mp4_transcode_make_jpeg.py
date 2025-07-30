@@ -33,9 +33,8 @@ NOTES: Updated for Adlib V3
 Python 3.6+
 """
 
-import logging
-
 # Public packages
+import logging
 import os
 import re
 import shutil

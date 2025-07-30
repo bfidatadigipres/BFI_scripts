@@ -47,6 +47,7 @@ import shutil
 import sys
 from datetime import datetime
 from typing import Optional
+
 import bp_utils as bp
 import requests
 
@@ -215,6 +216,11 @@ def main():
     for host in hosts:
         # This path has own script
         if "/mnt/qnap_04" in str(host):
+            continue
+        if not utils.check_storage(host):
+            logger.info(
+                f"The storage_control.json returned ‘False’ for path {host} Script is exiting"
+            )
             continue
         # Build autoingest list for separate iteration
         for pth in host.keys():

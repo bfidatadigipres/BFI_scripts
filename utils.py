@@ -14,13 +14,14 @@ import re
 import smtplib
 import ssl
 import subprocess
-from zoneinfo import ZoneInfo
-from datetime import datetime, date, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Final, Iterator, Optional
+from zoneinfo import ZoneInfo
+
 import ffmpeg
 import yaml
 
@@ -30,6 +31,7 @@ import adlib_v3 as adlib
 # Global imports
 LOG_PATH: Final = os.environ["LOG_PATH"]
 CONTROL_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "downtime_control.json")
+STORAGE_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "storage_control.json")
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, "autoingest", "global.log")
 SMTP_SERVER = "mail.smtp2go.com"
 SMTP_PORT = 465
@@ -677,7 +679,9 @@ def check_bst_adjustment(utc_datetime_str: str) -> Optional[list[str]]:
     """
     format = "%Y-%m-%d %H:%M:%S"
     try:
-        dt_utc = datetime.strptime(utc_datetime_str, format).replace(tzinfo=timezone.utc)
+        dt_utc = datetime.strptime(utc_datetime_str, format).replace(
+            tzinfo=timezone.utc
+        )
         print(dt_utc)
     except ValueError as err:
         raise ValueError(
@@ -710,3 +714,15 @@ def get_current_api():
     except FileNotFoundError:
         print(f"Control JSON file not found: {CONTROL_JSON}")
         return None
+
+
+def check_storage(filepath):
+    """
+    check if storage is avaliable for use
+    """
+    with open(STORAGE_JSON, "r") as storage:
+        storage_dict: dict[str, str] = json.load(storage)
+        for key in storage_dict.keys():
+            if key.startswith(filepath):
+                return storage_dict[key]
+        return "Storage not found"

@@ -285,6 +285,9 @@ def main():
     for key, val in LOG_PATHS.items():
         if key in autoingest:
             wpath = val
+        if not utils.check_storage(key):
+            LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+            continue
     if not os.path.exists(autoingest):
         LOGGER.warning("Complication with autoingest path: %s", autoingest)
         sys.exit("Supplied argument did not match path")

@@ -73,7 +73,7 @@
   <rule name="Video/ChromaSubsampling is 4:2:2" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:2</rule>
   <policy type="or" name="Framerate is 25.000 or 29.970">
     <rule name="Video/FrameRate is 25.000" value="FrameRate" tracktype="Video" occurrence="*" operator="=">25.000</rule>
-    <rule name="Video/FrameRate is 29.970" value="FrameRate" tracktype="Video" occurrence="*" operator="=">29.970</rule>      
+    <rule name="Video/FrameRate is 29.970" value="FrameRate" tracktype="Video" occurrence="*" operator="=">29.970</rule>
   </policy>
   <rule name="Audio/StreamOrder is 0 or greater" value="StreamOrder" tracktype="Audio" occurrence="*" operator="&gt;=">0</rule>
   <rule name="Audio is PCM" value="Format" tracktype="Audio" occurrence="*" operator="=">PCM</rule>

@@ -3,13 +3,13 @@
 <head>
     <link rel="stylesheet" type="text/css" href="../static/styles/styles.css">
     <meta charset="utf-8">
-    <title> Screenshot email sender</title>
+    <title> DPI Document emailer </title>
 </head>
 <body>
 <header>
     <br>
-  <h2> Send screenshot to email</h2>
-  <h3> error</h3>
+  <h2> BFI National Archive - DPI image sender</h2>
+  <h3> Error: </h3>
 </header>
 
 {% with msgs = get_flashed_messages(with_categories=true) %}
@@ -19,6 +19,8 @@
      {% endfor %}
   {% endif %}
 {% endwith %}
-<img class=image src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExMW40d2tyandwa2Y4MHZ1dTlmcTlmNDZvYm9mMnhnYXR1b2Mzeng0ciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/pnPfFgZi3lnO/giphy.gif" alt="oh no man">
 <br>
-<input type="submit" onClick="history.back();"/>
+<img class=image src="{{ url_for('static', filename='styles/captain-holt-oh-no.gif')}}" alt="oh no man">
+<br>
+<br>
+<input type="submit" value="Back" onClick="history.back();"/>

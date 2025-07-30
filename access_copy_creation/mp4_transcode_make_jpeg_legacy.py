@@ -35,7 +35,6 @@ Python 3.6+
 
 # Public packages
 import logging
-import os
 import re
 import shutil
 import subprocess

@@ -29,7 +29,9 @@ CONTROL: Final = os.path.join(LOG_PATH, "downtime_control.json")
 
 # Setup logging
 LOGGER = logging.getLogger("retrieve_historical_data")
-hdlr = logging.FileHandler(os.path.join(LOG_PATH, "retrieve_historical_adverts_metadata.log"))
+hdlr = logging.FileHandler(
+    os.path.join(LOG_PATH, "retrieve_historical_adverts_metadata.log")
+)
 formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 LOGGER.addHandler(hdlr)
@@ -66,7 +68,7 @@ def check_for_existing(target_date):
     """
     See if match already in ADVERTS path
     """
-    files = [ x for x in os.listdir(STORAGE_PATH) ]
+    files = [x for x in os.listdir(STORAGE_PATH)]
     for file in files:
         if file.startswith(target_date):
             return True

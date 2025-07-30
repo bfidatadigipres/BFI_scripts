@@ -19,6 +19,7 @@ Refactored for Python3
 """
 
 import logging
+
 # Public packages
 import os
 import shutil
@@ -122,7 +123,7 @@ def main():
         # Process digitised tape files sequentially
         for filepath in files:
             f = os.path.split(filepath)[1]
-            if f'source/{f}' in filepath:
+            if f"source/{f}" in filepath:
                 print(f"Skipping, file not in numbered subfolder: {filepath}")
                 continue
             print(f"Current file: {filepath}\t{f}")

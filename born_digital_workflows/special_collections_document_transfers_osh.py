@@ -111,7 +111,7 @@ def main():
         sys.exit(f"Exiting. Path could not be found: {base_dir}")
     if top_level_folder not in base_dir:
         sys.exit(
-            "Exiting, folder name {top_level_folder} or path formatted incorrectly {base_dir}"
+            f"Exiting, folder name {top_level_folder} or path formatted incorrectly {base_dir}"
         )
 
     LOGGER.info(

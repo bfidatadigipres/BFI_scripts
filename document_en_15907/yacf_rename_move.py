@@ -19,6 +19,7 @@ NOTE: Supports use of adlib_v3.py
 
 import datetime
 import logging
+
 # Public packages
 import os
 import shutil
@@ -113,7 +114,15 @@ def main():
 
     for root, _, files in os.walk(YACF_PATH):
         for file in files:
+            ### Check if file is in the correct path
             filepath = os.path.join(root, file)
+            if not utils.check_storage(filepath):
+                LOGGER.info(
+                    f"The storage_control.json returned ‘False’ for path {DIGIOPS_PATH} Script is exiting"
+                )
+                sys.exit(
+                    "Script run prevented by storage_control.json. Script exiting."
+                )
             if "CID_item_not_found" in filepath:
                 LOGGER.info(
                     "WRONG PATH: Skipping %s as item located in 'CID_item_not_found' folder",

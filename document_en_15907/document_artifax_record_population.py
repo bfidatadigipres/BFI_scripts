@@ -31,6 +31,7 @@ NOTE: Updated for Adlib V3
 import datetime
 import json
 import logging
+
 # Public packages
 import os
 import shutil
@@ -39,6 +40,7 @@ from typing import Any, Final, Optional
 
 import requests
 import tenacity
+
 # Local packages
 import title_article
 import yaml

@@ -31,6 +31,7 @@ import datetime
 import logging
 import os
 import shutil
+
 # Public packages
 import subprocess
 import sys
@@ -161,6 +162,11 @@ def main() -> None:
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
+    if not utils.check_storage(DIGIOPS_PATH):
+        LOGGER.info(
+            f"The storage_control.json returned ‘False’ for path {DIGIOPS_PATH} Script is exiting"
+        )
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if len(sys.argv) < 2:
         LOGGER.warning("SCRIPT EXITING: Error with shell script input:\n%s\n", sys.argv)
         sys.exit()

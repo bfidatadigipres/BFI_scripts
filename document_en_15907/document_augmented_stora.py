@@ -1520,13 +1520,15 @@ def build_defaults(epg_dict):
     """
 
     # BST time conversion
-    utc_date = epg_dict.get('title_date_start')
-    utc_time = epg_dict.get('time')
+    utc_date = epg_dict.get("title_date_start")
+    utc_time = epg_dict.get("time")
     if len(utc_date) > 4 and len(utc_time) > 4:
         utc_timestamp = f"{utc_date} {utc_time}"
         bst_data = utils.check_bst_adjustment(utc_timestamp)
         if len(bst_data) != 2:
-            LOGGER.warning("BST date time conversion failed. Resorting to UTC time stamps")
+            LOGGER.warning(
+                "BST date time conversion failed. Resorting to UTC time stamps"
+            )
             bst_date = epg_dict.get("title_date_start")
             bst_time = epg_dict.get("time")
         else:
@@ -1573,7 +1575,7 @@ def build_defaults(epg_dict):
         {"worklevel_type": "MONOGRAPHIC"},
         {"work_type": epg_dict["work_type"]},
         {"description.type.lref": "100298"},
-        #{"title_date_start": epg_dict["title_date_start"]},
+        # {"title_date_start": epg_dict["title_date_start"]},
         {"title_date_start": bst_date},
         {"title_date.type": "04_T"},
         {"nfa_category": epg_dict["nfa_category"]},
@@ -1597,16 +1599,18 @@ def build_defaults(epg_dict):
         {"format_high_level": "Video - Digital"},
         {"colour_manifestation": epg_dict["colour_manifestation"]},
         {"sound_manifestation": "SOUN"},
-        #{"transmission_date": epg_dict["title_date_start"]},
+        # {"transmission_date": epg_dict["title_date_start"]},
         {"transmission_date": bst_date},
-        #{"transmission_start_time": epg_dict["time"]},
+        # {"transmission_start_time": epg_dict["time"]},
         {"transmission_start_time": bst_time},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": epg_dict["channel"]},
         {"transmission_coverage": "DIT"},
         {"aspect_ratio": "16:9"},
         {"country_manifestation": "United Kingdom"},
-        {"notes": "Manifestation representing the UK Freeview television broadcast of the Work."}
+        {
+            "notes": "Manifestation representing the UK Freeview television broadcast of the Work."
+        },
     ]
 
     item = [

@@ -32,6 +32,7 @@ import datetime
 import itertools
 import json
 import logging
+
 # Public packages
 import os
 import sys
@@ -39,6 +40,7 @@ from datetime import timedelta
 
 import requests
 import tenacity
+
 # Local packages
 import title_article
 import yaml

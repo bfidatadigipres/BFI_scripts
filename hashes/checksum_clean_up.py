@@ -22,8 +22,6 @@ Python3.8+
 
 import datetime
 import logging
-
-# Global packages
 import os
 import shutil
 import sys

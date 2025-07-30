@@ -22,7 +22,6 @@ import subprocess
 import sys
 import time
 from typing import Final, Optional
-
 import magic
 
 # Global paths from server environmental variables

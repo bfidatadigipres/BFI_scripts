@@ -13,10 +13,9 @@ days that matches script run frequency.
 2024
 """
 
+# Public imports
 import json
 import logging
-
-# Public imports
 import os
 import shutil
 import sys
@@ -38,7 +37,7 @@ LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.environ["CONTROL_JSON"]
 STORAGE = os.environ["TRANSCODING"]
 INGEST_POINT = os.path.join(STORAGE, "mp4_proxy_backup_ingest/")
-MOD_MAX = 2000  # Modification time restriction
+MOD_MAX = 320  # Modification time restriction
 UPLOAD_MAX = 1099511627776  # 1TB max
 BUCKET = "Access_Renditions_backup"
 
@@ -53,19 +52,20 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 START_FOLDERS: Final = {
-    "eafa": "201605",
-    "iwm": "201605",
-    "lsa": "201605",
-    "mace": "201605",
-    "nefa": "201605",
-    "nis": "201605",
-    "nls": "201605",
-    "nssaw": "201605",
-    "nwfa": "201605",
-    "sase": "201605",
-    "thebox": "201605",
-    "wfsa": "201605",
-    "yfa": "201605",
+    "bfi": "201410"
+    #"eafa": "201605",
+    #"iwm": "201605",
+    #"lsa": "201605",
+    #"mace": "201605",
+    #"nefa": "201605",
+    #"nis": "201605",
+    #"nls": "201605",
+    #"nssaw": "201605",
+    #"nwfa": "201605",
+    #"sase": "201605",
+    #"thebox": "201605",
+    #"wfsa": "201605",
+    #"yfa": "201605",
 }
 
 

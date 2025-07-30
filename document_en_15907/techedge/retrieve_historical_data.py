@@ -20,6 +20,8 @@ from time import sleep
 CODE_PATH = os.path.join(os.environ.get("CODE"), "document_en_15907/techedge")
 sys.path.append(CODE_PATH)
 import sftp_utils as ut
+sys.path.append(os.environ.get("CODE"))
+import utils
 
 # Global variables
 STORAGE_PATH: Final = os.environ["ADVERTS_PATH"]
@@ -83,7 +85,13 @@ def main() -> None:
     Matches to programme folders where possible
     """
 
-    check_control()
+    if not utils.check_control("power_off_all"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORAGE_PATH):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     end_date = date.today()
     start_date = end_date - timedelta(days=5)
     sftp = ut.sftp_connect()

@@ -18,8 +18,6 @@ Python 3.7 +
 import datetime
 import itertools
 import logging
-
-# Python packages
 import os
 import shutil
 import sys
@@ -105,6 +103,9 @@ def main():
     if not utils.check_control("power_off_all"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORA_PATH):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     logger.info("=========== stora_housekeeping.py START ===========")
     period = []

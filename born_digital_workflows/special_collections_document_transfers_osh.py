@@ -42,8 +42,6 @@ import logging
 import os
 import sys
 from time import sleep
-
-# Private packages
 import archivematica_sip_utils as am_utils
 import tenacity
 
@@ -104,7 +102,12 @@ def main():
         sys.exit("* Cannot establish CID session, exiting script")
     if sys.argv < 3:
         print("Path has not been supplied to script. Exiting.")
+
     base_dir = sys.argv[1]  # Always sub_fond level path
+    if not utils.check_storage(base_dir):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     top_level_folder = sys.argv[2]  # Specified SFTP top level folder
 
     if not os.path.exists(base_dir):

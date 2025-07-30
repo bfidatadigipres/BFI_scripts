@@ -88,6 +88,9 @@ def main():
         )
     if not os.path.isfile(sys.argv[1]):
         sys.exit(f"Exiting. Supplied CSV path non readable in code: {sys.argv[1]}")
+    if not utils.check_storage(sys.argv[1]):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     # Get the new CSV path created
     root, csv = os.path.split(sys.argv[1])

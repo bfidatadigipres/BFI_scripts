@@ -179,14 +179,13 @@ def main():
         hosts = data_sizes["Host_size"]
         for host in hosts:
             for key, val in host.items():
-                if not utils.check_storage(key):
-                    logger.info(
-                        f"The storage_control.json returned ‘False’ for path {key} Script is exiting"
-                    )
-                    continue
                 if str(sys.argv[1]) in key:
                     fullpath = key
                     upload_size = int(val)
+
+        if not utils.check_storage(fullpath):
+            logger.info("Script run prevented by storage_control.json. Script exiting.")
+            sys.exit("Script run prevented by storage_control.json. Script exiting.")
         autoingest = os.path.join(fullpath, os.environ["BP_INGEST"])
         bucket_collection = "bfi"
     print(f"*** Bucket collection: {bucket_collection}")

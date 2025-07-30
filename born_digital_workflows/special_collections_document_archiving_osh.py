@@ -345,6 +345,10 @@ def main():
     )
 
     base_dir = sys.argv[1]  # Always sub_fond level path
+    if not utils.check_storage(base_dir):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     sub_fond = os.path.basename(base_dir)
     sf_ob_num, sf_record_type, sf_title = folder_split(sub_fond)
     print(f"Sub fond data found:\n\n{sf_ob_num}\n\n{sf_record_type}\n\n{sf_title}")

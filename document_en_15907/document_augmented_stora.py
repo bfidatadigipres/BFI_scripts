@@ -883,6 +883,10 @@ def main():
     if yes - make manifestation/item only and link to work_priref
     if no - make series/work/manifestation and item record
     """
+    if not utils.check_storage(STORAGE):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     logger.info(
         "========== STORA documentation script STARTED ==============================================="
     )

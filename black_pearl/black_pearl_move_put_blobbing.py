@@ -254,6 +254,10 @@ def main():
     if not sys.argv[1]:
         sys.exit("Missing launch path, script exiting")
 
+    if not utils.check_storage(sys.argv[1]):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     if "netflix" in str(sys.argv[1]):
         fullpath = os.environ["PLATFORM_INGEST_PTH"]
         autoingest = os.path.join(
@@ -285,9 +289,7 @@ def main():
     for key, val in LOG_PATHS.items():
         if key in autoingest:
             wpath = val
-        if not utils.check_storage(key):
-            LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
-            continue
+
     if not os.path.exists(autoingest):
         LOGGER.warning("Complication with autoingest path: %s", autoingest)
         sys.exit("Supplied argument did not match path")

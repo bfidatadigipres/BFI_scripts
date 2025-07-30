@@ -208,7 +208,9 @@ def main() -> None:
     if not utils.check_control("stora"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-
+    if not utils.check_storage(STORAGE):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     LOGGER.info(
         "========== Fetch augmented metadata script STARTED ======================"
     )

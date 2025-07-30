@@ -9,8 +9,6 @@ non-matching media are moved to ingest_check subfolders accordingly.
 
 import datetime
 import logging
-
-# Imports
 import os
 import shutil
 import sys
@@ -133,6 +131,9 @@ def main() -> None:
     if not utils.check_control("power_off_all"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(sys.argv[1]):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     # the file path should refer to the ingest_check folder
     filepath = os.path.join(sys.argv[1], "ingest_check")

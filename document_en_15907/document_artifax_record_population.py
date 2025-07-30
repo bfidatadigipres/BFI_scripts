@@ -31,20 +31,16 @@ NOTE: Updated for Adlib V3
 import datetime
 import json
 import logging
-
-# Public packages
 import os
 import shutil
 import sys
 from typing import Any, Final, Optional
-
 import requests
 import tenacity
+import yaml
 
 # Local packages
 import title_article
-import yaml
-
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
@@ -702,6 +698,9 @@ def main():
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORAGE_PATH):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")

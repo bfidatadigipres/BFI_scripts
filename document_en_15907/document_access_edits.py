@@ -93,6 +93,10 @@ def main():
     Iterate access_edits folder working through edited
     files prefixed 'EDIT_'
     """
+    if not utils.check_storage(STORAGE):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     file_list = [x for x in os.listdir(STORAGE) if x.startswith("EDIT_")]
     if len(file_list) == 0:
         sys.exit()

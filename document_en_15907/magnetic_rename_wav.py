@@ -189,7 +189,6 @@ def cid_query(
     return cid_data
 
 
-#####
 def cid_data_retrieval(ob_num: str) -> dict[str, str]:
     """
     Retrieve source data from CID
@@ -235,6 +234,9 @@ def main() -> None:
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
+    if not utils.check_storage(WAV_ARCHIVE_PATH):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")

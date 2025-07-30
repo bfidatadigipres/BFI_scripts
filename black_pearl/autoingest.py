@@ -605,12 +605,10 @@ def main():
         print(host)
         linux_host = list(host.keys())[0]
         tree = list(host.keys())[0]
-
         if not utils.check_storage(linux_host):
-            logger.info(
-                f"The storage_control.json returned ‘False’ for path {linux_host} Script is exiting"
-            )
-            sys.exit("Script run prevented by storage_control.json. Script exiting.")
+            logger.info("Skipping path %s - prevented by storage_control.json", linux_host)
+            continue
+
         # Collect files
         files = get_mappings(tree, config_dict["Mappings"])
         print(files)

@@ -719,10 +719,16 @@ def get_current_api():
 def check_storage(filepath):
     """
     check if storage is avaliable for use
+    Returns bool, or string
     """
     with open(STORAGE_JSON, "r") as storage:
         storage_dict: dict[str, str] = json.load(storage)
-        for key in storage_dict.keys():
-            if key.startswith(filepath):
-                return storage_dict[key]
-        return "Storage not found"
+
+    if not storage_dict["all_storage_on"]:
+        return False
+
+    for key in storage_dict.keys():
+        if filepath.startswith(key):
+            return storage_dict[key]
+
+    return "Storage not found"

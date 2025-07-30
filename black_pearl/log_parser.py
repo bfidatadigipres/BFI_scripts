@@ -6,7 +6,7 @@ WARNING alerts issued for the given day.
 
 2022
 """
-
+# Python library imports
 import csv
 import datetime
 
@@ -128,13 +128,7 @@ def create_current_errors_logs() -> None:
         shutil.move(CURRENT_ERRORS_NEW, CURRENT_ERRORS)
 
     print("* Creating versions of error log in all in-scope autoingest NAS shares")
-    if os.path.exists(os.environ["AUTOINGEST_H22"]):
-        shutil.copy(
-            CURRENT_ERRORS,
-            os.path.join(
-                os.environ["AUTOINGEST_H22"], "current_errors/current_errors.csv"
-            ),
-        )
+
     if os.path.exists(os.environ["AUTOINGEST_QNAP01"]):
         shutil.copy(
             CURRENT_ERRORS,
@@ -217,13 +211,6 @@ def create_current_errors_logs() -> None:
             CURRENT_ERRORS,
             os.path.join(
                 os.environ["AUTOINGEST_QNAP08_OSH"], "current_errors/current_errors.csv"
-            ),
-        )
-    if os.path.exists(os.environ["AUTOINGEST_QNAP_TEMP"]):
-        shutil.copy(
-            CURRENT_ERRORS,
-            os.path.join(
-                os.environ["AUTOINGEST_QNAP_TEMP"], "current_errors/current_errors.csv"
             ),
         )
     if os.path.exists(os.environ["BP_VIDEO"]):

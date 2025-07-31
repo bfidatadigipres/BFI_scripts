@@ -124,12 +124,12 @@ def transcode_mp4(fpath: str) -> str:
             fullpath,
         )
         return "failed transcode"
-
+    """
     if not utils.check_control("pause_scripts"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     log_build = []
-
+    """
     filepath, file = os.path.split(fullpath)
     fname, ext = os.path.splitext(file)
     log_build.append(
@@ -423,8 +423,10 @@ def transcode_mp4(fpath: str) -> str:
         log_build.append(
             f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}"
         )
-        error_path = os.path.join(filepath, "error/", file)
-        shutil.move(fullpath, error_path)
+        error_path = os.path.join(filepath, "error/")
+        if not os.path.exists(error_path):
+            os.makedirs(error_path, exist_ok=True)
+        shutil.move(fullpath, os.path.join(error_path, file))
         log_build.append(
             f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
         )
@@ -679,7 +681,7 @@ def sort_ext(ext: str) -> Optional[str]:
     Decide on file type
     """
     mime_type = {
-        "video": ["mxf", "mkv", "mov", "mp4", "avi", "ts", "mpeg", "mpg"],
+        "video": ["mxf", "mkv", "mov", "mp4", "avi", "ts", "mpeg", "mpg", "wmv"],
         "image": ["png", "gif", "jpeg", "jpg", "tif", "pct", "tiff"],
         "audio": ["wav", "flac", "mp3"],
         "document": ["docx", "pdf", "txt", "doc", "tar"],

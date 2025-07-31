@@ -191,10 +191,9 @@ def transcode_mp4(fpath: str) -> str:
         )
         if os.path.exists(os.path.join(transcode_pth, fname)):
             log_build.append(
-                f"{local_time()}\tINFO\tTranscode file already exists. Script exiting"
+                f"{local_time()}\tINFO\tTranscode file already exists. Overwriting with new request."
             )
-            log_output(log_build)
-            return "exists"
+            os.remove(os.path.join(transcode_pth, fname))
         else:
             log_build.append(
                 f"{local_time()}\tWARNING\tCID UMIDs exist but no transcoding. Allowing files to proceed."

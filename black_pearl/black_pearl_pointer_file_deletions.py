@@ -116,6 +116,8 @@ def get_media_record_data(priref: str) -> Optional[list[str]]:
     fields = [
         "imagen.media.original_filename",
         "access_rendition.mp4",
+        "access_rendition.thumbnail",
+        "access_rendition.largeimage",
         "reference_number",
         "input.date",
         "notes",
@@ -140,10 +142,22 @@ def get_media_record_data(priref: str) -> Optional[list[str]]:
         ref_num = ""
     try:
         access_mp4 = adlib.retrieve_field_name(record[0], "access_rendition.mp4")[0]
+        if access_mp4 is None:
+            access_mp4 = ""
     except (IndexError, KeyError, TypeError):
         access_mp4 = ""
-    if access_mp4 is None:
-        access_mp4 = ""
+    try:
+        access_thumb = adlib.retrieve_field_name(record[0], "access_rendition.thumbnail")[0]
+        if access_thumb is None:
+            access_thumb = ""
+    except (IndexError, KeyError, TypeError):
+        access_thumb = ""
+    try:
+        access_image = adlib.retrieve_field_name(record[0], "access_rendition.largeimage")[0]
+        if access_image is None:
+            access_image = ""
+    except (IndexError, KeyError, TypeError):
+        access_image = ""
     try:
         input_date = adlib.retrieve_field_name(record[0], "input.date")[0]
     except (IndexError, KeyError, TypeError):
@@ -171,7 +185,7 @@ def get_media_record_data(priref: str) -> Optional[list[str]]:
     if bucket is None:
         bucket = ""
 
-    return [ref_num, access_mp4, input_date, approved, filename, bucket]
+    return [ref_num, access_mp4, input_date, approved, filename, bucket, access_thumb, access_image]
 
 
 def main():
@@ -218,7 +232,7 @@ def main():
     for key, val in deletion_dictionary.items():
         print(f"Priref '{key}'. File reference number '{val[0]}'.")
         print(
-            f"{val[4]}: Access MP4 '{val[1]}'. Input date '{val[2]}'. Approval status '{val[3]}'. Bucket location in BP: '{val[5]}'."
+            f"{val[4]}: Access MP4 '{val[1]}'. Input date '{val[2]}'. Approval status '{val[3]}'. Bucket location in BP: '{val[5]}'. Access images: '{val[6]}' '{val[7]}'"
         )
         print("---------------------------------------------------------------------")
 
@@ -241,6 +255,8 @@ def main():
         approved = val[3]
         fname = val[4]
         bucket = val[5]
+        access_thumb = val[6]
+        access_image = val[7]
         print(f"Assessing {fname}: Priref {key}, Reference {ref_num}")
         LOGGER.info("Assessing %s: Priref %s. Filename %s", ref_num, priref, fname)
 
@@ -308,26 +324,49 @@ def main():
                     print("CID media record notes field updated")
                 continue
 
-            # Make MP4 paths and delete
+            # Make MP4/thumb/image paths then attempt delete
             if len(access_mp4) > 1:
                 mp4_path1, mp4_path2 = get_mp4_paths(input_date, access_mp4)
-                if os.path.exists(mp4_path1):
-                    LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path1)
-                    print(f"Associated MP4 found, deleting now: {mp4_path1}.\n")
-                    os.remove(mp4_path1)
-                elif os.path.exists(mp4_path2):
-                    LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path2)
-                    print(f"Associated MP4 found, deleting now: {mp4_path2}.\n")
-                    os.remove(mp4_path2)
-                else:
-                    LOGGER.warning(
-                        "No associated MP4 found for file: %s %s", fname, input_date
-                    )
-                    print(f"Access MP4 file {access_mp4} not found in either paths.\n")
             else:
-                print(
-                    "No Access MP4 data retrieved from CID media record for this file"
-                )
+                print("Could not build MP4 access file paths for deletion")
+                mp4_path1 = mp4_path2 = None
+            if len(access_thumb) > 1:
+                thumb_path1, thumb_path2 = get_mp4_paths(input_date, access_thumb)
+            else:
+                print("Could not build MP4 thumbnail file paths for deletion")
+                thumb_path1 = thumb_path2 = None
+            if len(access_image) > 1:
+                image_path1, image_path2 = get_mp4_paths(input_date, access_image)
+            else:
+                print("Could not build MP4 large image file paths for deletion")
+                image_path1 = image_path2 = None
+
+            if os.path.exists(mp4_path1):
+                LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path1)
+                print(f"Associated MP4 found, deleting now: {mp4_path1}.\n")
+                os.remove(mp4_path1)
+            elif os.path.exists(mp4_path2):
+                LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path2)
+                print(f"Associated MP4 found, deleting now: {mp4_path2}.\n")
+                os.remove(mp4_path2)
+
+            if os.path.exists(thumb_path1):
+                LOGGER.info("** DELETED: Associated MP4 found: %s", thumb_path1)
+                print(f"Associated MP4 found, deleting now: {thumb_path1}.\n")
+                os.remove(thumb_path1)
+            elif os.path.exists(thumb_path2):
+                LOGGER.info("** DELETED: Associated MP4 found: %s", thumb_path2)
+                print(f"Associated MP4 found, deleting now: {thumb_path2}.\n")
+                os.remove(thumb_path2)
+
+            if os.path.exists(image_path1):
+                LOGGER.info("** DELETED: Associated MP4 found: %s", image_path1)
+                print(f"Associated MP4 found, deleting now: {image_path1}.\n")
+                os.remove(image_path1)
+            elif os.path.exists(image_path2):
+                LOGGER.info("** DELETED: Associated MP4 found: %s", image_path2)
+                print(f"Associated MP4 found, deleting now: {image_path2}.\n")
+                os.remove(image_path2)
 
         elif "Confirmed for deletion" in str(approved) and len(ref_num) < 7:
             LOGGER.warning(

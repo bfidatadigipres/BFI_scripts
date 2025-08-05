@@ -340,7 +340,7 @@ def series_check(series_id):
         print(
             f"series_check(): Json to be opened and read for series data retrieval: {fullpath}"
         )
-        with open(fullpath, "r", encoding="latin-1") as inf:
+        with open(fullpath, "r", encoding="utf-8") as inf:
             lines = json.load(inf)
             if "ResourceNotFoundError" in str(lines):
                 continue
@@ -498,7 +498,7 @@ def csv_retrieve(fullpath):
         return None
 
     print("**** Check CSV reading correctly ****")
-    with open(fullpath, "r", encoding="latin-1") as inf:
+    with open(fullpath, "r", encoding="utf-8") as inf:
         rows = csv.reader(inf)
         for row in rows:
             print(row)
@@ -559,26 +559,26 @@ def fetch_lines(fullpath, lines):
 
         # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
         title, title_article = split_title(title_for_split)
-        title = title.replace("'", "'")
+        title = title.replace("\xe2\x80\x99", "'")
 
         description = []
         try:
             d_short = lines["item"][0]["summary"]["short"]
-            d_short = d_short.replace("'", "'")
+            d_short = d_short.replace("\xe2\x80\x99", "'")
             epg_dict["d_short"] = d_short
             description.append(d_short)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_medium = lines["item"][0]["summary"]["medium"]
-            d_medium = d_medium.replace("'", "'")
+            d_medium = d_medium.replace("\xe2\x80\x99", "'")
             epg_dict["d_medium"] = d_medium
             description.append(d_medium)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_long = lines["item"][0]["summary"]["long"]
-            d_long = d_long.replace("'", "'")
+            d_long = d_long.replace("\xe2\x80\x99", "'")
             epg_dict["d_long"] = d_long
             description.append(d_long)
         except (IndexError, KeyError, TypeError) as err:
@@ -920,7 +920,7 @@ def main():
         new_work = False
 
         print(f"\nFullpath for file being handled: {fullpath}")
-        with open(fullpath, "r", encoding="latin-1") as inf:
+        with open(fullpath, "r", encoding="utf-8") as inf:
             lines = json.load(inf)
 
         # Retrieve all data needed from JSON
@@ -1642,7 +1642,7 @@ def build_webvtt_dct(old_webvtt):
         print(f"subtitles.vtt not found: {old_webvtt}")
         return None
 
-    with open(old_webvtt, encoding="latin-1") as webvtt_file:
+    with open(old_webvtt, encoding="utf-8") as webvtt_file:
         webvtt_payload = webvtt_file.read()
         webvtt_file.close()
 

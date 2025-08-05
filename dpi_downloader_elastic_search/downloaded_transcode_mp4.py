@@ -128,8 +128,8 @@ def transcode_mp4(fpath: str) -> str:
     if not utils.check_control("pause_scripts"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    log_build = []
     """
+    log_build = []
     filepath, file = os.path.split(fullpath)
     fname, ext = os.path.splitext(file)
     log_build.append(

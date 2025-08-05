@@ -944,7 +944,7 @@ def main():
             # Fetch just single episodes
             if episode != "all":
                 if "," in str(episode):
-                    episodes = episode.split(", ")
+                    episodes = episode.split(",")
                     total_eps = len(episodes)
                 else:
                     episodes = [episode]

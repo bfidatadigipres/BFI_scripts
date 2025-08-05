@@ -15,6 +15,7 @@
   </policy>
   <policy type="or" name="Video width">
     <rule name="Video/Width is 704" value="Width" tracktype="Video" occurrence="*" operator="=">704</rule>
+    <rule name="Video/Width is 720" value="Width" tracktype="Video" occurrence="*" operator="=">720</rule>
     <rule name="Video/Width is 1920" value="Width" tracktype="Video" occurrence="*" operator="=">1920</rule>
   </policy>
   <policy type="or" name="Video height">
@@ -22,7 +23,6 @@
     <rule name="Video/Height is 1080" value="Height" tracktype="Video" occurrence="*" operator="=">1080</rule>
   </policy>
   <rule name="Video/FrameRate is 25.000" value="FrameRate" tracktype="Video" occurrence="*" operator="=">25.000</rule>
-  <rule name="Video/Standard is PAL" value="Standard" tracktype="Video" occurrence="*" operator="=">PAL</rule>
   <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="=">YUV</rule>
   <rule name="Video/ChromaSubsampling is 4:2:0" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:0</rule>
   <rule name="Video/BitDepth is 8" value="BitDepth" tracktype="Video" occurrence="*" operator="=">8</rule>
@@ -31,6 +31,4 @@
     <rule name="Audio/Format is AC-3" value="Format" tracktype="Audio" occurrence="*" operator="=">AC-3</rule>
   </policy>
   <rule name="Audio/BitRate_Mode is CBR" value="BitRate_Mode" tracktype="Audio" occurrence="*" operator="=">CBR</rule>
-  <rule name="Video/Compression_Mode is Lossy" value="Compression_Mode" tracktype="Video" occurrence="*" operator="=">Lossy</rule>
-  <rule name="Audio/Compression_Mode is Lossy" value="Compression_Mode" tracktype="Audio" occurrence="*" operator="=">Lossy</rule>
 </policy>

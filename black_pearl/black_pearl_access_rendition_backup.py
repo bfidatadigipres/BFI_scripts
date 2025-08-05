@@ -19,6 +19,7 @@ Targeting bfi/ subfolders only at this time:
 """
 
 import logging
+
 # Global imports
 import os
 import shutil
@@ -39,7 +40,7 @@ LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.environ["CONTROL_JSON"]
 STORAGE = os.environ["TRANSCODING"]
 INGEST_POINT = os.path.join(STORAGE, "mp4_proxy_backup_ingest_bfi/")
-MOD_MAX = 30
+MOD_MAX = 320
 UPLOAD_MAX = 1099511627776
 BUCKET = "Access_Renditions_backup"
 
@@ -53,7 +54,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-START_FOLDERS: Final = {"bfi": "201605"}
+START_FOLDERS: Final = {"bfi": "201410"}
 
 
 def check_mod_time(fpath: str) -> bool:

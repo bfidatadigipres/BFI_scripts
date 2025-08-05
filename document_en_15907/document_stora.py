@@ -225,7 +225,7 @@ def build_defaults(
 
     # BST time conversion
     utc_timestamp = f"{title_date_start} {time}"
-    if len(utc_timestamp) > 1:
+    if len(utc_timestamp) > 10:
         bst_data = utils.check_bst_adjustment(utc_timestamp)
         if len(bst_data) != 2:
             LOGGER.warning(
@@ -285,7 +285,7 @@ def build_defaults(
         {"sound_manifestation": "SOUN"},
         {"language.lref": "74129"},
         {"language.type": "DIALORIG"},
-        {"utc_timestamp": utc_timestamp},
+        {"UTC_timestamp": utc_timestamp},
         {"transmission_date": bst_date},
         {"transmission_start_time": bst_time},
         {"transmission_duration": duration_total},
@@ -320,10 +320,12 @@ def main() -> None:
     Iterate through all info.csv.redux / info.csv.stora
     which have no matching EPG data. Create CID work - manifestation - item records
     """
-
     if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORAGE):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
@@ -343,6 +345,7 @@ def main() -> None:
                 sys.exit(
                     "Multiple CID item record creation failures detected. Script exiting."
                 )
+
             # Check control json for STORA false
             if not utils.check_control("pause_scripts") or not utils.check_control(
                 "stora"

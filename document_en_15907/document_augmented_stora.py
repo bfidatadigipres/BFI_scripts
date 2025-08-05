@@ -24,6 +24,7 @@ using augmented metadata supply (JSON via API) and traversing filesystem paths t
 
 Refactored Py3 2023
 """
+
 # Public packages
 import csv
 import datetime
@@ -53,7 +54,7 @@ SERIES_LIST = os.path.join(CODE_PATH, "document_en_15907/series_list.json")
 LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
 CSV_FAILURES = os.path.join(LOG_PATH, "failed_mpeg_ts_files.csv")
-MPEG_TS_POLICY = os.path.join(os.environ["MEDIACONCH"], "mpeg_ts_stora_policy.xml")
+MPEG_TS_POLICY = os.path.join(os.environ["MEDIACONCH"], "mpeg_ts_policy.xml")
 SUBS_PTH = os.environ["SUBS_PATH2"]
 GENRE_PTH = os.path.split(SUBS_PTH)[0]
 CID_API = utils.get_current_api()
@@ -340,7 +341,7 @@ def series_check(series_id):
         print(
             f"series_check(): Json to be opened and read for series data retrieval: {fullpath}"
         )
-        with open(fullpath, "r", encoding="latin-1") as inf:
+        with open(fullpath, "r", encoding="utf-8") as inf:
             lines = json.load(inf)
             if "ResourceNotFoundError" in str(lines):
                 continue
@@ -498,7 +499,7 @@ def csv_retrieve(fullpath):
         return None
 
     print("**** Check CSV reading correctly ****")
-    with open(fullpath, "r", encoding="latin-1") as inf:
+    with open(fullpath, "r", encoding="utf-8") as inf:
         rows = csv.reader(inf)
         for row in rows:
             print(row)
@@ -559,26 +560,26 @@ def fetch_lines(fullpath, lines):
 
         # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
         title, title_article = split_title(title_for_split)
-        title = title.replace("'", "'")
+        title = title.replace("\xe2\x80\x99", "'")
 
         description = []
         try:
             d_short = lines["item"][0]["summary"]["short"]
-            d_short = d_short.replace("'", "'")
+            d_short = d_short.replace("\xe2\x80\x99", "'")
             epg_dict["d_short"] = d_short
             description.append(d_short)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_medium = lines["item"][0]["summary"]["medium"]
-            d_medium = d_medium.replace("'", "'")
+            d_medium = d_medium.replace("\xe2\x80\x99", "'")
             epg_dict["d_medium"] = d_medium
             description.append(d_medium)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_long = lines["item"][0]["summary"]["long"]
-            d_long = d_long.replace("'", "'")
+            d_long = d_long.replace("\xe2\x80\x99", "'")
             epg_dict["d_long"] = d_long
             description.append(d_long)
         except (IndexError, KeyError, TypeError) as err:
@@ -883,6 +884,10 @@ def main():
     if yes - make manifestation/item only and link to work_priref
     if no - make series/work/manifestation and item record
     """
+    if not utils.check_storage(STORAGE):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     logger.info(
         "========== STORA documentation script STARTED ==============================================="
     )
@@ -916,7 +921,7 @@ def main():
         new_work = False
 
         print(f"\nFullpath for file being handled: {fullpath}")
-        with open(fullpath, "r", encoding="latin-1") as inf:
+        with open(fullpath, "r", encoding="utf-8") as inf:
             lines = json.load(inf)
 
         # Retrieve all data needed from JSON
@@ -1520,8 +1525,10 @@ def build_defaults(epg_dict):
     """
 
     # BST time conversion
-    utc_timestamp = f"{epg_dict.get("title_date_start")} {epg_dict.get("time")}"
-    if len(utc_timestamp) > 1:
+    utc_date = epg_dict.get("title_date_start")
+    utc_time = epg_dict.get("time")
+    if len(utc_date) > 4 and len(utc_time) > 4:
+        utc_timestamp = f"{utc_date} {utc_time}"
         bst_data = utils.check_bst_adjustment(utc_timestamp)
         if len(bst_data) != 2:
             LOGGER.warning(
@@ -1601,7 +1608,7 @@ def build_defaults(epg_dict):
         {"transmission_date": bst_date},
         # {"transmission_start_time": epg_dict["time"]},
         {"transmission_start_time": bst_time},
-        {"utc_timestamp": utc_timestamp},
+        {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": epg_dict["channel"]},
         {"transmission_coverage": "DIT"},
         {"aspect_ratio": "16:9"},
@@ -1636,7 +1643,7 @@ def build_webvtt_dct(old_webvtt):
         print(f"subtitles.vtt not found: {old_webvtt}")
         return None
 
-    with open(old_webvtt, encoding="latin-1") as webvtt_file:
+    with open(old_webvtt, encoding="utf-8") as webvtt_file:
         webvtt_payload = webvtt_file.read()
         webvtt_file.close()
 

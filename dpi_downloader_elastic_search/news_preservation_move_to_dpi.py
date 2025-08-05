@@ -22,7 +22,6 @@ Flask app status.
 import datetime
 import itertools
 import logging
-# Python packages
 import os
 import sqlite3
 import subprocess
@@ -163,6 +162,9 @@ def main():
         sys.exit("No data found in DOWNLOADS database")
 
     if not utils.check_control("stora"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORA):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     LOGGER.info(

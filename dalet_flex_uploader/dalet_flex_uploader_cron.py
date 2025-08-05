@@ -23,9 +23,12 @@ import os
 import shutil
 import sys
 import time
-
 import boto3
 import botocore
+
+# Private packages
+sys.path.append(os.environ["CODE"])
+import utils
 
 # Global variables
 H22_PLAYER_ARCHIVE = os.path.join(os.environ["QNAP_04"], "BFI_replay/")
@@ -62,7 +65,11 @@ def main():
     if len(sys.argv) < 2:
         log_list.append(f"SCRIPT EXITING: Error with shell script input:\n {sys.argv}")
         dump_to_log(log_list)
-        sys.exit()
+        sys.exit(f"SCRIPT EXITING: Error with shell script input:\n {sys.argv}")
+    if not utils.check_storage(H22_PLAYER_ARCHIVE):
+        log_list.append("Script run prevented by storage_control.json. Script exiting.")
+        dump_to_log(log_list)
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     if os.path.exists(sys.argv[1]):
         fullpath = sys.argv[1]

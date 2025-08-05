@@ -88,6 +88,9 @@ def main():
         )
     if not os.path.isfile(sys.argv[1]):
         sys.exit(f"Exiting. Supplied CSV path non readable in code: {sys.argv[1]}")
+    if not utils.check_storage(sys.argv[1]):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     # Get the new CSV path created
     root, csv = os.path.split(sys.argv[1])
@@ -102,18 +105,17 @@ def main():
         # Refresh all essential fields
         priref = utc_timestamp = utc_date = utc_time = csv_date = csv_time = ""
 
-        priref = row[0]
-        if not priref.isnumeric():
+        if "priref" in str(row):
             continue
-
-        check = check_for_priref(priref)
+        priref = row[0]
+        check = check_for_priref(new_csv_path, priref)
         if check:
             print(f"Already processed row {row}")
             continue
 
         # Start UTC manipulations
-        utc_date = row[1]
-        utc_time = row[2]
+        utc_time = row[1]
+        utc_date = row[2]
 
         if len(utc_date) > 3 and len(utc_time) > 4:
             utc_timestamp = f"{utc_date} {utc_time}"
@@ -154,7 +156,7 @@ def make_new_csv(new_csv_path):
     cols = ["priref", "utc_timestamp", "transmission_start_time", "transmission_date"]
     with open(new_csv_path, mode="w", newline="") as doc:
         write_data = csv.writer(doc)
-        write_data.writerows(cols)
+        write_data.writerow(cols)
 
     if os.path.isfile(new_csv_path):
         return True

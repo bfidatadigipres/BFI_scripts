@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 
 """
-Launched from shell script to multiple jobs for parallel processing
+This script needs to:
+- Sort files in a folder into two / three groups:
+   N_12345.mp4
+   N-12345.mp4
+   N-12345_01of01.mp4
+- Perform filename normalisation. 
+- Possibly check CID for matching CID item record and necessary fields for proress through autoingest
+  Search for file_type, check item_type is Digital, check for CID digital record via imagen.media.original_filename
+  Where any of above present/missing consider handling (as per original code spec):
 
-1. Receive file path and validate is a file/exists
-2. Take filename and look up in CSV_PATH, if not there/no priref skip.
-3. If priref associated with filename, check CID for item record
+  If priref associated with filename, check CID for item record
    and extract item_type, file_type, code_type, imagen.media.original_filename:
    a. If item_type = Digital, file_type = MP4, code_type matches file, and i.m.o_f is empty:
     - Ingest MP4 to DPI, create new CID media record
@@ -22,42 +28,25 @@ Launched from shell script to multiple jobs for parallel processing
     - Skip with note in logs, as CID item record data is inaccruate
    d. If i_t = Digital, f_t is empty:
     - Skip with note in logs, that CID item record not sufficient
+  
+- Move file into autoingest of QNAP-05 where ingest will occur. The QNAP-05 MP4 transcode will set high CRF to
+  prevent compression of already compressed MP4 files. Otherwise all other stages are as normal.
 
-This script needs to:
-- BP Put of individual items
-- BP validation of said individual item
-- Create CID Digital Media record
-- Transcode old MP4 codec types to H.264? (JMW to ask)
-  Answer: if codec != 'avc' then push to folder for 'review'
-
-- Create JPEG file/thumbnail/largeimage from blackdetected MP4 scan
-- Append data to CID media records
-
-NOTE: File naming convention shifts with source file list, ingested items and MP4 access copies.
-The script should be agnostic to name types and possibly match N 123456 01of01 and possibly force
-'N' and extensions to ext.UPPER() for matching, etc.
-
-Files not to be handled via the regular autoingest/black_pearl scripting
-and therefore not to use the autoingest folder structures.
-
-2024
+2025
 """
 
+# Global imports
 import datetime
 import hashlib
 import json
 import logging
-# Global imports
 import os
 import re
 import shutil
 import subprocess
 import sys
 from typing import Final, Optional, Union
-
 import pandas
-import requests
-from ds3 import ds3, ds3Helpers
 
 # Private imports
 sys.path.append(os.environ["CODE"])
@@ -87,17 +76,6 @@ FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-
-def check_control() -> None:
-    """
-    Check control_json isn't False
-    """
-    with open(CONTROL_JSON) as control:
-        j: dict[str, str] = json.load(control)
-        if not j["autoingest"]:
-            print("* Exit requested by downtime_control.json. Script exiting")
-            sys.exit("Exit requested by downtime_control.json. Script exiting")
 
 
 def read_csv_match_file(file: str) -> Optional[tuple[str, str]]:

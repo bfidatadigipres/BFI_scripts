@@ -12,6 +12,7 @@ NOTES: Integrated with adlib_v3 for test
 
 import datetime
 import logging
+
 # Public packages
 import os
 import shutil
@@ -92,6 +93,10 @@ def main():
     Iterate access_edits folder working through edited
     files prefixed 'EDIT_'
     """
+    if not utils.check_storage(STORAGE):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     file_list = [x for x in os.listdir(STORAGE) if x.startswith("EDIT_")]
     if len(file_list) == 0:
         sys.exit()
@@ -106,6 +111,13 @@ def main():
         if not utils.cid_check(CID_API):
             LOGGER.critical("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
+
+        if not utils.check_storage(file):
+            LOGGER.info(
+                "Storage check failed for %s. Please check storage is available.",
+                fullpath,
+            )
+            sys.exit("Storage check failed. Please check storage is available.")
         fpath = os.path.join(STORAGE, file)
         LOGGER.info("File found to process: %s", fpath)
         if not os.path.isfile(fpath):

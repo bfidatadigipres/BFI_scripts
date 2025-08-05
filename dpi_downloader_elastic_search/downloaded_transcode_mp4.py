@@ -185,21 +185,28 @@ def transcode_mp4(fpath: str) -> str:
     else:
         transcode_pth = os.path.join(TRANSCODE, "bfi", date_pth)
 
-    # Check if transcode already completed
-    if fname in access and thumbnail and largeimage:
+    # Check if transcode already completed and capture original access rendition names for replacement
+    if access and thumbnail and largeimage:   
         log_build.append(
             f"{local_time()}\tINFO\tMedia record already has Imagen Media UMIDs. Checking for transcodes"
         )
-        if os.path.exists(os.path.join(transcode_pth, fname)):
+        if fname != access:
+            if os.path.exists(os.path.join(transcode_pth, access)):
+                log_build.append(
+                    f"{local_time()}\tINFO\tTranscode file already exists. Overwriting with new request."
+                )
+                maintain_names = [access, thumbnail, largeimage]
+        elif os.path.exists(os.path.join(transcode_pth, fname)):
             log_build.append(
-                f"{local_time()}\tINFO\tTranscode file already exists. Script exiting"
+                f"{local_time()}\tINFO\tTranscode file already exists. Overwriting with new request."
             )
-            log_output(log_build)
-            return "exists"
-        else:
+            maintain_names = []
+
+        else:   
             log_build.append(
                 f"{local_time()}\tWARNING\tCID UMIDs exist but no transcoding. Allowing files to proceed."
             )
+            maintain_names = []
 
     # Get file type, video or audio etc.
     ftype = sort_ext(ext)
@@ -241,9 +248,13 @@ def transcode_mp4(fpath: str) -> str:
             f"Data retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs"
         )
 
-        # CID transcode paths
-        outpath = os.path.join(transcode_pth, f"{fname}.mp4")
-        outpath2 = os.path.join(transcode_pth, fname)
+        # CID transcode paths - maintain imagen era names where collected
+        if maintain_names:
+            outpath = os.path.join(transcode_pth, f"{maintain_names[0]}.mp4")
+            outpath2 = os.path.join(transcode_pth, maintain_names[0])
+        else:
+            outpath = os.path.join(transcode_pth, f"{fname}.mp4")
+            outpath2 = os.path.join(transcode_pth, fname)
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
         # Check stream count and see if 'DL' 'DR' present
@@ -335,7 +346,10 @@ def transcode_mp4(fpath: str) -> str:
             return "transcode fail"
 
         # Start JPEG extraction
-        jpeg_location = os.path.join(transcode_pth, f"{fname}.jpg")
+        if maintain_names:
+            jpeg_location = os.path.join(transcode_pth, f"{maintain_names[0]}.jpg")
+        else:
+            jpeg_location = os.path.join(transcode_pth, f"{fname}.jpg")
         print(f"JPEG output to go here: {jpeg_location}")
 
         # Calculate seconds mark to grab screen
@@ -352,9 +366,10 @@ def transcode_mp4(fpath: str) -> str:
             log_output(log_build)
             return "jpeg fail"
 
-        # Generate Full size 600x600, thumbnail 300x300
-        full_jpeg = make_jpg(jpeg_location, "full", None, None)
-        thumb_jpeg = make_jpg(jpeg_location, "thumb", None, None)
+        # Generate Full size 600x600, thumbnail 300x300 - pass UID original filenames from Imagen if captured
+        full_jpeg = make_jpg(jpeg_location, "full", None, None, maintain_names)
+        thumb_jpeg = make_jpg(jpeg_location, "thumb", None, None, maintain_names)
+
         log_build.append(
             f"{local_time()}\tINFO\tNew images created at {seconds} seconds into video:\n - {full_jpeg}\n - {thumb_jpeg}"
         )
@@ -425,8 +440,10 @@ def transcode_mp4(fpath: str) -> str:
         log_build.append(
             f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}"
         )
-        error_path = os.path.join(filepath, "error/", file)
-        shutil.move(fullpath, error_path)
+        error_path = os.path.join(filepath, "error/")
+        if not os.path.exists(error_path):
+            os.makedirs(error_path, exist_ok=True)
+        shutil.move(fullpath, os.path.join(error_path, file))
         log_build.append(
             f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
         )
@@ -681,7 +698,7 @@ def sort_ext(ext: str) -> Optional[str]:
     Decide on file type
     """
     mime_type = {
-        "video": ["mxf", "mkv", "mov", "mp4", "avi", "ts", "mpeg", "mpg"],
+        "video": ["mxf", "mkv", "mov", "mp4", "avi", "ts", "mpeg", "mpg", "wmv"],
         "image": ["png", "gif", "jpeg", "jpg", "tif", "pct", "tiff"],
         "audio": ["wav", "flac", "mp3"],
         "document": ["docx", "pdf", "txt", "doc", "tar"],
@@ -1238,13 +1255,13 @@ def check_for_fl_fr(fpath: str) -> bool:
     return False
 
 
-def make_jpg(
-    filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str]
-) -> str:
+def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str], orig_names=None) -> str:
     """
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.
     """
+    if orig_names is None:
+        orig_names = []
 
     start_reduce = ["gm", "convert", "-density", "300x300", filepath, "-strip"]
 
@@ -1259,23 +1276,33 @@ def make_jpg(
         "-resize",
         f"{percent}%x{percent}%",
     ]
-
-    if not transcode_pth:
-        out = os.path.splitext(filepath)[0]
+    # Should only activate for video option transcode (with no transcode_pth)
+    if orig_names:
+        if not transcode_pth:
+            out = os.path.split(filepath)[0]
+            if "thumb" in arg:
+                outfile = f"{out}/{orig_names[1]}.jpg"
+                cmd = start_reduce + thumb + [f"{outfile}"]
+            else:
+                outfile = f"{out}/{orig_names[2]}.jpg"
+                cmd = start + [f"{outfile}"]
+    # Handles Image options and video not replacing old Imagen era filenames
     else:
-        fname = os.path.split(filepath)[1]
-        file = os.path.splitext(fname)[0]
-        out = os.path.join(transcode_pth, file)
-
-    if "thumb" in arg:
-        outfile = f"{out}_thumbnail.jpg"
-        cmd = start_reduce + thumb + [f"{outfile}"]
-    elif "oversize" in arg:
-        outfile = f"{out}_largeimage.jpg"
-        cmd = start + oversize + [f"{outfile}"]
-    else:
-        outfile = f"{out}_largeimage.jpg"
-        cmd = start + [f"{outfile}"]
+        if not transcode_pth:
+            out = os.path.splitext(filepath)[0]
+        else:
+            fname = os.path.split(filepath)[1]
+            file = os.path.splitext(fname)[0]
+            out = os.path.join(transcode_pth, file)
+        if "thumb" in arg:
+            outfile = f"{out}_thumbnail.jpg"
+            cmd = start_reduce + thumb + [f"{outfile}"]
+        elif "oversize" in arg:
+            outfile = f"{out}_largeimage.jpg"
+            cmd = start + oversize + [f"{outfile}"]
+        else:
+            outfile = f"{out}_largeimage.jpg"
+            cmd = start + [f"{outfile}"]
 
     try:
         subprocess.call(cmd)

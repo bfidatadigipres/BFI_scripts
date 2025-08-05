@@ -24,7 +24,6 @@ import os
 import shutil
 import sys
 from typing import Any, Final, Optional
-
 import tenacity
 
 # Private packages
@@ -157,6 +156,9 @@ def main():
         print("* Cannot establish CID session, exiting script")
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
+    if not utils.check_storage(WATCH_FOLDER):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")

@@ -29,12 +29,10 @@ within on session. Trial of sessions().
 
 import datetime
 import logging
-# Public packages
 import os
 import shutil
 import sys
 from typing import Final, Optional
-
 import requests
 
 # Private packages
@@ -156,6 +154,10 @@ def main():
 
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
+
+    if not utils.check_storage(STORAGE):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     LOGGER.info(
         "=========== Special Collections rename - Digital Derivatives START ============"

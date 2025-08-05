@@ -33,8 +33,8 @@ NOTES: Updated for Adlib V3
 Python 3.6+
 """
 
-import logging
 # Public packages
+import logging
 import os
 import re
 import shutil
@@ -117,6 +117,9 @@ def main():
     if not utils.check_control("mp4_transcode"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(fullpath):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")

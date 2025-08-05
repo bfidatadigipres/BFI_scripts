@@ -31,6 +31,7 @@ import adlib_v3 as adlib
 # Global imports
 LOG_PATH: Final = os.environ["LOG_PATH"]
 CONTROL_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "downtime_control.json")
+STORAGE_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "storage_control.json")
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, "autoingest", "global.log")
 SMTP_SERVER = "mail.smtp2go.com"
 SMTP_PORT = 465
@@ -713,3 +714,21 @@ def get_current_api():
     except FileNotFoundError:
         print(f"Control JSON file not found: {CONTROL_JSON}")
         return None
+
+
+def check_storage(filepath):
+    """
+    check if storage is avaliable for use
+    Returns bool, or string
+    """
+    with open(STORAGE_JSON, "r") as storage:
+        storage_dict: dict[str, str] = json.load(storage)
+
+    if not storage_dict["all_storage_on"]:
+        return False
+
+    for key in storage_dict.keys():
+        if filepath.startswith(key):
+            return storage_dict[key]
+
+    return "Storage not found"

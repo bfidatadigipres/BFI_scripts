@@ -61,8 +61,13 @@ from datetime import datetime
 from typing import Any, Final, Optional, Union
 
 from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import (ConflictError, NotFoundError,
-                                      RequestError, TransportError)
+from elasticsearch.exceptions import (
+    ConflictError,
+    NotFoundError,
+    RequestError,
+    TransportError,
+)
+
 
 # Local packages
 sys.path.append(os.environ["CODE"])
@@ -281,7 +286,6 @@ def retrieve_requested() -> list[tuple[str, str]]:
     return remove_duplicates(requested_data)
 
 
-######
 def check_for_cancellation(user_id: str):
     """
     Pull data from ES index for user ID being processed
@@ -407,6 +411,12 @@ def main():
                 "Skipping download. Supplied download filepath error: %s", dpath
             )
             update_table(user_id, "Download path invalid")
+            continue
+        if not utils.check_storage(dpath):
+            LOGGER.info(
+                "Script run prevented by downtime_control.json. Skipping download."
+            )
+            update_table(user_id, "Download path offline")
             continue
 
         download_fpath = os.path.join(dpath, dfolder)

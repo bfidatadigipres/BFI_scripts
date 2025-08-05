@@ -35,11 +35,9 @@ import datetime
 import glob
 import json
 import logging
-# Global packages
 import os
 import sys
 from typing import Any, Final, Generator, Iterable, Optional
-
 import requests
 
 # Local packages

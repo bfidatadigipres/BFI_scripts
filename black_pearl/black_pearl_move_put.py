@@ -182,6 +182,10 @@ def main():
                 if str(sys.argv[1]) in key:
                     fullpath = key
                     upload_size = int(val)
+
+        if not utils.check_storage(fullpath):
+            logger.info("Script run prevented by storage_control.json. Script exiting.")
+            sys.exit("Script run prevented by storage_control.json. Script exiting.")
         autoingest = os.path.join(fullpath, os.environ["BP_INGEST"])
         bucket_collection = "bfi"
     print(f"*** Bucket collection: {bucket_collection}")

@@ -19,6 +19,7 @@ Refactored for Python3
 """
 
 import logging
+
 # Public packages
 import os
 import shutil

@@ -214,7 +214,8 @@ def main():
             continue
         if not utils.check_storage(host):
             logger.info(
-                "Skipping path - storage_control.json returned ‘False’ for path %s", host
+                "Skipping path - storage_control.json returned ‘False’ for path %s",
+                host,
             )
             continue
         # Build autoingest list for separate iteration
@@ -228,7 +229,8 @@ def main():
             continue
         if not utils.check_storage(autoingest):
             logger.info(
-                "Skipping path - storage_control.json returned ‘False’ for path %s", autoingest
+                "Skipping path - storage_control.json returned ‘False’ for path %s",
+                autoingest,
             )
             continue
 

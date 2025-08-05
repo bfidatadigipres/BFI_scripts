@@ -58,7 +58,7 @@ FILEPATHS = [
     "BP_FILM4",
     "BP_FILM5",
     "BP_FILM6",
-    "AUTOINGEST_EDITSHARE"
+    "AUTOINGEST_EDITSHARE",
 ]
 
 
@@ -158,18 +158,16 @@ def create_current_errors_logs() -> None:
     for autoingest_key in FILEPATHS:
         autoingest_path = os.environ.get(autoingest_key)
         if not utils.check_storage(autoingest_path):
-            print("Skipping path - storage_control.json returned ‘False’ for path {autoingest_path}")
+            print(
+                "Skipping path - storage_control.json returned ‘False’ for path {autoingest_path}"
+            )
             continue
 
         if os.path.exists(autoingest_path):
             shutil.copy(
                 CURRENT_ERRORS,
-                os.path.join(
-                    autoingest_path, "current_errors/current_errors.csv"
-                ),
+                os.path.join(autoingest_path, "current_errors/current_errors.csv"),
             )
-
-
 
 
 if __name__ == "__main__":

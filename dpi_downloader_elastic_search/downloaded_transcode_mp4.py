@@ -186,7 +186,7 @@ def transcode_mp4(fpath: str) -> str:
         transcode_pth = os.path.join(TRANSCODE, "bfi", date_pth)
 
     # Check if transcode already completed and capture original access rendition names for replacement
-    if access and thumbnail and largeimage:   
+    if access and thumbnail and largeimage:
         log_build.append(
             f"{local_time()}\tINFO\tMedia record already has Imagen Media UMIDs. Checking for transcodes"
         )
@@ -202,7 +202,7 @@ def transcode_mp4(fpath: str) -> str:
             )
             maintain_names = []
 
-        else:   
+        else:
             log_build.append(
                 f"{local_time()}\tWARNING\tCID UMIDs exist but no transcoding. Allowing files to proceed."
             )
@@ -1255,7 +1255,13 @@ def check_for_fl_fr(fpath: str) -> bool:
     return False
 
 
-def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str], orig_names=None) -> str:
+def make_jpg(
+    filepath: str,
+    arg: str,
+    transcode_pth: Optional[str],
+    percent: Optional[str],
+    orig_names=None,
+) -> str:
     """
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.

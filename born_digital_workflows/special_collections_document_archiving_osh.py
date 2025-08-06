@@ -719,11 +719,12 @@ def create_archive_item_record(
             new_folder = f"{ob_num}_{iname.split('.')[0].replace(' ', '-')}"
 
             # Create exif metadata / checksum
-            if "image" in mime_type or "application" in mime_type:
+            try:
                 metadata_dct = get_image_data(ipath)
                 print(metadata_dct)
-            else:
-                LOGGER.warning("File type not recognised: %s", mime_type)
+            except Exeption as err:
+                LOGGER.warning("File type not recognised by exiftool: %s\n%s", mime_type, err)
+                metadata_dct = {}
             checksum = utils.create_md5_65536(ipath)
 
             record_dct = [

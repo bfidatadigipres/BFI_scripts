@@ -192,7 +192,7 @@ def get_last_child(child_list):
     if child_list is None:
         return None
     elif len(child_list) == 0:
-        return "0"
+        return 0
     else:
         num_lst = [int(x.split("-")[-1]) for x in child_list]
         num_lst.sort()

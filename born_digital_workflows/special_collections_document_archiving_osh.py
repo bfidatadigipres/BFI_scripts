@@ -184,6 +184,21 @@ def get_children_items(ppriref: str, session) -> Optional[List[str]]:
     return item_list
 
 
+def get_last_child(child_list):
+    """
+    Complete checks for last child in list
+    Convert to integer and sort for last num
+    """
+    if child_list is None:
+        return None
+    elif len(child_list) == 0:
+        return "0"
+    else:
+        num_lst = [int(x.split("-")[-1]) for x in child_list]
+        num_lst.sort()
+        return num_lst[-1]
+
+
 def sort_files(file_list: List[str], last_child_num: str) -> List[str]:
     """
     Get alphabetic order of files, and sort accordingly
@@ -506,25 +521,18 @@ def handle_repeat_folder_data(record_type_list, priref_dct, session, defaults_al
             LOGGER.info("No files found in path: %s", key)
             continue
 
-        # Sort into numerical order based on mod times
-        # Get object numbers of items already linked to parent priref
+        # Get last object numbers of parent priref children
         child_list = get_children_items(p_priref, session)
         print(f"Child list: {child_list}")
-        if child_list is None:
+        last_child_num = get_last_child(child_list)
+        if last_child_num is None:
             LOGGER.warning("Failed to retrieve CID response, skipping this folder: %s.", p_ob_num)
             continue
-        elif len(child_list) == 0:
-            last_child_num = "0"
-        else:
-            num_lst = [int(x.split("-")[-1]) for x in child_list]
-            num_lst.sort()
-            last_child_num = num_lst[-1]
-            print(f"Last child number: {last_child_num}")
-            LOGGER.info(
-                "Children of record found. Passing last number to enumeration: %s",
-                last_child_num,
-            )
-        print(file_list)
+        LOGGER.info(
+            "Children of record found. Passing last number to enumeration: %s",
+            last_child_num,
+        )
+
         enum_files = sort_files(file_list, int(last_child_num))
         file_order[f"{key}"] = enum_files
         LOGGER.info(

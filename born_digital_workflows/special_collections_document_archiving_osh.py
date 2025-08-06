@@ -12,12 +12,18 @@ MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
    - Only creating Series, Sub Series and Sub Sub Series (awaiting record_type for last)
    - For items (any digital document) create an Archive Item record (df='ITEM_ARCH')
 4. Join to the parent/children records through the ob_num part/part_of
-5. Once at bottom of folders in sub or sub sub series, order files by creation date (if possble)
+5. Once at bottom of folders in sub or sub sub series, order files by alphabetic order (sort)
 6. Check for filename already in digital.acquired_filename in CID already (report where found)
 7. CID archive item records are to be made for each, and linked to parent folder:
       Named GUR-2-1-1-1-1, GUR-2-1-1-1-2 etc based on parent's object number
       Original filename is to be captured into the Item record digital.acquired_filename
       Rename the file and move to autoingest.
+
+NOTE:
+Code assumption:
+An Archival Item should never be ordered higher than
+sub folders. Eg, all files within a folder are renamed to GUR- object numbers after
+sub folder CID records have been created and object number assigned.
 
 2025
 """
@@ -29,7 +35,6 @@ import logging
 import os
 import sys
 from typing import Any, Dict, List, Optional
-
 import magic
 import requests
 
@@ -162,35 +167,27 @@ def get_children_items(ppriref: str, session) -> Optional[List[str]]:
     """
     Get all children of a given priref
     """
+    item_list = []
     search: str = f'part_of_reference.lref="{ppriref}" and record_type="ITEM_ARCH"'
     fields: list[str] = ["priref", "object_number"]
 
-    records = adlib.retrieve_record(
+    hits, records = adlib.retrieve_record(
         CID_API, "archivescatalogue", search, "0", session, fields
-    )[1]
-    if not records:
+    )
+    if hits is None:
         return None
+    elif hits == 0:
+        return item_list
 
-    item_list = []
     for r in records:
         item_list.append(adlib.retrieve_field_name(r, "object_number")[0])
-
     return item_list
 
 
-def sort_dates(file_list: List[str], last_child_num: str) -> List[str]:
+def sort_files(file_list: List[str], last_child_num: str) -> List[str]:
     """
-    Get modification date of files, and sort into newest first
+    Get alphabetic order of files, and sort accordingly
     return with enumeration number
-    This must handle adding new files into a list that are found
-    at a later date by sensing existing ITEM_ARCH childen and getting last 'num'
-
-    time_list = []
-    for file_path in file_list:
-        time = os.path.getmtime(file_path)
-        time_list.append(f"{time} - {file_path}")
-
-    time_list.sort()
     """
     file_list.sort()
     enum_list = []
@@ -381,93 +378,116 @@ def main():
     session = adlib.create_session()
     defaults_all = build_defaults()
 
-    # Process series filepaths first
-    if len(series) == 0:
-        sys.exit(
-            "No series data found, exiting as not possible to iterate lower than series."
-        )
+    # Process all directories first from series down to file
+    # Series
+    if not series:
+        sys.exit("No series data found, exiting.")
     series.sort()
     LOGGER.info("Series found %s: %s", len(series), ", ".join(series))
-
-    # Create record for folder
-    s_priref_list = create_folder_record(series, session, defaults_all)
-    LOGGER.info(
-        "New records created for series beneath %s - %s:\n%s",
-        sf_ob_num,
-        sf_record_type.upper().replace("-", "_"),
-        ", ".join(s_priref_list),
-    )
-
+    s_prirefs = create_folder_record(series, session, defaults_all)
+    LOGGER.info("Series records created/identified:\n%s", s_prirefs)
+    # Sub-series
     if not sub_series:
-        sys.exit(
-            "No sub-series data found, exiting as not possible to iterate lower than sub-series"
-        )
+        sys.exit("No sub-series data found, exiting.")
+    sub_series.sort()
     LOGGER.info("Sub-series found %s: %s", len(sub_series), ", ".join(sub_series))
+    ss_prirefs = create_folder_record(sub_series, session, defaults_all)
+    LOGGER.info("Sub-series records created/identified:\n%s", ss_prirefs)
+    # Sub-sub-series
+    if sub_sub_series:
+        sub_sub_series.sort()
+        sss_prirefs = create_folder_record(sub_sub_series, session, defaults_all)
+        LOGGER.info("Sub-sub-series records created/identified:\n%s", sss_prirefs)
+    # Sub-sub-sub-series
+    if sub_sub_sub_series:
+        sub_sub_sub_series.sort()
+        ssss_prirefs = create_folder_record(sub_sub_sub_series, session, defaults_all)
+        LOGGER.info("Sub-sub-sub-series records created/identified:\n%s", ssss_prirefs)
+    # Files
+    if file:
+        file.sort()
+        f_prirefs = create_folder_record(file, session, defaults_all)
+        LOGGER.info("File records created/identified:\n%s", f_prirefs)
 
-    # Create records for folders
+
+    # Create Archive Item records for all levels
+    # Series
     if series:
         series_dcts, series_items = handle_repeat_folder_data(
-            series, session, defaults_all
+            series, s_prirefs, session, defaults_all
         )
         LOGGER.info("Processed the following Series and Series items:")
         for s in series_dcts:
             LOGGER.info(s)
-        for i in series_items:
-            LOGGER.info(i)
+        if not series_items:
+            LOGGER.info("No Archival Items found for Series.")
+        else:
+            for i in series_items:
+                LOGGER.info(i)
+    # Sub-series
     if sub_series:
         s_series_dcts, s_series_items = handle_repeat_folder_data(
-            sub_series, session, defaults_all
+            sub_series, ss_prirefs, session, defaults_all
         )
         LOGGER.info("Processed the following Sub series and Sub series items:")
         for s in s_series_dcts:
             LOGGER.info(s)
-        for i in s_series_items:
-            LOGGER.info(i)
+        if not s_series_items:
+            LOGGER.info("No Archival Items found for Sub-series.")
+        else:
+            for i in s_series_items:
+                LOGGER.info(i)
+    # Sub-sub-series
     if sub_sub_series:
         ss_series_dcts, ss_series_items = handle_repeat_folder_data(
-            sub_sub_series, session, defaults_all
+            sub_sub_series, sss_prirefs, session, defaults_all
         )
         LOGGER.info("Processed the following Sub-sub series and Sub-sub series items:")
         for s in ss_series_dcts:
             LOGGER.info(s)
-        for i in ss_series_items:
-            LOGGER.info(i)
-
+        if not ss_series_items:
+            LOGGER.info("No Archival Items found for Sub-sub-series.")
+        else:
+            for i in ss_series_items:
+                LOGGER.info(i)
+    # Sub-sub-sub-series
     if sub_sub_sub_series:
         sss_series_dcts, sss_series_items = handle_repeat_folder_data(
-            sub_sub_sub_series, session, defaults_all
+            sub_sub_sub_series, ssss_prirefs, session, defaults_all
         )
         LOGGER.info(
             "Processed the following Sub-sub-sub series and Sub-sub-sub series items:"
         )
         for s in sss_series_dcts:
             LOGGER.info(s)
-        for i in sss_series_items:
-            LOGGER.info(i)
-
+        if not sss_series_items:
+            LOGGER.info("No Archival Items found for Sub-sub-sub-series.")
+        else:
+            for i in sss_series_items:
+                LOGGER.info(i)
+    # Files
     if file:
-        file_dcts, file_items = handle_repeat_folder_data(file, session, defaults_all)
+        file_dcts, file_items = handle_repeat_folder_data(file, f_prirefs, session, defaults_all)
         LOGGER.info("Processed the following File and File items:")
         for s in file_dcts:
             LOGGER.info(s)
-        for i in file_items:
-            LOGGER.info(i)
+        if not file_items:
+            LOGGER.info("No Archival Items found for any Files.")
+        else:
+            for i in file_items:
+                LOGGER.info(i)
 
     LOGGER.info(
         "=========== Special Collections - Document Archiving OSH END =============="
     )
 
 
-def handle_repeat_folder_data(record_type_list, session, defaults_all):
+def handle_repeat_folder_data(record_type_list, priref_dct, session, defaults_all):
     """
-    Create record at folder level irrespective
-    of record_type, inherited from folder name.
     Get back dict of fpaths and prirefs, then
     look within each for documents that need recs.
     """
-    print(f"Received {record_type_list}, {defaults_all}")
-    priref_dct = create_folder_record(record_type_list, session, defaults_all)
-    LOGGER.info("Records created/identified:\n%s", priref_dct)
+    print(f"Received data for handling repeated folder data:\n{record_type_list}\n\n{defaults_all}\n\n{priref_dct}")
 
     # Check for item_archive files within folders
     item_prirefs = []
@@ -490,7 +510,12 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
         # Get object numbers of items already linked to parent priref
         child_list = get_children_items(p_priref, session)
         print(f"Child list: {child_list}")
-        if child_list:
+        if child_list is None:
+            LOGGER.warning("Failed to retrieve CID response, skipping this folder: %s.", p_ob_num)
+            continue
+        elif len(child_list) == 0:
+            last_child_num = "0"
+        else:
             child_list.sort()
             last_child_num = child_list[-1].split("-")[-1]
             print(f"Last child number: {last_child_num}")
@@ -498,10 +523,8 @@ def handle_repeat_folder_data(record_type_list, session, defaults_all):
                 "Children of record found. Passing last number to enumeration: %s",
                 last_child_num,
             )
-        else:
-            last_child_num = "0"
         print(file_list)
-        enum_files = sort_dates(file_list, int(last_child_num))
+        enum_files = sort_files(file_list, int(last_child_num))
         file_order[f"{key}"] = enum_files
         LOGGER.info(
             "%s files found to create Item Archive records: %s",

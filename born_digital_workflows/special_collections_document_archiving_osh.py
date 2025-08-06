@@ -725,7 +725,7 @@ def create_archive_item_record(
             ext = os.path.splitext(ipath)[1].lstrip(".")
             ob_num = f"{parent_ob_num}-{num.strip()}"
             new_name = f"{ob_num.replace('-', '_')}_01of01.{ext}"
-            new_folder = f"{ob_num}_{iname.split('.')[0].replace(' ', '-')}"
+            new_folder = f"{ob_num}_{iname.rsplit('.', 1)[0].replace(' ', '-')}"
 
             # Create exif metadata / checksum
             try:

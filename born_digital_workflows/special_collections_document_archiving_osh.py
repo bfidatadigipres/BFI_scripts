@@ -237,7 +237,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     """
     ext = os.path.splitext(ipath)[1].replace(".", "")
     file_type, mime = get_file_type(ext)
-    print(f"**** {mime} ****")
+    print(f"**** {file_type} ****")
     exif_metadata = utils.exif_data(f"{ipath}")
     if exif_metadata is None:
         LOGGER.warning("File could not be read by ExifTool: %s", ipath)

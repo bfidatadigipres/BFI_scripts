@@ -168,7 +168,7 @@ def get_children_items(ppriref: str, session) -> Optional[List[str]]:
     Get all children of a given priref
     """
     item_list = []
-    search: str = f'part_of_reference.lref="{ppriref}" and record_type="ITEM_ARCH"'
+    search: str = f'part_of_reference.lref="{ppriref}"'
     fields: list[str] = ["priref", "object_number"]
 
     hits, records = adlib.retrieve_record(
@@ -516,8 +516,9 @@ def handle_repeat_folder_data(record_type_list, priref_dct, session, defaults_al
         elif len(child_list) == 0:
             last_child_num = "0"
         else:
-            child_list.sort()
-            last_child_num = child_list[-1].split("-")[-1]
+            num_lst = [int(x.split("-")[-1]) for x in child_list]
+            num_lst.sort()
+            last_child_num = num_lst[-1]
             print(f"Last child number: {last_child_num}")
             LOGGER.info(
                 "Children of record found. Passing last number to enumeration: %s",
@@ -690,7 +691,7 @@ def create_archive_item_record(
     LOGGER.info(
         "Processing files for parent %s in path: %s", parent_priref, parent_path
     )
-    print(file_order)
+    LOGGER.info("File order: %s", file_order)
 
     all_item_prirefs = {}
     for _, value in file_order.items():

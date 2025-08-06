@@ -731,7 +731,7 @@ def create_archive_item_record(
             try:
                 metadata_dct = get_image_data(ipath)
                 print(metadata_dct)
-            except Exeption as err:
+            except Exception as err:
                 LOGGER.warning("File type not recognised by exiftool: %s\n%s", mime_type, err)
                 metadata_dct = {}
             checksum = utils.create_md5_65536(ipath)

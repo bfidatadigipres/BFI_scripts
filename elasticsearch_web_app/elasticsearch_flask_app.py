@@ -10,6 +10,9 @@ app = Flask(__name__, template_folder="templates/")
 
 ELASTIC_PASS = os.environ["ELASTIC_PASS"]
 ELASTIC_PATH = os.environ["ELASTIC_PATH"]
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+LOCAL_HOST = os.environ.get("LOCALHOST")
+PORT = os.environ.get("PORT")
 
 es = Elasticsearch(
     ELASTIC_PATH, basic_auth=("elastic", ELASTIC_PASS), verify_certs=False
@@ -28,5 +31,4 @@ def home():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=9000)
-# N_10119416_01of01.ts
+    app.run(host=LOCAL_HOST, debug=DEBUG, port=9000)

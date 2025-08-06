@@ -530,10 +530,10 @@ def handle_repeat_folder_data(record_type_list, priref_dct, session, defaults_al
             continue
         LOGGER.info(
             "Children of record found. Passing last number to enumeration: %s",
-            last_child_num,
+            str(last_child_num),
         )
 
-        enum_files = sort_files(file_list, int(last_child_num))
+        enum_files = sort_files(file_list, last_child_num)
         file_order[f"{key}"] = enum_files
         LOGGER.info(
             "%s files found to create Item Archive records: %s",

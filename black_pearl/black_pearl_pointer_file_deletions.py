@@ -147,13 +147,17 @@ def get_media_record_data(priref: str) -> Optional[list[str]]:
     except (IndexError, KeyError, TypeError):
         access_mp4 = ""
     try:
-        access_thumb = adlib.retrieve_field_name(record[0], "access_rendition.thumbnail")[0]
+        access_thumb = adlib.retrieve_field_name(
+            record[0], "access_rendition.thumbnail"
+        )[0]
         if access_thumb is None:
             access_thumb = ""
     except (IndexError, KeyError, TypeError):
         access_thumb = ""
     try:
-        access_image = adlib.retrieve_field_name(record[0], "access_rendition.largeimage")[0]
+        access_image = adlib.retrieve_field_name(
+            record[0], "access_rendition.largeimage"
+        )[0]
         if access_image is None:
             access_image = ""
     except (IndexError, KeyError, TypeError):
@@ -185,7 +189,16 @@ def get_media_record_data(priref: str) -> Optional[list[str]]:
     if bucket is None:
         bucket = ""
 
-    return [ref_num, access_mp4, input_date, approved, filename, bucket, access_thumb, access_image]
+    return [
+        ref_num,
+        access_mp4,
+        input_date,
+        approved,
+        filename,
+        bucket,
+        access_thumb,
+        access_image,
+    ]
 
 
 def main():

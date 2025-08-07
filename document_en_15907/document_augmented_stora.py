@@ -35,6 +35,7 @@ import os
 import shutil
 import sys
 from time import sleep
+
 import tenacity
 import yaml
 from series_retrieve import check_id, retrieve

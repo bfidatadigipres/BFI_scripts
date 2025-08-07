@@ -39,8 +39,8 @@ YESTERDAY_CLEAN = YESTERDAY.strftime("%Y-%m-%d")
 START = "{}T00:00:00".format(YESTERDAY_CLEAN)
 END = "{}T23:59:00".format(YESTERDAY_CLEAN)
 # IF other date is required
-#START = '2025-07-27T00:00:00'
-#END = '2025-07-27T23:59:00'
+# START = '2025-07-27T00:00:00'
+# END = '2025-07-27T23:59:00'
 
 # API variables to access Press Association metadata
 URL = os.environ["PATV_FETCH"]

@@ -50,6 +50,7 @@ import os
 import shutil
 import sys
 from typing import Any, Final, Iterable, Optional
+
 import xmltodict
 
 # Local packages

@@ -167,7 +167,9 @@ def main(filepath: str, frame_work: str, destination=None) -> None:
     if not utils.cid_check(CID_API):
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
-
+    if not utils.check_storage(filepath):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     # Parse filename string
     in_file = os.path.basename(filepath)
     rna = in_file.split("_")[0]

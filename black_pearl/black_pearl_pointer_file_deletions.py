@@ -53,8 +53,7 @@ import adlib_v3 as adlib
 import utils
 
 # Global links / set up ds3 and adlib
-MP4_ACCESS1 = os.environ["MP4_ACCESS_REDIRECT"]
-MP4_ACCESS2 = os.environ["MP4_ACCESS2"]
+MP4_ACCESS = os.environ["MP4_ACCESS2"]
 LOGS = os.environ["LOG_PATH"]
 CID_API = utils.get_current_api()
 
@@ -211,6 +210,9 @@ def main():
         sys.exit(
             "No pointer file supplied at script launch. Please try launching again."
         )
+    if not utils.check_storage(MP4_ACCESS):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("black_pearl"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -339,47 +341,35 @@ def main():
 
             # Make MP4/thumb/image paths then attempt delete
             if len(access_mp4) > 1:
-                mp4_path1, mp4_path2 = get_mp4_paths(input_date, access_mp4)
+                mp4_path = get_mp4_path(input_date, access_mp4)
             else:
                 print("Could not build MP4 access file paths for deletion")
-                mp4_path1 = mp4_path2 = None
+                mp4_path = None
             if len(access_thumb) > 1:
-                thumb_path1, thumb_path2 = get_mp4_paths(input_date, access_thumb)
+                thumb_path = get_mp4_path(input_date, access_thumb)
             else:
                 print("Could not build MP4 thumbnail file paths for deletion")
-                thumb_path1 = thumb_path2 = None
+                thumb_path = None
             if len(access_image) > 1:
-                image_path1, image_path2 = get_mp4_paths(input_date, access_image)
+                image_path = get_mp4_path(input_date, access_image)
             else:
                 print("Could not build MP4 large image file paths for deletion")
-                image_path1 = image_path2 = None
+                image_path = None
 
-            if os.path.exists(mp4_path1):
-                LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path1)
-                print(f"Associated MP4 found, deleting now: {mp4_path1}.\n")
-                os.remove(mp4_path1)
-            elif os.path.exists(mp4_path2):
-                LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path2)
-                print(f"Associated MP4 found, deleting now: {mp4_path2}.\n")
-                os.remove(mp4_path2)
+            if os.path.exists(mp4_path):
+                LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path)
+                print(f"Associated MP4 found, deleting now: {mp4_path}.\n")
+                os.remove(mp4_path)
+           
+            if os.path.exists(thumb_path):
+                LOGGER.info("** DELETED: Associated MP4 found: %s", thumb_path)
+                print(f"Associated MP4 found, deleting now: {thumb_path}.\n")
+                os.remove(thumb_path)
 
-            if os.path.exists(thumb_path1):
-                LOGGER.info("** DELETED: Associated MP4 found: %s", thumb_path1)
-                print(f"Associated MP4 found, deleting now: {thumb_path1}.\n")
-                os.remove(thumb_path1)
-            elif os.path.exists(thumb_path2):
-                LOGGER.info("** DELETED: Associated MP4 found: %s", thumb_path2)
-                print(f"Associated MP4 found, deleting now: {thumb_path2}.\n")
-                os.remove(thumb_path2)
-
-            if os.path.exists(image_path1):
-                LOGGER.info("** DELETED: Associated MP4 found: %s", image_path1)
-                print(f"Associated MP4 found, deleting now: {image_path1}.\n")
-                os.remove(image_path1)
-            elif os.path.exists(image_path2):
-                LOGGER.info("** DELETED: Associated MP4 found: %s", image_path2)
-                print(f"Associated MP4 found, deleting now: {image_path2}.\n")
-                os.remove(image_path2)
+            if os.path.exists(image_path):
+                LOGGER.info("** DELETED: Associated MP4 found: %s", image_path)
+                print(f"Associated MP4 found, deleting now: {image_path}.\n")
+                os.remove(image_path)
 
         elif "Confirmed for deletion" in str(approved) and len(ref_num) < 7:
             LOGGER.warning(
@@ -420,15 +410,14 @@ def main():
     )
 
 
-def get_mp4_paths(input_date: str, access_mp4: str) -> tuple[str, str]:
+def get_mp4_path(input_date: str, access_mp4: str) -> tuple[str, str]:
     """
     Create two possible MP4 paths for deletion
     of associated MP4 asset
     """
     year, month = input_date.split("-")[:2]
-    mp4_path1 = os.path.join(MP4_ACCESS1, f"{year}{month}/", access_mp4)
-    mp4_path2 = os.path.join(MP4_ACCESS2, f"{year}{month}/", access_mp4)
-    return mp4_path1, mp4_path2
+    mp4_path = os.path.join(MP4_ACCESS, f"{year}{month}/", access_mp4)
+    return mp4_path
 
 
 def cid_media_append(priref: str, data: str) -> bool:

@@ -25,10 +25,9 @@ NOTE: Updated to work with Adlib V3
 2023
 """
 
+# Public packages
 import datetime
 import logging
-
-# Public packages
 import os
 import re
 import shutil

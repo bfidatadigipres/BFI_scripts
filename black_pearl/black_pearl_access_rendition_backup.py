@@ -138,6 +138,9 @@ def main():
     folder structures. Iterate to next folder path and
     check INGEST_POINT empty for next PUT.
     """
+    if not utils.check_storage(STORAGE):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     LOGGER.info("====== BP Access Renditions back up script start ==================")
     for key, value in START_FOLDERS.items():

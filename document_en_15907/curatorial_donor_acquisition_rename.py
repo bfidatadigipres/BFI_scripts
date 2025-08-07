@@ -152,9 +152,6 @@ def main() -> None:
     Retrieve object number and use to build new filename
     Rename and move to successful_rename/ folder
     """
-    LOGGER.info(
-        "=========== START Curatorial Donor Acquisition rename script START =========="
-    )
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -169,7 +166,9 @@ def main() -> None:
     if len(sys.argv) < 2:
         LOGGER.warning("SCRIPT EXITING: Error with shell script input:\n%s\n", sys.argv)
         sys.exit()
-
+    LOGGER.info(
+        "=========== START Curatorial Donor Acquisition rename script START =========="
+    )
     fullpath = sys.argv[1]
     root, workflow_folder = os.path.split(fullpath)
 

@@ -59,7 +59,6 @@ LOG_FILE: Final = os.path.join(LOG_PATH, f"mp4_transcode{LOG_PREFIX}.log")
 TRANSCODE: Final = os.environ["TRANSCODING"]
 if not os.path.ismount(TRANSCODE):
     sys.exit(f"{TRANSCODE} path is not mounted. Script exiting.")
-# TRANSCODE = os.path.join(os.environ['QNAP_05'], 'mp4_transcoding_backup/')
 CID_API: Final = utils.get_current_api()
 HOST: Final = os.uname()[1]
 
@@ -116,7 +115,7 @@ def main():
     if not utils.check_control("mp4_transcode"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_storage(fullpath):
+    if not utils.check_storage(fullpath) or not utils.check_storage(TRANSCODE):
         LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):

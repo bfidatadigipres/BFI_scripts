@@ -232,7 +232,7 @@ def main():
             continue
         if not utils.check_storage(autoingest):
             logger.info(
-                f"Skipping path - storage_control.json returned ‘False’ for path {host}"
+                f"Skipping path - storage_control.json returned ‘False’ for path {autoingest}"
             )
             continue
 

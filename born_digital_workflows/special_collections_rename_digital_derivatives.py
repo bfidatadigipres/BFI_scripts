@@ -48,8 +48,7 @@ LOG = os.path.join(
     os.environ["LOG_PATH"], "special_collections_rename_digital_derivatives.log"
 )
 MEDIAINFO_PATH = os.path.join(os.environ["LOG_PATH"], "cid_mediainfo/")
-CID_API = os.environ["CID_API3"]
-# CID_API = utils.get_current_api()
+CID_API = utils.get_current_api()
 
 LOGGER = logging.getLogger("sc_rename_digital_derivatives")
 HDLR = logging.FileHandler(LOG)
@@ -151,10 +150,8 @@ def main():
     if not utils.check_control("power_off_all"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
-
     if not utils.check_storage(STORAGE):
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")

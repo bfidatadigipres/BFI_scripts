@@ -33,8 +33,7 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-ADMIN = os.environ.get("ADMIN")
-LOGS = os.path.join(ADMIN, "Logs")
+LOGS = os.environ.get("LOG_PATH")
 CONTROL_JSON = os.path.join(LOGS, "downtime_control.json")
 CID_API = utils.get_current_api()
 
@@ -74,7 +73,7 @@ def cid_check_items(
     return record
 
 
-def cid_check_filenames(priref: str, platform: str) -> Optional[str, str]:
+def cid_check_filenames(priref: str, platform: str):
     """
     Sends CID request for object number
     checks if filename already populated

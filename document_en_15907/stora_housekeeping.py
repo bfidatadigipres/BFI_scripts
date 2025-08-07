@@ -22,7 +22,7 @@ import os
 import shutil
 import sys
 
-sys.path.append(os.environ["CODE"])
+sys.path.append(os.environ["CODE_BFI"])
 import utils
 
 # Global paths

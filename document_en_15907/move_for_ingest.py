@@ -68,7 +68,9 @@ def main():
     """
     Move folders where conditions allow
     """
-
+    if not utils.check_storage(INGEST_PATH) or not utils.check_storage(OUTPUT_PATH):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     LOGGER.info(
         "==== Move for ingest script running at %s ===============",
         str(datetime.datetime.now())[0:19],

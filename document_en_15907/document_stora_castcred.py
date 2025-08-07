@@ -561,15 +561,19 @@ def main():
     Create new People rec where needed and capture priref
     Link new/existing People priref to CID Work
     """
-    LOGGER.info(
-        "============= START document_stora_castcred script START ============="
-    )
+    if not utils.check_storage(COMPLETE):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
+
+    LOGGER.info(
+        "============= START document_stora_castcred script START ============="
+    )
     LOGGER.info("Checking path for documented JSON: %s", ARCHIVE_PATH)
     print(ARCHIVE_PATH)
 

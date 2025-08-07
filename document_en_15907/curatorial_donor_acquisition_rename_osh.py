@@ -148,9 +148,7 @@ def main() -> None:
     Retrieve object number and use to build new filename
     Rename and move to successful_rename/ folder
     """
-    LOGGER.info(
-        "=========== START Curatorial Donor Acquisition rename OSH script START =========="
-    )
+
     if not utils.check_control("power_off_all") or not utils.check_control(
         "pause_scripts"
     ):
@@ -168,6 +166,9 @@ def main() -> None:
         LOGGER.warning("SCRIPT EXITING: Error with shell script input:\n%s\n", sys.argv)
         sys.exit()
 
+    LOGGER.info(
+        "=========== START Curatorial Donor Acquisition rename OSH script START =========="
+    )
     fullpath = sys.argv[1]
     root, workflow_folder = os.path.split(fullpath)
 

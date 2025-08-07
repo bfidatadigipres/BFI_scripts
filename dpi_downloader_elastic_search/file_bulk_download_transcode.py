@@ -533,6 +533,8 @@ def main():
                 LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                 os.remove(new_fpath)
             # Send notification email
+            print("Sending email to user....")
+            LOGGER.info("Sending email to user....")
             send_email_update(email, fname, new_fpath, trans)
             continue
 

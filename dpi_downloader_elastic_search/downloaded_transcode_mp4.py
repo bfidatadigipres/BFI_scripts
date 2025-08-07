@@ -111,13 +111,12 @@ def check_for_mixed_audio(fpath: str) -> Optional[dict[str, int]]:
     return None
 
 
-def transcode_mp4(fpath: str) -> str:
+def transcode_mp4(fullpath: str) -> str:
     """
     Get ext, check filetype then process
     according to video, image or pass through
     audio and documents
     """
-    fullpath = fpath
     if not os.path.isfile(fullpath):
         logger.warning(
             "%s\tWARNING\tSCRIPT EXITING: Error with file path supplied, not a file: %s",
@@ -129,8 +128,8 @@ def transcode_mp4(fpath: str) -> str:
     if not utils.check_control("pause_scripts"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    log_build = []
 
+    log_build = []
     filepath, file = os.path.split(fullpath)
     fname, ext = os.path.splitext(file)
     log_build.append(
@@ -186,6 +185,7 @@ def transcode_mp4(fpath: str) -> str:
         transcode_pth = os.path.join(TRANSCODE, "bfi", date_pth)
 
     # Check if transcode already completed and capture original access rendition names for replacement
+    maintain_names = []
     if access and thumbnail and largeimage:
         log_build.append(
             f"{local_time()}\tINFO\tMedia record already has Imagen Media UMIDs. Checking for transcodes"

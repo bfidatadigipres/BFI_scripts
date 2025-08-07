@@ -424,7 +424,6 @@ def main():
         f_prirefs = create_folder_record(file, session, defaults_all)
         LOGGER.info("File records created/identified:\n%s", f_prirefs)
 
-
     # Create Archive Item records for all levels
     # Series
     if series:
@@ -482,7 +481,9 @@ def main():
                 LOGGER.info(i)
     # Files
     if file:
-        file_dcts, file_items = handle_repeat_folder_data(file, f_prirefs, session, defaults_all)
+        file_dcts, file_items = handle_repeat_folder_data(
+            file, f_prirefs, session, defaults_all
+        )
         LOGGER.info("Processed the following File and File items:")
         for s in file_dcts:
             LOGGER.info(s)
@@ -502,7 +503,9 @@ def handle_repeat_folder_data(record_type_list, priref_dct, session, defaults_al
     Get back dict of fpaths and prirefs, then
     look within each for documents that need recs.
     """
-    print(f"Received data for handling repeated folder data:\n{record_type_list}\n\n{defaults_all}\n\n{priref_dct}")
+    print(
+        f"Received data for handling repeated folder data:\n{record_type_list}\n\n{defaults_all}\n\n{priref_dct}"
+    )
 
     # Check for item_archive files within folders
     item_prirefs = []
@@ -526,7 +529,9 @@ def handle_repeat_folder_data(record_type_list, priref_dct, session, defaults_al
         print(f"Child list: {child_list}")
         last_child_num = get_last_child(child_list)
         if last_child_num is None:
-            LOGGER.warning("Failed to retrieve CID response, skipping this folder: %s.", p_ob_num)
+            LOGGER.warning(
+                "Failed to retrieve CID response, skipping this folder: %s.", p_ob_num
+            )
             continue
         LOGGER.info(
             "Children of record found. Passing last number to enumeration: %s",
@@ -732,7 +737,9 @@ def create_archive_item_record(
                 metadata_dct = get_image_data(ipath)
                 print(metadata_dct)
             except Exception as err:
-                LOGGER.warning("File type not recognised by exiftool: %s\n%s", mime_type, err)
+                LOGGER.warning(
+                    "File type not recognised by exiftool: %s\n%s", mime_type, err
+                )
                 metadata_dct = {}
             checksum = utils.create_md5_65536(ipath)
 

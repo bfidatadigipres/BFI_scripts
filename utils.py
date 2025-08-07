@@ -316,9 +316,11 @@ def exif_data(dpath):
     return match to field if available
     """
 
-    cmd = ["exiftool", f"{dpath}"]
+    cmd = ["exiftool", dpath]
     try:
-        data = subprocess.check_output(cmd, shell=False, universal_newlines=True)
+        data = subprocess.run(cmd, shell=False, capture_output=True)
+        data = data.stdout.decode("latin-1")
+        print(data)
     except subprocess.CalledProcessError as err:
         print(err)
         return None

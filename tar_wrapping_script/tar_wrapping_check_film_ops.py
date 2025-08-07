@@ -170,7 +170,9 @@ def main():
 
     fullpath = sys.argv[1]
     print(fullpath)
-
+    if not utils.check_storage(fullpath):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not os.path.exists(fullpath):
         sys.exit("Supplied path does not exists. Please try again.")
 

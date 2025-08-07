@@ -151,13 +151,16 @@ def main():
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-
     if len(sys.argv) != 2:
         LOGGER.warning("SCRIPT NOT STARTING: MD5 path argument error: %s", sys.argv)
         sys.exit(f"Supplied argument error: {sys.argv}")
 
     filepath: str = sys.argv[1]
     fname: str = name_split(filepath)
+    if not utils.check_storage(filepath):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     LOGGER.info("===== CHECKSUM CLEAN UP SCRIPT START: %s =====", fname)
 
     if not os.path.isfile(filepath):

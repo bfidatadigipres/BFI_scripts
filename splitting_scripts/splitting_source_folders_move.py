@@ -42,6 +42,9 @@ def main():
     # Iterate through path list, searching top folder only for files to move
     for pth in PATHS:
         print("PATH BEING USED: {}".format(pth))
+        if not utils.check_storage(pth):
+            LOGGER.info("Skipping path %s - prevented by Storage Control document.", pth)
+            continue
         files_to_move = []
         for file in os.listdir(pth):
             if os.path.isfile(os.path.join(pth, file)):

@@ -10,13 +10,11 @@ Dependencies:
 3. f47/errors.csv
 """
 
-import csv
-
 # Public imports
+import csv
 import os
 import sys
 from datetime import datetime, timedelta
-
 import numpy as np
 import pandas as pd
 import yaml
@@ -56,6 +54,9 @@ def main():
     """
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(F47):
+        print("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     write_to_log(f"=== Processing Items in F47 selections.csv === {DT_STR}\n")
 
     # Load configuration variables

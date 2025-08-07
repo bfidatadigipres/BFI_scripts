@@ -24,11 +24,10 @@ Updated for Adlib V3
 June 2022
 """
 
+# Public packages
 import datetime
 import glob
 import logging
-
-# Public packages
 import os
 import shutil
 import subprocess
@@ -41,7 +40,6 @@ sys.path.append(os.environ["CODE"])
 import clipmd5
 import document_item_memnon as document_item
 import models
-
 import adlib_v3 as adlib
 import utils
 
@@ -144,6 +142,9 @@ def main():
     Process file and complete segmentation
     generate CID record
     """
+    if not utils.check_storage(TARGET):
+        logger.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     # List files in recursive sub-directories
     files = []

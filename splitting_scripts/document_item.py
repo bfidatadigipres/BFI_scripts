@@ -6,9 +6,8 @@ Refactored to Py3
 June 2022
 """
 
-import datetime
-
 # Private packages
+import datetime
 import os
 import sys
 from typing import Any, Final, Optional

@@ -11,14 +11,12 @@ Dependencies:
 4. dthree/submitta.py
 """
 
+# Public imports
 import csv
 import datetime
-
-# Public imports
 import os
 import sys
 import uuid
-
 from tenacity import retry, stop_after_attempt
 
 # Local imports
@@ -81,6 +79,9 @@ def main():
     if not utils.cid_check(CID_API):
         print("* Cannot establish CID session, exiting script")
         sys.exit()
+    if not utils.check_storage(SELECTIONS):
+        print("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     write_to_log(f"=== Processing Items in D3 Pointer File === {DT_STR}\n")
     write_to_log(

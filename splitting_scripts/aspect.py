@@ -18,9 +18,8 @@ Converted from Py2 legacy code to Py3
 October 2022
 """
 
-import logging
-
 # Public modules
+import logging
 import os
 import re
 import shutil
@@ -277,6 +276,9 @@ def main():
     LOGGER.info("==== aspect.py START =================")
 
     for fol in FOLDERS:
+        if not utils.check_storage(fol):
+            LOGGER.info("Skipping path %s - prevented by Storage Control document.", fol)
+            continue
         LOGGER.info("Targeting folder: %s", fol)
         files = []
         for root, _, filenames in os.walk(fol):

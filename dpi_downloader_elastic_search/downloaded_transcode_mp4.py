@@ -184,6 +184,7 @@ def transcode_mp4(fullpath: str) -> str:
         transcode_pth = os.path.join(TRANSCODE, "bfi", date_pth)
 
     # Check if transcode already completed and capture original access rendition names for replacement
+    maintain_names = []
     if access and thumbnail and largeimage:
         log_build.append(
             f"{local_time()}\tINFO\tMedia record already has Imagen Media UMIDs. Checking for transcodes"

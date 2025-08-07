@@ -40,7 +40,12 @@ CID_API = utils.get_current_api()
 # Specific date work
 FORMAT = "%Y-%m-%d"
 TODAY_DATE = datetime.date.today()
-TODAY = TODAY_DATE.strftime(FORMAT)
+#TODAY = TODAY_DATE.strftime(FORMAT)
+TODAY = "2025-03-31"
+#TODAY = "2025-04-30"
+#TODAY = "2025-05-31"
+#TODAY = "2025-06-30"
+#TODAY = "2025-07-31"
 
 # Setup logging
 LOGGER = logging.getLogger("stream_original_filename_updater")
@@ -195,7 +200,7 @@ def main():
 
         # Generate ISO date range for last 30 days for edit.date check
         date_range = []
-        period = itertools.islice(date_gen(TODAY), 30)
+        period = itertools.islice(date_gen(TODAY), 31)
         for dt in period:
             date_range.append(dt.strftime(FORMAT))
         print(f"Target date range for {platform} check: {', '.join(date_range)}")

@@ -326,6 +326,7 @@ def transcode_mp4(fullpath: str) -> str:
         time.sleep(5)
         # Mediaconch conformance check file
         policy_check = conformance_check(outpath)
+        print(policy_check)
         if "PASS!" in policy_check:
             log_build.append(
                 f"{local_time()}\tINFO\tMediaconch pass! MP4 transcode complete. Beginning JPEG image generation."
@@ -337,7 +338,7 @@ def transcode_mp4(fullpath: str) -> str:
             log_build.append(
                 f"{local_time()}\tINFO\tDeleting transcoded MP4 and leaving file for repeated transcode attempt"
             )
-            os.remove(outpath)
+            #os.remove(outpath)
             log_build.append(
                 f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
             )

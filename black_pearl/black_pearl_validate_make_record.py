@@ -217,6 +217,7 @@ def main():
         # Paths to avoid processing
         if "/mnt/qnap_04" in str(host):
             continue
+
         # Build autoingest list for separate iteration
         for pth in host.keys():
             autoingest_list.append(os.path.join(pth, BPINGEST))

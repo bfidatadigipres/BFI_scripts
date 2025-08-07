@@ -12,9 +12,10 @@ import base64
 import json
 import os
 import sys
+from urllib.parse import urlencode
+
 import paramiko
 import requests
-from urllib.parse import urlencode
 
 TS_UUID = os.environ.get("AM_TS_UUID")
 SFTP_UUID = os.environ.get("AM_TS_SFTP")

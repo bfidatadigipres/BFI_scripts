@@ -23,6 +23,7 @@ import subprocess
 import sys
 import time
 from typing import Any, Final, Optional, Union
+
 import pytz
 import tenacity
 
@@ -1255,7 +1256,13 @@ def check_for_fl_fr(fpath: str) -> bool:
     return False
 
 
-def make_jpg(filepath: str, arg: str, transcode_pth: Optional[str], percent: Optional[str], orig_names=None) -> str:
+def make_jpg(
+    filepath: str,
+    arg: str,
+    transcode_pth: Optional[str],
+    percent: Optional[str],
+    orig_names=None,
+) -> str:
     """
     Create GM JPEG using command based on argument
     These command work. For full size don't use resize.

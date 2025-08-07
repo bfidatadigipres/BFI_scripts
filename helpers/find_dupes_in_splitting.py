@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import csv
+import os
 import sys
 
 LOG = os.path.join(os.environ.get("LOG_PATH"), "delete_post_split_qnap01.log")

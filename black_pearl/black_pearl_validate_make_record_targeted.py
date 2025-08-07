@@ -212,6 +212,7 @@ def main():
         # Avoid paths for this script
         if not "/mnt/qnap_04" in str(host):
             continue
+
         # Build autoingest list for separate iteration
         for pth in host.keys():
             autoingest_list.append(os.path.join(pth, BPINGEST))
@@ -223,7 +224,8 @@ def main():
             continue
         if not utils.check_storage(autoingest):
             logger.info(
-                "Skipping path - storage_control.json returned ‘False’ for path %s", autoingest
+                "Skipping path - storage_control.json returned ‘False’ for path %s",
+                autoingest,
             )
             continue
 

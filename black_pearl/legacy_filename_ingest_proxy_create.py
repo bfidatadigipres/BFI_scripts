@@ -6,7 +6,7 @@ This script needs to:
    N_12345.mp4
    N-12345.mp4
    N-12345_01of01.mp4
-- Perform filename normalisation. 
+- Perform filename normalisation.
 - Possibly check CID for matching CID item record and necessary fields for proress through autoingest
   Search for file_type, check item_type is Digital, check for CID digital record via imagen.media.original_filename
   Where any of above present/missing consider handling (as per original code spec):
@@ -28,7 +28,7 @@ This script needs to:
     - Skip with note in logs, as CID item record data is inaccruate
    d. If i_t = Digital, f_t is empty:
     - Skip with note in logs, that CID item record not sufficient
-  
+
 - Move file into autoingest of QNAP-05 where ingest will occur. The QNAP-05 MP4 transcode will set high CRF to
   prevent compression of already compressed MP4 files. Otherwise all other stages are as normal.
 

@@ -606,7 +606,9 @@ def main():
         linux_host = list(host.keys())[0]
         tree = list(host.keys())[0]
         if not utils.check_storage(linux_host):
-            logger.info("Skipping path %s - prevented by storage_control.json", linux_host)
+            logger.info(
+                "Skipping path %s - prevented by storage_control.json", linux_host
+            )
             continue
 
         # Collect files

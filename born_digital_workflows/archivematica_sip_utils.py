@@ -161,10 +161,10 @@ def sftp_put(sftp_object, fpath, relpath):
         if "SFTPAttributes" in str(data):
             return True
     except FileNotFoundError as err:
-        print(f"File {fpath} was not found.")
+        print(f"File {fpath} was not found. {err}")
         return False
     except OSError as err:
-        print(f"Error attempting to PUT {fpath}")
+        print(f"Error attempting to PUT {fpath} {err}")
         return False
 
 

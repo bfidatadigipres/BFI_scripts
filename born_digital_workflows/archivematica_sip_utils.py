@@ -75,6 +75,7 @@ def send_to_sftp(fpath, top_folder):
     First step SFTP into Storage Service, then check
     content has made it into the folder
     Supply top_folder without /: Name_of_folder
+    Filepath must me to file level (not containing folder)
     """
 
     relpath = fpath.split(top_folder)[-1]
@@ -365,7 +366,7 @@ def get_atom_objects(skip_path):
             skip_path,
             auth=("bfi", ATOM_AUTH),
             headers=ATOM_HEADER,
-            accept_redirect=True,
+            #accept_redirect=True,
         )
         objects = json.loads(response.text)
         print(f"Objects received: {objects}")

@@ -600,7 +600,7 @@ def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
     payload = json.dumps(data_payload)
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
-        response = requests.post(ENDPOINT, headers=SS_HEADER, data=payload)
+        response = requests.post(ENDPOINT, headers=HEADER, data=payload)
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
         print(response.text)

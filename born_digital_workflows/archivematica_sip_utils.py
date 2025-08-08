@@ -157,6 +157,7 @@ def sftp_put(sftp_object, fpath, relpath):
 
     try:
         data = sftp_object.put(fpath, relpath)
+        print(str(data))
         if "SFTPAttributes" in str(data):
             return True
     except FileNotFoundError as err:

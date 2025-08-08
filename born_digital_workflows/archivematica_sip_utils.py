@@ -150,6 +150,46 @@ def send_to_sftp(fpath, top_folder):
     return files
 
 
+def send_metadata_to_sftp(fpath, top_folder):
+    """
+    Check for parent folder, if absent mkdir
+    First step SFTP into Storage Service, then check
+    content has made it into the folder
+    Supply top_folder without /: Name_of_folder
+    Filepath must me to file level (not containing folder)
+    """
+
+    relpath = fpath.split(top_folder)[-1]
+    whole_path, file = os.path.split(relpath)
+    print(whole_path, file)
+    root, container = os.path.split(whole_path)
+    print(f"Root: {root}, Container: {container}")
+    remote_path = f"sftp-transfer-source/API_Uploads/{top_folder}/{root}"
+    print(remote_path)
+
+    m_relpath = os.path.join(remote_path, container, "metadata/")
+    mpath = os.path.join(os.path.split(fpath)[0], "metadata/")
+    metadata_fpath = os.path.join(mpath, "metadata.csv")
+    if os.path.exists(metadata_fpath):
+        success = sftp_mkdir(sftp, m_relpath)
+        if not success:
+            print(f"Failed to make new directory for {m_relpath}")
+            return None
+        response = sftp_put(
+            sftp, metadata_fpath, os.path.join(m_relpath, "metadata.csv")
+        )
+        print(response)
+        if response is False:
+            print(f"Failed to send file to SFTP: 'metadata.csv' / {m_relpath}")
+            return None
+        else:
+            print(f"File 'metadata.csv' successfully PUT to {m_relpath}")
+
+    files = sftp.listdir(os.path.join(remote_path, container))
+    sftp.close()
+    return files
+
+
 def sftp_put(sftp_object, fpath, relpath):
     """
     Handle PUT to sftp
@@ -285,7 +325,7 @@ def get_ingest_status(sip_uuid):
         "type": "SIP",
         "uuid": "66312695-e8af-441f-a867-aa9460436434"
     }
-    uuid == aip_uuid needed for reingest
+    uuid == aip_uuid needed for reingest (may be same/different)
     """
     status_endpoint = os.path.join(ARCH_URL, f"api/ingest/status/{sip_uuid.strip()}")
     try:
@@ -426,7 +466,9 @@ def get_all_atom_objects():
 def get_slug_match(slug_match):
     """
     Handles retrieval of all AtoM information objects
-    then builds list of slugs and attempts match
+    then builds list of slugs and attempts match.
+    Slug must be formatted to match, lowercase and '-'
+    where spaces were before
     """
     list_of_objects = get_all_atom_objects()
     if list_of_objects is None:

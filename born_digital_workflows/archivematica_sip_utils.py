@@ -541,7 +541,7 @@ def delete_sip(sip_uuid):
     return None
 
 
-def reingest_aip(aip_uuid, type, slug, process_config):
+def reingest_v2_aip(aip_uuid, type, slug, process_config):
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
@@ -584,11 +584,47 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     return None
 
 
+def reingest_aip(aip_uuid_name, aip_uuid, type):
+    """
+    Function for reingesting an AIP without
+    supplying any slug data
+    """
+    ENDPOINT = f"{ARCH_URL}/api/transfer/reingest/"
+
+    # Create payload and post
+    data_payload = {
+        "name": aip_uuid_name,
+        "uuid": aip_uuid
+    }
+    payload = json.dumps(data_payload)
+    print(f"Starting reingest of AIP UUID: {aip_uuid}")
+    try:
+        response = requests.post(ENDPOINT, headers=HEADER, data=payload)
+        response.raise_for_status()
+        print(f"Package transfer initiatied - status code {response.status_code}:")
+        print(response.text)
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+        print(f"Response status code: {response.status_code}")
+        print(f"Response headers: {response.headers}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+    return None
+
+
 def metadata_copy_reingest(sip_uuid, source_mdata_path):
     """
     Path from top level folder to completion only
     Where metadata reingest occurs, set copy metadata
-    call to requests. Path is whole path to metadata.csv
+    call to requests. Path is to metadata.csv level
     for the given item's correlating aip uuid
     """
     from urllib.parse import urlencode

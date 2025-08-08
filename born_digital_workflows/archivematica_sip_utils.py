@@ -167,6 +167,33 @@ def send_metadata_to_sftp(fpath, top_folder):
     remote_path = f"sftp-transfer-source/API_Uploads/{top_folder}/{root}"
     print(remote_path)
 
+    # Create ssh / sftp object
+    sftp = sftp_connect()
+    check_folder = sftp.listdir("sftp-transfer-source/API_Uploads")
+    try:
+        root_contents = sftp.listdir(remote_path)
+        print(f"Root of remote_path: {root_contents}")
+    except OSError as err:
+        print(f"Error attempting to retrieve path {remote_path}")
+        root_contents = ""
+        success = sftp_mkdir(sftp, remote_path)
+        if not success:
+            print(f"Failed to make new directory for {remote_path}")
+            return None
+    if container not in root_contents:
+        success = sftp_mkdir(sftp, os.path.join(remote_path, container))
+        if not success:
+            print(
+                f"Failed to make new directory for {os.path.join(remote_path, container)}"
+            )
+            return None
+    else:
+        print(f"Folder {container} found in Archivematica already")
+
+    print(
+        f"Moving file {file} into Archivematica path {os.path.join(remote_path, container)}"
+    )
+
     m_relpath = os.path.join(remote_path, container, "metadata/")
     mpath = os.path.join(os.path.split(fpath)[0], "metadata/")
     metadata_fpath = os.path.join(mpath, "metadata.csv")

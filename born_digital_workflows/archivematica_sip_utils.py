@@ -584,17 +584,18 @@ def reingest_v2_aip(aip_uuid, type, slug, process_config):
     return None
 
 
-def reingest_aip(aip_uuid_name, aip_uuid, type):
+def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
     """
     Function for reingesting an AIP without
-    supplying any slug data
+    supplying any slug data. type FULL/PARTIAL
     """
     ENDPOINT = f"{ARCH_URL}/api/transfer/reingest/"
 
     # Create payload and post
     data_payload = {
         "name": aip_uuid_name,
-        "uuid": aip_uuid
+        "uuid": aip_uuid,
+        "reingest_type": ingest_type,
     }
     payload = json.dumps(data_payload)
     print(f"Starting reingest of AIP UUID: {aip_uuid}")

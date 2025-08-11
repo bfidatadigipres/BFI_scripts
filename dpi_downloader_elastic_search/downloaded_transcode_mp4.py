@@ -186,7 +186,7 @@ def transcode_mp4(fullpath: str) -> str:
 
     # Check if transcode already completed and capture original access rendition names for replacement
     maintain_names = []
-    if access and thumbnail and largeimage:
+    if len(access) > 5:
         log_build.append(
             f"{local_time()}\tINFO\tMedia record already has Imagen Media UMIDs. Checking for transcodes"
         )
@@ -209,6 +209,7 @@ def transcode_mp4(fullpath: str) -> str:
             maintain_names = []
 
     # Get file type, video or audio etc.
+    print(maintain_names)
     ftype = sort_ext(ext)
     if ftype == "audio":
         log_build.append(
@@ -256,7 +257,7 @@ def transcode_mp4(fullpath: str) -> str:
             outpath = os.path.join(transcode_pth, f"{fname}.mp4")
             outpath2 = os.path.join(transcode_pth, fname)
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
-
+        print(outpath1)
         # Check stream count and see if 'DL' 'DR' present
         if stream_count:
             if len(stream_count) > 6:

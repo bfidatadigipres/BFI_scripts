@@ -666,6 +666,7 @@ def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
         "access_rendition.mp4",
     ]
     record = adlib.retrieve_record(CID_API, "media", search, "0", fields)[1]
+    print(str(record))
     if not record:
         return None
 

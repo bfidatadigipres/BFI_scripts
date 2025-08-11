@@ -50,8 +50,8 @@ import utils
 LOG = os.path.join(
     os.environ.get("LOG_PATH"), "special_collections_document_reingest_osh.log"
 )
-CID_API = os.environ.get("CID_API4")
-# CID_API = utils.get_current_api()
+# CID_API = os.environ.get("CID_API4")
+CID_API = utils.get_current_api()
 
 LOGGER = logging.getLogger("sc_document_reingest_osh")
 HDLR = logging.FileHandler(LOG)

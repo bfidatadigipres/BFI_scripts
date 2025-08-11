@@ -257,7 +257,8 @@ def transcode_mp4(fullpath: str) -> str:
             outpath = os.path.join(transcode_pth, f"{fname}.mp4")
             outpath2 = os.path.join(transcode_pth, fname)
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
-        print(outpath1)
+        print(outpath)
+        print(outpath2)
         # Check stream count and see if 'DL' 'DR' present
         if stream_count:
             if len(stream_count) > 6:

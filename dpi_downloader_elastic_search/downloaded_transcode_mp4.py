@@ -684,7 +684,7 @@ def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
         )[0]
     else:
         largeimage_umid = ""
-    if "access_rendition.thumbail" in str(record):
+    if "access_rendition.thumbnail" in str(record):
         thumbnail_umid = adlib.retrieve_field_name(
             record[0], "access_rendition.thumbnail"
         )[0]

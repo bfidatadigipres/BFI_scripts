@@ -150,6 +150,7 @@ def transcode_mp4(fullpath: str) -> str:
         priref, source, groupings = check_item(object_number, "items")
     # Check CID media record and extract input date for path
     media_priref, input_date, largeimage, thumbnail, access = get_media_priref(file)
+    print(media_priref, input_date, largeimage, thumbnail, access)
     if not media_priref:
         log_build.append(
             f"{local_time()}\tCRITICAL\tDigital media record priref missing: {file}"
@@ -211,6 +212,7 @@ def transcode_mp4(fullpath: str) -> str:
     # Get file type, video or audio etc.
     print(maintain_names)
     ftype = sort_ext(ext)
+    print(ftype)
     if ftype == "audio":
         log_build.append(
             f"{local_time()}\tINFO\tItem is an audio file. No actions required at this time."
@@ -248,7 +250,7 @@ def transcode_mp4(fullpath: str) -> str:
         log_build.append(
             f"Data retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs"
         )
-
+        print(audio, dar, par, height, width, duration)
         # CID transcode paths - maintain imagen era names where collected
         if maintain_names:
             outpath = os.path.join(transcode_pth, f"{maintain_names[0]}.mp4")
@@ -258,6 +260,9 @@ def transcode_mp4(fullpath: str) -> str:
             outpath2 = os.path.join(transcode_pth, fname)
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
         print(outpath1)
+        print(outpath2)
+        sys.exit("Don't encode, just check name")
+
         # Check stream count and see if 'DL' 'DR' present
         if stream_count:
             if len(stream_count) > 6:

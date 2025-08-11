@@ -261,7 +261,7 @@ def transcode_mp4(fullpath: str) -> str:
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
         print(outpath)
         print(outpath2)
-        sys.exit("Don't encode, just check name")
+
         # Check stream count and see if 'DL' 'DR' present
         if stream_count:
             if len(stream_count) > 6:

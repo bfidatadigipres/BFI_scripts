@@ -1,12 +1,15 @@
 import logging
-import sys
 import os
+import sys
+
 from flask import Flask, flash, render_template, request
 
 sys.path.append(os.environ["CODE"])
 import utils
 
 app = Flask(__name__, template_folder="templates")
+HOST = os.environ["HOST"]
+PORT = os.environ["PORT"]
 
 logger = logging.getLogger("flask_logger")
 hdlr = logging.FileHandler(
@@ -73,4 +76,4 @@ def send_screenshot():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=8000)
+    app.run(host=HOST, debug=False, port=PORT, use_reloader=False)

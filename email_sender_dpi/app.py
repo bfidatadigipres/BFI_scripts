@@ -1,3 +1,7 @@
+"""
+email_sender_dpi/app.py
+"""
+
 import logging
 import os
 import sys
@@ -28,7 +32,15 @@ app.secret_key = os.environ["flask_key"]
 @app.route("/", methods=["GET"])
 def index():
     """
-    Renders the index page.
+    Renders the index page for the email sender application.
+
+    Parameters:
+    -----------
+    None
+
+    Returns:
+    --------
+    render_template(string): Renders the index page or error page based on the outcome. None if an error occurs.
     """
     return render_template("index.html")
 
@@ -36,7 +48,15 @@ def index():
 @app.route("/", methods=["POST", "GET"])
 def send_email_with_image():
     """
-    Sends an email with an image attachment from the frontend....
+    Handles the email sending functionality.
+
+    Parameters:
+    -----------
+    None
+
+    Returns:
+    --------
+    render_template(string) | None: Renders the index page or error page based on the outcome. None if an error occurs.
     """
     if request.method == "POST":
         try:

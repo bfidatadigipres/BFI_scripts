@@ -11,7 +11,6 @@ python code which organises move of data.
 
 import datetime
 import itertools
-
 # Imports
 import os
 import re

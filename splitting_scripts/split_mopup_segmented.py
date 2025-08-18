@@ -32,6 +32,7 @@ import pytz
 sys.path.append(os.environ["CODE"])
 import document_item
 import models
+
 import adlib_v3 as adlib
 import utils
 
@@ -121,7 +122,9 @@ def main():
         # Path to source media
         root = os.path.join(media_target, "segmented")
         if not utils.check_storage(root):
-            logger.info("Skipping path %s - prevented by Storage Control document.", root)
+            logger.info(
+                "Skipping path %s - prevented by Storage Control document.", root
+            )
             continue
         processing = os.path.split(media_target)[0]
         autoingest = os.path.join(os.path.split(processing)[0], "autoingest")

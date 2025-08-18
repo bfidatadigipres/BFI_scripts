@@ -18,6 +18,7 @@ import logging
 import os
 import time
 from typing import Optional
+
 import requests
 
 # Global variables

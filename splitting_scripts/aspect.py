@@ -277,7 +277,9 @@ def main():
 
     for fol in FOLDERS:
         if not utils.check_storage(fol):
-            LOGGER.info("Skipping path %s - prevented by Storage Control document.", fol)
+            LOGGER.info(
+                "Skipping path %s - prevented by Storage Control document.", fol
+            )
             continue
         LOGGER.info("Targeting folder: %s", fol)
         files = []

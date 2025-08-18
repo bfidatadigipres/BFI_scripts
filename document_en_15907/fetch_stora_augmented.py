@@ -21,7 +21,6 @@ import datetime
 import errno
 import json
 import logging
-
 # Python packages
 import os
 import shutil

@@ -22,6 +22,7 @@ import subprocess
 import sys
 import time
 from typing import Any, Final, Optional
+
 import magic
 
 # Private packages

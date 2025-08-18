@@ -27,7 +27,6 @@ within on session. Trial of sessions().
 
 import datetime
 import logging
-
 # Public packages
 import os
 import shutil

@@ -21,12 +21,14 @@ import os
 import re
 import string
 import sys
+
 import requests
 from PIL import Image
 
 # Private packages
 sys.path.append(os.environ["CODE"])
 import adlib
+
 import utils
 
 # Global variables

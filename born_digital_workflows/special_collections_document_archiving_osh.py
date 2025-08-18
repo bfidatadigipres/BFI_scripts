@@ -35,6 +35,7 @@ import logging
 import os
 import sys
 from typing import Any, Dict, List, Optional
+
 import magic
 import requests
 

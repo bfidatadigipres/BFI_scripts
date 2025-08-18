@@ -39,6 +39,7 @@ import logging
 import os
 import sys
 from typing import Any, Final, Iterable, Optional
+
 import pandas
 import yaml
 from document_augmented_streaming_cast import create_contributors

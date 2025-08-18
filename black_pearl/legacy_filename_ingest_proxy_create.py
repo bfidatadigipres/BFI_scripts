@@ -46,6 +46,7 @@ import shutil
 import subprocess
 import sys
 from typing import Final, Optional, Union
+
 import pandas
 
 # Private imports
@@ -298,7 +299,11 @@ def main():
     and call up CID to identify whether assets
     need ingesting or access copy work
     """
-    if not utils.check_storage(QNAP) or not utils.check_storage(PROXY_QNAP) or not utils.check_storage(CSV_PATH):
+    if (
+        not utils.check_storage(QNAP)
+        or not utils.check_storage(PROXY_QNAP)
+        or not utils.check_storage(CSV_PATH)
+    ):
         LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 

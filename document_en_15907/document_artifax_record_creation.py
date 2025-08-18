@@ -35,10 +35,10 @@ import logging
 import os
 import sys
 from datetime import timedelta
-import requests
-import tenacity
 from typing import Final, Optional
 
+import requests
+import tenacity
 # Local packages
 import title_article
 import yaml

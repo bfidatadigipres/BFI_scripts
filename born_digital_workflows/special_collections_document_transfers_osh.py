@@ -39,13 +39,14 @@ Some assumptions in code
 2025
 """
 
+import csv
 # Public packages
 import datetime
 import logging
 import os
-import csv
 import sys
 from time import sleep
+
 import archivematica_sip_utils as am_utils
 import tenacity
 
@@ -54,9 +55,7 @@ import adlib_v3 as adlib
 import utils
 
 LOGS = os.environ.get("LOG_PATH")
-LOG = os.path.join(
-    LOGS, "special_collections_document_transfer_osh.log"
-)
+LOG = os.path.join(LOGS, "special_collections_document_transfer_osh.log")
 CID_API = utils.get_current_api()
 CSV_PATH = os.path.join(LOGS, "Archivematica_sftp_upload_log.csv")
 
@@ -175,10 +174,7 @@ def main():
         if record_type is not None:
             LOGGER.info("Skipping PUT of %s - not Archival Item level", directory)
             continue
-        LOGGER.info(
-            "Item level folder identified for upload - %s",
-            directory
-        )
+        LOGGER.info("Item level folder identified for upload - %s", directory)
         put_files = am_utils.send_to_sftp(dpath, top_level_folder)
         if put_files is None:
             LOGGER.warning("SFTP PUT failed for folder: %s %s", ob_num, dpath)
@@ -189,9 +185,7 @@ def main():
                 "Problem with files put in folder %s: %s", directory, put_files
             )
             continue
-        LOGGER.info(
-            "SFTP Put successful: %s moved to Archivematica", put_files
-        )
+        LOGGER.info("SFTP Put successful: %s moved to Archivematica", put_files)
         update_csv_document(
             [
                 directory,
@@ -199,7 +193,7 @@ def main():
                 "Archival Item",
                 ob_num,
                 title,
-                dpath
+                dpath,
             ]
         )
 
@@ -209,7 +203,11 @@ def main():
         dpath_split = dpath.split(top_level_folder)[-1]
         am_path = os.path.join(top_level_folder, dpath_split)
         atom_slug = (
-            os.path.basename(os.path.split(am_path)[0]).split("_", 2)[-1].lower().replace(" ", "-").replace("_", "-")
+            os.path.basename(os.path.split(am_path)[0])
+            .split("_", 2)[-1]
+            .lower()
+            .replace(" ", "-")
+            .replace("_", "-")
         )
         if am_utils.get_slug_match(atom_slug) is False:
             LOGGER.warning("Slug not found in AtoM objects: %s", atom_slug)
@@ -236,9 +234,7 @@ def main():
             am_path, atom_slug, item_priref, processing_config, True
         )
         if "id" not in response:
-            LOGGER.warning(
-                "Possible failure for Archivematica creation: %s", response
-            )
+            LOGGER.warning("Possible failure for Archivematica creation: %s", response)
             continue
 
         transfer_uuid = response.get("id")
@@ -292,9 +288,7 @@ def main():
         print(uuid_xml)
         try:
             print("Attempting to create CID record")
-            rec = adlib.post(
-                CID_API, uuid_xml, "archivescatalogue", "updaterecord"
-            )
+            rec = adlib.post(CID_API, uuid_xml, "archivescatalogue", "updaterecord")
             if rec is None:
                 LOGGER.warning("Failed to update record:\n%s", uuid_xml)
                 return None

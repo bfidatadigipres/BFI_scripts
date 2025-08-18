@@ -21,6 +21,7 @@ import subprocess
 import sys
 import time
 from typing import Any, Optional
+
 import magic
 
 # Local imports

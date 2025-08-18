@@ -71,11 +71,11 @@ import subprocess
 import sys
 from typing import Any, Final, Optional, Union
 
+# Private packages
+import bp_utils as bp
 import magic
 import requests
 
-# Private packages
-import bp_utils as bp
 sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib
 import utils

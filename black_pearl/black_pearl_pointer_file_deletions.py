@@ -45,6 +45,7 @@ import os
 import sys
 import time
 from typing import Optional
+
 import bp_utils as bp
 import tenacity
 
@@ -360,7 +361,7 @@ def main():
                 LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path)
                 print(f"Associated MP4 found, deleting now: {mp4_path}.\n")
                 os.remove(mp4_path)
-           
+
             if os.path.exists(thumb_path):
                 LOGGER.info("** DELETED: Associated MP4 found: %s", thumb_path)
                 print(f"Associated MP4 found, deleting now: {thumb_path}.\n")

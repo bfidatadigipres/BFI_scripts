@@ -433,7 +433,7 @@ def get_atom_objects(skip_path):
             skip_path,
             auth=("bfi", ATOM_AUTH),
             headers=ATOM_HEADER,
-            #accept_redirect=True,
+            # accept_redirect=True,
         )
         objects = json.loads(response.text)
         print(f"Objects received: {objects}")

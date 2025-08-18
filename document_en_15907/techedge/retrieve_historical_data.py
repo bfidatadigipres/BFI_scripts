@@ -8,13 +8,13 @@ and augmentation of CID record data
 2025
 """
 
-from datetime import date, timedelta
 import json
 import logging
 import os
 import sys
-from typing import Final
+from datetime import date, timedelta
 from time import sleep
+from typing import Final
 
 # Local import
 CODE_PATH = os.path.join(os.environ.get("CODE"), "document_en_15907/techedge")

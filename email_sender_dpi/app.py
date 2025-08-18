@@ -36,7 +36,7 @@ def index():
 @app.route("/", methods=["POST", "GET"])
 def send_email_with_image():
     """
-    Sends an email with an image attachment from the frontend..
+    Sends an email with an image attachment from the frontend....
     """
     if request.method == "POST":
         try:

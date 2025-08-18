@@ -19,8 +19,9 @@ repos:
     rev: v3.1.0
     hooks:
     -   id: pylint
-        language: system
+        language: python
         entry: bash -c 'changed_files=$(git diff --name-only HEAD~1 HEAD | grep "\.py$"); if [ -n "$changed_files" ]; then output=$(pylint --disable=C0103,C0111,C0301,C0114,C0116,R0801,W0718,C0413,E0401 $changed_files); echo "$output"; score=$(echo "$output" | grep -o "rated at [0-9]*\.[0-9]*/10" | sed "s/rated at //"); score_value=$(echo "$score" | cut -d "/" -f 1); if (( $(echo "$score_value >= 9.0" | bc -l) )); then exit 0; else exit 1; fi; else echo "No Python files changed"; fi'
         always_run: true
         pass_filenames: false
-        verbose: true
+        args:
+            ["--disable=C0103,C0111,C0301,C0114,C0116,W1203,W0718,C0413,E0401"]

@@ -1,8 +1,9 @@
-'''
+"""
 Test functions for STORA.
-'''
+"""
 
 import pytest
+
 from helpers import stora_helper
 
 

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 
 def calculate_transmission_stoptime(duration: str, start_time: str) -> str | None:
-    '''
+    """
     Function that gets the estimated finish time for a given show.
 
     Parameters:
@@ -22,7 +22,7 @@ def calculate_transmission_stoptime(duration: str, start_time: str) -> str | Non
     end_time: string | none
         estimated end time (return None if the inputs are wrong)
 
-    '''
+    """
     TIME_FORMAT = "%H:%M:%S"
     try:
         duration_int = int(duration)

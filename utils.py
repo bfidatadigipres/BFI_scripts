@@ -33,8 +33,8 @@ LOG_PATH: Final = os.environ["LOG_PATH"]
 CONTROL_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "downtime_control.json")
 STORAGE_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "storage_control.json")
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, "autoingest", "global.log")
-SMTP_SERVER = "mail.smtp2go.com"
-SMTP_PORT = 465
+SMTP_SERVER = os.environ['STMP_SERVER']
+SMTP_PORT = os.environ['STMP_PORT']
 EMAIL = os.environ.get("EMAIL_ADDRESS")
 PASSWORD = os.environ.get("EMAIL_PASSWORD")
 CONTEXT = ssl.create_default_context()
@@ -696,26 +696,26 @@ def check_bst_adjustment(utc_datetime_str: str) -> Optional[list[str]]:
     return string_bst.split(" ")
 
 
-def get_current_api():
-    """
-    Check control json for downtime requests
-    based on passed argument
-    if not utils.check_control['arg']:
-        sys.exit(message)
-    """
+# def get_current_api():
+#     """
+#     Check control json for downtime requests
+#     based on passed argument
+#     if not utils.check_control['arg']:
+#         sys.exit(message)
+#     """
 
-    try:
-        with open(CONTROL_JSON) as control:
-            j: dict[str, str] = json.load(control)
-            if j["current_api"]:
-                api_key = j["current_api"]
-                return os.environ.get(api_key)
-            else:
-                print("No API key found in control json")
-                return None
-    except FileNotFoundError:
-        print(f"Control JSON file not found: {CONTROL_JSON}")
-        return None
+#     try:
+#         with open(CONTROL_JSON) as control:
+#             j: dict[str, str] = json.load(control)
+#             if j["current_api"]:
+#                 api_key = j["current_api"]
+#                 return os.environ.get(api_key)
+#             else:
+#                 print("No API key found in control json")
+#                 return None
+#     except FileNotFoundError:
+#         print(f"Control JSON file not found: {CONTROL_JSON}")
+#         return None
 
 
 def check_storage(filepath):

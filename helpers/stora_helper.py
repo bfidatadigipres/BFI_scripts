@@ -1,3 +1,7 @@
+"""
+Helper function for STORA
+"""
+
 from datetime import datetime, timedelta
 
 

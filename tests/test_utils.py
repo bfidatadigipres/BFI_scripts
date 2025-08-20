@@ -778,3 +778,28 @@ def test_get_current_api_found(mocker):
 
     result = utils.get_current_api()
     assert result == "dummy_data"
+
+
+def test_check_storage(monkeypatch, tmp_path):
+    pass
+
+
+def test_storage_status_errors(monkeypatch, tmp_path):
+    # Test with a non-existent file
+    non_existent = tmp_path / "doesnt_exist.json"
+    monkeypatch.setattr("your_module.STORAGE_JSON", str(non_existent))
+
+    # Should raise FileNotFoundError
+    with pytest.raises(FileNotFoundError):
+        utils.check_storage(non_existent)
+
+    # Test with invalid JSON
+    invalid_json = tmp_path / "invalid.json"
+    with open(invalid_json, "w") as f:
+        f.write("This is not valid JSON")
+
+    monkeypatch.setattr("your_module.STORAGE_JSON", str(invalid_json))
+
+    # Should raise JSONDecodeError
+    with pytest.raises(json.JSONDecodeError):
+        utils.check_storage(invalid_json)

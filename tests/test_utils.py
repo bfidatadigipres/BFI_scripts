@@ -779,10 +779,14 @@ def test_get_current_api_found(mocker):
     result = utils.get_current_api()
     assert result == "dummy_data"
 
-@pytest.mark.parametrize('time_input, bool_input, expected_outcome', [
-  ('2023-10-31 01:30:00', False, ['2023-10-31', '01:30:00']),
-  ('2023-09-32 02:30:00', True, ValueError)
-])
+
+@pytest.mark.parametrize(
+    "time_input, bool_input, expected_outcome",
+    [
+        ("2023-10-31 01:30:00", False, ["2023-10-31", "01:30:00"]),
+        ("2023-09-32 02:30:00", True, ValueError),
+    ],
+)
 def test_check_bst_adjustment(time_input, bool_input, expected_outcome):
 
     if bool_input:
@@ -792,16 +796,16 @@ def test_check_bst_adjustment(time_input, bool_input, expected_outcome):
     result = utils.check_bst_adjustment(time_input)
     assert result == expected_outcome
 
-@pytest.mark.parametrize('file_input, bool_input, expected_outcome', 
-[
-    ('/mnt/folder_1', True, True),
-    ('/mnt/folder_2/', False, False)
-])
+
+@pytest.mark.parametrize(
+    "file_input, bool_input, expected_outcome",
+    [("/mnt/folder_1", True, True), ("/mnt/folder_2/", False, False)],
+)
 def test_check_storage(monkeypatch, tmp_path, file_input, bool_input, expected_outcome):
-    test_file = tmp_path / 'storage.json'
+    test_file = tmp_path / "storage.json"
     with open(test_file, "w") as f:
-        json.dump({file_input: bool_input, 'all_storage_on': True}, f)
-    monkeypatch.setattr('utils.STORAGE_JSON', str(test_file))
+        json.dump({file_input: bool_input, "all_storage_on": True}, f)
+    monkeypatch.setattr("utils.STORAGE_JSON", str(test_file))
     result = utils.check_storage(file_input)
     assert result == expected_outcome
 
@@ -809,7 +813,7 @@ def test_check_storage(monkeypatch, tmp_path, file_input, bool_input, expected_o
 def test_storage_status_errors(monkeypatch, tmp_path):
     # Test with a non-existent file
     non_existent = tmp_path / "doesnt_exist.json"
-    monkeypatch.setattr('utils.STORAGE_JSON', str(non_existent))
+    monkeypatch.setattr("utils.STORAGE_JSON", str(non_existent))
 
     # Should raise FileNotFoundError
     with pytest.raises(FileNotFoundError):
@@ -820,7 +824,7 @@ def test_storage_status_errors(monkeypatch, tmp_path):
     with open(invalid_json, "w") as f:
         f.write("This is not valid JSON")
 
-    monkeypatch.setattr('utils.STORAGE_JSON', str(invalid_json))
+    monkeypatch.setattr("utils.STORAGE_JSON", str(invalid_json))
 
     # Should raise JSONDecodeError
     with pytest.raises(json.JSONDecodeError):

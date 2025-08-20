@@ -19,7 +19,7 @@ def test_calculate_transmission_stoptime(
     Test 'calculate_transmission_stoptime function' from stora_helper.py
 
     This test validates that the function correctly computesthe transmission stop time
-    based on the given start time and durations. It also verifies that the approiate 
+    based on the given start time and durations. It also verifies that the approiate
     exceptions are raised for invalid input formates or out-of-range values.
 
     Parameters:

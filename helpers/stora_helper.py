@@ -23,7 +23,7 @@ def calculate_transmission_stoptime(duration: str, start_time: str) -> str | Non
         estimated end time (return None if the inputs are wrong)
 
     """
-    TIME_FORMAT = "%H:%M:%S"
+    time_format = "%H:%M:%S"
     try:
         duration_int = int(duration)
     except TypeError as e:

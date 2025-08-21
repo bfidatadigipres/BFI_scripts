@@ -15,14 +15,14 @@ import utils
 
 
 @pytest.mark.parametrize(
-    "input, expected_output",
+    "key_input, expected_output",
     [
         ("black_pearl", True),
         ("power_off_all", True),
         ("/mnt/isilon/film_operations/Finished", False),
     ],
 )
-def test_check_control(input, expected_output):
+def test_check_control(key_input, expected_output):
     """
     Tests the check control function.
 
@@ -32,7 +32,7 @@ def test_check_control(input, expected_output):
         - the key exists and return the value.
 
     """
-    json_response = utils.check_control(input)
+    json_response = utils.check_control(key_input)
     assert json_response is expected_output
 
 
@@ -155,7 +155,7 @@ def test_read_csv(writing_csv):
 
     result = utils.read_csv(writing_csv)
 
-    with open(writing_csv, "r") as file:
+    with open(writing_csv, "r", encoding="utf-8") as file:
         csv_reader = csv.DictReader(file)
         results_data = [row for row in csv_reader]
 
@@ -690,7 +690,7 @@ def test_mediainfo_create(
 
     def fake_subprocess_call(cmd):
         os.makedirs(dirname, exist_ok=True)
-        with open(out_path, "w") as f:
+        with open(out_path, "w", encoding="utf-8") as f:
             f.write("<xml>dummy</xml>")
         return 0
 
@@ -985,7 +985,7 @@ def test_check_storage(monkeypatch, tmp_path, file_input, bool_input, expected_o
         the expected outcome of the function when the file exists.
     """
     test_file = tmp_path / "storage.json"
-    with open(test_file, "w") as f:
+    with open(test_file, "w", encoding="utf-8") as f:
         json.dump({file_input: bool_input, "all_storage_on": True}, f)
     monkeypatch.setattr("utils.STORAGE_JSON", str(test_file))
     result = utils.check_storage(file_input)
@@ -1024,7 +1024,7 @@ def test_check_storage_no_file(tmp_path, monkeypatch, file_input, expected_outco
         the expected outcome of the function when the file does not exist.
     """
     test_file = tmp_path / "storage.json"
-    with open(test_file, "w") as f:
+    with open(test_file, "w", encoding="utf-8") as f:
         json.dump({"all_storage_on": True}, f)
     monkeypatch.setattr("utils.STORAGE_JSON", str(test_file))
     result = utils.check_storage(file_input)
@@ -1060,7 +1060,7 @@ def test_storage_status_errors(monkeypatch, tmp_path):
 
     # Test with invalid JSON
     invalid_json = tmp_path / "invalid.json"
-    with open(invalid_json, "w") as f:
+    with open(invalid_json, "w", encoding="utf-8") as f:
         f.write("This is not valid JSON")
 
     monkeypatch.setattr("utils.STORAGE_JSON", str(invalid_json))

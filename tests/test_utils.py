@@ -426,7 +426,8 @@ def test_exif_data(mocker):
         b"Megapixels                      : 0.415\n"
     )
     mocker.patch("subprocess.check_output", return_value=mock_output)
-    # mocker.patch("subprocess.check_output", side_effect=subprocess.CalledProcessError(1, 'exiftool'))
+    # mocker.patch("subprocess.check_output",
+    # side_effect=subprocess.CalledProcessError(1, 'exiftool'))
 
     result = utils.exif_data("tests/MKV_sample.mkv")
     parital_result = "File Name                       : MKV_sample.mkv\n"

@@ -771,7 +771,7 @@ def test_get_current_api_found(mocker):
     testing get_current_api() function in utils
     """
     fake_json = {"current_api": "MY_API_KEYT"}
-    mocker.patch('os.environ', {"MY_API_KEYT": "dummy_data"})
+    mocker.patch("os.environ", {"MY_API_KEYT": "dummy_data"})
 
     mocker_control_json = io.StringIO(json.dumps(fake_json))
     mocker.patch("builtins.open", return_value=mocker_control_json)
@@ -780,14 +780,13 @@ def test_get_current_api_found(mocker):
     assert result == "dummy_data"
 
 
-
 @pytest.mark.parametrize(
     "time_input, bool_input, expected_outcome",
     [
         ("2023-10-31 01:30:00", False, ["2023-10-31", "01:30:00"]),
         ("2029-13-21 12:35:00", True, ValueError),
         ("2023-11-30 22:45:00", False, ["2023-11-30", "22:45:00"]),
-        ("2023-09-32 02:30:00", True, ValueError)
+        ("2023-09-32 02:30:00", True, ValueError),
     ],
 )
 def test_check_bst_adjustment(time_input, bool_input, expected_outcome):
@@ -805,7 +804,7 @@ def test_check_bst_adjustment(time_input, bool_input, expected_outcome):
     [
         ("/mnt/folder_1", True, True),
         ("/mnt/folder_2/", False, False),
-        ("/mnt/folder_3", True, True)
+        ("/mnt/folder_3", True, True),
     ],
 )
 def test_check_storage(monkeypatch, tmp_path, file_input, bool_input, expected_outcome):

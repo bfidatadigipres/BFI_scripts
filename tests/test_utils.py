@@ -703,12 +703,12 @@ def test_send_email(mocker, writing_csv):
     Tests 'send_email' function in utils.py
 
     This test validates that the function sends the email
-    with the txt file(under the limit). 
+    with the txt file(under the limit).
 
     Parameters:
     -----------
     mocker: unittest.mocker
-        built in mocker that mocks any behaviour. 
+        built in mocker that mocks any behaviour.
     writing_csv: str
         the path to the temporary csv file.
     """
@@ -734,12 +734,12 @@ def test_send_email_oversized(mocker, oversized_file):
     Tests 'send_email' function in utils.py
 
     This test validates that the function sends the email
-    with an oversized file. 
+    with an oversized file.
 
     Parameters:
     -----------
     mocker: unittest.mocker
-        built in mocker that mocks any behaviour. 
+        built in mocker that mocks any behaviour.
     oversized_file: str
         the path to the temporary file.
     """
@@ -765,12 +765,12 @@ def test_send_email_txt(mocker, writing_txt):
     Tests 'send_email' function in utils.py
 
     This test validates that the function sends the email
-    with the txt file(under the limit). 
+    with the txt file(under the limit).
 
     Parameters:
     -----------
     mocker: unittest.mocker
-        built in mocker that mocks any behaviour. 
+        built in mocker that mocks any behaviour.
     writing_txt: str
         the path to the txt file.
     """
@@ -840,9 +840,7 @@ def test_get_current_api_found(mocker):
     ],
 )
 def test_check_bst_adjustment(time_input, bool_input, expected_outcome):
-    """
-    
-    """
+    """ """
 
     if bool_input:
         with pytest.raises(expected_outcome):

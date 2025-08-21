@@ -6,12 +6,13 @@ from HTML dpi_requests.html forwarding
 to SQLite3 database for retrieval by
 python code which organises move of data.
 
+Requires elasticsearch v7 or 8 only.
+
 2023
 """
 
 import datetime
 import itertools
-# Imports
 import os
 import re
 import sqlite3

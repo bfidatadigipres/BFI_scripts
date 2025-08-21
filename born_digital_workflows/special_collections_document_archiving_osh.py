@@ -35,6 +35,7 @@ import logging
 import os
 import sys
 from typing import Any, Dict, List, Optional
+
 import magic
 import requests
 
@@ -636,7 +637,7 @@ def create_folder_record(
             {"description_level_object": "ARCHIVE"},
             {"object_number": ob_num},
             {"part_of_reference": p_ob_num},
-            {"archive_title.type": "07_arch"},
+            {"archive_title.type": "01_orig"},
             {"title": local_title},
         ]
         data.extend(defaults)

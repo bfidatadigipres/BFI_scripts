@@ -679,13 +679,39 @@ def test_mediainfo_create(
     ],
 )
 def test_local_file_search(fpath, fname, expected_results):
+    """
+    Tests 'local_file_search' function from utils.py
+
+    This tests validates that the function correctly finds the file.
+
+    Parameters:
+    -----------
+    fpath: str
+        folder/file to look into
+    fname: str
+        the filename
+    expected_results: str
+        the expected outcome.
+    """
     outcome = utils.local_file_search(fpath, fname)
 
     assert outcome == expected_results
 
 
 def test_send_email(mocker, writing_csv):
+    """
+    Tests 'send_email' function in utils.py
 
+    This test validates that the function sends the email
+    with the txt file(under the limit). 
+
+    Parameters:
+    -----------
+    mocker: unittest.mocker
+        built in mocker that mocks any behaviour. 
+    writing_csv: str
+        the path to the temporary csv file.
+    """
     # create an file
     mock_smtp = mocker.patch("smtplib.SMTP_SSL", autospec=True)
     mock_smtp_instance = mocker.MagicMock()
@@ -704,7 +730,19 @@ def test_send_email(mocker, writing_csv):
 
 
 def test_send_email_oversized(mocker, oversized_file):
+    """
+    Tests 'send_email' function in utils.py
 
+    This test validates that the function sends the email
+    with an oversized file. 
+
+    Parameters:
+    -----------
+    mocker: unittest.mocker
+        built in mocker that mocks any behaviour. 
+    oversized_file: str
+        the path to the temporary file.
+    """
     # create an file
     mock_smtp = mocker.patch("smtplib.SMTP_SSL", autospec=True)
     mock_smtp_instance = mocker.MagicMock()
@@ -723,7 +761,19 @@ def test_send_email_oversized(mocker, oversized_file):
 
 
 def test_send_email_txt(mocker, writing_txt):
-    """ """
+    """
+    Tests 'send_email' function in utils.py
+
+    This test validates that the function sends the email
+    with the txt file(under the limit). 
+
+    Parameters:
+    -----------
+    mocker: unittest.mocker
+        built in mocker that mocks any behaviour. 
+    writing_txt: str
+        the path to the txt file.
+    """
     # create an file
     mock_smtp = mocker.patch("smtplib.SMTP_SSL", autospec=True)
     mock_smtp_instance = mocker.MagicMock()
@@ -790,6 +840,9 @@ def test_get_current_api_found(mocker):
     ],
 )
 def test_check_bst_adjustment(time_input, bool_input, expected_outcome):
+    """
+    
+    """
 
     if bool_input:
         with pytest.raises(expected_outcome):

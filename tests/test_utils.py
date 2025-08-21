@@ -29,7 +29,7 @@ def test_check_control(input, expected_output):
     This test checks the behaviour of the function that verifies the ability to retrieve
     the correct value associated with a given key.
     It uses paramterized inputs to validate various of cases where:
-    - the key exists and return the value
+        - the key exists and return the value.
 
     """
     json_response = utils.check_control(input)
@@ -38,6 +38,12 @@ def test_check_control(input, expected_output):
 
 @pytest.mark.skip(reason="no api credentials")
 def test_check_cid():
+    """
+    Tests the cid_check function in utils.py.
+
+    This test checks the behaviour of the function that checks if the CID data is valid.
+    It uses the environment variable to validate the CID data.
+    """
     true_response = utils.cid_check(os.environ["CID_DATA3"])
     assert true_response is True
 
@@ -168,6 +174,18 @@ def test_read_csv(writing_csv):
 
 
 def test_read_extract(writing_txt):
+    """
+    Tests the read_extract function.
+
+    This test checks the behaviour of the function that checks if the data in the
+    csv file is the correctly written into
+    the file. It uses paramterized inputs to validate various of cases.
+
+    Notes:
+    ------
+    Creating the file is specified in conftest.py using tmp_path, to prevent creating an actual
+    file
+    """
     result = utils.read_extract(writing_txt)
 
     if result == "":
@@ -492,7 +510,6 @@ def test_get_ms(file_name, expected_results):
     This test checks the behaviour of the function where the filename is supplied
     and returns the duration of the file in milliseconds.
     It uses paramterized inputs to validate various of cases.
-
     """
     # given a file name
     # when get ms is called
@@ -597,6 +614,11 @@ def test_check_global_logs(filename, message, expected_output):
 
 
 def test_probe_metadata():
+    """
+    Tests the probe_metadata function.
+    This test checks the behaviour of the function where the metadata type,
+    file type and filename are supplied and returns the metadata value.
+    """
     result = utils.probe_metadata("height", "video", "tests/MKV_sample.mkv")
 
     # assert the file type to expected -> true
@@ -604,6 +626,20 @@ def test_probe_metadata():
 
 
 def test_checksum_write(tmp_path):
+    """
+    Tests the checksum_write function.
+
+    This test checks the behaviour of the function where the checksum file path,
+    checksum value, filename and date are supplied and writes the checksum to the file.
+
+    Parameters:
+    -----------
+    tmp_path: pathlib.Path
+        A pytest fixture that provides a temporary directory path
+        unique to the test invocation, which can be used to write
+        temporary files that will be automatically cleaned up.
+
+    """
     checksum_filepath = tmp_path / "sample.md5"
 
     path = utils.checksum_write(checksum_filepath, "...", "filename.mkv", "2025-05-14")
@@ -626,6 +662,26 @@ def test_checksum_write(tmp_path):
 def test_mediainfo_create(
     mocker, arg, create_mediainfo_folder, output_type, out_pth_ext
 ):
+    """
+    Tests the mediainfo_create function.
+
+    This test checks the behaviour of the function where the argument, output type,
+    create_mediainfo_folder and directory name are supplied and creates a mediainfo file.
+    It uses mocking to replicate and isolate the command line process for testing purposes.
+
+    Parameters:
+    -----------
+    mocker: pytest_mock.MockFixture
+        A pytest fixture that provides a thin-wrapper around the unittest.mock package,
+        making it easier to mock objects for testing purposes.
+    arg: str
+        the argument to pass to the mediainfo command.
+    create_mediainfo_folder: str
+        the folder to create the mediainfo file in.
+    output_type: str
+        the output type of the mediainfo file (XML, EBUCore, PBCore, TEXT, JSON).
+    """
+
     filename = os.path.basename(create_mediainfo_folder)
     dirname = os.path.dirname(create_mediainfo_folder)
     out_filename = f"{filename}_{output_type}{out_pth_ext}"
@@ -707,8 +763,9 @@ def test_send_email(mocker, writing_csv):
 
     Parameters:
     -----------
-    mocker: unittest.mocker
-        built in mocker that mocks any behaviour.
+    mocker: pytest_mock.MockFixture
+        A pytest fixture that provides a thin-wrapper around the unittest.mock package,
+        making it easier to mock objects for testing purposes.
     writing_csv: str
         the path to the temporary csv file.
     """
@@ -738,8 +795,9 @@ def test_send_email_oversized(mocker, oversized_file):
 
     Parameters:
     -----------
-    mocker: unittest.mocker
-        built in mocker that mocks any behaviour.
+    mocker: pytest_mock.MockFixture
+        A pytest fixture that provides a thin-wrapper around the unittest.mock package,
+        making it easier to mock objects for testing purposes.
     oversized_file: str
         the path to the temporary file.
     """
@@ -769,8 +827,9 @@ def test_send_email_txt(mocker, writing_txt):
 
     Parameters:
     -----------
-    mocker: unittest.mocker
-        built in mocker that mocks any behaviour.
+    mocker: pytest_mock.MockFixture
+        A pytest fixture that provides a thin-wrapper around the unittest.mock package,
+        making it easier to mock objects for testing purposes.
     writing_txt: str
         the path to the txt file.
     """
@@ -794,6 +853,12 @@ def test_send_email_txt(mocker, writing_txt):
 def test_get_current_api_failed(mocker):
     """
     testing get_current_api() function in utils where the json file doesnt exists
+
+    Parameters:
+    -----------
+    mocker: pytest_mock.MockFixture
+        A pytest fixture that provides a thin-wrapper around the unittest.mock package,
+        making it easier to mock objects for testing purposes.
     """
     mocker.patch("json.load", side_effect=FileNotFoundError)
 
@@ -804,8 +869,16 @@ def test_get_current_api_failed(mocker):
 
 def test_get_current_api_no_env(mocker):
     """
-    testing get_current_api() function in utils where the environmental variable
-    doesnt exists
+    Tests 'get_current_api' function in utils.py.
+
+    This test checks the behaviour of the function where the
+    current_api environmental variable is not set.
+
+    Parameters:
+    -----------
+    mocker: pytest_mock.MockFixture
+        A pytest fixture that provides a thin-wrapper around the unittest.mock package,
+        making it easier to mock objects for testing purposes.
     """
     fake_json = {"current_api": "MY_API_KEYT"}
 
@@ -818,7 +891,17 @@ def test_get_current_api_no_env(mocker):
 
 def test_get_current_api_found(mocker):
     """
-    testing get_current_api() function in utils
+    Tests 'get_current_api' function in utils.py.
+
+    This test checks the behaviour of the function where the
+    current_api environmental variable is set and the json file exists.
+
+    Parameters:
+    -----------
+    mocker: pytest_mock.MockFixture
+        A pytest fixture that provides a thin-wrapper around the unittest.mock package,
+        making it easier to mock objects for testing purposes.
+
     """
     fake_json = {"current_api": "MY_API_KEYT"}
     mocker.patch("os.environ", {"MY_API_KEYT": "dummy_data"})
@@ -840,8 +923,25 @@ def test_get_current_api_found(mocker):
     ],
 )
 def test_check_bst_adjustment(time_input, bool_input, expected_outcome):
-    """ """
+    """
+    Tests the check_bst_adjustment function.
 
+    This test checks the behaviour of the function that checks if the time is in BST
+    and returns the date and time in a list format.
+    It uses parameterized inputs to validate various cases where:
+        - the time is in BST and returns the date and time
+        - the time is not in BST and raises a ValueError
+        - the time is invalid and raises a ValueError
+
+    Parameters:
+    -----------
+    time_input: str
+        the time to check for BST adjustment.
+    bool_input: bool
+        if True, the function will raise an exception for invalid time inputs.
+    expected_outcome: list or exception
+        the expected outcome of the function.
+    """
     if bool_input:
         with pytest.raises(expected_outcome):
             utils.check_bst_adjustment(time_input)
@@ -859,6 +959,31 @@ def test_check_bst_adjustment(time_input, bool_input, expected_outcome):
     ],
 )
 def test_check_storage(monkeypatch, tmp_path, file_input, bool_input, expected_outcome):
+    """
+    Test the check_storage function with various inputs.
+
+    This test checks the behaviour of the function when the file exists.
+    It uses parameterized inputs to validate various cases where:
+        - the file exists and returns True
+        - the file does not exist and returns False
+
+    Parameters:
+    -----------
+    monkeypatch: pytest.fixture
+        A pytest built-in fixture that provides a convenient interface for modifying
+        environment variables, dictionaries, attributes, and more during tests, with
+        automatic cleanup after the test completes.
+    tmp_path: pathlib.Path
+        A pytest fixture that provides a temporary directory path
+        unique to the test invocation, which can be used to write
+        temporary files that will be automatically cleaned up.
+    file_input: str
+        the file path to check for storage.
+    bool_input: bool
+        if True, the function will raise an exception for invalid file inputs.
+    expected_outcome: bool
+        the expected outcome of the function when the file exists.
+    """
     test_file = tmp_path / "storage.json"
     with open(test_file, "w") as f:
         json.dump({file_input: bool_input, "all_storage_on": True}, f)
@@ -877,7 +1002,26 @@ def test_check_storage(monkeypatch, tmp_path, file_input, bool_input, expected_o
 )
 def test_check_storage_no_file(tmp_path, monkeypatch, file_input, expected_outcome):
     """
-    Test the check_storage function when the file does not exist
+    Test the check_storage function when the file does not exist.
+
+    This test checks the behaviour of the function when the storage file does not exist.
+    It uses parameterized inputs to validate various cases where:
+        - the file does not exist and returns "Storage not found"
+
+    Parameters:
+    -----------
+    monkeypatch: pytest.fixture
+        A pytest built-in fixture that provides a convenient interface for modifying
+        environment variables, dictionaries, attributes, and more during tests, with
+        automatic cleanup after the test completes.
+    tmp_path: pathlib.Path
+        A pytest fixture that provides a temporary directory path
+        unique to the test invocation, which can be used to write
+        temporary files that will be automatically cleaned up.
+    file_input: str
+        the file path to check for storage.
+    expected_outcome: str
+        the expected outcome of the function when the file does not exist.
     """
     test_file = tmp_path / "storage.json"
     with open(test_file, "w") as f:
@@ -888,6 +1032,24 @@ def test_check_storage_no_file(tmp_path, monkeypatch, file_input, expected_outco
 
 
 def test_storage_status_errors(monkeypatch, tmp_path):
+    """
+     Test the check_storage function for error handling.
+     This test checks the behaviour of the function when the storage file does not exist
+     or contains invalid JSON.
+     It uses monkeypatching to simulate these conditions.
+
+     Parameters:
+     -----------
+     monkeypatch: pytest.fixture
+         A pytest built-in fixture that provides a convenient interface for modifying
+         environment variables, dictionaries, attributes, and more during tests, with
+         automatic cleanup after the test completes.
+
+    tmp_path: pathlib.Path
+         A pytest fixture that provides a temporary directory path
+         unique to the test invocation, which can be used to write
+         temporary files that will be automatically cleaned up.
+    """
     # Test with a non-existent file
     non_existent = tmp_path / "doesnt_exist.json"
     monkeypatch.setattr("utils.STORAGE_JSON", str(non_existent))

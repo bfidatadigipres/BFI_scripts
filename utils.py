@@ -19,7 +19,7 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Final, Iterator, Optional
+from typing import Final, Optional
 from zoneinfo import ZoneInfo
 
 import ffmpeg
@@ -696,26 +696,26 @@ def check_bst_adjustment(utc_datetime_str: str) -> Optional[list[str]]:
     return string_bst.split(" ")
 
 
-# def get_current_api():
-#     """
-#     Check control json for downtime requests
-#     based on passed argument
-#     if not utils.check_control['arg']:
-#         sys.exit(message)
-#     """
+def get_current_api():
+    """
+    Check control json for downtime requests
+    based on passed argument
+    if not utils.check_control['arg']:
+        sys.exit(message)
+    """
 
-#     try:
-#         with open(CONTROL_JSON) as control:
-#             j: dict[str, str] = json.load(control)
-#             if j["current_api"]:
-#                 api_key = j["current_api"]
-#                 return os.environ.get(api_key)
-#             else:
-#                 print("No API key found in control json")
-#                 return None
-#     except FileNotFoundError:
-#         print(f"Control JSON file not found: {CONTROL_JSON}")
-#         return None
+    try:
+        with open(CONTROL_JSON) as control:
+            j: dict[str, str] = json.load(control)
+            if j["current_api"]:
+                api_key = j["current_api"]
+                return os.environ.get(api_key)
+            else:
+                print("No API key found in control json")
+                return None
+    except FileNotFoundError:
+        print(f"Control JSON file not found: {CONTROL_JSON}")
+        return None
 
 
 def check_storage(filepath):

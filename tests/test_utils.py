@@ -784,6 +784,8 @@ def test_get_current_api_found(mocker):
     "time_input, bool_input, expected_outcome",
     [
         ("2023-10-31 01:30:00", False, ["2023-10-31", "01:30:00"]),
+        ("2029-13-21 12:35:00", True, ValueError),
+        ("2023-11-30 22:45:00", False, ["2023-11-30", "22:45:00"]),
         ("2023-09-32 02:30:00", True, ValueError),
     ],
 )
@@ -799,12 +801,37 @@ def test_check_bst_adjustment(time_input, bool_input, expected_outcome):
 
 @pytest.mark.parametrize(
     "file_input, bool_input, expected_outcome",
-    [("/mnt/folder_1", True, True), ("/mnt/folder_2/", False, False)],
+    [
+        ("/mnt/folder_1", True, True),
+        ("/mnt/folder_2/", False, False),
+        ("/mnt/folder_3", True, False),
+        ("/mnt/folder_2/", False, False),
+    ],
 )
 def test_check_storage(monkeypatch, tmp_path, file_input, bool_input, expected_outcome):
     test_file = tmp_path / "storage.json"
     with open(test_file, "w") as f:
         json.dump({file_input: bool_input, "all_storage_on": True}, f)
+    monkeypatch.setattr("utils.STORAGE_JSON", str(test_file))
+    result = utils.check_storage(file_input)
+    assert result == expected_outcome
+
+
+@pytest.mark.parametrize(
+    "file_input, expected_outcome",
+    [
+        ("/mnt/folder_1", "Storage not found"),
+        ("/mnt/folder_2/", "Storage not found"),
+        ("/mnt/folder_3", "Storage not found"),
+    ],
+)
+def test_check_storage_no_file(tmp_path, monkeypatch, file_input, expected_outcome):
+    """
+    Test the check_storage function when the file does not exist
+    """
+    test_file = tmp_path / "storage.json"
+    with open(test_file, "w") as f:
+        json.dump({"all_storage_on": True}, f)
     monkeypatch.setattr("utils.STORAGE_JSON", str(test_file))
     result = utils.check_storage(file_input)
     assert result == expected_outcome

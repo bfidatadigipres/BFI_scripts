@@ -429,8 +429,9 @@ def test_exif_data(mocker):
     # mocker.patch("subprocess.check_output", side_effect=subprocess.CalledProcessError(1, 'exiftool'))
 
     result = utils.exif_data("tests/MKV_sample.mkv")
+    parital_result = "File Name                       : MKV_sample.mkv\n"
 
-    assert "File Name                       : MKV_sample.mkv\n" in result
+    assert parital_result in result
 
     subprocess.check_output.assert_called_with(["exiftool", "tests/MKV_sample.mkv"])
 

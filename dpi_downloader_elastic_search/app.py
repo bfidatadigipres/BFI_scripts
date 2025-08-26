@@ -45,7 +45,8 @@ CONNECT.execute(
     "CREATE TABLE IF NOT EXISTS DOWNLOADS (name TEXT, email TEXT, preservation_date TEXT, channel TEXT, status TEXT, date TEXT)"
 )
 
-FLASK_HOST = os.environ['FLASK_HOST']
+FLASK_HOST = os.environ["FLASK_HOST"]
+
 
 def date_gen(date_str):
     """

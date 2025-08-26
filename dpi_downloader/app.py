@@ -28,7 +28,7 @@ CONNECT = sqlite3.connect(DBASE)
 CONNECT.execute(
     "CREATE TABLE IF NOT EXISTS DOWNLOADS (name TEXT, email TEXT, download_type TEXT, fname TEXT, download_path TEXT, fpath TEXT, transcode TEXT, status TEXT, date TEXT)"
 )
-FLASK_HOST = os.environ['FLASK_HOST']
+FLASK_HOST = os.environ["FLASK_HOST"]
 
 
 @app.route("/dpi_download_request", methods=["GET", "POST"])

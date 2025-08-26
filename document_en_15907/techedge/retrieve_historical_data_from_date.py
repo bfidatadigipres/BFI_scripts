@@ -99,8 +99,9 @@ def main() -> None:
     LOGGER.info(
         "========== Fetch historical adverts data script STARTED ==============================================="
     )
-
+    sftp = ut.sftp_connect()
     for target_date in get_date():
+        print(target_date)
         check = check_for_existing(target_date)
         if check is True:
             continue

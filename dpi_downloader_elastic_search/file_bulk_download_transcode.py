@@ -48,7 +48,7 @@ Single:
 9. Sends notification email to user who requested download
    with unique transcode message when complete.
 
-Joanna White
+Dependency: Elasticsearch v8 or v7
 2023
 """
 

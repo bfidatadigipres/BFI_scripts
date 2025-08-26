@@ -45,6 +45,7 @@ CONNECT.execute(
     "CREATE TABLE IF NOT EXISTS DOWNLOADS (name TEXT, email TEXT, preservation_date TEXT, channel TEXT, status TEXT, date TEXT)"
 )
 
+FLASK_HOST = os.environ['FLASK_HOST']
 
 def date_gen(date_str):
     """
@@ -122,7 +123,7 @@ def dpi_move():
     """
     connect = sqlite3.connect(DBASE)
     cursor = connect.cursor()
-    cursor.execute(f"SELECT * FROM DOWNLOADS where date >= datetime('now','-14 days')")
+    cursor.execute("SELECT * FROM DOWNLOADS where date >= datetime('now','-14 days')")
     data = cursor.fetchall()
     return render_template("dpi_requests.html", data=data)
 
@@ -195,4 +196,4 @@ def dpi_download():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=False, port=5500)
+    app.run(host=FLASK_HOST, debug=False, port=5500)

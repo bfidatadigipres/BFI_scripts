@@ -28,6 +28,7 @@ CONNECT = sqlite3.connect(DBASE)
 CONNECT.execute(
     "CREATE TABLE IF NOT EXISTS DOWNLOADS (name TEXT, email TEXT, download_type TEXT, fname TEXT, download_path TEXT, fpath TEXT, transcode TEXT, status TEXT, date TEXT)"
 )
+FLASK_HOST = os.environ['FLASK_HOST']
 
 
 @app.route("/dpi_download_request", methods=["GET", "POST"])
@@ -89,10 +90,10 @@ def dpi_download():
     """
     connect = sqlite3.connect(DBASE)
     cursor = connect.cursor()
-    cursor.execute(f"SELECT * FROM DOWNLOADS where date >= datetime('now','-14 days')")
+    cursor.execute("SELECT * FROM DOWNLOADS where date >= datetime('now','-14 days')")
     data = cursor.fetchall()
     return render_template("downloads_transcode.html", data=data)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=False, port=5500)
+    app.run(host=FLASK_HOST, debug=False, port=5500)

@@ -40,8 +40,6 @@ hdlr.setFormatter(formatter)
 LOGGER.addHandler(hdlr)
 LOGGER.setLevel(logging.INFO)
 
-DATES = []
-
 
 def check_control() -> None:
     """

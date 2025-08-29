@@ -237,7 +237,10 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     metadata from Exif data source
     """
     ext = os.path.splitext(ipath)[1].replace(".", "")
-    file_type, mime = get_file_type(ext)
+    try:
+        file_type, mime = get_file_type(ext)
+    else:
+        file_type = mime = ""
     print(f"**** {file_type} ****")
     exif_metadata = utils.exif_data(f"{ipath}")
     if exif_metadata is None:
@@ -734,6 +737,7 @@ def create_archive_item_record(
             new_folder = f"{ob_num}_{iname.rsplit('.', 1)[0].replace(' ', '-')}"
 
             # Create exif metadata / checksum
+            metadata_dct = {}
             try:
                 metadata_dct = get_image_data(ipath)
                 print(metadata_dct)
@@ -741,7 +745,7 @@ def create_archive_item_record(
                 LOGGER.warning(
                     "File type not recognised by exiftool: %s\n%s", mime_type, err
                 )
-                metadata_dct = {}
+
             checksum = utils.create_md5_65536(ipath)
 
             record_dct = [

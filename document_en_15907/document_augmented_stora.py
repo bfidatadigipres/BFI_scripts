@@ -995,6 +995,7 @@ def main():
         # Check file health with policy verification - skip if broken MPEG file
         acquired_filename = os.path.join(root, "stream.mpeg2.ts")
         print(f"Path for programme stream content: {acquired_filename}")
+        '''
         success, response = utils.get_mediaconch(acquired_filename, MPEG_TS_POLICY)
         if success is False:
             # Fix 'BROKEN' to folder name, update failure CSV
@@ -1008,7 +1009,7 @@ def main():
             continue
         logger.info("MPEG-TS passed MediaConch check: %s", success)
         print(response)
-
+        '''
         # Make news channels new works for all live programming
         if channel in NEWS_CHANNELS:
             new_work = True

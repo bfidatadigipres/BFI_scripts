@@ -19,7 +19,7 @@ from lxml import etree, html
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
-TIMEOUT = 30
+TIMEOUT = 45
 
 
 # (api: str) -> dict[Any, Any]:

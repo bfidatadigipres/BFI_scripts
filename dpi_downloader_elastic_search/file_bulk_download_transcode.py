@@ -48,7 +48,7 @@ Single:
 9. Sends notification email to user who requested download
    with unique transcode message when complete.
 
-Joanna White
+Dependency: Elasticsearch v8 or v7
 2023
 """
 
@@ -61,13 +61,8 @@ from datetime import datetime
 from typing import Any, Final, Optional, Union
 
 from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import (
-    ConflictError,
-    NotFoundError,
-    RequestError,
-    TransportError,
-)
-
+from elasticsearch.exceptions import (ConflictError, NotFoundError,
+                                      RequestError, TransportError)
 
 # Local packages
 sys.path.append(os.environ["CODE"])

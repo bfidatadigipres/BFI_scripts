@@ -35,12 +35,12 @@ import os
 import shutil
 import sys
 from typing import Any, Final, Optional
+
 import requests
 import tenacity
-import yaml
-
 # Local packages
 import title_article
+import yaml
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib

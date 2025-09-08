@@ -24,11 +24,13 @@ import os
 import shutil
 import sys
 from typing import Final
+
 from ds3 import ds3
 
 # Private packages
 sys.path.append(os.environ["CODE"])
 import models
+
 import adlib_v3 as adlib
 import utils
 
@@ -90,7 +92,9 @@ def main():
         # Path to source media
         root = os.path.join(media_target, "source")
         if not utils.check_storage(root):
-            logger.info("Skipping path %s - prevented by Storage Control document.", root)
+            logger.info(
+                "Skipping path %s - prevented by Storage Control document.", root
+            )
             continue
         if not utils.check_control("split_control_delete") or not utils.check_control(
             "black_pearl"

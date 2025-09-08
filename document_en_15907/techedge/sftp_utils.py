@@ -8,8 +8,9 @@ off-air television advertisements
 """
 
 import os
-import paramiko
 from typing import Optional
+
+import paramiko
 
 DESTINATION = os.environ.get("ADVERTS_PATH")
 TE_URL = os.environ.get("TECHEDGE_FTP_URL")

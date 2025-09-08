@@ -19,7 +19,7 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Final, Iterator, Optional
+from typing import Final, Optional
 from zoneinfo import ZoneInfo
 
 import ffmpeg
@@ -33,8 +33,8 @@ LOG_PATH: Final = os.environ["LOG_PATH"]
 CONTROL_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "downtime_control.json")
 STORAGE_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "storage_control.json")
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, "autoingest", "global.log")
-SMTP_SERVER = "mail.smtp2go.com"
-SMTP_PORT = 465
+SMTP_SERVER = os.environ["SMTP_SERVER"]
+SMTP_PORT = os.environ["SMTP_PORT"]
 EMAIL = os.environ.get("EMAIL_ADDRESS")
 PASSWORD = os.environ.get("EMAIL_PASSWORD")
 CONTEXT = ssl.create_default_context()

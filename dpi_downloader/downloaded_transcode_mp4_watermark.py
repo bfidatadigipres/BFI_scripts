@@ -22,6 +22,7 @@ import subprocess
 import sys
 import time
 from typing import Final, Optional
+
 import magic
 
 sys.path.append(os.environ["CODE"])

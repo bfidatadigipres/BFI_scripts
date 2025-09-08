@@ -18,9 +18,9 @@ from typing import Final
 
 # Local import
 CODE_PATH = os.path.join(os.environ.get("CODE"), "document_en_15907/techedge")
+LIST = os.path.join(CODE_PATH, "date_list.json")
 sys.path.append(CODE_PATH)
 import sftp_utils as ut
-
 sys.path.append(os.environ.get("CODE"))
 import utils
 
@@ -54,7 +54,7 @@ def check_control() -> None:
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
 
-def date_range(start_date, end_date):
+def get_date():
     """
     Set date range, and yield one
     at a time back to main.
@@ -62,9 +62,10 @@ def date_range(start_date, end_date):
     datetime.date(2015, 1, 1)
     """
 
-    days = int((end_date - start_date).days)
-    for n in range(days):
-        yield str(start_date + timedelta(n))
+    with open(LIST, 'r') as d:
+        date_list = json.load(d)
+        for date in date_list["dates"]:
+            yield date
 
 
 def check_for_existing(target_date):
@@ -93,14 +94,12 @@ def main() -> None:
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
-    end_date = date.today()
-    start_date = end_date - timedelta(days=5)
-    sftp = ut.sftp_connect()
     LOGGER.info(
         "========== Fetch historical adverts data script STARTED ==============================================="
     )
-
-    for target_date in date_range(start_date, end_date):
+    sftp = ut.sftp_connect()
+    for target_date in get_date():
+        print(target_date)
         check = check_for_existing(target_date)
         if check is True:
             continue

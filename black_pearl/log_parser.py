@@ -9,7 +9,6 @@ WARNING alerts issued for the given day.
 # Python library imports
 import csv
 import datetime
-
 # Python library imports
 import os
 import shutil
@@ -48,16 +47,16 @@ FILEPATHS = [
     "AUTOINGEST_QNAP10",
     "AUTOINGEST_QNAP11",
     "AUTOINGEST_QNAP08_OSH",
-    "BP_VIDEO",
-    "BP_AUDIO",
-    "BP_DIGITAL",
-    "BP_SC",
-    "BP_FILM1",
-    "BP_FILM2",
-    "BP_FILM3",
-    "BP_FILM4",
-    "BP_FILM5",
-    "BP_FILM6",
+    "BP_VIDEO_AUTOINGEST",
+    "BP_AUDIO_AUTOINGEST",
+    "BP_DIGITAL_AUTOINGEST",
+    "BP_SC_AUTOINGEST",
+    "BP_FILM1_AUTOINGEST",
+    "BP_FILM2_AUTOINGEST",
+    "BP_FILM3_AUTOINGEST",
+    "BP_FILM4_AUTOINGEST",
+    "BP_FILM5_AUTOINGEST",
+    "BP_FILM6_AUTOINGEST",
     "AUTOINGEST_EDITSHARE",
 ]
 

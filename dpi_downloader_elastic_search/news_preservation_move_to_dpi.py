@@ -228,7 +228,7 @@ def move_folder(channel: str, date_pth: str) -> bool:
     """
 
     from_path = os.path.join(STORA_BACKUP, date_pth, channel)
-    to_path = os.path.join(STORA, date_pth, channel)
+    to_path = os.path.join(STORA, date_pth)
     if not os.path.exists(to_path):
         os.makedirs(to_path, mode=0o777, exist_ok=True)
 

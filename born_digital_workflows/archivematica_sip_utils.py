@@ -541,11 +541,11 @@ def delete_sip(sip_uuid):
     return None
 
 
-def reingest_v2_aip(aip_uuid, type, slug, process_config):
+def reingest_v2_aip(aip_uuid, type, process_config):
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
-    type = 'OBJECTS'
+    type = 'PARTIAL'
     Full needed to supply processing_config update (Closed_to_Open)
     No auuto approve with this - we need to upload metadata first
     Returns 'reingest_uuid' needed for metadata upload:
@@ -557,7 +557,6 @@ def reingest_v2_aip(aip_uuid, type, slug, process_config):
     data_payload = {
         "pipeline": SS_PIPE,
         "reingest_type": type,
-        "access_system_id": slug,
         "processing_config": process_config,
     }
     payload = json.dumps(data_payload)

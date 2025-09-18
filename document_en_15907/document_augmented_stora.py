@@ -43,6 +43,7 @@ from series_retrieve import check_id, retrieve
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
+from helpers import stora_helper
 
 # Global variables
 STORAGE = os.environ["STORA_PATH"]
@@ -995,7 +996,7 @@ def main():
         # Check file health with policy verification - skip if broken MPEG file
         acquired_filename = os.path.join(root, "stream.mpeg2.ts")
         print(f"Path for programme stream content: {acquired_filename}")
-        '''
+        """
         success, response = utils.get_mediaconch(acquired_filename, MPEG_TS_POLICY)
         if success is False:
             # Fix 'BROKEN' to folder name, update failure CSV
@@ -1009,7 +1010,7 @@ def main():
             continue
         logger.info("MPEG-TS passed MediaConch check: %s", success)
         print(response)
-        '''
+        """
         # Make news channels new works for all live programming
         if channel in NEWS_CHANNELS:
             new_work = True
@@ -1540,6 +1541,14 @@ def build_defaults(epg_dict):
         else:
             bst_date = bst_data[0]
             bst_time = bst_data[1]
+    if epg_dict["duration_total"] == "":
+        epg_dict["duration_total"] = "0"
+    # getting stoptime
+    end_time = ""
+    if "duration_total" in epg_dict:
+        end_time = stora_helper.calculate_transmission_stoptime(
+            epg_dict["duration_total"], bst_time
+        )
 
     record = [
         {"input.name": "datadigipres"},
@@ -1605,10 +1614,14 @@ def build_defaults(epg_dict):
         {"format_high_level": "Video - Digital"},
         {"colour_manifestation": epg_dict["colour_manifestation"]},
         {"sound_manifestation": "SOUN"},
+        {"transmission_duration": epg_dict["duration_total"]},
         # {"transmission_date": epg_dict["title_date_start"]},
         {"transmission_date": bst_date},
         # {"transmission_start_time": epg_dict["time"]},
         {"transmission_start_time": bst_time},
+        {"transmission_end_time": end_time},
+        {"transmission_duration": epg_dict["duration_total"]},
+        {"runtime": epg_dict["duration_total"]},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": epg_dict["channel"]},
         {"transmission_coverage": "DIT"},
@@ -1887,11 +1900,6 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         manifestation_values.append(
             {"broadcast_company.lref": epg_dict["broadcast_company"]}
         )
-    if "duration_total" in epg_dict:
-        manifestation_values.append(
-            {"transmission_duration": epg_dict["duration_total"]}
-        )
-        manifestation_values.append({"runtime": epg_dict["duration_total"]})
 
     man_values_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values

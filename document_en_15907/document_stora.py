@@ -30,6 +30,7 @@ import requests
 sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib
 import utils
+from helpers import stora_helper
 
 # Global variables
 STORAGE = os.environ["STORA_PATH"]
@@ -237,6 +238,8 @@ def build_defaults(
             bst_date = bst_data[0]
             bst_time = bst_data[1]
 
+    end_time = stora_helper.calculate_transmission_stoptime(duration_total, bst_time)
+
     record = [
         {"input.name": "datadigipres"},
         {"input.date": str(datetime.datetime.now())[:10]},
@@ -288,6 +291,7 @@ def build_defaults(
         {"UTC_timestamp": utc_timestamp},
         {"transmission_date": bst_date},
         {"transmission_start_time": bst_time},
+        {"transmission_end_time": end_time},
         {"transmission_duration": duration_total},
         {"runtime": actual_duration_total},
         {"runtime_seconds": actual_duration_seconds_integer},

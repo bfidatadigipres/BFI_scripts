@@ -21,11 +21,7 @@ import os
 import sys
 
 # local packages
-<<<<<<< HEAD
-sys.path.append(os.environ['CODE_BFI'])
-=======
 sys.path.append(os.environ["CODE_BFI"])
->>>>>>> 3cf71649ba12efe9bbbb6aecbf8a3200504af4d6
 import utils
 
 # Global paths

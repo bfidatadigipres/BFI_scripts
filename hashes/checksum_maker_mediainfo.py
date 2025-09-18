@@ -25,6 +25,7 @@ import logging
 import os
 import sys
 from typing import Final, Optional
+
 import tenacity
 
 # Custom Libraries
@@ -120,6 +121,9 @@ def main():
     if not utils.check_control("power_off_all"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(sys.argv[1]):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     filepath: str = sys.argv[1]
     filename: str = os.path.split(filepath)[-1]
 

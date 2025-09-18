@@ -23,7 +23,6 @@ NOTE: Updated for Adlib V3
 import datetime
 import itertools
 import logging
-# Public packages
 import os
 import sys
 from typing import Optional
@@ -34,8 +33,7 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-ADMIN = os.environ.get("ADMIN")
-LOGS = os.path.join(ADMIN, "Logs")
+LOGS = os.environ.get("LOG_PATH")
 CONTROL_JSON = os.path.join(LOGS, "downtime_control.json")
 CID_API = utils.get_current_api()
 
@@ -75,7 +73,7 @@ def cid_check_items(
     return record
 
 
-def cid_check_filenames(priref: str, platform: str) -> Optional[str, str]:
+def cid_check_filenames(priref: str, platform: str):
     """
     Sends CID request for object number
     checks if filename already populated
@@ -197,7 +195,7 @@ def main():
 
         # Generate ISO date range for last 30 days for edit.date check
         date_range = []
-        period = itertools.islice(date_gen(TODAY), 30)
+        period = itertools.islice(date_gen(TODAY), 31)
         for dt in period:
             date_range.append(dt.strftime(FORMAT))
         print(f"Target date range for {platform} check: {', '.join(date_range)}")

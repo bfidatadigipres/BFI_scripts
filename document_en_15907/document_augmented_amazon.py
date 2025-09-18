@@ -677,20 +677,23 @@ def main():
     Where an episodic series, create a
     series work. Link all records as needed.
     """
-    if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.cid_check(CID_API):
-        LOGGER.critical("* Cannot establish CID session, exiting script")
-        sys.exit("* Cannot establish CID session, exiting script")
-
     csv_path = sys.argv[1]
     if not os.path.isfile(csv_path):
         sys.exit(f"Problem with supplied CSV path {csv_path}")
 
+    if not utils.check_control("pause_scripts"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORAGE) or not utils.check_storage(csv_path):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.cid_check(CID_API):
+        LOGGER.critical("* Cannot establish CID session, exiting script")
+        sys.exit("* Cannot establish CID session, exiting script")
+
+    LOGGER.info("=== Document augmented Amazon start ===============================")
     prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
-    LOGGER.info("=== Document augmented Amazon start ===============================")
     for num in range(0, csv_range):
         # Capture CSV supplied data to vars
         title = prog_dct["title"][num]

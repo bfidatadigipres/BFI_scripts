@@ -25,7 +25,6 @@ NOTES: Updated to work with adlib_v3
 
 import datetime
 import logging
-# Public packages
 import os
 import shutil
 import sys
@@ -93,6 +92,9 @@ def main():
     Check for contents and create new CID item record
     for each timed text within. Rename and move for ingest.
     """
+    if not utils.check_storage(PLATFORM_STORAGE):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     LOGGER.info(
         "== Document augmented streaming platform timed text start ==================="

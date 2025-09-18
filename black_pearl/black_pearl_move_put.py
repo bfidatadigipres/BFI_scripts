@@ -161,6 +161,9 @@ def main():
     """
     if not sys.argv[1]:
         sys.exit("Missing launch path, script exiting")
+    if not utils.check_storage(sys.argv[1]):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     upload_size = fullpath = autoingest = bucket_collection = ""
     if "netflix" in str(sys.argv[1]):

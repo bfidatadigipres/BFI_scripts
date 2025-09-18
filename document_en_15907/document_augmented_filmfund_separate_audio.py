@@ -111,12 +111,14 @@ def main():
                 "Script run prevented by downtime_control.json. Script exiting."
             )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        platform = key
+        autoingest, storage = value.split(", ")
+        if not utils.check_storage(autoingest):
+            LOGGER.info("Skipping path - prevented by storage_control.json.")
+            continue
         if not utils.cid_check(CID_API):
             LOGGER.critical("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
-
-        platform = key
-        autoingest, storage = value.split(", ")
 
         folder_list = walk_folders(storage)
         if len(folder_list) == 0:

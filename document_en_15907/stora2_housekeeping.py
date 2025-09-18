@@ -17,12 +17,15 @@ Python 3.7 +
 import datetime
 import itertools
 import logging
-# Python packages
 import os
 import sys
 
 # local packages
-sys.path.append(os.environ["CODE"])
+<<<<<<< HEAD
+sys.path.append(os.environ['CODE_BFI'])
+=======
+sys.path.append(os.environ["CODE_BFI"])
+>>>>>>> 3cf71649ba12efe9bbbb6aecbf8a3200504af4d6
 import utils
 
 # Global paths
@@ -104,6 +107,9 @@ def main():
     if not utils.check_control("power_off_all"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORAGE_PATH):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     logger.info("=========== stora2_housekeeping.py START ===========")
     period = []

@@ -209,9 +209,10 @@ def main():
 
     autoingest_list = []
     for host in hosts:
-        # This path has own script
+        # Avoid paths for this script
         if not "/mnt/qnap_04" in str(host):
             continue
+
         # Build autoingest list for separate iteration
         for pth in host.keys():
             autoingest_list.append(os.path.join(pth, BPINGEST))
@@ -220,6 +221,12 @@ def main():
     for autoingest in autoingest_list:
         if not os.path.exists(autoingest):
             print(f"**** Path does not exist: {autoingest}")
+            continue
+        if not utils.check_storage(autoingest):
+            logger.info(
+                "Skipping path - storage_control.json returned ‘False’ for path %s",
+                autoingest,
+            )
             continue
 
         if "black_pearl_netflix_ingest" in autoingest:

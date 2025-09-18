@@ -1,15 +1,24 @@
+"""
+email_sender_dpi/app.py
+"""
+
 import logging
-import sys
 import os
+import sys
+
 from flask import Flask, flash, render_template, request
 
-sys.path.append(os.environ['CODE'])
+sys.path.append(os.environ["CODE"])
 import utils
 
 app = Flask(__name__, template_folder="templates")
+HOST = os.environ["HOST"]
+PORT = os.environ["PORT"]
+LOG = os.environ["EMAIL_LOG"]
 
+# Configure logging
 logger = logging.getLogger("flask_logger")
-hdlr = logging.FileHandler("/mnt/bp_nas/admin/automation_logs/Logs/email_sender_dpi.log")
+hdlr = logging.FileHandler(LOG)
 formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -17,16 +26,38 @@ logger.setLevel(logging.INFO)
 
 
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
-app.secret_key = os.environ['flask_key']
+app.secret_key = os.environ["flask_key"]
 
 
 @app.route("/", methods=["GET"])
 def index():
+    """
+    Renders the index page for the email sender application.
+
+    Parameters:
+    -----------
+    None
+
+    Returns:
+    --------
+    render_template(string): Renders the index page or error page based on the outcome. None if an error occurs.
+    """
     return render_template("index.html")
 
 
 @app.route("/", methods=["POST", "GET"])
-def send_screenshot():
+def send_email_with_image():
+    """
+    Handles the email sending functionality.
+
+    Parameters:
+    -----------
+    None
+
+    Returns:
+    --------
+    render_template(string) | None: Renders the index page or error page based on the outcome. None if an error occurs.
+    """
     if request.method == "POST":
         try:
             email = request.form.get("email")
@@ -35,7 +66,7 @@ def send_screenshot():
             image_path = request.form.get("file")
 
             if email[-10:] != "bfi.org.uk":
-                logger.error(f"Invalid email: {email}, please enter valid email!")
+                logger.error("Invalid email: %s, please enter valid email!", email)
                 raise ValueError("Invalid email, please enter valid email!")
 
             if image_path is None:
@@ -43,8 +74,12 @@ def send_screenshot():
                 raise ValueError("Filepath is required")
 
             if not os.path.exists(image_path):
-               logger.error(f"Invalid path: filepath provided does not exist -> {image_path}")
-               raise ValueError("Invalid path: Please check if the filepath does exist.")
+                logger.error(
+                    "Invalid path: filepath provided does not exist -> %s", image_path
+                )
+                raise ValueError(
+                    "Invalid path: Please check if the filepath does exist."
+                )
 
             if "bp_nas" not in image_path:
                 # app.logger.critical()
@@ -53,13 +88,15 @@ def send_screenshot():
 
             utils.send_email(email, subject, body, image_path)
 
-            logger.info(f"Email successfully sent to {email}")
+            logger.info(
+                "Email successfully sent to %s with subject $s", (email, subject)
+            )
             flash(
                 f"Email successfully sent to {email} with subject {subject}", "success"
             )
 
         except Exception as e:
-            logger.critical(f"Email not sent due to reason: {str(e)}")
+            logger.critical("Email not sent due to reason: %s", str(e))
             flash(f"Email not sent due to reason: {str(e)}", "error")
 
             return render_template("error_page.html")
@@ -67,4 +104,4 @@ def send_screenshot():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True, port=8000)
+    app.run(host=HOST, debug=False, port=PORT, use_reloader=False)

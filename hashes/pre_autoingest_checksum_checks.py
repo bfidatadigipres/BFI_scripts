@@ -30,7 +30,6 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-
 IGNORED_EXTENSION = {".ini", ".DS_Store", ".mhl", ".tmp", ".dpx", ".DPX", ".log"}
 IGNORE_FOLDERS = {"checksum_folder", "ingest_match", "ingest_failed", "ingest_partial"}
 
@@ -365,7 +364,9 @@ def main():
     if len(sys.argv) < 2:
         LOGGER.error("Shell script failed to pass argument path via GNU parallel")
         sys.exit("Shell script failed to pass argument to Python script")
-
+    if not utils.check_storage(sys.argv[1]):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("power_off_all"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -404,13 +405,8 @@ def main():
         if os.path.isdir(os.path.join(filepath, x)) and x not in ignore_folders
     ]
 
-    # print(file_list)
-    # print(dir_list)
-
     for dir in dir_list:
-        # print(dir)
         full_dir_path_to_examine = os.path.relpath(os.path.join(filepath, dir))
-        # print(full_dir_path_to_examine)
         local_log(filepath, f"processing file: {full_dir_path_to_examine}")
         file_dict = file_to_checksum_retrival(
             filepath, os.path.join(filepath, dir), ignore_folders

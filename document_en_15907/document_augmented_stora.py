@@ -35,6 +35,7 @@ import os
 import shutil
 import sys
 from time import sleep
+
 import tenacity
 import yaml
 from series_retrieve import check_id, retrieve
@@ -340,7 +341,7 @@ def series_check(series_id):
         print(
             f"series_check(): Json to be opened and read for series data retrieval: {fullpath}"
         )
-        with open(fullpath, "r", encoding="latin-1") as inf:
+        with open(fullpath, "r", encoding="utf-8") as inf:
             lines = json.load(inf)
             if "ResourceNotFoundError" in str(lines):
                 continue
@@ -498,7 +499,7 @@ def csv_retrieve(fullpath):
         return None
 
     print("**** Check CSV reading correctly ****")
-    with open(fullpath, "r", encoding="latin-1") as inf:
+    with open(fullpath, "r", encoding="utf-8") as inf:
         rows = csv.reader(inf)
         for row in rows:
             print(row)
@@ -559,26 +560,26 @@ def fetch_lines(fullpath, lines):
 
         # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
         title, title_article = split_title(title_for_split)
-        title = title.replace("'", "'")
+        title = title.replace("\xe2\x80\x99", "'")
 
         description = []
         try:
             d_short = lines["item"][0]["summary"]["short"]
-            d_short = d_short.replace("'", "'")
+            d_short = d_short.replace("\xe2\x80\x99", "'")
             epg_dict["d_short"] = d_short
             description.append(d_short)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_medium = lines["item"][0]["summary"]["medium"]
-            d_medium = d_medium.replace("'", "'")
+            d_medium = d_medium.replace("\xe2\x80\x99", "'")
             epg_dict["d_medium"] = d_medium
             description.append(d_medium)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_long = lines["item"][0]["summary"]["long"]
-            d_long = d_long.replace("'", "'")
+            d_long = d_long.replace("\xe2\x80\x99", "'")
             epg_dict["d_long"] = d_long
             description.append(d_long)
         except (IndexError, KeyError, TypeError) as err:
@@ -883,6 +884,10 @@ def main():
     if yes - make manifestation/item only and link to work_priref
     if no - make series/work/manifestation and item record
     """
+    if not utils.check_storage(STORAGE):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     logger.info(
         "========== STORA documentation script STARTED ==============================================="
     )
@@ -916,7 +921,7 @@ def main():
         new_work = False
 
         print(f"\nFullpath for file being handled: {fullpath}")
-        with open(fullpath, "r", encoding="latin-1") as inf:
+        with open(fullpath, "r", encoding="utf-8") as inf:
             lines = json.load(inf)
 
         # Retrieve all data needed from JSON
@@ -990,6 +995,7 @@ def main():
         # Check file health with policy verification - skip if broken MPEG file
         acquired_filename = os.path.join(root, "stream.mpeg2.ts")
         print(f"Path for programme stream content: {acquired_filename}")
+        '''
         success, response = utils.get_mediaconch(acquired_filename, MPEG_TS_POLICY)
         if success is False:
             # Fix 'BROKEN' to folder name, update failure CSV
@@ -1003,7 +1009,7 @@ def main():
             continue
         logger.info("MPEG-TS passed MediaConch check: %s", success)
         print(response)
-
+        '''
         # Make news channels new works for all live programming
         if channel in NEWS_CHANNELS:
             new_work = True
@@ -1520,13 +1526,15 @@ def build_defaults(epg_dict):
     """
 
     # BST time conversion
-    utc_date = epg_dict.get('title_date_start')
-    utc_time = epg_dict.get('time')
+    utc_date = epg_dict.get("title_date_start")
+    utc_time = epg_dict.get("time")
     if len(utc_date) > 4 and len(utc_time) > 4:
         utc_timestamp = f"{utc_date} {utc_time}"
         bst_data = utils.check_bst_adjustment(utc_timestamp)
         if len(bst_data) != 2:
-            LOGGER.warning("BST date time conversion failed. Resorting to UTC time stamps")
+            LOGGER.warning(
+                "BST date time conversion failed. Resorting to UTC time stamps"
+            )
             bst_date = epg_dict.get("title_date_start")
             bst_time = epg_dict.get("time")
         else:
@@ -1573,7 +1581,7 @@ def build_defaults(epg_dict):
         {"worklevel_type": "MONOGRAPHIC"},
         {"work_type": epg_dict["work_type"]},
         {"description.type.lref": "100298"},
-        #{"title_date_start": epg_dict["title_date_start"]},
+        # {"title_date_start": epg_dict["title_date_start"]},
         {"title_date_start": bst_date},
         {"title_date.type": "04_T"},
         {"nfa_category": epg_dict["nfa_category"]},
@@ -1597,16 +1605,18 @@ def build_defaults(epg_dict):
         {"format_high_level": "Video - Digital"},
         {"colour_manifestation": epg_dict["colour_manifestation"]},
         {"sound_manifestation": "SOUN"},
-        #{"transmission_date": epg_dict["title_date_start"]},
+        # {"transmission_date": epg_dict["title_date_start"]},
         {"transmission_date": bst_date},
-        #{"transmission_start_time": epg_dict["time"]},
+        # {"transmission_start_time": epg_dict["time"]},
         {"transmission_start_time": bst_time},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": epg_dict["channel"]},
         {"transmission_coverage": "DIT"},
         {"aspect_ratio": "16:9"},
         {"country_manifestation": "United Kingdom"},
-        {"notes": "Manifestation representing the UK Freeview television broadcast of the Work."}
+        {
+            "notes": "Manifestation representing the UK Freeview television broadcast of the Work."
+        },
     ]
 
     item = [
@@ -1634,7 +1644,7 @@ def build_webvtt_dct(old_webvtt):
         print(f"subtitles.vtt not found: {old_webvtt}")
         return None
 
-    with open(old_webvtt, encoding="latin-1") as webvtt_file:
+    with open(old_webvtt, encoding="utf-8") as webvtt_file:
         webvtt_payload = webvtt_file.read()
         webvtt_file.close()
 

@@ -15,7 +15,6 @@ series_retrieve():
 
 import json
 import logging
-# Public packages
 import os
 import time
 from typing import Optional

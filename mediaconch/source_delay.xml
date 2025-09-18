@@ -9,4 +9,3 @@
     <rule name="Track source_delay = 0" value="File header/Track/Edit/Edit List/Entry/Media time" occurrence="*" operator="=" scope="mmt">0</rule>
   </policy>
 </policy>
-

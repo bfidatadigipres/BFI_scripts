@@ -19,8 +19,8 @@ Updated for Adlib V3
 2023
 """
 
-import logging
 # Public packages
+import logging
 import os
 import shutil
 import sys
@@ -92,6 +92,13 @@ def main():
     to process.
     """
     for media_target in TARGETS:
+        # Path to source media
+        root = os.path.join(media_target, "source")
+        if not utils.check_storage(root):
+            logger.info(
+                "Skipping path %s - prevented by Storage Control document.", root
+            )
+            continue
         if not utils.check_control("split_control_delete") or not utils.check_control(
             "black_pearl"
         ):
@@ -103,9 +110,6 @@ def main():
             print("* Cannot establish CID session, exiting script")
             logger.critical("* Cannot establish CID session, exiting script")
             sys.exit()
-
-        # Path to source media
-        root = os.path.join(media_target, "source")
         logger.info("%s\t** Processing files in \t%s", root, root)
 
         # List video files in recursive sub-directories
@@ -124,7 +128,7 @@ def main():
         # Process digitised tape files sequentially
         for filepath in files:
             f = os.path.split(filepath)[1]
-            if f'source/{f}' in filepath:
+            if f"source/{f}" in filepath:
                 print(f"Skipping, file not in numbered subfolder: {filepath}")
                 continue
             print(f"Current file: {filepath}\t{f}")

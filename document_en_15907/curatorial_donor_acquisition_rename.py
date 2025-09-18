@@ -151,24 +151,33 @@ def main() -> None:
     Retrieve object number and use to build new filename
     Rename and move to successful_rename/ folder
     """
-    LOGGER.info(
-        "=========== START Curatorial Donor Acquisition rename script START =========="
-    )
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(DIGIOPS_PATH) or not utils.check_storage(
+        CURATORIAL_PATH
+    ):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
     if len(sys.argv) < 2:
         LOGGER.warning("SCRIPT EXITING: Error with shell script input:\n%s\n", sys.argv)
         sys.exit()
-
+    LOGGER.info(
+        "=========== START Curatorial Donor Acquisition rename script START =========="
+    )
     fullpath = sys.argv[1]
     root, workflow_folder = os.path.split(fullpath)
 
     if not os.path.exists(fullpath):
         sys.exit(f"Incorrect folderpath supplied. Error in name: {fullpath}")
+    if not utils.check_storage(fullpath):
+        LOGGER.info(
+            "Storage check failed for %s. Please check storage is available.", key
+        )
+        sys.exit("Storage check failed. Please check storage is available.")
 
     # Get files and subfolders in Workflow folder
     files: list[str] = [
@@ -191,6 +200,12 @@ def main() -> None:
         sys.exit()
 
     if dirs:
+        if not utils.check_storage(fullpath):
+            LOGGER.info(
+                "Storage check failed for %s. Please check storage is available.",
+                fullpath,
+            )
+            sys.exit("Storage check failed. Please check storage is available.")
         for directory in dirs:
             if "success_" in directory:
                 continue

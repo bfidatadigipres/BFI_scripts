@@ -34,6 +34,7 @@ find "${CID_MEDIAINFO}" -name "*_TEXT.txt" > "${CODE_PTH}metadata_clean_up_list.
 find "${CID_MEDIAINFO}" -name "*_EXIF.txt" >> "${CODE_PTH}metadata_clean_up_list.txt"
 
 echo " == Launching GNU parallel to run muliple Python3 scripts for metadata_clean_up == " >> "${LOG}"
-grep '/mnt/' "${CODE_PTH}metadata_clean_up_list.txt" | parallel --jobs 1 "${PYENV313} ${CODE_PTH}metadata_clean_up.py {}"
+grep '/mnt/' "${CODE_PTH}metadata_clean_up_list.txt" | parallel --jobs 20 "${PYENV313} ${CODE_PTH}metadata_clean_up.py {}"
 
 echo " ========================= SHELL SCRIPT END ========================== $DATE_FULL" >> "${LOG}"
+

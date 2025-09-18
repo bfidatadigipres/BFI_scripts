@@ -32,10 +32,10 @@ import datetime
 import itertools
 import json
 import logging
-# Public packages
 import os
 import sys
 from datetime import timedelta
+from typing import Final, Optional
 
 import requests
 import tenacity
@@ -44,8 +44,6 @@ import title_article
 import yaml
 
 sys.path.append(os.environ["CODE"])
-from typing import Final, Optional
-
 import adlib_v3 as adlib
 import utils
 
@@ -224,6 +222,9 @@ def main():
     if not utils.check_control("pause_scripts"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORAGE_PATH):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")

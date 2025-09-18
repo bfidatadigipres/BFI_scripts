@@ -31,7 +31,6 @@ NOTE: Updated for Adlib V3
 import datetime
 import json
 import logging
-# Public packages
 import os
 import shutil
 import sys
@@ -700,6 +699,9 @@ def main():
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORAGE_PATH):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")

@@ -47,6 +47,7 @@ import shutil
 import sys
 from datetime import datetime
 from typing import Optional
+
 import bp_utils as bp
 import requests
 
@@ -213,9 +214,10 @@ def main():
     sess = adlib.create_session()
     autoingest_list = []
     for host in hosts:
-        # This path has own script
+        # Paths to avoid processing
         if "/mnt/qnap_04" in str(host):
             continue
+
         # Build autoingest list for separate iteration
         for pth in host.keys():
             autoingest_list.append(os.path.join(pth, BPINGEST))
@@ -227,6 +229,11 @@ def main():
     for autoingest in autoingest_list:
         if not os.path.exists(autoingest):
             print(f"**** Path does not exist: {autoingest}")
+            continue
+        if not utils.check_storage(autoingest):
+            logger.info(
+                f"Skipping path - storage_control.json returned ‘False’ for path {autoingest}"
+            )
             continue
 
         if "black_pearl_netflix_ingest" in autoingest:
@@ -560,6 +567,9 @@ def process_files(
         local_md5 = get_md5(file)
         if not local_md5:
             logger.warning("No Local MD5 found: %s", fpath)
+            continue
+        if not length:
+            logger.warning("Length could not be found for file: %s", file)
             continue
         # Make global log message [ THIS MESSAGE TO BE DEPRECATED, KEEPING FOR TIME BEING FOR CONSISTENCY ]
         logger.info("Writing persistence checking message to persistence_queue.csv.")

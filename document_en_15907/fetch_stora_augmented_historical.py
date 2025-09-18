@@ -17,6 +17,7 @@ import shutil
 import sys
 import time
 from typing import Any, Final, Optional
+
 import requests
 import tenacity
 
@@ -25,12 +26,14 @@ STORAGE_PATH: Final = os.environ["HISTORICAL_PATH"]
 LOG_PATH: Final = os.environ["LOG_PATH"]
 CODE_PATH: Final = os.environ["CODE"]
 CONTROL: Final = os.path.join(LOG_PATH, "downtime_control.json")
-START = datetime.date(2018, 2, 7) # From 9-9-2015
+START = datetime.date(2018, 2, 7)  # From 9-9-2015
 END = datetime.date(2022, 1, 20)
 
 # Setup logging
 logger = logging.getLogger("fetch_stora_augmented_historical")
-hdlr = logging.FileHandler(os.path.join(LOG_PATH, "fetch_stora_augmented_historical.log"))
+hdlr = logging.FileHandler(
+    os.path.join(LOG_PATH, "fetch_stora_augmented_historical.log")
+)
 formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -178,7 +181,7 @@ def main() -> None:
     for target_date in date_range(START, END):
         date_start = f"{target_date}T00:00:00"
         date_end = f"{target_date}T23:59:00"
-        folder_date = target_date.replace('-', '/')
+        folder_date = target_date.replace("-", "/")
         pth = os.path.join(STORAGE_PATH, folder_date)
 
         logger.info(
@@ -201,7 +204,7 @@ def main() -> None:
                 continue
 
             jdct = fetch(value, date_start, date_end)
-            if not jdct['item']:
+            if not jdct["item"]:
                 continue
 
             if not os.path.exists(item_path):
@@ -209,8 +212,6 @@ def main() -> None:
             retrieve_dct_data(date_start, date_end, key, value, pth, jdct)
             logger.info("Path for move actions: %s", item_path)
             # move(item_path, key)
-
-
 
     logger.info(
         "========== Fetch augmented metadata script ENDED ================================================"
@@ -252,7 +253,9 @@ def move(path_move: str, item: str) -> None:
             )
 
 
-def retrieve_dct_data(start: str, end: str, key: str, value: str, pth: str, jdct=None) -> None:
+def retrieve_dct_data(
+    start: str, end: str, key: str, value: str, pth: str, jdct=None
+) -> None:
     """
     Check if DCT data is None, if not instigate json_split
     """
@@ -286,9 +289,6 @@ def retrieve_dct_data(start: str, end: str, key: str, value: str, pth: str, jdct
     else:
         logger.info("EPG metadata successfully retrieved. Starting split of JSON files")
         json_split(pth, jdct, key)
-
-
-
 
 
 if __name__ == "__main__":

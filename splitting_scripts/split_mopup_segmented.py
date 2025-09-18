@@ -18,9 +18,9 @@ June 2021
 Refactored 2023
 """
 
+# Public imports
 import glob
 import logging
-# Public imports
 import os
 import sys
 from datetime import datetime, timezone
@@ -121,6 +121,11 @@ def main():
 
         # Path to source media
         root = os.path.join(media_target, "segmented")
+        if not utils.check_storage(root):
+            logger.info(
+                "Skipping path %s - prevented by Storage Control document.", root
+            )
+            continue
         processing = os.path.split(media_target)[0]
         autoingest = os.path.join(os.path.split(processing)[0], "autoingest")
         print(f"** Targeting: {root}")

@@ -10,10 +10,10 @@ Refactored for Python3
 2022
 """
 
+# Public packages
 import datetime
 import logging
 import os
-# Public packages
 import re
 import string
 import sys

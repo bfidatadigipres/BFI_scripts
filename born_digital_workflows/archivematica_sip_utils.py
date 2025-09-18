@@ -12,9 +12,10 @@ import base64
 import json
 import os
 import sys
+from urllib.parse import urlencode
+
 import paramiko
 import requests
-from urllib.parse import urlencode
 
 TS_UUID = os.environ.get("AM_TS_UUID")
 SFTP_UUID = os.environ.get("AM_TS_SFTP")
@@ -74,6 +75,7 @@ def send_to_sftp(fpath, top_folder):
     First step SFTP into Storage Service, then check
     content has made it into the folder
     Supply top_folder without /: Name_of_folder
+    Filepath must me to file level (not containing folder)
     """
 
     relpath = fpath.split(top_folder)[-1]
@@ -86,7 +88,7 @@ def send_to_sftp(fpath, top_folder):
 
     # Create ssh / sftp object
     sftp = sftp_connect()
-    check_folder = sftp.listdir('sftp-transfer-source/API_Uploads')
+    check_folder = sftp.listdir("sftp-transfer-source/API_Uploads")
     print(f"Check folder contents: {check_folder}")
     if top_folder not in str(check_folder):
         success = sftp_mkdir(sftp, f"sftp-transfer-source/API_Uploads/{top_folder}")
@@ -148,6 +150,73 @@ def send_to_sftp(fpath, top_folder):
     return files
 
 
+def send_metadata_to_sftp(fpath, top_folder):
+    """
+    Check for parent folder, if absent mkdir
+    First step SFTP into Storage Service, then check
+    content has made it into the folder
+    Supply top_folder without /: Name_of_folder
+    Filepath must me to file level (not containing folder)
+    """
+
+    relpath = fpath.split(top_folder)[-1]
+    whole_path, file = os.path.split(relpath)
+    print(whole_path, file)
+    root, container = os.path.split(whole_path)
+    print(f"Root: {root}, Container: {container}")
+    remote_path = f"sftp-transfer-source/API_Uploads/{top_folder}/{root}"
+    print(remote_path)
+
+    # Create ssh / sftp object
+    sftp = sftp_connect()
+    check_folder = sftp.listdir("sftp-transfer-source/API_Uploads")
+    try:
+        root_contents = sftp.listdir(remote_path)
+        print(f"Root of remote_path: {root_contents}")
+    except OSError as err:
+        print(f"Error attempting to retrieve path {remote_path}")
+        root_contents = ""
+        success = sftp_mkdir(sftp, remote_path)
+        if not success:
+            print(f"Failed to make new directory for {remote_path}")
+            return None
+    if container not in root_contents:
+        success = sftp_mkdir(sftp, os.path.join(remote_path, container))
+        if not success:
+            print(
+                f"Failed to make new directory for {os.path.join(remote_path, container)}"
+            )
+            return None
+    else:
+        print(f"Folder {container} found in Archivematica already")
+
+    print(
+        f"Moving file {file} into Archivematica path {os.path.join(remote_path, container)}"
+    )
+
+    m_relpath = os.path.join(remote_path, container, "metadata/")
+    mpath = os.path.join(os.path.split(fpath)[0], "metadata/")
+    metadata_fpath = os.path.join(mpath, "metadata.csv")
+    if os.path.exists(metadata_fpath):
+        success = sftp_mkdir(sftp, m_relpath)
+        if not success:
+            print(f"Failed to make new directory for {m_relpath}")
+            return None
+        response = sftp_put(
+            sftp, metadata_fpath, os.path.join(m_relpath, "metadata.csv")
+        )
+        print(response)
+        if response is False:
+            print(f"Failed to send file to SFTP: 'metadata.csv' / {m_relpath}")
+            return None
+        else:
+            print(f"File 'metadata.csv' successfully PUT to {m_relpath}")
+
+    files = sftp.listdir(os.path.join(remote_path, container))
+    sftp.close()
+    return files
+
+
 def sftp_put(sftp_object, fpath, relpath):
     """
     Handle PUT to sftp
@@ -156,13 +225,14 @@ def sftp_put(sftp_object, fpath, relpath):
 
     try:
         data = sftp_object.put(fpath, relpath)
+        print(str(data))
         if "SFTPAttributes" in str(data):
             return True
     except FileNotFoundError as err:
-        print(f"File {fpath} was not found.")
+        print(f"File {fpath} was not found. {err}")
         return False
     except OSError as err:
-        print(f"Error attempting to PUT {fpath}")
+        print(f"Error attempting to PUT {fpath} {err}")
         return False
 
 
@@ -282,7 +352,7 @@ def get_ingest_status(sip_uuid):
         "type": "SIP",
         "uuid": "66312695-e8af-441f-a867-aa9460436434"
     }
-    uuid == aip_uuid needed for reingest
+    uuid == aip_uuid needed for reingest (may be same/different)
     """
     status_endpoint = os.path.join(ARCH_URL, f"api/ingest/status/{sip_uuid.strip()}")
     try:
@@ -338,14 +408,14 @@ def get_location_uuids():
     headers = {
         "Authorization": f"ApiKey {api_key}",
         "Content-type": "application/json",
-        "Accept": "*/*",    
+        "Accept": "*/*",
     }
 
     try:
         respnse = requests.get(SS_END, headers=headers)
         respnse.raise_for_status()
         data = json.loads(respnse.text)
-        if 'objects' in data:
+        if "objects" in data:
             return data["objects"]
     except requests.exceptions.RequestException as err:
         print(err)
@@ -363,7 +433,7 @@ def get_atom_objects(skip_path):
             skip_path,
             auth=("bfi", ATOM_AUTH),
             headers=ATOM_HEADER,
-            accept_redirect=True,
+            # accept_redirect=True,
         )
         objects = json.loads(response.text)
         print(f"Objects received: {objects}")
@@ -423,7 +493,9 @@ def get_all_atom_objects():
 def get_slug_match(slug_match):
     """
     Handles retrieval of all AtoM information objects
-    then builds list of slugs and attempts match
+    then builds list of slugs and attempts match.
+    Slug must be formatted to match, lowercase and '-'
+    where spaces were before
     """
     list_of_objects = get_all_atom_objects()
     if list_of_objects is None:
@@ -469,11 +541,11 @@ def delete_sip(sip_uuid):
     return None
 
 
-def reingest_aip(aip_uuid, type, slug, process_config):
+def reingest_v2_aip(aip_uuid, type, process_config):
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
-    type = 'OBJECTS'
+    type = 'PARTIAL'
     Full needed to supply processing_config update (Closed_to_Open)
     No auuto approve with this - we need to upload metadata first
     Returns 'reingest_uuid' needed for metadata upload:
@@ -485,15 +557,49 @@ def reingest_aip(aip_uuid, type, slug, process_config):
     data_payload = {
         "pipeline": SS_PIPE,
         "reingest_type": type,
-        "access_system_id": slug,
-        "processing_config": process_config
+        "processing_config": process_config,
     }
     payload = json.dumps(data_payload)
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
-        response = requests.post(
-            PACKAGE_ENDPOINT, headers=SS_HEADER, data=payload
-        )
+        response = requests.post(PACKAGE_ENDPOINT, headers=SS_HEADER, data=payload)
+        response.raise_for_status()
+        print(f"Package transfer initiatied - status code {response.status_code}:")
+        print(response.text)
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
+        print(f"Response status code: {response.status_code}")
+        print(f"Response headers: {response.headers}")
+    except requests.exceptions.ConnectionError as err:
+        print(f"Connection error: {err}")
+    except requests.exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+    except requests.exceptions.RequestException as err:
+        print(f"Request exception: {err}")
+    except ValueError:
+        print("Response not supplied in JSON format")
+        print(f"Response as text:\n{response.text}")
+    return None
+
+
+def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
+    """
+    Function for reingesting an AIP without
+    supplying any slug data. type FULL/PARTIAL
+    """
+    ENDPOINT = f"{ARCH_URL}/api/transfer/reingest/"
+
+    # Create payload and post
+    data_payload = {
+        "name": aip_uuid_name,
+        "uuid": aip_uuid,
+        "reingest_type": ingest_type,
+    }
+    payload = json.dumps(data_payload)
+    print(f"Starting reingest of AIP UUID: {aip_uuid}")
+    try:
+        response = requests.post(ENDPOINT, headers=HEADER, data=payload)
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
         print(response.text)
@@ -518,19 +624,18 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     """
     Path from top level folder to completion only
     Where metadata reingest occurs, set copy metadata
-    call to requests. Path is whole path to metadata.csv
+    call to requests. Path is to metadata.csv level
     for the given item's correlating aip uuid
     """
     from urllib.parse import urlencode
 
     MDATA_ENDPOINT = os.path.join(ARCH_URL, "api/ingest/copy_metadata_files/")
-    mdata_path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
+    mdata_path_str = (
+        f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
+    )
     encoded_path = base64.b64encode(mdata_path_str.encode("utf-8")).decode("utf-8")
 
-    data_payload = urlencode({
-        "sip_uuid": sip_uuid,
-        "source_paths[]": encoded_path
-    })
+    data_payload = urlencode({"sip_uuid": sip_uuid, "source_paths[]": encoded_path})
 
     print(json.dumps(data_payload))
     print(f"Starting transfer of {mdata_path_str}")
@@ -560,9 +665,7 @@ def approve_aip_reingest(uuid):
     """
     END = f"{ARCH_URL}/api/ingest/reingest/approve/"
 
-    payload =  urlencode({
-        "uuid": uuid
-    })
+    payload = urlencode({"uuid": uuid})
 
     try:
         response = requests.post(END, headers=HEADER_META, data=payload)
@@ -585,10 +688,10 @@ def approve_aip_reingest(uuid):
 
 
 def approve_transfer(dir_name):
-    '''
+    """
     Find transfer that needs approval
     And approve if dir-name matches
-    '''
+    """
     GET_UNAPPROVED = f"{ARCH_URL}/api/transfer/unapproved/"
     APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"
 
@@ -613,13 +716,17 @@ def approve_transfer(dir_name):
     print(type(dct))
     for lst in dct["results"]:
         for key, value in lst.items():
-            if key == 'directory' and value.startswith(dir_name):
-                payload = urlencode({
-                    "directory": value,
-                    "type": "standard",
-                })
+            if key == "directory" and value.startswith(dir_name):
+                payload = urlencode(
+                    {
+                        "directory": value,
+                        "type": "standard",
+                    }
+                )
                 try:
-                    response = requests.post(APPROVE_TRANSFER, headers=HEADER_META, data=payload)
+                    response = requests.post(
+                        APPROVE_TRANSFER, headers=HEADER_META, data=payload
+                    )
                     response.raise_for_status()
                     print(f"Tranfers unapproved: {response.status_code}")
                     print(response.text)

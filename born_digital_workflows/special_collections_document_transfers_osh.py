@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """
+WIP
 Special Collections Document tranfsers for OSH
 Moving renamed folders to SFTP / Archivematica
 
@@ -23,6 +24,8 @@ Iterate through supplied sys.argv[1] folder path completing:
 6. Capture all outputs to logs
 
 NOTES:
+Needs CSV to manage completed SFTP posts
+
 Some assumptions in code
 1. That to make AtoM slug we may need an additional stage  / manual work
 2. That we do not PUT folders with 'fonds' to 'sub-sub-sub-series' levels, just
@@ -36,6 +39,7 @@ Some assumptions in code
 2025
 """
 
+import csv
 # Public packages
 import datetime
 import logging
@@ -43,7 +47,6 @@ import os
 import sys
 from time import sleep
 
-# Private packages
 import archivematica_sip_utils as am_utils
 import tenacity
 
@@ -51,11 +54,10 @@ sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
 
-LOG = os.path.join(
-    os.environ.get("LOG_PATH"), "special_collections_document_transfer_osh.log"
-)
-CID_API = os.environ.get("CID_API4")
-# CID_API = utils.get_current_api()
+LOGS = os.environ.get("LOG_PATH")
+LOG = os.path.join(LOGS, "special_collections_document_transfer_osh.log")
+CID_API = utils.get_current_api()
+CSV_PATH = os.path.join(LOGS, "Archivematica_sftp_upload_log.csv")
 
 LOGGER = logging.getLogger("sc_document_transfer_osh")
 HDLR = logging.FileHandler(LOG)
@@ -91,6 +93,42 @@ def top_folder_split(fname, prefix):
     return ob_num, record_type, title
 
 
+def update_csv_document(message_list: list) -> None:
+    """
+    For each item successfully PUT to sftp
+    add to CSV to confirm this and avoid dupes
+    """
+    with open(CSV_PATH, "w+") as file:
+        writer = csv.writer(file)
+        writer.writerow(message_list)
+
+
+def check_csv_doc(filename: str) -> Optional[bool]:
+    """
+    Read CSV and return if folder name has been alread
+    sent to Archivematica SFTP location
+    """
+    with open(CSV_PATH, "r") as file:
+        rows = csv.reader(file, delimiter="\n")
+        for row in rows:
+            fname = row[0]
+            if filename in fname:
+                return True
+    return False
+
+
+def yield_folders(base_dir):
+    """
+    To avoid nesting
+    """
+    for root, dirs, _ in os.walk(base_dir):
+        for directory in dirs:
+            uploaded = check_csv_doc(directory)
+            if uploaded is True:
+                continue
+            yield root, directory
+
+
 def main():
     """
     Iterate supplied folder
@@ -104,14 +142,18 @@ def main():
         sys.exit("* Cannot establish CID session, exiting script")
     if sys.argv < 3:
         print("Path has not been supplied to script. Exiting.")
+
     base_dir = sys.argv[1]  # Always sub_fond level path
     top_level_folder = sys.argv[2]  # Specified SFTP top level folder
 
+    if not utils.check_storage(base_dir):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not os.path.exists(base_dir):
         sys.exit(f"Exiting. Path could not be found: {base_dir}")
     if top_level_folder not in base_dir:
         sys.exit(
-            "Exiting, folder name {top_level_folder} or path formatted incorrectly {base_dir}"
+            f"Exiting, folder name {top_level_folder} or path formatted incorrectly {base_dir}"
         )
 
     LOGGER.info(
@@ -119,145 +161,145 @@ def main():
     )
     LOGGER.info("Path target: %s", base_dir)
 
-    # Start processing paths
-    for root, dirs, _ in os.walk(base_dir):
-        for directory in dirs:
-            dpath = os.path.join(root, directory)
-            record_type = None
-            if any(x in directory for x in LEVEL):
-                ob_num, record_type, title = top_folder_split(
-                    directory, top_level_folder.split("-", 1)[0]
-                )
-            else:
-                ob_num, title = directory.split("_", 1)
+    # Start processing at folder level
+    for root, directory in yield_folders(base_dir):
+        dpath = os.path.join(root, directory)
+        record_type = None
+        if any(x in directory for x in LEVEL):
+            ob_num, record_type, title = directory.split("_", 2)
+        else:
+            ob_num, title = directory.split("_", 1)
 
-            # PUT objects only to SFTP
-            if record_type is None:
-                LOGGER.info(
-                    "Folder identified for ob num %s, title %s - type: %s",
-                    ob_num,
-                    title,
-                    record_type,
-                )
-                put_files = am_utils.send_to_sftp(dpath, top_level_folder)
-                if put_files is None:
-                    LOGGER.warning("SFTP PUT failed for folder: %s %s", ob_num, dpath)
-                    continue
-                files = os.listdir(dpath)
-                if put_files[0] in files:
-                    LOGGER.info(
-                        "SFTP Put successful: %s moved to Archivematica", put_files
-                    )
-                else:
-                    LOGGER.warning(
-                        "Problem with files put in folder %s: %s", directory, put_files
-                    )
-                    continue
+        # PUT Archival Items only to SFTP (no record_type in name)
+        if record_type is not None:
+            LOGGER.info("Skipping PUT of %s - not Archival Item level", directory)
+            continue
+        LOGGER.info("Item level folder identified for upload - %s", directory)
+        put_files = am_utils.send_to_sftp(dpath, top_level_folder)
+        if put_files is None:
+            LOGGER.warning("SFTP PUT failed for folder: %s %s", ob_num, dpath)
+            continue
+        files = os.listdir(dpath)
+        if put_files[0] not in files:
+            LOGGER.warning(
+                "Problem with files put in folder %s: %s", directory, put_files
+            )
+            continue
+        LOGGER.info("SFTP Put successful: %s moved to Archivematica", put_files)
+        update_csv_document(
+            [
+                directory,
+                f"{str(datetime.datetime.now())[:19]}",
+                "Archival Item",
+                ob_num,
+                title,
+                dpath,
+            ]
+        )
 
-                # Make vars for Archivematica / Slug
-                dpath_split = dpath.split(top_level_folder)[-1]
-                am_path = os.path.join(top_level_folder, dpath_split)
-                # JMW: Decision still forthcoming regarding slug name / ob_num - if former matching may be needed
-                atom_slug = (
-                    os.path.basename(os.path.split(am_path)[0]).split("_", 1)[0].lower()
-                )
-                if am_utils.get_slug_match(atom_slug) is False:
-                    LOGGER.warning("Supposed slug cannot be found in AtoM objects.")
-                    # JMW: Make slug here?
-                    continue
+        # JMW: Decision still forthcoming regarding level of ingest needed
+        # slug name / ob_num - if former matching may be needed
+        # Get some pathlib sense in here! UP TO HERE
+        dpath_split = dpath.split(top_level_folder)[-1]
+        am_path = os.path.join(top_level_folder, dpath_split)
+        atom_slug = (
+            os.path.basename(os.path.split(am_path)[0])
+            .split("_", 2)[-1]
+            .lower()
+            .replace(" ", "-")
+            .replace("_", "-")
+        )
+        if am_utils.get_slug_match(atom_slug) is False:
+            LOGGER.warning("Slug not found in AtoM objects: %s", atom_slug)
+            # JMW: Make slug here?
+            continue
 
-                item_rec = adlib.retrieve_record(
-                    CID_API,
-                    "archivescatalogue",
-                    f'object_number="{ob_num}"',
-                    1,
-                    ["priref"],
-                )[1]
-                item_priref = adlib.retrieve_field_name(item_rec[0], "priref")[1]
+        item_rec = adlib.retrieve_record(
+            CID_API,
+            "archivescatalogue",
+            f'object_number="{ob_num}"',
+            1,
+            ["priref"],
+        )[1]
+        item_priref = adlib.retrieve_field_name(item_rec[0], "priref")[1]
 
-                # Move to Archivematica
-                processing_config = "ClosedRecords"  # Fixed as closed in this code
-                LOGGER.info(
-                    "Moving SFTP directory %s to Archivematica as %s",
-                    directory,
-                    processing_config,
-                )
-                response = am_utils.send_as_package(
-                    am_path, atom_slug, item_priref, processing_config, True
-                )
-                if "id" not in response:
-                    LOGGER.warning(
-                        "Possible failure for Archivematica creation: %s", response
-                    )
-                    continue
+        # Move to Archivematica
+        processing_config = "ClosedRecords"  # TBC 'OpenRecords' 'Ingest_No_SIP'
+        LOGGER.info(
+            "Moving SFTP directory %s to Archivematica as %s",
+            directory,
+            processing_config,
+        )
+        response = am_utils.send_as_package(
+            am_path, atom_slug, item_priref, processing_config, True
+        )
+        if "id" not in response:
+            LOGGER.warning("Possible failure for Archivematica creation: %s", response)
+            continue
 
-                transfer_uuid = response.get("id")
-                transfer_dict = check_transfer_status(transfer_uuid, directory)
-                if not transfer_dict:
-                    LOGGER.warning(
-                        "Transfer confirmation not found after 10 minutes for directory %s",
-                        directory,
-                    )
-                    LOGGER.warning(
-                        "Manual assistance needed to update UUIDs to CID item record"
-                    )
-                    continue
-                sip_uuid = transfer_dict.get("sip_uuid")
-                LOGGER.info(transfer_dict)
-                ingest_dict = check_ingest_status(sip_uuid, directory)
-                if not ingest_dict:
-                    LOGGER.warning(
-                        "Ingest confirmation not found after 10 minutes for directory %s",
-                        directory,
-                    )
-                    LOGGER.warning(
-                        "Manual assistance needed to update AIP UUID to CID item record"
-                    )
-                    continue
-                aip_uuid = ingest_dict.get("uuid")
-                LOGGER.info(ingest_dict)
+        transfer_uuid = response.get("id")
+        transfer_dict = check_transfer_status(transfer_uuid, directory)
+        if not transfer_dict:
+            LOGGER.warning(
+                "Transfer confirmation not found after 10 minutes for directory %s",
+                directory,
+            )
+            LOGGER.warning(
+                "Manual assistance needed to update UUIDs to CID item record"
+            )
+            continue
+        sip_uuid = transfer_dict.get("sip_uuid")
+        LOGGER.info(transfer_dict)
+        ingest_dict = check_ingest_status(sip_uuid, directory)
+        if not ingest_dict:
+            LOGGER.warning(
+                "Ingest confirmation not found after 10 minutes for directory %s",
+                directory,
+            )
+            LOGGER.warning(
+                "Manual assistance needed to update AIP UUID to CID item record"
+            )
+            continue
+        aip_uuid = ingest_dict.get("uuid")
+        LOGGER.info(ingest_dict)
 
-                # Update transfer, SIP and AIP UUID to CID item record
-                # JMW: If adopted new enumeration needed for label.type
-                uuid = [
-                    {"label.type": "ARTEFACTUALUUID"},
-                    {"label.source": "Transfer UUID"},
-                    {"label.date": str(datetime.datetime.now())[:10]},
-                    {"label.text": transfer_uuid},
-                    {"label.type": "ARTEFACTUALUUID"},
-                    {"label.source": "SIP UUID"},
-                    {"label.date": str(datetime.datetime.now())[:10]},
-                    {"label.text": sip_uuid},
-                    {"label.type": "ARTEFACTUALUUID"},
-                    {"label.source": "AIP UUID"},
-                    {"label.date": str(datetime.datetime.now())[:10]},
-                    {"label.text": aip_uuid},
-                ]
-                print(f"Label values:\n{uuid}")
+        # Update transfer, SIP and AIP UUID to CID item record
+        # JMW: If adopted new enumeration needed for label.type
+        uuid = [
+            {"label.type": "ARTEFACTUALUUID"},
+            {"label.source": "Transfer UUID"},
+            {"label.date": str(datetime.datetime.now())[:10]},
+            {"label.text": transfer_uuid},
+            {"label.type": "ARTEFACTUALUUID"},
+            {"label.source": "SIP UUID"},
+            {"label.date": str(datetime.datetime.now())[:10]},
+            {"label.text": sip_uuid},
+            {"label.type": "ARTEFACTUALUUID"},
+            {"label.source": "AIP UUID"},
+            {"label.date": str(datetime.datetime.now())[:10]},
+            {"label.text": aip_uuid},
+        ]
+        print(f"Label values:\n{uuid}")
 
-                # Start creating CID Work Series record
-                uuid_xml = adlib.create_record_data(
-                    CID_API, "archivescatalogue", item_priref, uuid
-                )
-                print(uuid_xml)
-                try:
-                    print("Attempting to create CID record")
-                    rec = adlib.post(
-                        CID_API, uuid_xml, "archivescatalogue", "updaterecord"
-                    )
-                    if rec is None:
-                        LOGGER.warning("Failed to update record:\n%s", uuid_xml)
-                        return None
-                    if "priref" not in str(rec):
-                        LOGGER.warning("Failed to update new record:\n%s", item_priref)
-                        return None
+        # Start creating CID Work Series record
+        uuid_xml = adlib.create_record_data(
+            CID_API, "archivescatalogue", item_priref, uuid
+        )
+        print(uuid_xml)
+        try:
+            print("Attempting to create CID record")
+            rec = adlib.post(CID_API, uuid_xml, "archivescatalogue", "updaterecord")
+            if rec is None:
+                LOGGER.warning("Failed to update record:\n%s", uuid_xml)
+                return None
+            if "priref" not in str(rec):
+                LOGGER.warning("Failed to update new record:\n%s", item_priref)
+                return None
 
-                except Exception as err:
-                    LOGGER.warning("Unable to update UUID data to record: %s", err)
+        except Exception as err:
+            LOGGER.warning("Unable to update UUID data to record: %s", err)
 
-                LOGGER.info("Completed upload of %s\n", directory)
-            else:
-                LOGGER.info("Skipping PUT of %s - no objects enclosed", directory)
+        LOGGER.info("Completed upload of %s\n", directory)
 
     LOGGER.info(
         "=========== Special Collections Archivematica - Document Transfer OSH END =============="

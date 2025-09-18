@@ -195,7 +195,9 @@ def main():
     Compare checksum manifests, if match add into TAR and close.
     Delete original file, move TAR to autoingest path.
     """
-
+    if not utils.check_storage(AUTO_TAR) or not utils.check_storage(AUTOINGEST):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if len(sys.argv) != 2:
         LOGGER.warning("SCRIPT EXIT: Error with shell script input:\n %s", sys.argv)
         sys.exit()
@@ -205,6 +207,9 @@ def main():
 
     if not os.path.exists(fullpath):
         sys.exit("Supplied path does not exists. Please try again.")
+    if not utils.check_storage(fullpath):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     log = []
     log.append(f"\n==== New path for TAR wrap: {fullpath} ====")

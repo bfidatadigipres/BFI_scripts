@@ -48,7 +48,7 @@ Single:
 9. Sends notification email to user who requested download
    with unique transcode message when complete.
 
-Joanna White
+Dependency: Elasticsearch v8 or v7
 2023
 """
 
@@ -59,13 +59,16 @@ import os
 import sys
 from datetime import datetime
 from typing import Any, Final, Optional, Union
+
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import (ConflictError, NotFoundError,
                                       RequestError, TransportError)
+
 # Local packages
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
+
 sys.path.append(os.path.join(os.environ["CODE"], "black_pearl/"))
 import bp_utils as bp
 from downloaded_transcode_mp4 import transcode_mp4
@@ -278,7 +281,6 @@ def retrieve_requested() -> list[tuple[str, str]]:
     return remove_duplicates(requested_data)
 
 
-######
 def check_for_cancellation(user_id: str):
     """
     Pull data from ES index for user ID being processed
@@ -405,6 +407,12 @@ def main():
             )
             update_table(user_id, "Download path invalid")
             continue
+        if not utils.check_storage(dpath):
+            LOGGER.info(
+                "Script run prevented by downtime_control.json. Skipping download."
+            )
+            update_table(user_id, "Download path offline")
+            continue
 
         download_fpath = os.path.join(dpath, dfolder)
         print(download_fpath)
@@ -520,6 +528,8 @@ def main():
                 LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                 os.remove(new_fpath)
             # Send notification email
+            print("Sending email to user....")
+            LOGGER.info("Sending email to user....")
             send_email_update(email, fname, new_fpath, trans)
             continue
 

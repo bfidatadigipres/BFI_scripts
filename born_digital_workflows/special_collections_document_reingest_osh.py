@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """
+WIP
 Special Collections Document tranfsers for OSH
 Moving renamed folders to SFTP / Archivematica
 
@@ -49,8 +50,8 @@ import utils
 LOG = os.path.join(
     os.environ.get("LOG_PATH"), "special_collections_document_reingest_osh.log"
 )
-CID_API = os.environ.get("CID_API4")
-# CID_API = utils.get_current_api()
+# CID_API = os.environ.get("CID_API4")
+CID_API = utils.get_current_api()
 
 LOGGER = logging.getLogger("sc_document_reingest_osh")
 HDLR = logging.FileHandler(LOG)
@@ -74,6 +75,10 @@ def main():
     """
     WIP
     """
+    base_dir = ""
+    if not utils.check_storage(base_dir):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     pass
 
 

@@ -23,6 +23,7 @@ import shutil
 import sys
 from time import sleep
 from typing import Any, Final, Optional
+
 import requests
 
 # Private packages
@@ -227,7 +228,9 @@ def build_defaults(
     if len(utc_timestamp) > 10:
         bst_data = utils.check_bst_adjustment(utc_timestamp)
         if len(bst_data) != 2:
-            LOGGER.warning("BST date time conversion failed. Resorting to UTC time stamps")
+            LOGGER.warning(
+                "BST date time conversion failed. Resorting to UTC time stamps"
+            )
             bst_date = title_date_start
             bst_time = time
         else:
@@ -320,7 +323,9 @@ def main() -> None:
     if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-
+    if not utils.check_storage(STORAGE):
+        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")

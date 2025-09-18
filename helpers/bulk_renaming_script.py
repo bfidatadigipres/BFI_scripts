@@ -56,6 +56,9 @@ def main():
     if len(sys.argv) < 2:
         sys.exit("Please supply path folder. Script exiting")
     fpath = sys.argv[1]
+    if not utils.check_storage(fpath) or not utils.check_storage(AUTODETECT):
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not os.path.exists(fpath):
         sys.exit(f"Script exiting. Path cannot be found by code: {fpath}")
     LOGGER.info("File path received: %s", fpath)

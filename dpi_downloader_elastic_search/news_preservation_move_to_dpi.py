@@ -22,7 +22,6 @@ Flask app status.
 import datetime
 import itertools
 import logging
-# Python packages
 import os
 import sqlite3
 import subprocess
@@ -165,6 +164,9 @@ def main():
     if not utils.check_control("stora"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORA):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     LOGGER.info(
         "================ DPI NEWS PRESERVATION REQUESTS RETRIEVED: %s. Date: %s =================",
         len(data),
@@ -226,7 +228,7 @@ def move_folder(channel: str, date_pth: str) -> bool:
     """
 
     from_path = os.path.join(STORA_BACKUP, date_pth, channel)
-    to_path = os.path.join(STORA, date_pth, channel)
+    to_path = os.path.join(STORA, date_pth)
     if not os.path.exists(to_path):
         os.makedirs(to_path, mode=0o777, exist_ok=True)
 

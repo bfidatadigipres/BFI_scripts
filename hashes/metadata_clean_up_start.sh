@@ -37,3 +37,4 @@ echo " == Launching GNU parallel to run muliple Python3 scripts for metadata_cle
 grep '/mnt/' "${CODE_PTH}metadata_clean_up_list.txt" | parallel --jobs 20 "${PYENV313} ${CODE_PTH}metadata_clean_up.py {}"
 
 echo " ========================= SHELL SCRIPT END ========================== $DATE_FULL" >> "${LOG}"
+

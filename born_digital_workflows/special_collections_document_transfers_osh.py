@@ -40,6 +40,7 @@ Some assumptions in code
 """
 
 import csv
+
 # Public packages
 import datetime
 import logging

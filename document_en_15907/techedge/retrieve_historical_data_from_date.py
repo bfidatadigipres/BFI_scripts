@@ -21,6 +21,7 @@ CODE_PATH = os.path.join(os.environ.get("CODE"), "document_en_15907/techedge")
 LIST = os.path.join(CODE_PATH, "date_list.json")
 sys.path.append(CODE_PATH)
 import sftp_utils as ut
+
 sys.path.append(os.environ.get("CODE"))
 import utils
 
@@ -62,7 +63,7 @@ def get_date():
     datetime.date(2015, 1, 1)
     """
 
-    with open(LIST, 'r') as d:
+    with open(LIST, "r") as d:
         date_list = json.load(d)
         for date in date_list["dates"]:
             yield date

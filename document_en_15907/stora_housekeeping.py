@@ -22,11 +22,7 @@ import os
 import shutil
 import sys
 
-<<<<<<< HEAD
-sys.path.append(os.environ['CODE_BFI'])
-=======
-sys.path.append(os.environ["CODE_BFI"])
->>>>>>> 3cf71649ba12efe9bbbb6aecbf8a3200504af4d6
+sys.path.append(os.environ.get("CODE_BFI"))
 import utils
 
 # Global paths
@@ -47,23 +43,14 @@ logger.setLevel(logging.INFO)
 TODAY_DATE = datetime.date.today()
 TODAY = str(TODAY_DATE)
 YESTERDAY_DATE = TODAY_DATE - datetime.timedelta(days=7)
-<<<<<<< HEAD
-YESTERDAY = YESTERDAY_DATE.strftime('%Y-%m-%d')
-# YESTERDAY = '2024-12-31'
-=======
 YESTERDAY = YESTERDAY_DATE.strftime("%Y-%m-%d")
->>>>>>> 3cf71649ba12efe9bbbb6aecbf8a3200504af4d6
 MONTH = f"{YESTERDAY[0:4]}/{YESTERDAY[5:7]}"
 STORA_PATH_MONTH = os.path.join(STORA_PATH, MONTH)
 STORA_PATH_YEAR = os.path.join(STORA_PATH, MONTH[0:4])
 # Alternative paths to clear backlog
-<<<<<<< HEAD
-# STORA_PATH_MONTH = os.path.join(STORA_PATH, '2024/12')
-# STORA_PATH_YEAR = os.path.join(STORA_PATH, '2024')
-=======
+# YESTERDAY = '2024-12-31'
 # STORA_PATH_MONTH = os.path.join(STORA_PATH, '2023/02')
 # STORA_PATH_YEAR = os.path.join(STORA_PATH, '2023')
->>>>>>> 3cf71649ba12efe9bbbb6aecbf8a3200504af4d6
 
 
 def clear_folders(path):
@@ -117,12 +104,9 @@ def main():
     if not utils.check_control("power_off_all"):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-<<<<<<< HEAD
-=======
     if not utils.check_storage(STORA_PATH):
         logger.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
->>>>>>> 3cf71649ba12efe9bbbb6aecbf8a3200504af4d6
 
     logger.info("=========== stora_housekeeping.py START ===========")
     period = []

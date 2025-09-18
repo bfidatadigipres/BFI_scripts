@@ -21,7 +21,7 @@ import os
 import sys
 
 # local packages
-sys.path.append(os.environ["CODE_BFI"])
+sys.path.append(os.environ.get("CODE_BFI"))
 import utils
 
 # Global paths

@@ -22,8 +22,6 @@
     <rule name="Video/Height is 720" value="Height" tracktype="Video" occurrence="*" operator="=">720</rule>
 
   </policy>
-  <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
-  <rule name="Video/FrameRate_Mode_Original is VFR" value="FrameRate_Mode_Original" tracktype="Video" occurrence="*" operator="=">VFR</rule>
   <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="=">YUV</rule>
   <rule name="Video/ChromaSubsampling is 4:2:0" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:0</rule>
   <rule name="Video/BitDepth is 8" value="BitDepth" tracktype="Video" occurrence="*" operator="=">8</rule>

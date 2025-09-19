@@ -64,7 +64,12 @@ FIELDS = [
     {"container.frame_count": ["FrameCount", "Frame count  "]},
     {"container.frame_rate": ["FrameRate", "Frame rate  "]},
     {"container.overall_bit_rate": ["OverallBitRate_String", "Overall bit rate  "]},
-    {"container.overall_bit_rate_mode": ["OverallBitRate_Mode", "Overall bit rate mode  ",]},
+    {
+        "container.overall_bit_rate_mode": [
+            "OverallBitRate_Mode",
+            "Overall bit rate mode  ",
+        ]
+    },
     {"container.writing_application": ["Encoded_Application", "Writing application  "]},
     {"container.writing_library": ["Encoded_Library", "Writing library  "]},
     {"container.file_extension": ["FileExtension", "File extension  "]},
@@ -84,7 +89,12 @@ FIELDS = [
     {"video.height": ["Height", "Height  "]},
     {"video.scan_order": ["ScanOrder_String", "Scan order  "]},
     {"video.scan_type": ["ScanType", "Scan type  "]},
-    {"video.scan_type.store_method": ["ScanType_StoreMethod_String", "Scan type, store method  "]},
+    {
+        "video.scan_type.store_method": [
+            "ScanType_StoreMethod_String",
+            "Scan type, store method  ",
+        ]
+    },
     {"video.standard": ["Standard", "Standard  "]},
     {"video.stream_size_bytes": ["StreamSize", "Stream size  "]},
     {"video.stream_order": ["StreamOrder", "StreamOrder  "]},
@@ -101,7 +111,12 @@ FIELDS = [
     {"video.format": ["Format", "Format  "]},
     {"video.matrix_coefficients": ["matrix_coefficients", "Matrix coefficients  "]},
     {"video.pixel_aspect_ratio": ["PixelAspectRatio", "Pixel aspect ratio  "]},
-    {"video.transfer_characteristics": ["transfer_characteristics", "Transfer characteristics  "]},
+    {
+        "video.transfer_characteristics": [
+            "transfer_characteristics",
+            "Transfer characteristics  ",
+        ]
+    },
     {"video.writing_library": ["Encoded_Library", "Writing library  "]},
     {"video.stream_size": ["StreamSize_String", "Stream size  "]},
     {"colour_range": ["colour_range", "Color range  "]},
@@ -115,7 +130,12 @@ FIELDS = [
     {"audio.channel_layout": ["ChannelLayout", "Channel layout  "]},
     {"audio.channel_position": ["ChannelPositions", "Channel positions  "]},
     {"audio.compression_mode": ["Compression_Mode", "Compression mode  "]},
-    {"audio.format_settings_endianness": ["Format_Settings_Endianness", "Format settings, Endianness  "]},
+    {
+        "audio.format_settings_endianness": [
+            "Format_Settings_Endianness",
+            "Format settings, Endianness  ",
+        ]
+    },
     {"audio.format_settings_sign": ["Format_Settings_Sign", "Format settings, Sign  "]},
     {"audio.frame_count": ["FrameCount", "Frame count  "]},
     {"audio.language": ["Language_String", "Language  "]},
@@ -129,7 +149,12 @@ FIELDS = [
     {"other.frame_rate": ["FrameRate", "Frame rate  "]},
     {"other.language": ["Language_String", "Language  "]},
     {"other.type": ["Type", "Type  "]},
-    {"other.timecode_first_frame": ["TimeCode_FirstFrame", "Time code of first frame  "]},
+    {
+        "other.timecode_first_frame": [
+            "TimeCode_FirstFrame",
+            "Time code of first frame  ",
+        ]
+    },
     {"other.stream_order": ["StreamOrder", "StreamOrder  "]},
     {"other.format": ["Format", "Format  "]},
     {"text.duration": ["Duration_String1", "Duration  "]},

@@ -21,6 +21,7 @@ import datetime
 import errno
 import json
 import logging
+
 # Python packages
 import os
 import shutil
@@ -44,8 +45,8 @@ YESTERDAY_CLEAN: Final = YESTERDAY.strftime("%Y-%m-%d")
 START: Final = f"{YESTERDAY_CLEAN}T00:00:00"
 END: Final = f"{YESTERDAY_CLEAN}T23:59:00"
 # If a different date period needs targeting use:
-#START = '2025-01-24T00:00:00'
-#END = '2025-01-24T23:59:00'
+# START = '2025-01-24T00:00:00'
+# END = '2025-01-24T23:59:00'
 DATE_PATH: Final = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH: Final = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
@@ -82,7 +83,6 @@ CHANNEL = {
     "five": os.environ["PA_FIVE"],
     "5star": os.environ["PA_5STAR"],
 }
-
 
 
 def check_control() -> None:

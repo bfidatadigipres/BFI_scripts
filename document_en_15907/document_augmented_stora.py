@@ -1620,7 +1620,6 @@ def build_defaults(epg_dict):
         # {"transmission_start_time": epg_dict["time"]},
         {"transmission_start_time": bst_time},
         {"transmission_end_time": end_time},
-        {"transmission_duration": epg_dict["duration_total"]},
         {"runtime": epg_dict["duration_total"]},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": epg_dict["channel"]},

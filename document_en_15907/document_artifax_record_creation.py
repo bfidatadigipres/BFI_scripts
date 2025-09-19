@@ -39,6 +39,7 @@ from typing import Final, Optional
 
 import requests
 import tenacity
+
 # Local packages
 import title_article
 import yaml

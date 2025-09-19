@@ -239,6 +239,8 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     ext = os.path.splitext(ipath)[1].replace(".", "")
     try:
         file_type, mime = get_file_type(ext)
+    except Exception as err:
+        print(e)
     else:
         file_type = mime = ""
     print(f"**** {file_type} ****")

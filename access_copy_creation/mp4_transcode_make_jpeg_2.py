@@ -367,6 +367,11 @@ def main():
 
         # Calculate seconds mark to grab screen
         seconds = adjust_seconds(duration)
+        if seconds is None:
+            log_build.append(f"{local_time()}\tWARNING\tSeconds not found from duration: {duration}")
+            log_output(log_build)
+            sys.exit("Exiting: JPEG not created from MP4 file - duration data missing")
+
         log_build.append(f"{local_time()}\tINFO\tSeconds for JPEG cut: {seconds}")
         success = get_jpeg(seconds, outpath, jpeg_location)
         if not os.path.isfile(outpath):
@@ -540,6 +545,10 @@ def adjust_seconds(duration: float) -> float:
     """
     Adjust second duration one third in
     """
+    if len(duration) == 0:
+        return None
+    if not isinstance(duration, float):
+        return None
     return duration // 3
 
 

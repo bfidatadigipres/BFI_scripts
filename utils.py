@@ -526,8 +526,9 @@ def create_md5_65536(fpath):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
 
-    except Exception:
+    except Exception as err:
         print(f"{fpath} - Unable to generate MD5 checksum")
+        print(err)
         return None
 
 

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" type= "text/css" href="{{ url_for('static',filename='styles/form.css') }}">
+    </head>
+    <body>
+        <div class="header">
+          <h1>BFI National Archive file download and transcode</h1>
+          <p>Request download and transcode of files from the Digital Preservation Infrastructure into a network storage path</p>
+	</div>
+	<div class="topnav">
+	  <a href="{{ url_for('dpi_download_request') }}">Submit a request</a>
+	  <a href="{{ url_for('dpi_download') }}">View requests</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/article/3399090177">Instructions</a>
+          <a href="https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/group/-1" class="split">Service Desk</a>
+	</div>
+	<br/>
+        <div>ERROR: Your request has been rejected. Please retry using a BFI email address.</div>
+	<br/>
+	<button class="btn-nav" type="button" onclick="window.location.href='{{ url_for('dpi_download_request') }}';">Retry submitting a file download request</button><br/>
+        <button class="btn-nav" type="button" onclick="window.location.href='{{ url_for('dpi_download') }}';">View all download requests</button><br/>
+    </body>
+</html>

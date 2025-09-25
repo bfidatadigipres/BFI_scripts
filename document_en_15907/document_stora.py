@@ -376,8 +376,7 @@ def main() -> None:
             var_data = generate_variables(data)
             title = var_data[0]
             description = var_data[1]
-            title_date_start = var_data[2]
-            time = var_data[3]
+            time = var_data[2]
             duration_total = var_data[4]
             actual_duration_total = var_data[5]
             actual_duration_seconds_integer = var_data[6]
@@ -385,9 +384,10 @@ def main() -> None:
             broadcast_company = var_data[8]
             code_type = var_data[9]
             acquired_filename = os.path.join(root, "stream.mpeg2.ts")
-            if time == "UTC":
-                folder_name = os.path.basename(root)
-                time = ":".join(folder_name.split("-", 3)[:3])
+
+            # Get title_date_start from root folder
+            data = root.split("/STORA/")[1].split("/", 3)[:3]
+            title_date_start = "-".join(data)
 
             # Create defaults for all records in hierarchy
             record, work, work_restricted, manifestation, item = build_defaults(

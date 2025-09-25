@@ -39,7 +39,7 @@ def main():
     for dt in CHECK_DATES:
         target_date = os.path.join(STORAGE, dt)
         if os.path.exists(target_date):
-            print(f"******* NEW DATE {target_date} *********")
+            print(f"\n******* NEW DATE {target_date} *********")
             check_for_subs(target_date)
 
 
@@ -53,7 +53,6 @@ def check_cid(root):
     search = f'digital.acquired_filename="{match}"'
     hits, result = adlib.retrieve_record(CID_API, "items", search, "0", ["object_number"])
 
-    print(f"*** check_cid(): {hits}\n{result}")
     if hits is None:
         print(f"CID API could not be reached for Manifestations search: {search}")
         return None
@@ -69,6 +68,7 @@ def check_cid(root):
 def check_for_subs(target_date):
     for root, _, files in os.walk(target_date):
         for file in files:
+            ob_num = ""
             if file.endswith(".vtt"):
                 print(f"Path identified: {root}")
                 sub_fpath = os.path.join(root, file)
@@ -86,9 +86,8 @@ def check_for_subs(target_date):
                 fname = f"{ob_num.replace("-", "_")}_01of01.vtt"
                 print(f"Object number match: {ob_num}")
                 new_fpath = os.path.join(SUBS_PTH, fname)
-                print(f"Move file to new path: {new_fpath}")
+                print(f"Move file to new path: {new_fpath}\n")
                 shutil.move(sub_fpath, new_fpath)
-                sys.exit("Just one")
 
 
 if __name__ == "__main__":

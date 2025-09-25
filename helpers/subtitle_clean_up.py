@@ -79,10 +79,10 @@ def check_for_subs(target_date):
                 if not ob_num:
                     print(f"SKIPPING: Could not match: {root}")
                     continue
-                print(f"Object number match: {ob_num}")
-                fname = f"{ob_num.split("-", "_")}_01of01.vtt"
-                new_fpath = os.path.join(SUBS_PTH, fname)
 
+                fname = f"{ob_num.replace("-", "_")}_01of01.vtt"
+                print(f"Object number match: {ob_num}")
+                new_fpath = os.path.join(SUBS_PTH, fname)
                 print(f"shutil.move({sub_fpath}, {new_fpath})")
 
 

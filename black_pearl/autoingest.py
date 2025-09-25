@@ -631,6 +631,12 @@ def main():
             fpath = os.path.abspath(pth)
             fname = os.path.split(fpath)[-1]
 
+            # Attempt permissions mod
+            try:
+                os.chmod(fpath, 0o777)
+            except OSError as err:
+                print(err)
+
             # Allow path changes for black_pearl_ingest Netflix
             if "ingest/netflix" in str(fpath):
                 logger.info(

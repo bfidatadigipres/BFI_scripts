@@ -1922,7 +1922,7 @@ def create_manifestation(fullpath, work_priref, actual_duration, manifestation_d
             duration_secs = str(int(duration_mins) * 60)
             manifestation_values.append(
                 {"runtime": epg_dict["duration_total"]},
-                {"runtime_seconds": duration_secs)}
+                {"runtime_seconds": duration_secs}
             )
 
     man_values_xml = adlib.create_record_data(

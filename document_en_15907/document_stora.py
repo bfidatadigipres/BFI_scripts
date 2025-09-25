@@ -69,6 +69,11 @@ def csv_retrieve(fullpath: str) -> Optional[dict[str, str]]:
         logger.warning("No info.csv file found. Skipping CSV retrieve")
         print("No info.csv file found. Skipping CSV retrieve")
         return None
+    if os.stat(fullpath).st_size == 0:
+        logger.warning("Empty info.csv file found. Skipping CSV retrieve")
+        print("No entry in info.csv. Skipping CSV retrieve")
+        return None
+
     print("*** Check CSV data reading well ***")
     with open(fullpath, "r", encoding="latin-1") as inf:
         rows = csv.reader(inf)

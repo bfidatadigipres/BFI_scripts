@@ -959,11 +959,17 @@ def main():
                 print(f"** CSV ACTUAL DURATION: {csv_actual_duration}")
                 csv_dump = csv_data[2]
                 print(f"** CSV DATA FOR UTB: {csv_dump}")
-            except (IndexError, TypeError, KeyError):
+            except (IndexError, TypeError, KeyError) as err:
                 csv_data = []
                 csv_description = ""
                 csv_actual_duration = ""
                 csv_dump = ""
+                print(err)
+        else:
+            csv_data = []
+            csv_description = ""
+            csv_actual_duration = ""
+            csv_dump = ""
 
         # Get defaults as lists of dictionary pairs
         rec_def, ser_def, work_def, work_res_def, man_def, item_def = build_defaults(

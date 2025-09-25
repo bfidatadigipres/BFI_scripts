@@ -1912,18 +1912,15 @@ def create_manifestation(fullpath, work_priref, actual_duration, manifestation_d
         actual_minutes = (int(actual_data[0]) * 60) + int(actual_data[1])
         actual_seconds = (actual_minutes * 60) + int(actual_data[2])
         print(f"** Actual minutes {actual_minutes} - actual seconds {actual_seconds}")
-        manifestation_values.append(
-            {"runtime": actual_minutes},
-            {"runtime_seconds": actual_seconds}
-        )
+        manifestation_values.append({"runtime": actual_minutes})
+        manifestation_values.append({"runtime_seconds": actual_seconds})
+        
     else:
         duration_mins = epg_dict["duration_total"]
         if isnumeric(duration_mins):
             duration_secs = str(int(duration_mins) * 60)
-            manifestation_values.append(
-                {"runtime": epg_dict["duration_total"]},
-                {"runtime_seconds": duration_secs}
-            )
+            manifestation_values.append({"runtime": epg_dict["duration_total"]})
+            manifestation_values.append({"runtime_seconds": duration_secs})
 
     man_values_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values

@@ -524,7 +524,7 @@ def csv_retrieve(fullpath):
             csv_dump = f"{csv_chan}, {csv_title}, {csv_desc}, Date start: {csv_date}, Time: {csv_time}, \
                          Duration: {csv_dur}, Actual duration: {csv_act}"
 
-    return (csv_desc, csv_dump)
+    return (csv_desc, csv_act, csv_dump)
 
 
 def fetch_lines(fullpath, lines):
@@ -950,12 +950,15 @@ def main():
         if csv_data:
             try:
                 csv_description = csv_data[0]
+                csv_actual_duration = csv_data[1]
                 print(f"** CSV DESCRIPTION: {csv_description}")
-                csv_dump = csv_data[1]
+                print(f"** CSV ACTUAL DURATION: {csv_actual_duration}")
+                csv_dump = csv_data[2]
                 print(f"** CSV DATA FOR UTB: {csv_dump}")
             except (IndexError, TypeError, KeyError):
                 csv_data = []
                 csv_description = ""
+                csv_actual_duration = ""
                 csv_dump = ""
 
         # Get defaults as lists of dictionary pairs
@@ -1011,6 +1014,7 @@ def main():
         logger.info("MPEG-TS passed MediaConch check: %s", success)
         print(response)
         """
+
         # Make news channels new works for all live programming
         if channel in NEWS_CHANNELS:
             new_work = True
@@ -1088,7 +1092,7 @@ def main():
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
         manifestation_priref = create_manifestation(
-            fullpath, work_priref, manifestation_values, epg_dict
+            fullpath, work_priref, csv_actual_duration, manifestation_values, epg_dict
         )
 
         if not manifestation_priref:
@@ -1205,7 +1209,7 @@ def main():
                     new_vtt,
                     err,
                 )
-
+        sys.exit("One run only")
     logger.info(
         "========== STORA documentation script END ===================================================\n"
     )
@@ -1618,7 +1622,6 @@ def build_defaults(epg_dict):
         {"transmission_date": bst_date},
         {"transmission_start_time": bst_time},
         {"transmission_end_time": end_time},
-        {"runtime": epg_dict["duration_total"]},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": epg_dict["channel"]},
         {"transmission_coverage": "DIT"},
@@ -1874,7 +1877,7 @@ def create_work(
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict):
+def create_manifestation(fullpath, work_priref, actual_duration, manifestation_defaults, epg_dict):
     """
     Create a manifestation record,
     linked to work_priref
@@ -1897,6 +1900,30 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         manifestation_values.append(
             {"broadcast_company.lref": epg_dict["broadcast_company"]}
         )
+
+    # MAKE SURE RUNTIME REFLECTS ACTUAL DURATIONS / MINS & SECS
+    actual_data = None
+    if len(actual_duration) > 0 and ":" in str(actual_duration):
+        actual_data = (actual_duration.split(":"))
+    elif len(actual_duration) > 0 and "-" in str(actual_duration):
+        actual_data = (actual_duration.split("-"))
+
+    if actual_data is not None:
+        actual_minutes = (int(actual_data[0]) * 60) + int(actual_data[1])
+        actual_seconds = (actual_minutes * 60) + int(actual_data[2])
+        print(f"** Actual minutes {actual_minutes} - actual seconds {actual_seconds}")
+        manifestation_values.append(
+            {"runtime": actual_minutes},
+            {"runtime_seconds": actual_seconds}
+        )
+    else:
+        duration_mins = epg_dict["duration_total"]
+        if isnumeric(duration_mins):
+            duration_secs = str(int(duration_mins) * 60)
+            manifestation_values.append(
+                {"runtime": epg_dict["duration_total"]},
+                {"runtime_seconds": duration_secs)}
+            )
 
     man_values_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values

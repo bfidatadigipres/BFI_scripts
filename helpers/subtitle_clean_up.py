@@ -7,15 +7,17 @@ renamed/moved after Log folder permissions changed
 
 # Public packages
 import os
+import sys
 import shutil
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
-
+import utils
 
 # Global variables
 STORAGE = os.environ["STORA_PATH"]
 SUBS_PTH = os.environ["SUBS_PATH2"]
+CID_API = utils.get_current_api()
 CHECK_DATES = [
     "2025/09/02",
     "2025/09/03",
@@ -77,6 +79,7 @@ def check_for_subs(target_date):
                 if not ob_num:
                     print(f"SKIPPING: Could not match: {root}")
                     continue
+                print(f"Object number match: {ob_num}")
                 fname = f"{ob_num.split("-", "_")}_01of01.vtt"
                 new_fpath = os.path.join(SUBS_PTH, fname)
 

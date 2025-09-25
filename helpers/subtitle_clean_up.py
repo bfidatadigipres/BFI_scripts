@@ -37,7 +37,7 @@ def main():
     for dt in CHECK_DATES:
         target_date = os.path.join(STORAGE, dt)
         if os.path.exists(target_date):
-            print(f"******* NEW DATE *********")
+            print(f"******* NEW DATE {target_date} *********")
             check_for_subs(target_date)
 
 
@@ -47,8 +47,9 @@ def check_cid(root):
     for partial match to root path
     then extract object_number
     """
-    search = f'digital.acquired_filename="{os.path.join(root, 'stream.mpeg2.ts')}"'
-    hits, result = adlib.retrieve_record(CID_API, "item", search, "0", ["object_number"])
+    match = os.path.join(root, 'stream.mpeg2.ts')
+    search = f'digital.acquired_filename="{match}"'
+    hits, result = adlib.retrieve_record(CID_API, "items", search, "0", ["object_number"])
 
     print(f"*** check_cid(): {hits}\n{result}")
     if hits is None:

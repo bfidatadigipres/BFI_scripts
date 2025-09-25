@@ -679,6 +679,7 @@ def check_bst_adjustment(utc_datetime_str: str) -> Optional[list[str]]:
     """
     Passes datetime through timezone change
     for London, adding +1 hours during BST
+    Must receive data formatted %Y-%m-%d %H:%M:%S
     """
     format = "%Y-%m-%d %H:%M:%S"
     try:

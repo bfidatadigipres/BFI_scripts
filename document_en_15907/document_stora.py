@@ -385,6 +385,9 @@ def main() -> None:
             broadcast_company = var_data[8]
             code_type = var_data[9]
             acquired_filename = os.path.join(root, "stream.mpeg2.ts")
+            if time == "UTC":
+                folder_name = os.path.basename(root)
+                time = ":".join(folder_name.split("-", 3)[:3])
 
             # Create defaults for all records in hierarchy
             record, work, work_restricted, manifestation, item = build_defaults(

@@ -1549,6 +1549,7 @@ def build_defaults(epg_dict):
         end_time = stora_helper.calculate_transmission_stoptime(
             epg_dict["duration_total"], bst_time
         )
+        print(f"*** END TIME: {end_time}")
 
     record = [
         {"input.name": "datadigipres"},
@@ -1590,7 +1591,6 @@ def build_defaults(epg_dict):
         {"worklevel_type": "MONOGRAPHIC"},
         {"work_type": epg_dict["work_type"]},
         {"description.type.lref": "100298"},
-        # {"title_date_start": epg_dict["title_date_start"]},
         {"title_date_start": bst_date},
         {"title_date.type": "04_T"},
         {"nfa_category": epg_dict["nfa_category"]},
@@ -1615,9 +1615,7 @@ def build_defaults(epg_dict):
         {"colour_manifestation": epg_dict["colour_manifestation"]},
         {"sound_manifestation": "SOUN"},
         {"transmission_duration": epg_dict["duration_total"]},
-        # {"transmission_date": epg_dict["title_date_start"]},
         {"transmission_date": bst_date},
-        # {"transmission_start_time": epg_dict["time"]},
         {"transmission_start_time": bst_time},
         {"transmission_end_time": end_time},
         {"runtime": epg_dict["duration_total"]},

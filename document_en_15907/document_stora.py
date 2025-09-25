@@ -239,7 +239,7 @@ def build_defaults(
             bst_time = bst_data[1]
 
     end_time = stora_helper.calculate_transmission_stoptime(duration_total, bst_time)
-
+    print(f"*** END TIME: {end_time}")
     record = [
         {"input.name": "datadigipres"},
         {"input.date": str(datetime.datetime.now())[:10]},
@@ -499,6 +499,8 @@ def main() -> None:
                 print(
                     "Subtitle data is absent. Subtitle.vtt file will not be renamed or moved"
                 )
+
+            sys.exit("Allow just one run for transmission_end tests")
 
     logger.info(
         "========== STORA documentation script END ===================================================\n"

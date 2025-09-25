@@ -1209,7 +1209,6 @@ def main():
                     new_vtt,
                     err,
                 )
-        sys.exit("One run only")
     logger.info(
         "========== STORA documentation script END ===================================================\n"
     )

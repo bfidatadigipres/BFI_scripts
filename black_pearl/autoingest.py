@@ -222,10 +222,10 @@ def check_mime_type(fpath: str, log_paths: str) -> bool:
                 )
                 return False
             print("* ffprobe read file successfully - status 0")
-            except Exception as err:
-                logger.warning("%s\tffprobe failed to read file", log_paths)
-                print(err)
-                return False
+        except Exception as err:
+            logger.warning("%s\tffprobe failed to read file", log_paths)
+            print(err)
+            return False
         return True
 
 

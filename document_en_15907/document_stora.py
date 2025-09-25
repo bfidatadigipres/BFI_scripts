@@ -501,8 +501,6 @@ def main() -> None:
                     "Subtitle data is absent. Subtitle.vtt file will not be renamed or moved"
                 )
 
-            sys.exit("Allow just one run for transmission_end tests")
-
     logger.info(
         "========== STORA documentation script END ===================================================\n"
     )

@@ -37,6 +37,7 @@ def main():
     for dt in CHECK_DATES:
         target_date = os.path.join(STORAGE, dt)
         if os.path.exists(target_date):
+            print(f"******* NEW DATE *********")
             check_for_subs(target_date)
 
 

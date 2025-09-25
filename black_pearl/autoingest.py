@@ -207,19 +207,21 @@ def check_mime_type(fpath: str, log_paths: str) -> bool:
         logger.warning('%s\tMIMEtype "%s" is not permitted', log_paths, type_)
         return False
     if type_ in ["audio", "video"]:
+        """
         # Temporary addition to pass failing MXF files in Netflix share
-        if '/netflix/' in fpath and fpath.endswith(".mxf"):
+        if '/netflix/' in fpath and fpath.endswith((".mxf", ".MXF")):
             return True
         else:
-            cmd = ["ffprobe", "-i", fpath, "-loglevel", "-8"]
-            try:
-                code = subprocess.call(cmd)
-                if code != 0:
-                    logger.warning(
-                        "%s\tffprobe failed to read file: [%s] status", log_paths, code
-                    )
-                    return False
-                print("* ffprobe read file successfully - status 0")
+        """
+        cmd = ["ffprobe", "-i", fpath, "-loglevel", "-8"]
+        try:
+            code = subprocess.call(cmd)
+            if code != 0:
+                logger.warning(
+                    "%s\tffprobe failed to read file: [%s] status", log_paths, code
+                )
+                return False
+            print("* ffprobe read file successfully - status 0")
             except Exception as err:
                 logger.warning("%s\tffprobe failed to read file", log_paths)
                 print(err)

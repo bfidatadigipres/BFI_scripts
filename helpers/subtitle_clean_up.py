@@ -72,6 +72,9 @@ def check_for_subs(target_date):
             if file.endswith(".vtt"):
                 print(f"Path identified: {root}")
                 sub_fpath = os.path.join(root, file)
+                if os.path.exists(os.path.join(root, "stream.mpeg2.ts")):
+                    print(f"SKIPPING as stream MPEG found in path: {root}")
+                    continue
                 if os.stat(sub_fpath).st_size < 15:
                     print(f"SKIPPING: File too small for useful content: {sub_fpath}")
                     continue
@@ -83,7 +86,9 @@ def check_for_subs(target_date):
                 fname = f"{ob_num.replace("-", "_")}_01of01.vtt"
                 print(f"Object number match: {ob_num}")
                 new_fpath = os.path.join(SUBS_PTH, fname)
-                print(f"shutil.move({sub_fpath}, {new_fpath})")
+                print(f"Move file to new path: {new_fpath}")
+                shutil.move(sub_fpath, new_fpath)
+                sys.exit("Just one")
 
 
 if __name__ == "__main__":

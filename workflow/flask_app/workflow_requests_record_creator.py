@@ -25,7 +25,9 @@ client name (TEXT)          [10]
 client email (TEXT)         [11]
 contact details (TEXT)      [12]
 
-Work in process - remodelling D3 scripts below
+Written up, but needs testing of data supply
+into workflow_requests, and that records are
+created and have correct data.
 """
 
 # Public imports

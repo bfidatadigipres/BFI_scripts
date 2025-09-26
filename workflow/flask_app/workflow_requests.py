@@ -305,165 +305,10 @@ class Batch:
             self.successfully_completed = False
 
 
-class F47Batch:
+class BatchBuild:
     """
-    Create a tree of Workflow activities specific to F47 video encoding:
+    Create a tree of Workflow activities specific to Flask app:
       - Pick
-      - Encode
-      - Return
-
-    To use:
-
-        # Items
-        item_prirefs = [123, 567]
-
-        # Job metadata
-        topnode_metadata = {'description': 'F47 / Ofcom / etc',
-                            'completion.date': '2019-08-16'}
-
-        # Create
-        b = F47BatchDev(l, **topnode_metadata)
-    """
-
-    def __init__(self, items=None, **kwargs):
-        # Default metadata
-        d = {
-            "activities": ["Pick items", "Video Encoding", "Return items"],
-            "topNode": {
-                "activity.code.lref": "108964",
-                "purpose": "Preservation",
-                "request_type": "VIDEOCOPY",
-                "final_destination": "F47",
-                "request.details": "Transfer to preservation and proxy formats",
-                "assigned_to": "Television Operations",
-            },
-            "payload": {
-                "Pick items": {"destination": "PBK06B03000000"},
-                "Video Encoding": {"handling.name": "Television Operations"},
-                "Return items": {},
-            },
-        }
-
-        # Add any additional metadata to the topNode
-        for k in kwargs:
-            d["topNode"][k] = kwargs[k]
-
-        # Create
-        self.batch = Batch(items, **d)
-
-    @property
-    def successfully_completed(self):
-        return self.batch.successfully_completed
-
-
-class twoInchBatch:
-    """
-    Create a tree of Workflow activities specific to VT10 video encoding:
-      - Pick
-      - Encode
-      - Return
-
-    To use:
-
-        # Items
-        item_prirefs = [123, 567]
-
-        # Job metadata
-        topnode_metadata = {'description': '2inch / Ofcom / etc',
-                            'completion.date': '2021-06-01'}
-
-        # Create
-        b = VT10Batch(l, **topnode_metadata)
-    """
-
-    def __init__(self, items=None, **kwargs):
-        # Default metadata
-        d = {
-            "activities": ["Pick items", "Video Encoding", "Return items"],
-            "topNode": {
-                "activity.code.lref": "108964",
-                "purpose": "Preservation",
-                "request_type": "VIDEOCOPY",
-                "final_destination": "2inch - Video Copying",
-                "request.details": "Transfer to preservation formats",
-                "assigned_to": "Television Operations",
-            },
-            "payload": {
-                "Pick items": {"destination": "PBK03A06000000"},
-                "Video Encoding": {"handling.name": "Television Operations"},
-                "Return items": {},
-            },
-        }
-
-        # Add any additional metadata to the topNode
-        for k in kwargs:
-            d["topNode"][k] = kwargs[k]
-
-        # Create
-        self.batch = Batch(items, **d)
-
-    @property
-    def successfully_completed(self):
-        return self.batch.successfully_completed
-
-
-class VT10Batch:
-    """
-    Create a tree of Workflow activities specific to VT10 video encoding:
-      - Pick
-      - Encode
-      - Return
-
-    To use:
-
-        # Items
-        item_prirefs = [123, 567]
-
-        # Job metadata
-        topnode_metadata = {'description': 'VT10 / Ofcom / etc',
-                            'completion.date': '2021-06-01'}
-
-        # Create
-        b = VT10BatchDev(l, **topnode_metadata)
-    """
-
-    def __init__(self, items=None, **kwargs):
-        # Default metadata
-        d = {
-            "activities": ["Pick items", "Video Encoding", "Return items"],
-            "topNode": {
-                "activity.code.lref": "108964",
-                "purpose": "Preservation",
-                "request_type": "VIDEOCOPY",
-                "final_destination": "VTR 10 - Video Copying",
-                "request.details": "Transfer to preservation formats",
-                "assigned_to": "Television Operations",
-            },
-            "payload": {
-                "Pick items": {"destination": "PBK03A06000000"},
-                "Video Encoding": {"handling.name": "Television Operations"},
-                "Return items": {},
-            },
-        }
-
-        # Add any additional metadata to the topNode
-        for k in kwargs:
-            d["topNode"][k] = kwargs[k]
-
-        # Create
-        self.batch = Batch(items, **d)
-
-    @property
-    def successfully_completed(self):
-        return self.batch.successfully_completed
-
-
-class D3Batch:
-    """
-    Create a tree of Workflow activities specific to D3 video encoding (currently modelled from VT10):
-      - Pick
-      - Encode
-      - Return
 
     To use:
 
@@ -475,25 +320,18 @@ class D3Batch:
                             'completion.date': '2021-06-01'}
 
         # Create
-        b = D3BatchDev(l, **topnode_metadata)
+        b = BatchBuildDev(l, **topnode_metadata)
     """
 
-    def __init__(self, items=None, **kwargs):
+    def __init__(self, destination, items=None, **kwargs):
         # Default metadata
         d = {
-            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "activities": ["Pick items"],
             "topNode": {
-                "activity.code.lref": "108964",
                 "purpose": "Preservation",
-                "request_type": "VIDEOCOPY",
-                "final_destination": "D3 - Video Copying",
-                "request.details": "Transfer to preservation and proxy formats",
-                "assigned_to": "Television Operations",
             },
             "payload": {
-                "Pick items": {"destination": "PBK03A06000000"},
-                "Video Encoding": {"handling.name": "Television Operations"},
-                "Return items": {},
+                "Pick items": {"destination": destination},
             },
         }
 

@@ -49,8 +49,8 @@ class Activities:
             "output": "jsonv1",
         }
 
-        records = adlib.get(CID_API, query)
-        dt_list = adlib.retrieve_facet_list(records, "term")
+        recs = adlib.get(CID_API, query)
+        dt_list = adlib.retrieve_facet_list(recs, "term")
 
         for data_type in dt_list:
             search = f"dataType={data_type} and payloadDatabase>0"

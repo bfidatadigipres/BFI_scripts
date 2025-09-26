@@ -14,18 +14,23 @@ Creates - Workflow dB:
 Creates - Requests dB:
  Pick payload request
 
-Work in progress
+Needs use of records.py testing
+to ensure it makes only records
+required for this workflow
+
 2025
 """
+
+import os
+import sys
+from datetime import datetime
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
 sys.path.append(os.environ["WORKFLOW"])
 import records
-import os
-import sys
-from datetime import datetime
+
 
 # Global var
 CID_API = utils.get_current_api()

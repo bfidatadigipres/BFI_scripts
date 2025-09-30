@@ -226,7 +226,7 @@ def check_mime_type(fpath: str, log_paths: str) -> bool:
             logger.warning("%s\tffprobe failed to read file", log_paths)
             print(err)
             return False
-        return True
+    return True
 
 
 def process_image_archive(

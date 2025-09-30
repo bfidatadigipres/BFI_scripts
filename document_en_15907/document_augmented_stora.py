@@ -1926,7 +1926,7 @@ def create_manifestation(fullpath, work_priref, actual_duration, manifestation_d
         
     else:
         duration_mins = epg_dict["duration_total"]
-        if isnumeric(duration_mins):
+        if duration_mins.isdigit():
             duration_secs = str(int(duration_mins) * 60)
             manifestation_values.append({"runtime": epg_dict["duration_total"]})
             manifestation_values.append({"runtime_seconds": duration_secs})

@@ -69,7 +69,8 @@ def get_user_data(username, password):
     except (KeyError, IndexError, TypeError) as err:
         print(err)
         return []
-
+    if not result:
+        return []
     try:
         pwd = adlib.retrieve_field_name(result[0], "password")[0]
         status = adlib.retrieve_field_name(result[0], "user_status")[0]

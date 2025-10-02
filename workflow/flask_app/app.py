@@ -25,10 +25,10 @@ import adlib_v3 as adlib
 import utils
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", None)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 
-DBASE = os.environ.get("WF_DATABASE", None)
-FLASK_HOST = os.environ.get("FLASK_HOST", None)
+DBASE = os.environ.get("WF_DATABASE")
+FLASK_HOST = os.environ.get("FLASK_HOST")
 LOG_PATH = os.environ["LOG_PATH"]
 CID_API = utils.get_current_api()
 
@@ -234,4 +234,4 @@ def workflow_request():
 
 if __name__ == "__main__":
     # In production, set debug=False and serve behind a WSGI server (gunicorn/uwsgi)
-    app.run(host=FLASK_HOST, debug=False, port=5500)
+    app.run(host=FLASK_HOST, debug=False, port=7860)

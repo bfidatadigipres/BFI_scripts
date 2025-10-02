@@ -164,75 +164,69 @@ def workflow_request():
     Carry the logged-in details automatically into the form and POST.
     """
 
-    # email comes from session; do not trust client to set it
+    # Retrieve all necessary user data from the session
     user_email = session.get("email")
     user_name = session.get("username")
     user_first_name = session.get("first_name")
     user_last_name = session.get("last_name")
     user_dept = session.get("department")
-    activity_code = session.get("activity_codes")
+    # This is the list of codes we need for the dropdown
+    activity_codes_list = session.get("activity_codes", []) 
 
     if request.method == "GET":
-        user_category = request.args.get("client_category")
-        saved_search = request.args.get("items_list")
-        request_type = request.args.get("request_type")
-        request_outcome = request.args.get("request_outcome")
-        description = request.args.get("description")
-        delivery_date = request.args.get("delivery_date")
-        destination = request.args.get("destination")
-        instructions = request.args.get("instructions")
-        contact_details = request.args.get("contact_details")
-        # The returned templates need thinking about:
-        """
-        if fname and transcode:
-            return render_template(
-                "initiate2_transcode.html",
-                file=fname,
-                trans_option=transcode,
-                user_email=user_email,
-                user_name=user_name
-            )
+        # Pass all user data and the activity_codes list to the template
         return render_template(
-            "initiate_transcode.html",
+            "workflow_form.html", # We will create this new template
             user_email=user_email,
-            user_name=user_name
+            user_name=user_name,
+            user_first_name=user_first_name,
+            user_last_name=user_last_name,
+            user_dept=user_dept,
+            activity_codes=activity_codes_list # <-- Pass the list here
         )
-        """
 
     if request.method == "POST":
 
-        # Force email to session value; ignore client-sent email
+        # Force email/name to session value; ignore client-sent email/name
         email = user_email
         username = user_name
         fname = user_first_name
         lname = user_last_name
         dept = user_dept
-        user_category = request.args.get("client_category" or "").strip()
-        saved_search = request.args.get("items_list" or "").strip()
-        activity_code = request.args.get("activity_code" or "").strip()
-        request_type = request.args.get("request_type" or "").strip()
-        request_outcome = request.args.get("request_outcome" or "").strip()
-        description = request.args.get("description" or "").strip()
-        delivery_date = request.args.get("delivery_date" or "").strip()
-        destination = request.args.get("destination" or "").strip()
-        instructions = request.args.get("instructions" or "").strip()
-        contact_details = request.args.get("contact_details" or "").strip()
+        
+        # IMPORTANT: Use request.form.get() for POST data, not request.args.get()
+        user_category = request.form.get("client_category" or "").strip()
+        saved_search = request.form.get("items_list" or "").strip()
+        
+        # Retrieve the single selected activity code from the dropdown
+        activity_code_selected = request.form.get("activity_code" or "").strip() 
+        
+        request_type = request.form.get("request_type" or "").strip()
+        request_outcome = request.form.get("request_outcome" or "").strip()
+        description = request.form.get("description" or "").strip()
+        delivery_date = request.form.get("delivery_date" or "").strip()
+        destination = request.form.get("destination" or "").strip()
+        instructions = request.form.get("instructions" or "").strip()
+        contact_details = request.form.get("contact_details" or "").strip()
         status = "Requested"
         date_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Enforce domain check server-side
         if "bfi.org.uk" not in email:
-            return render_template("email_error_transcode.html")
+            # Use flash message or a specific error template
+            flash("Email domain check failed.")
+            return redirect(url_for("workflow_request")) 
 
         with closing(get_db()) as db:
             db.execute(
-                "INSERT INTO REQUESTS (username,email,first_name,last_name,client_category,items_list,activity_code,request_type,request_outcome,description,delivery_date,destination,instructions,contact_details,department,status,request_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (username, email, fname, lname, user_category, saved_search, activity_code, request_type, request_outcome, description, delivery_date, destination, instructions, contact_details, dept, status, date_stamp),
+                "INSERT INTO REQUESTS (username,email,first_name,last_name,client_category,items_list,activity_code,request_type,request_outcome,description,delivery_date,destination,instructions,contact_details,department,status,date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (username, email, fname, lname, user_category, saved_search, activity_code_selected, request_type, request_outcome, description, delivery_date, destination, instructions, contact_details, dept, status, date_stamp),
             )
             db.commit()
 
-        # Alternative to this needed
-        return render_template("index_transcode.html")
+        # Redirect to a confirmation page or the home page
+        flash("Workflow request successfully submitted!")
+        return redirect(url_for("index"))
 
     # Fallback (shouldn’t hit due to methods)
     abort(405)

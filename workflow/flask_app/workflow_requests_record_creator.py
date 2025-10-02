@@ -11,19 +11,24 @@ Dependencies:
 4. ../records.py
 
 Web app form to supply list:
-jobid - database assigned   [0]
-items list (ENUM)           [1]
-activity code (ENUM)        [2]
-request type (ENUM)         [3]
-request outcome (ENUM)      [4]
-job description (TEXT)      [5]
-delivery date (DATE)        [6]
-final destination (TEXT)    [7]
-specific instructions (TEXT)[8]
-client category (ENUM)      [9]
-client name (TEXT)          [10]
-client email (TEXT)         [11]
-contact details (TEXT)      [12]
+0   username TEXT NOT NULL,
+1   email TEXT NOT NULL,
+2   first_name TEXT NOT NULL,
+3   last_name TEXT NOT NULL,
+4   client_category TEXT NOT NULL,
+5   jobid INTEGER PRIMARY KEY AUTOINCREMENT,
+6   items_list TEXT NOT NULL,
+7   activity_code TEXT NOT NULL,
+8   request_type TEXT NOT NULL,
+9   request_outcome TEXT NOT NULL,
+10  description TEXT NOT NULL,
+11  delivery_date TEXT NOT NULL,
+12  destination TEXT NOT NULL,
+13  instructions TEXT,
+14  contact_details TEXT,
+15  department TEXT NOT NULL,
+16  status TEXT NOT NULL,
+17  date TEXT NOT NULL
 
 Written up, but needs testing of data supply
 into workflow_requests, and that records are
@@ -34,6 +39,8 @@ created and have correct data.
 import sqlite3
 import os
 import sys
+import logging
+import itertools
 from datetime import datetime, timedelta
 from typing import Final, Optional
 
@@ -44,7 +51,7 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-LOGS = os.environ["LOG_PATH"]
+LOG_PATH = os.environ["LOG_PATH"]
 DATABASE = os.path.join(os.environ["WORKFLOW"], f"flask_app/workflow.db") # Table to be called WORKFLOW_REQUESTS
 NOW = datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
@@ -71,12 +78,12 @@ def retrieve_requested() -> list[str]:
         cursor = sqlite_connection.cursor()
         print("Database connected successfully")
 
-        cursor.execute('''SELECT * FROM WORKFLOW_REQUESTS WHERE status = "Requested"''')
+        cursor.execute('''SELECT * FROM REQUESTS WHERE status = "Requested"''')
         data = cursor.fetchall()
         print(data)
         for row in data:
             print(type(row), row)
-            if row[-2] == "Requested":
+            if row[-1] == "Requested":
                 requested_data.append(row)
         cursor.close()
     except sqlite3.Error as err:
@@ -89,6 +96,25 @@ def retrieve_requested() -> list[str]:
     # Sort for unique tuples only in list
     sorted_data = remove_duplicates(requested_data)
     return sorted_data
+
+
+def remove_duplicates(list_data: list[str]) -> list[str]:
+    """
+    Sort and remove duplicatesdef remove_duplicates(list_data: list[str]) -> list[str]:
+    """
+    Sort and remove duplicates
+    using itertools
+    """
+    list_data.sort()
+    grouped = itertools.groupby(list_data)
+    unique = [key for key, _ in grouped]
+    return unique
+    using itertools
+    """
+    list_data.sort()
+    grouped = itertools.groupby(list_data)
+    unique = [key for key, _ in grouped]
+    return unique
 
 
 def get_prirefs(pointer: str) -> Optional[list[str]]:
@@ -233,7 +259,7 @@ Your original request details:
     Items list: {job[1]}
     Activity code: {job[2]}
     Request type: {job[3]}
-    Request outcome: {job[4]]}
+    Request outcome: {job[4]}
     Job description: {job[5]}
     Delivery date: {job[6]}
     Final destination: {job[7]}

@@ -15,90 +15,229 @@ Work in progress
 import datetime
 import os
 import re
+import sys
 import sqlite3
+from contextlib import closing
+from flask import Flask, render_template, request, redirect, url_for, session, abort, g, flash
 
-from flask import Flask, render_template, request
+sys.path.append(os.environ.get("CODE"))
+import adlib_v3 as adlib
+import utils
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", None)
+
+DBASE = os.environ.get("WF_DATABASE", None)
+FLASK_HOST = os.environ.get("FLASK_HOST", None)
+LOG_PATH = os.environ["LOG_PATH"]
+CID_API = utils.get_current_api()
+
+# Ensure DB and table exist
+with sqlite3.connect(DBASE) as conn:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS REQUESTS (
+            username TEXT NOT NULL,
+            email TEXT NOT NULL,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            client_category TEXT NOT NULL,
+            jobid INTEGER PRIMARY KEY AUTOINCREMENT,
+            items_list TEXT NOT NULL,
+            activity_code TEXT NOT NULL,
+            request_type TEXT NOT NULL,
+            request_outcome TEXT NOT NULL,
+            description TEXT NOT NULL,
+            delivery_date TEXT NOT NULL,
+            destination TEXT NOT NULL,
+            instructions TEXT,
+            contact_details TEXT,
+            department TEXT NOT NULL,
+            status TEXT NOT NULL,
+            date TEXT NOT NULL
+        )
+    """)
 
 
-@app.route("/")
-@app.route("/home")
+def get_user_data(username, password):
+    """
+    Request from CID usersdb
+    Match supplied data
+    """
+    search = f"(user_name='{username}'"
+    try:
+        result = adlib.retrieve_record(CID_API, "users", search, "1")[1]
+    except (KeyError, IndexError, TypeError) as err:
+        print(err)
+        return []
+
+    try:
+        pwd = adlib.retrieve_field_name(result[0], "password")[0]
+        status = adlib.retrieve_field_name(result[0], "user_status")[0]
+    except (KeyError, IndexError):
+        return []
+    if status != "ACTIVE":
+        return []
+    if password == pwd:
+        password = pwd = ""
+        email = adlib.retrieve_field_name(result[0], "email_address")[0]
+        fname = adlib.retrieve_field_name(result[0], "first_name")[0]
+        lname = adlib.retrieve_field_name(result[0], "last_name")[0]
+        dept = adlib.retrieve_field_name(result[0], "part_of")[0]
+        activity_code = adlib.retrieve_field_name(result[0], "activity.code") 
+        return [email, fname, lname, dept, activity_code]
+
+
+def get_db():
+    """
+    One connection per request
+    """
+    if "db" not in g:
+        g.db = sqlite3.connect(DBASE, detect_types=sqlite3.PARSE_DECLTYPES)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(exc):
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
+
+
+def login_required(view_func):
+    """
+    Simple decorator to block unauthenticated access
+    """
+    from functools import wraps
+    @wraps(view_func)
+    def wrapped(*args, **kwargs):
+        if not session.get("username"):
+            flash("Please log in first.")
+            return redirect(url_for("index", next=request.path))
+        return view_func(*args, **kwargs)
+    return wrapped
+
+
+@app.route("/", methods=["GET", "POST"])
+@app.route("/home", methods=["GET", "POST"])
 def index():
-    return render_template("index.html")
-
-
-DBASE = os.environ.get("DATABASE_TRANSCODE")
-CONNECT = sqlite3.connect(DBASE)
-CONNECT.execute(
-    "CREATE TABLE IF NOT EXISTS DOWNLOADS (name TEXT, email TEXT, download_type TEXT, fname TEXT, download_path TEXT, fpath TEXT, transcode TEXT, status TEXT, date TEXT)"
-)
-FLASK_HOST = os.environ["FLASK_HOST"]
-
-
-@app.route("/dpi_download_request", methods=["GET", "POST"])
-def dpi_download_request():
     """
-    Handle incoming path containing video
-    reference_number as last element
+    Set up logging page
     """
+    if request.method == "POST":
+        uname = (request.form.get("username") or "").strip().lower()
+        password = request.form.get("password") or ""
+        if not uname or not password:
+            return render_template("login.html", error="User name and password are required.")
+        user_data = get_user_data(uname, password)
+        if user_data == []:
+            # No confirmation of failed credential here
+            return render_template("login.html", error="Invalid credentials.")
+        session["username"] = uname
+        session["email"] = user_data[0]
+        session["first_name"] = user_data[1]
+        session["last_name"] = user_data[2]
+        session["department"] = user_data[3]
+        session["activity_codes"] = user_data[4]
+        # Redirect to second form after login
+        nxt = request.args.get("next") or url_for("workflow_request")
+        return redirect(nxt)
+
+    # If already logged in go to second form
+    if session.get("username"):
+        return redirect(url_for("workflow_request"))
+
+    return render_template("login.html")
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
+
+
+@app.route("/workflow_request", methods=["GET", "POST"])
+@login_required
+def workflow_request():
+    """
+    Authenticated entry for initiating a workflow request.
+    Carry the logged-in details automatically into the form and POST.
+    """
+
+    # email comes from session; do not trust client to set it
+    user_email = session.get("email")
+    user_name = session.get("username")
+    user_first_name = session.get("first_name")
+    user_last_name = session.get("last_name")
+    user_dept = session.get("department")
+    activity_code = session.get("activity_codes")
 
     if request.method == "GET":
-        fname = request.args.get("file")
-        transcode = request.args.get("option")
+        user_category = request.args.get("client_category")
+        saved_search = request.args.get("items_list")
+        request_type = request.args.get("request_type")
+        request_outcome = request.args.get("request_outcome")
+        description = request.args.get("description")
+        delivery_date = request.args.get("delivery_date")
+        destination = request.args.get("destination")
+        instructions = request.args.get("instructions")
+        contact_details = request.args.get("contact_details")
+        # The returned templates need thinking about:
+        """
         if fname and transcode:
             return render_template(
-                "initiate2_transcode.html", file=fname, trans_option=transcode
+                "initiate2_transcode.html",
+                file=fname,
+                trans_option=transcode,
+                user_email=user_email,
+                user_name=user_name
             )
+        return render_template(
+            "initiate_transcode.html",
+            user_email=user_email,
+            user_name=user_name
+        )
+        """
 
     if request.method == "POST":
-        name = request.form["name"].strip()
-        email = request.form["email"].strip()
-        download_type = request.form["download_type"].strip()
-        fname = request.form["fname"].strip()
-        download_path = request.form["download_path"].strip()
-        fpath = request.form["fpath"].strip()
-        transcode = request.form["transcode"].strip()
-        # Filter out non alphanumeric / underscores from fname
-        fpath = re.sub("\W+", "", fpath)
+
+        # Force email to session value; ignore client-sent email
+        email = user_email
+        username = user_name
+        fname = user_first_name
+        lname = user_last_name
+        dept = user_dept
+        user_category = request.args.get("client_category" or "").strip()
+        saved_search = request.args.get("items_list" or "").strip()
+        activity_code = request.args.get("activity_code" or "").strip()
+        request_type = request.args.get("request_type" or "").strip()
+        request_outcome = request.args.get("request_outcome" or "").strip()
+        description = request.args.get("description" or "").strip()
+        delivery_date = request.args.get("delivery_date" or "").strip()
+        destination = request.args.get("destination" or "").strip()
+        instructions = request.args.get("instructions" or "").strip()
+        contact_details = request.args.get("contact_details" or "").strip()
         status = "Requested"
         date_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Check for non-BFI email and reject
+
+        # Enforce domain check server-side
         if "bfi.org.uk" not in email:
             return render_template("email_error_transcode.html")
-        with sqlite3.connect(DBASE) as users:
-            cursor = users.cursor()
-            cursor.execute(
-                "INSERT INTO DOWNLOADS (name,email,download_type,fname,download_path,fpath,transcode,status,date) VALUES (?,?,?,?,?,?,?,?,?)",
-                (
-                    name,
-                    email,
-                    download_type,
-                    fname,
-                    download_path,
-                    fpath,
-                    transcode,
-                    status,
-                    date_stamp,
-                ),
+
+        with closing(get_db()) as db:
+            db.execute(
+                "INSERT INTO REQUESTS (username,email,first_name,last_name,client_category,items_list,activity_code,request_type,request_outcome,description,delivery_date,destination,instructions,contact_details,department,status,request_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (username, email, fname, lname, user_category, saved_search, activity_code, request_type, request_outcome, description, delivery_date, destination, instructions, contact_details, dept, status, date_stamp),
             )
-            users.commit()
+            db.commit()
+
+        # Alternative to this needed
         return render_template("index_transcode.html")
-    else:
-        return render_template("initiate_transcode.html")
 
-
-@app.route("/dpi_download")
-def dpi_download():
-    """
-    Return the View all requested page
-    """
-    connect = sqlite3.connect(DBASE)
-    cursor = connect.cursor()
-    cursor.execute("SELECT * FROM DOWNLOADS where date >= datetime('now','-14 days')")
-    data = cursor.fetchall()
-    return render_template("downloads_transcode.html", data=data)
+    # Fallback (shouldn’t hit due to methods)
+    abort(405)
 
 
 if __name__ == "__main__":
+    # In production, set debug=False and serve behind a WSGI server (gunicorn/uwsgi)
     app.run(host=FLASK_HOST, debug=False, port=5500)

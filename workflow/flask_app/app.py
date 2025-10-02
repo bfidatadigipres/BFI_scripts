@@ -85,6 +85,8 @@ def get_user_data(username, password):
         dept = adlib.retrieve_field_name(result[0], "part_of")[0]
         activity_code = adlib.retrieve_field_name(result[0], "activity.code") 
         return [email, fname, lname, dept, activity_code]
+    else:
+        return []
 
 
 def get_db():

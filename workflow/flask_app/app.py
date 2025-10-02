@@ -63,7 +63,7 @@ def get_user_data(username, password):
     Request from CID usersdb
     Match supplied data
     """
-    search = f"(user_name='{username}'"
+    search = f"user_name='{username}'"
     try:
         result = adlib.retrieve_record(CID_API, "users", search, "1")[1]
     except (KeyError, IndexError, TypeError) as err:

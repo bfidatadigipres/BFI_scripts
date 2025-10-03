@@ -175,9 +175,8 @@ def workflow_request():
     user_dept = session.get("department")
     # List of codes we need for the dropdown
     activity_codes_list = session.get("activity_codes", []) 
-    print(activity_codes_list)
     if len(activity_codes_list) == 1 and activity_codes_list[0] is None:
-        flash("Submission blocked: You do not have any valid Activity Codes assigned. Please contact your administrator.", 'error')
+        flash("Submission blocked: You do not have any valid Activity Codes assigned.\nPlease contact your administrator.", 'error')
 
     if request.method == "GET":
         # Pass user data to the template
@@ -192,6 +191,9 @@ def workflow_request():
         )
 
     if request.method == "POST":
+        if len(activity_codes_list) == 1 and activity_codes_list[0] is None:
+            flash("Submission failed: Cannot submit request without a valid Activity Code.", 'error')
+            return redirect(url_for("workflow_request"))
 
         # Force email/name to session value
         email = user_email
@@ -206,7 +208,9 @@ def workflow_request():
         
         # Retrieve selected activity code / text data / force status and date
         activity_code_selected = request.form.get("activity_code", "").strip() 
-        
+        if not activity_code_selected:
+            flash("Submission failed: Please select an Activity Code.", 'error')
+            return redirect(url_for("workflow_request"))
         request_type = request.form.get("request_type", "").strip()
         request_outcome = request.form.get("request_outcome", "").strip()
         description = request.form.get("description", "").strip()

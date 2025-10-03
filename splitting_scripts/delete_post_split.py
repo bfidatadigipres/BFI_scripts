@@ -42,8 +42,6 @@ CID_API: Final = utils.get_current_api()
 CLIENT: Final = ds3.createClientFromEnv()
 
 TARGETS: Final = [
-    os.path.join(os.environ["QNAP_H22"], "processing/"),
-    os.path.join(os.environ["GRACK_H22"], "processing/"),
     os.path.join(os.environ["QNAP_08"], "processing/"),
     os.path.join(os.environ["QNAP_08"], "memnon_processing/"),
     os.path.join(os.environ["QNAP_10"], "processing/"),

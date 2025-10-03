@@ -145,10 +145,10 @@ def main():
     LOGGER.info("====== BP Access Renditions back up script start ==================")
     for key, value in START_FOLDERS.items():
         access_path: str = os.path.join(STORAGE, key)
+        print(access_path)
         LOGGER.info("** Access path selected: %s", access_path)
-        folder_list = os.listdir(access_path)
+        folder_list = [x for x in os.listdir(access_path) if os.path.isdir(os.path.join(access_path, x)) ]
         folder_list.sort()
-        print(folder_list)
         if folder_list[0] != value:
             LOGGER.warning(
                 "SKIPPING: First retrieved folder is not %s:\n%s", value, folder_list[0]

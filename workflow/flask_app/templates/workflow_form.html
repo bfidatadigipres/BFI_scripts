@@ -186,11 +186,16 @@
                 
                 <!-- Group 1: User/Request Metadata -->
                 <fieldset>
-                    <legend>User & Request Details</legend>
+                    <legend>User Details</legend>
                     <div class="form-group">
                         <!-- Pre-populated/Read-only User Data (for context) -->
                         <label for="email">Email</label>
                         <input type="email" id="email" value="{{ user_email }}" class="readonly-field" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact_details">Alternative Contact Details (Optional)</label>
+                        <input type="text" id="contact_details" name="contact_details">
                     </div>
                     
                     <div class="form-group">
@@ -211,6 +216,18 @@
                                 {% endfor %}
                             </select>
                         {% endif %}
+                    </div>
+                    
+
+                </fieldset>
+                
+                <!-- Group 2: Item & Action Details -->
+                <fieldset>
+                    <legend>Request Details</legend>
+                    
+                    <div class="form-group">
+                        <label for="items_list">Saved Search number</label>
+                        <textarea id="items_list" name="items_list" rows="1" required></textarea>
                     </div>
                     
                     <div class="form-group">
@@ -239,17 +256,7 @@
                             <option value="University">University / Film school</option>
                         </select>
                     </div>
-                </fieldset>
-                
-                <!-- Group 2: Item & Action Details -->
-                <fieldset>
-                    <legend>Action Details</legend>
-                    
-                    <div class="form-group">
-                        <label for="items_list">Saved Search number</label>
-                        <textarea id="items_list" name="items_list" rows="1" required></textarea>
-                    </div>
-                    
+
                     <div class="form-group">
                         <label for="request_type">Request Type</label>
                         <select id="request_type" name="request_type" required>
@@ -314,7 +321,7 @@
                 
                 <!-- Group 3: Logistics -->
                 <fieldset>
-                    <legend>Logistics & Instructions</legend>
+                    <legend>Delivery Instructions</legend>
                     <div class="form-group">
                         <label for="delivery_date">Required Delivery Date</label>
                         <input type="date" id="delivery_date" name="delivery_date" required>

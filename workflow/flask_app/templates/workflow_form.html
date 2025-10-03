@@ -145,8 +145,7 @@
         <!-- Status Bar -->
         <div class="status-bar">
             Logged in as: {{ user_first_name }} {{ user_last_name }} {{ user_dept }} (
-            
-            <form action="{{ url_for('logout') }}" method="POST" style="display: inline;">
+                <form action="{{ url_for('logout') }}" method="POST" style="display: inline;">
                 <button type="submit" style="
                     background: none; 
                     border: none; 
@@ -157,9 +156,7 @@
                     font-size: 0.9em;
                     font-family: inherit;
                 ">Logout</button>
-            </form>
-            
-            )
+            </form>)
         </div>
             
         <div class="content">

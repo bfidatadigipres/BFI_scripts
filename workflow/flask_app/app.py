@@ -176,7 +176,7 @@ def workflow_request():
     # List of codes we need for the dropdown
     activity_codes_list = session.get("activity_codes", []) 
     print(activity_codes_list)
-    if len(activity_codes_list) == 0:
+    if len(activity_codes_list) == 1 and activity_codes_list[0] is None:
         flash("Submission blocked: You do not have any valid Activity Codes assigned. Please contact your administrator.", 'error')
 
     if request.method == "GET":

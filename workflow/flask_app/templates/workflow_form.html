@@ -40,12 +40,14 @@
         }
 
         /* Status Bar */
-        .status-bar {
+        .user-status-container {
             background-color: #888888;
             color: white;
             padding: 10px 20px;
             font-size: 0.9em;
-            text-align: right;
+            display: flex; 
+            justify-content: space-between; /* Info left, button right */
+            align-items: center;
             border-bottom: 1px solid #777;
         }
 
@@ -132,6 +134,24 @@
             padding: 0 10px;
             color: #666;
         }
+
+        /* Logout button */
+        .logout-button {
+            background-color: #fbd500;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            width: auto;
+            margin: 0;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: #ccb413;
+        }
     </style>
 </head>
 <body>
@@ -143,20 +163,13 @@
         </div>
 
         <!-- Status Bar -->
-        <div class="status-bar">
-            Logged in as: {{ user_first_name }} {{ user_last_name }} {{ user_dept }} (
-                <form action="{{ url_for('logout') }}" method="POST" style="display: inline;">
-                <button type="submit" style="
-                    background: none; 
-                    border: none; 
-                    padding: 0; 
-                    color: #fbe8b1; 
-                    text-decoration: underline; 
-                    cursor: pointer;
-                    font-size: 0.9em;
-                    font-family: inherit;
-                ">Logout</button>
-            </form>)
+        <div class="user-status-container">
+            <div class="user-info">
+                Logged in as: {{ user_first_name }} {{ user_last_name }} ({{ user_dept }})
+            </div>
+            <form action="{{ url_for('logout') }}" method="POST">
+                <button type="submit" class="logout-button">Logout</button>
+            </form>
         </div>
             
         <div class="content">
@@ -183,12 +196,21 @@
                     <div class="form-group">
                         <!-- Activity Code Dropdown -->
                         <label for="activity_code">Select Activity Code (Required)</label>
-                        <select id="activity_code" name="activity_code" required>
-                            <option value="" disabled selected>--- Choose an Activity Code ---</option>
-                            {% for code in activity_codes %}
-                                <option value="{{ code }}">{{ code }}</option>
-                            {% endfor %}
-                        </select>
+                        {% if not activity_codes %}
+                            <select id="activity_code" name="activity_code" required disabled>
+                                <option value="" disabled selected>--- ERROR: No Activity Codes Found ---</option>
+                            </select>
+                            <p style="color: #dc3545; margin-top: 5px; font-weight: bold;">
+                                Submission is blocked because no valid Activity Codes were found for your account.
+                            </p>
+                        {% else %}
+                            <select id="activity_code" name="activity_code" required>
+                                <option value="" disabled selected>--- Choose an Activity Code ---</option>
+                                {% for code in activity_codes %}
+                                    <option value="{{ code }}">{{ code }}</option>
+                                {% endfor %}
+                            </select>
+                        {% endif %}
                     </div>
                     
                     <div class="form-group">

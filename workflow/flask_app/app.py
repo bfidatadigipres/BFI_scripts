@@ -173,68 +173,75 @@ def workflow_request():
     user_first_name = session.get("first_name")
     user_last_name = session.get("last_name")
     user_dept = session.get("department")
-    # This is the list of codes we need for the dropdown
+    # List of codes we need for the dropdown
     activity_codes_list = session.get("activity_codes", []) 
 
     if request.method == "GET":
-        # Pass all user data and the activity_codes list to the template
+        # Pass user data to the template
         return render_template(
-            "workflow_form.html", # We will create this new template
+            "workflow_form.html",
             user_email=user_email,
             user_name=user_name,
             user_first_name=user_first_name,
             user_last_name=user_last_name,
             user_dept=user_dept,
-            activity_codes=activity_codes_list # <-- Pass the list here
+            activity_codes=activity_codes_list
         )
 
     if request.method == "POST":
 
-        # Force email/name to session value; ignore client-sent email/name
+        # Force email/name to session value
         email = user_email
         username = user_name
         fname = user_first_name
         lname = user_last_name
         dept = user_dept
         
-        # IMPORTANT: Use request.form.get() for POST data, not request.args.get()
-        user_category = request.form.get("client_category" or "").strip()
-        saved_search = request.form.get("items_list" or "").strip()
+        # Get submitted data
+        user_category = request.form.get("client_category", "").strip()
+        saved_search = request.form.get("items_list", "").strip()
         
-        # Retrieve the single selected activity code from the dropdown
-        activity_code_selected = request.form.get("activity_code" or "").strip() 
+        # Retrieve selected activity code / text data / force status and date
+        activity_code_selected = request.form.get("activity_code", "").strip() 
         
-        request_type = request.form.get("request_type" or "").strip()
-        request_outcome = request.form.get("request_outcome" or "").strip()
-        description = request.form.get("description" or "").strip()
-        delivery_date = request.form.get("delivery_date" or "").strip()
-        destination = request.form.get("destination" or "").strip()
-        instructions = request.form.get("instructions" or "").strip()
-        contact_details = request.form.get("contact_details" or "").strip()
+        request_type = request.form.get("request_type", "").strip()
+        request_outcome = request.form.get("request_outcome", "").strip()
+        description = request.form.get("description", "").strip()
+        delivery_date = request.form.get("delivery_date", "").strip()
+        destination = request.form.get("destination", "").strip()
+        instructions = request.form.get("instructions", "").strip()
+        contact_details = request.form.get("contact_details", "").strip()
         status = "Requested"
         date_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Enforce domain check server-side
         if "bfi.org.uk" not in email:
-            # Use flash message or a specific error template
-            flash("Email domain check failed.")
+            # Flash an error message with category 'error'
+            flash("Email domain check failed. Please ensure you are using a BFI email address.", 'error')
             return redirect(url_for("workflow_request")) 
+        
+        try:
+            with closing(get_db()) as db:
+                db.execute(
+                    "INSERT INTO REQUESTS (username,email,first_name,last_name,client_category,items_list,activity_code,request_type,request_outcome,description,delivery_date,destination,instructions,contact_details,department,status,date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (username, email, fname, lname, user_category, saved_search, activity_code_selected, request_type, request_outcome, description, delivery_date, destination, instructions, contact_details, dept, status, date_stamp),
+                )
+                db.commit()
+            
+            # Flash a success message
+            flash("Workflow request successfully submitted!", 'success')
+            
+            # Redirect back to the GET version of the workflow form
+            return redirect(url_for("workflow_request"))
 
-        with closing(get_db()) as db:
-            db.execute(
-                "INSERT INTO REQUESTS (username,email,first_name,last_name,client_category,items_list,activity_code,request_type,request_outcome,description,delivery_date,destination,instructions,contact_details,department,status,date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (username, email, fname, lname, user_category, saved_search, activity_code_selected, request_type, request_outcome, description, delivery_date, destination, instructions, contact_details, dept, status, date_stamp),
-            )
-            db.commit()
+        except Exception as e:
+            print(f"Database insertion failed: {e}")
+            flash(f"An error occurred while submitting the request. Please try again.", 'error')
+            return redirect(url_for("workflow_request"))
 
-        # Redirect to a confirmation page or the home page
-        flash("Workflow request successfully submitted!")
-        return redirect(url_for("index"))
-
-    # Fallback (shouldn’t hit due to methods)
+    # Fallback if needed
     abort(405)
 
 
 if __name__ == "__main__":
-    # In production, set debug=False and serve behind a WSGI server (gunicorn/uwsgi)
+    # NOTE: For production, set debug=False and serve behind a WSGI server (gunicorn/uwsgi)
     app.run(host=FLASK_HOST, debug=False, port=7860)

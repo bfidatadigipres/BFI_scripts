@@ -562,7 +562,7 @@ def adjust_seconds(duration: float) -> float:
     LOGGER.info("adjust_seconds(): Received duration: %s", duration)
     if len(duration) == 0:
         return None
-    if not isinstance(duration, float):
+    if not isinstance(duration, float) or isinstance(duration, int):
         return None
     return duration // 3
 

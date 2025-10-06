@@ -749,6 +749,7 @@ def get_duration(fullpath: str) -> Optional[tuple[Union[str, int], str]]:
     """
 
     duration = utils.get_metadata("Video", "Duration", fullpath)
+    LOGGER.warning("**** DURATION: %s", duration)
     if not duration:
         return ("", "")
 

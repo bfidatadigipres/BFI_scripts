@@ -554,7 +554,7 @@ def log_output(log_build: list[str]) -> None:
         LOGGER.info(log)
 
 
-def adjust_seconds(duration: float) -> float:
+def adjust_seconds(duration: float) -> int:
     """
     Adjust second duration one third in
     """

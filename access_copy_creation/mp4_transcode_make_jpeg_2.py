@@ -131,7 +131,6 @@ def main():
         f"{local_time()}\tINFO\t================== START Transcode MP4 make JPEG {file} {HOST} =================="
     )
     print(f"File to be processed: {file}. Completed path: {completed_pth}")
-
     outpath, outpath2 = "", ""
 
     ext = ext.lstrip(".")
@@ -183,6 +182,8 @@ def main():
 
     # Check to ensure that the file isn't already being processed
     check_name = os.path.join(transcode_pth, fname)
+    if os.path.exists(check_name):
+        sys.exist("File has already completed processing. Skipping")
     if os.path.exists(f"{check_name}.mp4"):
         delete_confirm = check_mod_time(f"{check_name}.mp4")
         if delete_confirm is True:

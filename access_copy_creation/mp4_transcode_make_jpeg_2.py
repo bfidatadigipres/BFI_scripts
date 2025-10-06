@@ -1109,7 +1109,7 @@ def check_mod_time(fpath: str) -> bool:
     hours = (seconds / 60) // 60
     LOGGER.info("%s\tModified time is %s seconds ago. %s hours", fpath, seconds, hours)
     print(f"{fpath}\tModified time is {seconds} seconds ago")
-    if seconds < 18000:
+    if seconds > 18000:
         print(f"*** Deleting file as old MP4: {fpath}")
         return True
     return False

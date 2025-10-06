@@ -559,13 +559,15 @@ def adjust_seconds(duration) -> int:
     Adjust second duration one third in
     """
     LOGGER.info("adjust_seconds(): Received duration: %s / type %s", duration, type(duration))
-
-    if not isinstance(duration, float) or isinstance(duration, int):
+    try:
+        seconds = duration // 3
+        if seconds == 0:
+            seconds = duration // 2
+        return seconds
+    except Exception as err:
+        LOGGER.warning("Unable to divide supplied duration: %s %s", duration, type(duration))
         return None
-    if duration < 3:
-        return duration // 2
-    return duration // 3
-
+    
 
 def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
     """

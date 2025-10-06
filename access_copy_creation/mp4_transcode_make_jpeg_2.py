@@ -381,6 +381,7 @@ def main():
         seconds = adjust_seconds(duration)
         if seconds is None:
             log_build.append(f"{local_time()}\tWARNING\tSeconds not found from duration: {duration}")
+            log_build.append(f"{local_time()}\tWARNING\tCleaning up MP4 creation")
             log_output(log_build)
             sys.exit("Exiting: JPEG not created from MP4 file - duration data missing")
 
@@ -557,6 +558,8 @@ def adjust_seconds(duration: float) -> float:
     """
     Adjust second duration one third in
     """
+    print(duration)
+    LOGGER.info("adjust_seconds(): Received duration: %s", duration)
     if len(duration) == 0:
         return None
     if not isinstance(duration, float):

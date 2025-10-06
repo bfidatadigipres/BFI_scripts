@@ -620,7 +620,7 @@ def process_files(
             reingest_confirm = utils.check_global_log(
                 file, "Renewed ingest of file will be attempted"
             )
-            if deletion_confirm:
+            if deletion_confirm and md5_match is False:
                 logger.info(
                     "DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s",
                     deletion_confirm,

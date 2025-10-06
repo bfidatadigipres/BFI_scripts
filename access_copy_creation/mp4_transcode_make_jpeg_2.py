@@ -558,7 +558,7 @@ def adjust_seconds(duration) -> int:
     """
     Adjust second duration one third in
     """
-    LOGGER.info("adjust_seconds(): Received duration: %s / type %s", duration, type(duration))
+
     try:
         seconds = duration // 3
         if seconds == 0:

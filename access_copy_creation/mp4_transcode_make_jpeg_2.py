@@ -183,12 +183,16 @@ def main():
     # Check to ensure that the file isn't already being processed
     check_name = os.path.join(transcode_pth, fname)
     if os.path.exists(check_name):
+        log_build.append(f"{local_time()}\tINFO\tFile has already been processed. Exiting")
+        log_output(log_build)
         sys.exist("File has already completed processing. Skipping")
     if os.path.exists(f"{check_name}.mp4"):
         delete_confirm = check_mod_time(f"{check_name}.mp4")
         if delete_confirm is True:
             os.remove(f"{check_name}.mp4")
         else:
+            log_build.append(f"{local_time()}\tINFO\tFile being processed concurrently. Exiting")
+            log_output(log_build)
             sys.exit("File already being processed. Skipping.")
 
     # Check if transcode already completed
@@ -270,6 +274,8 @@ def main():
 
         # Final check file not parallel processed already
         if not os.path.isfile(fullpath):
+            log_build.append(f"{local_time()}\tINFO\tFile for processing no longer in transcode/ path. Exiting")
+            log_output(log_build)
             sys.exit("EXIT: Supplied path is not a file")
 
         # Build FFmpeg command based on dar/height

@@ -267,6 +267,11 @@ def main():
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
         retry = False
+
+        # Final check file not parallel processed already
+        if not os.path.isfile(fullpath):
+            sys.exit("EXIT: Supplied path is not a file")
+
         # Build FFmpeg command based on dar/height
         ffmpeg_cmd = create_transcode(
             fullpath, outpath, height, width, dar, par, audio, stream_default, vs, retry

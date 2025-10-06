@@ -382,7 +382,7 @@ def main() -> None:
             var_data = generate_variables(data)
             title = var_data[0]
             description = var_data[1]
-            time = var_data[2]
+            time = var_data[3]
             duration_total = var_data[4]
             actual_duration_total = var_data[5]
             actual_duration_seconds_integer = var_data[6]

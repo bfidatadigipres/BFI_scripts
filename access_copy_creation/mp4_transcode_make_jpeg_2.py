@@ -554,12 +554,12 @@ def log_output(log_build: list[str]) -> None:
         LOGGER.info(log)
 
 
-def adjust_seconds(duration: float) -> int:
+def adjust_seconds(duration) -> int:
     """
     Adjust second duration one third in
     """
     print(duration)
-    LOGGER.info("adjust_seconds(): Received duration: %s", duration)
+    LOGGER.info("adjust_seconds(): Received duration: %s / type %s", duration, type(duration))
 
     if not isinstance(duration, float) or isinstance(duration, int):
         return None

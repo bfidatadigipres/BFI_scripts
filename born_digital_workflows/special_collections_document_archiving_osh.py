@@ -236,13 +236,14 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     Create dictionary for Image
     metadata from Exif data source
     """
+    file_type = mime = ""
+
     ext = os.path.splitext(ipath)[1].replace(".", "")
     try:
         file_type, mime = get_file_type(ext)
     except Exception as err:
-        print(e)
-    else:
-        file_type = mime = ""
+        print(err)
+
     print(f"**** {file_type} ****")
     exif_metadata = utils.exif_data(f"{ipath}")
     if exif_metadata is None:
@@ -715,6 +716,7 @@ def create_archive_item_record(
     all_item_prirefs = {}
     for _, value in file_order.items():
         for ip in value:
+            ext = ""
             data = ip.rsplit(", ", 1)
             print(data)
             if not os.path.isfile(data[0]):

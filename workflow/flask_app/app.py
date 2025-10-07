@@ -176,7 +176,7 @@ def workflow_request():
     # List of codes we need for the dropdown
     activity_codes_list = session.get("activity_codes", []) 
     if len(activity_codes_list) == 1 and activity_codes_list[0] is None:
-        flash("Submission blocked: You do not have any valid Activity Codes assigned.\nPlease contact your administrator.", 'error')
+        flash("Submission blocked: You do not have any valid Activity Codes assigned.\nPlease contact CollectionsSystems.", 'error')
 
     if request.method == "GET":
         # Pass user data to the template

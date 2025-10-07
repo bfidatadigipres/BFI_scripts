@@ -186,7 +186,7 @@
                 
                 <!-- Group 1: User/Request Metadata -->
                 <fieldset>
-                    <legend>User Details</legend>
+                    <legend>Form</legend>
                     <div class="form-group">
                         <!-- Pre-populated/Read-only User Data (for context) -->
                         <label for="email">Email</label>
@@ -217,13 +217,7 @@
                         <label for="contact_details">Alternative Contact Details (Optional)</label>
                         <input type="text" id="contact_details" name="contact_details">
                     </div>
-
-                </fieldset>
-                
-                <!-- Group 2: Item & Action Details -->
-                <fieldset>
-                    <legend>Request Details</legend>
-                    
+                   
                     <div class="form-group">
                         <label for="items_list">Saved Search number (Required)</label>
                         <textarea id="items_list" name="items_list" rows="1" required></textarea>
@@ -289,11 +283,7 @@
                         <label for="description">Job Title (Required)</label>
                         <textarea id="description" name="description" rows="1" required></textarea>
                     </div>
-                </fieldset>
-                
-                <!-- Group 3: Logistics -->
-                <fieldset>
-                    <legend>Delivery Instructions</legend>
+
                     <div class="form-group">
                         <label for="delivery_date">Required Delivery Date (Required)</label>
                         <input type="date" id="delivery_date" name="delivery_date" required>
@@ -308,11 +298,7 @@
                         <label for="instructions">Special Instructions (Optional)</label>
                         <textarea id="instructions" name="instructions" rows="3"></textarea>
                     </div>
-                </fieldset>
 
-                <!-- Group 3: Logistics -->
-                <fieldset>
-                    <legend>Optional Instructions</legend>
                     <div class="form-group">
                         <label for="client_category">Client Category (Optional)</label>
                         <select id="client_category" name="client_category">

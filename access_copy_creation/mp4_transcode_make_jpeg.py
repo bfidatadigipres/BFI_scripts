@@ -1188,6 +1188,8 @@ def create_transcode(
         cmd_mid = fhd_all
     elif height >= 1080 and aspect >= 1.778:
         cmd_mid = fhd_letters
+    elif height > 720 and aspect >= 1.778:
+        cmd_mid = fhd_letters
     print(f"Middle command chosen: {cmd_mid}")
 
     if audio is None:

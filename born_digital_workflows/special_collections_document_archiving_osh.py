@@ -754,6 +754,7 @@ def create_archive_item_record(
 
             record_dct = [
                 {"record_type": "ITEM_ARCH"},
+                {"dimension.free": "1 digital item"},
                 {"part_of_reference": parent_ob_num},
                 {"archive_title.type": "01_orig"},
                 {"title": iname},

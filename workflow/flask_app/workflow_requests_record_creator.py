@@ -25,10 +25,11 @@ Web app form to supply list:
 11  delivery_date TEXT NOT NULL,
 12  destination TEXT NOT NULL,
 13  instructions TEXT,
-14  contact_details TEXT,
-15  department TEXT NOT NULL,
-16  status TEXT NOT NULL,
-17  date TEXT NOT NULL
+14  client_name TEXT,
+15  contact_details TEXT,
+16  department TEXT NOT NULL,
+17  status TEXT NOT NULL,
+18  date TEXT NOT NULL
 
 Written up, but needs testing of data supply
 into workflow_requests, and that records are
@@ -102,15 +103,7 @@ def remove_duplicates(list_data: list[str]) -> list[str]:
     """
     Sort and remove duplicatesdef remove_duplicates(list_data: list[str]) -> list[str]:
     """
-    Sort and remove duplicates
-    using itertools
-    """
-    list_data.sort()
-    grouped = itertools.groupby(list_data)
-    unique = [key for key, _ in grouped]
-    return unique
-    using itertools
-    """
+
     list_data.sort()
     grouped = itertools.groupby(list_data)
     unique = [key for key, _ in grouped]

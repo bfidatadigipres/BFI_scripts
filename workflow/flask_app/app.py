@@ -50,6 +50,7 @@ with sqlite3.connect(DBASE) as conn:
             delivery_date TEXT NOT NULL,
             destination TEXT NOT NULL,
             instructions TEXT,
+            client_name TEXT NOT NULL,
             contact_details TEXT,
             department TEXT NOT NULL,
             status TEXT NOT NULL,
@@ -217,6 +218,7 @@ def workflow_request():
         delivery_date = request.form.get("delivery_date", "").strip()
         destination = request.form.get("destination", "").strip()
         instructions = request.form.get("instructions", "").strip()
+        client_name = request.form.get("client_name", "").strip()
         contact_details = request.form.get("contact_details", "").strip()
         status = "Requested"
         date_stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -229,8 +231,8 @@ def workflow_request():
         try:
             with closing(get_db()) as db:
                 db.execute(
-                    "INSERT INTO REQUESTS (username,email,first_name,last_name,client_category,items_list,activity_code,request_type,request_outcome,description,delivery_date,destination,instructions,contact_details,department,status,date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (username, email, fname, lname, user_category, saved_search, activity_code_selected, request_type, request_outcome, description, delivery_date, destination, instructions, contact_details, dept, status, date_stamp),
+                    "INSERT INTO REQUESTS (username,email,first_name,last_name,client_category,items_list,activity_code,request_type,request_outcome,description,delivery_date,destination,instructions,client_name,contact_details,department,status,date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (username, email, fname, lname, user_category, saved_search, activity_code_selected, request_type, request_outcome, description, delivery_date, destination, instructions, client_name, contact_details, dept, status, date_stamp),
                 )
                 db.commit()
             

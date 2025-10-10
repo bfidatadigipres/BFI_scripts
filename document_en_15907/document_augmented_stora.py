@@ -1111,7 +1111,7 @@ def main():
             )
             if new_work:
                 print(f"*** Manual clean up needed for Work {work_priref}")
-            continue
+            sys.exit("Exiting for failure to create new manifestations")
 
         # Check if subtitles are populated
         old_webvtt = os.path.join(root, "subtitles.vtt")
@@ -1923,7 +1923,7 @@ def create_manifestation(fullpath, work_priref, actual_duration, manifestation_d
         print(f"** Actual minutes {actual_minutes} - actual seconds {actual_seconds}")
         manifestation_values.append({"runtime": actual_minutes})
         manifestation_values.append({"runtime_seconds": actual_seconds})
-        
+
     else:
         duration_mins = epg_dict["duration_total"]
         if duration_mins.isdigit():

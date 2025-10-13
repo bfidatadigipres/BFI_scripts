@@ -25,7 +25,7 @@ CHECK_DATES = [
     "2025/09/05",
     "2025/09/06",
     "2025/09/07",
-    "2025/09/08"
+    "2025/09/08",
 ]
 
 
@@ -49,9 +49,11 @@ def check_cid(root):
     for partial match to root path
     then extract object_number
     """
-    match = os.path.join(root, 'stream.mpeg2.ts')
+    match = os.path.join(root, "stream.mpeg2.ts")
     search = f'digital.acquired_filename="{match}"'
-    hits, result = adlib.retrieve_record(CID_API, "items", search, "0", ["object_number"])
+    hits, result = adlib.retrieve_record(
+        CID_API, "items", search, "0", ["object_number"]
+    )
 
     if hits is None:
         print(f"CID API could not be reached for Manifestations search: {search}")

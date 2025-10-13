@@ -892,7 +892,6 @@ def main():
     if not utils.check_storage(STORAGE):
         logger.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    
 
     logger.info(
         "========== STORA documentation script STARTED ==============================================="
@@ -1887,7 +1886,9 @@ def create_work(
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def create_manifestation(fullpath, work_priref, actual_duration, manifestation_defaults, epg_dict):
+def create_manifestation(
+    fullpath, work_priref, actual_duration, manifestation_defaults, epg_dict
+):
     """
     Create a manifestation record,
     linked to work_priref
@@ -1914,9 +1915,9 @@ def create_manifestation(fullpath, work_priref, actual_duration, manifestation_d
     # MAKE SURE RUNTIME REFLECTS ACTUAL DURATIONS / MINS & SECS
     actual_data = None
     if len(actual_duration) > 0 and ":" in str(actual_duration):
-        actual_data = (actual_duration.split(":"))
+        actual_data = actual_duration.split(":")
     elif len(actual_duration) > 0 and "-" in str(actual_duration):
-        actual_data = (actual_duration.split("-"))
+        actual_data = actual_duration.split("-")
 
     if actual_data is not None:
         actual_minutes = (int(actual_data[0]) * 60) + int(actual_data[1])

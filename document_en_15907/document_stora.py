@@ -191,7 +191,9 @@ def generate_variables(data) -> tuple[str, str, str, str, int, int, int, str, st
         actual_duration_hours_integer * 60
     ) + actual_duration_minutes_integer
 
-    actual_duration_seconds_integer = (actual_duration_total * 60) + int(actual_duration_seconds)
+    actual_duration_seconds_integer = (actual_duration_total * 60) + int(
+        actual_duration_seconds
+    )
 
     return (
         title,

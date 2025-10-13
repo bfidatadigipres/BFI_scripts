@@ -147,7 +147,11 @@ def main():
         access_path: str = os.path.join(STORAGE, key)
         print(access_path)
         LOGGER.info("** Access path selected: %s", access_path)
-        folder_list = [x for x in os.listdir(access_path) if os.path.isdir(os.path.join(access_path, x)) ]
+        folder_list = [
+            x
+            for x in os.listdir(access_path)
+            if os.path.isdir(os.path.join(access_path, x))
+        ]
         folder_list.sort()
         if folder_list[0] != value:
             LOGGER.warning(

@@ -254,6 +254,10 @@ def main():
     if not sys.argv[1]:
         sys.exit("Missing launch path, script exiting")
 
+    if not utils.check_control("pause_scripts"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        
     if not utils.check_storage(sys.argv[1]):
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")

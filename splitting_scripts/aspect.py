@@ -275,6 +275,14 @@ def main():
     """
     LOGGER.info("==== aspect.py START =================")
 
+    if not utils.check_control("pause_scripts"):
+        LOGGER.info(
+            "Script run prevented by downtime_control.json. Script exiting."
+        )
+        sys.exit(
+            "Script run prevented by downtime_control.json. Script exiting."
+        )
+
     for fol in FOLDERS:
         if not utils.check_storage(fol):
             LOGGER.info(
@@ -287,7 +295,7 @@ def main():
             files += [os.path.join(root, file) for file in filenames]
 
         for f in files:
-            if not utils.check_control("split_control_delete"):
+            if not utils.check_control("split_control_delete") or not utils.check_control("pause_scripts"):
                 LOGGER.info(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )

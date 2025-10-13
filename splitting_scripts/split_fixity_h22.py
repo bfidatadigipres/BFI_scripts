@@ -164,6 +164,11 @@ def main():
                 "Script run prevented by downtime_control.json. Script exiting."
             )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        if not utils.check_control("pause_scripts"):
+            logger.info(
+                "Script run prevented by downtime_control.json. Script exiting."
+            )
+            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
         f = os.path.basename(filepath)
         logger.info("=== Current file: %s Multi item: %s", filepath, MULTI_ITEMS)

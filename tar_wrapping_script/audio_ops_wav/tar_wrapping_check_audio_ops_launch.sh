@@ -11,13 +11,25 @@ function control {
     boole=$(cat "${LOG_PATH}downtime_control.json" | grep "rawcooked" | awk -F': ' '{print $2}')
     if [ "$boole" = false, ] ; then
       log "Control json requests script exit immediately"
-      log "===================== TAR WRAPPING CHECKSUM SCRIPT ENDED ====================="
+      log "===================== TAR WRAPPING CHECKSUM SCRIPT ENDED(rawcooked) ====================="
+      exit 0
+    fi
+}
+
+function pauseScript {
+    boole=$(cat "${LOG_PATH}downtime_control.json" | grep "pause_scripts" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      log "Control json requests script exit immediately"
+      log "===================== TAR WRAPPING CHECKSUM SCRIPT ENDED(rawcooked) ====================="
       exit 0
     fi
 }
 
 # Control check
 control
+
+# pause_script check
+pauseScript
 
 # Path to folder
 FPATH="${AUTOMATION_WAV}for_tar_wrap/"

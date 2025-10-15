@@ -39,7 +39,7 @@ def main():
     if utils.check_control("pause_scripts"):
         print("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
-        
+
     for dt in CHECK_DATES:
         target_date = os.path.join(STORAGE, dt)
         if os.path.exists(target_date):

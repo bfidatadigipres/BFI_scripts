@@ -112,7 +112,9 @@ def main():
         sys.exit("EXIT: Supplied path is not a file")
 
     # Multiple instances of script so collecting logs for one burst output
-    if not utils.check_control("mp4_transcode") or not utils.check_control("pause_scripts"):
+    if not utils.check_control("mp4_transcode") or not utils.check_control(
+        "pause_scripts"
+    ):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(fullpath) or not utils.check_storage(TRANSCODE):

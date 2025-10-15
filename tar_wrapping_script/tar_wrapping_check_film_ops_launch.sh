@@ -20,7 +20,7 @@ function pauseScripts {
     boole=$(cat "${CONTROL_JSON}" | grep "pause_scripts" | awk -F': ' '{print $2}')
     if [ "$boole" = false, ] ; then
       echo "Control json requests script exit immediately" >> "${LOG}"
-      echo 'Control json requests script exit immediately'
+      echo 'Control json requests script exit immediately: pause_scripts'
       exit 0
     fi
 }

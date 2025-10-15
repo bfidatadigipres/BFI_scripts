@@ -206,7 +206,7 @@ def main():
         file_list: list = []
         replace_list: list = []
         for folder in folder_list:
-            if not utils.check_control("black_pearl"):
+            if not utils.check_control("black_pearl") or not utils.check_control("pause_scripts"):
                 LOGGER.info(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )

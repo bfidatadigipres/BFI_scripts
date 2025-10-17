@@ -387,6 +387,14 @@ def ext_in_file_type(
     try:
         file_type = adlib.retrieve_field_name(record[0], retrieved_fields[0])
         print(f"ext_in_file_type(): AdlibV3 file type: {file_type}")
+        if file_type is None:
+            print(f"* File type not found for <object_number>...<{ob_num}>")
+            logger.warning(
+                "%s\tCannot find file type for <object_number>... <%s>",
+                log_paths,
+                ob_num,
+            )
+            return False
     except (IndexError, KeyError):
         logger.warning("%s\tInvalid <file_type> in Collect record", log_paths)
         return False

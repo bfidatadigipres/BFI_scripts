@@ -147,7 +147,11 @@ def main():
         access_path: str = os.path.join(STORAGE, key)
         print(access_path)
         LOGGER.info("** Access path selected: %s", access_path)
-        folder_list = [x for x in os.listdir(access_path) if os.path.isdir(os.path.join(access_path, x)) ]
+        folder_list = [
+            x
+            for x in os.listdir(access_path)
+            if os.path.isdir(os.path.join(access_path, x))
+        ]
         folder_list.sort()
         if folder_list[0] != value:
             LOGGER.warning(
@@ -159,7 +163,9 @@ def main():
         file_list: list[str] = []
         replace_list: list[str] = []
         for folder in folder_list:
-            if not utils.check_control("black_pearl"):
+            if not utils.check_control("black_pearl") or not utils.check_control(
+                "pause_scripts"
+            ):
                 LOGGER.info(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )

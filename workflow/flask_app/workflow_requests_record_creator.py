@@ -47,13 +47,16 @@ from typing import Final, Optional
 
 # Local imports
 import workflow_requests as workflow
+
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
 
 # Global variables
 LOG_PATH = os.environ["LOG_PATH"]
-DATABASE = os.path.join(os.environ["WORKFLOW"], f"flask_app/workflow.db") # Table to be called WORKFLOW_REQUESTS
+DATABASE = os.path.join(
+    os.environ["WORKFLOW"], f"flask_app/workflow.db"
+)  # Table to be called WORKFLOW_REQUESTS
 NOW = datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 
@@ -156,10 +159,10 @@ def main():
     # Iterate jobs
     for job in requested_jobs:
         job_id = job[0].strip()
-        items_list = job[1].strip() # Saved search number
+        items_list = job[1].strip()  # Saved search number
         cname = job[10].strip()
         cemail = job[11].strip()
-        destination = job[7].strip()        
+        destination = job[7].strip()
 
         batch_items = get_prirefs(item_list)
         if not priref_items:
@@ -173,12 +176,14 @@ def main():
         # Make job metadata for Batch creation - do we need deadline?
         job_metadata = {}
         job_metadata["activity.code"] = job[2].strip()
-        job_metadata["assigned_to"] = job[12].strip() # Would this be contact details?
+        job_metadata["assigned_to"] = job[12].strip()  # Would this be contact details?
         job_metadata["request_type"] = job[3].strip()
         job_metadata["request_outcome"] = job[4].strip()
         job_metadata["description"] = f"{job[5].strip()} / {str(datetime.today())[:19]}"
         job_metadata["completion.date"] = job[6].strip()
-        job_metadata["request.details"] = job[8].strip() # Maps to specific information?
+        job_metadata["request.details"] = job[
+            8
+        ].strip()  # Maps to specific information?
         job_metadata["request.from.department"] = job[9].strip()
         job_metadata["request.from.email"] = cemail
         job_metadata["request.from.name"] = cname
@@ -209,9 +214,7 @@ def update_table(job_id: str, new_status: str) -> None:
         sqlite_connection = sqlite3.connect(DATABASE)
         cursor = sqlite_connection.cursor()
         # Update row with new status
-        sql_query = (
-            """UPDATE WORKLOAD_REQUESTS SET status = ? WHERE job_id = ?"""
-        )
+        sql_query = """UPDATE WORKLOAD_REQUESTS SET status = ? WHERE job_id = ?"""
         data = (new_status, job_id)
         cursor.execute(sql_query, data)
         sqlite_connection.commit()
@@ -224,9 +227,7 @@ def update_table(job_id: str, new_status: str) -> None:
             sqlite_connection.close()
 
 
-def send_email_update(
-    client_email: str, client: str, status: str, job: list
-) -> None:
+def send_email_update(client_email: str, client: str, status: str, job: list) -> None:
     """
     Update user that their item has been
     requested and confirm their request

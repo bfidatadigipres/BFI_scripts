@@ -45,7 +45,7 @@
             color: white;
             padding: 10px 20px;
             font-size: 0.9em;
-            display: flex; 
+            display: flex;
             justify-content: space-between; /* Info left, button right */
             align-items: center;
             border-bottom: 1px solid #777;
@@ -95,7 +95,7 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
-        
+
         /* Read-only fields */
         .readonly-field {
             background-color: #e9e9e9;
@@ -120,7 +120,7 @@
         button:hover, input[type="submit"]:hover {
             background-color: #0056b3;
         }
-        
+
         /* Optional: Fieldset style */
         fieldset {
             border: 1px solid #ccc;
@@ -128,7 +128,7 @@
             margin-bottom: 20px;
             border-radius: 4px;
         }
-        
+
         legend {
             font-weight: bold;
             padding: 0 10px;
@@ -156,7 +156,7 @@
 </head>
 <body>
     <div class="container">
-        
+
         <!-- Title Bar -->
         <div class="header-bar">
             Workflow Request Form
@@ -171,7 +171,7 @@
                 <button type="submit" class="logout-button">Logout</button>
             </form>
         </div>
-            
+
         <div class="content">
 
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -181,9 +181,9 @@
                     {% endfor %}
                 {% endif %}
             {% endwith %}
-            
+
             <form method="POST" action="{{ url_for('workflow_request') }}">
-                
+
                 <!-- Group 1: User/Request Metadata -->
                 <fieldset>
                     <legend>Please fill in form below</legend>
@@ -192,7 +192,7 @@
                         <label for="email">Email</label>
                         <input type="email" id="email" value="{{ user_email }}" class="readonly-field" readonly>
                     </div>
-                    
+
                     <div class="form-group">
                         <!-- Activity Code Dropdown -->
                         <label for="activity_code">Select Activity Code (Required)</label>
@@ -212,12 +212,12 @@
                             </select>
                         {% endif %}
                     </div>
-                   
+
                     <div class="form-group">
                         <label for="items_list">Saved Search number (Required)</label>
                         <textarea id="items_list" name="items_list" rows="1" required></textarea>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="request_type">Request Type (Required)</label>
                         <select id="request_type" name="request_type" required>
@@ -255,7 +255,7 @@
                             <option value="VIDEOUNITINHOUSE">Video unit inhouse</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="request_outcome">Request Outcome (Required)</label>
                         <select id="request_outcome" name="request_outcome" required>
@@ -273,7 +273,7 @@
                             <option value="Screening">Screening</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="description">Job Title (Required)</label>
                         <textarea id="description" name="description" rows="1" required></textarea>
@@ -283,12 +283,12 @@
                         <label for="delivery_date">Required Delivery Date (Required)</label>
                         <input type="date" id="delivery_date" name="delivery_date" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="destination">Final Destination (Required)</label>
                         <input type="text" id="destination" name="destination" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="instructions">Special Instructions (Optional)</label>
                         <textarea id="instructions" name="instructions" rows="3"></textarea>

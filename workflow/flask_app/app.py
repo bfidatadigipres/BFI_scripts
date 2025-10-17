@@ -18,7 +18,17 @@ import re
 import sys
 import sqlite3
 from contextlib import closing
-from flask import Flask, render_template, request, redirect, url_for, session, abort, g, flash
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+    abort,
+    g,
+    flash,
+)
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
@@ -34,7 +44,8 @@ CID_API = utils.get_current_api()
 
 # Ensure DB and table exist
 with sqlite3.connect(DBASE) as conn:
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS REQUESTS (
             username TEXT NOT NULL,
             email TEXT NOT NULL,
@@ -56,7 +67,8 @@ with sqlite3.connect(DBASE) as conn:
             status TEXT NOT NULL,
             date TEXT NOT NULL
         )
-    """)
+    """
+    )
 
 
 def get_user_data(username, password):
@@ -85,7 +97,7 @@ def get_user_data(username, password):
         fname = adlib.retrieve_field_name(result[0], "first_name")[0]
         lname = adlib.retrieve_field_name(result[0], "last_name")[0]
         dept = adlib.retrieve_field_name(result[0], "part_of")[0]
-        activity_code = adlib.retrieve_field_name(result[0], "activity.code") 
+        activity_code = adlib.retrieve_field_name(result[0], "activity.code")
         return [email, fname, lname, dept, activity_code]
     else:
         return []
@@ -113,12 +125,14 @@ def login_required(view_func):
     Simple decorator to block unauthenticated access
     """
     from functools import wraps
+
     @wraps(view_func)
     def wrapped(*args, **kwargs):
         if not session.get("username"):
             flash("Please log in first.")
             return redirect(url_for("index", next=request.path))
         return view_func(*args, **kwargs)
+
     return wrapped
 
 
@@ -132,7 +146,9 @@ def index():
         uname = (request.form.get("username") or "").strip().lower()
         password = request.form.get("password") or ""
         if not uname or not password:
-            return render_template("login.html", error="User name and password are required.")
+            return render_template(
+                "login.html", error="User name and password are required."
+            )
         user_data = get_user_data(uname, password)
         if user_data == []:
             # No confirmation of failed credential here
@@ -175,9 +191,12 @@ def workflow_request():
     user_last_name = session.get("last_name")
     user_dept = session.get("department")
     # List of codes we need for the dropdown
-    activity_codes_list = session.get("activity_codes", []) 
+    activity_codes_list = session.get("activity_codes", [])
     if len(activity_codes_list) == 1 and activity_codes_list[0] is None:
-        flash("Submission blocked: You do not have any valid Activity Codes assigned.\nPlease contact CollectionsSystems.", 'error')
+        flash(
+            "Submission blocked: You do not have any valid Activity Codes assigned.\nPlease contact CollectionsSystems.",
+            "error",
+        )
 
     if request.method == "GET":
         # Pass user data to the template
@@ -188,12 +207,15 @@ def workflow_request():
             user_first_name=user_first_name,
             user_last_name=user_last_name,
             user_dept=user_dept,
-            activity_codes=activity_codes_list
+            activity_codes=activity_codes_list,
         )
 
     if request.method == "POST":
         if len(activity_codes_list) == 1 and activity_codes_list[0] is None:
-            flash("Submission failed: Cannot submit request without a valid Activity Code.", 'error')
+            flash(
+                "Submission failed: Cannot submit request without a valid Activity Code.",
+                "error",
+            )
             return redirect(url_for("workflow_request"))
 
         # Force email/name to session value
@@ -202,15 +224,15 @@ def workflow_request():
         fname = user_first_name
         lname = user_last_name
         dept = user_dept
-        
+
         # Get submitted data
         user_category = request.form.get("client_category", "").strip()
         saved_search = request.form.get("items_list", "").strip()
-        
+
         # Retrieve selected activity code / text data / force status and date
-        activity_code_selected = request.form.get("activity_code", "").strip() 
+        activity_code_selected = request.form.get("activity_code", "").strip()
         if not activity_code_selected:
-            flash("Submission failed: Please select an Activity Code.", 'error')
+            flash("Submission failed: Please select an Activity Code.", "error")
             return redirect(url_for("workflow_request"))
         request_type = request.form.get("request_type", "").strip()
         request_outcome = request.form.get("request_outcome", "").strip()
@@ -225,26 +247,51 @@ def workflow_request():
 
         if "bfi.org.uk" not in email:
             # Flash an error message with category 'error'
-            flash("Email domain check failed. Please ensure you are using a BFI email address.", 'error')
-            return redirect(url_for("workflow_request")) 
-        
+            flash(
+                "Email domain check failed. Please ensure you are using a BFI email address.",
+                "error",
+            )
+            return redirect(url_for("workflow_request"))
+
         try:
             with closing(get_db()) as db:
                 db.execute(
                     "INSERT INTO REQUESTS (username,email,first_name,last_name,client_category,items_list,activity_code,request_type,request_outcome,description,delivery_date,destination,instructions,client_name,contact_details,department,status,date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (username, email, fname, lname, user_category, saved_search, activity_code_selected, request_type, request_outcome, description, delivery_date, destination, instructions, client_name, contact_details, dept, status, date_stamp),
+                    (
+                        username,
+                        email,
+                        fname,
+                        lname,
+                        user_category,
+                        saved_search,
+                        activity_code_selected,
+                        request_type,
+                        request_outcome,
+                        description,
+                        delivery_date,
+                        destination,
+                        instructions,
+                        client_name,
+                        contact_details,
+                        dept,
+                        status,
+                        date_stamp,
+                    ),
                 )
                 db.commit()
-            
+
             # Flash a success message
-            flash("Workflow request successfully submitted!", 'success')
-            
+            flash("Workflow request successfully submitted!", "success")
+
             # Redirect back to the GET version of the workflow form
             return redirect(url_for("workflow_request"))
 
         except Exception as e:
             print(f"Database insertion failed: {e}")
-            flash(f"An error occurred while submitting the request. Please try again.", 'error')
+            flash(
+                f"An error occurred while submitting the request. Please try again.",
+                "error",
+            )
             return redirect(url_for("workflow_request"))
 
     # Fallback if needed

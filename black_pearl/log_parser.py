@@ -67,7 +67,9 @@ def main():
     For standalone use of log_parser
     not, launched from autoingest
     """
-    if not utils.check_control("autoingest") or not utils.check_control("pause_scripts"):
+    if not utils.check_control("autoingest") or not utils.check_control(
+        "pause_scripts"
+    ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     create_current_errors_logs()
 

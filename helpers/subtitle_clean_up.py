@@ -36,7 +36,7 @@ def main():
     match to CID digital media recs
     and renaming / move to SUBS_PTH
     """
-    if utils.check_control("pause_scripts"):
+    if not utils.check_control("pause_scripts"):
         print("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 

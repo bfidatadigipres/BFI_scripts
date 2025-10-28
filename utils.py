@@ -336,16 +336,16 @@ def probe_metadata(arg, stream, fpath):
     ffprobe data from file
     """
     if arg == "duration":
-       new_args = "DURATION"
+        new_args = "DURATION"
     else:
-       new_args = arg
+        new_args = arg
     try:
         probe = ffmpeg.probe(fpath)
-#        print(probe['streams'])
-        for i in probe['streams']:
-           if i['codec_type'] == stream and new_args == "DURATION":
-              return i['tags'][new_args]
-           return i[new_args]
+        #        print(probe['streams'])
+        for i in probe["streams"]:
+            if i["codec_type"] == stream and new_args == "DURATION":
+                return i["tags"][new_args]
+            return i[new_args]
 
     except ffmpeg.Error as err:
         print(err)

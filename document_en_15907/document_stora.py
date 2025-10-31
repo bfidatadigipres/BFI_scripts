@@ -383,7 +383,7 @@ def main() -> None:
             # Create variables from csv sources
             var_data = generate_variables(data)
 
-            if 'UTC' in var_data:
+            if "UTC" in var_data:
                 title = var_data[0]
                 description = var_data[1]
                 time = var_data[2]
@@ -404,7 +404,7 @@ def main() -> None:
                 channel = var_data[7]
                 broadcast_company = var_data[8]
                 code_type = var_data[9]
-                
+
             acquired_filename = os.path.join(root, "stream.mpeg2.ts")
 
             # Get title_date_start from root folder

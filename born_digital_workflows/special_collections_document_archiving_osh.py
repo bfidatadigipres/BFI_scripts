@@ -733,6 +733,9 @@ def create_archive_item_record(
             mime = magic.Magic(mime=True)
             mime_type = mime.from_file(ipath)
             iname = os.path.basename(ipath)
+            if iname.startswith(parent_ob_num):
+                LOGGER.warning("Skipping. File found already renumbered: %s", iname)
+                continue
             LOGGER.info(
                 "------ File: %s --- number %s --- mime %s ------",
                 iname,

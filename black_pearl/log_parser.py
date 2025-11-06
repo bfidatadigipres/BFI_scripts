@@ -52,12 +52,12 @@ FILEPATHS = [
     "BP_AUDIO_AUTOINGEST",
     "BP_DIGITAL_AUTOINGEST",
     "BP_SC_AUTOINGEST",
-    "BP_FILM1_AUTOINGEST",
-    "BP_FILM2_AUTOINGEST",
-    "BP_FILM3_AUTOINGEST",
-    "BP_FILM4_AUTOINGEST",
-    "BP_FILM5_AUTOINGEST",
-    "BP_FILM6_AUTOINGEST",
+#    "BP_FILM1_AUTOINGEST",
+#    "BP_FILM2_AUTOINGEST",
+#    "BP_FILM3_AUTOINGEST",
+#    "BP_FILM4_AUTOINGEST",
+#    "BP_FILM5_AUTOINGEST",
+#    "BP_FILM6_AUTOINGEST",
     "AUTOINGEST_EDITSHARE",
 ]
 
@@ -140,7 +140,7 @@ def create_current_errors_logs() -> None:
     if append_rows:
         append_rows.sort(reverse=True)
         print("* Creating CSV file current_errors.csv in current_errors folder...")
-        with open(CURRENT_ERRORS, "w") as of:
+        with open(CURRENT_ERRORS, "w+") as of:
             writer = csv.writer(of)
             writer.writerow(["timedate", "path", "file", "message"])
             for ar in append_rows:

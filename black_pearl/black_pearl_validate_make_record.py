@@ -102,6 +102,7 @@ LOG_PATHS = {
     os.environ["BP_FILM4"]: os.environ["L_BP_FILM4"],
     os.environ["BP_FILM5"]: os.environ["L_BP_FILM5"],
     os.environ["BP_FILM6"]: os.environ["L_BP_FILM6"],
+    os.environ["QNAP_05"]: os.environ["L_QNAP05"],
 }
 
 

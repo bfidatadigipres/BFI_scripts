@@ -919,6 +919,9 @@ def main():
             sys.exit("* Cannot establish CID session, exiting script")
 
         root, file = os.path.split(fullpath)
+        if not os.path.exists(os.path.join(root, "stream.mpeg2.ts")):
+            logger.info("Skipping: No stream file found in path.")
+            continue
         if not os.path.exists(fullpath):
             continue
         if not file.endswith(".json") or not file.startswith("info_"):

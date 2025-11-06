@@ -199,7 +199,7 @@ def main():
 
     # Iterate jobs
     for job in requested_jobs:
-        LOGGER.info(job)
+        LOGGER.info("** New job:\n%s", job)
         job_id = job[5]
         saved_search = job[6]
         uname = job[0].strip()
@@ -224,13 +224,13 @@ def main():
             continue
 
         LOGGER.info("Batch items from saved search: %s", batch_items)
-        update_table(job_id, "Requested")
+        update_table(job_id, "Started")
 
-        # Make job metadata for Batch creation - do we need deadline?
+        # Make job metadata for Batch creation
         job_metadata = {}
         deadline = (datetime.today() + timedelta(days=10)).strftime("%Y-%m-%d")
         request_date = job[18].strip()[:10]
-        job_metadata["activity.code"] = job[7].strip() # does this need to be lref
+        job_metadata["activity.code"] = job[7].strip()
         job_metadata["client.name"] = job[14].strip()
         job_metadata["client.details"] = job[15].strip()
         job_metadata["client.category"] = job[4].strip()
@@ -263,9 +263,10 @@ def main():
             if not p_priref:
                 LOGGER.warning("Person record failed to create: %s", job_metadata["client.name"])
 
-        update_table(job_id, "Completed workflow record creation")
+        update_table(job_id, "Completed")
         send_email_update(email, firstname, "Workflow request completed", job)
-        sys.exit("Just one test job")
+
+    LOGGER.info("=== Workflow requests record creation completed %s ===", str(datetime.now())[:18])
 
 
 def update_table(job_id: str, new_status: str) -> None:
@@ -281,7 +282,7 @@ def update_table(job_id: str, new_status: str) -> None:
         data = (new_status, job_id)
         cursor.execute(sql_query, data)
         sqlite_connection.commit()
-        LOGGER.info("Record updated with new status %s", new_status)
+        LOGGER.info("Record updated with new status '%s'", new_status)
         cursor.close()
     except sqlite3.Error as err:
         LOGGER.warning("Failed to update database: %s", err)
@@ -362,7 +363,6 @@ def create_people_record(client_name):
         return None
 
     # Create basic person record
-    LOGGER.info("Attempting to create Person record for item")
     record = adlib.post(CID_API, credit_xml, "people", "insertrecord")
     if not record:
         print(f"*** Unable to create People record: {credit_xml}")

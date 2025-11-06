@@ -44,9 +44,6 @@ import logging
 import itertools
 from datetime import datetime, timedelta
 from typing import Final, Optional
-import smtplib
-import ssl
-from email.message import EmailMessage
 
 # Local imports
 import workflow_requests as workflow
@@ -75,6 +72,39 @@ LOGGER.setLevel(logging.INFO)
 EMAIL_SENDER: Final = os.environ["EMAIL_SEND"]
 EMAIL_PSWD: Final = os.environ["EMAIL_PASS"]
 CID_API = os.environ.get("CID_API3")
+REQUEST_TYPE = {
+    "AUDIOSUITETRANSFER": "Audio suite transfer",
+    "BOOKING": "Booking",
+    "DATAMIGRATION": "Data migration",
+    "ENCODING": "Encoding",
+    "EXAMINATION": "Examination",
+    "FASTBOOKING": "Fast booking",
+    "FILMDUPLICATIONEXTERNAL": "Film duplication external",
+    "FILMPRINTINGEXTERNAL": "Film printing external",
+    "FILMPRINTINGINTERNAL": "Film printing internal",
+    "HDSCANNINGEXTERNAL": "HD scanning external",
+    "HDSCANNINGINTERNAL": "HD scanning internal",
+    "HIGHDEFEXTERNAL": "High def transfer external",
+    "INFORMATION": "Information",
+    "INHOUSEAUDIODIGITISATION": "Inhouse audio digitisation",
+    "INSPECTION": "Inspection",
+    "NEWTITLECREATION": "New title creation",
+    "NUMBERING": "Numbering",
+    "OFFAIRRECORDING": "Off air recording",
+    "OTHER": "Other",
+    "QUALITYCONTROL": "Quality control",
+    "SDEXTERNAL": "SD transfer external",
+    "SDSCANNINGEXTERNAL": "SD scanning external",
+    "SDSCANNINGINTERNAL": "SD scanning internal",
+    "TECHNICALSELECTION": "Technical selection",
+    "TELECINEEXTERNAL": "Telecine transfer external",
+    "TELECINEINTERNAL": "Telecine transfer internal",
+    "TRANSCODING": "Transcoding",
+    "VIDEOCOPY": "Video copy",
+    "VIDEOCOPYNOTSUPPORTED": "Video copy formats not supported within video lab",
+    "VIDEOTRANSFEREXTERNAL": "Video transfer external",
+    "VIDEOUNITINHOUSE": "Video unit inhouse",
+}
 
 
 def retrieve_requested() -> list[str]:
@@ -93,7 +123,7 @@ def retrieve_requested() -> list[str]:
         print(data)
         for row in data:
             print(type(row), row)
-            if row[-1] == "Requested":
+            if row[17] == "Requested":
                 requested_data.append(row)
         cursor.close()
     except sqlite3.Error as err:
@@ -116,6 +146,8 @@ def remove_duplicates(list_data: list[str]) -> list[str]:
     list_data.sort()
     grouped = itertools.groupby(list_data)
     unique = [key for key, _ in grouped]
+    if len(unique) > 1:
+        unique.sort(key=lambda a: a[18])
     return unique
 
 
@@ -133,6 +165,7 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
 
     try:
         result = adlib.get(CID_API, query)
+        print(f"CID getpointerfile search:\n{result}")
     except Exception as exc:
         LOGGER.exception(
             "get_prirefs(): Unable to get pointer file %s\n%s", pointer, exc
@@ -154,7 +187,7 @@ def main():
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
-    LOGGER.info("=== Processing items from workflow requests app ===")
+    LOGGER.info("=== Workflow requests record creation start %s ===", str(datetime.now())[:18])
 
     requested_jobs = retrieve_requested()
     print(requested_jobs)
@@ -166,34 +199,38 @@ def main():
 
     # Iterate jobs
     for job in requested_jobs:
-        job_id = job[5].strip()
-        saved_search = job[6].strip()
+        LOGGER.info(job)
+        job_id = job[5]
+        saved_search = job[6]
         uname = job[0].strip()
         email = job[1].strip()
-        destination = job[12].strip()
+        destination = "PBK06B03000000" # Temp hard coding - needs reviewing
         purpose = job[9].strip()
         firstname = job[2].strip()
+        lastname = job[3].strip()
 
         batch_items = get_prirefs(saved_search)
-        print(batch_items)
         if not batch_items:
+            LOGGER.warning("No items prirefs found in saved search.")
             update_table(job_id, "Error with Saved Search")
             # Send notification email
             send_email_update(email, firstname, "Workflow request failed: Error with Saved Search number", job)
             continue
         if len(batch_items) > 50:
+            LOGGER.warning("More than 50 item prirefs found in saved search.")
             update_table(job_id, "Too many items in Saved Search")
             # Send notification email
             send_email_update(email, firstname, "Workflow request failed: Too many items in Saved Search", job)
             continue
 
-        # update_table(job_id, "Started")
+        LOGGER.info("Batch items from saved search: %s", batch_items)
+        update_table(job_id, "Requested")
 
         # Make job metadata for Batch creation - do we need deadline?
         job_metadata = {}
         deadline = (datetime.today() + timedelta(days=10)).strftime("%Y-%m-%d")
         request_date = job[18].strip()[:10]
-        job_metadata["activity.code"] = job[7].strip()
+        job_metadata["activity.code"] = job[7].strip() # does this need to be lref
         job_metadata["client.name"] = job[14].strip()
         job_metadata["client.details"] = job[15].strip()
         job_metadata["client.category"] = job[4].strip()
@@ -202,17 +239,17 @@ def main():
         job_metadata["completion.date"] = job[11].strip()
         job_metadata["final_destination"] = job[12].strip()
         job_metadata["request.details"] = job[13].strip()
-        job_metadata["request.from.department"] = job[16].strip()
+        # job_metadata["request.from.department"] = job[16].strip()
         job_metadata["request.from.email"] = email
-        job_metadata["request.from.name"] = uname
+        job_metadata["request.from.name"] = f"{firstname} {lastname}"
         job_metadata["request.date.received"] = request_date
         job_metadata["negotiatedDeadline"] = deadline
         job_metadata["input.name"] = uname
+        LOGGER.info("Job metadata build: %s", job_metadata)
 
-        print(job_metadata)
-        sys.exit("Just getting data")
         # Create Workflow records
         print("* Creating Workflow records in CID...")
+        LOGGER.info("* Creating Workflow records in CID...")
         batch = workflow.BatchBuild(destination, purpose, uname, items=batch_items, **job_metadata)
         if not batch.successfully_completed:
             print(batch_items, batch)
@@ -221,12 +258,14 @@ def main():
             send_email_update(email, firstname, "Workflow request failed: Error creating workflow batch", job)
             continue
         if len(job_metadata["client.name"]) > 0:
+            LOGGER.info("Client.name populated - making P&I record for %s", job_metadata["client.name"])
             p_priref = create_people_record(job_metadata["client.name"])
             if not p_priref:
                 LOGGER.warning("Person record failed to create: %s", job_metadata["client.name"])
 
         update_table(job_id, "Completed workflow record creation")
         send_email_update(email, firstname, "Workflow request completed", job)
+        sys.exit("Just one test job")
 
 
 def update_table(job_id: str, new_status: str) -> None:
@@ -238,7 +277,7 @@ def update_table(job_id: str, new_status: str) -> None:
         sqlite_connection = sqlite3.connect(DATABASE)
         cursor = sqlite_connection.cursor()
         # Update row with new status
-        sql_query = """UPDATE REQUESTS SET status = ? WHERE job_id = ?"""
+        sql_query = """UPDATE REQUESTS SET status = ? WHERE jobid = ?"""
         data = (new_status, job_id)
         cursor.execute(sql_query, data)
         sqlite_connection.commit()
@@ -263,16 +302,16 @@ def send_email_update(client_email: str, firstname: str, status: str, job: list)
     else:
         message = f"I'm sorry but some / all of your workflow job request failed at {str(datetime.now())}.\nReport: {status}."
 
-    subject = "DPI file download request completed"
+    subject = "CID Workflow request notification"
     body = f"""
 Hello {firstname.title()},
 
 {message}
 
 Your original request details:
-    Items list: {job[6]}
+    Saved search: {job[6]}
     Activity code: {job[7]}
-    Request type: {job[8]}
+    Request type: {REQUEST_TYPE.get(job[8])}
     Request outcome: {job[9]}
     Job description: {job[10]}
     Delivery date: {job[11]}
@@ -288,21 +327,14 @@ https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1
 This is an automated notification, please do not reply to this email.
 
 Thank you,
-Digital Preservation team"""
+Collections Systems team"""
 
-    send_mail = EmailMessage()
-    send_mail["From"] = EMAIL_SENDER
-    send_mail["To"] = client_email
-    send_mail["Subject"] = subject
-    send_mail.set_content(body)
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
-        try:
-            smtp.login(EMAIL_SENDER, EMAIL_PSWD)
-            smtp.sendmail(EMAIL_SENDER, client_email, send_mail.as_string())
-            LOGGER.info("Email notification sent to %s", client_email)
-        except Exception as exc:
-            LOGGER.warning("Email notification failed in sending: %s\n%s", client_email, exc)
+    success, error = utils.send_email(client_email, subject, body, "")
+    if success:
+        LOGGER.info("Email notification sent to %s",client_email)
+    else:
+        LOGGER.warning("Email notification failed in sending: %s", client_email)
+        LOGGER.warning("Error: %s", error)
 
 
 def create_people_record(client_name):

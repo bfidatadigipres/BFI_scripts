@@ -129,8 +129,8 @@ class Task:
         }
 
         self.make_topnode(username, **kwargs)
-        objectList_priref = self.make_objectList(self.priref)
-        self.make_objects(objectList_priref, items=self.items)
+        objectList_priref = self.make_objectList(username, self.priref)
+        self.make_objects(username, objectList_priref, items=self.items)
 
     def _date_time(self):
         date = str(datetime.now())[:10]
@@ -172,17 +172,17 @@ class Task:
         self.priref = int(adlib.retrieve_field_name(response, "priref")[0])
         self.last_activity_priref = self.priref
 
-    def make_objectList(self, parent):
+    def make_objectList(self, username, parent):
         ol = dict(self.profiles["objectList"])
         ol["parent"] = str(self.last_activity_priref)
 
-        record = self.build_record(ol)
+        record = self.build_record(username, ol)
         response = self.write_record(record=record)
 
         priref = int(adlib.retrieve_field_name(response, "priref")[0])
         return priref
 
-    def make_objects(self, objectList_priref, items=None):
+    def make_objects(self, username, objectList_priref, items=None):
         count = 0
         if items is not None:
             for item in items:
@@ -192,7 +192,7 @@ class Task:
                 d["parent"] = str(objectList_priref)
                 d["payloadLink"] = str(item)
 
-                record = self.build_record(d)
+                record = self.build_record(username, d)
 
                 try:
                     response = self.write_record(record=record)
@@ -212,7 +212,7 @@ class Task:
 
         return False
 
-    def add_activity(self, activity, items=None, **payload_kwargs):
+    def add_activity(self, activity, username, items=None, **payload_kwargs):
         a = activity_map.get(activity)
         if not a:
             raise Exception(
@@ -221,7 +221,7 @@ class Task:
 
         # Payload record
         db = self.database_map[a["payloadDatabase"]]
-        p = self.build_record(payload_kwargs)
+        p = self.build_record(username, payload_kwargs)
         response = self.write_record(database=db, record=p)
         payload_priref = int(adlib.retrieve_field_name(response, "priref")[0])
 
@@ -235,12 +235,12 @@ class Task:
             d[i] = a[i]
 
         d["parent"] = str(self.last_activity_priref)
-        wf = self.write_record(record=self.build_record(d))
+        wf = self.write_record(record=self.build_record(username, d))
         wf_priref = int(adlib.retrieve_field_name(wf, "priref")[0])
         self.last_activity_priref = wf_priref
 
-        ol_priref = self.make_objectList(parent=str(self.last_activity_priref))
-        status = self.make_objects(str(ol_priref), items)
+        ol_priref = self.make_objectList(username, parent=str(self.last_activity_priref))
+        status = self.make_objects(username, str(ol_priref), items)
 
         if status:
             return True
@@ -297,7 +297,7 @@ class Batch:
 
         overall_status = []
         for a in kwargs["activities"]:
-            status = self.task.add_activity(a, items=items, **kwargs["payload"][a])
+            status = self.task.add_activity(a, username, items=items, **kwargs["payload"][a])
             overall_status.append(status)
 
         self.priref = self.task.priref

@@ -382,7 +382,8 @@ def main() -> None:
 
             # Create variables from csv sources
             var_data = generate_variables(data)
-            if 'UTC' in var_data:
+
+            if "UTC" in var_data:
                 title = var_data[0]
                 description = var_data[1]
                 time = var_data[2]

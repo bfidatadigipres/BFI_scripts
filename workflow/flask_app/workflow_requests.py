@@ -32,9 +32,8 @@ import utils
 sys.path.append(os.environ["WORKFLOW"])
 import records
 
-
 # Global var
-CID_API = utils.get_current_api()
+CID_API = os.environ.get("CID_API3")
 
 
 class Activities:
@@ -96,7 +95,7 @@ class Task:
     Suite of Workflow jobs and activities
     """
 
-    def __init__(self, items=None, **kwargs):
+    def __init__(self, username, items=None, **kwargs):
         try:
             [int(i) for i in items]
         except Exception:
@@ -129,7 +128,7 @@ class Task:
             "request.inf": "request",
         }
 
-        self.make_topnode(**kwargs)
+        self.make_topnode(username, **kwargs)
         objectList_priref = self.make_objectList(self.priref)
         self.make_objects(objectList_priref, items=self.items)
 
@@ -138,11 +137,11 @@ class Task:
         time = str(datetime.now())[11:19]
         return date, time
 
-    def build_record(self, data):
+    def build_record(self, username, data):
         record = records.Record()
 
         data["priref"] = "0"
-        data["input.name"] = "collectionssystems"
+        data["input.name"] = username
         data["input.date"] = self._date_time()[0]
         data["input.time"] = self._date_time()[1]
 
@@ -158,7 +157,7 @@ class Task:
         print(response)
         return response
 
-    def make_topnode(self, **kwargs):
+    def make_topnode(self, username, **kwargs):
         wf = dict(self.profiles["workflow"])
 
         for k in kwargs:
@@ -166,7 +165,7 @@ class Task:
 
         wf["topNode"] = "x"
 
-        record = self.build_record(wf)
+        record = self.build_record(username, wf)
         response = self.write_record(record=record)
 
         self.job_number = int(adlib.retrieve_field_name(response, "jobnumber")[0])
@@ -217,10 +216,7 @@ class Task:
         a = activity_map.get(activity)
         if not a:
             raise Exception(
-                """Unknown activity label: "{}"
-                               or activity is not supported""".format(
-                    activity
-                )
+                f"Unknown activity label: {activity} or activity is not supported"
             )
 
         # Payload record
@@ -284,7 +280,7 @@ class Batch:
                          important
     """
 
-    def __init__(self, items=None, **kwargs):
+    def __init__(self, username, items=None, **kwargs):
         if not items:
             raise Exception("Required: list of item prirefs")
 
@@ -297,7 +293,7 @@ class Batch:
         if "payload" not in kwargs:
             raise Exception("Required: dictionary of payload field-values in kwargs")
 
-        self.task = Task(items, **kwargs["topNode"])
+        self.task = Task(username, items, **kwargs["topNode"])
 
         overall_status = []
         for a in kwargs["activities"]:
@@ -329,12 +325,12 @@ class BatchBuild:
         b = BatchBuildDev(l, **topnode_metadata)
     """
 
-    def __init__(self, destination, items=None, **kwargs):
+    def __init__(self, destination, purpose, username, items=None, **kwargs):
         # Default metadata
         d = {
             "activities": ["Pick items"],
             "topNode": {
-                "purpose": "Preservation",
+                "purpose": purpose,
             },
             "payload": {
                 "Pick items": {"destination": destination},
@@ -346,7 +342,7 @@ class BatchBuild:
             d["topNode"][k] = kwargs[k]
 
         # Create
-        self.batch = Batch(items, **d)
+        self.batch = Batch(username, items, **d)
 
     @property
     def successfully_completed(self):

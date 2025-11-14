@@ -11,6 +11,7 @@ import requests
 import json
 from pathlib import Path
 
+CASES = json.loads((Path(__file__).parent / "data"/ "data.json").read_text())
 
 def test_check_control():
     true_response = utils.check_control("black_pearl")

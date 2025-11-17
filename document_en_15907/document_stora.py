@@ -394,15 +394,15 @@ def main() -> None:
                 broadcast_company = var_data[8]
                 code_type = var_data[9]
             else:
-            	title = var_data[0]
-            	description = var_data[1]
-            	time = var_data[3]
-            	duration_total = var_data[4]
-            	actual_duration_total = var_data[5]
-            	actual_duration_seconds_integer = var_data[6]
-            	channel = var_data[7]
-            	broadcast_company = var_data[8]
-            	code_type = var_data[9]
+                title = var_data[0]
+                description = var_data[1]
+                time = var_data[3]
+                duration_total = var_data[4]
+                actual_duration_total = var_data[5]
+                actual_duration_seconds_integer = var_data[6]
+                channel = var_data[7]
+                broadcast_company = var_data[8]
+                code_type = var_data[9]
 
             acquired_filename = os.path.join(root, "stream.mpeg2.ts")
 

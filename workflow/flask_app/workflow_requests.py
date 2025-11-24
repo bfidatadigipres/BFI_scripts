@@ -34,6 +34,17 @@ import records
 
 # Global var
 CID_API = os.environ.get("CID_API3")
+LOG_PATH = os.environ["LOG_PATH"]
+
+# Set up logging just for Priref capture to logs
+LOGGER = logging.getLogger("workflow_requests_record_creator")
+HDLR = logging.FileHandler(
+    os.path.join(LOG_PATH, "workflow_requests_record_creator.log")
+)
+FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
+HDLR.setFormatter(FORMATTER)
+LOGGER.addHandler(HDLR)
+LOGGER.setLevel(logging.INFO)
 
 
 class Activities:
@@ -154,7 +165,11 @@ class Task:
         data = record.to_xml(to_string=True)
         payload = f"<adlibXML><recordList>{data}</recordList></adlibXML>"
         response = adlib.post(CID_API, payload, database, "insertrecord")
-        print(response)
+        try:
+            priref = adlib.retrieve_field_name(record, "priref")[0]
+            LOGGER.info("** New record created with priref %s", priref)
+        except Exception:
+            LOGGER.warning("Priref not found. New record:\n%s", response)
         return response
 
     def make_topnode(self, username, **kwargs):

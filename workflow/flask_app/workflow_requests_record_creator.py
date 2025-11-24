@@ -170,9 +170,9 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
         LOGGER.exception(
             "get_prirefs(): Unable to get pointer file %s\n%s", pointer, exc
         )
-        result = None
+        return None
 
-    if not result["adlibJSON"]["recordList"]["record"][0]["hitlist"]:
+    if result["adlibJSON"]["recordList"]["record"] == []:
         return None
     prirefs = result["adlibJSON"]["recordList"]["record"][0]["hitlist"]
     LOGGER.info("Prirefs retrieved: %s", prirefs)
@@ -187,12 +187,13 @@ def main():
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
-    LOGGER.info("=== Workflow requests record creation start %s ===", str(datetime.now())[:18])
+    LOGGER.info("=== Workflow requests record creation start %s ===", str(datetime.now())[:19])
 
     requested_jobs = retrieve_requested()
     print(requested_jobs)
     if len(requested_jobs) == 0:
         LOGGER.info("No jobs found this pass. Script exiting")
+        LOGGER.info("=== Workflow requests record creation completed %s ===", str(datetime.now())[:19])
         sys.exit()
 
     LOGGER.info("Requested jobs found: %s", len(requested_jobs))
@@ -210,6 +211,7 @@ def main():
         lastname = job[3].strip()
 
         batch_items = get_prirefs(saved_search)
+        print(batch_items)
         if not batch_items:
             LOGGER.warning("No items prirefs found in saved search.")
             update_table(job_id, "Error with Saved Search")
@@ -252,8 +254,8 @@ def main():
         LOGGER.info("* Creating Workflow records in CID...")
         batch = workflow.BatchBuild(destination, purpose, uname, items=batch_items, **job_metadata)
         if not batch.successfully_completed:
-            print(batch_items, batch)
-            LOGGER.warning("Batch record creation failed:\n%s\n%s", batch_items, batch)
+            print(batch_items, batch.successfully_completed)
+            LOGGER.warning("Batch record creation failed:\n%s\n%s", batch_items, batch.successfully_completed)
             update_table(job_id, "Error creating workflow batch")
             send_email_update(email, firstname, "Workflow request failed: Error creating workflow batch", job)
             continue
@@ -262,11 +264,11 @@ def main():
             p_priref = create_people_record(job_metadata["client.name"])
             if not p_priref:
                 LOGGER.warning("Person record failed to create: %s", job_metadata["client.name"])
-
+        LOGGER.info("Batch creation completed: %s", batch.successfully_completed)
         update_table(job_id, "Completed")
         send_email_update(email, firstname, "Workflow request completed", job)
 
-    LOGGER.info("=== Workflow requests record creation completed %s ===", str(datetime.now())[:18])
+    LOGGER.info("=== Workflow requests record creation completed %s ===", str(datetime.now())[:19])
 
 
 def update_table(job_id: str, new_status: str) -> None:
@@ -369,6 +371,7 @@ def create_people_record(client_name):
         LOGGER.critical("make_person_record():Unable to create People record\n%s", err)
     try:
         credit_priref = adlib.retrieve_field_name(record, "priref")[0]
+        LOGGER.info("** New person record created: %s", credit_priref)
         return credit_priref
     except Exception as err:
         print(f"*** Unable to create People record: {err}")

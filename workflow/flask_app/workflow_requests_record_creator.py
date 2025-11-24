@@ -187,7 +187,9 @@ def main():
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
-    LOGGER.info("=== Workflow requests record creation start %s ===", str(datetime.now())[:19])
+    LOGGER.info(
+        "=== Workflow requests record creation start %s ===", str(datetime.now())[:18]
+    )
 
     requested_jobs = retrieve_requested()
     print(requested_jobs)
@@ -205,7 +207,7 @@ def main():
         saved_search = job[6]
         uname = job[0].strip()
         email = job[1].strip()
-        destination = "PBK06B03000000" # Temp hard coding - needs reviewing
+        destination = "PBK06B03000000"  # Temp hard coding - needs reviewing
         purpose = job[9].strip()
         firstname = job[2].strip()
         lastname = job[3].strip()
@@ -216,13 +218,23 @@ def main():
             LOGGER.warning("No items prirefs found in saved search.")
             update_table(job_id, "Error with Saved Search")
             # Send notification email
-            send_email_update(email, firstname, "Workflow request failed: Error with Saved Search number", job)
+            send_email_update(
+                email,
+                firstname,
+                "Workflow request failed: Error with Saved Search number",
+                job,
+            )
             continue
         if len(batch_items) > 50:
             LOGGER.warning("More than 50 item prirefs found in saved search.")
             update_table(job_id, "Too many items in Saved Search")
             # Send notification email
-            send_email_update(email, firstname, "Workflow request failed: Too many items in Saved Search", job)
+            send_email_update(
+                email,
+                firstname,
+                "Workflow request failed: Too many items in Saved Search",
+                job,
+            )
             continue
 
         LOGGER.info("Batch items from saved search: %s", batch_items)
@@ -237,7 +249,9 @@ def main():
         job_metadata["client.details"] = job[15].strip()
         job_metadata["client.category"] = job[4].strip()
         job_metadata["request_type"] = job[8].strip()
-        job_metadata["description"] = f"{job[10].strip()} / {str(datetime.today())[:19]}"
+        job_metadata["description"] = (
+            f"{job[10].strip()} / {str(datetime.today())[:19]}"
+        )
         job_metadata["completion.date"] = job[11].strip()
         job_metadata["final_destination"] = job[12].strip()
         job_metadata["request.details"] = job[13].strip()
@@ -252,23 +266,38 @@ def main():
         # Create Workflow records
         print("* Creating Workflow records in CID...")
         LOGGER.info("* Creating Workflow records in CID...")
-        batch = workflow.BatchBuild(destination, purpose, uname, items=batch_items, **job_metadata)
+        batch = workflow.BatchBuild(
+            destination, purpose, uname, items=batch_items, **job_metadata
+        )
         if not batch.successfully_completed:
             print(batch_items, batch.successfully_completed)
             LOGGER.warning("Batch record creation failed:\n%s\n%s", batch_items, batch.successfully_completed)
             update_table(job_id, "Error creating workflow batch")
-            send_email_update(email, firstname, "Workflow request failed: Error creating workflow batch", job)
+            send_email_update(
+                email,
+                firstname,
+                "Workflow request failed: Error creating workflow batch",
+                job,
+            )
             continue
         if len(job_metadata["client.name"]) > 0:
-            LOGGER.info("Client.name populated - making P&I record for %s", job_metadata["client.name"])
+            LOGGER.info(
+                "Client.name populated - making P&I record for %s",
+                job_metadata["client.name"],
+            )
             p_priref = create_people_record(job_metadata["client.name"])
             if not p_priref:
-                LOGGER.warning("Person record failed to create: %s", job_metadata["client.name"])
-        LOGGER.info("Batch creation completed: %s", batch.successfully_completed)
+                LOGGER.warning(
+                    "Person record failed to create: %s", job_metadata["client.name"]
+                )
+
         update_table(job_id, "Completed")
         send_email_update(email, firstname, "Workflow request completed", job)
 
-    LOGGER.info("=== Workflow requests record creation completed %s ===", str(datetime.now())[:19])
+    LOGGER.info(
+        "=== Workflow requests record creation completed %s ===",
+        str(datetime.now())[:18],
+    )
 
 
 def update_table(job_id: str, new_status: str) -> None:
@@ -293,7 +322,9 @@ def update_table(job_id: str, new_status: str) -> None:
             sqlite_connection.close()
 
 
-def send_email_update(client_email: str, firstname: str, status: str, job: list) -> None:
+def send_email_update(
+    client_email: str, firstname: str, status: str, job: list
+) -> None:
     """
     Update user that their item has been
     requested and confirm their request
@@ -301,7 +332,9 @@ def send_email_update(client_email: str, firstname: str, status: str, job: list)
     """
 
     if status == "Workflow request completed":
-        message = f"You workflow request completed successfully at {str(datetime.now())}."
+        message = (
+            f"You workflow request completed successfully at {str(datetime.now())}."
+        )
     else:
         message = f"I'm sorry but some / all of your workflow job request failed at {str(datetime.now())}.\nReport: {status}."
 
@@ -334,7 +367,7 @@ Collections Systems team"""
 
     success, error = utils.send_email(client_email, subject, body, "")
     if success:
-        LOGGER.info("Email notification sent to %s",client_email)
+        LOGGER.info("Email notification sent to %s", client_email)
     else:
         LOGGER.warning("Email notification failed in sending: %s", client_email)
         LOGGER.warning("Error: %s", error)

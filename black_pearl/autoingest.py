@@ -209,7 +209,7 @@ def check_mime_type(fpath: str, log_paths: str) -> bool:
     if type_ in ["audio", "video"]:
         # Temporary addition to pass failing MXF files in Netflix share
         # To reset this remove if / else and inset else block starting at cmd = []
-        if '/netflix/' in fpath and fpath.endswith((".mxf", ".MXF")):
+        if "/netflix/" in fpath and fpath.endswith((".mxf", ".MXF")):
             return True
         else:
             cmd = ["ffprobe", "-i", fpath, "-loglevel", "-8"]

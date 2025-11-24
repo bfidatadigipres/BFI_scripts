@@ -239,7 +239,9 @@ class Task:
         wf_priref = int(adlib.retrieve_field_name(wf, "priref")[0])
         self.last_activity_priref = wf_priref
 
-        ol_priref = self.make_objectList(username, parent=str(self.last_activity_priref))
+        ol_priref = self.make_objectList(
+            username, parent=str(self.last_activity_priref)
+        )
         status = self.make_objects(username, str(ol_priref), items)
 
         if status:
@@ -297,7 +299,9 @@ class Batch:
 
         overall_status = []
         for a in kwargs["activities"]:
-            status = self.task.add_activity(a, username, items=items, **kwargs["payload"][a])
+            status = self.task.add_activity(
+                a, username, items=items, **kwargs["payload"][a]
+            )
             overall_status.append(status)
 
         self.priref = self.task.priref

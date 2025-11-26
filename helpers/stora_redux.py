@@ -1,7 +1,12 @@
 import json
 from datetime import datetime, timezone
+import sys
+import os
+
+sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
+
 import glob
 import pandas as pd
 
@@ -130,7 +135,7 @@ if __name__ == "__main__":
     full_match_results = []
     list_of_file_with_full_match = []
     list_of_no_matches = []
-    list_path = "/mnt/bp_nas/admin/DataDigiPres/Developers/historical_redux_metadata/2022/01/*/*/*.json"
+    list_path = "/mnt/bp_nas/admin/DataDigiPres/Developers/historical_redux_metadata/2015/12/*/*/*.json"
     list_of_files = glob.glob(list_path)
     for path in list_of_files:
         print(f"Processing path: {path}")

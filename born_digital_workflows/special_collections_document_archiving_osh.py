@@ -255,7 +255,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
                     "%Y-%m-%d %H:%M:%S"
                 )
             },
-            {"utb.filename": "Modification date and time"},
+            {"utb.fieldname": "Modification date and time"},
             {
                 "production.date.end": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d"
@@ -277,7 +277,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
                     "%Y-%m-%d %H:%M:%S"
                 )
             },
-            {"utb.filename": "Modification date and time"},
+            {"utb.fieldname": "Modification date and time"},
             {
                 "production.date.end": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d"
@@ -316,7 +316,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
             elif exif_field == field.strip():
                 image_dict.append({f"{cid_field}": value.strip()})
     if "utb.content" in str(image_dict):
-        image_dict.append({"utb.filename": "Modification date and time"})
+        image_dict.append({"utb.fieldname": "Modification date and time"})
     image_dict.append({"filesize": str(os.path.getsize(ipath))})
     image_dict.append({"filesize.unit": "B (Byte)"})
     image_dict.append({"file_type": file_type})

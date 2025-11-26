@@ -251,10 +251,11 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         date = os.path.getmtime(ipath)
         metadata_dct = [
             {
-                "production.date.notes": datetime.datetime.fromtimestamp(date).strftime(
+                "utb.content": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
             },
+            {"utb.filename": "Modification date and time"},
             {
                 "production.date.end": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d"
@@ -272,10 +273,11 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         date = os.path.getmtime(ipath)
         metadata_dct = [
             {
-                "production.date.notes": datetime.datetime.fromtimestamp(date).strftime(
+                "utb.content": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
             },
+            {"utb.filename": "Modification date and time"},
             {
                 "production.date.end": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d"
@@ -292,7 +294,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         return None
 
     data = [
-        "File Modification Date/Time, production.date.notes",
+        "File Modification Date/Time, utb.content",
         "Software, source_software",
     ]
 
@@ -303,17 +305,18 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         field, value = mdata.split(":", 1)
         for d in data:
             exif_field, cid_field = d.split(", ")
-            if "production.date.notes" in str(
-                d
-            ) and "File Modification Date/Time" in str(field):
-                image_dict.append({f"{cid_field}": value.strip()})
-                try:
-                    date = value.strip().split(" ", 1)[0].replace(":", "-")
-                    image_dict.append({"production.date.end": date})
-                except IndexError as err:
-                    LOGGER.warning("Error splitting date: %s", err)
+            if cid_field == "utb.content":
+                if "File Modification Date/Time" in str(field):
+                    image_dict.append({f"{cid_field}": value.strip()})
+                    try:
+                        date = value.strip().split(" ", 1)[0].replace(":", "-")
+                        image_dict.append({"production.date.end": date})
+                    except IndexError as err:
+                        LOGGER.warning("Error splitting date: %s", err)
             elif exif_field == field.strip():
                 image_dict.append({f"{cid_field}": value.strip()})
+    if "utb.content" in str(image_dict):
+        image_dict.append({"utb.filename": "Modification date and time"})
     image_dict.append({"filesize": str(os.path.getsize(ipath))})
     image_dict.append({"filesize.unit": "B (Byte)"})
     image_dict.append({"file_type": file_type})
@@ -767,6 +770,8 @@ def create_archive_item_record(
                 {"title": iname},
                 {"digital.acquired_filename": iname},
                 {"digital.acquired_filename.type": "FILE"},
+                {"digital.acquired_filepath": ipath},
+                {"digital.acquired_filepath.type": "FILE"},
                 {"object_number": ob_num},
                 {"received_checksum.type": "MD5"},
                 {"received_checksum.date": str(datetime.datetime.now())[:10]},

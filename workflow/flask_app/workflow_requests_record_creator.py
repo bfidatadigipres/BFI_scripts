@@ -195,7 +195,10 @@ def main():
     print(requested_jobs)
     if len(requested_jobs) == 0:
         LOGGER.info("No jobs found this pass. Script exiting")
-        LOGGER.info("=== Workflow requests record creation completed %s ===", str(datetime.now())[:19])
+        LOGGER.info(
+            "=== Workflow requests record creation completed %s ===",
+            str(datetime.now())[:19],
+        )
         sys.exit()
 
     LOGGER.info("Requested jobs found: %s", len(requested_jobs))
@@ -271,7 +274,11 @@ def main():
         )
         if not batch.successfully_completed:
             print(batch_items, batch.successfully_completed)
-            LOGGER.warning("Batch record creation failed:\n%s\n%s", batch_items, batch.successfully_completed)
+            LOGGER.warning(
+                "Batch record creation failed:\n%s\n%s",
+                batch_items,
+                batch.successfully_completed,
+            )
             update_table(job_id, "Error creating workflow batch")
             send_email_update(
                 email,

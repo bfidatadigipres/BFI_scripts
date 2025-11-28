@@ -116,7 +116,7 @@ def accepted_file_type(ext):
         "csv": "csv",
         "pdf": "pdf",
         "txt": "txt",
-        "ttml": "ttml"
+        "ttml": "ttml",
     }
 
     ext = ext.lower()

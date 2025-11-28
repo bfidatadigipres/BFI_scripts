@@ -1075,7 +1075,13 @@ def main():
                     )
                     # Launch create series function
                     series_work_id = create_series(
-                        fullpath, ser_def, work_res_def, epg_dict, series_id, month, bbc_split
+                        fullpath,
+                        ser_def,
+                        work_res_def,
+                        epg_dict,
+                        series_id,
+                        month,
+                        bbc_split,
                     )
                     if not series_work_id:
                         logger.warning(
@@ -1237,7 +1243,13 @@ def main():
 
 
 def create_series(
-    fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id, month, bbc_flag
+    fullpath,
+    series_work_defaults,
+    work_restricted_def,
+    epg_dict,
+    series_id,
+    month,
+    bbc_flag,
 ):
     """
     Call function series_check(series_id) and build all data needed

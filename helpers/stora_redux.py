@@ -104,9 +104,10 @@ CHANNELS = {
     ],
 }
 
+
 def get_stora_data(filepath: str):
     # get channel name + broadcast_channel
-    channel_data = filepath.split('/')[-2]
+    channel_data = filepath.split("/")[-2]
     print(channel_data)
     for key, val in CHANNELS.items():
         if f"/{key}/" in filepath:
@@ -116,19 +117,18 @@ def get_stora_data(filepath: str):
                 print(channel)
             except (IndexError, TypeError, KeyError) as err:
                 print(err)
-    with open(filepath, 'r') as file:
+    with open(filepath, "r") as file:
         info_json = json.load(file)
-        #print(info_json.get('item')[0].keys())
-        date_time = info_json.get('item')[0]['dateTime']
-        date = datetime.fromisoformat(date_time[:-1]).strftime('%Y-%m-%d')
-        time = datetime.fromisoformat(date_time[:-1]).strftime('%H:%M:%S')
-        title = info_json.get('item')[0]['title']
-        asset_title = info_json.get('item')[0]['asset'].get('title')
+        # print(info_json.get('item')[0].keys())
+        date_time = info_json.get("item")[0]["dateTime"]
+        date = datetime.fromisoformat(date_time[:-1]).strftime("%Y-%m-%d")
+        time = datetime.fromisoformat(date_time[:-1]).strftime("%H:%M:%S")
+        title = info_json.get("item")[0]["title"]
+        asset_title = info_json.get("item")[0]["asset"].get("title")
         if asset_title is None:
-             asset_title = ''
-        asset_id = info_json.get('item')[0]['asset']['id']
+            asset_title = ""
+        asset_id = info_json.get("item")[0]["asset"]["id"]
     return date, time, title, asset_title, channel, asset_id
-
 
 
 if __name__ == "__main__":
@@ -139,45 +139,58 @@ if __name__ == "__main__":
     list_of_files = glob.glob(list_path)
     for path in list_of_files:
         print(f"Processing path: {path}")
-        #path = "/mnt/bp_nas/admin/DataDigiPres/Developers/historical_redux_metadata/2016/03/15/itv2/info_2016-03-15T00:30:00.000Z.json"
-        date, time, title, asset_title, channel_name, asset_id  = get_stora_data(path)
-        search =  f'transmission_date = "{date}" and transmission_start_time = "{time}" and title = "{title}" and broadcast_channel = "{channel_name}"'
-        hit, record = adlib.retrieve_record("http://212.114.101.119/CIDDataTest/wwwopac.ashx", "manifestations", search, "1")
-        if record  is None:
-           print("orginal search failed, trying new search with different title")
-           new_search = f'transmission_date = "{date}" and transmission_start_time = "{time}" and broadcast_channel = "{channel_name}" and title = "{asset_title}"' 
-           hit, new_record = adlib.retrieve_record("http://212.114.101.119/CIDDataTest/wwwopac.ashx", "manifestations", new_search, "1")
-           if (new_record is None) or (record is None):
-              list_of_no_matches.append(path)
-              continue
-           new_priref = adlib.retrieve_field_name(new_record[0], 'priref')
-           new_alternative_number = adlib.retrieve_field_name(new_record[0], 'alternative_number')
-        #if (record is None) or (new_record is None):
-             #continue
-        priref = adlib.retrieve_field_name(record[0], 'priref')
-        alternative_number = adlib.retrieve_field_name(record[0], 'alternative_number')
+        # path = "/mnt/bp_nas/admin/DataDigiPres/Developers/historical_redux_metadata/2016/03/15/itv2/info_2016-03-15T00:30:00.000Z.json"
+        date, time, title, asset_title, channel_name, asset_id = get_stora_data(path)
+        search = f'transmission_date = "{date}" and transmission_start_time = "{time}" and title = "{title}" and broadcast_channel = "{channel_name}"'
+        hit, record = adlib.retrieve_record(
+            "http://212.114.101.119/CIDDataTest/wwwopac.ashx",
+            "manifestations",
+            search,
+            "1",
+        )
+        if record is None:
+            print("orginal search failed, trying new search with different title")
+            new_search = f'transmission_date = "{date}" and transmission_start_time = "{time}" and broadcast_channel = "{channel_name}" and title = "{asset_title}"'
+            hit, new_record = adlib.retrieve_record(
+                "http://212.114.101.119/CIDDataTest/wwwopac.ashx",
+                "manifestations",
+                new_search,
+                "1",
+            )
+            if (new_record is None) or (record is None):
+                list_of_no_matches.append(path)
+                continue
+            new_priref = adlib.retrieve_field_name(new_record[0], "priref")
+            new_alternative_number = adlib.retrieve_field_name(
+                new_record[0], "alternative_number"
+            )
+        # if (record is None) or (new_record is None):
+        # continue
+        priref = adlib.retrieve_field_name(record[0], "priref")
+        alternative_number = adlib.retrieve_field_name(record[0], "alternative_number")
         alternative_type = "PATV historical asset id"
         if alternative_number == [None] or new_alternative_number == [None]:
-           alternative_number = asset_id
-           alternative_number += '***'
+            alternative_number = asset_id
+            alternative_number += "***"
         if hit == 1:
-            full_match_results.append({
-                "priref": priref[0] or new_priref[0],
-                "alternative_number": alternative_number or alternative_number[0],
-                "alternative_number.type": "PATV historical asset id"
-            })
+            full_match_results.append(
+                {
+                    "priref": priref[0] or new_priref[0],
+                    "alternative_number": alternative_number or alternative_number[0],
+                    "alternative_number.type": "PATV historical asset id",
+                }
+            )
             list_of_file_with_full_match.append(path)
     print(full_match_results)
     print(f"len of files: {len(list_of_files)}")
     df = pd.DataFrame(full_match_results)
-    df.to_csv('/mnt/qnap_11/full_match_results_jan.csv', index=False)
+    df.to_csv("/mnt/qnap_11/full_match_results_jan.csv", index=False)
     print(list_of_file_with_full_match)
     print(len(list_of_file_with_full_match))
     print(list_of_no_matches)
     print(len(list_of_no_matches))
-    #print(f"Date: {date}")
-    #print(f"time: {time}")
-    #print(f"title: {title}")
-    #print(f"asset_title: {asset_title}")
-    #print(f"channel name: {channel_name}")
-
+    # print(f"Date: {date}")
+    # print(f"time: {time}")
+    # print(f"title: {title}")
+    # print(f"asset_title: {asset_title}")
+    # print(f"channel name: {channel_name}")

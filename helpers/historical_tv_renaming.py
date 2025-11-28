@@ -63,7 +63,10 @@ def main():
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    LOGGER.info("====================== File renaming start ==================== %s", str(datetime.now()))
+    LOGGER.info(
+        "====================== File renaming start ==================== %s",
+        str(datetime.now()),
+    )
 
     count = 0
     for row in yield_row():
@@ -89,7 +92,9 @@ def main():
             new_fname = f"{ob_num}_{str(count).zfill(2)}of{str(full_range).zfill(2)}.ts"
         else:
             part_whole = first_num.split("_")[-1].rsplit(".ts")
-            LOGGER.info("New part whole extracted: %s for file %s", part_whole, first_num)
+            LOGGER.info(
+                "New part whole extracted: %s for file %s", part_whole, first_num
+            )
             part, whole = part_whole[0].split("of")
             count = 1
             full_range = int(whole)
@@ -106,7 +111,10 @@ def main():
         if not success:
             LOGGER.warning("Exiting. Rename failed: %s", old_name)
             sys.exit("Rename failed!")
-    LOGGER.info("====================== File renaming ended ==================== %s", str(datetime.now()))
+    LOGGER.info(
+        "====================== File renaming ended ==================== %s",
+        str(datetime.now()),
+    )
 
 
 def rename(fpath: str, new_fpath: str) -> bool:

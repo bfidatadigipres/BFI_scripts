@@ -223,10 +223,13 @@ def look_up_series_list(alternative_num):
     """
     Check if series requires annual series creation
     """
+
+    if alternative_num.strip() == "2af14f77-ef15-517c-a463-04dc0a7c81ad":
+        return "BBC News"
     with open(SERIES_LIST, "r") as file:
         slist = json.load(file)
         if alternative_num in slist:
-            return slist[alternative_num]
+            return True
     return False
 
 
@@ -920,7 +923,7 @@ def main():
 
         root, file = os.path.split(fullpath)
         if not os.path.exists(os.path.join(root, "stream.mpeg2.ts")):
-            logger.info("Skipping: No stream file found in path.")
+            logger.info("Skipping: No stream file found in path: %s", root)
             continue
         if not os.path.exists(fullpath):
             continue
@@ -1043,11 +1046,17 @@ def main():
                 print("Series ID exists, trying to retrieve series data from CID")
                 # Check if series already in CID and/or series_cache, if not generate series_cache json
                 series_chck = look_up_series_list(epg_dict["series_id"])
-                if series_chck is False:
+                if series_chck == "BBC News":
+                    bbc_split = True
+                    month = root.split("/")[-4]
+                    series_id = f"{YEAR_PATH}_{month}_{epg_dict['series_id']}"
+                elif series_chck is False:
                     series_id = epg_dict["series_id"]
-                else:
+                    bbc_split = False
+                elif series_chck is True:
                     series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
                     logger.info("Series found for annual refresh: %s", series_chck)
+                    bbc_split = False
 
                 series_return = cid_series_query(series_id)
                 if series_return[0] is None:
@@ -1066,7 +1075,7 @@ def main():
                     )
                     # Launch create series function
                     series_work_id = create_series(
-                        fullpath, ser_def, work_res_def, epg_dict, series_id
+                        fullpath, ser_def, work_res_def, epg_dict, series_id, month, bbc_split
                     )
                     if not series_work_id:
                         logger.warning(
@@ -1228,7 +1237,7 @@ def main():
 
 
 def create_series(
-    fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id
+    fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id, month, bbc_flag
 ):
     """
     Call function series_check(series_id) and build all data needed
@@ -1335,7 +1344,10 @@ def create_series(
 
     # Add series title and article
     if new_series_list is True:
-        series_title = f"{series_title} ({YEAR_PATH})"
+        if bbc_flag is False:
+            series_title = f"{series_title} ({YEAR_PATH})"
+        elif bbc_flag is True:
+            series_title = f"{series_title} ({YEAR_PATH}/{month})"
     series_work_values.append({"title": series_title})
     series_work_values.append({"nfa_category": nfa_category})
     try:
@@ -1353,19 +1365,32 @@ def create_series(
     if new_series_list is True:
         if len(series_description) > 0:
             try:
-                series_work_values.append(
-                    {
-                        "description": f"Specific serial work created for {YEAR_PATH}. {series_description}"
-                    }
-                )
+                if bbc_flag is True:
+                    series_work_values.append(
+                        {
+                            "description": f"Specific serial work created for {YEAR_PATH}/{month}. {series_description}"
+                        }
+                    )
+                    series_work_values.append(
+                        {
+                            "production.notes": "This is a series record created for one month of this programme."
+                        }
+                    )
+
+                else:
+                    series_work_values.append(
+                        {
+                            "description": f"Specific serial work created for {YEAR_PATH}. {series_description}"
+                        }
+                    )
+                    series_work_values.append(
+                        {
+                            "production.notes": "This is a series record created for one year of this programme."
+                        }
+                    )
                 series_work_values.append({"description.type": "Synopsis"})
                 series_work_values.append(
                     {"description.date": str(datetime.datetime.now())[:10]}
-                )
-                series_work_values.append(
-                    {
-                        "production.notes": "This is a series record created for one year of this programme."
-                    }
                 )
             except (IndexError, TypeError, KeyError):
                 print(

@@ -150,6 +150,9 @@ def main():
     if not utils.check_control("power_off_all"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
+    if not utils.check_control("pause_script"):
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+
     parser = argparse.ArgumentParser(description="Extract a clip with framemd5 fixity")
     parser.add_argument(
         "file", nargs="?", type=argparse.FileType("r"), help="Input file"

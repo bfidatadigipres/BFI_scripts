@@ -74,6 +74,7 @@ ACCEPTED_EXT: Final = [
     "pdf",
     "txt",
     "vtt",
+    "ttml"
 ]
 
 
@@ -115,6 +116,7 @@ def accepted_file_type(ext):
         "csv": "csv",
         "pdf": "pdf",
         "txt": "txt",
+        "ttml": "ttml"
     }
 
     ext = ext.lower()
@@ -300,6 +302,7 @@ def sort_ext(ext):
             "rtf",
             "csv",
             "txt",
+            "ttml"
         ],
     }
 
@@ -335,17 +338,21 @@ def probe_metadata(arg, stream, fpath):
     Use FFmpeg module to extract
     ffprobe data from file
     """
+    if arg == "duration":
+        new_args = "DURATION"
+    else:
+        new_args = arg
     try:
         probe = ffmpeg.probe(fpath)
+        #        print(probe['streams'])
+        for i in probe["streams"]:
+            if i["codec_type"] == stream and new_args == "DURATION":
+                return i["tags"][new_args]
+            return i[new_args]
+
     except ffmpeg.Error as err:
         print(err)
         return None
-
-    for st in probe["streams"]:
-        if st["codec_type"] == stream:
-            return st[arg]
-
-    return None
 
 
 # (stream: str, arg: str, dpath: str) -> str:

@@ -45,7 +45,7 @@
             color: white;
             padding: 10px 20px;
             font-size: 0.9em;
-            display: flex; 
+            display: flex;
             justify-content: space-between; /* Info left, button right */
             align-items: center;
             border-bottom: 1px solid #777;
@@ -95,7 +95,7 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
-        
+
         /* Read-only fields */
         .readonly-field {
             background-color: #e9e9e9;
@@ -120,7 +120,7 @@
         button:hover, input[type="submit"]:hover {
             background-color: #0056b3;
         }
-        
+
         /* Optional: Fieldset style */
         fieldset {
             border: 1px solid #ccc;
@@ -128,7 +128,7 @@
             margin-bottom: 20px;
             border-radius: 4px;
         }
-        
+
         legend {
             font-weight: bold;
             padding: 0 10px;
@@ -156,7 +156,7 @@
 </head>
 <body>
     <div class="container">
-        
+
         <!-- Title Bar -->
         <div class="header-bar">
             Workflow Request Form
@@ -171,7 +171,7 @@
                 <button type="submit" class="logout-button">Logout</button>
             </form>
         </div>
-            
+
         <div class="content">
 
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -181,23 +181,18 @@
                     {% endfor %}
                 {% endif %}
             {% endwith %}
-            
+
             <form method="POST" action="{{ url_for('workflow_request') }}">
-                
+
                 <!-- Group 1: User/Request Metadata -->
                 <fieldset>
-                    <legend>User Details</legend>
+                    <legend>Please fill in form below</legend>
                     <div class="form-group">
                         <!-- Pre-populated/Read-only User Data (for context) -->
                         <label for="email">Email</label>
                         <input type="email" id="email" value="{{ user_email }}" class="readonly-field" readonly>
                     </div>
 
-                    <div class="form-group">
-                        <label for="contact_details">Alternative Contact Details (Optional)</label>
-                        <input type="text" id="contact_details" name="contact_details">
-                    </div>
-                    
                     <div class="form-group">
                         <!-- Activity Code Dropdown -->
                         <label for="activity_code">Select Activity Code (Required)</label>
@@ -217,48 +212,14 @@
                             </select>
                         {% endif %}
                     </div>
-                    
 
-                </fieldset>
-                
-                <!-- Group 2: Item & Action Details -->
-                <fieldset>
-                    <legend>Request Details</legend>
-                    
                     <div class="form-group">
-                        <label for="items_list">Saved Search number</label>
+                        <label for="items_list">Saved Search number (Required)</label>
                         <textarea id="items_list" name="items_list" rows="1" required></textarea>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="client_category">Client Category</label>
-                        <select id="client_category" name="client_category" required>
-                            <option value"" disabled selected>--- Select Client Category ---</option>
-                            <option value="BFI_Partner">BFI partenered project</option>
-                            <option value="BFI_Project">BFI project</option>
-                            <option value="Commercial">Commercial organisation</option>
-                            <option value="Curatorial">Curatorial</option>
-                            <option value="DONOR">Donor</option>
-                            <option value="Educational">Educational / Research</option>
-                            <option value="Film_Sales">Film Sales</option>
-                            <option value="Individual">Individual</option>
-                            <option value="Library">Library</option>
-                            <option value="Mediatheque">Mediatheque</option>
-                            <option value="Museum_Gallery">Museum / Gallery</option>
-                            <option value="Other_Archive">Archive - other</option>
-                            <option value="Overseas_Archive">Archive - overseas</option>
-                            <option value="RegArchive">Archive - regional</option>
-                            <option value="RightsHolder">Rightsholder</option>
-                            <option value="ScreenOnline">Screenonline</option>
-                            <option value="SouthBank">Southbank</option>
-                            <option value="Trading">Trading</option>
-                            <option value="UK_Cinema">UK cinema</option>
-                            <option value="University">University / Film school</option>
-                        </select>
-                    </div>
 
                     <div class="form-group">
-                        <label for="request_type">Request Type</label>
+                        <label for="request_type">Request Type (Required)</label>
                         <select id="request_type" name="request_type" required>
                             <option value="" disabled selected>--- Select Request Type ---</option>
                             <option value="AUDIOSUITETRANSFER">Audio suite transfer</option>
@@ -294,9 +255,9 @@
                             <option value="VIDEOUNITINHOUSE">Video unit inhouse</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
-                        <label for="request_outcome">Request Outcome</label>
+                        <label for="request_outcome">Request Outcome (Required)</label>
                         <select id="request_outcome" name="request_outcome" required>
                             <option value="" disabled selected>--- Select Request Outcome ---</option>
                             <option value="Acquisition">Acquisition</option>
@@ -312,29 +273,62 @@
                             <option value="Screening">Screening</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
-                        <label for="description">Description</label>
-                        <textarea id="description" name="description" rows="5" required></textarea>
+                        <label for="description">Job Title (Required)</label>
+                        <textarea id="description" name="description" rows="1" required></textarea>
                     </div>
-                </fieldset>
-                
-                <!-- Group 3: Logistics -->
-                <fieldset>
-                    <legend>Delivery Instructions</legend>
+
                     <div class="form-group">
-                        <label for="delivery_date">Required Delivery Date</label>
+                        <label for="delivery_date">Required Delivery Date (Required)</label>
                         <input type="date" id="delivery_date" name="delivery_date" required>
                     </div>
-                    
+
                     <div class="form-group">
-                        <label for="destination">Destination</label>
+                        <label for="destination">Final Destination (Required)</label>
                         <input type="text" id="destination" name="destination" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="instructions">Special Instructions (Optional)</label>
                         <textarea id="instructions" name="instructions" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="client_name">Client Name (Optional)</label>
+                        <input type="text" id="client_name" name="client_name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="client_category">Client Category (Optional)</label>
+                        <select id="client_category" name="client_category">
+                            <option value="" selected>--- Select Client Category ---</option>
+                            <option value="BFI_Partner">BFI partnered project</option>
+                            <option value="BFI_Project">BFI project</option>
+                            <option value="Commercial">Commercial organisation</option>
+                            <option value="Curatorial">Curatorial</option>
+                            <option value="DONOR">Donor</option>
+                            <option value="Educational">Educational / Research</option>
+                            <option value="Film_Sales">Film Sales</option>
+                            <option value="Individual">Individual</option>
+                            <option value="Library">Library</option>
+                            <option value="Mediatheque">Mediatheque</option>
+                            <option value="Museum_Gallery">Museum / Gallery</option>
+                            <option value="Other_Archive">Archive - other</option>
+                            <option value="Overseas_Archive">Archive - overseas</option>
+                            <option value="RegArchive">Archive - regional</option>
+                            <option value="RightsHolder">Rightsholder</option>
+                            <option value="ScreenOnline">Screenonline</option>
+                            <option value="SouthBank">Southbank</option>
+                            <option value="Trading">Trading</option>
+                            <option value="UK_Cinema">UK cinema</option>
+                            <option value="University">University / Film school</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact_details">Contact Details (Optional)</label>
+                        <input type="text" id="contact_details" name="contact_details">
                     </div>
 
                 </fieldset>

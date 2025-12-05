@@ -91,6 +91,9 @@ def main() -> None:
     if not utils.check_control("power_off_all"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE_PATH):
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")

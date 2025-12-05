@@ -67,7 +67,9 @@ def main():
     For standalone use of log_parser
     not, launched from autoingest
     """
-    if not utils.check_control("autoingest"):
+    if not utils.check_control("autoingest") or not utils.check_control(
+        "pause_scripts"
+    ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     create_current_errors_logs()
 
@@ -138,7 +140,7 @@ def create_current_errors_logs() -> None:
     if append_rows:
         append_rows.sort(reverse=True)
         print("* Creating CSV file current_errors.csv in current_errors folder...")
-        with open(CURRENT_ERRORS, "w") as of:
+        with open(CURRENT_ERRORS, "w+") as of:
             writer = csv.writer(of)
             writer.writerow(["timedate", "path", "file", "message"])
             for ar in append_rows:

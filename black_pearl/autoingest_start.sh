@@ -14,8 +14,20 @@ function control {
     fi
 }
 
+function pauseScript {
+    boole=$(cat "${CONTROL_JSON}" | grep "pause_script" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately: MP4_transcode scripts" >> "${LOG}"
+      echo 'Control json requests script exit immediately: MP4_transcode scripts'
+      exit 0
+    fi
+}
+
 # Control check inserted into code
 control
+
+# pause scripts check inserted into code
+pauseScript
 
 # create new autoingest.log by writing current timestamp to first line
 echo "==================" $date_FULL "Autoingest is running ===========================" > "${LOG_PATH}autoingest.log"

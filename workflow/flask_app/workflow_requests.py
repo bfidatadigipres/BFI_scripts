@@ -28,12 +28,13 @@ from datetime import datetime
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
+
 sys.path.append(os.environ["WORKFLOW"])
 import records
 
-
 # Global var
-CID_API = utils.get_current_api()
+CID_API = os.environ.get("CID_API3")
+LOG_PATH = os.environ["LOG_PATH"]
 
 
 class Activities:
@@ -95,7 +96,7 @@ class Task:
     Suite of Workflow jobs and activities
     """
 
-    def __init__(self, items=None, **kwargs):
+    def __init__(self, username, items=None, **kwargs):
         try:
             [int(i) for i in items]
         except Exception:
@@ -128,20 +129,20 @@ class Task:
             "request.inf": "request",
         }
 
-        self.make_topnode(**kwargs)
-        objectList_priref = self.make_objectList(self.priref)
-        self.make_objects(objectList_priref, items=self.items)
+        self.make_topnode(username, **kwargs)
+        objectList_priref = self.make_objectList(username, self.priref)
+        self.make_objects(username, objectList_priref, items=self.items)
 
     def _date_time(self):
         date = str(datetime.now())[:10]
         time = str(datetime.now())[11:19]
         return date, time
 
-    def build_record(self, data):
+    def build_record(self, username, data):
         record = records.Record()
 
         data["priref"] = "0"
-        data["input.name"] = "collectionssystems"
+        data["input.name"] = username
         data["input.date"] = self._date_time()[0]
         data["input.time"] = self._date_time()[1]
 
@@ -154,10 +155,10 @@ class Task:
         data = record.to_xml(to_string=True)
         payload = f"<adlibXML><recordList>{data}</recordList></adlibXML>"
         response = adlib.post(CID_API, payload, database, "insertrecord")
-        print(response)
+
         return response
 
-    def make_topnode(self, **kwargs):
+    def make_topnode(self, username, **kwargs):
         wf = dict(self.profiles["workflow"])
 
         for k in kwargs:
@@ -165,24 +166,24 @@ class Task:
 
         wf["topNode"] = "x"
 
-        record = self.build_record(wf)
+        record = self.build_record(username, wf)
         response = self.write_record(record=record)
 
         self.job_number = int(adlib.retrieve_field_name(response, "jobnumber")[0])
         self.priref = int(adlib.retrieve_field_name(response, "priref")[0])
         self.last_activity_priref = self.priref
 
-    def make_objectList(self, parent):
+    def make_objectList(self, username, parent):
         ol = dict(self.profiles["objectList"])
         ol["parent"] = str(self.last_activity_priref)
 
-        record = self.build_record(ol)
+        record = self.build_record(username, ol)
         response = self.write_record(record=record)
 
         priref = int(adlib.retrieve_field_name(response, "priref")[0])
         return priref
 
-    def make_objects(self, objectList_priref, items=None):
+    def make_objects(self, username, objectList_priref, items=None):
         count = 0
         if items is not None:
             for item in items:
@@ -192,7 +193,7 @@ class Task:
                 d["parent"] = str(objectList_priref)
                 d["payloadLink"] = str(item)
 
-                record = self.build_record(d)
+                record = self.build_record(username, d)
 
                 try:
                     response = self.write_record(record=record)
@@ -212,19 +213,16 @@ class Task:
 
         return False
 
-    def add_activity(self, activity, items=None, **payload_kwargs):
+    def add_activity(self, activity, username, items=None, **payload_kwargs):
         a = activity_map.get(activity)
         if not a:
             raise Exception(
-                """Unknown activity label: "{}"
-                               or activity is not supported""".format(
-                    activity
-                )
+                f"Unknown activity label: {activity} or activity is not supported"
             )
 
         # Payload record
         db = self.database_map[a["payloadDatabase"]]
-        p = self.build_record(payload_kwargs)
+        p = self.build_record(username, payload_kwargs)
         response = self.write_record(database=db, record=p)
         payload_priref = int(adlib.retrieve_field_name(response, "priref")[0])
 
@@ -238,12 +236,14 @@ class Task:
             d[i] = a[i]
 
         d["parent"] = str(self.last_activity_priref)
-        wf = self.write_record(record=self.build_record(d))
+        wf = self.write_record(record=self.build_record(username, d))
         wf_priref = int(adlib.retrieve_field_name(wf, "priref")[0])
         self.last_activity_priref = wf_priref
 
-        ol_priref = self.make_objectList(parent=str(self.last_activity_priref))
-        status = self.make_objects(str(ol_priref), items)
+        ol_priref = self.make_objectList(
+            username, parent=str(self.last_activity_priref)
+        )
+        status = self.make_objects(username, str(ol_priref), items)
 
         if status:
             return True
@@ -283,7 +283,7 @@ class Batch:
                          important
     """
 
-    def __init__(self, items=None, **kwargs):
+    def __init__(self, username, items=None, **kwargs):
         if not items:
             raise Exception("Required: list of item prirefs")
 
@@ -296,11 +296,13 @@ class Batch:
         if "payload" not in kwargs:
             raise Exception("Required: dictionary of payload field-values in kwargs")
 
-        self.task = Task(items, **kwargs["topNode"])
+        self.task = Task(username, items, **kwargs["topNode"])
 
         overall_status = []
         for a in kwargs["activities"]:
-            status = self.task.add_activity(a, items=items, **kwargs["payload"][a])
+            status = self.task.add_activity(
+                a, username, items=items, **kwargs["payload"][a]
+            )
             overall_status.append(status)
 
         self.priref = self.task.priref
@@ -328,12 +330,12 @@ class BatchBuild:
         b = BatchBuildDev(l, **topnode_metadata)
     """
 
-    def __init__(self, destination, items=None, **kwargs):
+    def __init__(self, destination, purpose, username, items=None, **kwargs):
         # Default metadata
         d = {
             "activities": ["Pick items"],
             "topNode": {
-                "purpose": "Preservation",
+                "purpose": purpose,
             },
             "payload": {
                 "Pick items": {"destination": destination},
@@ -345,7 +347,7 @@ class BatchBuild:
             d["topNode"][k] = kwargs[k]
 
         # Create
-        self.batch = Batch(items, **d)
+        self.batch = Batch(username, items, **d)
 
     @property
     def successfully_completed(self):

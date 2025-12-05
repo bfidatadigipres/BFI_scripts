@@ -5,49 +5,63 @@ WIP
 Special Collections Document tranfsers for OSH
 Moving renamed folders to SFTP / Archivematica
 
-Script stages:
-MUST BE SUPPLIED WITH SYS.ARGV[1] AT SUB-FOND LEVEL PATH
-AND SYS.ARGV[2] AT SFTP/ARCHIVEMATICA TOP FOLDER LEVEL
-
-Iterate through supplied sys.argv[1] folder path completing:
-1. For each subfolder split folder name: ob_num / ISAD(G) level / Title
-2. Build SFTP command for each level and move to Archivematica Transfer Storage
-   JMW: Do we need to move containing folders over as 'OpenRecords' to get slugs?
-3. When SFTP complete, configure an Archivematica package transfer with specific
-   details including AtoM proposed 'slug', with each package set to ClosedRecords
-   status, blocking it's appearance in AtoM until moved to an Open status
-   JMW: What are we doing about sub-sub-series / sub-sub-sub-series mapping?
-4. Check that the transfer status is complete
-5. Upload SIP UUID / AIP UUID to CID item record
-   JMW: Field location to be identified? label.type (enum needed)
-   JMW: Do we want other statement of AIP in Archivematica in CID?
+1. Iterates through CID records looking for Closed
+   or Open record statements (field to be found), and
+   where edit.name datadigipres is not associated with
+   ingest action already.
+2. Where found extract CID metadata and priref and build
+   metadata.csv including metadata (still in review with Tom):
+   dc.title = title
+   dc.identified = object_number
+   dc.creator = creator
+   dc.date = production.date.end
+   dc.type = subject
+   dc.provenance = ?
+   dc.description = content.description
+   dc.extent = dimension.free
+   dc.format = dimension.free?
+   dc.source = digital.acquired_filepath
+   dc.language = language
+   dc.rights = access_conditions
+   dc.coverage = ?
+   dc.subject = subject ?
+   Overwrite into metadata.csv file.
+3. SFTP the folder matched to the object_number of the record
+   - may need to iterate over folders initially until new
+     automations have digital.acquired_filepath fully populated
+     Stages:
+        i. For each subfolder split folder name: ob_num / ISAD(G) level / Title
+        ii. Build SFTP command for each level and move to Archivematica Transfer Storage
+        iii. When SFTP complete, configure an Archivematica package transfer with specific
+           details including AtoM proposed 'slug', with each package set to ClosedRecords
+           status, blocking it's appearance in AtoM until moved to an Open status
+        iv. Check that the transfer status is complete
+4. Depending on the 'Open' or 'Closed' status, the records
+   are ingested to Archivematica with OpenRecords or ClosedRecords
+   The slug should be formed from the parent object_number
+   Check AIP transfer completed okay.
+5. Update item record with data that shows this automation
+   has compelted - AIP UUID to alternative_number, or a new grouping, or entry to edit fields...
+   to be decided.
 6. Capture all outputs to logs
 
-NOTES:
-Needs CSV to manage completed SFTP posts
-
 Some assumptions in code
-1. That to make AtoM slug we may need an additional stage  / manual work
-2. That we do not PUT folders with 'fonds' to 'sub-sub-sub-series' levels, just
+1. That we do not PUT folders with 'fonds' to 'sub-sub-sub-series' levels, just
    use them to inform SFTP folder structures, and (when known) slug names for AtoM
-3. That the slug will be named after the CID object number of parent folder
-4. That we will write the transfer / aip UUIDs to the CID label text fields
-5. AtoM records already existing, won't need recreating as CLOSED?
-6. Slug creation needs considering where sub-sub-series and lower levels are not
-   supported in AtoM
+2. That the slug will be named after the CID object number of parent folder
+4. That we will write the aip UUIDs to the CID alternative_number field
 
 2025
 """
 
-import csv
 
 # Public packages
 import datetime
 import logging
 import os
+import csv
 import sys
 from time import sleep
-
 import archivematica_sip_utils as am_utils
 import tenacity
 
@@ -141,6 +155,9 @@ def main():
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
+    if not utils.check_control("pause_scripts"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if sys.argv < 3:
         print("Path has not been supplied to script. Exiting.")
 

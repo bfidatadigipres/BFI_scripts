@@ -113,7 +113,9 @@ def main():
 
     # Multiple instances of script so collection logs for one burst output
     log_build: list[str] = []
-    if not utils.check_control("mp4_transcode"):
+    if not utils.check_control("mp4_transcode") or not utils.check_control(
+        "pause_scripts"
+    ):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(fullpath) or not utils.check_storage(TRANSCODE):
@@ -1187,6 +1189,8 @@ def create_transcode(
     elif width >= 1920 and aspect < 1.778:
         cmd_mid = fhd_all
     elif height >= 1080 and aspect >= 1.778:
+        cmd_mid = fhd_letters
+    elif height > 720 and aspect >= 1.778:
         cmd_mid = fhd_letters
     print(f"Middle command chosen: {cmd_mid}")
 

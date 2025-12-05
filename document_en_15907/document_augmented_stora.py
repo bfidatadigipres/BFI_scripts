@@ -1046,6 +1046,7 @@ def main():
                 print("Series ID exists, trying to retrieve series data from CID")
                 # Check if series already in CID and/or series_cache, if not generate series_cache json
                 series_chck = look_up_series_list(epg_dict["series_id"])
+                month = ""
                 if series_chck == "BBC News":
                     bbc_split = True
                     month = root.split("/")[-4]

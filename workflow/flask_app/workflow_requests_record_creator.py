@@ -268,6 +268,7 @@ def main():
 
         # Create Workflow records
         print("* Creating Workflow records in CID...")
+        print(job_metadata)
         LOGGER.info("* Creating Workflow records in CID...")
         batch = workflow.BatchBuild(
             destination, purpose, uname, items=batch_items, **job_metadata

@@ -7,8 +7,7 @@ Moving renamed folders to SFTP / Archivematica
 
 1. Iterates through CID records looking for Closed
    or Open record statements (access_status field), and
-   where alternative_number has an AIP UUID in place.
-   - This will not work for items already ingested!
+   where no alternative_number AIP UUID in place.
 2. Where found extract CID metadata and priref and build
    metadata.csv including metadata (still in review with Tom):
    dc.title = title
@@ -30,29 +29,24 @@ Moving renamed folders to SFTP / Archivematica
    - may need to iterate over folders initially until new
      automations have digital.acquired_filepath fully populated
      Stages:
-        i. For each subfolder split folder name: ob_num / ISAD(G) level / Title
-        ii. Build SFTP command for each level and move to Archivematica Transfer Storage
-        iii. When SFTP complete, configure an Archivematica package transfer with specific
-           details including AtoM proposed 'slug', with each package set to ClosedRecords
-           status, blocking it's appearance in AtoM until moved to an Open status
-        iv. Check that the transfer status is complete
+        i. Build SFTP command for each level and move to Archivematica Transfer Storage
+        ii. When SFTP complete, configure an Archivematica package transfer with specific
+           details including AtoM proposed 'slug', with each package set to appropriate
+           config of Open or Closed
+        iii. Check that the transfer status is complete
 4. Depending on the 'Open' or 'Closed' status, the records
    are ingested to Archivematica with OpenRecords or ClosedRecords
    The slug should be formed from the parent object_number
    Check AIP transfer completed okay.
 5. Update item record with data that shows this automation
-   has compelted - AIP UUID to alternative_number
+   has completed - AIP UUID to alternative_number
 6. Capture all outputs to logs
 
-Some assumptions in code
-1. That we do not PUT folders with 'fonds' to 'sub-sub-sub-series' levels, just
-   use them to inform SFTP folder structures
-2. That the slug will be named after the CID object number of parent
-4. That we will write the aip UUIDs to the CID alternative_number field
+Assumption in code
+1. That historical uploads will get CSV ingest of AIP UUIDS to block duplicates
 
 2025
 """
-
 
 # Public packages
 import datetime
@@ -71,7 +65,6 @@ import utils
 LOGS = os.environ.get("LOG_PATH")
 LOG = os.path.join(LOGS, "special_collections_document_transfer_osh.log")
 CID_API = utils.get_current_api()
-CSV_PATH = os.path.join(LOGS, "Archivematica_sftp_upload_log.csv")
 STORAGE = os.environ.get("BP_OSH_CHADHA")
 
 LOGGER = logging.getLogger("sc_document_transfer_osh")
@@ -80,16 +73,6 @@ FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-LEVEL = [
-    "_fonds_",
-    "_sub-fonds_",
-    "_series_",
-    "_sub-series_",
-    "_sub-sub-series_",
-    "_sub-sub-sub-series_",
-    "_file_",
-]
 
 FILE_TYPES = {
     "XLS": ["xls", "SS"],
@@ -128,66 +111,6 @@ FILE_TYPES = {
 }
 
 
-def top_folder_split(fname, prefix):
-    """
-    Split folder name into parts
-    """
-    fsplit = fname.split("_", 2)
-    if len(fsplit) != 3:
-        LOGGER.warning("Folder has not split as anticipated: %s", fsplit)
-        return None, None, None
-    ob_num, record_type, title = fsplit
-    if not ob_num.startswith(prefix):
-        LOGGER.warning("Object number is not formatted as anticipated: %s", ob_num)
-        return None, None, None
-
-    return ob_num, record_type, title
-
-
-def update_alternative_number(uuid: str, priref: str) -> None:
-    """
-    For each item successfully PUT to sftp
-    and progressed to AIP update alternative_number
-    """
-    dct = [
-        {"alternative_number": uuid},
-        {"alternative_number.type": "Archivematica AIP UUID"}
-    ]
-
-    record_xml = adlib.create_record_data(
-        CID_API, "archivescatalogue", priref, dct
-    )
-    print(record_xml)
-    try:
-        rec = adlib.post(
-            CID_API, record_xml, "archivescatalogue", "updaterecord"
-        )
-        if rec is None:
-            LOGGER.warning("Failed to update record: %s\n%s", priref, record_xml)
-            return None
-        if "priref" not in str(rec):
-            LOGGER.warning("Failed to update record: %s\n%s", priref, record_xml)
-            return None
-        priref = adlib.retrieve_field_name(rec, "priref")[0]
-        return priref
-    except Exception as err:
-        raise err
-
-
-def fetch_matching_folder(ob_num, ext):
-    """
-    Iterate STORAGE to find folder that
-    matches the object_number
-    """
-    file_match = f"{object_number}_01of01.{ext}"
-    for root, dirs, files in os.walk(STORAGE):
-        for file in files:
-            if file_match == file:
-                fpath = os.path.join(root, file)
-                dpath = os.path.split(fpath)[0]
-                return fpath, dpath
-
-
 def get_cid_records(status):
     """
     Check in CID for any new Archive Items
@@ -222,6 +145,20 @@ def get_cid_records(status):
     if hits > 0:
         return records
     return None
+
+
+def fetch_matching_folder(ob_num, ext):
+    """
+    Iterate STORAGE to find folder that
+    matches the object_number
+    """
+    file_match = f"{object_number}_01of01.{ext}"
+    for root, dirs, files in os.walk(STORAGE):
+        for file in files:
+            if file_match == file:
+                fpath = os.path.join(root, file)
+                dpath = os.path.split(fpath)[0]
+                return fpath, dpath
 
 
 def get_top_level_folder(folder_path):
@@ -421,7 +358,7 @@ def main() -> None:
 
 def iterate_record(rec: list[dct], status: str) -> dict:
     """
-    Handle OPEN or CLOSED record metadata retrieval
+    Handle OPEN or CLOSED record meta data retrieval
     """
     mdata = {}
     try:
@@ -539,6 +476,36 @@ def check_ingest_status(uuid, directory):
     else:
         sleep(60)
         raise Exception
+
+
+def update_alternative_number(uuid: str, priref: str) -> None:
+    """
+    For each item successfully PUT to sftp
+    and progressed to AIP update alternative_number
+    """
+    dct = [
+        {"alternative_number": uuid},
+        {"alternative_number.type": "Archivematica AIP UUID"}
+    ]
+
+    record_xml = adlib.create_record_data(
+        CID_API, "archivescatalogue", priref, dct
+    )
+    print(record_xml)
+    try:
+        rec = adlib.post(
+            CID_API, record_xml, "archivescatalogue", "updaterecord"
+        )
+        if rec is None:
+            LOGGER.warning("Failed to update record: %s\n%s", priref, record_xml)
+            return None
+        if "priref" not in str(rec):
+            LOGGER.warning("Failed to update record: %s\n%s", priref, record_xml)
+            return None
+        priref = adlib.retrieve_field_name(rec, "priref")[0]
+        return priref
+    except Exception as err:
+        raise err
 
 
 if __name__ == "__main__":

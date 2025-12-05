@@ -484,6 +484,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                 if match is None:
                     continue
                 gen.append(match)
+
     if len(gen) > 0:
         xml = wrap_as_xml("Container", gen)
         payload += xml
@@ -552,6 +553,9 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                         continue
                     aud.append(match)
         if len(aud) > 0:
+            for dct in aud:
+                if dct.get("audio.language", "") == "English (GB)":
+                    dct.update({"audio.language": "English (Great Britain)"})
             xml = wrap_as_xml("Audio", aud)
             payload += xml
 
@@ -569,6 +573,9 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                         continue
                     oth.append(match)
         if len(oth) > 0:
+            for dct in oth:
+                if dct.get("other.language", "") == "English (GB)":
+                    dct.update({"other.language": "English (Great Britain)"})
             xml = wrap_as_xml("Other", oth)
             payload += xml
 

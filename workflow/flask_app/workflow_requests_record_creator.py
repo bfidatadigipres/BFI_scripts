@@ -194,12 +194,11 @@ def main():
     requested_jobs = retrieve_requested()
     print(requested_jobs)
     if len(requested_jobs) == 0:
-        LOGGER.info("No jobs found this pass. Script exiting")
-        LOGGER.info(
-            "=== Workflow requests record creation completed %s ===",
-            str(datetime.now())[:19],
-        )
-        sys.exit()
+        sys.exit("No jobs found, script exiting")
+
+    LOGGER.info(
+        "=== Workflow requests record creation start %s ===", str(datetime.now())[:18]
+    )
 
     LOGGER.info("Requested jobs found: %s", len(requested_jobs))
 
@@ -384,9 +383,27 @@ Collections Systems team"""
 def create_people_record(client_name):
     """
     Where client.name is populated create
-    P&I record for the individual
+    P&I record for the individual if not
+    already found in People dB
     """
 
+    search = f"name='{client_name}'"
+    try:
+        hits, result = adlib.retrieve_record(CID_API, "people", search, "0")
+    except (KeyError, IndexError, TypeError) as err:
+        LOGGER.exception(
+            "cid_people_record(): Unable to check for person record with client name: %s\n%s",
+            client_name, err
+        )
+    if hits > 0:
+        try:
+            priref = adlib.retrieve_field_name(result[0], "priref")[0]
+            LOGGER.info("Existing people record found for '%s': %s", client_name, priref)
+            return priref
+        except (KeyError, IndexError) as err:
+            print(err)
+
+    # Build new People rec
     credit_dct = []
     credit_dct.append({"name": client_name})
     credit_dct.append({"name.type": "CASTCREDIT"})

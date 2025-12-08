@@ -9,21 +9,7 @@ Moving renamed folders to SFTP / Archivematica
    or Open record statements (access_status field), and
    where no alternative_number AIP UUID in place.
 2. Where found extract CID metadata and priref and build
-   metadata.csv including metadata (still in review with Tom):
-   dc.title = title
-   dc.identified = object_number
-   dc.creator = creator
-   dc.date = production.date.end
-   dc.type = subject
-   dc.provenance = ?
-   dc.description = content.description
-   dc.extent = dimension.free
-   dc.format = dimension.free?
-   dc.source = digital.acquired_filepath
-   dc.language = language
-   dc.rights = access_conditions
-   dc.coverage = ?
-   dc.subject = subject ?
+   metadata.csv including metadata.
    Overwrite into metadata.csv file.
 3. SFTP the folder matched to the object_number of the record
    - may need to iterate over folders initially until new
@@ -188,14 +174,12 @@ def create_metadata_csv(mdata: dct, fname: str) -> bool:
         "dc.creator",
         "dc.date",
         "dc.type",
-        "dc.provenance",
         "dc.description",
         "dc.extent",
         "dc.format",
         "dc.source",
         "dc.language",
         "dc.rights",
-        "dc.coverage",
         "dc.subject"
     ]
     mdata_list = [
@@ -205,13 +189,12 @@ def create_metadata_csv(mdata: dct, fname: str) -> bool:
         mdata.get("creator"),
         mdata.get("production.date.end"),
         mdata.get("subject"),
-        mdata.get("digital.acquired_filepath"),
         mdata.get("content.description"),
         mdata.get("dimension.free"),
         mdata.get("dimension.free"),
         mdata.get("digital.acquired_filepath"),
-        mdata.get("access_categorg.notes"),
-        "",
+        mdata.get("language"),
+        mdata.get("access_category.notes"),
         mdata.get("subject")
     ]
     with open(metadata_file, "w", newline="") as csvfile:
@@ -302,7 +285,7 @@ def main() -> None:
                 processing_config = "OpenRecords"
             else:
                 processing_config = "ClosedRecords"
-    
+
             LOGGER.info(
                 "Moving SFTP directory %s to Archivematica as %s",
                 am_path,
@@ -391,11 +374,6 @@ def iterate_record(rec: list[dct], status: str) -> dict:
     try:
         title = adlib.retrieve_field_name(rec[0], "title")[0]
         mdata["title"] = title
-    except (KeyError, TypeError, IndexError):
-        pass
-    try:
-        title_art = adlib.retrieve_field_name(rec[0], "title.article")[0]
-        mdata["title.article"] = title_art
     except (KeyError, TypeError, IndexError):
         pass
     try:

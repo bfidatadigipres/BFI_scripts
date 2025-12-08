@@ -155,7 +155,10 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
     """
     User pointer number and look up
     for list of prirefs in CID
+    Run check to see priref is Item
+    and exclude if not.
     """
+
     query = {
         "command": "getpointerfile",
         "database": "items",
@@ -177,7 +180,31 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
     prirefs = result["adlibJSON"]["recordList"]["record"][0]["hitlist"]
     LOGGER.info("Prirefs retrieved: %s", prirefs)
 
-    return prirefs
+    item_list = []
+    for priref in prirefs:
+        bool = check_priref_is_item(priref)
+        if bool is True:
+            item_list.append(priref)
+        else:
+            LOGGER.warning("Skipping: Priref %s was not confirmed as Item record type", priref)
+    return item_list
+
+
+def check_priref_is_item(priref):
+    """
+    Get pointer file for Items dB
+    will return other record_types
+    check here they confirm to Items
+    """
+    search = f"priref='{priref}' and Df=item"
+    hits, rec = adlib.retrieve_record(CID_API, "items", search, 0)
+
+    if hits is None:
+        return "Failure to reach API"
+    if hits > 0:
+        LOGGER.info("Priref confirmed as Item record: %s", priref)
+        return True
+    return False
 
 
 def main():

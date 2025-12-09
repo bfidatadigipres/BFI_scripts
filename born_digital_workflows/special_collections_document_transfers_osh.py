@@ -35,18 +35,17 @@ Assumption in code
 """
 
 # Public packages
-import datetime
+from time import sleep
 import logging
 import os
 import sys
 import csv
-from time import sleep
-import archivematica_sip_utils as am_utils
 import tenacity
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
+import archivematica_sip_utils as am_utils
 
 LOGS = os.environ.get("LOG_PATH")
 LOG = os.path.join(LOGS, "special_collections_document_transfer_osh.log")
@@ -125,7 +124,7 @@ def get_cid_records(status):
     ]
 
     hits, records = adlib.retrieve_record(
-        CID_API, "archivescatalogue", search, "1", session, fields
+        CID_API, "archivescatalogue", search, 0, fields
     )
     LOGGER.info("get_cid_records(): Number of matching Archive Item records found:\n%s", hits)
     if hits > 0:
@@ -138,8 +137,8 @@ def fetch_matching_folder(ob_num, ext):
     Iterate STORAGE to find folder that
     matches the object_number
     """
-    file_match = f"{object_number}_01of01.{ext}"
-    for root, dirs, files in os.walk(STORAGE):
+    file_match = f"{ob_num}_01of01.{ext}"
+    for root, _, files in os.walk(STORAGE):
         for file in files:
             if file_match == file:
                 fpath = os.path.join(root, file)
@@ -153,7 +152,7 @@ def get_top_level_folder(folder_path):
     looking for first _series_ entry
     """
     fp_list = folder_path.split("/")
-    for fp in list:
+    for fp in fp_list:
         if "_series_" in fp:
             top_level_folder = fp
             return top_level_folder
@@ -161,7 +160,7 @@ def get_top_level_folder(folder_path):
     return None
 
 
-def create_metadata_csv(mdata: dct, fname: str) -> bool:
+def create_metadata_csv(mdata: dict, fname: str) -> bool:
     """
     Repopulate metadata.csv with new data
     """
@@ -200,10 +199,11 @@ def create_metadata_csv(mdata: dct, fname: str) -> bool:
     with open(metadata_file, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(headers)
-        writer.writerow([f"objects/{fname}", title, ob_num])
+        writer.writerow(mdata_list)
 
-    if os.path.getsize(metadata_file) > 0:
+    if os.path.getsize(metadata_file) > 150:
         return True
+    return False
 
 
 def main() -> None:
@@ -236,7 +236,7 @@ def main() -> None:
         if recs is None:
             LOGGER.info("No new records found for %s status", status)
             continue
-        LOGGER.info("New '%s' status records found:\n%s", status, open_recs)
+        LOGGER.info("New '%s' status records found:\n%s", status, recs)
 
         # Start processing at folder level
         for rec in recs:
@@ -253,7 +253,7 @@ def main() -> None:
                 LOGGER.warning("Could not file path: %s", file_path)
 
             # Augment metadata
-            success = create_metdata_csv(mdata_dct, file)
+            success = create_metadata_csv(mdata_dct, file)
             if not success:
                 LOGGER.warning("Dublin core metadata enrichment failed for: %s / %s", file, mdata_dct.get("priref"))
 
@@ -262,8 +262,8 @@ def main() -> None:
             top_level_folder = get_top_level_folder(file_path)
             LOGGER.info("%s identified as top level folder", top_level_folder)
             sftp_files = am_utils.send_to_sftp(file_path, top_level_folder)
-            if put_files is None:
-                LOGGER.warning("SFTP PUT failed for folder: %s %s", mdata.get("object_number"), file_path)
+            if sftp_files is None:
+                LOGGER.warning("SFTP PUT failed for folder: %s %s", mdata_dct.get("object_number"), file_path)
                 continue
             file = os.path.basename(file_path)
             if file not in sftp_files:
@@ -315,7 +315,7 @@ def main() -> None:
             if not ingest_dict:
                 LOGGER.warning(
                     "Ingest confirmation not found after 10 minutes for directory %s",
-                    directory,
+                    file,
                 )
                 LOGGER.warning(
                     "Manual assistance needed to update AIP UUID to CID item record"
@@ -339,7 +339,7 @@ def main() -> None:
     )
 
 
-def iterate_record(rec: list[dct], status: str) -> dict:
+def iterate_record(rec: list[dict], status: str) -> dict:
     """
     Handle OPEN or CLOSED record meta data retrieval
     """
@@ -350,7 +350,7 @@ def iterate_record(rec: list[dct], status: str) -> dict:
         ftype = adlib.retrieve_field_name(rec[0], "file_type")[0]
         LOGGER.info("** Process Item Archive record %s", priref)
     except (KeyError, TypeError, IndexError) as err:
-        LOGGER.warning("Skipping this record as Priref could not be acquired:\n%s", rec)
+        LOGGER.warning("Skipping this record as Priref could not be acquired:\n%s\n%s", rec, err)
         return None
 
     ext = FILE_TYPES.get(ftype)[0]
@@ -433,9 +433,9 @@ def check_transfer_status(uuid, directory):
             "Transfer of package completed: %s", trans_dict.get("directory", directory)
         )
         return trans_dict
-    else:
-        sleep(60)
-        raise Exception
+
+    sleep(60)
+    raise Exception
 
 
 @tenacity.retry(tenacity.stop_after_attempt(10))
@@ -451,9 +451,9 @@ def check_ingest_status(uuid, directory):
             "Ingest of package completed: %s", ingest_dict.get("directory", directory)
         )
         return ingest_dict
-    else:
-        sleep(60)
-        raise Exception
+
+    sleep(60)
+    raise Exception
 
 
 def update_alternative_number(uuid: str, priref: str) -> None:

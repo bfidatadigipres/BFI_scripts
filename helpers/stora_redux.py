@@ -135,15 +135,16 @@ if __name__ == "__main__":
     full_match_results = []
     list_of_file_with_full_match = []
     list_of_no_matches = []
-    list_path = "/mnt/bp_nas/admin/DataDigiPres/Developers/historical_redux_metadata/2015/12/*/*/*.json"
+    list_path = os.path.join(os.environ.get("HISTORICAL_PATH"), "2015/12/*/*/*.json")
     list_of_files = glob.glob(list_path)
     for path in list_of_files:
         print(f"Processing path: {path}")
-        # path = "/mnt/bp_nas/admin/DataDigiPres/Developers/historical_redux_metadata/2016/03/15/itv2/info_2016-03-15T00:30:00.000Z.json"
         date, time, title, asset_title, channel_name, asset_id = get_stora_data(path)
+        print(date, time, title, asset_title, chhanel_name, asset_id)
+        continue
         search = f'transmission_date = "{date}" and transmission_start_time = "{time}" and title = "{title}" and broadcast_channel = "{channel_name}"'
         hit, record = adlib.retrieve_record(
-            "http://212.114.101.119/CIDDataTest/wwwopac.ashx",
+            os.environ.get("CID_API4"),
             "manifestations",
             search,
             "1",
@@ -152,7 +153,7 @@ if __name__ == "__main__":
             print("orginal search failed, trying new search with different title")
             new_search = f'transmission_date = "{date}" and transmission_start_time = "{time}" and broadcast_channel = "{channel_name}" and title = "{asset_title}"'
             hit, new_record = adlib.retrieve_record(
-                "http://212.114.101.119/CIDDataTest/wwwopac.ashx",
+                os.environ.get("CID_API4"),
                 "manifestations",
                 new_search,
                 "1",

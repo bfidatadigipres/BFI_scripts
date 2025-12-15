@@ -40,16 +40,17 @@ import logging
 import os
 import sys
 import csv
-import tenacity
+from tenacity import retry, stop_after_attempt
+import archivematica_sip_utils as am_utils
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
-import archivematica_sip_utils as am_utils
 
 LOGS = os.environ.get("LOG_PATH")
 LOG = os.path.join(LOGS, "special_collections_document_transfer_osh.log")
 CID_API = utils.get_current_api()
+print(CID_API)
 STORAGE = os.environ.get("BP_OSH_CHADHA")
 
 LOGGER = logging.getLogger("sc_document_transfer_osh")
@@ -92,7 +93,7 @@ FILE_TYPES = {
     "JFIF": ["jfif", "I"],
     "PKGF": ["pkgf", "D"],
     "SVG": ["svg", "I"],
-    "KEY": ["key", "SL"],
+    "KEY": ["key", "SL"]
 }
 
 
@@ -104,7 +105,8 @@ def get_cid_records(status):
     alternative_number field
     status = OPEN / CLOSED
     """
-    search: str = f'(title="GUR-*" and access_status="{status}" and not alternative_number="*")'
+    search = f'object_number="GUR-2-2-5-4-1" and access_status="{status}" and not alternative_number.type="Archivematica AIP UUID"'
+    print(search)
     LOGGER.info("get_cid_records(): Making CID query request with:\n%s", search)
 
     fields: list[str] = [
@@ -137,12 +139,15 @@ def fetch_matching_folder(ob_num, ext):
     Iterate STORAGE to find folder that
     matches the object_number
     """
-    file_match = f"{ob_num}_01of01.{ext}"
-    for root, _, files in os.walk(STORAGE):
-        for file in files:
-            if file_match == file:
-                fpath = os.path.join(root, file)
-                dpath = os.path.split(fpath)[0]
+    print(f"Matching {ob_num} / {ext} to directories!")
+    for root, dirs, _ in os.walk(STORAGE):
+        for directory in dirs:
+            if directory.startswith(f"{ob_num}_"):
+                print("++++++++++++++++++++++++++ MATCH! +++++++++++++++++++++++++")
+                dpath = os.path.join(root, directory)
+                file = [x for x in os.listdir(dpath) if os.path.isfile(os.path.join(dpath, x))]
+                fpath = os.path.join(root, directory, file[0])
+                print(fpath, dpath)
                 return fpath, dpath
 
 
@@ -181,21 +186,55 @@ def create_metadata_csv(mdata: dict, fname: str) -> bool:
         "dc.rights",
         "dc.subject"
     ]
-    mdata_list = [
-        f"object/{fname}",
-        mdata.get("title"),
-        mdata.get("object_number"),
-        mdata.get("creator"),
-        mdata.get("production.date.end"),
-        mdata.get("subject"),
-        mdata.get("content.description"),
-        mdata.get("dimension.free"),
-        mdata.get("dimension.free"),
-        mdata.get("digital.acquired_filepath"),
-        mdata.get("language"),
-        mdata.get("access_category.notes"),
-        mdata.get("subject")
-    ]
+
+    mdata_list = [f"object/{fname}"]
+    if mdata.get("title") is not None:
+        mdata_list.append(mdata.get("title"))
+    else:
+        mdata_list.append("")
+    if mdata.get("object_number") is not None:
+        mdata_list.append(mdata.get("object_number"))
+    else:
+        mdata_list.append("")
+    if mdata.get("creator") is not None:
+        mdata_list.append(mdata.get("creator"))
+    else:
+        mdata_list.append("")
+    if mdata.get("production.date.end") is not None:
+        mdata_list.append(mdata.get("production.date.end"))
+    else:
+        mdata_list.append("")
+    if mdata.get("subject") is not None:
+        mdata_list.append(mdata.get("subject"))
+    else:
+        mdata_list.append("")
+    if mdata.get("content.description") is not None:
+        mdata_list.append(mdata.get("content.description"))
+    else:
+        mdata_list.append("")
+    if mdata.get("dimension.free") is not None:
+        mdata_list.append(mdata.get("dimension.free"))
+        mdata_list.append(mdata.get("dimension.free"))
+    else:
+        mdata_list.append("")
+        mdata_list.append("")
+    if mdata.get("digital.acquired_filepath") is not None:
+        mdata_list.append(mdata.get("digital.acquired_filepath"))
+    else:
+        mdata_list.append("")
+    if mdata.get("language") is not None:
+        mdata_list.append(mdata.get("language"))
+    else:
+        mdata_list.append("")
+    if mdata.get("access_category.notes") is not None:
+        mdata_list.append(mdata.get("access_category.notes"))
+    else:
+        mdata_list.append("")
+    if mdata.get("subject") is not None:
+        mdata_list.append(mdata.get("subject"))
+    else:
+        mdata_list.append("")
+
     with open(metadata_file, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(headers)
@@ -206,12 +245,13 @@ def create_metadata_csv(mdata: dict, fname: str) -> bool:
     return False
 
 
-def main() -> None:
+def main():
     """
     Iterate supplied folder
     and complete series of
     SFTP / transfer
     """
+
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -232,7 +272,9 @@ def main() -> None:
 
     statuses = ["OPEN", "CLOSED"]
     for status in statuses:
+        print(f"***** Processing: {status}")
         recs = get_cid_records(status)
+
         if recs is None:
             LOGGER.info("No new records found for %s status", status)
             continue
@@ -241,40 +283,60 @@ def main() -> None:
         # Start processing at folder level
         for rec in recs:
             mdata_dct = {}
-            mdata_dct = iterate_record(rec[0], status)
+            mdata_dct = iterate_record(rec, status)
+            print(mdata_dct)
             if mdata_dct is None:
-                LOGGER.warning("Failure to extract metadata for record:\n%s",rec)
+                LOGGER.warning("Skipping. Failed to extract metadata for record:\n%s",rec)
                 continue
+            ob_num = mdata_dct.get("object_number")
             priref = mdata_dct.get("priref")
             LOGGER.info("** New record being processed: %s", priref)
             file_path = mdata_dct.get("file_path")
             file = os.path.basename(file_path)
             if not os.path.isfile(file_path):
-                LOGGER.warning("Could not file path: %s", file_path)
+                LOGGER.warning("Skipping. Could not file path: %s", file_path)
+                print(f"Filepath not found: {file_path}")
+                continue
 
             # Augment metadata
             success = create_metadata_csv(mdata_dct, file)
             if not success:
-                LOGGER.warning("Dublin core metadata enrichment failed for: %s / %s", file, mdata_dct.get("priref"))
+                LOGGER.warning(
+                    "Dublin core metadata enrichment failed for: %s / %s",
+                    file, mdata_dct.get("priref")
+                )
+            else:
+                LOGGER.info("Dublin core metadata enriched: %s", file)
 
-            # PUT Archival Items only to SFTP (no record_type in name)
+            # Check if Archival Item already in SFTP
             top_level_folder = ""
             top_level_folder = get_top_level_folder(file_path)
-            LOGGER.info("%s identified as top level folder", top_level_folder)
-            sftp_files = am_utils.send_to_sftp(file_path, top_level_folder)
-            if sftp_files is None:
-                LOGGER.warning("SFTP PUT failed for folder: %s %s", mdata_dct.get("object_number"), file_path)
-                continue
-            file = os.path.basename(file_path)
-            if file not in sftp_files:
-                LOGGER.warning(
-                    "Problem with files put in folder %s: %s", file, sftp_files
-                )
-                continue
-            LOGGER.info("SFTP Put successful: %s moved to Archivematica", sftp_files)
+            sftp = False
+            folder_contents = am_utils.check_sftp_status(file_path, top_level_folder)
+            if file in folder_contents:
+                sftp = True
 
-            # MOVING PUT TO AIP
-            folder_path = mdata_dct.get("folder_path")
+            # PUT Archival Items only to SFTP (no record_type in name)
+            if sftp is False:
+                LOGGER.info("%s identified as top level folder", top_level_folder)
+                sftp_files = am_utils.send_to_sftp(file_path, top_level_folder)
+                if sftp_files is None:
+                    LOGGER.warning(
+                        "SFTP PUT failed for folder: %s %s",
+                        mdata_dct.get("object_number"), file_path
+                    )
+                    continue
+                if file not in sftp_files:
+                    LOGGER.warning(
+                        "Problem with files put in folder %s: %s", file, sftp_files
+                    )
+                    continue
+                LOGGER.info("SFTP Put successful: %s moved to Archivematica", sftp_files)
+            elif sftp is True:
+                LOGGER.info("*** File already uploaded to SFTP, following potential failed attempt.")
+
+            # MOVING ITEM TO AIP
+            folder_path = mdata_dct.get("folderpath")
             fp_split = folder_path.split(top_level_folder)[-1]
             am_path = os.path.join(top_level_folder, fp_split)
             ob_num = mdata_dct.get("object_number")
@@ -292,13 +354,17 @@ def main() -> None:
                 processing_config,
             )
             response = am_utils.send_as_package(
-                am_path, parent_ob_num, priref, processing_config, True
+                am_path, top_level_folder, parent_ob_num, priref, processing_config, True
             )
             if "id" not in response:
-                LOGGER.warning("Possible failure for Archivematica creation: %s", response)
+                LOGGER.warning(
+                    "Possible failure for Archivematica creation: %s",
+                    response
+                )
                 continue
             transfer_uuid = sip_uuid = aip_uuid = ""
             transfer_uuid = response.get("id")
+            sleep(30)
             transfer_dict = check_transfer_status(transfer_uuid, ob_num)
             if not transfer_dict:
                 LOGGER.warning(
@@ -311,6 +377,7 @@ def main() -> None:
                 continue
             sip_uuid = transfer_dict.get("sip_uuid")
             LOGGER.info(transfer_dict)
+            sleep(30)
             ingest_dict = check_ingest_status(sip_uuid, ob_num)
             if not ingest_dict:
                 LOGGER.warning(
@@ -329,7 +396,10 @@ def main() -> None:
             if success:
                 LOGGER.info("Updated AIP UUID to CID item archive record: %s", priref)
             else:
-                LOGGER.warning("The AIP update to record %s failed - please append manually!", priref)
+                LOGGER.warning(
+                    "The AIP update to record %s failed - please append manually!",
+                    priref
+                )
                 LOGGER.warning(aip_uuid)
 
             LOGGER.info("Completed AIP update for file %s", am_path)
@@ -345,9 +415,9 @@ def iterate_record(rec: list[dict], status: str) -> dict:
     """
     mdata = {}
     try:
-        priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        ob_num = adlib.retrieve_field_name(rec[0], "object_number")[0]
-        ftype = adlib.retrieve_field_name(rec[0], "file_type")[0]
+        priref = adlib.retrieve_field_name(rec, "priref")[0]
+        ob_num = adlib.retrieve_field_name(rec, "object_number")[0]
+        ftype = adlib.retrieve_field_name(rec, "file_type")[0]
         LOGGER.info("** Process Item Archive record %s", priref)
     except (KeyError, TypeError, IndexError) as err:
         LOGGER.warning("Skipping this record as Priref could not be acquired:\n%s\n%s", rec, err)
@@ -372,47 +442,47 @@ def iterate_record(rec: list[dict], status: str) -> dict:
     mdata["file_path"] = fpath
 
     try:
-        title = adlib.retrieve_field_name(rec[0], "title")[0]
+        title = adlib.retrieve_field_name(rec, "title")[0]
         mdata["title"] = title
     except (KeyError, TypeError, IndexError):
         pass
     try:
-        creator = adlib.retrieve_field_name(rec[0], "creator")[0]
+        creator = adlib.retrieve_field_name(rec, "creator")[0]
         mdata["creator"] = creator
     except (KeyError, TypeError, IndexError):
         pass
     try:
-        pdate = adlib.retrieve_field_name(rec[0], "production.date.end")[0]
+        pdate = adlib.retrieve_field_name(rec, "production.date.end")[0]
         mdata["production.date.end"] = pdate
     except (KeyError, TypeError, IndexError):
         pass
     try:
-        subject = adlib.retrieve_field_name(rec[0], "subject")[0]
+        subject = adlib.retrieve_field_name(rec, "subject")[0]
         mdata["subject"] = subject
     except (KeyError, TypeError, IndexError):
         pass
     try:
-        fpath = adlib.retrieve_field_name(rec[0], "digital.acquired_filepath")[0]
+        fpath = adlib.retrieve_field_name(rec, "digital.acquired_filepath")[0]
         mdata["digital.acquired_filepath"] = fpath
     except (KeyError, TypeError, IndexError):
         pass
     try:
-        desc = adlib.retrieve_field_name(rec[0], "content.description")[0]
+        desc = adlib.retrieve_field_name(rec, "content.description")[0]
         mdata["content.description"] = desc
     except (KeyError, TypeError, IndexError):
         pass
     try:
-        dfree = adlib.retrieve_field_name(rec[0], "dimension.free")[0]
+        dfree = adlib.retrieve_field_name(rec, "dimension.free")[0]
         mdata["dimension.free"] = dfree
     except (KeyError, TypeError, IndexError):
         pass
     try:
-        language = adlib.retrieve_field_name(rec[0], "language")[0]
-        mdata["dlanguage"] = language
+        language = adlib.retrieve_field_name(rec, "language")[0]
+        mdata["language"] = language
     except (KeyError, TypeError, IndexError):
         pass
     try:
-        access = adlib.retrieve_field_name(rec[0], "access_category.notes")[0]
+        access = adlib.retrieve_field_name(rec, "access_category.notes")[0]
         mdata["access_category.notes"] = access
     except (KeyError, TypeError, IndexError):
         pass
@@ -420,7 +490,7 @@ def iterate_record(rec: list[dict], status: str) -> dict:
     return mdata
 
 
-@tenacity.retry(tenacity.stop_after_attempt(10))
+@retry(stop=stop_after_attempt(10))
 def check_transfer_status(uuid, directory):
     """
     Check status of transfer up to 10
@@ -433,12 +503,12 @@ def check_transfer_status(uuid, directory):
             "Transfer of package completed: %s", trans_dict.get("directory", directory)
         )
         return trans_dict
+    else:
+        sleep(30)
+        raise Exception
 
-    sleep(60)
-    raise Exception
 
-
-@tenacity.retry(tenacity.stop_after_attempt(10))
+@retry(stop=stop_after_attempt(10))
 def check_ingest_status(uuid, directory):
     """
     Check status of transfer up to 10
@@ -451,9 +521,9 @@ def check_ingest_status(uuid, directory):
             "Ingest of package completed: %s", ingest_dict.get("directory", directory)
         )
         return ingest_dict
-
-    sleep(60)
-    raise Exception
+    else:
+        sleep(30)
+        raise Exception
 
 
 def update_alternative_number(uuid: str, priref: str) -> None:

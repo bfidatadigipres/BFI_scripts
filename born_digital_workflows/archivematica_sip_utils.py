@@ -28,7 +28,7 @@ API_KEY = os.environ.get("AM_KEY")
 SS_PIPE = os.environ.get("AM_SS_UUID")
 SS_NAME = os.environ.get("AMSS_USR")
 SS_KEY = os.environ.get("AMSS_KEY")
-ATOM_URL = os.environ.get("ATOM_URL")  # Upto api/
+ATOM_URL = os.environ.get("ATOM_URL")  # Upto API
 ATOM_KEY = os.environ.get("ATOM_KEY_META")
 ATOM_AUTH = os.environ.get("ATOM_AUTH")
 HEADER = {
@@ -69,6 +69,21 @@ def sftp_connect():
     return ssh_client.open_sftp()
 
 
+def sftp_listdir(rpath):
+    """
+    Exception handling for
+    sftp.listdir call
+    """
+    sftp = sftp_connect()
+    try:
+        check_folder = sftp.listdir(rpath)
+    except FileNotFoundError as err:
+        print(f"get_sftp_listdir(): {err}")
+        check_folder = []
+
+    return check_folder
+
+
 def send_to_sftp(fpath, top_folder):
     """
     Check for parent folder, if absent mkdir
@@ -83,29 +98,35 @@ def send_to_sftp(fpath, top_folder):
     print(whole_path, file)
     root, container = os.path.split(whole_path)
     print(f"Root: {root}, Container: {container}")
-    remote_path = f"sftp-transfer-source/API_Uploads/{top_folder}/{root}"
+    path_parts = root.lstrip("/").split("/")
+    print(f"Total folder count to file: {len(path_parts)}")
+    remote_path = f"sftp-transfer-source/API_Uploads/{top_folder}/{path_parts[0]}"
     print(remote_path)
 
-    # Create ssh / sftp object
+    # Create folders where absent
     sftp = sftp_connect()
-    check_folder = sftp.listdir("sftp-transfer-source/API_Uploads")
+    check_folder = sftp_listdir("sftp-transfer-source/API_Uploads")
     print(f"Check folder contents: {check_folder}")
     if top_folder not in str(check_folder):
         success = sftp_mkdir(sftp, f"sftp-transfer-source/API_Uploads/{top_folder}")
         if not success:
             print(f"Failed to make new top level folder: {top_folder}")
             return None
-    try:
-        root_contents = sftp.listdir(remote_path)
-        print(f"Root of remote_path: {root_contents}")
-    except OSError as err:
-        print(f"Error attempting to retrieve path {remote_path}")
-        root_contents = ""
+    if path_parts[0] not in sftp_listdir(os.path.split(remote_path)[0]):
         success = sftp_mkdir(sftp, remote_path)
         if not success:
             print(f"Failed to make new directory for {remote_path}")
             return None
+    for pth in path_parts[1:]:
+        remote_path = os.path.join(remote_path, pth)
+        print(remote_path)
+        if pth not in sftp_listdir(os.path.split(remote_path)[0]):
+            success = sftp_mkdir(sftp, remote_path)
+            if not success:
+                print(f"Failed to make new directory for {remote_path}")
+                return None
 
+    root_contents = sftp_listdir(remote_path)
     if container not in root_contents:
         success = sftp_mkdir(sftp, os.path.join(remote_path, container))
         if not success:
@@ -256,7 +277,27 @@ def sftp_mkdir(sftp_object, relpath):
     return None
 
 
-def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_arg):
+def check_sftp_status(fpath, top_folder):
+    """
+    Separate function to check if a file already
+    been through SFTP to API_Uploads
+    """
+    relpath = fpath.split(top_folder)[-1]
+    whole_path, file = os.path.split(relpath)
+    remote_path = f"sftp-transfer-source/API_Uploads/{top_folder}/{whole_path}"
+    print(f"Checking path: {remote_path}")
+
+    sftp = sftp_connect()
+    try:
+        content_list = sftp.listdir(remote_path)
+    except FileNotFoundError as err:
+        print(f"check_sftp_status(): {err}")
+        content_list = []
+
+    return content_list
+
+
+def send_as_package(fpath, top_folder, atom_slug, item_priref, process_config, auto_approve_arg):
     """
     Send a package using v2beta package, subject to change
     Args: Path from top level no trailing /, AToM slug if known,
@@ -265,7 +306,8 @@ def send_as_package(fpath, atom_slug, item_priref, process_config, auto_approve_
     # Build correct folder paths
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package")
     folder_path = os.path.basename(fpath)
-    path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{fpath}"
+    path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{top_folder}/{fpath}"
+    print(path_str)
     encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
 
     # Create payload and post

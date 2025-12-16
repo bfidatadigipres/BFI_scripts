@@ -29,7 +29,8 @@ Moving renamed folders to SFTP / Archivematica
 6. Capture all outputs to logs
 
 Assumption in code
-1. That historical uploads will get CSV ingest of AIP UUIDS to block duplicates
+1. That historical AIP uploads will be deleted before
+   running this code finally
 
 2025
 """
@@ -105,8 +106,8 @@ def get_cid_records(status):
     alternative_number field
     status = OPEN / CLOSED
     """
-    search = f'object_number="GUR-2-2-5-4-1" and access_status="{status}" and not alternative_number.type="Archivematica AIP UUID"'
-    print(search)
+    # search = f'object_number="GUR-2-2-5-4-*" and access_status="{status}" and not alternative_number.type="Archivematica AIP UUID"'
+    search = f'access_status="{status}" and not alternative_number.type="Archivematica AIP UUID"'
     LOGGER.info("get_cid_records(): Making CID query request with:\n%s", search)
 
     fields: list[str] = [
@@ -187,55 +188,55 @@ def create_metadata_csv(mdata: dict, fname: str) -> bool:
         "dc.subject"
     ]
 
-    mdata_list = [f"object/{fname}"]
+    mdata_list = [f"objects/{fname}"]
     if mdata.get("title") is not None:
-        mdata_list.append(mdata.get("title"))
+        mdata_list.append(mdata.get("title").strip())
     else:
         mdata_list.append("")
     if mdata.get("object_number") is not None:
-        mdata_list.append(mdata.get("object_number"))
+        mdata_list.append(mdata.get("object_number").strip())
     else:
         mdata_list.append("")
     if mdata.get("creator") is not None:
-        mdata_list.append(mdata.get("creator"))
+        mdata_list.append(mdata.get("creator").strip())
     else:
         mdata_list.append("")
     if mdata.get("production.date.end") is not None:
-        mdata_list.append(mdata.get("production.date.end"))
+        mdata_list.append(mdata.get("production.date.end").strip())
     else:
         mdata_list.append("")
     if mdata.get("subject") is not None:
-        mdata_list.append(mdata.get("subject"))
+        mdata_list.append(mdata.get("subject").strip())
     else:
         mdata_list.append("")
     if mdata.get("content.description") is not None:
-        mdata_list.append(mdata.get("content.description"))
+        mdata_list.append(mdata.get("content.description").strip())
     else:
         mdata_list.append("")
     if mdata.get("dimension.free") is not None:
-        mdata_list.append(mdata.get("dimension.free"))
-        mdata_list.append(mdata.get("dimension.free"))
+        mdata_list.append(mdata.get("dimension.free").strip())
+        mdata_list.append(mdata.get("dimension.free").strip())
     else:
         mdata_list.append("")
         mdata_list.append("")
     if mdata.get("digital.acquired_filepath") is not None:
-        mdata_list.append(mdata.get("digital.acquired_filepath"))
+        mdata_list.append(mdata.get("digital.acquired_filepath").strip())
     else:
         mdata_list.append("")
     if mdata.get("language") is not None:
-        mdata_list.append(mdata.get("language"))
+        mdata_list.append(mdata.get("language").strip())
     else:
         mdata_list.append("")
     if mdata.get("access_category.notes") is not None:
-        mdata_list.append(mdata.get("access_category.notes"))
+        mdata_list.append(mdata.get("access_category.notes").strip())
     else:
         mdata_list.append("")
     if mdata.get("subject") is not None:
-        mdata_list.append(mdata.get("subject"))
+        mdata_list.append(mdata.get("subject").strip())
     else:
         mdata_list.append("")
 
-    with open(metadata_file, "w", newline="") as csvfile:
+    with open(metadata_file, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(headers)
         writer.writerow(mdata_list)
@@ -273,24 +274,25 @@ def main():
     statuses = ["OPEN", "CLOSED"]
     for status in statuses:
         print(f"***** Processing: {status}")
+        LOGGER.info("Processing status: %s", status)
         recs = get_cid_records(status)
-
         if recs is None:
             LOGGER.info("No new records found for %s status", status)
             continue
-        LOGGER.info("New '%s' status records found:\n%s", status, recs)
+        LOGGER.info("New '%s' status records found:\n%s items", status, len(recs))
 
         # Start processing at folder level
         for rec in recs:
             mdata_dct = {}
             mdata_dct = iterate_record(rec, status)
-            print(mdata_dct)
+            print(f"Metadata dictionary extracted from CID/record:\n{mdata_dct}")
             if mdata_dct is None:
                 LOGGER.warning("Skipping. Failed to extract metadata for record:\n%s",rec)
                 continue
             ob_num = mdata_dct.get("object_number")
             priref = mdata_dct.get("priref")
             LOGGER.info("** New record being processed: %s", priref)
+            LOGGER.info("Metadata extracted:\n%s", mdata_dct)
             file_path = mdata_dct.get("file_path")
             file = os.path.basename(file_path)
             if not os.path.isfile(file_path):
@@ -299,6 +301,7 @@ def main():
                 continue
 
             # Augment metadata
+            LOGGER.info("Adding additional metadata to the metadata/metadata.csv")
             success = create_metadata_csv(mdata_dct, file)
             if not success:
                 LOGGER.warning(
@@ -317,6 +320,7 @@ def main():
                 sftp = True
 
             # PUT Archival Items only to SFTP (no record_type in name)
+            LOGGER.info("Starting SFTP transfer to Archivematica")
             if sftp is False:
                 LOGGER.info("%s identified as top level folder", top_level_folder)
                 sftp_files = am_utils.send_to_sftp(file_path, top_level_folder)
@@ -336,12 +340,13 @@ def main():
                 LOGGER.info("*** File already uploaded to SFTP, following potential failed attempt.")
 
             # MOVING ITEM TO AIP
+            LOGGER.info("Starting transfer of SFTP item to Archivematica AIP")
             folder_path = mdata_dct.get("folderpath")
             fp_split = folder_path.split(top_level_folder)[-1]
             am_path = os.path.join(top_level_folder, fp_split)
             ob_num = mdata_dct.get("object_number")
             on_split = ob_num.split("-")[:-1]
-            parent_ob_num = "-".join(on_split)
+            parent_ob_num = "-".join(on_split).lower()
 
             if status == "OPEN":
                 processing_config = "OpenRecords"
@@ -349,13 +354,15 @@ def main():
                 processing_config = "ClosedRecords"
 
             LOGGER.info(
-                "Moving SFTP directory %s to Archivematica as %s",
+                "Moving SFTP directory %s to Archivematica as %s - with slug %s",
                 am_path,
                 processing_config,
+                parent_ob_num
             )
             response = am_utils.send_as_package(
                 am_path, top_level_folder, parent_ob_num, priref, processing_config, True
             )
+            LOGGER.info("Package send response: %s", response)
             if "id" not in response:
                 LOGGER.warning(
                     "Possible failure for Archivematica creation: %s",
@@ -364,7 +371,8 @@ def main():
                 continue
             transfer_uuid = sip_uuid = aip_uuid = ""
             transfer_uuid = response.get("id")
-            sleep(30)
+            sleep(10)
+            LOGGER.info("Checking transfer status...")
             transfer_dict = check_transfer_status(transfer_uuid, ob_num)
             if not transfer_dict:
                 LOGGER.warning(
@@ -377,7 +385,8 @@ def main():
                 continue
             sip_uuid = transfer_dict.get("sip_uuid")
             LOGGER.info(transfer_dict)
-            sleep(30)
+            sleep(10)
+            LOGGER.info("Checking ingest status...")
             ingest_dict = check_ingest_status(sip_uuid, ob_num)
             if not ingest_dict:
                 LOGGER.warning(
@@ -389,9 +398,9 @@ def main():
                 )
                 continue
             aip_uuid = ingest_dict.get("uuid")
-            LOGGER.info("Retrieved AIP UUID %s from Ingest: %s", aip_uuid, ingest_dict)
 
             # Update Alternative number at close
+            LOGGER.info("Updating AIP UUID to CID record: %s", aip_uuid)
             success = update_alternative_number(aip_uuid, priref)
             if success:
                 LOGGER.info("Updated AIP UUID to CID item archive record: %s", priref)
@@ -504,7 +513,7 @@ def check_transfer_status(uuid, directory):
         )
         return trans_dict
     else:
-        sleep(30)
+        sleep(10)
         raise Exception
 
 
@@ -522,7 +531,7 @@ def check_ingest_status(uuid, directory):
         )
         return ingest_dict
     else:
-        sleep(30)
+        sleep(10)
         raise Exception
 
 

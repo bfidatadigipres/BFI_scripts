@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 """
-WIP
 Special Collections Document tranfsers for OSH
 Moving renamed folders to SFTP / Archivematica
 
@@ -41,7 +40,7 @@ import logging
 import os
 import sys
 import csv
-from tenacity import retry, stop_after_attempt
+from tenacity import retry, wait_fixed
 import archivematica_sip_utils as am_utils
 
 sys.path.append(os.environ.get("CODE"))
@@ -107,7 +106,7 @@ def get_cid_records(status):
     status = OPEN / CLOSED
     """
     # search = f"(object_number='GUR-2-2-5-4-*' and access_status='{status}' and not alternative_number.type='Archivematica AIP UUID')"
-    search = f"(object_number='GUR-*' and access_status='{status}' and not alternative_number.type='Archivematica AIP UUID')"
+    search = f"(object_number='GUR-2-1-*' and access_status='{status}' and not alternative_number.type='Archivematica AIP UUID')"
     LOGGER.info("get_cid_records(): Making CID query request with:\n%s", search)
 
     fields: list[str] = [
@@ -150,6 +149,7 @@ def fetch_matching_folder(ob_num, ext):
                 fpath = os.path.join(root, directory, file[0])
                 print(fpath, dpath)
                 return fpath, dpath
+    return None, None
 
 
 def get_top_level_folder(folder_path):
@@ -436,6 +436,10 @@ def iterate_record(rec: list[dict], status: str) -> dict:
 
     ext = FILE_TYPES.get(ftype)[0]
     fpath, dirpath = fetch_matching_folder(ob_num, ext)
+    if not fpath or not dirpath:
+        print(f"Filepath could not be matched to object_number: {ob_num}")
+        LOGGER.warning("Filepath could not be matched to object_number: %s", ob_num)
+        return None
     mdata_path = os.path.join(dirpath, "metadata/metadata.csv")
 
     if not os.path.exists(dirpath):
@@ -501,7 +505,7 @@ def iterate_record(rec: list[dict], status: str) -> dict:
     return mdata
 
 
-@retry(stop=stop_after_attempt(10))
+@retry(wait=wait_fixed(15))
 def check_transfer_status(uuid, directory):
     """
     Check status of transfer up to 10
@@ -515,11 +519,10 @@ def check_transfer_status(uuid, directory):
         )
         return trans_dict
     else:
-        sleep(10)
         raise Exception
 
 
-@retry(stop=stop_after_attempt(10))
+@retry(wait=wait_fixed(15))
 def check_ingest_status(uuid, directory):
     """
     Check status of transfer up to 10
@@ -533,7 +536,6 @@ def check_ingest_status(uuid, directory):
         )
         return ingest_dict
     else:
-        sleep(10)
         raise Exception
 
 

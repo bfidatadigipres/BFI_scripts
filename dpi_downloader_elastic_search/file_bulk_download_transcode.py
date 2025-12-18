@@ -61,8 +61,12 @@ from datetime import datetime
 from typing import Any, Final, Optional, Union
 
 from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import (ConflictError, NotFoundError,
-                                      RequestError, TransportError)
+from elasticsearch.exceptions import (
+    ConflictError,
+    NotFoundError,
+    RequestError,
+    TransportError,
+)
 
 # Local packages
 sys.path.append(os.environ["CODE"])

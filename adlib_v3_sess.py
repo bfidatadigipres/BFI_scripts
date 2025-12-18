@@ -19,7 +19,7 @@ from requests import Session, exceptions, request
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
-TIMEOUT = 30
+TIMEOUT = 60
 
 
 # (api: str) -> Dict[Any, Any]:

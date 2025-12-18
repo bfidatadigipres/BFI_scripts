@@ -19,7 +19,7 @@ from lxml import etree, html
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
-TIMEOUT = 45
+TIMEOUT = 60
 
 
 # (api: str) -> dict[Any, Any]:
@@ -252,7 +252,6 @@ def group_check(record, fname):
                         except (IndexError, KeyError):
                             pass
         if fieldnames:
-            print(f"group_check(): {type(fieldnames)}")
             return fieldnames
 
     elif len(group_check) > 1:

@@ -14,19 +14,31 @@ function control {
     fi
 }
 
+function pauseScript {
+    boole=$(cat "${CONTROL_JSON}" | grep "pause_script" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately: MP4_transcode scripts" >> "${LOG}"
+      echo 'Control json requests script exit immediately: MP4_transcode scripts'
+      exit 0
+    fi
+}
+
 # Control check inserted into code
 control
+
+# pause scripts check inserted into code
+pauseScript
 
 # create new autoingest.log by writing current timestamp to first line
 echo "==================" $date_FULL "Autoingest is running ===========================" > "${LOG_PATH}autoingest.log"
 
 # NORMAL version outputting detailed log to autoingest.log and overwriting every time
-"$PYENV311" autoingest.py | tee -a "${LOG_PATH}autoingest.log"
+"$PY3_ENV" autoingest.py | tee -a "${LOG_PATH}autoingest.log"
 
 # Trace output version for debugging issues
 # rm "${LOG_PATH}autoingest_trace.txt"
 # touch "${LOG_PATH}autoingest_trace.txt"
-# "$PYENV311" -m trace --trace autoingest.py | tee -a "${LOG_PATH}autoingest_trace.txt"
+# "$PY3_ENV" -m trace --trace autoingest.py | tee -a "${LOG_PATH}autoingest_trace.txt"
 
 # Output log to date prefix autoingest.log to retain for reference
-# "$PYENV311" autoingest.py | tee -a "${LOG_PATH}${date_FULL}_autoingest.log"
+# "$PY3_ENV" autoingest.py | tee -a "${LOG_PATH}${date_FULL}_autoingest.log"

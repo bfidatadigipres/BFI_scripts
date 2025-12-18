@@ -210,6 +210,9 @@ def main():
     if not utils.check_storage(fullpath):
         LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     log = []
     log.append(f"\n==== New path for TAR wrap: {fullpath} ====")

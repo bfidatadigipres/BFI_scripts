@@ -12,6 +12,7 @@ NOTES: Integrated with adlib_v3 for test
 
 import datetime
 import logging
+
 # Public packages
 import os
 import shutil
@@ -95,6 +96,9 @@ def main():
     if not utils.check_storage(STORAGE):
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     file_list = [x for x in os.listdir(STORAGE) if x.startswith("EDIT_")]
     if len(file_list) == 0:

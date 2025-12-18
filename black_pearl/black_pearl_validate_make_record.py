@@ -102,6 +102,7 @@ LOG_PATHS = {
     os.environ["BP_FILM4"]: os.environ["L_BP_FILM4"],
     os.environ["BP_FILM5"]: os.environ["L_BP_FILM5"],
     os.environ["BP_FILM6"]: os.environ["L_BP_FILM6"],
+    os.environ["QNAP_05"]: os.environ["L_QNAP05"],
 }
 
 
@@ -620,7 +621,7 @@ def process_files(
             reingest_confirm = utils.check_global_log(
                 file, "Renewed ingest of file will be attempted"
             )
-            if deletion_confirm:
+            if deletion_confirm and md5_match is False:
                 logger.info(
                     "DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s",
                     deletion_confirm,

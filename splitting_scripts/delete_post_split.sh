@@ -12,8 +12,18 @@ function control {
     fi
 }
 
+function pauseScripts {
+    boole=$(cat "${CONTROL_JSON}" | grep "pause_scripts" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      exit 0
+    fi
+}
+
 # Control check inserted into code
 control
+
+pauseScripts
 
 # Log script start
 echo "Start delete_post_split.py: $(date)" >> "${LOG_PATH}delete_post_split.log"
@@ -23,14 +33,6 @@ echo "Start delete_post_split.py: $(date)" >> "${LOG_PATH}delete_post_split.log"
 
 # Log script end
 echo "Finish delete_post_split.py: $(date)" >> "${LOG_PATH}delete_post_split.log"
-
-# Action deletion of H22 files in QNAP processing/delete folder
-echo "Actioning deletion of H22 files identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-sudo rm "${QNAP_H22}/processing/delete/*"
-
-# Action deletion of F47 Ofcom files in Isilon processing/delete folder
-echo "Actioning deletion of F47 Ofcom files identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-sudo rm "${ISILON_VID}/processing/delete/*"
 
 # Action deletion of F47 Ofcom files in QNAP Video processing/delete folder
 echo "Actioning deletion of F47 Ofcom files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
@@ -44,7 +46,6 @@ sudo rm "${QNAP_08}/memnon_processing/delete/*"
 echo "Actioning deletion of H22 files in QNAP-10 identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 sudo rm "${QNAP_10}/processing/delete/*"
 
-echo "Completed deletion of H22 files identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-echo "Completed deletion of F47 Ofcom files (Isilon video) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-echo "Completed deletion of F47 Ofcom files (QNAP Video) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 echo "Completed deletion of F47 Ofcom files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
+echo "Completed deletion of F47 Ofcom files (QNAP-08 Memnon) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
+echo "Completed deletion of F47 Ofcom files (QNAP-10) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"

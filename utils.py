@@ -74,6 +74,7 @@ ACCEPTED_EXT: Final = [
     "pdf",
     "txt",
     "vtt",
+    "ttml"
 ]
 
 
@@ -115,6 +116,7 @@ def accepted_file_type(ext):
         "csv": "csv",
         "pdf": "pdf",
         "txt": "txt",
+        "ttml": "ttml"
     }
 
     ext = ext.lower()
@@ -300,6 +302,7 @@ def sort_ext(ext):
             "rtf",
             "csv",
             "txt",
+            "ttml"
         ],
     }
 
@@ -335,17 +338,21 @@ def probe_metadata(arg, stream, fpath):
     Use FFmpeg module to extract
     ffprobe data from file
     """
+    if arg == "duration":
+        new_args = "DURATION"
+    else:
+        new_args = arg
     try:
         probe = ffmpeg.probe(fpath)
+        #        print(probe['streams'])
+        for i in probe["streams"]:
+            if i["codec_type"] == stream and new_args == "DURATION":
+                return i["tags"][new_args]
+            return i[new_args]
+
     except ffmpeg.Error as err:
         print(err)
         return None
-
-    for st in probe["streams"]:
-        if st["codec_type"] == stream:
-            return st[arg]
-
-    return None
 
 
 # (stream: str, arg: str, dpath: str) -> str:
@@ -526,8 +533,9 @@ def create_md5_65536(fpath):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
 
-    except Exception:
+    except Exception as err:
         print(f"{fpath} - Unable to generate MD5 checksum")
+        print(err)
         return None
 
 
@@ -678,6 +686,7 @@ def check_bst_adjustment(utc_datetime_str: str) -> Optional[list[str]]:
     """
     Passes datetime through timezone change
     for London, adding +1 hours during BST
+    Must receive data formatted %Y-%m-%d %H:%M:%S
     """
     format = "%Y-%m-%d %H:%M:%S"
     try:

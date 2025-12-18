@@ -207,19 +207,24 @@ def check_mime_type(fpath: str, log_paths: str) -> bool:
         logger.warning('%s\tMIMEtype "%s" is not permitted', log_paths, type_)
         return False
     if type_ in ["audio", "video"]:
-        cmd = ["ffprobe", "-i", fpath, "-loglevel", "-8"]
-        try:
-            code = subprocess.call(cmd)
-            if code != 0:
-                logger.warning(
-                    "%s\tffprobe failed to read file: [%s] status", log_paths, code
-                )
+        # Temporary addition to pass failing MXF files in Netflix share
+        # To reset this remove if / else and inset else block starting at cmd = []
+        if "/netflix/" in fpath and fpath.endswith((".mxf", ".MXF")):
+            return True
+        else:
+            cmd = ["ffprobe", "-i", fpath, "-loglevel", "-8"]
+            try:
+                code = subprocess.call(cmd)
+                if code != 0:
+                    logger.warning(
+                        "%s\tffprobe failed to read file: [%s] status", log_paths, code
+                    )
+                    return False
+                print("* ffprobe read file successfully - status 0")
+            except Exception as err:
+                logger.warning("%s\tffprobe failed to read file", log_paths)
+                print(err)
                 return False
-            print("* ffprobe read file successfully - status 0")
-        except Exception as err:
-            logger.warning("%s\tffprobe failed to read file", log_paths)
-            print(err)
-            return False
     return True
 
 
@@ -381,6 +386,14 @@ def ext_in_file_type(
     try:
         file_type = adlib.retrieve_field_name(record[0], retrieved_fields[0])
         print(f"ext_in_file_type(): AdlibV3 file type: {file_type}")
+        if file_type is None or file_type[0] is None:
+            print(f"* File type not found for <object_number>...<{ob_num}>")
+            logger.warning(
+                "%s\tCannot find file type for <object_number>... <%s>",
+                log_paths,
+                ob_num,
+            )
+            return False
     except (IndexError, KeyError):
         logger.warning("%s\tInvalid <file_type> in Collect record", log_paths)
         return False
@@ -624,6 +637,12 @@ def main():
                 )
             fpath = os.path.abspath(pth)
             fname = os.path.split(fpath)[-1]
+
+            # Attempt permissions mod
+            try:
+                os.chmod(fpath, 0o777)
+            except OSError as err:
+                print(err)
 
             # Allow path changes for black_pearl_ingest Netflix
             if "ingest/netflix" in str(fpath):

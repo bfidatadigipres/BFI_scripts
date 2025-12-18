@@ -112,7 +112,9 @@ def main():
         sys.exit("EXIT: Supplied path is not a file")
 
     # Multiple instances of script so collecting logs for one burst output
-    if not utils.check_control("mp4_transcode"):
+    if not utils.check_control("mp4_transcode") or not utils.check_control(
+        "pause_scripts"
+    ):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(fullpath) or not utils.check_storage(TRANSCODE):
@@ -131,7 +133,6 @@ def main():
         f"{local_time()}\tINFO\t================== START Transcode MP4 make JPEG {file} {HOST} =================="
     )
     print(f"File to be processed: {file}. Completed path: {completed_pth}")
-
     outpath, outpath2 = "", ""
 
     ext = ext.lstrip(".")
@@ -180,15 +181,6 @@ def main():
         transcode_pth = os.path.join(TRANSCODE, rna_pth, date_pth)
     else:
         transcode_pth = os.path.join(TRANSCODE, "bfi", date_pth)
-
-    # Check to ensure that the file isn't already being processed
-    check_name = os.path.join(transcode_pth, fname)
-    if os.path.exists(f"{check_name}.mp4"):
-        delete_confirm = check_mod_time(f"{check_name}.mp4")
-        if delete_confirm is True:
-            os.remove(f"{check_name}.mp4")
-        else:
-            sys.exit("File already being processed. Skipping.")
 
     # Check if transcode already completed
     if fname in access and thumbnail and largeimage:
@@ -266,6 +258,34 @@ def main():
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
         retry = False
+
+        # Final check file not parallel processed already
+        if not os.path.isfile(fullpath):
+            log_build.append(
+                f"{local_time()}\tINFO\tFile for processing no longer in transcode/ path. Exiting"
+            )
+            log_output(log_build)
+            sys.exit("EXIT: Supplied path is not a file")
+
+        # Check to ensure that the file isn't already being processed
+        check_name = os.path.join(transcode_pth, fname)
+        if os.path.exists(check_name):
+            log_build.append(
+                f"{local_time()}\tINFO\tFile has already been processed. Exiting"
+            )
+            log_output(log_build)
+            sys.exist("File has already completed processing. Skipping")
+        if os.path.exists(f"{check_name}.mp4"):
+            delete_confirm = check_mod_time(f"{check_name}.mp4")
+            if delete_confirm is True:
+                os.remove(f"{check_name}.mp4")
+            else:
+                log_build.append(
+                    f"{local_time()}\tINFO\tFile being processed concurrently. Exiting"
+                )
+                log_output(log_build)
+                sys.exit("File already being processed. Skipping.")
+
         # Build FFmpeg command based on dar/height
         ffmpeg_cmd = create_transcode(
             fullpath, outpath, height, width, dar, par, audio, stream_default, vs, retry
@@ -367,6 +387,14 @@ def main():
 
         # Calculate seconds mark to grab screen
         seconds = adjust_seconds(duration)
+        if seconds is None:
+            log_build.append(
+                f"{local_time()}\tWARNING\tSeconds not found from duration: {duration}"
+            )
+            log_build.append(f"{local_time()}\tWARNING\tCleaning up MP4 creation")
+            log_output(log_build)
+            sys.exit("Exiting: JPEG not created from MP4 file - duration data missing")
+
         log_build.append(f"{local_time()}\tINFO\tSeconds for JPEG cut: {seconds}")
         success = get_jpeg(seconds, outpath, jpeg_location)
         if not os.path.isfile(outpath):
@@ -536,11 +564,21 @@ def log_output(log_build: list[str]) -> None:
         LOGGER.info(log)
 
 
-def adjust_seconds(duration: float) -> float:
+def adjust_seconds(duration) -> int:
     """
     Adjust second duration one third in
     """
-    return duration // 3
+
+    try:
+        seconds = duration // 3
+        if seconds == 0:
+            seconds = duration // 2
+        return seconds
+    except Exception as err:
+        LOGGER.warning(
+            "Unable to divide supplied duration: %s %s", duration, type(duration)
+        )
+        return None
 
 
 def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
@@ -726,6 +764,7 @@ def get_duration(fullpath: str) -> Optional[tuple[Union[str, int], str]]:
     """
 
     duration = utils.get_metadata("Video", "Duration", fullpath)
+
     if not duration:
         return ("", "")
 
@@ -1088,7 +1127,7 @@ def check_mod_time(fpath: str) -> bool:
     hours = (seconds / 60) // 60
     LOGGER.info("%s\tModified time is %s seconds ago. %s hours", fpath, seconds, hours)
     print(f"{fpath}\tModified time is {seconds} seconds ago")
-    if seconds < 18000:
+    if seconds > 18000:
         print(f"*** Deleting file as old MP4: {fpath}")
         return True
     return False

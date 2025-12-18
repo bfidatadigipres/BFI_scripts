@@ -306,12 +306,12 @@ def main():
     header_payload = make_header_data(text_path, filename, priref)
     if not header_payload:
         LOGGER.warning("Failed to compile header metadata tag. Writing to errors CSV")
-        write_to_errors_csv("media", CID_API, priref, header_payload)
+        write_to_errors_csv("media", CID_API, priref, header_payload, {})
         sys.exit()
 
     print(header_payload)
     print(">> ********************** <<")
-    success, _ = write_payload(header_payload, priref)
+    success, rec = write_payload(header_payload, priref)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
         clean_up(filename, text_path)
@@ -319,7 +319,7 @@ def main():
         LOGGER.warning(
             "Failed to POST header tag data to CID record. Writing to errors CSV"
         )
-
+        write_to_errors_csv("media", CID_API, priref, header_payload, rec)
 
 def build_exif_metadata_xml(exif_path: str, priref: str) -> Union[str, bool]:
     """
@@ -461,7 +461,12 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                 if match is None:
                     continue
                 milliseconds = match.get(key)
-                seconds = f"{float(milliseconds) / 1000:.9f}"
+                print(milliseconds)
+                if ':' in milliseconds:
+                    h, m, s = milliseconds.split(".")[0].split(":")[:3]
+                    seconds = int(h) * 3600 + int(m) * 60 + int(s)
+                else:
+                    seconds = f"{float(milliseconds) / 1000:.9f}"
                 print(
                     f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***"
                 )
@@ -478,7 +483,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                     unique_codecs = list(set(codecs_split))
                     gen.append({f"{key}": ", ".join(unique_codecs)})
                 else:
-                    get.append(match)
+                    gen.append(match)
             if key.startswith("container."):
                 match = iterate_text_rows(gen_rows, val[1], key)
                 if match is None:
@@ -504,7 +509,11 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                     if match is None:
                         continue
                     milliseconds = match[key]
-                    seconds = f"{float(milliseconds) / 1000:.9f}"
+                    if ':' in milliseconds:
+                        h, m, s = milliseconds.split(".")[0].split(":")[:3]
+                        seconds = int(h) * 3600 + int(m) * 60 + int(s)
+                    else:
+                        seconds = f"{float(milliseconds) / 1000:.9f}"
                     print(
                         f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***"
                     )

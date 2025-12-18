@@ -45,9 +45,6 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 FOLDERS: Final = {
-    f"{os.environ['QNAP_H22']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
-    f"{os.environ['QNAP_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_QNAP02']}ingest/proxy/video/adjust/",
-    f"{os.environ['GRACK_H22']}/processing/rna_mkv/": f"{os.environ['AUTOINGEST_H22']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_08']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP08']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_08']}/memnon_processing/segmented/": f"{os.environ['AUTOINGEST_QNAP08']}ingest/proxy/video/adjust/",
     f"{os.environ['QNAP_10']}/processing/segmented/": f"{os.environ['AUTOINGEST_QNAP10']}ingest/proxy/video/adjust/",
@@ -295,7 +292,7 @@ def main():
                     "Script run prevented by downtime_control.json. Script exiting."
                 )
 
-            fn = os.path.basename(f)
+            folder_path, fn = os.path.split(f)
             # Require N-* <object_number>
             if not fn.startswith("N_"):
                 print(f"{f}\tFilename does not start with N_")
@@ -414,6 +411,11 @@ def main():
                 except Exception:
                     LOGGER.warning("%s\tCould not move to target: %s\t", f, target)
                     raise
+            if len(os.listdir(folder_path)) == 0:
+                LOGGER.info("Deleting empty folder path: %s", folder_path)
+                os.rmdir(folder_path)
+            else:
+                LOGGER.info("Folder path not empty, leaving in place: %s", folder_path)
 
     LOGGER.info("==== aspect.py END ===================\n")
 

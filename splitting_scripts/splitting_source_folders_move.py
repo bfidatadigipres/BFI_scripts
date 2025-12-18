@@ -25,7 +25,6 @@ PATHS: Final = [
     os.path.join(os.environ["QNAP_08"], "processing/source/"),
     os.path.join(os.environ["QNAP_08"], "memnon_processing/source/"),
     os.path.join(os.environ["QNAP_10"], "processing/source/"),
-    os.path.join(os.environ["QNAP_H22"], "processing/source/"),
     os.path.join(os.environ["QNAP_VID"], "processing/source/"),
 ]
 

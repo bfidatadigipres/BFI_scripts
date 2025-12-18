@@ -155,7 +155,10 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
     """
     User pointer number and look up
     for list of prirefs in CID
+    Run check to see priref is Item
+    and exclude if not.
     """
+
     query = {
         "command": "getpointerfile",
         "database": "items",
@@ -177,7 +180,31 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
     prirefs = result["adlibJSON"]["recordList"]["record"][0]["hitlist"]
     LOGGER.info("Prirefs retrieved: %s", prirefs)
 
-    return prirefs
+    item_list = []
+    for priref in prirefs:
+        bool = check_priref_is_item(priref)
+        if bool is True:
+            item_list.append(priref)
+        else:
+            LOGGER.warning("Skipping: Priref %s was not confirmed as Item record type", priref)
+    return item_list
+
+
+def check_priref_is_item(priref):
+    """
+    Get pointer file for Items dB
+    will return other record_types
+    check here they confirm to Items
+    """
+    search = f"priref='{priref}' and Df=item"
+    hits, rec = adlib.retrieve_record(CID_API, "items", search, 0)
+
+    if hits is None:
+        return "Failure to reach API"
+    if hits > 0:
+        LOGGER.info("Priref confirmed as Item record: %s", priref)
+        return True
+    return False
 
 
 def main():
@@ -194,12 +221,11 @@ def main():
     requested_jobs = retrieve_requested()
     print(requested_jobs)
     if len(requested_jobs) == 0:
-        LOGGER.info("No jobs found this pass. Script exiting")
-        LOGGER.info(
-            "=== Workflow requests record creation completed %s ===",
-            str(datetime.now())[:19],
-        )
-        sys.exit()
+        sys.exit("No jobs found, script exiting")
+
+    LOGGER.info(
+        "=== Workflow requests record creation start %s ===", str(datetime.now())[:18]
+    )
 
     LOGGER.info("Requested jobs found: %s", len(requested_jobs))
 
@@ -268,6 +294,7 @@ def main():
 
         # Create Workflow records
         print("* Creating Workflow records in CID...")
+        print(job_metadata)
         LOGGER.info("* Creating Workflow records in CID...")
         batch = workflow.BatchBuild(
             destination, purpose, uname, items=batch_items, **job_metadata
@@ -383,9 +410,27 @@ Collections Systems team"""
 def create_people_record(client_name):
     """
     Where client.name is populated create
-    P&I record for the individual
+    P&I record for the individual if not
+    already found in People dB
     """
 
+    search = f"name='{client_name}'"
+    try:
+        hits, result = adlib.retrieve_record(CID_API, "people", search, "0")
+    except (KeyError, IndexError, TypeError) as err:
+        LOGGER.exception(
+            "cid_people_record(): Unable to check for person record with client name: %s\n%s",
+            client_name, err
+        )
+    if hits > 0:
+        try:
+            priref = adlib.retrieve_field_name(result[0], "priref")[0]
+            LOGGER.info("Existing people record found for '%s': %s", client_name, priref)
+            return priref
+        except (KeyError, IndexError) as err:
+            print(err)
+
+    # Build new People rec
     credit_dct = []
     credit_dct.append({"name": client_name})
     credit_dct.append({"name.type": "CASTCREDIT"})

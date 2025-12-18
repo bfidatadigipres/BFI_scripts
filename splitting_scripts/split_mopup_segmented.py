@@ -51,7 +51,6 @@ logger.setLevel(logging.INFO)
 # Targets (will look for 'segmented' subdirectory)
 TARGETS: Final = [
     "/mnt/qnap_10/processing/",
-    "/mnt/qnap_02/processing/",
     "/mnt/qnap_08/processing/",
     "/mnt/qnap_08/memnon_processing/",
     "/mnt/qnap_01/Public/F47/processing/",

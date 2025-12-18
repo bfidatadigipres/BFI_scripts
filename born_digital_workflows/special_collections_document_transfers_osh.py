@@ -106,7 +106,7 @@ def get_cid_records(status):
     status = OPEN / CLOSED
     """
     # search = f"(object_number='GUR-2-2-5-4-*' and access_status='{status}' and not alternative_number.type='Archivematica AIP UUID')"
-    search = f"(object_number='GUR-2-1-*' and access_status='{status}' and not alternative_number.type='Archivematica AIP UUID')"
+    search = f"(object_number='GUR-2-*' and access_status='{status}' and not alternative_number.type='Archivematica AIP UUID')"
     LOGGER.info("get_cid_records(): Making CID query request with:\n%s", search)
 
     fields: list[str] = [
@@ -276,12 +276,11 @@ def main():
         print(f"***** Processing: {status}")
         LOGGER.info("Processing status: %s", status)
         recs = get_cid_records(status)
-        print(f"TOTAL recs found: {len(recs)}")
-
         if recs is None:
             LOGGER.info("No new records found for %s status", status)
             continue
         LOGGER.info("New '%s' status records found:\n%s items", status, len(recs))
+        print(f"TOTAL recs found: {len(recs)}")
 
         # Start processing at folder level
         for rec in recs:

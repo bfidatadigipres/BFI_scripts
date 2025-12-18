@@ -2,8 +2,8 @@
 
 '''
 Relocates off-air recordings from Gaydon QNAP
-to QNAP-04 as and when requested. Date to be
-set manually before each run.
+to QNAP-04 as and when requested. Date range to be
+set manually before each run - as list.
 
 Copies CHANNELS to STORA/ path
 Copies NEWS to STORA_backup/ path for
@@ -30,11 +30,9 @@ main():
 
 import os
 import sys
-import json
 import time
 import logging
 from pathlib import Path
-from datetime import datetime, timedelta
 from multiprocessing import Pool
 import subprocess
 
@@ -44,13 +42,19 @@ import utils
 # Global paths
 MAX_PARALLEL = 3
 QNAP = os.environ.get("GY_QNAP_01")
-STORA = os.environ.get("STORA")
-STORA_BACKUP = os.environ.get("STORA_BACKUP")
+STORAGE = os.environ.get("STORA1_DROP")
 LOG_PATH = os.environ.get("LOG_PATH")
 LOG = os.path.join(LOG_PATH, 'stora1_gy_qnap_copy_qnap_04.log')
 
-# THIS DATE PATHS TO BE EDITED MANUALLY DEPENDING ON DATE NEEDED
-TARGET_DATE = "2025/12/17"
+# THIS DATE LIST TO BE EDITED MANUALLY DEPENDING ON PERIOD
+TARGET_DATES = [
+    "2025/12/17",
+    "2025/12/18",
+    "2025/12/19",
+    "2025/12/20",
+    "2025/12/21",
+    "2025/12/22"
+]
 
 # Setup logging
 logging.basicConfig(filename=LOG, filemode='a', \
@@ -90,68 +94,78 @@ NEWS = [
 ]
 
 
-
 def main():
     '''
     Iterate list of CHANNEL folders for yesterday
     Copy to QNAP-04/<OPTIONAL>/YYYY/MM/DD path with delete of original
     '''
 
-    if not utils.check_storage(STORAGE):
-        logger.info("Script run prevented by storage_control.json. Script exiting.")
-        sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    if not utils.check_storage(QNAP):
-        logger.info("Script run prevented by storage_control.json. Script exiting.")
-        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    logging.info("START MOVE_CONTENT.PY =============== %s", source)
+    for target in TARGET_DATE:
+        logging.info("Target date selected for copy: %s", target)
 
-    for chnl in CHANNELS:
-        source = os.path.join(QNAP, "STORA", TARGET_DATE, chnl)
-        destintation = os.path.join(STORA, TARGET_DATE, chnl)
+        if not utils.check_storage(STORA):
+            logging.info("Script run prevented by storage_control.json. Script exiting.")
+            sys.exit("Script run prevented by storage_control.json. Script exiting.")
+        if not utils.check_storage(QNAP):
+            logging.info("Script run prevented by storage_control.json. Script exiting.")
+            sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
-        if not os.path.exists(source):
-            logging.warning("SKIPPING: Fault with source path: %s", source)
-            continue
+        for chnl in CHANNELS:
+            source = os.path.join(QNAP, "STORA", target, chnl)
+            destination = os.path.join(STORAGE, "STORA", target, chnl)
 
-        folders = [os.path.join(source, d) for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))]
+            if not os.path.exists(source):
+                logging.warning("SKIPPING: Fault with source path: %s", source)
+                continue
+            if not os.path.exists(destination):
+                os.makedirs(destination, mode=0o777, exist_ok=True)
 
-        logging.info("START MOVE_CONTENT.PY =============== %s", source)
-        print(f"Moving to destination: {source}")
+            folders = [
+                os.path.join(source, d) for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))
+            ]
 
-        task_args = [
-            (folder.rstrip("/"), destination.rstrip())
-            for folder in folders
-        ]
-        tic = time.perf_counter()
-        with Pool(processes=MAX_PARALLEL) as p:
-            p.starmap(rsync, task_args)
-        tac = time.perf_counter()
-        time_copy = (tac - tic) // 60
-        logging.info("* Rsync copy for channel %s was %s minutes", chnl, time_copy)
+            logging.info("Moving folders to destination: %s", source)
+            print(f"Moving to destination: {source}")
 
-    for chnl in NEWS:
-        source = os.path.join(QNAP, "STORA", TARGET_DATE, chnl)
-        destintation = os.path.join(STORA_BACKUP, TARGET_DATE, chnl)
+            task_args = [
+                (folder.rstrip("/"), destination.rstrip())
+                for folder in folders
+            ]
+            tic = time.perf_counter()
+            with Pool(processes=MAX_PARALLEL) as p:
+                p.starmap(rsync, task_args)
+            tac = time.perf_counter()
+            time_copy = (tac - tic) // 60
+            logging.info("* Rsync copy for channel %s/%s was %s minutes", target, chnl, time_copy)
 
-        if not os.path.exists(source):
-            logging.warning("SKIPPING: Fault with source path: %s", source)
-            continue
+        for chnl in NEWS:
+            source = os.path.join(QNAP, "STORA", target, chnl)
+            destination = os.path.join(STORAGE, "STORA_backup", target, chnl)
 
-        folders = [os.path.join(source, d) for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))]
+            if not os.path.exists(source):
+                logging.warning("SKIPPING: Fault with source path: %s", source)
+                continue
+            if not os.path.exists(destination):
+                os.makedirs(destination, mode=0o777, exist_ok=True)
 
-        logging.info("START MOVE_CONTENT.PY =============== %s", source)
-        print(f"Moving folders to destination: {source}")
+            folders = [
+                os.path.join(source, d) for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))
+            ]
 
-        task_args = [
-            (folder.rstrip("/"), destination.rstrip())
-            for folder in folders
-        ]
-        tic = time.perf_counter()
-        with Pool(processes=MAX_PARALLEL) as p:
-            p.starmap(rsync, task_args)
-        tac = time.perf_counter()
-        time_copy = (tac - tic) // 60
-        logging.info("* Rsync copy for channel %s was %s minutes", chnl, time_copy)
+            logging.info("Moving folders to destination: %s", source)
+            print(f"Moving folders to destination: {source}")
 
+            task_args = [
+                (folder.rstrip("/"), destination.rstrip())
+                for folder in folders
+            ]
+            tic = time.perf_counter()
+            with Pool(processes=MAX_PARALLEL) as p:
+                p.starmap(rsync, task_args)
+            tac = time.perf_counter()
+            time_copy = (tac - tic) // 60
+            logging.info("* Rsync copy for channel %s/%s was %s minutes", target, chnl, time_copy)
 
     logging.info("END MOVE_CONTENT.PY ============================================")
 
@@ -164,7 +178,7 @@ def rsync(fpath1, fpath2):
     files from STORA path
     '''
     logging.info("Targeting folder path: %s", fpath1)
-    if not os.path.exists(qnap_dest):
+    if not os.path.exists(fpath2):
         os.makedirs(fpath2, mode=0o777, exist_ok=True)
         logging.info("Creating new folder paths in QNAP-04: %s", fpath2)
     folder = os.path.split(fpath1)[-1]
@@ -176,7 +190,7 @@ def rsync(fpath1, fpath2):
         '--info=FLIST2,COPY2,PROGRESS2,NAME2,BACKUP2,STATS2',
         '--perms', '--chmod=a+rwx',
         '--no-owner', '--no-group', '--ignore-existing',
-        fpath1, qnap_dest.rstrip("/"),
+        fpath1, fpath2.rstrip("/"),
         f'--log-file={new_log}'
     ]
 

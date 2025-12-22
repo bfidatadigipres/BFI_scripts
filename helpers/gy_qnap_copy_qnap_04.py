@@ -97,7 +97,8 @@ NEWS = [
 def main():
     '''
     Iterate list of CHANNEL folders for yesterday
-    Copy to QNAP-04/<OPTIONAL>/YYYY/MM/DD path with delete of original
+    Copy to QNAP-04/STORA1_qnap_copy/<OPTIONAL>/YYYY/MM/DD
+    Retain original files in GY-DPI-NAS01 for local deletion
     '''
 
     logging.info("START MOVE_CONTENT.PY =============== %s", QNAP)
@@ -119,12 +120,17 @@ def main():
                 logging.warning("SKIPPING: Fault with source path: %s", source)
                 continue
             if not os.path.exists(destination):
-                os.makedirs(destination, mode=0o777, exist_ok=True)
+                try:
+                    os.makedirs(destination, mode=0o777, exist_ok=True)
+                except Exception as err:
+                    print(err)
+                    continue
 
             folders = [
                 os.path.join(source, d) for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))
             ]
-
+            if len(folders) == 0:
+                continue
             logging.info("Moving folders to destination: %s", source)
             print(f"Moving to destination: {source}")
 
@@ -147,11 +153,17 @@ def main():
                 logging.warning("SKIPPING: Fault with source path: %s", source)
                 continue
             if not os.path.exists(destination):
-                os.makedirs(destination, mode=0o777, exist_ok=True)
+                try:
+                    os.makedirs(destination, mode=0o777, exist_ok=True)
+                except Exception as err:
+                    print(err)
+                    continue
 
             folders = [
                 os.path.join(source, d) for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))
             ]
+            if len(folders) == 0:
+                continue
 
             logging.info("Moving folders to destination: %s", source)
             print(f"Moving folders to destination: {source}")

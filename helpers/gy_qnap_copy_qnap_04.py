@@ -47,7 +47,7 @@ LOG_PATH = os.environ.get("LOG_PATH")
 LOG = os.path.join(LOG_PATH, 'stora1_gy_qnap_copy_qnap_04.log')
 
 # THIS DATE LIST TO BE EDITED MANUALLY DEPENDING ON PERIOD
-TARGET_DATES = [
+TARGET_DATE = [
     "2025/12/17",
     "2025/12/18",
     "2025/12/19",
@@ -100,7 +100,7 @@ def main():
     Copy to QNAP-04/<OPTIONAL>/YYYY/MM/DD path with delete of original
     '''
 
-    logging.info("START MOVE_CONTENT.PY =============== %s", source)
+    logging.info("START MOVE_CONTENT.PY =============== %s", QNAP)
     for target in TARGET_DATE:
         logging.info("Target date selected for copy: %s", target)
 

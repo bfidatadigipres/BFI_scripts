@@ -1948,13 +1948,16 @@ def create_manifestation(
     elif len(actual_duration) > 0 and "-" in str(actual_duration):
         actual_data = actual_duration.split("-")
 
+    print(actual_data)
     if actual_data is not None:
-        actual_minutes = (int(actual_data[0]) * 60) + int(actual_data[1])
-        actual_seconds = (actual_minutes * 60) + int(actual_data[2])
-        print(f"** Actual minutes {actual_minutes} - actual seconds {actual_seconds}")
-        manifestation_values.append({"runtime": actual_minutes})
-        manifestation_values.append({"runtime_seconds": actual_seconds})
-
+        if len(actual_data) == 3:
+            actual_minutes = (int(actual_data[0]) * 60) + int(actual_data[1])
+            actual_seconds = (actual_minutes * 60) + int(actual_data[2])
+            print(f"** Actual minutes {actual_minutes} - actual seconds {actual_seconds}")
+            manifestation_values.append({"runtime": actual_minutes})
+            manifestation_values.append({"runtime_seconds": actual_seconds})
+        else:
+            logger.warning("Problem extracting hh:mm:ss from CSV: %s", actual_duration)
     else:
         duration_mins = epg_dict["duration_total"]
         if duration_mins.isdigit():

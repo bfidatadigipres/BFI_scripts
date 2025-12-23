@@ -74,7 +74,7 @@ ACCEPTED_EXT: Final = [
     "pdf",
     "txt",
     "vtt",
-    "ttml"
+    "ttml",
 ]
 
 
@@ -116,7 +116,7 @@ def accepted_file_type(ext):
         "csv": "csv",
         "pdf": "pdf",
         "txt": "txt",
-        "ttml": "ttml"
+        "ttml": "ttml",
     }
 
     ext = ext.lower()
@@ -302,7 +302,7 @@ def sort_ext(ext):
             "rtf",
             "csv",
             "txt",
-            "ttml"
+            "ttml",
         ],
     }
 

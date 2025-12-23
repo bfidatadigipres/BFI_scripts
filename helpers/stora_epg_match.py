@@ -103,6 +103,7 @@ CHANNELS = {
     ],
 }
 
+
 def split_title(title_article):
     """
     An exception needs adding for "Die " as German language content
@@ -161,9 +162,10 @@ def split_title(title_article):
 
     return title_article, ""
 
+
 def get_stora_data(fullpath: str):
     # get channel name + broadcast_channel
-    channel_data = fullpath.split('/')[-2]
+    channel_data = fullpath.split("/")[-2]
     print(channel_data)
     for key, val in CHANNELS.items():
         if f"/{key}/" in fullpath:
@@ -173,30 +175,30 @@ def get_stora_data(fullpath: str):
                 print(channel)
             except (IndexError, TypeError, KeyError) as err:
                 print(err)
-    with open(fullpath, 'r') as file:
+    with open(fullpath, "r") as file:
         info_json = json.load(file)
-        #print(info_json.get('item')[0].keys())
-        date_time = info_json.get('item')[0]['dateTime']
-        date = datetime.fromisoformat(date_time[:-1]).strftime('%Y-%m-%d')
+        # print(info_json.get('item')[0].keys())
+        date_time = info_json.get("item")[0]["dateTime"]
+        date = datetime.fromisoformat(date_time[:-1]).strftime("%Y-%m-%d")
         time = datetime.fromisoformat(date_time[:-1]) + timedelta(hours=1)
         time_str = time.strftime("%H:%M:%S")
-        title = info_json.get('item')[0]['title']
-        duration =  info_json.get('item')[0]['duration']
-        asset_title = info_json.get('item')[0]['asset'].get('title')
+        title = info_json.get("item")[0]["title"]
+        duration = info_json.get("item")[0]["duration"]
+        asset_title = info_json.get("item")[0]["asset"].get("title")
         if asset_title is None:
-             asset_title = ''
-        asset_id = info_json.get('item')[0].get('asset').get('id')
+            asset_title = ""
+        asset_id = info_json.get("item")[0].get("asset").get("id")
         certification = info_json["item"][0].get("certification").get("bbfc")
         if certification is None:
-          certification = ''
+            certification = ""
         group = info_json["item"][0].get("meta").get("group")
         if group is None:
-           group = ''
+            group = ""
         group = str(group)
         attribute = info_json["item"][0].get("attribute")
         asset_attribute = info_json["item"][0].get("asset").get("attribute")
         if asset_attribute is None:
-           asset_attribute = []
+            asset_attribute = []
         list_attributes = attribute + asset_attribute + [group] + [certification]
 
         if "bbc" in fullpath or "cbeebies" in fullpath or "cbbc" in fullpath:
@@ -249,48 +251,71 @@ def get_stora_data(fullpath: str):
             print(f"Broadcast company set to Together TV in {fullpath}")
         else:
             broadcast_company = None
-    return date, time_str, title, asset_title, channel, asset_id, duration, certification, list_attributes, broadcast_company
-
+    return (
+        date,
+        time_str,
+        title,
+        asset_title,
+        channel,
+        asset_id,
+        duration,
+        certification,
+        list_attributes,
+        broadcast_company,
+    )
 
 
 if __name__ == "__main__":
-    #list_path = sys.argv[1]
-    #list_of_files = glob.glob(list_path)
+    # list_path = sys.argv[1]
+    # list_of_files = glob.glob(list_path)
     count = 0
     full_match_results = []
     path = ""
-    #for path in list_of_files:
+    # for path in list_of_files:
     print(f"Processing row {path}")
-    date, time, json_title, asset_title, channel, asset_id, duration, certification, list_attributes, broadcast_company = get_stora_data(path)
+    (
+        date,
+        time,
+        json_title,
+        asset_title,
+        channel,
+        asset_id,
+        duration,
+        certification,
+        list_attributes,
+        broadcast_company,
+    ) = get_stora_data(path)
     print(f"Date: {date}")
     print(f"time: {time}")
     print(f"certs :  {certification}")
     if asset_title.title().startswith("Generic"):
-            print(asset_title)
-            title_for_split = json_title
-            generic = True
+        print(asset_title)
+        title_for_split = json_title
+        generic = True
     elif asset_title == "":
-            title_for_split = json_title
+        title_for_split = json_title
     else:
-         title_bare = "".join(str for str in asset_title if str.isalnum())
-         if title_bare.isnumeric():
-             title_for_split = json_title
-         else:
-             title_for_split = asset_title
+        title_bare = "".join(str for str in asset_title if str.isalnum())
+        if title_bare.isnumeric():
+            title_for_split = json_title
+        else:
+            title_for_split = asset_title
     title, title_article = split_title(title_for_split)
     title = title.replace("\xe2\x80\x99", "'").replace("\xe2'\x80\x93", "-")
 
     if title == "Close":
-            print(f"Title has 'Close' as name: {path}")
-            for key, val in CHANNELS.items():
-                if f"/{key}/" in path:
-                    print(f"Key that's in fullpath: {key}")
-                    title = val[1]
-                    print(f"Replacement title for 'Close': {title}")
-#
-    search =  f'grouping.lref="398775" and broadcast_channel = "{channel}" and transmission_date = "{date}" and transmission_start_time = "{time}"'
+        print(f"Title has 'Close' as name: {path}")
+        for key, val in CHANNELS.items():
+            if f"/{key}/" in path:
+                print(f"Key that's in fullpath: {key}")
+                title = val[1]
+                print(f"Replacement title for 'Close': {title}")
+    #
+    search = f'grouping.lref="398775" and broadcast_channel = "{channel}" and transmission_date = "{date}" and transmission_start_time = "{time}"'
     print(search)
-    hit, record = adlib.retrieve_record(os.environ.get("CID_API4"), "manifestations", search, "1")
+    hit, record = adlib.retrieve_record(
+        os.environ.get("CID_API4"), "manifestations", search, "1"
+    )
     if record is None:
         print("orginal search failed, trying new search with different title")
     priref = adlib.retrieve_field_name(record[0], "priref")
@@ -301,34 +326,27 @@ if __name__ == "__main__":
     print(f"title.article: {arts_title}")
     duration_secs = str(int(duration) * 60)
     if hit >= 1:
-           count+=1
-           full_match_results.append(
-                {
-                  "priref": priref[0],
-                  "title.article": title_article,
-                  "title": json_title,
-                  "title.language": "English",
-                  "title.type": '"05_MAIN"',
-                  "title.article": f'{arts_title}',
-                  "title": title_record,
-                  "title.language": '"English"',
-                  "title.type": '"35_ALTERNATIVE"',
-                  "alternative_number.type": '"PATV asset id"',
-                  "alternative_number": asset_id,
-                  "utb.fieldname": '"EPG attributes"',
-                  "ubt.content": ", ".join(str(x) for x in list_attributes if len(x) > 0)
-                }
-            )
+        count += 1
+        full_match_results.append(
+            {
+                "priref": priref[0],
+                "title.article": title_article,
+                "title": json_title,
+                "title.language": "English",
+                "title.type": '"05_MAIN"',
+                "title.article": f"{arts_title}",
+                "title": title_record,
+                "title.language": '"English"',
+                "title.type": '"35_ALTERNATIVE"',
+                "alternative_number.type": '"PATV asset id"',
+                "alternative_number": asset_id,
+                "utb.fieldname": '"EPG attributes"',
+                "ubt.content": ", ".join(str(x) for x in list_attributes if len(x) > 0),
+            }
+        )
     print(count)
-    #print(f"Total files processed: {len(list_of_files)}")
-    #print(f"file processed percentage: {count}/ {len(list_of_files)} --------> {count / len(list_of_files)}")
-    #print(f"miss rate: {len(list_of_files) - count}/{len(list_of_files)}  ----->  {(len(list_of_files) - count)/ len(list_of_files)}")
+    # print(f"Total files processed: {len(list_of_files)}")
+    # print(f"file processed percentage: {count}/ {len(list_of_files)} --------> {count / len(list_of_files)}")
+    # print(f"miss rate: {len(list_of_files) - count}/{len(list_of_files)}  ----->  {(len(list_of_files) - count)/ len(list_of_files)}")
     df = pd.DataFrame(full_match_results)
     print(df)
-
-
-
- 
-
-
-

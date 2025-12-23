@@ -568,26 +568,26 @@ def fetch_lines(fullpath, lines):
 
         # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
         title, title_article = split_title(title_for_split)
-        title = title.replace("\xe2\x80\x99", "'")
+        title = title.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
 
         description = []
         try:
             d_short = lines["item"][0]["summary"]["short"]
-            d_short = d_short.replace("\xe2\x80\x99", "'")
+            d_short = d_short.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
             epg_dict["d_short"] = d_short
             description.append(d_short)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_medium = lines["item"][0]["summary"]["medium"]
-            d_medium = d_medium.replace("\xe2\x80\x99", "'")
+            d_medium = d_medium.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
             epg_dict["d_medium"] = d_medium
             description.append(d_medium)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_long = lines["item"][0]["summary"]["long"]
-            d_long = d_long.replace("\xe2\x80\x99", "'")
+            d_long = d_long.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
             epg_dict["d_long"] = d_long
             description.append(d_long)
         except (IndexError, KeyError, TypeError) as err:

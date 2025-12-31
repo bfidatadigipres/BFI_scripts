@@ -186,7 +186,9 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
         if bool is True:
             item_list.append(priref)
         else:
-            LOGGER.warning("Skipping: Priref %s was not confirmed as Item record type", priref)
+            LOGGER.warning(
+                "Skipping: Priref %s was not confirmed as Item record type", priref
+            )
     return item_list
 
 
@@ -420,12 +422,15 @@ def create_people_record(client_name):
     except (KeyError, IndexError, TypeError) as err:
         LOGGER.exception(
             "cid_people_record(): Unable to check for person record with client name: %s\n%s",
-            client_name, err
+            client_name,
+            err,
         )
     if hits > 0:
         try:
             priref = adlib.retrieve_field_name(result[0], "priref")[0]
-            LOGGER.info("Existing people record found for '%s': %s", client_name, priref)
+            LOGGER.info(
+                "Existing people record found for '%s': %s", client_name, priref
+            )
             return priref
         except (KeyError, IndexError) as err:
             print(err)

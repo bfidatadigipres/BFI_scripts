@@ -93,7 +93,7 @@ FILE_TYPES = {
     "JFIF": ["jfif", "I"],
     "PKGF": ["pkgf", "D"],
     "SVG": ["svg", "I"],
-    "KEY": ["key", "SL"]
+    "KEY": ["key", "SL"],
 }
 
 
@@ -122,13 +122,15 @@ def get_cid_records(status):
         "dimension.free",
         "language",
         "access_category.notes",
-        "file_type"
+        "file_type",
     ]
 
     hits, records = adlib.retrieve_record(
         CID_API, "archivescatalogue", search, 0, fields
     )
-    LOGGER.info("get_cid_records(): Number of matching Archive Item records found:\n%s", hits)
+    LOGGER.info(
+        "get_cid_records(): Number of matching Archive Item records found:\n%s", hits
+    )
     if hits > 0:
         return records
     return None
@@ -145,7 +147,11 @@ def fetch_matching_folder(ob_num, ext):
             if directory.startswith(f"{ob_num}_"):
                 print("++++++++++++++++++++++++++ MATCH! +++++++++++++++++++++++++")
                 dpath = os.path.join(root, directory)
-                file = [x for x in os.listdir(dpath) if os.path.isfile(os.path.join(dpath, x))]
+                file = [
+                    x
+                    for x in os.listdir(dpath)
+                    if os.path.isfile(os.path.join(dpath, x))
+                ]
                 fpath = os.path.join(root, directory, file[0])
                 print(fpath, dpath)
                 return fpath, dpath
@@ -185,7 +191,7 @@ def create_metadata_csv(mdata: dict, fname: str) -> bool:
         "dc.source",
         "dc.language",
         "dc.rights",
-        "dc.subject"
+        "dc.subject",
     ]
 
     mdata_list = [f"objects/{fname}"]
@@ -288,7 +294,9 @@ def main():
             mdata_dct = iterate_record(rec, status)
             print(f"Metadata dictionary extracted from CID/record:\n{mdata_dct}")
             if mdata_dct is None:
-                LOGGER.warning("Skipping. Failed to extract metadata for record:\n%s",rec)
+                LOGGER.warning(
+                    "Skipping. Failed to extract metadata for record:\n%s", rec
+                )
                 continue
             ob_num = mdata_dct.get("object_number")
             priref = mdata_dct.get("priref")
@@ -307,7 +315,8 @@ def main():
             if not success:
                 LOGGER.warning(
                     "Dublin core metadata enrichment failed for: %s / %s",
-                    file, mdata_dct.get("priref")
+                    file,
+                    mdata_dct.get("priref"),
                 )
             else:
                 LOGGER.info("Dublin core metadata enriched: %s", file)
@@ -328,7 +337,8 @@ def main():
                 if sftp_files is None:
                     LOGGER.warning(
                         "SFTP PUT failed for folder: %s %s",
-                        mdata_dct.get("object_number"), file_path
+                        mdata_dct.get("object_number"),
+                        file_path,
                     )
                     continue
                 if file not in sftp_files:
@@ -336,9 +346,13 @@ def main():
                         "Problem with files put in folder %s: %s", file, sftp_files
                     )
                     continue
-                LOGGER.info("SFTP Put successful: %s moved to Archivematica", sftp_files)
+                LOGGER.info(
+                    "SFTP Put successful: %s moved to Archivematica", sftp_files
+                )
             elif sftp is True:
-                LOGGER.info("*** File already uploaded to SFTP, following potential failed attempt.")
+                LOGGER.info(
+                    "*** File already uploaded to SFTP, following potential failed attempt."
+                )
 
             # MOVING ITEM TO AIP
             LOGGER.info("Starting transfer of SFTP item to Archivematica AIP")
@@ -358,16 +372,20 @@ def main():
                 "Moving SFTP directory %s to Archivematica as %s - with slug %s",
                 am_path,
                 processing_config,
-                parent_ob_num
+                parent_ob_num,
             )
             response = am_utils.send_as_package(
-                am_path, top_level_folder, parent_ob_num, priref, processing_config, True
+                am_path,
+                top_level_folder,
+                parent_ob_num,
+                priref,
+                processing_config,
+                True,
             )
             LOGGER.info("Package send response: %s", response)
             if "id" not in response:
                 LOGGER.warning(
-                    "Possible failure for Archivematica creation: %s",
-                    response
+                    "Possible failure for Archivematica creation: %s", response
                 )
                 continue
             transfer_uuid = sip_uuid = aip_uuid = ""
@@ -408,7 +426,7 @@ def main():
             else:
                 LOGGER.warning(
                     "The AIP update to record %s failed - please append manually!",
-                    priref
+                    priref,
                 )
                 LOGGER.warning(aip_uuid)
 
@@ -430,7 +448,9 @@ def iterate_record(rec: list[dict], status: str) -> dict:
         ftype = adlib.retrieve_field_name(rec, "file_type")[0]
         LOGGER.info("** Process Item Archive record %s", priref)
     except (KeyError, TypeError, IndexError) as err:
-        LOGGER.warning("Skipping this record as Priref could not be acquired:\n%s\n%s", rec, err)
+        LOGGER.warning(
+            "Skipping this record as Priref could not be acquired:\n%s\n%s", rec, err
+        )
         return None
 
     ext = FILE_TYPES.get(ftype)[0]
@@ -545,17 +565,13 @@ def update_alternative_number(uuid: str, priref: str) -> None:
     """
     dct = [
         {"alternative_number": uuid},
-        {"alternative_number.type": "Archivematica AIP UUID"}
+        {"alternative_number.type": "Archivematica AIP UUID"},
     ]
 
-    record_xml = adlib.create_record_data(
-        CID_API, "archivescatalogue", priref, dct
-    )
+    record_xml = adlib.create_record_data(CID_API, "archivescatalogue", priref, dct)
     print(record_xml)
     try:
-        rec = adlib.post(
-            CID_API, record_xml, "archivescatalogue", "updaterecord"
-        )
+        rec = adlib.post(CID_API, record_xml, "archivescatalogue", "updaterecord")
         if rec is None:
             LOGGER.warning("Failed to update record: %s\n%s", priref, record_xml)
             return None

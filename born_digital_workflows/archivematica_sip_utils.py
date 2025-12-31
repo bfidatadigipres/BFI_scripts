@@ -306,7 +306,9 @@ def check_sftp_status(fpath, top_folder):
     return content_list
 
 
-def send_as_package(fpath, top_folder, atom_slug, item_priref, process_config, auto_approve_arg):
+def send_as_package(
+    fpath, top_folder, atom_slug, item_priref, process_config, auto_approve_arg
+):
     """
     Send a package using v2 beta package, subject to change!
     Args: fpath from top level no trailing /, AToM slug if known,
@@ -318,7 +320,9 @@ def send_as_package(fpath, top_folder, atom_slug, item_priref, process_config, a
     # Build correct folder paths
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package")
     folder_path = os.path.basename(fpath)
-    path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{top_folder}/{fpath}"
+    path_str = (
+        f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{top_folder}/{fpath}"
+    )
     print(path_str)
     encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
 

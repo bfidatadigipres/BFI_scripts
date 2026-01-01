@@ -3,8 +3,7 @@
 Utility script for API POST/GETs from Archivematica
 SFTP and Archivemtica Storage Service API
 
-Used for born digital workflows for OSH Project 3:
-New Voices in the Archive
+Used for born digital workflow:
 special_collections_document_transfers_osh.py
 
 2025

@@ -17,18 +17,18 @@ from urllib.parse import urlencode
 import paramiko
 import requests
 
-TS_UUID = os.environ.get("AM_TS_UUID") # Archivematica Transfer Storage address uuid
-SFTP_USR = os.environ.get("AM_SFTP_US") # Transfer Storage user
-SFTP_KEY = os.environ.get("AM_SFTP_PW") # Transfer Storage password
-ARCH_URL = os.environ.get("AM_URL") # BFI Archivematica instance url
-API_NAME = os.environ.get("AM_API") # Authorisation user name
-API_KEY = os.environ.get("AM_KEY") # Authorisation user key
-SS_PIPE = os.environ.get("AM_SS_UUID") # Archivematica Storage Service uuid
-SS_NAME = os.environ.get("AMSS_USR") # Storage Service user name
-SS_KEY = os.environ.get("AMSS_KEY") # Storage service user key
-ATOM_URL = os.environ.get("ATOM_URL") # AtoM API URL for queries
-ATOM_KEY = os.environ.get("ATOM_KEY_META") # AtoM API key
-ATOM_AUTH = os.environ.get("ATOM_AUTH") # AtoM autorisation
+TS_UUID = os.environ.get("AM_TS_UUID")  # Archivematica Transfer Storage address uuid
+SFTP_USR = os.environ.get("AM_SFTP_US")  # Transfer Storage user
+SFTP_KEY = os.environ.get("AM_SFTP_PW")  # Transfer Storage password
+ARCH_URL = os.environ.get("AM_URL")  # BFI Archivematica instance url
+API_NAME = os.environ.get("AM_API")  # Authorisation user name
+API_KEY = os.environ.get("AM_KEY")  # Authorisation user key
+SS_PIPE = os.environ.get("AM_SS_UUID")  # Archivematica Storage Service uuid
+SS_NAME = os.environ.get("AMSS_USR")  # Storage Service user name
+SS_KEY = os.environ.get("AMSS_KEY")  # Storage service user key
+ATOM_URL = os.environ.get("ATOM_URL")  # AtoM API URL for queries
+ATOM_KEY = os.environ.get("ATOM_KEY_META")  # AtoM API key
+ATOM_AUTH = os.environ.get("ATOM_AUTH")  # AtoM autorisation
 
 # Header dicts
 HEADER = {
@@ -45,13 +45,7 @@ SS_HEADER = {
     "Content-Type": "application/json",
 }
 
-if (
-    not ARCH_URL
-    or not API_NAME
-    or not API_KEY
-    or not SFTP_USR
-    or not SFTP_KEY
-):
+if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_USR or not SFTP_KEY:
     sys.exit(
         "Error: Please set AM_URL, AM_API (username), and AM_KEY (API key) environment variables."
     )
@@ -83,13 +77,13 @@ def sftp_listdir(rpath):
 
 
 def send_to_sftp(fpath, top_folder):
-    """    
+    """
     Arg fpath must be to file level (not folder)
     Supply arg top_folder without trailing '/'
     Top folder represents the first folder sitting
     below SFTP 'API_Uploads'.
     Folder/files to be formatted using snake_case preferably
-    
+
     Works through nested source paths ensuring all folder
     structure passed through to SFTP folder 'API_Uploads'
     Creates 'metadata/' folder containing metadata.csv
@@ -539,7 +533,7 @@ def get_slug_match(slug_match):
     Handles retrieval of all AtoM information objects
     then builds list of slugs and attempts to match to
     argument 'slug_match'.
-    
+
     Slug must be formatted to match in lowercase and
     '-' instead of white spaces.
     This function has not been fully tested.
@@ -677,7 +671,7 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     Arg source_mdata_path should be from top level folder
     to metadata only, not absolute path. Top level folder
     is the first folder in sftp root path after 'API_Uploads'
-    
+
     Where metadata reingest occurs, set copy metadata
     call to requests. Path is to metadata.csv level
     for the given item's correlating aip uuid

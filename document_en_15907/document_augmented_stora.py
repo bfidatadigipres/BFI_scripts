@@ -43,6 +43,7 @@ from series_retrieve import check_id, retrieve
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
+from helpers import stora_helper
 
 # Global variables
 STORAGE = os.environ["STORA_PATH"]
@@ -222,10 +223,13 @@ def look_up_series_list(alternative_num):
     """
     Check if series requires annual series creation
     """
+
+    if alternative_num.strip() == "2af14f77-ef15-517c-a463-04dc0a7c81ad":
+        return "BBC News"
     with open(SERIES_LIST, "r") as file:
         slist = json.load(file)
         if alternative_num in slist:
-            return slist[alternative_num]
+            return True
     return False
 
 
@@ -497,6 +501,10 @@ def csv_retrieve(fullpath):
         logger.warning("No info.csv file found. Skipping CSV retrieve")
         print("No info.csv file found. Skipping CSV retrieve")
         return None
+    if os.stat(fullpath).st_size == 0:
+        logger.warning("Empty info.csv file found. Skipping CSV retrieve")
+        print("No entry in info.csv. Skipping CSV retrieve")
+        return None
 
     print("**** Check CSV reading correctly ****")
     with open(fullpath, "r", encoding="utf-8") as inf:
@@ -523,7 +531,7 @@ def csv_retrieve(fullpath):
             csv_dump = f"{csv_chan}, {csv_title}, {csv_desc}, Date start: {csv_date}, Time: {csv_time}, \
                          Duration: {csv_dur}, Actual duration: {csv_act}"
 
-    return (csv_desc, csv_dump)
+    return (csv_desc, csv_act, csv_dump)
 
 
 def fetch_lines(fullpath, lines):
@@ -560,26 +568,28 @@ def fetch_lines(fullpath, lines):
 
         # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
         title, title_article = split_title(title_for_split)
-        title = title.replace("\xe2\x80\x99", "'")
+        title = title.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
 
         description = []
         try:
             d_short = lines["item"][0]["summary"]["short"]
-            d_short = d_short.replace("\xe2\x80\x99", "'")
+            d_short = d_short.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
             epg_dict["d_short"] = d_short
             description.append(d_short)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_medium = lines["item"][0]["summary"]["medium"]
-            d_medium = d_medium.replace("\xe2\x80\x99", "'")
+            d_medium = d_medium.replace("\xe2\x80\x99", "'").replace(
+                "\xe2\x80\x93", "-"
+            )
             epg_dict["d_medium"] = d_medium
             description.append(d_medium)
         except (IndexError, KeyError, TypeError) as err:
             print(err)
         try:
             d_long = lines["item"][0]["summary"]["long"]
-            d_long = d_long.replace("\xe2\x80\x99", "'")
+            d_long = d_long.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
             epg_dict["d_long"] = d_long
             description.append(d_long)
         except (IndexError, KeyError, TypeError) as err:
@@ -914,6 +924,9 @@ def main():
             sys.exit("* Cannot establish CID session, exiting script")
 
         root, file = os.path.split(fullpath)
+        if not os.path.exists(os.path.join(root, "stream.mpeg2.ts")):
+            logger.info("Skipping: No stream file found in path: %s", root)
+            continue
         if not os.path.exists(fullpath):
             continue
         if not file.endswith(".json") or not file.startswith("info_"):
@@ -949,13 +962,22 @@ def main():
         if csv_data:
             try:
                 csv_description = csv_data[0]
+                csv_actual_duration = csv_data[1]
                 print(f"** CSV DESCRIPTION: {csv_description}")
-                csv_dump = csv_data[1]
+                print(f"** CSV ACTUAL DURATION: {csv_actual_duration}")
+                csv_dump = csv_data[2]
                 print(f"** CSV DATA FOR UTB: {csv_dump}")
-            except (IndexError, TypeError, KeyError):
+            except (IndexError, TypeError, KeyError) as err:
                 csv_data = []
                 csv_description = ""
+                csv_actual_duration = ""
                 csv_dump = ""
+                print(err)
+        else:
+            csv_data = []
+            csv_description = ""
+            csv_actual_duration = ""
+            csv_dump = ""
 
         # Get defaults as lists of dictionary pairs
         rec_def, ser_def, work_def, work_res_def, man_def, item_def = build_defaults(
@@ -995,7 +1017,7 @@ def main():
         # Check file health with policy verification - skip if broken MPEG file
         acquired_filename = os.path.join(root, "stream.mpeg2.ts")
         print(f"Path for programme stream content: {acquired_filename}")
-        '''
+        """
         success, response = utils.get_mediaconch(acquired_filename, MPEG_TS_POLICY)
         if success is False:
             # Fix 'BROKEN' to folder name, update failure CSV
@@ -1009,7 +1031,8 @@ def main():
             continue
         logger.info("MPEG-TS passed MediaConch check: %s", success)
         print(response)
-        '''
+        """
+
         # Make news channels new works for all live programming
         if channel in NEWS_CHANNELS:
             new_work = True
@@ -1025,11 +1048,18 @@ def main():
                 print("Series ID exists, trying to retrieve series data from CID")
                 # Check if series already in CID and/or series_cache, if not generate series_cache json
                 series_chck = look_up_series_list(epg_dict["series_id"])
-                if series_chck is False:
+                month = ""
+                if series_chck == "BBC News":
+                    bbc_split = True
+                    month = root.split("/")[-4]
+                    series_id = f"{YEAR_PATH}_{month}_{epg_dict['series_id']}"
+                elif series_chck is False:
                     series_id = epg_dict["series_id"]
-                else:
+                    bbc_split = False
+                elif series_chck is True:
                     series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
                     logger.info("Series found for annual refresh: %s", series_chck)
+                    bbc_split = False
 
                 series_return = cid_series_query(series_id)
                 if series_return[0] is None:
@@ -1048,7 +1078,13 @@ def main():
                     )
                     # Launch create series function
                     series_work_id = create_series(
-                        fullpath, ser_def, work_res_def, epg_dict, series_id
+                        fullpath,
+                        ser_def,
+                        work_res_def,
+                        epg_dict,
+                        series_id,
+                        month,
+                        bbc_split,
                     )
                     if not series_work_id:
                         logger.warning(
@@ -1087,7 +1123,7 @@ def main():
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
         manifestation_priref = create_manifestation(
-            fullpath, work_priref, manifestation_values, epg_dict
+            fullpath, work_priref, csv_actual_duration, manifestation_values, epg_dict
         )
 
         if not manifestation_priref:
@@ -1096,7 +1132,7 @@ def main():
             )
             if new_work:
                 print(f"*** Manual clean up needed for Work {work_priref}")
-            continue
+            sys.exit("Exiting for failure to create new manifestations")
 
         # Check if subtitles are populated
         old_webvtt = os.path.join(root, "subtitles.vtt")
@@ -1204,14 +1240,19 @@ def main():
                     new_vtt,
                     err,
                 )
-
     logger.info(
         "========== STORA documentation script END ===================================================\n"
     )
 
 
 def create_series(
-    fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id
+    fullpath,
+    series_work_defaults,
+    work_restricted_def,
+    epg_dict,
+    series_id,
+    month,
+    bbc_flag,
 ):
     """
     Call function series_check(series_id) and build all data needed
@@ -1318,7 +1359,10 @@ def create_series(
 
     # Add series title and article
     if new_series_list is True:
-        series_title = f"{series_title} ({YEAR_PATH})"
+        if bbc_flag is False:
+            series_title = f"{series_title} ({YEAR_PATH})"
+        elif bbc_flag is True:
+            series_title = f"{series_title} ({YEAR_PATH}/{month})"
     series_work_values.append({"title": series_title})
     series_work_values.append({"nfa_category": nfa_category})
     try:
@@ -1336,19 +1380,32 @@ def create_series(
     if new_series_list is True:
         if len(series_description) > 0:
             try:
-                series_work_values.append(
-                    {
-                        "description": f"Specific serial work created for {YEAR_PATH}. {series_description}"
-                    }
-                )
+                if bbc_flag is True:
+                    series_work_values.append(
+                        {
+                            "description": f"Specific serial work created for {YEAR_PATH}/{month}. {series_description}"
+                        }
+                    )
+                    series_work_values.append(
+                        {
+                            "production.notes": "This is a series record created for one month of this programme."
+                        }
+                    )
+
+                else:
+                    series_work_values.append(
+                        {
+                            "description": f"Specific serial work created for {YEAR_PATH}. {series_description}"
+                        }
+                    )
+                    series_work_values.append(
+                        {
+                            "production.notes": "This is a series record created for one year of this programme."
+                        }
+                    )
                 series_work_values.append({"description.type": "Synopsis"})
                 series_work_values.append(
                     {"description.date": str(datetime.datetime.now())[:10]}
-                )
-                series_work_values.append(
-                    {
-                        "production.notes": "This is a series record created for one year of this programme."
-                    }
                 )
             except (IndexError, TypeError, KeyError):
                 print(
@@ -1540,6 +1597,15 @@ def build_defaults(epg_dict):
         else:
             bst_date = bst_data[0]
             bst_time = bst_data[1]
+    if epg_dict["duration_total"] == "":
+        epg_dict["duration_total"] = "0"
+    # getting stoptime
+    end_time = ""
+    if "duration_total" in epg_dict:
+        end_time = stora_helper.calculate_transmission_stoptime(
+            epg_dict["duration_total"], bst_time
+        )
+        print(f"*** END TIME: {end_time}")
 
     record = [
         {"input.name": "datadigipres"},
@@ -1581,7 +1647,6 @@ def build_defaults(epg_dict):
         {"worklevel_type": "MONOGRAPHIC"},
         {"work_type": epg_dict["work_type"]},
         {"description.type.lref": "100298"},
-        # {"title_date_start": epg_dict["title_date_start"]},
         {"title_date_start": bst_date},
         {"title_date.type": "04_T"},
         {"nfa_category": epg_dict["nfa_category"]},
@@ -1605,10 +1670,10 @@ def build_defaults(epg_dict):
         {"format_high_level": "Video - Digital"},
         {"colour_manifestation": epg_dict["colour_manifestation"]},
         {"sound_manifestation": "SOUN"},
-        # {"transmission_date": epg_dict["title_date_start"]},
+        {"transmission_duration": epg_dict["duration_total"]},
         {"transmission_date": bst_date},
-        # {"transmission_start_time": epg_dict["time"]},
         {"transmission_start_time": bst_time},
+        {"transmission_end_time": end_time},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": epg_dict["channel"]},
         {"transmission_coverage": "DIT"},
@@ -1864,7 +1929,9 @@ def create_work(
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict):
+def create_manifestation(
+    fullpath, work_priref, actual_duration, manifestation_defaults, epg_dict
+):
     """
     Create a manifestation record,
     linked to work_priref
@@ -1887,11 +1954,32 @@ def create_manifestation(fullpath, work_priref, manifestation_defaults, epg_dict
         manifestation_values.append(
             {"broadcast_company.lref": epg_dict["broadcast_company"]}
         )
-    if "duration_total" in epg_dict:
-        manifestation_values.append(
-            {"transmission_duration": epg_dict["duration_total"]}
-        )
-        manifestation_values.append({"runtime": epg_dict["duration_total"]})
+
+    # MAKE SURE RUNTIME REFLECTS ACTUAL DURATIONS / MINS & SECS
+    actual_data = None
+    if len(actual_duration) > 0 and ":" in str(actual_duration):
+        actual_data = actual_duration.split(":")
+    elif len(actual_duration) > 0 and "-" in str(actual_duration):
+        actual_data = actual_duration.split("-")
+
+    print(actual_data)
+    if actual_data is not None:
+        if len(actual_data) == 3:
+            actual_minutes = (int(actual_data[0]) * 60) + int(actual_data[1])
+            actual_seconds = (actual_minutes * 60) + int(actual_data[2])
+            print(
+                f"** Actual minutes {actual_minutes} - actual seconds {actual_seconds}"
+            )
+            manifestation_values.append({"runtime": actual_minutes})
+            manifestation_values.append({"runtime_seconds": actual_seconds})
+        else:
+            logger.warning("Problem extracting hh:mm:ss from CSV: %s", actual_duration)
+    else:
+        duration_mins = epg_dict["duration_total"]
+        if duration_mins.isdigit():
+            duration_secs = str(int(duration_mins) * 60)
+            manifestation_values.append({"runtime": epg_dict["duration_total"]})
+            manifestation_values.append({"runtime_seconds": duration_secs})
 
     man_values_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values

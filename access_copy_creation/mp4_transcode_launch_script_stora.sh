@@ -24,8 +24,20 @@ function control {
     fi
 }
 
+function pauseScript {
+    boole=$(cat "${CONTROL_JSON}" | grep "pause_script" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately: MP4_transcode scripts (STORA)" >> "${LOG}"
+      echo 'Control json requests script exit immediately: MP4_transcode scripts (STORA)'
+      exit 0
+    fi
+}
+
 # Control check inserted into code
 control
+
+# pause scripts check inserted into code
+pauseScript
 
 # replace list to ensure clean data
 echo "" > "${dump_to}"
@@ -40,6 +52,6 @@ for entry in "${transcode_path1}"*; do
 done
 
 echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
-grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" --timeout 86400 "$PYENV311 $python_script {}"
+grep -a '/mnt/' "${dump_to}" | shuf -n 100 | parallel --jobs "$job_num" --timeout 86400 "$PYENV311 $python_script {}"
 
 echo " ========================= SHELL END - QNAP04 STORA ========================== $date_FULL" >> "${log_path}"

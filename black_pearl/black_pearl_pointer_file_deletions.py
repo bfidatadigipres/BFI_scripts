@@ -212,9 +212,11 @@ def main():
             "No pointer file supplied at script launch. Please try launching again."
         )
     if not utils.check_storage(MP4_ACCESS):
-        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    if not utils.check_control("black_pearl"):
+    if not utils.check_control("black_pearl") or not utils.check_control(
+        "pause_scripts"
+    ):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
@@ -357,17 +359,17 @@ def main():
                 print("Could not build MP4 large image file paths for deletion")
                 image_path = None
 
-            if os.path.exists(mp4_path):
+            if mp4_path and os.path.exists(mp4_path):
                 LOGGER.info("** DELETED: Associated MP4 found: %s", mp4_path)
                 print(f"Associated MP4 found, deleting now: {mp4_path}.\n")
                 os.remove(mp4_path)
 
-            if os.path.exists(thumb_path):
+            if thumb_path and os.path.exists(thumb_path):
                 LOGGER.info("** DELETED: Associated MP4 found: %s", thumb_path)
                 print(f"Associated MP4 found, deleting now: {thumb_path}.\n")
                 os.remove(thumb_path)
 
-            if os.path.exists(image_path):
+            if image_path and os.path.exists(image_path):
                 LOGGER.info("** DELETED: Associated MP4 found: %s", image_path)
                 print(f"Associated MP4 found, deleting now: {image_path}.\n")
                 os.remove(image_path)

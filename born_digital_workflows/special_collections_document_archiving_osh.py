@@ -236,11 +236,14 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
     Create dictionary for Image
     metadata from Exif data source
     """
+    file_type = mime = ""
+
     ext = os.path.splitext(ipath)[1].replace(".", "")
     try:
         file_type, mime = get_file_type(ext)
-    else:
-        file_type = mime = ""
+    except Exception as err:
+        print(err)
+
     print(f"**** {file_type} ****")
     exif_metadata = utils.exif_data(f"{ipath}")
     if exif_metadata is None:
@@ -248,10 +251,11 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         date = os.path.getmtime(ipath)
         metadata_dct = [
             {
-                "production.date.notes": datetime.datetime.fromtimestamp(date).strftime(
+                "utb.content": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
             },
+            {"utb.fieldname": "Modification date and time"},
             {
                 "production.date.end": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d"
@@ -269,10 +273,11 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         date = os.path.getmtime(ipath)
         metadata_dct = [
             {
-                "production.date.notes": datetime.datetime.fromtimestamp(date).strftime(
+                "utb.content": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d %H:%M:%S"
                 )
             },
+            {"utb.fieldname": "Modification date and time"},
             {
                 "production.date.end": datetime.datetime.fromtimestamp(date).strftime(
                     "%Y-%m-%d"
@@ -289,7 +294,7 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         return None
 
     data = [
-        "File Modification Date/Time, production.date.notes",
+        "File Modification Date/Time, utb.content",
         "Software, source_software",
     ]
 
@@ -300,17 +305,18 @@ def get_image_data(ipath: str) -> list[dict[str, str]]:
         field, value = mdata.split(":", 1)
         for d in data:
             exif_field, cid_field = d.split(", ")
-            if "production.date.notes" in str(
-                d
-            ) and "File Modification Date/Time" in str(field):
-                image_dict.append({f"{cid_field}": value.strip()})
-                try:
-                    date = value.strip().split(" ", 1)[0].replace(":", "-")
-                    image_dict.append({"production.date.end": date})
-                except IndexError as err:
-                    LOGGER.warning("Error splitting date: %s", err)
+            if cid_field == "utb.content":
+                if "File Modification Date/Time" in str(field):
+                    image_dict.append({f"{cid_field}": value.strip()})
+                    try:
+                        date = value.strip().split(" ", 1)[0].replace(":", "-")
+                        image_dict.append({"production.date.end": date})
+                    except IndexError as err:
+                        LOGGER.warning("Error splitting date: %s", err)
             elif exif_field == field.strip():
                 image_dict.append({f"{cid_field}": value.strip()})
+    if "utb.content" in str(image_dict):
+        image_dict.append({"utb.fieldname": "Modification date and time"})
     image_dict.append({"filesize": str(os.path.getsize(ipath))})
     image_dict.append({"filesize.unit": "B (Byte)"})
     image_dict.append({"file_type": file_type})
@@ -350,6 +356,10 @@ def main():
     for every photo. Clean up empty folders.
     """
     if not utils.check_control("power_off_all"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+
+    if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
@@ -713,6 +723,7 @@ def create_archive_item_record(
     all_item_prirefs = {}
     for _, value in file_order.items():
         for ip in value:
+            ext = ""
             data = ip.rsplit(", ", 1)
             print(data)
             if not os.path.isfile(data[0]):
@@ -725,6 +736,9 @@ def create_archive_item_record(
             mime = magic.Magic(mime=True)
             mime_type = mime.from_file(ipath)
             iname = os.path.basename(ipath)
+            if iname.startswith(parent_ob_num):
+                LOGGER.warning("Skipping. File found already renumbered: %s", iname)
+                continue
             LOGGER.info(
                 "------ File: %s --- number %s --- mime %s ------",
                 iname,
@@ -750,11 +764,14 @@ def create_archive_item_record(
 
             record_dct = [
                 {"record_type": "ITEM_ARCH"},
+                {"dimension.free": "1 digital item"},
                 {"part_of_reference": parent_ob_num},
                 {"archive_title.type": "01_orig"},
                 {"title": iname},
                 {"digital.acquired_filename": iname},
                 {"digital.acquired_filename.type": "FILE"},
+                {"digital.acquired_filepath": ipath},
+                {"digital.acquired_filepath.type": "FILE"},
                 {"object_number": ob_num},
                 {"received_checksum.type": "MD5"},
                 {"received_checksum.date": str(datetime.datetime.now())[:10]},

@@ -64,7 +64,12 @@ FIELDS = [
     {"container.frame_count": ["FrameCount", "Frame count  "]},
     {"container.frame_rate": ["FrameRate", "Frame rate  "]},
     {"container.overall_bit_rate": ["OverallBitRate_String", "Overall bit rate  "]},
-    {"container.overall_bit_rate_mode": ["OverallBitRate_Mode", "Overall bit rate mode  ",]},
+    {
+        "container.overall_bit_rate_mode": [
+            "OverallBitRate_Mode",
+            "Overall bit rate mode  ",
+        ]
+    },
     {"container.writing_application": ["Encoded_Application", "Writing application  "]},
     {"container.writing_library": ["Encoded_Library", "Writing library  "]},
     {"container.file_extension": ["FileExtension", "File extension  "]},
@@ -84,7 +89,12 @@ FIELDS = [
     {"video.height": ["Height", "Height  "]},
     {"video.scan_order": ["ScanOrder_String", "Scan order  "]},
     {"video.scan_type": ["ScanType", "Scan type  "]},
-    {"video.scan_type.store_method": ["ScanType_StoreMethod_String", "Scan type, store method  "]},
+    {
+        "video.scan_type.store_method": [
+            "ScanType_StoreMethod_String",
+            "Scan type, store method  ",
+        ]
+    },
     {"video.standard": ["Standard", "Standard  "]},
     {"video.stream_size_bytes": ["StreamSize", "Stream size  "]},
     {"video.stream_order": ["StreamOrder", "StreamOrder  "]},
@@ -101,7 +111,12 @@ FIELDS = [
     {"video.format": ["Format", "Format  "]},
     {"video.matrix_coefficients": ["matrix_coefficients", "Matrix coefficients  "]},
     {"video.pixel_aspect_ratio": ["PixelAspectRatio", "Pixel aspect ratio  "]},
-    {"video.transfer_characteristics": ["transfer_characteristics", "Transfer characteristics  "]},
+    {
+        "video.transfer_characteristics": [
+            "transfer_characteristics",
+            "Transfer characteristics  ",
+        ]
+    },
     {"video.writing_library": ["Encoded_Library", "Writing library  "]},
     {"video.stream_size": ["StreamSize_String", "Stream size  "]},
     {"colour_range": ["colour_range", "Color range  "]},
@@ -115,7 +130,12 @@ FIELDS = [
     {"audio.channel_layout": ["ChannelLayout", "Channel layout  "]},
     {"audio.channel_position": ["ChannelPositions", "Channel positions  "]},
     {"audio.compression_mode": ["Compression_Mode", "Compression mode  "]},
-    {"audio.format_settings_endianness": ["Format_Settings_Endianness", "Format settings, Endianness  "]},
+    {
+        "audio.format_settings_endianness": [
+            "Format_Settings_Endianness",
+            "Format settings, Endianness  ",
+        ]
+    },
     {"audio.format_settings_sign": ["Format_Settings_Sign", "Format settings, Sign  "]},
     {"audio.frame_count": ["FrameCount", "Frame count  "]},
     {"audio.language": ["Language_String", "Language  "]},
@@ -129,7 +149,12 @@ FIELDS = [
     {"other.frame_rate": ["FrameRate", "Frame rate  "]},
     {"other.language": ["Language_String", "Language  "]},
     {"other.type": ["Type", "Type  "]},
-    {"other.timecode_first_frame": ["TimeCode_FirstFrame", "Time code of first frame  "]},
+    {
+        "other.timecode_first_frame": [
+            "TimeCode_FirstFrame",
+            "Time code of first frame  ",
+        ]
+    },
     {"other.stream_order": ["StreamOrder", "StreamOrder  "]},
     {"other.format": ["Format", "Format  "]},
     {"text.duration": ["Duration_String1", "Duration  "]},
@@ -281,12 +306,12 @@ def main():
     header_payload = make_header_data(text_path, filename, priref)
     if not header_payload:
         LOGGER.warning("Failed to compile header metadata tag. Writing to errors CSV")
-        write_to_errors_csv("media", CID_API, priref, header_payload)
+        write_to_errors_csv("media", CID_API, priref, header_payload, {})
         sys.exit()
 
     print(header_payload)
     print(">> ********************** <<")
-    success, _ = write_payload(header_payload, priref)
+    success, rec = write_payload(header_payload, priref)
     if success:
         LOGGER.info("Payload data successfully written to CID Media record: %s", priref)
         clean_up(filename, text_path)
@@ -294,6 +319,7 @@ def main():
         LOGGER.warning(
             "Failed to POST header tag data to CID record. Writing to errors CSV"
         )
+        write_to_errors_csv("media", CID_API, priref, header_payload, rec)
 
 
 def build_exif_metadata_xml(exif_path: str, priref: str) -> Union[str, bool]:
@@ -436,7 +462,12 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                 if match is None:
                     continue
                 milliseconds = match.get(key)
-                seconds = f"{float(milliseconds) / 1000:.9f}"
+                print(milliseconds)
+                if ":" in milliseconds:
+                    h, m, s = milliseconds.split(".")[0].split(":")[:3]
+                    seconds = int(h) * 3600 + int(m) * 60 + int(s)
+                else:
+                    seconds = f"{float(milliseconds) / 1000:.9f}"
                 print(
                     f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***"
                 )
@@ -453,12 +484,13 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                     unique_codecs = list(set(codecs_split))
                     gen.append({f"{key}": ", ".join(unique_codecs)})
                 else:
-                    get.append(match)
+                    gen.append(match)
             if key.startswith("container."):
                 match = iterate_text_rows(gen_rows, val[1], key)
                 if match is None:
                     continue
                 gen.append(match)
+
     if len(gen) > 0:
         xml = wrap_as_xml("Container", gen)
         payload += xml
@@ -478,7 +510,11 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                     if match is None:
                         continue
                     milliseconds = match[key]
-                    seconds = f"{float(milliseconds) / 1000:.9f}"
+                    if ":" in milliseconds:
+                        h, m, s = milliseconds.split(".")[0].split(":")[:3]
+                        seconds = int(h) * 3600 + int(m) * 60 + int(s)
+                    else:
+                        seconds = f"{float(milliseconds) / 1000:.9f}"
                     print(
                         f"*** Converting float milliseconds {milliseconds} into seconds {seconds} ***"
                     )
@@ -527,6 +563,9 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                         continue
                     aud.append(match)
         if len(aud) > 0:
+            for dct in aud:
+                if dct.get("audio.language", "") == "English (GB)":
+                    dct.update({"audio.language": "English (Great Britain)"})
             xml = wrap_as_xml("Audio", aud)
             payload += xml
 
@@ -544,6 +583,9 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                         continue
                     oth.append(match)
         if len(oth) > 0:
+            for dct in oth:
+                if dct.get("other.language", "") == "English (GB)":
+                    dct.update({"other.language": "English (Great Britain)"})
             xml = wrap_as_xml("Other", oth)
             payload += xml
 

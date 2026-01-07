@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Request Form</title>
+    <style>
+        /* General Style */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #444444;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #f0f0f0;
+            width: 100%;
+            max-width: 700px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        /* Header Bar */
+        .header-bar {
+            background-color: #666666;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Status Bar */
+        .user-status-container {
+            background-color: #888888;
+            color: white;
+            padding: 10px 20px;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between; /* Info left, button right */
+            align-items: center;
+            border-bottom: 1px solid #777;
+        }
+
+        /* Confirmation of send */
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .flash-message.success {
+            background-color: #4CAF50; /* Green for success */
+        }
+
+        .flash-message.error {
+            background-color: #f44336; /* Red for error */
+        }
+
+        /* Form Content */
+        .content {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="date"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        /* Read-only fields */
+        .readonly-field {
+            background-color: #e9e9e9;
+            color: #555;
+            cursor: default;
+        }
+
+        /* Submit button */
+        button, input[type="submit"] {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s;
+            width: 100%; /* Full width button */
+            margin-top: 20px; /* Space above button */
+        }
+
+        button:hover, input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        /* Optional: Fieldset style */
+        fieldset {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        legend {
+            font-weight: bold;
+            padding: 0 10px;
+            color: #666;
+        }
+
+        /* Logout button */
+        .logout-button {
+            background-color: #fbd500;
+            color: #444444;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            width: auto;
+            margin: 0;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: #ccb413;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- Title Bar -->
+        <div class="header-bar">
+            Workflow Request Form
+        </div>
+
+        <!-- Status Bar -->
+        <div class="user-status-container">
+            <div class="user-info">
+                Logged in as: {{ user_first_name }} {{ user_last_name }} ({{ user_dept }})
+            </div>
+            <form action="{{ url_for('logout') }}" method="POST">
+                <button type="submit" class="logout-button">Logout</button>
+            </form>
+        </div>
+
+        <div class="content">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('workflow_request') }}">
+
+                <!-- Group 1: User/Request Metadata -->
+                <fieldset>
+                    <legend>Please fill in form below</legend>
+                    <div class="form-group">
+                        <!-- Pre-populated/Read-only User Data (for context) -->
+                        <label for="email">Email</label>
+                        <input type="email" id="email" value="{{ user_email }}" class="readonly-field" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <!-- Activity Code Dropdown -->
+                        <label for="activity_code">Select Activity Code (Required)</label>
+                        {% if not activity_codes %}
+                            <select id="activity_code" name="activity_code" required disabled>
+                                <option value="" disabled selected>--- ERROR: No Activity Codes Found ---</option>
+                            </select>
+                            <p style="color: #dc3545; margin-top: 5px; font-weight: bold;">
+                                Submission is blocked because no valid Activity Codes were found for your account.
+                            </p>
+                        {% else %}
+                            <select id="activity_code" name="activity_code" required>
+                                <option value="" disabled selected>--- Choose an Activity Code ---</option>
+                                {% for code in activity_codes %}
+                                    <option value="{{ code }}">{{ code }}</option>
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="items_list">Saved Search number (Required)</label>
+                        <textarea id="items_list" name="items_list" rows="1" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="request_type">Request Type (Required)</label>
+                        <select id="request_type" name="request_type" required>
+                            <option value="" disabled selected>--- Select Request Type ---</option>
+                            <option value="AUDIOSUITETRANSFER">Audio suite transfer</option>
+                            <option value="BOOKING">Booking</option>
+                            <option value="DATAMIGRATION">Data migration</option>
+                            <option value="ENCODING">Encoding</option>
+                            <option value="EXAMINATION">Examination</option>
+                            <option value="FASTBOOKING">Fast booking</option>
+                            <option value="FILMDUPLICATIONEXTERNAL">Film duplication external</option>
+                            <option value="FILMPRINTINGEXTERNAL">Film printing external</option>
+                            <option value="FILMPRINTINGINTERNAL">Film printing internal</option>
+                            <option value="HDSCANNINGEXTERNAL">HD scanning external</option>
+                            <option value="HDSCANNINGINTERNAL">HD scanning internal</option>
+                            <option value="HIGHDEFEXTERNAL">High def transfer external</option>
+                            <option value="INFORMATION">Information</option>
+                            <option value="INHOUSEAUDIODIGITISATION">Inhouse audio digitisation</option>
+                            <option value="INSPECTION">Inspection</option>
+                            <option value="NEWTITLECREATION">New title creation</option>
+                            <option value="NUMBERING">Numbering</option>
+                            <option value="OFFAIRRECORDING">Off air recording</option>
+                            <option value="OTHER">Other</option>
+                            <option value="QUALITYCONTROL">Quality control</option>
+                            <option value="SDEXTERNAL">SD transfer external</option>
+                            <option value="SDSCANNINGEXTERNAL">SD scanning external</option>
+                            <option value="SDSCANNINGINTERNAL">SD scanning internal</option>
+                            <option value="TECHNICALSELECTION">Technical selection</option>
+                            <option value="TELECINEEXTERNAL">Telecine transfer external</option>
+                            <option value="TELECINEINTERNAL">Telecine transfer internal</option>
+                            <option value="TRANSCODING">Transcoding</option>
+                            <option value="VIDEOCOPY">Video copy</option>
+                            <option value="VIDEOCOPYNOTSUPPORTED">Video copy formats not supported within video lab</option>
+                            <option value="VIDEOTRANSFEREXTERNAL">Video transfer external</option>
+                            <option value="VIDEOUNITINHOUSE">Video unit inhouse</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="request_outcome">Request Outcome (Required)</label>
+                        <select id="request_outcome" name="request_outcome" required>
+                            <option value="" disabled selected>--- Select Request Outcome ---</option>
+                            <option value="Acquisition">Acquisition</option>
+                            <option value="Archive show copy">Archive show copy</option>
+                            <option value="Cataloguing">Cataloguing</option>
+                            <option value="Client copy">Client copy</option>
+                            <option value="Digitisation">Digitisation</option>
+                            <option value="Encoding">Encoding</option>
+                            <option value="Preservation">Preservation</option>
+                            <option value="Re-mastering">Re-mastering</option>
+                            <option value="Research">Research</option>
+                            <option value="Restoration">Restoration</option>
+                            <option value="Screening">Screening</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Job Title (Required)</label>
+                        <textarea id="description" name="description" rows="1" required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="delivery_date">Required Delivery Date (Required)</label>
+                        <input type="date" id="delivery_date" name="delivery_date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="destination">Final Destination (Required)</label>
+                        <input type="text" id="destination" name="destination" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="instructions">Special Instructions (Optional)</label>
+                        <textarea id="instructions" name="instructions" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="client_name">Client Name (Optional)</label>
+                        <input type="text" id="client_name" name="client_name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="client_category">Client Category (Optional)</label>
+                        <select id="client_category" name="client_category">
+                            <option value="" selected>--- Select Client Category ---</option>
+                            <option value="BFI_Partner">BFI partnered project</option>
+                            <option value="BFI_Project">BFI project</option>
+                            <option value="Commercial">Commercial organisation</option>
+                            <option value="Curatorial">Curatorial</option>
+                            <option value="DONOR">Donor</option>
+                            <option value="Educational">Educational / Research</option>
+                            <option value="Film_Sales">Film Sales</option>
+                            <option value="Individual">Individual</option>
+                            <option value="Library">Library</option>
+                            <option value="Mediatheque">Mediatheque</option>
+                            <option value="Museum_Gallery">Museum / Gallery</option>
+                            <option value="Other_Archive">Archive - other</option>
+                            <option value="Overseas_Archive">Archive - overseas</option>
+                            <option value="RegArchive">Archive - regional</option>
+                            <option value="RightsHolder">Rightsholder</option>
+                            <option value="ScreenOnline">Screenonline</option>
+                            <option value="SouthBank">Southbank</option>
+                            <option value="Trading">Trading</option>
+                            <option value="UK_Cinema">UK cinema</option>
+                            <option value="University">University / Film school</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact_details">Contact Details (Optional)</label>
+                        <input type="text" id="contact_details" name="contact_details">
+                    </div>
+
+                </fieldset>
+
+                <input type="submit" value="Submit Workflow Request">
+            </form>
+        </div>
+    </div>
+</body>
+</html>

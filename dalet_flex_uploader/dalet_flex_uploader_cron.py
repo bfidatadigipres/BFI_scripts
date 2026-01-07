@@ -71,6 +71,9 @@ def main():
         log_list.append("Script run prevented by storage_control.json. Script exiting.")
         dump_to_log(log_list)
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        log_list.append("Script run prevented by storage_control.json. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     if os.path.exists(sys.argv[1]):
         fullpath = sys.argv[1]

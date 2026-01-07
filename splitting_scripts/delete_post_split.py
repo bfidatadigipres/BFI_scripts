@@ -42,8 +42,6 @@ CID_API: Final = utils.get_current_api()
 CLIENT: Final = ds3.createClientFromEnv()
 
 TARGETS: Final = [
-    os.path.join(os.environ["QNAP_H22"], "processing/"),
-    os.path.join(os.environ["GRACK_H22"], "processing/"),
     os.path.join(os.environ["QNAP_08"], "processing/"),
     os.path.join(os.environ["QNAP_08"], "memnon_processing/"),
     os.path.join(os.environ["QNAP_10"], "processing/"),
@@ -102,6 +100,11 @@ def main():
         if not utils.check_control("split_control_delete") or not utils.check_control(
             "black_pearl"
         ):
+            logger.info(
+                "Script run prevented by downtime_control.json. Script exiting."
+            )
+            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        if not utils.check_control("pause_scripts"):
             logger.info(
                 "Script run prevented by downtime_control.json. Script exiting."
             )

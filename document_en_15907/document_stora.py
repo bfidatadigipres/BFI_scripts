@@ -30,6 +30,7 @@ import requests
 sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib
 import utils
+from helpers import stora_helper
 
 # Global variables
 STORAGE = os.environ["STORA_PATH"]
@@ -68,6 +69,11 @@ def csv_retrieve(fullpath: str) -> Optional[dict[str, str]]:
         logger.warning("No info.csv file found. Skipping CSV retrieve")
         print("No info.csv file found. Skipping CSV retrieve")
         return None
+    if os.stat(fullpath).st_size == 0:
+        logger.warning("Empty info.csv file found. Skipping CSV retrieve")
+        print("No entry in info.csv. Skipping CSV retrieve")
+        return None
+
     print("*** Check CSV data reading well ***")
     with open(fullpath, "r", encoding="latin-1") as inf:
         rows = csv.reader(inf)
@@ -184,7 +190,10 @@ def generate_variables(data) -> tuple[str, str, str, str, int, int, int, str, st
     actual_duration_total = (
         actual_duration_hours_integer * 60
     ) + actual_duration_minutes_integer
-    actual_duration_seconds_integer = int(actual_duration_seconds)
+
+    actual_duration_seconds_integer = (actual_duration_total * 60) + int(
+        actual_duration_seconds
+    )
 
     return (
         title,
@@ -237,6 +246,8 @@ def build_defaults(
             bst_date = bst_data[0]
             bst_time = bst_data[1]
 
+    end_time = stora_helper.calculate_transmission_stoptime(duration_total, bst_time)
+    print(f"*** END TIME: {end_time}")
     record = [
         {"input.name": "datadigipres"},
         {"input.date": str(datetime.datetime.now())[:10]},
@@ -288,6 +299,7 @@ def build_defaults(
         {"UTC_timestamp": utc_timestamp},
         {"transmission_date": bst_date},
         {"transmission_start_time": bst_time},
+        {"transmission_end_time": end_time},
         {"transmission_duration": duration_total},
         {"runtime": actual_duration_total},
         {"runtime_seconds": actual_duration_seconds_integer},
@@ -370,17 +382,33 @@ def main() -> None:
 
             # Create variables from csv sources
             var_data = generate_variables(data)
-            title = var_data[0]
-            description = var_data[1]
-            title_date_start = var_data[2]
-            time = var_data[3]
-            duration_total = var_data[4]
-            actual_duration_total = var_data[5]
-            actual_duration_seconds_integer = var_data[6]
-            channel = var_data[7]
-            broadcast_company = var_data[8]
-            code_type = var_data[9]
+
+            if "UTC" in var_data:
+                title = var_data[0]
+                description = var_data[1]
+                time = var_data[2]
+                duration_total = var_data[4]
+                actual_duration_total = var_data[5]
+                actual_duration_seconds_integer = var_data[6]
+                channel = var_data[7]
+                broadcast_company = var_data[8]
+                code_type = var_data[9]
+            else:
+                title = var_data[0]
+                description = var_data[1]
+                time = var_data[3]
+                duration_total = var_data[4]
+                actual_duration_total = var_data[5]
+                actual_duration_seconds_integer = var_data[6]
+                channel = var_data[7]
+                broadcast_company = var_data[8]
+                code_type = var_data[9]
+
             acquired_filename = os.path.join(root, "stream.mpeg2.ts")
+
+            # Get title_date_start from root folder
+            data = root.split("/STORA/")[1].split("/", 3)[:3]
+            title_date_start = "-".join(data)
 
             # Create defaults for all records in hierarchy
             record, work, work_restricted, manifestation, item = build_defaults(

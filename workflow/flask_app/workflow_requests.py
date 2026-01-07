@@ -1,0 +1,383 @@
+#!/usr/bin/env python3
+
+"""
+Module used for record creation following
+Flask app requests from KLC colleagues.
+Uses supplied args not config.yaml.
+Some hardcoded values.
+
+Creates - Workflow dB:
+ Workflow job record
+ Workflow object record
+ Workflow object list
+ Pick record
+Creates - Requests dB:
+ Pick payload request
+
+Needs use of records.py testing
+to ensure it makes only records
+required for this workflow
+
+2025
+"""
+
+import os
+import sys
+from datetime import datetime
+
+sys.path.append(os.environ["CODE"])
+import adlib_v3 as adlib
+import utils
+
+sys.path.append(os.environ["WORKFLOW"])
+import records
+
+# Global var
+CID_API = os.environ.get("CID_API3")
+LOG_PATH = os.environ["LOG_PATH"]
+
+
+class Activities:
+    def __init__(self):
+        self.payloads = {}
+
+        query = {
+            "database": "workflow",
+            "search": "dataType>0",
+            "limit": -1,
+            "facets": "dataType",
+            "facetlimit": 100,
+            "output": "jsonv1",
+        }
+
+        recs = adlib.get(CID_API, query)
+        dt_list = adlib.retrieve_facet_list(recs, "term")
+
+        for data_type in dt_list:
+            search = f"dataType={data_type} and payloadDatabase>0"
+            fields = ["payloadDatabase", "description"]
+            hits, record = adlib.retrieve_record(
+                CID_API, "workflow", search, "1", fields
+            )
+            if hits is None:
+                continue
+            if hits == 0:
+                continue
+            payload_database = adlib.retrieve_field_name(record[0], "payloadDatabase")[
+                0
+            ]
+            label = adlib.retrieve_field_name(record[0], "description")[0]
+
+            d = {"label": label, "dataType": data_type}
+
+            if payload_database in self.payloads:
+                self.payloads[payload_database].append(d)
+            else:
+                self.payloads[payload_database] = [d]
+
+    def get(self, activity):
+        """
+        Return payload and dataType for given activity label
+        """
+        for payload in self.payloads:
+            for d in self.payloads[payload]:
+                if d["label"] == activity:
+                    detail = {
+                        "payloadDatabase": payload,
+                        "dataType": d["dataType"],
+                        "description": activity,
+                    }
+
+                    return detail
+
+
+class Task:
+    """
+    Suite of Workflow jobs and activities
+    """
+
+    def __init__(self, username, items=None, **kwargs):
+        try:
+            [int(i) for i in items]
+        except Exception:
+            raise TypeError("Item IDs must be prirefs")
+
+        self.items = items
+        self.job_number = None
+        self.last_activity_priref = None
+        self.priref = None
+        self.profiles = {
+            "workflow": {
+                "status": "Started",
+                "dataType": "FolderData",
+                "recordType": "Folder",
+            },
+            "objectList": {
+                "description": "objects",
+                "recordType": "ObjectList",
+                "status": "Started",
+            },
+            "object": {
+                "payloadDatabase": "collect.inf",
+                "recordType": "Object",
+                "status": "Started",
+            },
+        }
+
+        # Only requires request.inf record
+        self.database_map = {
+            "request.inf": "request",
+        }
+
+        self.make_topnode(username, **kwargs)
+        objectList_priref = self.make_objectList(username, self.priref)
+        self.make_objects(username, objectList_priref, items=self.items)
+
+    def _date_time(self):
+        date = str(datetime.now())[:10]
+        time = str(datetime.now())[11:19]
+        return date, time
+
+    def build_record(self, username, data):
+        record = records.Record()
+
+        data["priref"] = "0"
+        data["input.name"] = username
+        data["input.date"] = self._date_time()[0]
+        data["input.time"] = self._date_time()[1]
+
+        for i in data:
+            record.append(field=records.Field(name=i, text=data[i]))
+
+        return record
+
+    def write_record(self, database="workflow", record=None):
+        data = record.to_xml(to_string=True)
+        payload = f"<adlibXML><recordList>{data}</recordList></adlibXML>"
+        response = adlib.post(CID_API, payload, database, "insertrecord")
+
+        return response
+
+    def make_topnode(self, username, **kwargs):
+        wf = dict(self.profiles["workflow"])
+
+        for k in kwargs:
+            wf[k] = kwargs[k]
+
+        wf["topNode"] = "x"
+
+        record = self.build_record(username, wf)
+        response = self.write_record(record=record)
+
+        self.job_number = int(adlib.retrieve_field_name(response, "jobnumber")[0])
+        self.priref = int(adlib.retrieve_field_name(response, "priref")[0])
+        self.last_activity_priref = self.priref
+
+    def make_objectList(self, username, parent):
+        ol = dict(self.profiles["objectList"])
+        ol["parent"] = str(self.last_activity_priref)
+
+        record = self.build_record(username, ol)
+        response = self.write_record(record=record)
+
+        priref = int(adlib.retrieve_field_name(response, "priref")[0])
+        return priref
+
+    def make_objects(self, username, objectList_priref, items=None):
+        count = 0
+        if items is not None:
+            for item in items:
+                d = dict(self.profiles["object"])
+
+                d["description"] = get_object_number(item)
+                d["parent"] = str(objectList_priref)
+                d["payloadLink"] = str(item)
+
+                record = self.build_record(username, d)
+
+                try:
+                    response = self.write_record(record=record)
+                except Exception:
+                    continue
+                # Unsure about this piece, need to get hit response from self.write_record
+                if response["@attributes"]:
+                    count += 1
+                else:
+                    continue
+
+                # Hits not returned from write_record
+                # count += response.hits
+
+            if count == len(items):
+                return True
+
+        return False
+
+    def add_activity(self, activity, username, items=None, **payload_kwargs):
+        a = activity_map.get(activity)
+        if not a:
+            raise Exception(
+                f"Unknown activity label: {activity} or activity is not supported"
+            )
+
+        # Payload record
+        db = self.database_map[a["payloadDatabase"]]
+        p = self.build_record(username, payload_kwargs)
+        response = self.write_record(database=db, record=p)
+        payload_priref = int(adlib.retrieve_field_name(response, "priref")[0])
+
+        # Workflow record
+        d = dict(self.profiles["workflow"])
+        d["recordType"] = "WorkFlow"
+        d["payloadLink"] = str(payload_priref)
+
+        # payloadDatabase and dataType details
+        for i in a:
+            d[i] = a[i]
+
+        d["parent"] = str(self.last_activity_priref)
+        wf = self.write_record(record=self.build_record(username, d))
+        wf_priref = int(adlib.retrieve_field_name(wf, "priref")[0])
+        self.last_activity_priref = wf_priref
+
+        ol_priref = self.make_objectList(
+            username, parent=str(self.last_activity_priref)
+        )
+        status = self.make_objects(username, str(ol_priref), items)
+
+        if status:
+            return True
+        else:
+            return False
+
+
+class Batch:
+    """
+    Create a nested tree of Workflow activities for a list of items.
+    Instantiate with, for example:
+
+        # List of item prirefs
+        l = [123, 456]
+
+        # Dictionary containing 'activities', 'topNode' and 'payload'
+          and associated case-sensitive fields and their values
+
+        d = {'activities': [
+               'Pick items',
+               'Return items'],
+
+             'topNode': {
+               'activity.code.lref': '108964',
+               'purpose': 'Preservation'},
+
+             'payload': {
+               'Pick items': {
+                 'destination': 'PBK06B03000000'}}
+            }
+
+        b = Batch(items=l, **d)
+
+    Note for the future: consider refactoring kwargs['payload'] into a
+                         list and getting rid of kwargs['activities'];
+                         just remember that the order of activities is
+                         important
+    """
+
+    def __init__(self, username, items=None, **kwargs):
+        if not items:
+            raise Exception("Required: list of item prirefs")
+
+        if "activities" not in kwargs:
+            raise Exception("Required: list of case-sensitive activities in kwargs")
+
+        if "topNode" not in kwargs:
+            raise Exception("Required: dictionary of topNode field-values in kwargs")
+
+        if "payload" not in kwargs:
+            raise Exception("Required: dictionary of payload field-values in kwargs")
+
+        self.task = Task(username, items, **kwargs["topNode"])
+
+        overall_status = []
+        for a in kwargs["activities"]:
+            status = self.task.add_activity(
+                a, username, items=items, **kwargs["payload"][a]
+            )
+            overall_status.append(status)
+
+        self.priref = self.task.priref
+        if all(overall_status):
+            self.successfully_completed = True
+        else:
+            self.successfully_completed = False
+
+
+class BatchBuild:
+    """
+    Create a tree of Workflow activities specific to Flask app:
+      - Pick
+
+    To use:
+
+        # Items
+        item_prirefs = [123, 567]
+
+        # Job metadata
+        topnode_metadata = {'description': 'D3 / Ofcom / etc',
+                            'completion.date': '2021-06-01'}
+
+        # Create
+        b = BatchBuildDev(l, **topnode_metadata)
+    """
+
+    def __init__(self, destination, purpose, username, items=None, **kwargs):
+        # Default metadata
+        d = {
+            "activities": ["Pick items"],
+            "topNode": {
+                "purpose": purpose,
+            },
+            "payload": {
+                "Pick items": {"destination": destination},
+            },
+        }
+
+        # Add any additional metadata to the topNode
+        for k in kwargs:
+            d["topNode"][k] = kwargs[k]
+
+        # Create
+        self.batch = Batch(username, items, **d)
+
+    @property
+    def successfully_completed(self):
+        return self.batch.successfully_completed
+
+
+def get_object_number(priref):
+    search = f"priref={priref}"
+    record = adlib.retrieve_record(CID_API, "items", search, "1", ["object_number"])[1]
+    ob_num = adlib.retrieve_field_name(record[0], "object_number")[0]
+    return ob_num
+
+
+def get_priref(object_number):
+    search = f'object_number="{object_number}"'
+    record = adlib.retrieve_record(CID_API, "items", search, "1", ["priref"])[1]
+    priref = adlib.retrieve_field_name(record[0], "priref")[0]
+    return priref
+
+
+def count_jobs_submitted(search):
+    print(search)
+    hits = adlib.retrieve_record(CID_API, "workflow", search, "-1")[0]
+    if hits is None:
+        raise Exception(f"Workflow search failed to access API: {search}")
+    return hits
+
+
+try:
+    activity_map = Activities()
+except Exception as exc:
+    print(exc)
+    raise Exception("Unable to build map of Workflow databases")

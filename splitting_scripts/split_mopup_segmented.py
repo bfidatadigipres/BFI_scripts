@@ -51,7 +51,6 @@ logger.setLevel(logging.INFO)
 # Targets (will look for 'segmented' subdirectory)
 TARGETS: Final = [
     "/mnt/qnap_10/processing/",
-    "/mnt/qnap_02/processing/",
     "/mnt/qnap_08/processing/",
     "/mnt/qnap_08/memnon_processing/",
     "/mnt/qnap_01/Public/F47/processing/",
@@ -111,6 +110,10 @@ def main():
     ):
         logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        logger.info("Script run prevented by Storage Control document. Script exiting.")
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+
     if not utils.cid_check(CID_API):
         print("* Cannot establish CID session, exiting script")
         logger.critical("* Cannot establish CID session, exiting script")

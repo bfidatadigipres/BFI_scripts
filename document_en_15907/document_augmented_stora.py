@@ -580,7 +580,9 @@ def fetch_lines(fullpath, lines):
             print(err)
         try:
             d_medium = lines["item"][0]["summary"]["medium"]
-            d_medium = d_medium.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
+            d_medium = d_medium.replace("\xe2\x80\x99", "'").replace(
+                "\xe2\x80\x93", "-"
+            )
             epg_dict["d_medium"] = d_medium
             description.append(d_medium)
         except (IndexError, KeyError, TypeError) as err:
@@ -1076,7 +1078,13 @@ def main():
                     )
                     # Launch create series function
                     series_work_id = create_series(
-                        fullpath, ser_def, work_res_def, epg_dict, series_id, month, bbc_split
+                        fullpath,
+                        ser_def,
+                        work_res_def,
+                        epg_dict,
+                        series_id,
+                        month,
+                        bbc_split,
                     )
                     if not series_work_id:
                         logger.warning(
@@ -1238,7 +1246,13 @@ def main():
 
 
 def create_series(
-    fullpath, series_work_defaults, work_restricted_def, epg_dict, series_id, month, bbc_flag
+    fullpath,
+    series_work_defaults,
+    work_restricted_def,
+    epg_dict,
+    series_id,
+    month,
+    bbc_flag,
 ):
     """
     Call function series_check(series_id) and build all data needed
@@ -1953,7 +1967,9 @@ def create_manifestation(
         if len(actual_data) == 3:
             actual_minutes = (int(actual_data[0]) * 60) + int(actual_data[1])
             actual_seconds = (actual_minutes * 60) + int(actual_data[2])
-            print(f"** Actual minutes {actual_minutes} - actual seconds {actual_seconds}")
+            print(
+                f"** Actual minutes {actual_minutes} - actual seconds {actual_seconds}"
+            )
             manifestation_values.append({"runtime": actual_minutes})
             manifestation_values.append({"runtime_seconds": actual_seconds})
         else:

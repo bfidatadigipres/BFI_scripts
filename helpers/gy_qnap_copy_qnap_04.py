@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Relocates off-air recordings from Gaydon QNAP
 to QNAP-04 as and when requested. Date range to be
 set manually before each run - as list.
@@ -26,7 +26,7 @@ main():
    rsync encodings at once -selected in var at top
 
 2025
-'''
+"""
 
 import os
 import sys
@@ -44,7 +44,7 @@ MAX_PARALLEL = 3
 QNAP = os.environ.get("GY_QNAP_01")
 STORAGE = os.environ.get("STORA1_DROP")
 LOG_PATH = os.environ.get("LOG_PATH")
-LOG = os.path.join(LOG_PATH, 'stora1_gy_qnap_copy_qnap_04.log')
+LOG = os.path.join(LOG_PATH, "stora1_gy_qnap_copy_qnap_04.log")
 
 # THIS DATE LIST TO BE EDITED MANUALLY DEPENDING ON PERIOD
 TARGET_DATE = [
@@ -53,63 +53,71 @@ TARGET_DATE = [
     "2025/12/19",
     "2025/12/20",
     "2025/12/21",
-    "2025/12/22"
+    "2025/12/22",
 ]
 
 # Setup logging
-logging.basicConfig(filename=LOG, filemode='a', \
-                    format='%(asctime)s\t%(levelname)s\t%(message)s', level=logging.INFO)
+logging.basicConfig(
+    filename=LOG,
+    filemode="a",
+    format="%(asctime)s\t%(levelname)s\t%(message)s",
+    level=logging.INFO,
+)
 
 CHANNELS = [
-    'bbconehd',
-    'bbctwohd',
-    'bbcthree',
-    'bbcfourhd',
-    'bbcnewshd',
-    'cbbchd',
-    'cbeebieshd',
-    'channel4',
-    'film4',
-    'five',
-    '5star',
-    'itv1',
-    'itv2',
-    'itv3',
-    'itv4',
-    'e4',
-    'more4'
+    "bbconehd",
+    "bbctwohd",
+    "bbcthree",
+    "bbcfourhd",
+    "bbcnewshd",
+    "cbbchd",
+    "cbeebieshd",
+    "channel4",
+    "film4",
+    "five",
+    "5star",
+    "itv1",
+    "itv2",
+    "itv3",
+    "itv4",
+    "e4",
+    "more4",
 ]
 
 NEWS = [
-    'al_jazeera',
-    'gb_news',
-    'sky_news',
-    'qvc',
-    'skyarts',
-    'skymixhd',
-    'togethertv',
-    'u_dave',
-    'u_drama',
-    'u_yesterday'
+    "al_jazeera",
+    "gb_news",
+    "sky_news",
+    "qvc",
+    "skyarts",
+    "skymixhd",
+    "togethertv",
+    "u_dave",
+    "u_drama",
+    "u_yesterday",
 ]
 
 
 def main():
-    '''
+    """
     Iterate list of CHANNEL folders for yesterday
     Copy to QNAP-04/STORA1_qnap_copy/<OPTIONAL>/YYYY/MM/DD
     Retain original files in GY-DPI-NAS01 for local deletion
-    '''
+    """
 
     logging.info("START MOVE_CONTENT.PY =============== %s", QNAP)
     for target in TARGET_DATE:
         logging.info("Target date selected for copy: %s", target)
 
         if not utils.check_storage(STORA):
-            logging.info("Script run prevented by storage_control.json. Script exiting.")
+            logging.info(
+                "Script run prevented by storage_control.json. Script exiting."
+            )
             sys.exit("Script run prevented by storage_control.json. Script exiting.")
         if not utils.check_storage(QNAP):
-            logging.info("Script run prevented by storage_control.json. Script exiting.")
+            logging.info(
+                "Script run prevented by storage_control.json. Script exiting."
+            )
             sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
         for chnl in CHANNELS:
@@ -127,7 +135,9 @@ def main():
                     continue
 
             folders = [
-                os.path.join(source, d) for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))
+                os.path.join(source, d)
+                for d in os.listdir(source)
+                if os.path.isdir(os.path.join(source, d))
             ]
             if len(folders) == 0:
                 continue
@@ -135,15 +145,16 @@ def main():
             print(f"Moving to destination: {source}")
 
             task_args = [
-                (folder.rstrip("/"), destination.rstrip())
-                for folder in folders
+                (folder.rstrip("/"), destination.rstrip()) for folder in folders
             ]
             tic = time.perf_counter()
             with Pool(processes=MAX_PARALLEL) as p:
                 p.starmap(rsync, task_args)
             tac = time.perf_counter()
             time_copy = (tac - tic) // 60
-            logging.info("* Rsync copy for channel %s/%s was %s minutes", target, chnl, time_copy)
+            logging.info(
+                "* Rsync copy for channel %s/%s was %s minutes", target, chnl, time_copy
+            )
 
         for chnl in NEWS:
             source = os.path.join(QNAP, "STORA", target, chnl)
@@ -160,7 +171,9 @@ def main():
                     continue
 
             folders = [
-                os.path.join(source, d) for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))
+                os.path.join(source, d)
+                for d in os.listdir(source)
+                if os.path.isdir(os.path.join(source, d))
             ]
             if len(folders) == 0:
                 continue
@@ -169,26 +182,27 @@ def main():
             print(f"Moving folders to destination: {source}")
 
             task_args = [
-                (folder.rstrip("/"), destination.rstrip())
-                for folder in folders
+                (folder.rstrip("/"), destination.rstrip()) for folder in folders
             ]
             tic = time.perf_counter()
             with Pool(processes=MAX_PARALLEL) as p:
                 p.starmap(rsync, task_args)
             tac = time.perf_counter()
             time_copy = (tac - tic) // 60
-            logging.info("* Rsync copy for channel %s/%s was %s minutes", target, chnl, time_copy)
+            logging.info(
+                "* Rsync copy for channel %s/%s was %s minutes", target, chnl, time_copy
+            )
 
     logging.info("END MOVE_CONTENT.PY ============================================")
 
 
 def rsync(fpath1, fpath2):
-    '''
+    """
     Move Folders using rsync
     With archive and additional checksum
     Output moves to logs and remove source
     files from STORA path
-    '''
+    """
     logging.info("Targeting folder path: %s", fpath1)
     if not os.path.exists(fpath2):
         os.makedirs(fpath2, mode=0o777, exist_ok=True)
@@ -198,12 +212,17 @@ def rsync(fpath1, fpath2):
     new_log.touch(exist_ok=True)
 
     rsync_cmd = [
-        'rsync', '-arvvh',
-        '--info=FLIST2,COPY2,PROGRESS2,NAME2,BACKUP2,STATS2',
-        '--perms', '--chmod=a+rwx',
-        '--no-owner', '--no-group', '--ignore-existing',
-        fpath1, fpath2.rstrip("/"),
-        f'--log-file={new_log}'
+        "rsync",
+        "-arvvh",
+        "--info=FLIST2,COPY2,PROGRESS2,NAME2,BACKUP2,STATS2",
+        "--perms",
+        "--chmod=a+rwx",
+        "--no-owner",
+        "--no-group",
+        "--ignore-existing",
+        fpath1,
+        fpath2.rstrip("/"),
+        f"--log-file={new_log}",
     ]
 
     try:

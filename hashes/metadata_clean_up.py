@@ -321,6 +321,7 @@ def main():
         )
         write_to_errors_csv("media", CID_API, priref, header_payload, rec)
 
+
 def build_exif_metadata_xml(exif_path: str, priref: str) -> Union[str, bool]:
     """
     Open text file for any EXIF data
@@ -462,7 +463,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                     continue
                 milliseconds = match.get(key)
                 print(milliseconds)
-                if ':' in milliseconds:
+                if ":" in milliseconds:
                     h, m, s = milliseconds.split(".")[0].split(":")[:3]
                     seconds = int(h) * 3600 + int(m) * 60 + int(s)
                 else:
@@ -509,7 +510,7 @@ def build_metadata_text_xml(text_path: str, text_full_path: str, priref: str) ->
                     if match is None:
                         continue
                     milliseconds = match[key]
-                    if ':' in milliseconds:
+                    if ":" in milliseconds:
                         h, m, s = milliseconds.split(".")[0].split(":")[:3]
                         seconds = int(h) * 3600 + int(m) * 60 + int(s)
                     else:

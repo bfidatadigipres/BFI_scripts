@@ -21,7 +21,6 @@ import datetime
 import errno
 import json
 import logging
-# Python packages
 import os
 import shutil
 import sys
@@ -44,17 +43,10 @@ YESTERDAY_CLEAN: Final = YESTERDAY.strftime("%Y-%m-%d")
 START: Final = f"{YESTERDAY_CLEAN}T00:00:00"
 END: Final = f"{YESTERDAY_CLEAN}T23:59:00"
 # If a different date period needs targeting use:
-<<<<<<< HEAD
-#START = '2025-01-24T00:00:00'
-#END = '2025-01-24T23:59:00'
-DATE_PATH = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
-PATH = os.path.join(STORAGE_PATH, DATE_PATH)
-=======
-# START = '2024-10-19T00:00:00'
-# END = '2024-10-19T23:59:00'
+# START = '2025-12-22T00:00:00'
+# END = '2025-12-22T23:59:00'
 DATE_PATH: Final = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH: Final = os.path.join(STORAGE_PATH, DATE_PATH)
->>>>>>> 3cf71649ba12efe9bbbb6aecbf8a3200504af4d6
 dct = {}
 
 # Setup logging
@@ -81,7 +73,6 @@ CHANNEL = {
     "itv2": os.environ["PA_ITV2"],
     "itv3": os.environ["PA_ITV3"],
     "itv4": os.environ["PA_ITV4"],
-    "itvbe": os.environ["PA_ITVBE"],
     "channel4": os.environ["PA_CHANNEL4"],
     "more4": os.environ["PA_MORE4"],
     "e4": os.environ["PA_E4"],
@@ -90,14 +81,8 @@ CHANNEL = {
     "5star": os.environ["PA_5STAR"],
 }
 
-<<<<<<< HEAD
-def check_control():
-    '''
-=======
-
 def check_control() -> None:
     """
->>>>>>> 3cf71649ba12efe9bbbb6aecbf8a3200504af4d6
     Check control JSON for downtime request
     """
     with open(STORA_CONTROL) as control:
@@ -205,18 +190,15 @@ def main() -> None:
     Matches to programme folders where possible
     """
     check_control()
-<<<<<<< HEAD
-    logger.info('========== Fetch augmented metadata script STARTED ===============================================')
-=======
     logger.info(
         "========== Fetch augmented metadata script STARTED ==============================================="
     )
->>>>>>> 3cf71649ba12efe9bbbb6aecbf8a3200504af4d6
 
     fails = 0
     for item in CHANNEL.keys():
         item_path = os.path.join(PATH, item)
         print(item_path)
+        os.chmod(item_path, mode=0o777)
         if not os.path.exists(item_path):
             fails += 1
             make_path(CHANNEL, item)

@@ -105,7 +105,7 @@ def main():
     for target in TARGET_DATE:
         logging.info("Target date selected for copy: %s", target)
 
-        if not utils.check_storage(STORA):
+        if not utils.check_storage(STORAGE):
             logging.info("Script run prevented by storage_control.json. Script exiting.")
             sys.exit("Script run prevented by storage_control.json. Script exiting.")
         if not utils.check_storage(QNAP):
@@ -193,9 +193,6 @@ def rsync(fpath1, fpath2):
     if not os.path.exists(fpath2):
         os.makedirs(fpath2, mode=0o777, exist_ok=True)
         logging.info("Creating new folder paths in QNAP-04: %s", fpath2)
-    folder = os.path.split(fpath1)[-1]
-    new_log = Path(os.path.join(fpath2, f"{folder}_move.log"))
-    new_log.touch(exist_ok=True)
 
     rsync_cmd = [
         'rsync', '-arvvh',
@@ -203,7 +200,7 @@ def rsync(fpath1, fpath2):
         '--perms', '--chmod=a+rwx',
         '--no-owner', '--no-group', '--ignore-existing',
         fpath1, fpath2.rstrip("/"),
-        f'--log-file={new_log}'
+        f'--log-file={LOG}'
     ]
 
     try:

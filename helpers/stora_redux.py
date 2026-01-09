@@ -140,7 +140,7 @@ if __name__ == "__main__":
     for path in list_of_files:
         print(f"Processing path: {path}")
         date, time, title, asset_title, channel_name, asset_id = get_stora_data(path)
-        print(date, time, title, asset_title, chhanel_name, asset_id)
+        print(date, time, title, asset_title, channel_name, asset_id)
         continue
         search = f'transmission_date = "{date}" and transmission_start_time = "{time}" and title = "{title}" and broadcast_channel = "{channel_name}"'
         hit, record = adlib.retrieve_record(

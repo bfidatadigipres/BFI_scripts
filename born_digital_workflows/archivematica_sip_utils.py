@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 Utility script for API POST/GETs from Archivematica
-SFTP and Archivemtica storage service API, plus
-API calls to AtoM API
+SFTP and Archivemtica Storage Service API
 
-To be used for born digital workflows for OSH3
+Used for born digital workflow:
+special_collections_document_transfers_osh.py
+
 2025
 """
 
@@ -13,24 +14,23 @@ import json
 import os
 import sys
 from urllib.parse import urlencode
-
 import paramiko
 import requests
 
-TS_UUID = os.environ.get("AM_TS_UUID")
-SFTP_UUID = os.environ.get("AM_TS_SFTP")
-SFTP_USR = os.environ.get("AM_SFTP_US")
-SFTP_KEY = os.environ.get("AM_SFTP_PW")
-REL_PATH = os.environ.get("AM_RELPATH")
-ARCH_URL = os.environ.get("AM_URL")
-API_NAME = os.environ.get("AM_API")
-API_KEY = os.environ.get("AM_KEY")
-SS_PIPE = os.environ.get("AM_SS_UUID")
-SS_NAME = os.environ.get("AMSS_USR")
-SS_KEY = os.environ.get("AMSS_KEY")
-ATOM_URL = os.environ.get("ATOM_URL")  # Upto API
-ATOM_KEY = os.environ.get("ATOM_KEY_META")
-ATOM_AUTH = os.environ.get("ATOM_AUTH")
+TS_UUID = os.environ.get("AM_TS_UUID")  # Archivematica Transfer Storage address uuid
+SFTP_USR = os.environ.get("AM_SFTP_US")  # Transfer Storage user
+SFTP_KEY = os.environ.get("AM_SFTP_PW")  # Transfer Storage password
+ARCH_URL = os.environ.get("AM_URL")  # BFI Archivematica instance url
+API_NAME = os.environ.get("AM_API")  # Authorisation user name
+API_KEY = os.environ.get("AM_KEY")  # Authorisation user key
+SS_PIPE = os.environ.get("AM_SS_UUID")  # Archivematica Storage Service uuid
+SS_NAME = os.environ.get("AMSS_USR")  # Storage Service user name
+SS_KEY = os.environ.get("AMSS_KEY")  # Storage service user key
+ATOM_URL = os.environ.get("ATOM_URL")  # AtoM API URL for queries
+ATOM_KEY = os.environ.get("ATOM_KEY_META")  # AtoM API key
+ATOM_AUTH = os.environ.get("ATOM_AUTH")  # AtoM autorisation
+
+# Header dicts
 HEADER = {
     "Authorization": f"ApiKey {API_NAME}:{API_KEY}",
     "Content-Type": "application/json",
@@ -45,15 +45,7 @@ SS_HEADER = {
     "Content-Type": "application/json",
 }
 
-if (
-    not ARCH_URL
-    or not API_NAME
-    or not API_KEY
-    or not SFTP_UUID
-    or not SFTP_USR
-    or not SFTP_KEY
-    or not REL_PATH
-):
+if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_USR or not SFTP_KEY:
     sys.exit(
         "Error: Please set AM_URL, AM_API (username), and AM_KEY (API key) environment variables."
     )
@@ -61,7 +53,7 @@ if (
 
 def sftp_connect():
     """
-    Make connection
+    Make connection to Archivematica SFTP
     """
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -71,8 +63,8 @@ def sftp_connect():
 
 def sftp_listdir(rpath):
     """
-    Exception handling for
-    sftp.listdir call
+    Call SFTP connection's listdir data
+    with exception handling
     """
     sftp = sftp_connect()
     try:
@@ -86,11 +78,17 @@ def sftp_listdir(rpath):
 
 def send_to_sftp(fpath, top_folder):
     """
-    Check for parent folder, if absent mkdir
-    First step SFTP into Storage Service, then check
-    content has made it into the folder
-    Supply top_folder without /: Name_of_folder
-    Filepath must me to file level (not containing folder)
+    Arg fpath must be to file level (not folder)
+    Supply arg top_folder without trailing '/'
+    Top folder represents the first folder sitting
+    below SFTP 'API_Uploads'.
+    Folder/files to be formatted using snake_case preferably
+
+    Works through nested source paths ensuring all folder
+    structure passed through to SFTP folder 'API_Uploads'
+    Creates 'metadata/' folder containing metadata.csv
+    with Dublin Core basic metadata, as recommended by
+    Artefactual docs.
     """
 
     relpath = fpath.split(top_folder)[-1]
@@ -176,8 +174,9 @@ def send_metadata_to_sftp(fpath, top_folder):
     Check for parent folder, if absent mkdir
     First step SFTP into Storage Service, then check
     content has made it into the folder
-    Supply top_folder without /: Name_of_folder
-    Filepath must me to file level (not containing folder)
+    Supply arg top_folder without trailing /
+    Folder/files to be formatted using snake_case preferably
+    Arg fpath must me to file level (not containing folder)
     """
 
     relpath = fpath.split(top_folder)[-1]
@@ -240,7 +239,8 @@ def send_metadata_to_sftp(fpath, top_folder):
 
 def sftp_put(sftp_object, fpath, relpath):
     """
-    Handle PUT to sftp
+    Handle PUT to sftp using
+    open SFTP connection
     """
     print(f"PUT request received:\n{fpath}\n{relpath}")
 
@@ -260,6 +260,7 @@ def sftp_put(sftp_object, fpath, relpath):
 def sftp_mkdir(sftp_object, relpath):
     """
     Handle making directory
+    using open sftp connection
     """
     try:
         sftp_object.mkdir(relpath)
@@ -279,8 +280,9 @@ def sftp_mkdir(sftp_object, relpath):
 
 def check_sftp_status(fpath, top_folder):
     """
-    Separate function to check if a file already
-    been through SFTP to API_Uploads
+    Check if a file already been
+    PUT to SFTP folder API_Uploads
+    before intiating repeat upload
     """
     relpath = fpath.split(top_folder)[-1]
     whole_path, file = os.path.split(relpath)
@@ -297,16 +299,23 @@ def check_sftp_status(fpath, top_folder):
     return content_list
 
 
-def send_as_package(fpath, top_folder, atom_slug, item_priref, process_config, auto_approve_arg):
+def send_as_package(
+    fpath, top_folder, atom_slug, item_priref, process_config, auto_approve_arg
+):
     """
-    Send a package using v2beta package, subject to change
-    Args: Path from top level no trailing /, AToM slug if known,
-    CID priref, OpenRecords or ClosedRecords, bool
+    Send a package using v2 beta package, subject to change!
+    Args: fpath from top level no trailing /, AToM slug if known,
+    BFI unique ID item_priref, processing config, bool 'True'
+
+    This is the only upload method that allows the API to supply an
+    AtoM slug, used to build readable web URLs
     """
     # Build correct folder paths
     PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package")
     folder_path = os.path.basename(fpath)
-    path_str = f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{top_folder}/{fpath}"
+    path_str = (
+        f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{top_folder}/{fpath}"
+    )
     print(path_str)
     encoded_path = base64.b64encode(path_str.encode("utf-8")).decode("utf-8")
 
@@ -345,21 +354,12 @@ def send_as_package(fpath, top_folder, atom_slug, item_priref, process_config, a
 
 def get_transfer_status(uuid):
     """
-    Look for transfer status of new
-    transfer/package. Returns:
-    {
-        "type": "transfer",
-        "path": "/var/archivematica/sharedDirectory/currentlyProcessing/FILENAME5-66312695-e8af-441f-a867-aa9460436434/",
-        "directory": "FILENAME5-66312695-e8af-441f-a867-aa9460436434",
-        "name": "FILENAME5",
-        "uuid": "66312695-e8af-441f-a867-aa9460436434",
-        "microservice": "Create SIP from transfer objects",
-        "status": "COMPLETE",
-        "sip_uuid": "d2edd55f-9ab4--bff2-ad2d9573614d",
-        "message": "Fetched status for 66312695-e8af-441f-a867-aa9460436434 successfully."
-    }
-    sip_uuid == sip_uuid needed for ingest status check
+    Look for transfer status of new transfer/package.
+    Returns transfer dictionary with 'status': 'COMPLETED' and
+    'sip_uuid': '<UID>', among other. The SIP UUID needed for
+    ingest status check function following.
     """
+
     status_endpoint = os.path.join(ARCH_URL, f"api/transfer/status/{uuid.strip()}")
     try:
         response = requests.get(status_endpoint, headers=HEADER)
@@ -382,20 +382,12 @@ def get_transfer_status(uuid):
 
 def get_ingest_status(sip_uuid):
     """
-    Look for transfer status of new
-    transfer/package. Returns:
-    {
-        "directory": "FILENAME5-66312695-e8af-441f-a867-aa9460436434",
-        "message": "Fetched status for 66312695-e8af-441f-a867-aa9460436434 successfully.",
-        "microservice": "Remove the processing directory",
-        "name": "FILENAME5",
-        "path": "/var/archivematica/sharedDirectory/currentlyProcessing/FILENAME5-66312695-e8af-441f-a867-aa9460436434/",
-        "status": "COMPLETE",
-        "type": "SIP",
-        "uuid": "66312695-e8af-441f-a867-aa9460436434"
-    }
-    uuid == aip_uuid needed for reingest (may be same/different)
+    Look for ingest status of new transfer/package.
+    Returns directory name, message, 'status': 'COMPLETE',
+    'type': 'SIP' and 'uuid': <UUID>'. This UUID represents
+    the AIP UUID, which may be needed for reingest.
     """
+
     status_endpoint = os.path.join(ARCH_URL, f"api/ingest/status/{sip_uuid.strip()}")
     try:
         response = requests.get(status_endpoint, headers=HEADER)
@@ -421,6 +413,7 @@ def get_transfer_list():
     Calls to retrieve UUID for
     transfers already in Archivematica
     """
+
     COMPLETED = os.path.join(ARCH_URL, "api/transfer/completed/")
     api_key = f"{API_NAME}:{API_KEY}"
     headers = {"Accept": "*/*", "Authorization": f"ApiKey {api_key}"}
@@ -467,7 +460,10 @@ def get_location_uuids():
 def get_atom_objects(skip_path):
     """
     Return json dict containting
-    objects (max 10 return, skip)
+    list of all objects found in AtoM.
+    Default max return is 10, skip_path
+    returns alternativate return values.
+    Called during next function.
     """
 
     try:
@@ -500,7 +496,7 @@ def get_all_atom_objects():
     """
     Handle skip iteration through all available
     information objects, call get_atom_objects
-    with interative skip numbers from totals
+    with interative skip numbers from totals.
     """
 
     endpoint = os.path.join(ATOM_URL, "informationobjects")
@@ -535,9 +531,12 @@ def get_all_atom_objects():
 def get_slug_match(slug_match):
     """
     Handles retrieval of all AtoM information objects
-    then builds list of slugs and attempts match.
-    Slug must be formatted to match, lowercase and '-'
-    where spaces were before
+    then builds list of slugs and attempts to match to
+    argument 'slug_match'.
+
+    Slug must be formatted to match in lowercase and
+    '-' instead of white spaces.
+    This function has not been fully tested.
     """
     list_of_objects = get_all_atom_objects()
     if list_of_objects is None:
@@ -559,7 +558,8 @@ def get_slug_match(slug_match):
 def delete_sip(sip_uuid):
     """
     Remove (hide) a SIP from Archivematica
-    after it's been transfered in error
+    after it's been transfered in error.
+    This function has not been fully tested.
     """
     ENDPOINT = f"{ARCH_URL}/api/ingest/{sip_uuid}/delete/"
     try:
@@ -587,11 +587,11 @@ def reingest_v2_aip(aip_uuid, type, process_config):
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
-    type = 'PARTIAL'
-    Full needed to supply processing_config update (Closed_to_Open)
-    No auuto approve with this - we need to upload metadata first
-    Returns 'reingest_uuid' needed for metadata upload:
-    response['reingest_uuid'] once converted to JSON
+    type = 'PARTIAL' / 'FULL'
+    Full needed to supply processing_config update
+    Partial used for metadata reingests only
+    Returns 'reingest_uuid' key needed for metadata upload.
+    You cannot supply slugs (access_system_id) using this endpoint
     """
     PACKAGE_ENDPOINT = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/reingest/"
 
@@ -627,8 +627,12 @@ def reingest_v2_aip(aip_uuid, type, process_config):
 
 def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
     """
-    Function for reingesting an AIP without
-    supplying any slug data. type FULL/PARTIAL
+    Alternative endpoint for reingesting an AIP.
+    Reingest type can be:
+      FULL (file and metadata)
+      PARTIAL (metadata only)
+    You cannot supply slugs (access_system_id) using this endpoint
+    This function has not been fully tested.
     """
     ENDPOINT = f"{ARCH_URL}/api/transfer/reingest/"
 
@@ -664,10 +668,15 @@ def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
 
 def metadata_copy_reingest(sip_uuid, source_mdata_path):
     """
-    Path from top level folder to completion only
+    Arg source_mdata_path should be from top level folder
+    to metadata only, not absolute path. Top level folder
+    is the first folder in sftp root path after 'API_Uploads'
+
     Where metadata reingest occurs, set copy metadata
     call to requests. Path is to metadata.csv level
     for the given item's correlating aip uuid
+
+    This function has not been fully tested.
     """
     from urllib.parse import urlencode
 
@@ -703,7 +712,8 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
 
 def approve_aip_reingest(uuid):
     """
-    Send approval for ingest
+    Send approval for reingest.
+    This cannot be automated in reingest functions.
     """
     END = f"{ARCH_URL}/api/ingest/reingest/approve/"
 
@@ -733,6 +743,7 @@ def approve_transfer(dir_name):
     """
     Find transfer that needs approval
     And approve if dir-name matches
+    This function has not been fully tested
     """
     GET_UNAPPROVED = f"{ARCH_URL}/api/transfer/unapproved/"
     APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"

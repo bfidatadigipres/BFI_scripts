@@ -21,8 +21,11 @@ import datetime
 import errno
 import json
 import logging
+<<<<<<< HEAD
+=======
 
 # Python packages
+>>>>>>> 37cf36dd1cda30402f92fc46281774db803657bc
 import os
 import shutil
 import sys
@@ -45,8 +48,13 @@ YESTERDAY_CLEAN: Final = YESTERDAY.strftime("%Y-%m-%d")
 START: Final = f"{YESTERDAY_CLEAN}T00:00:00"
 END: Final = f"{YESTERDAY_CLEAN}T23:59:00"
 # If a different date period needs targeting use:
+<<<<<<< HEAD
+# START = '2025-12-22T00:00:00'
+# END = '2025-12-22T23:59:00'
+=======
 # START = '2025-01-24T00:00:00'
 # END = '2025-01-24T23:59:00'
+>>>>>>> 37cf36dd1cda30402f92fc46281774db803657bc
 DATE_PATH: Final = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH: Final = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
@@ -75,7 +83,6 @@ CHANNEL = {
     "itv2": os.environ["PA_ITV2"],
     "itv3": os.environ["PA_ITV3"],
     "itv4": os.environ["PA_ITV4"],
-    "itvbe": os.environ["PA_ITVBE"],
     "channel4": os.environ["PA_CHANNEL4"],
     "more4": os.environ["PA_MORE4"],
     "e4": os.environ["PA_E4"],
@@ -84,7 +91,10 @@ CHANNEL = {
     "5star": os.environ["PA_5STAR"],
 }
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 37cf36dd1cda30402f92fc46281774db803657bc
 def check_control() -> None:
     """
     Check control JSON for downtime request
@@ -202,6 +212,7 @@ def main() -> None:
     for item in CHANNEL.keys():
         item_path = os.path.join(PATH, item)
         print(item_path)
+        os.chmod(item_path, mode=0o777)
         if not os.path.exists(item_path):
             fails += 1
             make_path(CHANNEL, item)

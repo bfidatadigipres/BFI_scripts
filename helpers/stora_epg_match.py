@@ -103,6 +103,44 @@ CHANNELS = {
     ],
 }
 
+<<<<<<< HEAD
+def check_bst_adjustment(utc_datetime_str: str):
+    """
+    Passes datetime through timezone change
+    for London, adding +1 hours during BST
+    Must receive data formatted %Y-%m-%d %H:%M:%S
+    """
+    format = "%Y-%m-%d %H:%M:%S"
+    try:
+        dt_utc = datetime.strptime(utc_datetime_str, format).replace(
+            tzinfo=timezone.utc
+        )
+        print(dt_utc)
+    except ValueError as err:
+        raise ValueError(
+            f"Invalid datetime string format: {err}. Expected '%Y-%m-%d %H:%M:%S'"
+        )
+
+    london_tz = ZoneInfo("Europe/London")
+    dt_london = dt_utc.astimezone(london_tz)
+    string_bst = datetime.strftime(dt_london, format)
+    return string_bst.split(" ")
+
+def calculate_transmission_stoptime(duration: str, start_time: str):
+    
+    time_format = "%H:%M:%S"
+    try:
+        duration_int = int(duration)
+    except TypeError as e:
+        print(e)
+        return None
+
+    start_time = datetime.strptime(start_time, time_format)
+    end_time = start_time + timedelta(minutes=duration_int)
+
+    return end_time.strftime("%H:%M:%S")
+=======
+>>>>>>> 9044c1e101932f619c473e5211deab72a2fedea2
 
 def split_title(title_article):
     """
@@ -162,10 +200,16 @@ def split_title(title_article):
 
     return title_article, ""
 
+<<<<<<< HEAD
+def get_stora_data(fullpath: str):
+    # get channel name + broadcast_channel
+    channel_data = fullpath.split('/')[-2]
+=======
 
 def get_stora_data(fullpath: str):
     # get channel name + broadcast_channel
     channel_data = fullpath.split("/")[-2]
+>>>>>>> 9044c1e101932f619c473e5211deab72a2fedea2
     print(channel_data)
     for key, val in CHANNELS.items():
         if f"/{key}/" in fullpath:
@@ -175,6 +219,29 @@ def get_stora_data(fullpath: str):
                 print(channel)
             except (IndexError, TypeError, KeyError) as err:
                 print(err)
+<<<<<<< HEAD
+    with open(fullpath, 'r') as file:
+        info_json = json.load(file)
+        #print(info_json.get('item')[0].keys())
+        date_time = info_json.get('item')[0]['dateTime']
+        date = datetime.fromisoformat(date_time[:-1]).strftime('%Y-%m-%d')
+        time = datetime.fromisoformat(date_time[:-1]) + timedelta(hours=1)
+        time_str = time.strftime("%H:%M:%S")
+        title = info_json.get('item')[0].get('title')
+        duration =  info_json.get('item')[0].get('duration')
+        if duration is None:
+            duration = 0
+        asset_title = info_json.get('item')[0].get('asset').get('title')
+        if asset_title is None:
+             asset_title = ''
+        asset_id = info_json.get('item')[0].get('asset').get('id')
+        certification = info_json["item"][0].get("certification").get("bbfc")
+        if certification is None:
+          certification = ''
+        group = info_json["item"][0].get("meta").get("group")
+        if group is None:
+           group = ''
+=======
     with open(fullpath, "r") as file:
         info_json = json.load(file)
         # print(info_json.get('item')[0].keys())
@@ -194,10 +261,78 @@ def get_stora_data(fullpath: str):
         group = info_json["item"][0].get("meta").get("group")
         if group is None:
             group = ""
+>>>>>>> 9044c1e101932f619c473e5211deab72a2fedea2
         group = str(group)
         attribute = info_json["item"][0].get("attribute")
         asset_attribute = info_json["item"][0].get("asset").get("attribute")
         if asset_attribute is None:
+<<<<<<< HEAD
+           asset_attribute = []
+        list_attributes = attribute + asset_attribute + [group] + [certification]
+
+        if "bbc" in fullpath or "cbeebies" in fullpath or "cbbc" in fullpath:
+            code_type = "MPEG-4 AVC"
+            broadcast_company = "454"
+            print(f"Broadcast company set to BBC in {fullpath}")
+        elif "itv" in fullpath:
+            code_type = "MPEG-4 AVC"
+            broadcast_company = "20425"
+            print(f"Broadcast company set to ITV in {fullpath}")
+        elif "more4" in fullpath or "film4" in fullpath or "/e4/" in fullpath:
+            code_type = "MPEG-2"
+            broadcast_company = "73319"
+            print(f"Broadcast company set to Channel4 in {fullpath}")
+        elif "channel4" in fullpath:
+            code_type = "MPEG-4 AVC"
+            broadcast_company = "73319"
+            print(f"Broadcast company set to Channel4 in {fullpath}")
+        elif "5star" in fullpath or "five" in fullpath:
+            code_type = "MPEG-2"
+            broadcast_company = "24404"
+            print(f"Broadcast company set to Five in {fullpath}")
+        elif "sky_news" in fullpath:
+            code_type = "MPEG-2"
+            broadcast_company = "78200"
+            print(f"Broadcast company set to Sky News in {fullpath}")
+        elif "skyarts" in fullpath:
+            code_type = "MPEG-4 AVC"
+            broadcast_company = "150001"
+            print(f"Broadcast company set to Sky Arts in {fullpath}")
+        elif "skymixhd" in fullpath:
+            code_type = "MPEG-4 AVC"
+            broadcast_company = "999939366"
+            print(f"Broadcast company set to Sky Mix in {fullpath}")
+        elif "al_jazeera" in fullpath:
+            code_type = "MPEG-4 AVC"
+            broadcast_company = "125338"
+            print(f"Broadcast company set to Al Jazeera in {fullpath}")
+        elif "gb_news" in fullpath:
+            code_type = "MPEG-4 AVC"
+            broadcast_company = "999831694"
+            print(f"Broadcast company set to GB News in {fullpath}")
+        elif "talk_tv" in fullpath:
+            code_type = "MPEG-4 AVC"
+            broadcast_company = "999883795"
+            print(f"Broadcast company set to Talk TV in {fullpath}")
+        elif "/u_dave" in fullpath:
+            code_type = "MPEG-2"
+            broadcast_company = "999929397"
+            print(f"Broadcast company set to U&Dave in {fullpath}")
+        elif "/u_drama" in fullpath:
+            code_type = "MPEG-2"
+            broadcast_company = "999929393"
+            print(f"Broadcast company set to U&Drama in {fullpath}")
+        elif "/u_yesterday" in fullpath:
+            code_type = "MPEG-2"
+            broadcast_company = "999929396"
+            print(f"Broadcast company set to U&Yesterday in {fullpath}")
+        elif "qvc" in fullpath:
+            code_type = "MPEG-4 AVC"
+            broadcast_company = "999939374"
+            print(f"Broadcast company set to QVC UK in {fullpath}")
+        elif "togethertv" in fullpath:
+            code_type = "MPEG-4 AVC"
+=======
             asset_attribute = []
         list_attributes = attribute + asset_attribute + [group] + [certification]
 
@@ -247,10 +382,82 @@ def get_stora_data(fullpath: str):
             broadcast_company = "999939374"
             print(f"Broadcast company set to QVC UK in {fullpath}")
         elif "togethertv" in fullpath:
+>>>>>>> 9044c1e101932f619c473e5211deab72a2fedea2
             broadcast_company = "999939362"
             print(f"Broadcast company set to Together TV in {fullpath}")
         else:
             broadcast_company = None
+<<<<<<< HEAD
+    return date, time_str, title, asset_title, channel, asset_id, duration, certification, list_attributes, broadcast_company
+
+
+
+if __name__ == "__main__":
+    list_path = sys.argv[1]
+    list_of_files = glob.glob(list_path)
+    count = 0
+    full_match_results = []
+    for path in list_of_files:
+       print(f"Processing row {path}")
+       date, time, json_title, asset_title, channel, asset_id, duration, certification, list_attributes, broadcast_company = get_stora_data(path)
+       print(f"Date: {date}")
+       print(f"time: {time}")
+       print(f"certs :  {certification}")
+       if asset_title.title().startswith("Generic"):
+              print(asset_title)
+              title_for_split = json_title
+              generic = True
+       elif asset_title == "":
+              title_for_split = json_title
+       else:
+              title_bare = "".join(str for str in asset_title if str.isalnum())
+              if title_bare.isnumeric():
+                 title_for_split = json_title
+              else:
+                 title_for_split = asset_title
+       title, title_article = split_title(title_for_split)
+       title = title.replace("\xe2\x80\x99", "'")
+       search =  f'grouping.lref="398775" and broadcast_channel = "{channel}" and transmission_date = "{date}" and transmission_start_time = "{time}"'
+       print(search)
+       hit, record = adlib.retrieve_record(os.environ.get("CID_API4"), "manifestations", search, "1")
+       if record is None:
+           print("orginal search failed, trying new search with different title")
+           continue
+       priref = adlib.retrieve_field_name(record[0], "priref")
+       title_record = adlib.retrieve_field_name(record[0], "title")
+       alternative_number = adlib.retrieve_field_name(record[0], "alternative_number")
+       print(record[0])
+       arts_title = adlib.retrieve_field_name(record[0], "title.article")
+       print(f"title.article: {arts_title}")
+       duration_secs = str(int(duration) * 60)
+       if hit >= 1:
+             count+=1
+             full_match_results.append(
+                {
+                  "priref": priref[0],
+                  "title.article": title_article,
+                  "title": json_title,
+                  "title.language": "English",
+                  "title.type": "05_MAIN",
+                  "title.article": arts_title,
+                  "title": title_record,
+                  "title.language": "English",
+                  "title.type": "35_ALTERNATIVE",
+                  "alternative_number.type": "PATV asset id",
+                  "alternative_number": asset_id,
+                  "utb.fieldname": "EPG attributes",
+                  "ubt.content": ", ".join(str(x) for x in list_attributes if len(x) > 0)
+                }
+            )
+       print(count)
+       #print(f"Total files processed: {len(list_of_files)}")
+       #print(f"file processed percentage: {count}/ {len(list_of_files)} --------> {count / len(list_of_files)}")
+       #print(f"miss rate: {len(list_of_files) - count}/{len(list_of_files)}  ----->  {(len(list_of_files) - count)/ len(list_of_files)}")
+       df = pd.DataFrame(full_match_results)
+       print(df)
+       df.to_csv("/mnt/qnap_11/Developers/new_csv_import_09.csv", index=False)
+
+=======
     return (
         date,
         time_str,
@@ -350,3 +557,4 @@ if __name__ == "__main__":
     # print(f"miss rate: {len(list_of_files) - count}/{len(list_of_files)}  ----->  {(len(list_of_files) - count)/ len(list_of_files)}")
     df = pd.DataFrame(full_match_results)
     print(df)
+>>>>>>> 9044c1e101932f619c473e5211deab72a2fedea2

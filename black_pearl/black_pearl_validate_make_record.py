@@ -698,10 +698,13 @@ def process_files(
         logger.info(
             "Creating media record and linking via object_number: %s", object_number
         )
+        logger.info(
+            "** Attempting creation of media record for %s, %s, %s, %s, %s", file, object_number, duration, byte_size, bucket
+        )
         media_priref = create_media_record(
             object_number, duration, byte_size, file, bucket, session
         )
-        print(media_priref)
+        logger.info("Media priref created: %s", media_priref)
 
         if media_priref:
             check_list.append(file)
@@ -787,6 +790,7 @@ def create_media_record(
     """
     record_data = []
     part, whole = utils.check_part_whole(filename)
+    logger.info("Part: %s Whole: %s", part, whole)
     if not part:
         return None
     record_data = [
@@ -804,16 +808,16 @@ def create_media_record(
     ]
 
     media_priref = ""
-    print(record_data)
+    logger.info(record_data)
     record_data_xml = adlib.create_record_data(
         CID_API, "media", session, "", record_data
     )
-    print(record_data_xml)
+    logger.info("Record data XML: %s", record_data_xml)
     try:
         item_rec = adlib.post(
             CID_API, record_data_xml, "media", "insertrecord", session
         )
-        print(item_rec)
+        logger.info("Item record: %s", item_rec)
         if item_rec:
             try:
                 media_priref = adlib.retrieve_field_name(item_rec, "priref")[0]

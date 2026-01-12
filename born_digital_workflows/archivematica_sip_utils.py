@@ -629,10 +629,9 @@ def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
     """
     Alternative endpoint for reingesting an AIP.
     Reingest type can be:
-      FULL (file and metadata)
-      PARTIAL (metadata only)
+    - FULL (file and metadata)
+    - PARTIAL (metadata only)
     You cannot supply slugs (access_system_id) using this endpoint
-    This function has not been fully tested.
     """
     ENDPOINT = f"{ARCH_URL}/api/transfer/reingest/"
 
@@ -675,8 +674,6 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     Where metadata reingest occurs, set copy metadata
     call to requests. Path is to metadata.csv level
     for the given item's correlating aip uuid
-
-    This function has not been fully tested.
     """
     from urllib.parse import urlencode
 
@@ -743,7 +740,6 @@ def approve_transfer(dir_name):
     """
     Find transfer that needs approval
     And approve if dir-name matches
-    This function has not been fully tested
     """
     GET_UNAPPROVED = f"{ARCH_URL}/api/transfer/unapproved/"
     APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"

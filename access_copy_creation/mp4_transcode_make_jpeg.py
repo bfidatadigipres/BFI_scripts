@@ -314,7 +314,7 @@ def main():
         )
 
         # Capture transcode timings
-        tic = time.perf_counter()75092
+        tic = time.perf_counter()
         try:
             data = subprocess.run(
                 ffmpeg_cmd,

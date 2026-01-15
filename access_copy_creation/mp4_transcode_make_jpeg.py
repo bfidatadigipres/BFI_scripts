@@ -399,7 +399,7 @@ def main():
         os.replace(outpath, outpath2)
 
     elif ftype == "image":
-
+        percent = ""
         oversize = False
         log_build.append(
             f"{local_time()}\tINFO\tItem is image. Generating large (full size copy) and thumbnail jpeg images."
@@ -1110,7 +1110,7 @@ def create_transcode(
             "default",
             "-c:a:1",
             "aac",
-            "-ab:2"S,
+            "-ab:2",
             "210k",
             "-ar:2",
             "48000",

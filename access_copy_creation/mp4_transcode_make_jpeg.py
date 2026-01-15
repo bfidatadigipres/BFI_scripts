@@ -1226,6 +1226,8 @@ def create_transcode(
         cmd_mid = crop_sd_608
     elif height == 576 and dar == "1.85:1":
         cmd_mid = crop_sd_16x9
+    elif height == 576 and aspect < 1.778:
+        cmd_mid = scale_sd_4x3
     elif height < 720 and dar == "16:9":
         cmd_mid = scale_sd_16x9
     elif height < 720 and dar == "4:3":

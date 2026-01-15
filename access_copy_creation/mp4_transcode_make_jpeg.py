@@ -279,7 +279,7 @@ def main():
         # Check for 12+ Discrete in Mediainfo return
         twelve_chnl = False
         # Check in Mediainfo for Discrete entries of 12+ as possible method for id 7.1.4?
-        discretes = utils.get_metadata("Audio", "ChannelLayout", fpath)
+        discretes = utils.get_metadata("Audio", "ChannelLayout", fullpath)
         if "Discrete" in discretes:
             if discretes.count("Discrete") >= 12:
                 twelve_chnl = True

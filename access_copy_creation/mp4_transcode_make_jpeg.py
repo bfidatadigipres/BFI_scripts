@@ -276,6 +276,14 @@ def main():
         # Check if FL FR present
         fl_fr = check_for_fl_fr(fullpath)
 
+        # Check for 12+ Discrete in Mediainfo return
+        twelve_chnl = False
+        Check in Mediainfo for Discrete entries of 12+ as possible method for id 7.1.4?
+        discretes = utils.get_metadata("Audio", "ChannelLayout", fpath)
+        if "Discrete" in discretes:
+            if discretes.count("Discrete") >= 12:
+                twelve_chnl = True
+
         # Build FFmpeg command based on dar/height
         ffmpeg_cmd = create_transcode(
             fullpath,
@@ -289,6 +297,7 @@ def main():
             vs,
             mixed_dict,
             fl_fr,
+            twelve_chnl
         )
         if not ffmpeg_cmd:
             log_build.append(
@@ -305,7 +314,7 @@ def main():
         )
 
         # Capture transcode timings
-        tic = time.perf_counter()
+        tic = time.perf_counter()75092
         try:
             data = subprocess.run(
                 ffmpeg_cmd,
@@ -965,6 +974,7 @@ def create_transcode(
     vs: str,
     mixed_dict: Optional[dict[str, int]],
     fl_fr: bool,
+    twelve_chnl: bool,
 ) -> Optional[list[str]]:
     """
     Builds FFmpeg command based on height/dar input
@@ -1100,7 +1110,7 @@ def create_transcode(
             "default",
             "-c:a:1",
             "aac",
-            "-ab:2",
+            "-ab:2"S,
             "210k",
             "-ar:2",
             "48000",
@@ -1116,6 +1126,18 @@ def create_transcode(
         ]
     elif fl_fr is True:
         map_audio = ["-map", "0:a?", "-c:a", "aac", "-ac", "2", "-dn"]
+    elif twelve_chnl is True:
+        map_audio = [
+            "-map",
+            "0:a?",
+            "-af",
+            "'pan=stereo|c0=FL+0.707*FC|c1=FR+0.707*FC'",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-dn"
+        ]
     elif default and audio:
         print(f"Default {default}, Audio {audio}")
         map_audio = [

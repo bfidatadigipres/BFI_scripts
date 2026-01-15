@@ -1163,7 +1163,7 @@ def create_transcode(
             "-map",
             "0:a?",
             "-af",
-            "'pan=stereo|c0=FL+0.707*FC|c1=FR+0.707*FC'",
+            "pan=stereo|c0=FL+0.707*FC|c1=FR+0.707*FC",
             "-c:a",
             "aac",
             "-b:a",

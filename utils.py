@@ -371,7 +371,7 @@ def get_metadata(stream, arg, dpath):
     ]
 
     meta = subprocess.check_output(cmd)
-    return meta.decode("utf-8").rstrip("\n")
+    return meta.decode("utf-8").strip()
 
 
 # (dpath: str, policy: str) -> tuple[bool, str]:

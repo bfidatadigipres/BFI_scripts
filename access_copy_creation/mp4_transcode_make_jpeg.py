@@ -686,6 +686,10 @@ def get_dar(fullpath: str) -> str:
     """
 
     dar_setting = utils.get_metadata("Video", "DisplayAspectRatio/String", fullpath)
+    if len(dar_setting) >= 6:
+        print(f"Suspect height has multiple returned streams: {dar_setting}")
+        dar_setting = remove_stream_repeats(dar_setting, fullpath)
+
     if "4:3" in str(dar_setting):
         return "4:3"
     if "16:9" in str(dar_setting):
@@ -708,11 +712,31 @@ def get_par(fullpath: str) -> str:
 
     par_setting = utils.get_metadata("Video", "PixelAspectRatio", fullpath)
     par_full = str(par_setting).rstrip("\n")
+    if len(par_full) >= 6:
+        print(f"Suspect height has multiple returned streams: {par_full}")
+        par_full = remove_stream_repeats(par_full, fullpath)
 
     if len(par_full) <= 5:
         return par_full
+    return par_full[:5]
+
+
+def remove_stream_repeats(value:str, fullpath: str) -> str:
+    """
+    Deals with instances where height/width/DAR/PAR return
+    multiple values for multiple streams - Video stream only
+    """
+
+    count = utils.get_metadata("General", "VideoCount", fullpath)
+    print(f"Video stream total found: {count}")
+    if not count.isnumeric():
+        return value
+    elif int(count) > 1:
+        if len(value) % len(count) == 0:
+            chop_length = len(value) // int(count)
+            return value[:chop_length]
     else:
-        return par_full[:5]
+        return value
 
 
 def get_height(fullpath: str) -> str:
@@ -724,6 +748,12 @@ def get_height(fullpath: str) -> str:
 
     sampled_height = utils.get_metadata("Video", "Sampled_Height", fullpath)
     reg_height = utils.get_metadata("Video", "Height", fullpath)
+    if len(sample_height) >= 6:
+        print(f"Suspect height has multiple returned streams: {sample_height}")
+        sample_height = remove_stream_repeats(sample_height, fullpath)
+    if len(reg_height) >= 6:
+        print(f"Suspect height has multiple returned streams: {reg_height}")
+        reg_height = remove_stream_repeats(reg_height, fullpath)
 
     try:
         int(sampled_height)
@@ -761,7 +791,13 @@ def get_width(fullpath: str) -> str:
 
     width = utils.get_metadata("Video", "Width/String", fullpath)
     clap_width = utils.get_metadata("Video", "Width_CleanAperture/String", fullpath)
-    print(width, clap_width)
+    if len(width) >= 6:
+        print(f"Suspect width has multiple returned streams: {width}")
+        width = remove_stream_repeats(width, fullpath)
+    if len(clap_width) >= 6:
+        print(f"Suspect width has multiple returned streams: {clap_width}")
+        clap_width = remove_stream_repeats(clap_width, fullpath)
+    
     if width.startswith("720 ") and clap_width.startswith("703 "):
         return "703"
     if width.startswith("720 "):

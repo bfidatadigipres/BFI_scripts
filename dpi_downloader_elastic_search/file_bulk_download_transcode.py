@@ -377,13 +377,13 @@ def main():
         datetime.now().strftime(FMT)[:19],
     )
     for row in data:
-        if not utils.check_control("pause_scripts") or not utils.check_control(
-            "black_pearl"
-        ):
-            LOGGER.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
-            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        # if not utils.check_control("pause_scripts") or not utils.check_control(
+        #     "black_pearl"
+        # ):
+        #     LOGGER.info(
+        #         "Script run prevented by downtime_control.json. Script exiting."
+        #     )
+        #     sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         check_elasticsearch()
         username = row[0].strip()
         email = row[1].strip()

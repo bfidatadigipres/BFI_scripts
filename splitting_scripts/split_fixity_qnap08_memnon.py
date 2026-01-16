@@ -146,6 +146,9 @@ def main():
     if not utils.check_storage(TARGET):
         logger.info("Script run prevented by Storage Control document. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        logger.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     # List files in recursive sub-directories
     files = []

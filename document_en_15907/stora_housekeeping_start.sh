@@ -18,8 +18,20 @@ function control {
     fi
 }
 
+function pauseScript {
+    boole=$(cat "${CONTROL_JSON}" | grep "pause_scripts" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      echo 'Control json requests script exit immediately'
+      exit 0
+    fi
+}
+
 # Check control
 control
+
+# pause scripts check inserted into code
+pauseScript
 
 # Log entries ahead of python launch
 echo " ========================= Start stora_housekeeping in year folders == $date_FULL" >> "$log"

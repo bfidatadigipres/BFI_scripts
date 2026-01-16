@@ -91,6 +91,9 @@ def main():
     if not utils.check_storage(sys.argv[1]):
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     # Get the new CSV path created
     root, csv = os.path.split(sys.argv[1])

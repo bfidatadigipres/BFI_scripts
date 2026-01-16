@@ -37,7 +37,6 @@ CURRENT_ERRORS_NEW: Final = os.path.join(CURRENT_ERROR_FOLD, "current_errors_new
 
 FILEPATHS = [
     "AUTOINGEST_QNAP01",
-    "AUTOINGEST_QNAP02",
     "AUTOINGEST_QNAP03",
     "AUTOINGEST_QNAP04",
     "AUTOINGEST_QNAP05",
@@ -48,6 +47,7 @@ FILEPATHS = [
     "AUTOINGEST_QNAP10",
     "AUTOINGEST_QNAP11",
     "AUTOINGEST_QNAP08_OSH",
+    "AUTOINGEST_EDITSHARE",
     "BP_VIDEO_AUTOINGEST",
     "BP_AUDIO_AUTOINGEST",
     "BP_DIGITAL_AUTOINGEST",
@@ -58,7 +58,6 @@ FILEPATHS = [
     "BP_FILM4_AUTOINGEST",
     "BP_FILM5_AUTOINGEST",
     "BP_FILM6_AUTOINGEST",
-    "AUTOINGEST_EDITSHARE",
 ]
 
 
@@ -67,7 +66,9 @@ def main():
     For standalone use of log_parser
     not, launched from autoingest
     """
-    if not utils.check_control("autoingest"):
+    if not utils.check_control("autoingest") or not utils.check_control(
+        "pause_scripts"
+    ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     create_current_errors_logs()
 
@@ -138,7 +139,7 @@ def create_current_errors_logs() -> None:
     if append_rows:
         append_rows.sort(reverse=True)
         print("* Creating CSV file current_errors.csv in current_errors folder...")
-        with open(CURRENT_ERRORS, "w") as of:
+        with open(CURRENT_ERRORS, "w+") as of:
             writer = csv.writer(of)
             writer.writerow(["timedate", "path", "file", "message"])
             for ar in append_rows:

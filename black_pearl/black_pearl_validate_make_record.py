@@ -102,6 +102,7 @@ LOG_PATHS = {
     os.environ["BP_FILM4"]: os.environ["L_BP_FILM4"],
     os.environ["BP_FILM5"]: os.environ["L_BP_FILM5"],
     os.environ["BP_FILM6"]: os.environ["L_BP_FILM6"],
+    os.environ["QNAP_05"]: os.environ["L_QNAP05"],
 }
 
 
@@ -464,6 +465,7 @@ def process_files(
     Receive ingest fpath then JSON has confirmed files ingested to tape
     and this function handles CID media record check/creation and move
     """
+    wpath = ""
     for key, val in LOG_PATHS.items():
         if key in autoingest:
             wpath = val
@@ -631,7 +633,7 @@ def process_files(
                     check_list.append(file)
                 except Exception as err:
                     logger.warning("Unable to delete asset: %s", fpath)
-                    logger.warning("Manual inspection of asset required")
+                    logger.warning("Manual inspection of asset required:\n%s", err)
             elif reingest_confirm and md5_match:
                 logger.info(
                     "File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion."
@@ -697,10 +699,13 @@ def process_files(
         logger.info(
             "Creating media record and linking via object_number: %s", object_number
         )
+        logger.info(
+            "** Attempting creation of media record for %s, %s, %s, %s, %s", file, object_number, duration, byte_size, bucket
+        )
         media_priref = create_media_record(
             object_number, duration, byte_size, file, bucket, session
         )
-        print(media_priref)
+        logger.info("Media priref created: %s", media_priref)
 
         if media_priref:
             check_list.append(file)
@@ -786,6 +791,7 @@ def create_media_record(
     """
     record_data = []
     part, whole = utils.check_part_whole(filename)
+    logger.info("Part: %s Whole: %s", part, whole)
     if not part:
         return None
     record_data = [
@@ -803,16 +809,16 @@ def create_media_record(
     ]
 
     media_priref = ""
-    print(record_data)
+    logger.info(record_data)
     record_data_xml = adlib.create_record_data(
         CID_API, "media", session, "", record_data
     )
-    print(record_data_xml)
+    logger.info("Record data XML: %s", record_data_xml)
     try:
         item_rec = adlib.post(
             CID_API, record_data_xml, "media", "insertrecord", session
         )
-        print(item_rec)
+        logger.info("Item record: %s", item_rec)
         if item_rec:
             try:
                 media_priref = adlib.retrieve_field_name(item_rec, "priref")[0]
@@ -823,6 +829,7 @@ def create_media_record(
     except Exception:
         print(f"\nUnable to create CID media record for {ob_num}")
         logger.exception("Unable to create CID media record!")
+
 
     return media_priref
 

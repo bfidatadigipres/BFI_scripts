@@ -252,7 +252,6 @@ def group_check(record, fname):
                         except (IndexError, KeyError):
                             pass
         if fieldnames:
-            print(f"group_check(): {type(fieldnames)}")
             return fieldnames
 
     elif len(group_check) > 1:

@@ -12,8 +12,18 @@ function control {
     fi
 }
 
+function pauseScripts {
+    boole=$(cat "${CONTROL_JSON}" | grep "pause_scripts" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      exit 0
+    fi
+}
+
 # Control check inserted into code
 control
+
+pauseScripts
 
 # Log script start
 echo "Start delete_post_split.py: $(date)" >> "${LOG_PATH}delete_post_split.log"

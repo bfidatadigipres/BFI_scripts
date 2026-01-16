@@ -18,8 +18,19 @@ function control {
     fi
 }
 
+function pauseScripts {
+    boole=$(cat "${CONTROL_JSON}" | grep "pause_scripts" | awk -F': ' '{print $2}')
+    if [ "$boole" = false, ] ; then
+      echo "Control json requests script exit immediately" >> "${LOG}"
+      echo 'Control json requests script exit immediately'
+      exit 0
+    fi
+}
+
 # Control check inserted into code
 control
+
+pauseScripts
 
 # Function to write output to log, bypass echo calls, using just log + statement.
 function log {

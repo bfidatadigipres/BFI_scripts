@@ -47,6 +47,7 @@ END: Final = f"{YESTERDAY_CLEAN}T23:59:00"
 # If a different date period needs targeting use:
 # START = '2025-01-24T00:00:00'
 # END = '2025-01-24T23:59:00'
+
 DATE_PATH: Final = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH: Final = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
@@ -75,7 +76,6 @@ CHANNEL = {
     "itv2": os.environ["PA_ITV2"],
     "itv3": os.environ["PA_ITV3"],
     "itv4": os.environ["PA_ITV4"],
-    "itvbe": os.environ["PA_ITVBE"],
     "channel4": os.environ["PA_CHANNEL4"],
     "more4": os.environ["PA_MORE4"],
     "e4": os.environ["PA_E4"],
@@ -202,6 +202,7 @@ def main() -> None:
     for item in CHANNEL.keys():
         item_path = os.path.join(PATH, item)
         print(item_path)
+        os.chmod(item_path, mode=0o777)
         if not os.path.exists(item_path):
             fails += 1
             make_path(CHANNEL, item)

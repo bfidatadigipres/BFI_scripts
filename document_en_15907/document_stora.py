@@ -191,7 +191,9 @@ def generate_variables(data) -> tuple[str, str, str, str, int, int, int, str, st
         actual_duration_hours_integer * 60
     ) + actual_duration_minutes_integer
 
-    actual_duration_seconds_integer = (actual_duration_total * 60) + int(actual_duration_seconds)
+    actual_duration_seconds_integer = (actual_duration_total * 60) + int(
+        actual_duration_seconds
+    )
 
     return (
         title,
@@ -380,15 +382,28 @@ def main() -> None:
 
             # Create variables from csv sources
             var_data = generate_variables(data)
-            title = var_data[0]
-            description = var_data[1]
-            time = var_data[3]
-            duration_total = var_data[4]
-            actual_duration_total = var_data[5]
-            actual_duration_seconds_integer = var_data[6]
-            channel = var_data[7]
-            broadcast_company = var_data[8]
-            code_type = var_data[9]
+
+            if "UTC" in var_data:
+                title = var_data[0]
+                description = var_data[1]
+                time = var_data[2]
+                duration_total = var_data[4]
+                actual_duration_total = var_data[5]
+                actual_duration_seconds_integer = var_data[6]
+                channel = var_data[7]
+                broadcast_company = var_data[8]
+                code_type = var_data[9]
+            else:
+                title = var_data[0]
+                description = var_data[1]
+                time = var_data[3]
+                duration_total = var_data[4]
+                actual_duration_total = var_data[5]
+                actual_duration_seconds_integer = var_data[6]
+                channel = var_data[7]
+                broadcast_company = var_data[8]
+                code_type = var_data[9]
+
             acquired_filename = os.path.join(root, "stream.mpeg2.ts")
 
             # Get title_date_start from root folder

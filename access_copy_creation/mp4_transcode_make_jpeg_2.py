@@ -112,7 +112,9 @@ def main():
         sys.exit("EXIT: Supplied path is not a file")
 
     # Multiple instances of script so collecting logs for one burst output
-    if not utils.check_control("mp4_transcode"):
+    if not utils.check_control("mp4_transcode") or not utils.check_control(
+        "pause_scripts"
+    ):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(fullpath) or not utils.check_storage(TRANSCODE):
@@ -259,14 +261,18 @@ def main():
 
         # Final check file not parallel processed already
         if not os.path.isfile(fullpath):
-            log_build.append(f"{local_time()}\tINFO\tFile for processing no longer in transcode/ path. Exiting")
+            log_build.append(
+                f"{local_time()}\tINFO\tFile for processing no longer in transcode/ path. Exiting"
+            )
             log_output(log_build)
             sys.exit("EXIT: Supplied path is not a file")
 
         # Check to ensure that the file isn't already being processed
         check_name = os.path.join(transcode_pth, fname)
         if os.path.exists(check_name):
-            log_build.append(f"{local_time()}\tINFO\tFile has already been processed. Exiting")
+            log_build.append(
+                f"{local_time()}\tINFO\tFile has already been processed. Exiting"
+            )
             log_output(log_build)
             sys.exist("File has already completed processing. Skipping")
         if os.path.exists(f"{check_name}.mp4"):
@@ -274,7 +280,9 @@ def main():
             if delete_confirm is True:
                 os.remove(f"{check_name}.mp4")
             else:
-                log_build.append(f"{local_time()}\tINFO\tFile being processed concurrently. Exiting")
+                log_build.append(
+                    f"{local_time()}\tINFO\tFile being processed concurrently. Exiting"
+                )
                 log_output(log_build)
                 sys.exit("File already being processed. Skipping.")
 
@@ -380,7 +388,9 @@ def main():
         # Calculate seconds mark to grab screen
         seconds = adjust_seconds(duration)
         if seconds is None:
-            log_build.append(f"{local_time()}\tWARNING\tSeconds not found from duration: {duration}")
+            log_build.append(
+                f"{local_time()}\tWARNING\tSeconds not found from duration: {duration}"
+            )
             log_build.append(f"{local_time()}\tWARNING\tCleaning up MP4 creation")
             log_output(log_build)
             sys.exit("Exiting: JPEG not created from MP4 file - duration data missing")
@@ -565,9 +575,11 @@ def adjust_seconds(duration) -> int:
             seconds = duration // 2
         return seconds
     except Exception as err:
-        LOGGER.warning("Unable to divide supplied duration: %s %s", duration, type(duration))
+        LOGGER.warning(
+            "Unable to divide supplied duration: %s %s", duration, type(duration)
+        )
         return None
-    
+
 
 def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
     """

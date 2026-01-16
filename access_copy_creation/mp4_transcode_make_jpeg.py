@@ -113,7 +113,9 @@ def main():
 
     # Multiple instances of script so collection logs for one burst output
     log_build: list[str] = []
-    if not utils.check_control("mp4_transcode"):
+    if not utils.check_control("mp4_transcode") or not utils.check_control(
+        "pause_scripts"
+    ):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(fullpath) or not utils.check_storage(TRANSCODE):
@@ -274,6 +276,17 @@ def main():
         # Check if FL FR present
         fl_fr = check_for_fl_fr(fullpath)
 
+        # Check for 12 channels in one stream as 7.1.4 flag
+        twelve_chnl = False
+        discretes = utils.get_metadata("Audio", "ChannelLayout", fullpath)
+        if "Discrete" in discretes:
+            if discretes.count("Discrete") >= 12:
+                twelve_chnl = True
+        audio_count = utils.get_metadata("General", "AudioCount", fullpath)
+        audio_channels = utils.get_metadata("General", "Audio_Channels_Total", fullpath)
+        if audio_count.strip() == "1" and audio_channels.strip() == "12":
+            twelve_chnl = True
+
         # Build FFmpeg command based on dar/height
         ffmpeg_cmd = create_transcode(
             fullpath,
@@ -287,6 +300,7 @@ def main():
             vs,
             mixed_dict,
             fl_fr,
+            twelve_chnl
         )
         if not ffmpeg_cmd:
             log_build.append(
@@ -388,7 +402,7 @@ def main():
         os.replace(outpath, outpath2)
 
     elif ftype == "image":
-
+        percent = ""
         oversize = False
         log_build.append(
             f"{local_time()}\tINFO\tItem is image. Generating large (full size copy) and thumbnail jpeg images."
@@ -675,6 +689,10 @@ def get_dar(fullpath: str) -> str:
     """
 
     dar_setting = utils.get_metadata("Video", "DisplayAspectRatio/String", fullpath)
+    if len(dar_setting) >= 6:
+        print(f"Suspect height has multiple returned streams: {dar_setting}")
+        dar_setting = remove_stream_repeats(dar_setting, fullpath)
+
     if "4:3" in str(dar_setting):
         return "4:3"
     if "16:9" in str(dar_setting):
@@ -697,11 +715,31 @@ def get_par(fullpath: str) -> str:
 
     par_setting = utils.get_metadata("Video", "PixelAspectRatio", fullpath)
     par_full = str(par_setting).rstrip("\n")
+    if len(par_full) >= 6:
+        print(f"Suspect height has multiple returned streams: {par_full}")
+        par_full = remove_stream_repeats(par_full, fullpath)
 
     if len(par_full) <= 5:
         return par_full
+    return par_full[:5]
+
+
+def remove_stream_repeats(value:str, fullpath: str) -> str:
+    """
+    Deals with instances where height/width/DAR/PAR return
+    multiple values for multiple streams - Video stream only
+    """
+
+    count = utils.get_metadata("General", "VideoCount", fullpath)
+    print(f"Video stream total found: {count}")
+    if not count.isnumeric():
+        return value
+    elif int(count) > 1:
+        if len(value) % len(count) == 0:
+            chop_length = len(value) // int(count)
+            return value[:chop_length]
     else:
-        return par_full[:5]
+        return value
 
 
 def get_height(fullpath: str) -> str:
@@ -713,7 +751,7 @@ def get_height(fullpath: str) -> str:
 
     sampled_height = utils.get_metadata("Video", "Sampled_Height", fullpath)
     reg_height = utils.get_metadata("Video", "Height", fullpath)
-
+    
     try:
         int(sampled_height)
     except ValueError:
@@ -725,6 +763,10 @@ def get_height(fullpath: str) -> str:
         height = str(sampled_height)
     else:
         height = str(reg_height)
+
+    if len(height) >= 6:
+        print(f"Suspect height has multiple returned streams: {height}")
+        height = remove_stream_repeats(height, fullpath)
 
     if height.startswith("480 "):
         return "480"
@@ -750,7 +792,7 @@ def get_width(fullpath: str) -> str:
 
     width = utils.get_metadata("Video", "Width/String", fullpath)
     clap_width = utils.get_metadata("Video", "Width_CleanAperture/String", fullpath)
-    print(width, clap_width)
+    
     if width.startswith("720 ") and clap_width.startswith("703 "):
         return "703"
     if width.startswith("720 "):
@@ -763,6 +805,10 @@ def get_width(fullpath: str) -> str:
         return "1280"
     if width.startswith("1920 ") or width.startswith("1 920 "):
         return "1920"
+
+    if len(width) >= 6:
+        print(f"Suspect width has multiple returned streams: {width}")
+        width = remove_stream_repeats(width, fullpath)
     if width.isdigit():
         return str(width)
 
@@ -963,6 +1009,7 @@ def create_transcode(
     vs: str,
     mixed_dict: Optional[dict[str, int]],
     fl_fr: bool,
+    twelve_chnl: bool,
 ) -> Optional[list[str]]:
     """
     Builds FFmpeg command based on height/dar input
@@ -1114,6 +1161,18 @@ def create_transcode(
         ]
     elif fl_fr is True:
         map_audio = ["-map", "0:a?", "-c:a", "aac", "-ac", "2", "-dn"]
+    elif twelve_chnl is True:
+        map_audio = [
+            "-map",
+            "0:a?",
+            "-af",
+            "pan=stereo|c0=FL+0.707*FC|c1=FR+0.707*FC",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-dn"
+        ]
     elif default and audio:
         print(f"Default {default}, Audio {audio}")
         map_audio = [
@@ -1170,6 +1229,8 @@ def create_transcode(
         cmd_mid = crop_sd_608
     elif height == 576 and dar == "1.85:1":
         cmd_mid = crop_sd_16x9
+    elif height == 576 and aspect < 1.778:
+        cmd_mid = scale_sd_4x3
     elif height < 720 and dar == "16:9":
         cmd_mid = scale_sd_16x9
     elif height < 720 and dar == "4:3":

@@ -321,7 +321,7 @@ def main():
                 universal_newlines=True,
                 stderr=subprocess.PIPE,
             ).stderr
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             log_build.append(
                 f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}"
             )
@@ -612,7 +612,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
     try:
         subprocess.call(cmd)
         return True
-    except Exception as err:
+    except subprocess.CalledProcessError as err:
         LOGGER.warning(
             "%s\tINFO\tget_jpeg(): failed to extract JPEG\n%s\n%s",
             local_time(),
@@ -968,17 +968,17 @@ def check_audio(
     try:
         lang0 = subprocess.check_output(cmd0)
         lang0_str = lang0.decode("utf-8")
-    except Exception:
+    except (subprocess.CalledProcessError, Exception):
         lang0_str = ""
     try:
         lang1 = subprocess.check_output(cmd1)
         lang1_str = lang1.decode("utf-8")
-    except Exception:
+    except (subprocess.CalledProcessError, Exception):
         lang1_str = ""
     try:
-        streams: bytes = subprocess.check_output(cmd2)
+        streams = subprocess.check_output(cmd2)
         streams_str = streams.decode("utf-8").lstrip("\n").rstrip("\n").split("\n")
-    except Exception:
+    except (subprocess.CalledProcessError, Exception):
         streams_str = None
     print(f"**** LANGUAGES: Stream 0 {lang0_str} - Stream 1 {lang1_str}")
 
@@ -1181,10 +1181,11 @@ def create_transcode(
         ]
     else:
         map_audio = ["-map", "0:a?", "-c:a", "aac", "-dn"]
+    print(f"Audio command chosen: {map_audio}")
 
+    # Calculate height/width to decide HD scale path
     height = int(height)
     width = int(width)
-    # Calculate height/width to decide HD scale path
     aspect = round(width / height, 3)
     cmd_mid = []
 
@@ -1326,7 +1327,7 @@ def make_jpg(
 
     try:
         subprocess.call(cmd)
-    except Exception as err:
+    except subprocess.CalledProcessError as err:
         LOGGER.error(
             "%s\tERROR\tJPEG creation failed for filepath: %s\n%s",
             local_time(),

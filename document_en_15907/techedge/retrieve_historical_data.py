@@ -97,7 +97,7 @@ def main() -> None:
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     end_date = date.today()
-    start_date = end_date - timedelta(days=5)
+    start_date = end_date - timedelta(days=7)
     sftp = ut.sftp_connect()
     LOGGER.info(
         "========== Fetch historical adverts data script STARTED ==============================================="

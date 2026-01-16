@@ -16,8 +16,6 @@ and transcode.
 import datetime
 import json
 import logging
-
-# Python packages
 import os
 import re
 import shutil
@@ -32,6 +30,7 @@ import tenacity
 # Private packages
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
+import utils
 
 # Global paths from environment vars
 MP4_POLICY = os.environ["MP4_POLICY"]
@@ -177,7 +176,7 @@ def transcode_mp4(fpath: str) -> str:
             )
 
     # Get file type, video or audio etc.
-    ftype = sort_ext(ext)
+    ftype = utils.sort_ext(ext)
     if ftype == "audio":
         log_build.append(
             f"{local_time()}\tINFO\tItem is an audio file. No actions required at this time."
@@ -188,7 +187,7 @@ def transcode_mp4(fpath: str) -> str:
         log_output(log_build)
         return "audio"
 
-    elif ftype == "document":
+    if ftype == "document":
         log_build.append(
             f"{local_time()}\tINFO\tItem is a document. No actions required at this time."
         )
@@ -198,7 +197,7 @@ def transcode_mp4(fpath: str) -> str:
         log_output(log_build)
         return "document"
 
-    elif ftype == "video":
+    if ftype == "video":
         log_build.append(
             f"{local_time()}\tINFO\tItem is video. Checking for DAR, height and duration of video."
         )
@@ -206,20 +205,37 @@ def transcode_mp4(fpath: str) -> str:
             log_build.append(f"Creating new transcode path: {transcode_pth}")
             os.makedirs(transcode_pth, mode=0o777, exist_ok=True)
 
-        audio, stream_default, stereo = check_audio(fullpath)
+        audio, stream_default, stream_count = check_audio(fullpath)
         dar = get_dar(fullpath)
         par = get_par(fullpath)
         height = get_height(fullpath)
         width = get_width(fullpath)
         duration, vs = get_duration(fullpath)
         log_build.append(
-            f"Data retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs"
+            f"{local_time()}\tINFO\tData retrieved: Stream number: {stream_count} Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs"
         )
 
         # CID transcode paths
         outpath = os.path.join(transcode_pth, f"{fname}.mp4")
         outpath2 = os.path.join(transcode_pth, fname)
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
+
+        # Check stream count and see if 'DL' 'DR' present
+        mixed_dict = check_for_mixed_audio(fullpath)
+
+        # Check if FL FR present
+        fl_fr = check_for_fl_fr(fullpath)
+
+        # Check for 12 channels in one stream as 7.1.4 flag
+        twelve_chnl = False
+        discretes = utils.get_metadata("Audio", "ChannelLayout", fullpath)
+        if "Discrete" in discretes:
+            if discretes.count("Discrete") >= 12:
+                twelve_chnl = True
+        audio_channels = utils.get_metadata("General", "Audio_Channels_Total", fullpath)
+        audio_count = utils.get_metadata("General", "AudioCount", fullpath)
+        if audio_count.strip() == "1" and audio_channels.strip() == "12":
+            twelve_chnl = True
 
         # Build FFmpeg command based on dar/height
         ffmpeg_cmd = create_transcode(
@@ -232,7 +248,9 @@ def transcode_mp4(fpath: str) -> str:
             audio,
             stream_default,
             vs,
-            stereo,
+            mixed_dict,
+            fl_fr,
+            twelve_chnl
         )
         if not ffmpeg_cmd:
             log_build.append(
@@ -258,7 +276,7 @@ def transcode_mp4(fpath: str) -> str:
                 universal_newlines=True,
                 stderr=subprocess.PIPE,
             ).stderr
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             log_build.append(
                 f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}"
             )
@@ -325,12 +343,49 @@ def transcode_mp4(fpath: str) -> str:
             log_build.append(
                 f"{local_time()}\tWARNING\tOne of the JPEG images hasn't created, please check outpath: {jpeg_location}"
             )
-
         # Clean up MP4 extension
         os.replace(outpath, outpath2)
+    
+        # Post MPEG/JPEG creation updates to Media record
+        media_data = []
+        if full_jpeg:
+            full_jpeg_file = os.path.splitext(full_jpeg)[0]
+            print(full_jpeg, full_jpeg_file)
+            os.replace(full_jpeg, full_jpeg_file)
+            os.chmod(full_jpeg_file, 0o777)
+            media_data.append(
+                f"<access_rendition.largeimage>{os.path.split(full_jpeg_file)[1]}</access_rendition.largeimage>"
+            )
+        if thumb_jpeg:
+            thumb_jpeg_file = os.path.splitext(thumb_jpeg)[0]
+            os.replace(thumb_jpeg, thumb_jpeg_file)
+            os.chmod(thumb_jpeg_file, 0o777)
+            media_data.append(
+                f"<access_rendition.thumbnail>{os.path.split(thumb_jpeg_file)[1]}</access_rendition.thumbnail>"
+            )
+        if outpath2:
+            media_data.append(
+                f"<access_rendition.mp4>{os.path.split(outpath2)[1]}</access_rendition.mp4>"
+            )
+            os.chmod(outpath2, 0o777)
+        log_build.append(
+            f"{local_time()}\tINFO\tWriting UMID data to CID Media record: {media_priref}"
+        )
+        success = cid_media_append(media_priref, media_data)
+        if success:
+            log_build.append(
+                f"{local_time()}\tINFO\tJPEG/HLS filename data updated to CID media record"
+            )
+        else:
+            log_build.append(
+                f"{local_time()}\tCRITICAL\tProblem writing UMID data to CID media record: {priref}"
+            )
+            log_build.append(
+                f"{local_time()}\tWARNING\tLeaving files in transcode folder for repeat attempts to process"
+            )
+        return "True"
 
-    elif ftype == "image":
-
+    if ftype == "image":
         oversize = False
         log_build.append(
             f"{local_time()}\tINFO\tItem is image. Generating large (full size copy) and thumbnail jpeg images."
@@ -377,11 +432,41 @@ def transcode_mp4(fpath: str) -> str:
             log_build.append(
                 f"{local_time()}\tINFO\tNew images created:\n - {full_jpeg}\n - {thumb_jpeg}"
             )
+            # Post MPEG/JPEG creation updates to Media record
+            media_data = []
+            if full_jpeg:
+                full_jpeg_file = os.path.splitext(full_jpeg)[0]
+                print(full_jpeg, full_jpeg_file)
+                os.replace(full_jpeg, full_jpeg_file)
+                os.chmod(full_jpeg_file, 0o777)
+                media_data.append(
+                    f"<access_rendition.largeimage>{os.path.split(full_jpeg_file)[1]}</access_rendition.largeimage>"
+                )
+            if thumb_jpeg:
+                thumb_jpeg_file = os.path.splitext(thumb_jpeg)[0]
+                os.replace(thumb_jpeg, thumb_jpeg_file)
+                os.chmod(thumb_jpeg_file, 0o777)
+                media_data.append(
+                    f"<access_rendition.thumbnail>{os.path.split(thumb_jpeg_file)[1]}</access_rendition.thumbnail>"
+                )
+            success = cid_media_append(media_priref, media_data)
+            if success:
+                log_build.append(
+                    f"{local_time()}\tINFO\tJPEG/HLS filename data updated to CID media record"
+                )
+            else:
+                log_build.append(
+                    f"{local_time()}\tCRITICAL\tProblem writing UMID data to CID media record: {priref}"
+                )
+                log_build.append(
+                    f"{local_time()}\tWARNING\tLeaving files in transcode folder for repeat attempts to process"
+                )
+            return "True"
         else:
             log_build.append(
                 f"{local_time()}\tERROR\tOne of both JPEG image creations failed for file: {file}"
             )
-
+            return "jpeg fail"
     else:
         log_build.append(
             f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}"
@@ -393,52 +478,6 @@ def transcode_mp4(fpath: str) -> str:
         )
         log_output(log_build)
         return "transcode fail"
-
-    # Post MPEG/JPEG creation updates to Media record
-    media_data = []
-    if full_jpeg:
-        full_jpeg_file = os.path.splitext(full_jpeg)[0]
-        print(full_jpeg, full_jpeg_file)
-        os.replace(full_jpeg, full_jpeg_file)
-        os.chmod(full_jpeg_file, 0o777)
-        media_data.append(
-            f"<access_rendition.largeimage>{os.path.split(full_jpeg_file)[1]}</access_rendition.largeimage>"
-        )
-    if thumb_jpeg:
-        thumb_jpeg_file = os.path.splitext(thumb_jpeg)[0]
-        os.replace(thumb_jpeg, thumb_jpeg_file)
-        os.chmod(thumb_jpeg_file, 0o777)
-        media_data.append(
-            f"<access_rendition.thumbnail>{os.path.split(thumb_jpeg_file)[1]}</access_rendition.thumbnail>"
-        )
-    if outpath2:
-        media_data.append(
-            f"<access_rendition.mp4>{os.path.split(outpath2)[1]}</access_rendition.mp4>"
-        )
-        os.chmod(outpath2, 0o777)
-    log_build.append(
-        f"{local_time()}\tINFO\tWriting UMID data to CID Media record: {media_priref}"
-    )
-
-    success = cid_media_append(media_priref, media_data)
-    if success:
-        log_build.append(
-            f"{local_time()}\tINFO\tJPEG/HLS filename data updated to CID media record"
-        )
-    else:
-        log_build.append(
-            f"{local_time()}\tCRITICAL\tProblem writing UMID data to CID media record: {priref}"
-        )
-        log_build.append(
-            f"{local_time()}\tWARNING\tLeaving files in transcode folder for repeat attempts to process"
-        )
-        # Any further clean up needed here?
-
-    log_build.append(
-        f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================="
-    )
-    log_output(log_build)
-    return "True"
 
 
 def log_output(log_build: list[str]) -> None:
@@ -639,51 +678,28 @@ def get_media_priref(fname: str) -> Optional[tuple[str, str, str, str, str]]:
     return (priref, input_date, largeimage_umid, thumbnail_umid, access_rendition)
 
 
-def sort_ext(ext: str) -> Optional[str]:
-    """
-    Decide on file type
-    """
-    mime_type = {
-        "video": ["mxf", "mkv", "mov", "mp4", "avi", "ts", "mpeg", "mpg"],
-        "image": ["png", "gif", "jpeg", "jpg", "tif", "pct", "tiff"],
-        "audio": ["wav", "flac", "mp3"],
-        "document": ["docx", "pdf", "txt", "doc", "tar"],
-    }
-
-    ext = ext.lower()
-    for key, val in mime_type.items():
-        if str(ext) in str(val):
-            return key
-
-
 def get_dar(fullpath: str) -> str:
     """
     Retrieves metadata DAR info and returns as string
     """
-    cmd = [
-        "mediainfo",
-        "--Language=raw",
-        "--Full",
-        '--Inform="Video;%DisplayAspectRatio/String%"',
-        fullpath,
-    ]
 
-    cmd[3] = cmd[3].replace('"', "")
-    dar_setting = subprocess.check_output(cmd)
-    dar_setting_str = dar_setting.decode("utf-8")
+    dar_setting = utils.get_metadata("Video", "DisplayAspectRatio/String", fullpath)
+    if len(dar_setting) >= 6:
+        print(f"Suspect height has multiple returned streams: {dar_setting}")
+        dar_setting = remove_stream_repeats(dar_setting, fullpath)
 
-    if "4:3" in dar_setting_str:
+    if "4:3" in str(dar_setting):
         return "4:3"
-    if "16:9" in dar_setting_str:
+    if "16:9" in str(dar_setting):
         return "16:9"
-    if "15:11" in dar_setting_str:
+    if "15:11" in str(dar_setting):
         return "4:3"
-    if "1.85:1" in dar_setting_str:
+    if "1.85:1" in str(dar_setting):
         return "1.85:1"
-    if "2.2:1" in dar_setting_str:
+    if "2.2:1" in str(dar_setting):
         return "2.2:1"
 
-    return dar_setting_str
+    return str(dar_setting)
 
 
 def get_par(fullpath: str) -> str:
@@ -691,22 +707,34 @@ def get_par(fullpath: str) -> str:
     Retrieves metadata PAR info and returns
     Checks if multiples from multi video tracks
     """
-    cmd = [
-        "mediainfo",
-        "--Language=raw",
-        "--Full",
-        '--Inform="Video;%PixelAspectRatio%"',
-        fullpath,
-    ]
 
-    cmd[3] = cmd[3].replace('"', "")
-    par_setting = subprocess.check_output(cmd)
-    par_full = par_setting.decode("utf-8").rstrip("\n")
+    par_setting = utils.get_metadata("Video", "PixelAspectRatio", fullpath)
+    par_full = str(par_setting).rstrip("\n")
+    if len(par_full) >= 6:
+        print(f"Suspect height has multiple returned streams: {par_full}")
+        par_full = remove_stream_repeats(par_full, fullpath)
 
     if len(par_full) <= 5:
         return par_full
+    return par_full[:5]
+
+
+def remove_stream_repeats(value:str, fullpath: str) -> str:
+    """
+    Deals with instances where height/width/DAR/PAR return
+    multiple values for multiple streams - Video stream only
+    """
+
+    count = utils.get_metadata("General", "VideoCount", fullpath)
+    print(f"Video stream total found: {count}")
+    if not count.isnumeric():
+        return value
+    elif int(count) > 1:
+        if len(value) % len(count) == 0:
+            chop_length = len(value) // int(count)
+            return value[:chop_length]
     else:
-        return par_full[:5]
+        return value
 
 
 def get_height(fullpath: str) -> str:
@@ -716,90 +744,74 @@ def get_height(fullpath: str) -> str:
     height and stored height differ (MXF samples)
     """
 
-    cmd = [
-        "mediainfo",
-        "--Language=raw",
-        "--Full",
-        '--Inform="Video;%Sampled_Height%"',
-        fullpath,
-    ]
-
-    cmd[3] = cmd[3].replace('"', "")
-    sampled_height = subprocess.check_output(cmd)
-    sampled_height_str = sampled_height.decode("utf-8")
-    cmd2 = [
-        "mediainfo",
-        "--Language=raw",
-        "--Full",
-        '--Inform="Video;%Height%"',
-        fullpath,
-    ]
-
-    cmd2[3] = cmd2[3].replace('"', "")
-    reg_height = subprocess.check_output(cmd2)
-    reg_height_str = reg_height.decode("utf-8")
+    sampled_height = utils.get_metadata("Video", "Sampled_Height", fullpath)
+    reg_height = utils.get_metadata("Video", "Height", fullpath)
+    
     try:
-        int(sampled_height_str)
+        int(sampled_height)
     except ValueError:
-        sampled_height_str = 0
+        sampled_height = 0
 
-    if int(sampled_height_str) > int(reg_height_str):
-        height = str(sampled_height_str)
+    if sampled_height == 0:
+        height = str(reg_height)
+    elif int(sampled_height) > int(reg_height):
+        height = str(sampled_height)
     else:
-        height = str(reg_height_str)
+        height = str(reg_height)
 
-    if "480" == height:
+    if len(height) >= 6:
+        print(f"Suspect height has multiple returned streams: {height}")
+        height = remove_stream_repeats(height, fullpath)
+
+    if height.startswith("480 "):
         return "480"
-    if "486" == height:
+    if height.startswith("486 "):
         return "486"
-    if "576" == height:
+    if height.startswith("576 "):
         return "576"
-    if "608" == height:
+    if height.startswith("608 "):
         return "608"
-    if "720" == height:
+    if height.startswith("720 "):
         return "720"
-    if "1080" == height or "1 080" == height:
+    if height.startswith("1080 ") or height.startswith("1 080 "):
         return "1080"
-    else:
-        height = height.split(" pixel", maxsplit=1)[0]
-        return re.sub("[^0-9]", "", height)
+
+    height = height.split(" pixel", maxsplit=1)[0]
+    return re.sub("[^0-9]", "", height)
 
 
 def get_width(fullpath: str) -> str:
     """
     Retrieves height information using mediainfo
     """
-    cmd = [
-        "mediainfo",
-        "--Language=raw",
-        "--Full",
-        '--Inform="Video;%Width/String%"',
-        fullpath,
-    ]
 
-    cmd[3] = cmd[3].replace('"', "")
-    width = subprocess.check_output(cmd)
-    width_str = width.decode("utf-8")
-
-    if "720" == width:
+    width = utils.get_metadata("Video", "Width/String", fullpath)
+    clap_width = utils.get_metadata("Video", "Width_CleanAperture/String", fullpath)
+    
+    if width.startswith("720 ") and clap_width.startswith("703 "):
+        return "703"
+    if width.startswith("720 "):
         return "720"
-    if "768" == width:
+    if width.startswith("768 "):
         return "768"
-    if "1024" == width or "1 024" == width:
+    if width.startswith("1024 ") or width.startswith("1 024 "):
         return "1024"
-    if "1280" == width or "1 280" == width:
+    if width.startswith("1280 ") or width.startswith("1 280 "):
         return "1280"
-    if "1920" == width or "1 920" == width:
+    if width.startswith("1920 ") or width.startswith("1 920 "):
         return "1920"
-    else:
-        if width.isdigit():
-            return str(width)
-        else:
-            width_str = width_str.split(" p", maxsplit=1)[0]
-            return re.sub("[^0-9]", "", width_str)
+
+    if len(width) >= 6:
+        print(f"Suspect width has multiple returned streams: {width}")
+        width = remove_stream_repeats(width, fullpath)
+    if width.isdigit():
+        return str(width)
+
+    width = width.split(" p", maxsplit=1)[0]
+    return re.sub("[^0-9]", "", width)
 
 
-def get_duration(fullpath: str) -> tuple[str | int, str]:
+def get_duration(fullpath: str) -> Optional[tuple[int, str]]:
     """
     Retrieves duration information via mediainfo
     where more than two returned, file longest of
@@ -807,38 +819,25 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
     for update to ffmpeg map command
     """
 
-    cmd = [
-        "mediainfo",
-        "--Language=raw",
-        "--Full",
-        '--Inform="Video;%Duration%"',
-        fullpath,
-    ]
-
-    cmd[3] = cmd[3].replace('"', "")
-    duration = subprocess.check_output(cmd)
+    duration = utils.get_metadata("Video", "Duration", fullpath)
     if not duration:
-        return ("", "")
+        return (0, "")
+    if "." in duration:
+        duration = duration.split(".")
 
-    duration_str = duration.decode("utf-8").rstrip("\n")
-    print(f"Mediainfo seconds: {duration_str}")
-
-    if "." in duration_str:
-        duration_list = duration_str.split(".")
-
-    if isinstance(duration_str, str):
-        second_duration = int(duration_str) // 1000
+    if isinstance(duration, str):
+        second_duration = int(duration) // 1000
         return (second_duration, "0")
-    elif len(duration_list) == 2:
+    elif len(duration) == 2:
         print("Just one duration returned")
-        num = duration_list[0]
+        num = duration[0]
         second_duration = int(num) // 1000
         print(second_duration)
         return (second_duration, "0")
-    elif len(duration_list) > 2:
+    elif len(duration) > 2:
         print("More than one duration returned")
-        dur1 = f"{duration_list[0]}"
-        dur2 = f"{duration_list[1][6:]}"
+        dur1 = f"{duration[0]}"
+        dur2 = f"{duration[1][6:]}"
         print(dur1, dur2)
         if int(dur1) > int(dur2):
             second_duration = int(dur1) // 1000
@@ -848,19 +847,13 @@ def get_duration(fullpath: str) -> tuple[str | int, str]:
             return (second_duration, "1")
 
 
-def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
+def check_audio(
+    fullpath: str,
+) -> tuple[Optional[str], Optional[str], Optional[Union[bytes, list[str]]]]:
     """
     Mediainfo command to retrieve channels, identify
     stereo or mono, returned as 2 or 1 respectively
     """
-
-    cmd = [
-        "mediainfo",
-        "--Language=raw",
-        "--Full",
-        '--Inform="Audio;%Format%"',
-        fullpath,
-    ]
 
     cmd0 = [
         "ffprobe",
@@ -889,72 +882,135 @@ def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[s
     ]
 
     cmd2 = [
-        "mediainfo",
-        "--Language=raw",
-        "--Full",
-        '--Inform="Audio;%ChannelLayout%"',
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "a",
+        "-show_entries",
+        "stream=index",
+        "-of",
+        "compact=p=0",
         fullpath,
     ]
 
-    cmd[3] = cmd[3].replace('"', "")
-    audio = subprocess.check_output(cmd)
-    audio_str = audio.decode("utf-8")
-
+    audio = utils.get_metadata("Audio", "Format", fullpath)
     if len(audio) == 0:
-        return (None, None, None)
+        return None, None, None
 
     try:
         lang0 = subprocess.check_output(cmd0)
         lang0_str = lang0.decode("utf-8")
-    except Exception:
+    except (subprocess.CalledProcessError, Exception):
         lang0_str = ""
     try:
         lang1 = subprocess.check_output(cmd1)
         lang1_str = lang1.decode("utf-8")
-    except Exception:
+    except (subprocess.CalledProcessError, Exception):
         lang1_str = ""
-
+    try:
+        streams = subprocess.check_output(cmd2)
+        streams_str = streams.decode("utf-8").lstrip("\n").rstrip("\n").split("\n")
+    except (subprocess.CalledProcessError, Exception):
+        streams_str = None
     print(f"**** LANGUAGES: Stream 0 {lang0_str} - Stream 1 {lang1_str}")
 
-    cmd2[3] = cmd2[3].replace('"', "")
-    chnl_layout = subprocess.check_output(cmd2)
-    chnl_layout_str = chnl_layout.decode("utf-8")
-
-    stereo = None
-    if "LR" in chnl_layout_str:
-        print("Audio is Stereo with LR configuration")
-        stereo = "ac1"
-    if "C" in chnl_layout_str:
-        print("Audio is Stereo with central audio configuration")
-        stereo = "ac2"
-
-    if "NAR" in str(lang0):
+    if "nar" in str(lang0_str).lower():
         print("Narration stream 0 / English stream 1")
-        return ("Audio", "1", stereo)
-    elif "NAR" in str(lang1):
+        return ("Audio", "1", streams_str)
+    elif "nar" in str(lang1_str).lower():
         print("Narration stream 1 / English stream 0")
-        return ("Audio", "0", stereo)
+        return ("Audio", "0", streams_str)
     else:
-        return ("Audio", None, stereo)
+        return ("Audio", None, streams_str)
+
+
+def check_for_fl_fr(fpath: str) -> bool:
+    """
+    For use where audio is '1 channels (FL) or (FR)
+    which is unsupported by FFmpeg, add -ac 2 to command
+    """
+    cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "stream=channel_layout",
+        "-of",
+        "csv=p=0",
+        fpath,
+    ]
+    audio = subprocess.check_output(cmd)
+    audio_str = str(audio.decode("utf-8")).lstrip("\n").rstrip("\n")
+    audio_channels = audio_str.split("\n")
+    if "5.1(side)" in audio_channels:
+        return True
+    if len(audio_channels) > 1:
+        audio_downmix = {}
+        for num in range(0, len(audio_channels)):
+            if "1 channels (FL)" in audio_channels[num]:
+                audio_downmix["FL"] = num
+            if "1 channels (FR)" in audio_channels[num]:
+                audio_downmix["FR"] = num
+        if len(audio_downmix) == 2:
+            return True
+    else:
+        if "5.1" in audio_channels:
+            return True
+    return False
+
+
+def check_for_mixed_audio(fpath: str) -> Optional[dict[str, int]]:
+    """
+    For use where audio channels 6+ exist
+    check for 'DL' and 'DR' and build different
+    FFmpeg command that uses mixed audio only
+    """
+    cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "stream=channel_layout",
+        "-of",
+        "csv=p=0",
+        fpath,
+    ]
+    audio = subprocess.check_output(cmd)
+    audio_str = str(audio.decode("utf-8").lstrip("\n").rstrip("\n"))
+    audio_channels = str(audio_str).split("\n")
+    if len(audio_channels) > 1:
+        audio_downmix = {}
+        for num in range(0, len(audio_channels)):
+            if "(DL)" in audio_channels[num]:
+                audio_downmix["DL"] = num
+            if "(DR)" in audio_channels[num]:
+                audio_downmix["DR"] = num
+        if len(audio_downmix) == 2:
+            return audio_downmix
+
+    return None
 
 
 def create_transcode(
     fullpath: str,
     output_path: str,
-    height: str | int,
-    width: str | int,
+    height: Union[int, str],
+    width: Union[int, str],
     dar: str,
     par: str,
     audio: Optional[str],
     default: Optional[str],
     vs: str,
-    stereo: Optional[str],
-) -> list[str]:
+    mixed_dict: Optional[dict[str, int]],
+    fl_fr: bool,
+    twelve_chnl: bool,
+) -> Optional[list[str]]:
     """
     Builds FFmpeg command based on height/dar input
     """
     print(
-        f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs} Stereo {stereo}"
+        f"Received DAR {dar} PAR {par} H {height} W {width} Audio {audio} Default audio {default} Video stream {vs} Mixed audio {mixed_dict}"
     )
     print(f"Fullpath {fullpath} Output path {output_path}")
 
@@ -962,7 +1018,12 @@ def create_transcode(
 
     input_video_file = ["-i", fullpath]
 
-    video_settings = ["-c:v", "libx264", "-crf", "28"]
+    video_settings = [
+        "-c:v",
+        "libx264",
+        "-crf",
+        "28",
+    ]
 
     pix = ["-pix_fmt", "yuv420p"]
 
@@ -978,6 +1039,26 @@ def create_transcode(
     crop_sd_4x3 = [
         "-vf",
         "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1,blackdetect=d=0.05:pix_th=0.10",
+    ]
+
+    upscale_sd_width = [
+        "-vf",
+        "yadif,scale=1024:-1:flags=lanczos,pad=1024:576:-1:-1,blackdetect=d=0.05:pix_th=0.10",
+    ]
+
+    upscale_sd_height = [
+        "-vf",
+        "yadif,scale=-1:576:flags=lanczos,pad=1024:576:-1:-1,blackdetect=d=0.05:pix_th=0.10",
+    ]
+
+    scale_sd_4x3 = [
+        "-vf",
+        "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10",
+    ]
+
+    scale_sd_16x9 = [
+        "-vf",
+        "yadif,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10",
     ]
 
     crop_sd_15x11 = [
@@ -1005,9 +1086,19 @@ def create_transcode(
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10",
     ]
 
+    sd_downscale_4x3 = [
+        "-vf",
+        "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10",
+    ]
+
     hd_16x9 = [
         "-vf",
         "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1,blackdetect=d=0.05:pix_th=0.10",
+    ]
+
+    hd_16x9_letterbox = [
+        "-vf",
+        "yadif,scale=1280:-1:flags=lanczos,pad=1280:720:-1:-1,blackdetect=d=0.05:pix_th=0.10",
     ]
 
     fhd_all = [
@@ -1024,40 +1115,104 @@ def create_transcode(
 
     if vs:
         print(f"VS {vs}")
-        map_video = [
-            "-map",
-            f"0:v:{vs}",
-        ]
+        map_video = ["-map", f"0:v:{vs}"]
     else:
-        map_video = [
-            "-map",
-            "0:v:0",
-        ]
+        map_video = ["-map", "0:v:0"]
 
-    if default and audio and not stereo:
+    if mixed_dict:
+        print(f"Mixed DL DR audio found: {mixed_dict}")
+        map_audio = [
+            "-map",
+            f"0:a:{mixed_dict['DL']}",
+            "-map",
+            f"0:a:{mixed_dict['DR']}",
+            "-ac",
+            "2",
+            "-c:a:0",
+            "aac",
+            "-ab:1",
+            "320k",
+            "-ar:1",
+            "48000",
+            "-ac:1",
+            "2",
+            "-disposition:a:0",
+            "default",
+            "-c:a:1",
+            "aac",
+            "-ab:2",
+            "210k",
+            "-ar:2",
+            "48000",
+            "-ac:2",
+            "1",
+            "-disposition:a:1",
+            "0",
+            "-strict",
+            "2",
+            "-async",
+            "1",
+            "-dn",
+        ]
+    elif fl_fr is True:
+        map_audio = ["-map", "0:a?", "-c:a", "aac", "-ac", "2", "-dn"]
+    elif twelve_chnl is True:
+        map_audio = [
+            "-map",
+            "0:a?",
+            "-af",
+            "pan=stereo|c0=FL+0.707*FC|c1=FR+0.707*FC",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-dn"
+        ]
+    elif default and audio:
         print(f"Default {default}, Audio {audio}")
-        map_audio = ["-map", "0:a?", f"-disposition:a:{default}", "default", "-dn"]
-    elif stereo == "ac1":
-        print(f"Stereo LR {stereo}")
-        map_audio = ["-map", "0:a?", "-ac", "1", "-dn"]
-    elif stereo == "ac2":
-        print(f"Stereo C {stereo}")
-        map_audio = ["-map", "0:a?", "-ac", "2", "-dn"]
+        map_audio = [
+            "-map",
+            "0:a?",
+            "-c:a",
+            "aac",
+            f"-disposition:a:{default}",
+            "default",
+            "-dn",
+        ]
     else:
-        map_audio = ["-map", "0:a?", "-dn"]
+        map_audio = ["-map", "0:a?", "-c:a", "aac", "-dn"]
+    print(f"Audio command chosen: {map_audio}")
 
+    # Calculate height/width to decide HD scale path
     height = int(height)
     width = int(width)
-    # Calculate height/width to decide HD scale path
     aspect = round(width / height, 3)
     cmd_mid = []
 
-    if height <= 486 and dar == "16:9":
+    if height < 480 and aspect >= 1.778:
+        cmd_mid = upscale_sd_width
+    elif height < 480 and aspect < 1.778:
+        cmd_mid = upscale_sd_height
+    elif height == 486 and dar == "16:9":
         cmd_mid = crop_ntsc_486_16x9
-    elif height <= 486 and dar == "4:3":
+    elif height == 486 and dar == "4:3":
         cmd_mid = crop_ntsc_486
     elif height <= 486 and width == 640:
         cmd_mid = crop_ntsc_640x480
+    elif height < 576 and width == 720 and dar == "4:3":
+        cmd_mid = scale_sd_4x3
+    elif height == 576 and width == 703 and dar != "16:9":
+        cmd_mid = scale_sd_4x3
+    elif height == 576 and width == 703 and dar == "16:9":
+        cmd_mid = scale_sd_16x9
+    elif height == 576 and width == 1024:
+        cmd_mid = scale_sd_16x9
+    elif height < 576 and width > 720 and dar == "16:9":
+        cmd_mid = scale_sd_16x9
+    elif height < 576 and width > 720 and dar == "4:3":
+        cmd_mid = sd_downscale_4x3
+    elif height <= 576 and dar == "16:9":
+        cmd_mid = crop_sd_16x9
     elif height <= 576 and width == 768:
         cmd_mid = no_stretch_4x3
     elif height <= 576 and par == "1.000":
@@ -1068,11 +1223,19 @@ def create_transcode(
         cmd_mid = crop_sd_15x11
     elif height == 608:
         cmd_mid = crop_sd_608
-    elif height <= 576 and dar == "16:9":
-        cmd_mid = crop_sd_16x9
     elif height == 576 and dar == "1.85:1":
         cmd_mid = crop_sd_16x9
-    elif height <= 720 and dar == "16:9":
+    elif height == 576 and aspect < 1.778:
+        cmd_mid = scale_sd_4x3
+    elif height < 720 and dar == "16:9":
+        cmd_mid = scale_sd_16x9
+    elif height < 720 and dar == "4:3":
+        cmd_mid = sd_downscale_4x3
+    elif width == 1280 and height <= 720:
+        cmd_mid = hd_16x9_letterbox
+    elif height == 720 and dar == "16:9":
+        cmd_mid = hd_16x9
+    elif height == 720:
         cmd_mid = hd_16x9
     elif width == 1920 and aspect >= 1.778:
         cmd_mid = fhd_letters
@@ -1082,7 +1245,9 @@ def create_transcode(
         cmd_mid = fhd_all
     elif height >= 1080 and aspect >= 1.778:
         cmd_mid = fhd_letters
-    print(f"Middle command chose: {cmd_mid}")
+    elif height > 720 and aspect >= 1.778:
+        cmd_mid = fhd_letters
+    print(f"Middle command chosen: {cmd_mid}")
 
     if audio is None:
         return (
@@ -1100,11 +1265,11 @@ def create_transcode(
             ffmpeg_program_call
             + input_video_file
             + map_video
-            + map_audio
             + video_settings
             + pix
-            + fast_start
             + cmd_mid
+            + map_audio
+            + fast_start
             + output
         )
     if len(cmd_mid) > 0 and not audio:
@@ -1112,11 +1277,11 @@ def create_transcode(
             ffmpeg_program_call
             + input_video_file
             + map_video
-            + map_audio
             + video_settings
             + pix
-            + fast_start
             + cmd_mid
+            + map_audio
+            + fast_start
             + output
         )
 
@@ -1162,7 +1327,7 @@ def make_jpg(
 
     try:
         subprocess.call(cmd)
-    except Exception as err:
+    except subprocess.CalledProcessError as err:
         logger.error(
             "%s\tERROR\tJPEG creation failed for filepath: %s\n%s",
             local_time(),

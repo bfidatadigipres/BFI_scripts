@@ -266,23 +266,21 @@ def main():
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
         # Check stream count and see if 'DL' 'DR' present
-        if stream_count:
-            if len(stream_count) > 6:
-                mixed_dict = check_for_mixed_audio(fullpath)
-            else:
-                mixed_dict = None
-        else:
-            mixed_dict = None
+        mixed_dict = check_for_mixed_audio(fullpath)
+
         # Check if FL FR present
         fl_fr = check_for_fl_fr(fullpath)
 
-        # Check for 12+ Discrete in Mediainfo return
+        # Check for 12 channels in one stream as 7.1.4 flag
         twelve_chnl = False
-        # Check in Mediainfo for Discrete entries of 12+ as possible method for id 7.1.4?
-        discretes = utils.get_metadata("Audio", "ChannelLayout", fpath)
+        discretes = utils.get_metadata("Audio", "ChannelLayout", fullpath)
         if "Discrete" in discretes:
             if discretes.count("Discrete") >= 12:
                 twelve_chnl = True
+        audio_channels = utils.get_metadata("General", "Audio_Channels_Total", fullpath)
+        audio_count = utils.get_metadata("General", "AudioCount", fullpath)
+        if audio_count.strip() == "1" and audio_channels.strip() == "12":
+            twelve_chnl = True
 
         # Build FFmpeg command based on dar/height
         ffmpeg_cmd = create_transcode(
@@ -323,7 +321,7 @@ def main():
                 universal_newlines=True,
                 stderr=subprocess.PIPE,
             ).stderr
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             log_build.append(
                 f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}"
             )
@@ -614,7 +612,7 @@ def get_jpeg(seconds: float, fullpath: str, outpath: str) -> bool:
     try:
         subprocess.call(cmd)
         return True
-    except Exception as err:
+    except subprocess.CalledProcessError as err:
         LOGGER.warning(
             "%s\tINFO\tget_jpeg(): failed to extract JPEG\n%s\n%s",
             local_time(),
@@ -748,13 +746,7 @@ def get_height(fullpath: str) -> str:
 
     sampled_height = utils.get_metadata("Video", "Sampled_Height", fullpath)
     reg_height = utils.get_metadata("Video", "Height", fullpath)
-    if len(sample_height) >= 6:
-        print(f"Suspect height has multiple returned streams: {sample_height}")
-        sample_height = remove_stream_repeats(sample_height, fullpath)
-    if len(reg_height) >= 6:
-        print(f"Suspect height has multiple returned streams: {reg_height}")
-        reg_height = remove_stream_repeats(reg_height, fullpath)
-
+    
     try:
         int(sampled_height)
     except ValueError:
@@ -766,6 +758,10 @@ def get_height(fullpath: str) -> str:
         height = str(sampled_height)
     else:
         height = str(reg_height)
+
+    if len(height) >= 6:
+        print(f"Suspect height has multiple returned streams: {height}")
+        height = remove_stream_repeats(height, fullpath)
 
     if height.startswith("480 "):
         return "480"
@@ -791,12 +787,6 @@ def get_width(fullpath: str) -> str:
 
     width = utils.get_metadata("Video", "Width/String", fullpath)
     clap_width = utils.get_metadata("Video", "Width_CleanAperture/String", fullpath)
-    if len(width) >= 6:
-        print(f"Suspect width has multiple returned streams: {width}")
-        width = remove_stream_repeats(width, fullpath)
-    if len(clap_width) >= 6:
-        print(f"Suspect width has multiple returned streams: {clap_width}")
-        clap_width = remove_stream_repeats(clap_width, fullpath)
     
     if width.startswith("720 ") and clap_width.startswith("703 "):
         return "703"
@@ -810,6 +800,10 @@ def get_width(fullpath: str) -> str:
         return "1280"
     if width.startswith("1920 ") or width.startswith("1 920 "):
         return "1920"
+
+    if len(width) >= 6:
+        print(f"Suspect width has multiple returned streams: {width}")
+        width = remove_stream_repeats(width, fullpath)
     if width.isdigit():
         return str(width)
 
@@ -974,17 +968,17 @@ def check_audio(
     try:
         lang0 = subprocess.check_output(cmd0)
         lang0_str = lang0.decode("utf-8")
-    except Exception:
+    except (subprocess.CalledProcessError, Exception):
         lang0_str = ""
     try:
         lang1 = subprocess.check_output(cmd1)
         lang1_str = lang1.decode("utf-8")
-    except Exception:
+    except (subprocess.CalledProcessError, Exception):
         lang1_str = ""
     try:
-        streams: bytes = subprocess.check_output(cmd2)
+        streams = subprocess.check_output(cmd2)
         streams_str = streams.decode("utf-8").lstrip("\n").rstrip("\n").split("\n")
-    except Exception:
+    except (subprocess.CalledProcessError, Exception):
         streams_str = None
     print(f"**** LANGUAGES: Stream 0 {lang0_str} - Stream 1 {lang1_str}")
 
@@ -1167,7 +1161,7 @@ def create_transcode(
             "-map",
             "0:a?",
             "-af",
-            "'pan=stereo|c0=FL+0.707*FC|c1=FR+0.707*FC'",
+            "pan=stereo|c0=FL+0.707*FC|c1=FR+0.707*FC",
             "-c:a",
             "aac",
             "-b:a",
@@ -1187,10 +1181,11 @@ def create_transcode(
         ]
     else:
         map_audio = ["-map", "0:a?", "-c:a", "aac", "-dn"]
+    print(f"Audio command chosen: {map_audio}")
 
+    # Calculate height/width to decide HD scale path
     height = int(height)
     width = int(width)
-    # Calculate height/width to decide HD scale path
     aspect = round(width / height, 3)
     cmd_mid = []
 
@@ -1230,6 +1225,8 @@ def create_transcode(
         cmd_mid = crop_sd_608
     elif height == 576 and dar == "1.85:1":
         cmd_mid = crop_sd_16x9
+    elif height == 576 and aspect < 1.778:
+        cmd_mid = scale_sd_4x3
     elif height < 720 and dar == "16:9":
         cmd_mid = scale_sd_16x9
     elif height < 720 and dar == "4:3":
@@ -1330,7 +1327,7 @@ def make_jpg(
 
     try:
         subprocess.call(cmd)
-    except Exception as err:
+    except subprocess.CalledProcessError as err:
         LOGGER.error(
             "%s\tERROR\tJPEG creation failed for filepath: %s\n%s",
             local_time(),

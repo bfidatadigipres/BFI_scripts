@@ -465,6 +465,7 @@ def process_files(
     Receive ingest fpath then JSON has confirmed files ingested to tape
     and this function handles CID media record check/creation and move
     """
+    wpath = ""
     for key, val in LOG_PATHS.items():
         if key in autoingest:
             wpath = val
@@ -632,7 +633,7 @@ def process_files(
                     check_list.append(file)
                 except Exception as err:
                     logger.warning("Unable to delete asset: %s", fpath)
-                    logger.warning("Manual inspection of asset required")
+                    logger.warning("Manual inspection of asset required:\n%s", err)
             elif reingest_confirm and md5_match:
                 logger.info(
                     "File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion."

@@ -187,7 +187,7 @@ def transcode_mp4(fpath: str) -> str:
         log_output(log_build)
         return "audio"
 
-    elif ftype == "document":
+    if ftype == "document":
         log_build.append(
             f"{local_time()}\tINFO\tItem is a document. No actions required at this time."
         )
@@ -197,43 +197,14 @@ def transcode_mp4(fpath: str) -> str:
         log_output(log_build)
         return "document"
 
-    elif ftype == "video":
+    if ftype == "video":
         log_build.append(
             f"{local_time()}\tINFO\tItem is video. Checking for DAR, height and duration of video."
         )
         if not os.path.exists(transcode_pth):
             log_build.append(f"Creating new transcode path: {transcode_pth}")
             os.makedirs(transcode_pth, mode=0o777, exist_ok=True)
-    """
-        audio, stream_default, stereo = check_audio(fullpath)
-        dar = get_dar(fullpath)
-        par = get_par(fullpath)
-        height = get_height(fullpath)
-        width = get_width(fullpath)
-        duration, vs = get_duration(fullpath)
-        log_build.append(
-            f"Data retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs"
-        )
 
-        # CID transcode paths
-        outpath = os.path.join(transcode_pth, f"{fname}.mp4")
-        outpath2 = os.path.join(transcode_pth, fname)
-        log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
-
-        # Build FFmpeg command based on dar/height
-        ffmpeg_cmd = create_transcode(
-            fullpath,
-            outpath,
-            height,
-            width,
-            dar,
-            par,
-            audio,
-            stream_default,
-            vs,
-            stereo,
-        )
-    """
         audio, stream_default, stream_count = check_audio(fullpath)
         dar = get_dar(fullpath)
         par = get_par(fullpath)
@@ -400,13 +371,11 @@ def transcode_mp4(fpath: str) -> str:
         log_build.append(
             f"{local_time()}\tINFO\tWriting UMID data to CID Media record: {media_priref}"
         )
-
         success = cid_media_append(media_priref, media_data)
         if success:
             log_build.append(
                 f"{local_time()}\tINFO\tJPEG/HLS filename data updated to CID media record"
             )
-            return "True"
         else:
             log_build.append(
                 f"{local_time()}\tCRITICAL\tProblem writing UMID data to CID media record: {priref}"
@@ -414,9 +383,9 @@ def transcode_mp4(fpath: str) -> str:
             log_build.append(
                 f"{local_time()}\tWARNING\tLeaving files in transcode folder for repeat attempts to process"
             )
+        return "True"
 
-    elif ftype == "image":
-
+    if ftype == "image":
         oversize = False
         log_build.append(
             f"{local_time()}\tINFO\tItem is image. Generating large (full size copy) and thumbnail jpeg images."
@@ -485,7 +454,6 @@ def transcode_mp4(fpath: str) -> str:
                 log_build.append(
                     f"{local_time()}\tINFO\tJPEG/HLS filename data updated to CID media record"
                 )
-                return "True"
             else:
                 log_build.append(
                     f"{local_time()}\tCRITICAL\tProblem writing UMID data to CID media record: {priref}"
@@ -493,11 +461,12 @@ def transcode_mp4(fpath: str) -> str:
                 log_build.append(
                     f"{local_time()}\tWARNING\tLeaving files in transcode folder for repeat attempts to process"
                 )
+            return "True"
         else:
             log_build.append(
                 f"{local_time()}\tERROR\tOne of both JPEG image creations failed for file: {file}"
             )
-
+            return "jpeg fail"
     else:
         log_build.append(
             f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}"

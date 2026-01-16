@@ -278,7 +278,8 @@ def main():
             if discretes.count("Discrete") >= 12:
                 twelve_chnl = True
         audio_channels = utils.get_metadata("General", "Audio_Channels_Total", fullpath)
-        if stream_count.strip() == "1" and audio_channels.strip() == "12":
+        audio_count = utils.get_metadata("General", "AudioCount", fullpath)
+        if audio_count.strip() == "1" and audio_channels.strip() == "12":
             twelve_chnl = True
 
         # Build FFmpeg command based on dar/height

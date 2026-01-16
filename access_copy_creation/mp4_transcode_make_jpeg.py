@@ -266,13 +266,8 @@ def main():
         log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
 
         # Check stream count and see if 'DL' 'DR' present
-        if stream_count:
-            if len(stream_count) > 6:
-                mixed_dict = check_for_mixed_audio(fullpath)
-            else:
-                mixed_dict = None
-        else:
-            mixed_dict = None
+        mixed_dict = check_for_mixed_audio(fullpath)
+
         # Check if FL FR present
         fl_fr = check_for_fl_fr(fullpath)
 
@@ -282,9 +277,8 @@ def main():
         if "Discrete" in discretes:
             if discretes.count("Discrete") >= 12:
                 twelve_chnl = True
-        audio_count = utils.get_metadata("General", "AudioCount", fullpath)
         audio_channels = utils.get_metadata("General", "Audio_Channels_Total", fullpath)
-        if audio_count.strip() == "1" and audio_channels.strip() == "12":
+        if stream_count.strip() == "1" and audio_channels.strip() == "12":
             twelve_chnl = True
 
         # Build FFmpeg command based on dar/height

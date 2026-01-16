@@ -276,13 +276,16 @@ def main():
         # Check if FL FR present
         fl_fr = check_for_fl_fr(fullpath)
 
-        # Check for 12+ Discrete in Mediainfo return
+        # Check for 12 channels in one stream as 7.1.4 flag
         twelve_chnl = False
-        # Check in Mediainfo for Discrete entries of 12+ as possible method for id 7.1.4?
         discretes = utils.get_metadata("Audio", "ChannelLayout", fullpath)
         if "Discrete" in discretes:
             if discretes.count("Discrete") >= 12:
                 twelve_chnl = True
+        audio_count = utils.get_metadata("General", "AudioCount", fullpath)
+        audio_channels = utils.get_metadata("General", "Audio_Channels_Total", fullpath)
+        if audio_count.strip() == "1" and audio_channels.strip() == "12":
+            twelve_chnl = True
 
         # Build FFmpeg command based on dar/height
         ffmpeg_cmd = create_transcode(

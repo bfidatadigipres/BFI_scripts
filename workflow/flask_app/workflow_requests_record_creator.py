@@ -105,7 +105,28 @@ REQUEST_TYPE = {
     "VIDEOTRANSFEREXTERNAL": "Video transfer external",
     "VIDEOUNITINHOUSE": "Video unit inhouse",
 }
-
+CLIENTS = {
+    "BFI_Partner": "BFI partnered project",
+    "BFI_Project": "BFI project",
+    "Commercial": "Commercial organisation",
+    "Curatorial": "Curatorial",
+    "DONOR": "Donor",
+    "Educational": "Educational / Research",
+    "Film_Sales": "Film Sales",
+    "Individual": "Individual",
+    "Library": "Library",
+    "Mediatheque": "Mediatheque",
+    "Museum_Gallery": "Museum / Gallery",
+    "Other_Archive": "Archive - other",
+    "Overseas_Archive": "Archive - overseas",
+    "RegArchive": "Archive - regional",
+    "RightsHolder": "Rightsholder",
+    "ScreenOnline": "Screenonline",
+    "SouthBank": "Southbank",
+    "Trading": "Trading",
+    "UK_Cinema": "UK cinema",
+    "University": "University / Film school"
+}
 
 def retrieve_requested() -> list[str]:
     """
@@ -383,13 +404,13 @@ Hello {firstname.title()},
 Your original request details:
     Saved search: {job[6]}
     Activity code: {job[7]}
-    Request type: {REQUEST_TYPE.get(job[8])}
+    Request type: {REQUEST_TYPE.get(job[8], job[8])}
     Request outcome: {job[9]}
     Job description: {job[10]}
     Delivery date: {job[11]}
     Final destination: {job[12]}
     Specific instructions: {job[13]}
-    Client category: {job[4]}
+    Client category: {CLIENTS.get(job[4], job[4])}
     Client name: {job[14]}
     Contact details: {job[15]}
 

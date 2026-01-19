@@ -250,7 +250,7 @@ def transcode_mp4(fpath: str) -> str:
             vs,
             mixed_dict,
             fl_fr,
-            twelve_chnl
+            twelve_chnl,
         )
         if not ffmpeg_cmd:
             log_build.append(
@@ -345,7 +345,7 @@ def transcode_mp4(fpath: str) -> str:
             )
         # Clean up MP4 extension
         os.replace(outpath, outpath2)
-    
+
         # Post MPEG/JPEG creation updates to Media record
         media_data = []
         if full_jpeg:
@@ -719,7 +719,7 @@ def get_par(fullpath: str) -> str:
     return par_full[:5]
 
 
-def remove_stream_repeats(value:str, fullpath: str) -> str:
+def remove_stream_repeats(value: str, fullpath: str) -> str:
     """
     Deals with instances where height/width/DAR/PAR return
     multiple values for multiple streams - Video stream only
@@ -746,7 +746,7 @@ def get_height(fullpath: str) -> str:
 
     sampled_height = utils.get_metadata("Video", "Sampled_Height", fullpath)
     reg_height = utils.get_metadata("Video", "Height", fullpath)
-    
+
     try:
         int(sampled_height)
     except ValueError:
@@ -787,7 +787,7 @@ def get_width(fullpath: str) -> str:
 
     width = utils.get_metadata("Video", "Width/String", fullpath)
     clap_width = utils.get_metadata("Video", "Width_CleanAperture/String", fullpath)
-    
+
     if width.startswith("720 ") and clap_width.startswith("703 "):
         return "703"
     if width.startswith("720 "):
@@ -1166,7 +1166,7 @@ def create_transcode(
             "aac",
             "-b:a",
             "192k",
-            "-dn"
+            "-dn",
         ]
     elif default and audio:
         print(f"Default {default}, Audio {audio}")

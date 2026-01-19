@@ -125,8 +125,9 @@ CLIENTS = {
     "SouthBank": "Southbank",
     "Trading": "Trading",
     "UK_Cinema": "UK cinema",
-    "University": "University / Film school"
+    "University": "University / Film school",
 }
+
 
 def retrieve_requested() -> list[str]:
     """

@@ -423,8 +423,7 @@ def get_fragments(obj):
             )
             for itm in list_item:
                 xml = etree.fromstring(
-                    etree.tostring(itm),
-                    parser=etree.XMLParser(resolve_entities=False)
+                    etree.tostring(itm), parser=etree.XMLParser(resolve_entities=False)
                 )
                 data.append(etree.tostring(xml))
         except Exception as err:

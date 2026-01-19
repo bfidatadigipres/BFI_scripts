@@ -700,7 +700,12 @@ def process_files(
             "Creating media record and linking via object_number: %s", object_number
         )
         logger.info(
-            "** Attempting creation of media record for %s, %s, %s, %s, %s", file, object_number, duration, byte_size, bucket
+            "** Attempting creation of media record for %s, %s, %s, %s, %s",
+            file,
+            object_number,
+            duration,
+            byte_size,
+            bucket,
         )
         media_priref = create_media_record(
             object_number, duration, byte_size, file, bucket, session
@@ -829,7 +834,6 @@ def create_media_record(
     except Exception:
         print(f"\nUnable to create CID media record for {ob_num}")
         logger.exception("Unable to create CID media record!")
-
 
     return media_priref
 

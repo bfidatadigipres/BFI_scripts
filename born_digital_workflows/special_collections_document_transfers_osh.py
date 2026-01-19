@@ -99,7 +99,9 @@ FILE_TYPES = {
 }
 
 
-def get_cid_records(status: str, sess: requests.Session) -> Optional[list[dict[str, Any]]]:
+def get_cid_records(
+    status: str, sess: requests.Session
+) -> Optional[list[dict[str, Any]]]:
     """
     Check in CID for any new Archive Items
     with OPEN/CLOSED in access_status field
@@ -568,9 +570,7 @@ def update_alternative_number(uuid: str, priref: str, sess: requests.Session) ->
     )
     print(record_xml)
     try:
-        rec = adlib.post(
-            CID_API, record_xml, "archivescatalogue", "updaterecord", sess
-        )
+        rec = adlib.post(CID_API, record_xml, "archivescatalogue", "updaterecord", sess)
         if rec is None:
             LOGGER.warning("Failed to update record: %s\n%s", priref, record_xml)
             return None

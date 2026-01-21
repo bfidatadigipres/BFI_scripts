@@ -125,8 +125,9 @@ CLIENTS = {
     "SouthBank": "Southbank",
     "Trading": "Trading",
     "UK_Cinema": "UK cinema",
-    "University": "University / Film school"
+    "University": "University / Film school",
 }
+
 
 def retrieve_requested() -> list[str]:
     """
@@ -161,7 +162,7 @@ def retrieve_requested() -> list[str]:
 
 def remove_duplicates(list_data: list[str]) -> list[str]:
     """
-    Sort and remove duplicatesdef remove_duplicates(list_data: list[str]) -> list[str]:
+    Sort and remove duplicates 
     """
 
     list_data.sort()
@@ -294,7 +295,7 @@ def main():
 
         # Make job metadata for Batch creation
         job_metadata = {}
-        deadline = (datetime.today() + timedelta(days=10)).strftime("%Y-%m-%d")
+        # deadline = (datetime.today() + timedelta(days=10)).strftime("%Y-%m-%d")
         request_date = job[18].strip()[:10]
         job_metadata["activity.code"] = job[7].strip()
         job_metadata["client.name"] = job[14].strip()
@@ -311,7 +312,7 @@ def main():
         job_metadata["request.from.email"] = email
         job_metadata["request.from.name"] = f"{firstname} {lastname}"
         job_metadata["request.date.received"] = request_date
-        job_metadata["negotiatedDeadline"] = deadline
+        # job_metadata["negotiatedDeadline"] = deadline
         job_metadata["input.name"] = uname
         LOGGER.info("Job metadata build: %s", job_metadata)
 

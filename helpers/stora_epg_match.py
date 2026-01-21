@@ -127,7 +127,7 @@ def check_bst_adjustment(utc_datetime_str: str):
     return string_bst.split(" ")
 
 def calculate_transmission_stoptime(duration: str, start_time: str):
-    
+
     time_format = "%H:%M:%S"
     try:
         duration_int = int(duration)

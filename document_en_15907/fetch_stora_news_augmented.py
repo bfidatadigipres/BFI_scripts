@@ -31,16 +31,16 @@ import tenacity
 
 # Global variables
 # STORAGE_PATH = os.environ.get('STORAGE_BACKUP')
-STORAGE_PATH = os.environ.get('STORA_BACKUP')
-LOG_PATH = os.environ.get('LOG_PATH')
-CODE_PATH = os.environ.get('CODE')
+STORAGE_PATH = os.environ.get("STORA_BACKUP")
+LOG_PATH = os.environ.get("LOG_PATH")
+CODE_PATH = os.environ.get("CODE")
 STORA_CONTROL = os.path.join(CODE_PATH, "stora_control.json")
-UNMATCHED_JSON = os.path.join(STORAGE_PATH, 'unmatched_jsons/')
+UNMATCHED_JSON = os.path.join(STORAGE_PATH, "unmatched_jsons/")
 TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=1)
-YESTERDAY_CLEAN = YESTERDAY.strftime('%Y-%m-%d')
-START = f'{YESTERDAY_CLEAN}T00:00:00'
-END = f'{YESTERDAY_CLEAN}T23:59:00'
+YESTERDAY_CLEAN = YESTERDAY.strftime("%Y-%m-%d")
+START = f"{YESTERDAY_CLEAN}T00:00:00"
+END = f"{YESTERDAY_CLEAN}T23:59:00"
 # If a different date period needs targeting use:
 # START = '2025-12-19T00:00:00'
 # END = '2025-12-19T23:59:00'
@@ -49,51 +49,50 @@ PATH = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
 
 # Setup logging
-logger = logging.getLogger('fetch_stora_augmented')
-hdlr = logging.FileHandler(os.path.join(LOG_PATH, 'fetch_stora_news_augmented.log'))
-formatter = logging.Formatter('%(asctime)s\t%(levelname)s\t%(message)s')
+logger = logging.getLogger("fetch_stora_augmented")
+hdlr = logging.FileHandler(os.path.join(LOG_PATH, "fetch_stora_news_augmented.log"))
+formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 # Setup Rest API
-URL = os.environ['PATV_URL']
-HEADERS = {
-    "accept": "application/json",
-    "apikey": os.environ['PATV_KEY']
-}
+URL = os.environ["PATV_URL"]
+HEADERS = {"accept": "application/json", "apikey": os.environ["PATV_KEY"]}
 
 # Dictionary of STORA channel names and unique EPG retrieval paths
 CHANNEL = {
-    "sky_news": os.environ['PA_SKY_NEWS'],
-    "al_jazeera": os.environ['PA_AL_JAZEERA'],
-    "gb_news": os.environ['PA_GB_NEWS'],
-    "skyarts": os.environ['PA_SKYARTS'],
-    "skymixhd": os.environ['PA_SKYMIXHD'],
-    "u_yesterday": os.environ['PA_U_YESTERDAY'],
-    "u_dave": os.environ['PA_U_DAVE'],
-    "u_drama": os.environ['PA_U_DRAMA'],
-    "togethertv": os.environ['PA_TOGETHERTV'],
-    "qvc": os.environ['PA_QVC']
+    "sky_news": os.environ["PA_SKY_NEWS"],
+    "al_jazeera": os.environ["PA_AL_JAZEERA"],
+    "gb_news": os.environ["PA_GB_NEWS"],
+    "skyarts": os.environ["PA_SKYARTS"],
+    "skymixhd": os.environ["PA_SKYMIXHD"],
+    "u_yesterday": os.environ["PA_U_YESTERDAY"],
+    "u_dave": os.environ["PA_U_DAVE"],
+    "u_drama": os.environ["PA_U_DRAMA"],
+    "togethertv": os.environ["PA_TOGETHERTV"],
+    "qvc": os.environ["PA_QVC"],
 }
 
 
 def check_control():
-    '''
+    """
     Check control JSON for downtime request
-    '''
+    """
     with open(STORA_CONTROL) as control:
         j = json.load(control)
-        if not j['stora_qnap04']:
-            logger.info("Script run prevented by downtime_control.json. Script exiting.")
+        if not j["stora_qnap04"]:
+            logger.info(
+                "Script run prevented by downtime_control.json. Script exiting."
+            )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
 
 @tenacity.retry(wait=tenacity.wait_random(min=5, max=30))
 def check_api(value):
-    '''
+    """
     Run standard check with today's date on supplied channelID
-    '''
+    """
     params = {"channelId": f"{value}", "start": START, "end": END, "aliases": "True"}
     req = requests.request("GET", URL, headers=HEADERS, params=params, timeout=120)
     if req.status_code == 200:
@@ -103,31 +102,39 @@ def check_api(value):
 
 
 def make_path(channel, item):
-    '''
+    """
     Test path exists, if not makes new directory 'NO_RECORDING_*'
-    '''
+    """
     try:
         print(f"make_path(): Making path for {PATH}/NO_RECORDING_{item}")
         os.makedirs(f"{PATH}/NO_RECORDING_{item}")
     except OSError as err:
         if err.errno != errno.EEXIST:
-            logger.warning("Unable to create new 'NO_RECORDING_' channel extension fors %s", channel)
+            logger.warning(
+                "Unable to create new 'NO_RECORDING_' channel extension fors %s",
+                channel,
+            )
             raise
 
 
 @tenacity.retry(wait=tenacity.wait_random(min=5, max=30))
 def fetch(value):
-    '''
+    """
     Retrieval of EPG metadata here
-    '''
+    """
     try:
-        params = {"channelId": f"{value}", "start": START, "end": END, "aliases": "True"}
+        params = {
+            "channelId": f"{value}",
+            "start": START,
+            "end": END,
+            "aliases": "True",
+        }
         logger.info("fetch():", params)
         req = requests.request("GET", URL, headers=HEADERS, params=params, timeout=120)
         jdct = json.loads(req.text)
     except Exception as err:
         print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
-        logger.critical('**** PROBLEM: Cannot fetch EPG metadata. **** \n%s', err)
+        logger.critical("**** PROBLEM: Cannot fetch EPG metadata. **** \n%s", err)
         jdct = None
 
     if "'message': 'Service error'" in str(jdct):
@@ -140,33 +147,43 @@ def fetch(value):
 
 
 def json_split(jdct, key):
-    '''
+    """
     Splits dct into subdicts based on 'item' and dateTime being present
-    '''
+    """
     dump_to = os.path.join(PATH, key)
-    if 'item' not in jdct:
+    if "item" not in jdct:
         return None
-    for subdct in jdct['item']:
+    for subdct in jdct["item"]:
         if "dateTime" in subdct:
             try:
                 # Outputs split files in subdct when dateTime present to storage_path/dump_path/
                 dt_item = subdct["dateTime"]
                 fname = os.path.join(dump_to, f"info_{dt_item}.json")
-                with open(fname, 'w') as f:
-                    json.dump({'item': [subdct]}, f, indent=4)
+                with open(fname, "w") as f:
+                    json.dump({"item": [subdct]}, f, indent=4)
             except Exception as e:
-                print(f"json_split(): ** WARNING: Splitting script has failed to split and output to {fname} {e}")
-                logger.warning("** WARNING: Splitting script has failed to output to %s %s", dump_to, e)
+                print(
+                    f"json_split(): ** WARNING: Splitting script has failed to split and output to {fname} {e}"
+                )
+                logger.warning(
+                    "** WARNING: Splitting script has failed to output to %s %s",
+                    dump_to,
+                    e,
+                )
             else:
-                logger.info("Splitting has been successful. Saving to top folder %s", dump_to)
+                logger.info(
+                    "Splitting has been successful. Saving to top folder %s", dump_to
+                )
 
 
 def main():
-    '''
+    """
     Checks if all channel folders exits in storage_path
-    '''
+    """
     check_control()
-    logger.info('========== Fetch augmented metadata script STARTED ===============================================')
+    logger.info(
+        "========== Fetch augmented metadata script STARTED ==============================================="
+    )
 
     fails = 0
     for item in CHANNEL.keys():
@@ -174,7 +191,10 @@ def main():
         if not os.path.exists(item_path):
             fails += 1
             make_path(CHANNEL, item)
-            logger.warning(" *************** PATH CREATION -- NO_RECORDING_%s -- AS PATH IS ABSENT ***************** ", item)
+            logger.warning(
+                " *************** PATH CREATION -- NO_RECORDING_%s -- AS PATH IS ABSENT ***************** ",
+                item,
+            )
             print("Updating new path to channel dictionary")
             new_channel = f"NO_RECORDING_{item}"
             old_channel = item
@@ -189,9 +209,12 @@ def main():
                 channel3 = dict(channel2)
                 channel3[new_channel] = channel3.pop(old_channel)
 
-
     # If metadata cannot be retrieved the script exits
-    logger.info("Requests will now attempt to retrieve the EPG channel metadata from start=%s to end=%s", START, END)
+    logger.info(
+        "Requests will now attempt to retrieve the EPG channel metadata from start=%s to end=%s",
+        START,
+        END,
+    )
 
     # New block to manage upto 3 missing channels, else exit
     if fails == 0:
@@ -199,7 +222,10 @@ def main():
         for key, value in CHANNEL.items():
             result = check_api(value)
             if not result:
-                logger.warning("Unable to establish contact with PATV API for channel %s. Script exitings", key)
+                logger.warning(
+                    "Unable to establish contact with PATV API for channel %s. Script exitings",
+                    key,
+                )
                 sys.exit()
             jdct = fetch(value)
             retrieve_dct_data(key, value, jdct)
@@ -213,7 +239,10 @@ def main():
         for key, value in channel1.items():
             result = check_api(value)
             if not result:
-                logger.warning("Unable to establish contact with PATV API for channel %s. Script exitings", key)
+                logger.warning(
+                    "Unable to establish contact with PATV API for channel %s. Script exitings",
+                    key,
+                )
                 sys.exit()
             jdct = fetch(value)
             retrieve_dct_data(key, value, jdct)
@@ -227,7 +256,10 @@ def main():
         for key, value in channel2.items():
             result = check_api(value)
             if not result:
-                logger.warning("Unable to establish contact with PATV API for channel %s. Script exitings", key)
+                logger.warning(
+                    "Unable to establish contact with PATV API for channel %s. Script exitings",
+                    key,
+                )
                 sys.exit()
             jdct = fetch(value)
             retrieve_dct_data(key, value, jdct)
@@ -241,7 +273,10 @@ def main():
         for key, value in channel3.items():
             result = check_api(value)
             if not result:
-                logger.warning("Unable to establish contact with PATV API for channel %s. Script exitings", key)
+                logger.warning(
+                    "Unable to establish contact with PATV API for channel %s. Script exitings",
+                    key,
+                )
                 sys.exit()
             jdct = fetch(value)
             retrieve_dct_data(key, value, jdct)
@@ -254,29 +289,41 @@ def main():
         logger.critical("Too many channels missing, script exiting.")
         sys.exit("Exiting because too many channels are absent - manual help needed!")
 
-    logger.info('========== Fetch augmented metadata script ENDED ================================================')
+    logger.info(
+        "========== Fetch augmented metadata script ENDED ================================================"
+    )
 
 
 def retrieve_dct_data(key, value, jdct=None):
-    '''
+    """
     Check if DCT data is None, if not instigate json_split
-    '''
+    """
     if jdct is None:
-        logger.warning("FAILED: First attempt to retrieve metadata. Second attempt will be made in 5 minutes.")
+        logger.warning(
+            "FAILED: First attempt to retrieve metadata. Second attempt will be made in 5 minutes."
+        )
         time.sleep(300)
         jdct = fetch(value)
         if jdct is None:
-            logger.warning("FAILED: Second attempt to retrieve metadata. Third attempt will be made in 10 minutes.")
+            logger.warning(
+                "FAILED: Second attempt to retrieve metadata. Third attempt will be made in 10 minutes."
+            )
             time.sleep(600)
             jdct = fetch(value)
             if jdct is None:
-                logger.critical("*** FAILED: Third attempt to retrieve metadata from EPG website. Script exiting ***")
+                logger.critical(
+                    "*** FAILED: Third attempt to retrieve metadata from EPG website. Script exiting ***"
+                )
                 sys.exit()
             else:
-                logger.info("EPG metadata successfully retrieved. Starting split of JSON files")
+                logger.info(
+                    "EPG metadata successfully retrieved. Starting split of JSON files"
+                )
                 json_split(jdct, key)
         else:
-            logger.info("EPG metadata successfully retrieved. Starting split of JSON files")
+            logger.info(
+                "EPG metadata successfully retrieved. Starting split of JSON files"
+            )
             json_split(jdct, key)
     else:
         logger.info("EPG metadata successfully retrieved. Starting split of JSON files")
@@ -284,20 +331,22 @@ def retrieve_dct_data(key, value, jdct=None):
 
 
 def move(path_move, item):
-    '''
+    """
     Handles move of JSON files
     into correct paths with
     matching datetime in dir name
-    '''
+    """
     file_trim = {}
     for file in os.scandir(path_move):
         if file.path.endswith(".json"):
             filename = os.path.basename(file)
             trim = filename[16:21].replace(":", "-")
-            file_trim.update({trim: path_move+"/"+filename})
+            file_trim.update({trim: path_move + "/" + filename})
         else:
             print(f"move(): Skipping {file} as file is not JSON: {path_move}")
-            logger.info("Skipping file=%s as file is not a JSON: path=%s", file, path_move)
+            logger.info(
+                "Skipping file=%s as file is not a JSON: path=%s", file, path_move
+            )
 
     for directory in os.scandir(path_move):
         item_path = os.path.join(path_move, directory)
@@ -307,14 +356,27 @@ def move(path_move, item):
             # Filename trim is compared against directory trim here using file_trim dictionary
             for key, value in file_trim.items():
                 if key == dir_trim:
-                    logger.info("MATCH! File %s and directory %s match", value, item_path)
-                    print(f"move(): MATCH! File {value} -- trim {key} with {directory} -- Moving files now")
+                    logger.info(
+                        "MATCH! File %s and directory %s match", value, item_path
+                    )
+                    print(
+                        f"move(): MATCH! File {value} -- trim {key} with {directory} -- Moving files now"
+                    )
                     try:
                         shutil.move(value, item_path)
                         logger.info("File moved successfully")
                     except Exception as err:
-                        logger.warning(("** WARNING: Unable to move file %s to folder %s", value, item_path), err)
-                        print(f"move(): Unable to move file {value} to folder {item_path} {err}")
+                        logger.warning(
+                            (
+                                "** WARNING: Unable to move file %s to folder %s",
+                                value,
+                                item_path,
+                            ),
+                            err,
+                        )
+                        print(
+                            f"move(): Unable to move file {value} to folder {item_path} {err}"
+                        )
 
     # Remove json files not in programme folder and move to unmatched_jsons folder
     for file in os.scandir(path_move):
@@ -331,40 +393,54 @@ def move(path_move, item):
                     print(f"Directory created successfully {make_new_path}")
                 except OSError as error:
                     print("Unable to mkdir, probably already exists")
-                    logger.warning("Make directory failed, path probably already exists %s", error)
+                    logger.warning(
+                        "Make directory failed, path probably already exists %s", error
+                    )
                 try:
                     new_path = os.path.join(UNMATCHED_JSON, DATE_PATH, item, filename)
                     print(f"Moving {filepath} to new location at {new_path}")
-                    logger.info("move(): Moving unmatched JSON from %s to new path %s", filepath, new_path)
+                    logger.info(
+                        "move(): Moving unmatched JSON from %s to new path %s",
+                        filepath,
+                        new_path,
+                    )
                     shutil.move(filepath, new_path)
                 except Exception as err:
-                    logger.warning("move(): Unable to move %s to unmatched_json: %s", filepath, err)
+                    logger.warning(
+                        "move(): Unable to move %s to unmatched_json: %s", filepath, err
+                    )
 
 
 def folder_check(path_move):
-    '''
+    """
     Where folder missing .JSON
     rename info.csv to info.csv.stora
-    '''
+    """
     print(f"folder_check(): Searching for folders without any .json in {path_move}")
-    logger.info("folder_check(): Searching for folders without any .json in %s", path_move)
+    logger.info(
+        "folder_check(): Searching for folders without any .json in %s", path_move
+    )
     for directory in os.scandir(path_move):
         dir_path = os.path.join(path_move, directory)
         if not os.path.isdir(dir_path):
             logger.info("Skipping, not a folder: %s", dir_path)
             continue
-        if any(file.endswith('.json') for file in os.listdir(dir_path)):
+        if any(file.endswith(".json") for file in os.listdir(dir_path)):
             logger.info("Skipping path, as it contains a json: %s", dir_path)
         else:
             for file in os.listdir(dir_path):
-                if file.startswith('info.csv'):
+                if file.startswith("info.csv"):
                     logger.info("folder_check(): CSV file to be renamed: %s", file)
                     old_name = os.path.join(dir_path, file)
-                    filename = file[:8] + '.stora'
+                    filename = file[:8] + ".stora"
                     filename_new = os.path.join(dir_path, filename)
-                    logger.info("**** folder_check(): Renaming <%s> to <%s> ****", old_name, filename_new)
+                    logger.info(
+                        "**** folder_check(): Renaming <%s> to <%s> ****",
+                        old_name,
+                        filename_new,
+                    )
                     os.rename(old_name, filename_new)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

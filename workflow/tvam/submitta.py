@@ -129,8 +129,8 @@ def main():
         today = datetime.today().strftime("%d-%m-%Y")
         job_metadata = dict(configuration["WorkflowMetadata"])
 
-        # JMW DESCRIPTION NEEDS CHECKING - Append date and batch number to title
-        q = 'topNode="x" and description="*TVAM / Ofcom*" and input.name="collectionssystems"'
+        # Append date and batch number to title
+        q = 'topNode="x" and description="TV-AM / TVP*" and input.name="collectionssystems"'
         lifetime_batches = workflow.count_jobs_submitted(q) + 1
         job_metadata["description"] = "{} / {} / {}".format(
             job_metadata["description"], today, lifetime_batches
@@ -143,7 +143,7 @@ def main():
 
         # JMW MAY NEED TO CREATE NEW BATCH - Create Workflow records
         print("* Creating Workflow records in CID...")
-        batch = workflow.D3Batch(items=batch_items, **job_metadata)
+        batch = workflow.TVAMBatch(items=batch_items, **job_metadata)
         if not batch.successfully_completed:
             print(batch_items, batch)
             error_row = [

@@ -2,7 +2,8 @@ import json
 from datetime import datetime, timezone, timedelta
 import sys
 import os
-import os.path
+import csv
+from pathlib import Path
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
@@ -10,6 +11,11 @@ from document_en_15907 import title_article
 
 import glob
 import pandas as pd
+
+BASE_DIR = Path(sys.argv[1])
+BATCH_SIZE = 4
+OUTPUT_DIR = Path("/mnt/qnap_11/Developers/matches")
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 """
 The script should iterate through the JSONs in the folder above
@@ -128,7 +134,7 @@ def check_bst_adjustment(utc_datetime_str: str):
     return string_bst.split(" ")
 
 def calculate_transmission_stoptime(duration: str, start_time: str):
-
+    
     time_format = "%H:%M:%S"
     try:
         duration_int = int(duration)
@@ -311,69 +317,85 @@ def get_stora_data(fullpath: str):
 
 if __name__ == "__main__":
     list_path = sys.argv[1]
-    list_of_files = glob.glob(list_path)
+    year = list_path.split("/")[-1]
     count = 0
-    full_match_results = []
-    path = "/mnt/bp_nas/admin/DataDigiPres/Developers/historical_redux_metadata/2020/09/02/bbctwo/info_2020-09-02T17:30:00.000Z.json"
-    for path in list_of_files:
-        print(f"Processing row {path}")
-        date, time, json_title, asset_title, channel, asset_id, duration, certification, list_attributes, broadcast_company = get_stora_data(path)
-        print(f"Date: {date}")
-        print(f"time: {time}")
-        print(f"certs :  {certification}")
-        if asset_title.title().startswith("Generic"):
-              print(asset_title)
-              title_for_split = json_title
-              generic = True
-        elif asset_title is None:
-              title_for_split = json_title
-        else:
-              title_bare = "".join(str for str in asset_title if str.isalnum())
-              print(title_bare)
-              title_for_split = json_title
-    
-        #print(title_for_split)
-        title_split, title_article_split = title_article.splitter(title_for_split, 'en')
-        title_split = title_split.replace("\xe2\x80\x99", "'")
-        search =  f'grouping.lref="398775" and broadcast_channel = "{channel}" and transmission_date = "{date}" and transmission_start_time = "{time}"'
-        #print(search)
-        hit, record = adlib.retrieve_record(os.environ.get("CID_API4"), "manifestations", search, "1")
-        if record is None:
-             print("orginal search failed, trying new search with different title")
-             continue
-        priref = adlib.retrieve_field_name(record[0], "priref")
-        title_record = adlib.retrieve_field_name(record[0], "title")
-        alternative_number = adlib.retrieve_field_name(record[0], "alternative_number")
-        print(record[0])
-        arts_title = adlib.retrieve_field_name(record[0], "title.article")
-        utb_content = f"{','.join(str(x) for x in list_attributes if len(x) > 0)}"
-        #print(f"title.article: {arts_title}")
-        #duration_secs = str(int(duration) * 60)
-        if hit >= 1:
-              count+=1
-              full_match_results.append(
-                 {
-                   "priref": priref[0],
-                   "title.article": title_article_split,
-                   "title": title_split,
-                   "title.language": "English",
-                   "title.type": "05_MAIN",
-                   "title.article_cid": arts_title[0],
-                   "title_cid": title_record[0],
-                   "title.language_cid": "English",
-                   "title.type_cid": "35_ALTERNATIVE",
-                   "alternative_number.type": "PATV asset id",
-                   "alternative_number": asset_id,
-                   "utb.fieldname": "EPG attributes",
-                   "utb.content": utb_content
-                 }
-              )
-        print(count)
-        print(full_match_results)
-        #print(f"Total files processed: {len(list_of_files)}")
-        #print(f"file processed percentage: {count}/ {len(list_of_files)} --------> {count / len(list_of_files)}")
-        #print(f"miss rate: {len(list_of_files) - count}/{len(list_of_files)}  ----->  {(len(list_of_files) - count)/ len(list_of_files)}")
-        df = pd.DataFrame(full_match_results)
-        print(df)
-        df.to_csv(sys.argv[2], index=False)
+    for batch_start in range(1, 13, BATCH_SIZE):
+        batch_end = min(batch_start + BATCH_SIZE - 1, 12)
+        output_files = OUTPUT_DIR / f"results_{year}_{batch_start:02d}_{batch_end:02d}.csv"
+        
+        row_written = 0
 
+        with open(output_files, 'a', newline="") as csvfile:
+            writer = None
+            fieldnames = ['filepath', 'priref', 'title.article', 'title', 'title.language', 'title.type', 'title.article_cid', 'title_cid', 'title.language_cid', 'title.type_cid', 'alternative_number.type', 'alternative_number', 'utb.fieldname', 'utb.content']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            if not output_files.exists():
+                  writer.writeheader()
+
+            for month in range(batch_start, batch_end + 1):
+                month_dir = BASE_DIR / f"{month:02d}"
+                list_of_files = glob.glob(str(month_dir / "*/*/*.json"))
+                for path in list_of_files:
+                    print(f"Processing row {path}")
+                    date, time, json_title, asset_title, channel, asset_id, duration, certification, list_attributes, broadcast_company = get_stora_data(path)
+                    print(f"Date: {date}")
+                    print(f"time: {time}")
+                    print(f"certs :  {certification}")
+                    if asset_title.title().startswith("Generic"):
+                        print(asset_title)
+                        title_for_split = json_title
+                        generic = True
+                    elif asset_title is None:
+                        title_for_split = json_title
+                    else:
+                        title_bare = "".join(str for str in asset_title if str.isalnum())
+                        print(title_bare)
+                        title_for_split = json_title
+                
+                    #print(title_for_split)
+                    title_split, title_article_split = title_article.splitter(title_for_split, 'en')
+                    title_split = title_split.replace("\xe2\x80\x99", "'")
+                    search =  f'grouping.lref="398775" and broadcast_channel = "{channel}" and transmission_date = "{date}" and transmission_start_time = "{time}"'
+                    #print(search)
+                    hit, record = adlib.retrieve_record(os.environ.get("CID_API4"), "manifestations", search, "1")
+                    print(record)
+                    if record is None:
+                        print("orginal search failed, trying new search with different title")
+                        continue
+                    priref = adlib.retrieve_field_name(record[0], "priref")
+                    title_record = adlib.retrieve_field_name(record[0], "title")
+                    alternative_number = adlib.retrieve_field_name(record[0], "alternative_number")
+                    print(record[0])
+                    arts_title = adlib.retrieve_field_name(record[0], "title.article")
+                    utb_content = f"{', '.join(str(x) for x in list_attributes if len(x) > 0)}"
+                    #print(f"title.article: {arts_title}")
+                    #duration_secs = str(int(duration) * 60)
+                    if hit >= 1:
+                        count+=1
+                        row = {
+                            "filepath": path,
+                            "priref": priref[0],
+                            "title.article": title_article_split,
+                            "title": title_split,
+                            "title.language": "English",
+                            "title.type": "05_MAIN",
+                            "title.article_cid": arts_title[0],
+                            "title_cid": title_record[0],
+                            "title.language_cid": "English",
+                            "title.type_cid": "35_ALTERNATIVE",
+                            "alternative_number.type": "PATV asset id",
+                            "alternative_number": asset_id,
+                            "utb.fieldname": "EPG attributes",
+                            "utb.content": utb_content
+                            }
+                        
+                        print(count)
+
+                        writer.writerow(row)
+                        row_written +=1
+                    #print(f"Total files processed: {len(list_of_files)}")
+                    #print(f"file processed percentage: {count}/ {len(list_of_files)} --------> {count / len(list_of_files)}")
+                    #print(f"miss rate: {len(list_of_files) - count}/{len(list_of_files)}  ----->  {(len(list_of_files) - count)/ len(list_of_files)}")
+
+
+        print(f"Finished batch -> {output_files} ({row_written} rows)")

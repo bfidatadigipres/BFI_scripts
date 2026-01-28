@@ -35,7 +35,6 @@ import os
 import shutil
 import sys
 from time import sleep
-from datetime import datetime
 
 import tenacity
 import yaml
@@ -59,7 +58,7 @@ CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
 CSV_FAILURES = os.path.join(LOG_PATH, "failed_mpeg_ts_files.csv")
 MPEG_TS_POLICY = os.path.join(os.environ["MEDIACONCH"], "mpeg_ts_policy.xml")
 SUBS_PTH = os.environ["SUBS_PATH2"]
-GENRE_PTH = os.path.split(SUBS_PTH)[0]
+GENRE_PTH = SUBS_PTH.split("subtitles_not_in_cid/")[0]
 CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
 
@@ -424,18 +423,18 @@ def genre_retrieval(category_code, description, title):
         )
     for _ in data:
         if category_code in data["genres"]:
-            genre_one = []
-            genre_two = []
-            subject_one = []
-            subject_two = []
+            genre_one = {}
+            genre_two = {}
+            subject_one = {}
+            subject_two = {}
 
-            genre_one = (data["genres"][category_code.strip("u")]["Genre"] or "")
+            genre_one = data["genres"][category_code.strip("u")]["Genre"]
             print(f"genre_retrieval(): Genre one: {genre_one}")
-            if "Undefined" in genre_one:
+            if "Undefined" in str(genre_one):
                 print(
                     f"genre_retrieval(): Undefined category_code discovered: {category_code}"
                 )
-                with open(os.path.join(GENRE_PTH, "redux_undefined_genres.txt", "a")) as genre_log:
+                with open(os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a") as genre_log:
                     genre_log.write("\n")
                     genre_log.write(
                         f"Category: {category_code}     Title: {title}     Description: {description}"
@@ -444,44 +443,51 @@ def genre_retrieval(category_code, description, title):
             else:
                 for _, val in genre_one.items():
                     genre_one_priref = val
+                print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
+            try:
+                genre_two = data["genres"][category_code.strip("u")]["Genre2"]
+                for _, val in genre_two.items():
+                    genre_two_priref = val
+            except (IndexError, KeyError):
+                genre_two_priref = ""
+
+            try:
+                subject_one = data["genres"][category_code.strip("u")]["Subject"]
+                for _, val in subject_one.items():
+                    subject_one_priref = val
                 print(
-                    f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
+                    f"genre_retrieval(): Key value for subject_one_priref: {subject_one_priref}"
                 )
-            genre_two = (data["genres"][category_code.strip("u")]["Genre2"] or {})
-            genre_two_priref = ""
-            for _, val in genre_two.items():
-                genre_two_priref = val
+            except (IndexError, KeyError):
+                subject_one_priref = ""
 
-            subject_one = (data["genres"][category_code.strip("u")]["Subject"] or {})
-            subject_one_priref = ""
-            for _, val in subject_one.items():
-                subject_one_priref = val
-            print(
-                f"genre_retrieval(): Key value for subject_one_priref: {subject_one_priref}"
-            )
+            try:
+                subject_two = data["genres"][category_code.strip("u")]["Subject2"]
+                for _, val in subject_two.items():
+                    subject_two_priref = val
+                print(
+                   f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}"
+                )
+            except (IndexError, KeyError):
+                subject_two_priref = ""
 
-            subject_two = (data["genres"][category_code.strip("u")]["Subject2"] or {})
-            subject_two_priref = ""
-            for _, val in subject_two.items():
-                subject_two_priref = val
-            print(
-                f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}"
-            )
             return [
                 genre_one_priref,
                 genre_two_priref,
                 subject_one_priref,
                 subject_two_priref,
             ]
+
         else:
             logger.warning(
                 "%s -- New category not in EPG_genre_map.yaml: %s", category_code, title
             )
-            with open(os.path.join(GENRE_PTH, "redux_undefined_genres.txt", "a") as genre_log:
+            with open(os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a") as genre_log:
                 genre_log.write("\n")
                 genre_log.write(
                     f"Category: {category_code}     Title: {title}     Description: {description}"
                 )
+            return []
 
 
 def csv_retrieve(fullpath):
@@ -535,12 +541,12 @@ def fetch_lines(fullpath, json_dct):
     """
     epg_dict = {}
     generic = False
-    val = jp.parse_payload_string_json(json_dct)
-    
+    val = jp.parse_payload_strict_json(json_dct)
+
     print(f"Fullpath for file being handled: {fullpath}")
     title_whole = (val.item[0].asset.title or "")
     title_new = (val.item[0].title or "")
-    
+
     # This block is for correct title formatting, and flagging 'Generic'
     if title_whole.title().startswith("Generic"):
         print(title_whole)
@@ -599,17 +605,19 @@ def fetch_lines(fullpath, json_dct):
         epg_dict["title_article"] = title_article
     epg_dict["description"] = description
 
-    title_date_start = (datetime.strftime(val.item[0].date_time, "%Y-%m-%d") or "")
+    title_date_start = (datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d") or "")
     if len(title_date_start) >= 8:
         epg_dict["title_date_start"] = title_date_start
-    time = (datetime.strftime(val.item[0].date_time, "%H:%M:%S") or "")
+    time = (datetime.datetime.strftime(val.item[0].date_time, "%H:%M:%S") or "")
     if len(time) >= 6:
         epg_dict["time"] = time
     duration = (str(val.item[0].duration) or "")
     if len(duration) > 0:
         epg_dict["duration_total"] = duration
+
+    cert = ""
     if "bbfc" in str(val.item[0].certification):
-        cert = str(val.item[0].certification.get("bbfc", ""))
+        cert = str(val.item[0].certification.get("bbfc"))
         epg_dict["certification"] = [cert]
 
     group = str(val.item[0].meta.get("group", ""))
@@ -641,13 +649,15 @@ def fetch_lines(fullpath, json_dct):
     else:
         epg_dict["asset_id"] = asset_id
 
-    series_number = (val.item[0].asset.related[0].number or "")
-    if len(series_number) > 10:
-        epg_dict["series_number"] = int(series_number)
+    series_number = series_id = None
+    if val.item[0].asset.related:
+        series_number = val.item[0].asset.related[0].number
+        if series_number:
+            epg_dict["series_number"] = int(series_number)
+        series_id = val.item[0].asset.related[0].id
 
-    series_id = (val.item[0].asset.related[0].id or None)
     nested_id = check_id(fullpath)
-    if nested_id is not None and series_id is not None:
+    if nested_id is not None:
         if len(nested_id) == 36 and nested_id != series_id:
             logger.warning(
                 "Retrieved Series ID %s likely not 'series' - exchanged for %s",
@@ -678,8 +688,10 @@ def fetch_lines(fullpath, json_dct):
 
     category_codes = []
     if len(val.item[0].asset.category) >= 1:
+        print("=------ CATEGORY CREATION -------=")
         for num in range(0, len(val.item[0].asset.category)):
             category_codes.append(val.item[0].asset.category[num].code)
+    print(category_codes)
 
     # Sort for longest
     category_codes.sort(key=len, reverse=True)
@@ -687,6 +699,7 @@ def fetch_lines(fullpath, json_dct):
         category_code = category_codes[0]
     else:
         category_code = category_codes
+    print(category_code)
     epg_dict["category_code"] = category_code
 
     work = (val.item[0].asset.type or None)
@@ -777,26 +790,25 @@ def fetch_lines(fullpath, json_dct):
                 print(err)
 
     # Sort category data
-    try:
-        category_data = genre_retrieval(category_code, description, title)
-        print(f"Category data from genre_retrieval(): {category_data}")
+    category_data = genre_retrieval(category_code, description, title)
+    print(f"Category data from genre_retrieval(): {category_data}")
+    total_category = len(category_data)
+    if total_category >= 1:
         work_genre_one = category_data[0]
         print(f"Genre one work priref: {work_genre_one}")
         epg_dict["work_genre_one"] = work_genre_one
-        if len(category_data[1]) > 0:
-            work_genre_two = category_data[1]
-            print(f"Genre two work priref: {work_genre_two}")
-            epg_dict["work_genre_two"] = work_genre_two
-        if len(category_data[2]) > 0:
-            work_subject_one = category_data[2]
-            print(f"Subject one work priref: {work_subject_one}")
-            epg_dict["work_subject_one"] = work_subject_one
-        if len(category_data[3]) > 0:
-            work_subject_two = category_data[3]
-            print(f"Subject two work priref: {work_subject_two}")
-            epg_dict["work_subject_two"] = work_subject_two
-    except (IndexError, TypeError, KeyError) as err:
-        print(err)
+    if total_category >= 2:
+        work_genre_two = category_data[1]
+        print(f"Genre two work priref: {work_genre_two}")
+        epg_dict["work_genre_two"] = work_genre_two
+    if total_category >= 3:
+        work_subject_one = category_data[2]
+        print(f"Subject one work priref: {work_subject_one}")
+        epg_dict["work_subject_one"] = work_subject_one
+    if total_category == 4:
+        work_subject_two = category_data[3]
+        print(f"Subject two work priref: {work_subject_two}")
+        epg_dict["work_subject_two"] = work_subject_two
 
     if "factual-topics" in category_code:
         nfa_category = "D"
@@ -882,11 +894,11 @@ def main():
 
         print(f"\nFullpath for file being handled: {fullpath}")
         with open(fullpath, "r", encoding="utf-8") as inf:
-            json_dct = json.load(inf)
+            json_data = inf.read()
 
         # Retrieve all data needed from JSON
-        if json_dct:
-            generic, epg_dict = fetch_lines(fullpath, json_dct)
+        if json_data:
+            generic, epg_dict = fetch_lines(fullpath, json_data)
         else:
             print("No EPG dictionary found. Skipping!")
             continue

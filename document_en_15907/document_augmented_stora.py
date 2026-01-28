@@ -45,6 +45,7 @@ import adlib_v3 as adlib
 import utils
 from helpers import stora_helper
 from parsers import stora_episode_parser as jp
+from parsers import stora_series_parser as sp
 
 # Global variables
 STORAGE = os.environ["STORA_PATH"]
@@ -340,6 +341,7 @@ def series_check(series_id):
             continue
         if not files.endswith(".json"):
             continue
+
         filename = os.path.splitext(files)[0]
         fullpath = os.path.join(SERIES_CACHE_PATH, files)
         print(f"series_check(): MATCH! {filename} with Series_ID {series_id}")
@@ -347,69 +349,47 @@ def series_check(series_id):
             f"series_check(): Json to be opened and read for series data retrieval: {fullpath}"
         )
         with open(fullpath, "r", encoding="utf-8") as inf:
-            lines = json.load(inf)
+            lines = inf.read()
+        val = sp.parse_payload_strict_json(lines)
+        if not val:
+            return None
 
-        if "ResourceNotFoundError" in str(lines):
-            continue
-        for _ in lines:
-            series_descriptions = []
-            try:
-                series_short = lines["summary"]["short"]
-                series_descriptions.append(series_short)
-            except (IndexError, TypeError, KeyError):
-                series_short = ""
-                series_descriptions.append(series_short)
-            try:
-                series_medium = lines["summary"]["medium"]
-                series_descriptions.append(series_medium)
-            except (IndexError, TypeError, KeyError):
-                series_medium = ""
-                series_descriptions.append(series_medium)
-            try:
-                series_long = lines["summary"]["long"]
-                series_descriptions.append(series_long)
-            except (IndexError, TypeError, KeyError):
-                series_long = ""
-                series_descriptions.append(series_long)
-            # Sort and return longest of descriptions
-            series_descriptions.sort(key=len, reverse=True)
-            series_description = series_descriptions[0]
-            print(
-                f"series_check(): Series description longest: {series_description}"
-            )
-            try:
-                series_title_full = lines["title"]
-                print(f"series_check(): Series title full: {series_title_full}")
-            except (IndexError, TypeError, KeyError):
-                series_title_full = ""
-            series_category_codes = []
-            # series category codes, unsure if there's always two parts to category, selects longest
-            try:
-                series_category_code_one = lines["category"][0]["code"]
-                series_category_codes.append(series_category_code_one)
-            except (IndexError, TypeError, KeyError):
-                series_category_code_one = ""
-                series_category_codes.append(series_category_code_one)
-            try:
-                series_category_code_two = lines["category"][1]["code"]
-                series_category_codes.append(series_category_code_two)
-            except (IndexError, TypeError, KeyError):
-                series_category_code_two = ""
-                series_category_codes.append(series_category_code_two)
-            series_category_codes.sort(key=len, reverse=True)
-            series_category_code = series_category_codes[0]
-            print(
-                f"series_check(): Series category code, longest: {series_category_code}"
-            )
+        # Sort and return longest of descriptions
+        series_descriptions = []
+        series_short = (val.summary.short or "")
+        series_descriptions.append(series_short)
+        series_medium = (val.summary.medium or "")
+        series_descriptions.append(series_medium)
+        series_long = (val.summary.long or "")
+        series_descriptions.append(series_long)
+        series_descriptions.sort(key=len, reverse=True)
+        series_description = series_descriptions[0]
+        print(
+            f"series_check(): Series description longest: {series_description}"
+        )
 
-            return (
-                series_description,
-                series_short,
-                series_medium,
-                series_long,
-                series_title_full,
-                series_category_code,
-            )
+        series_title_full = (val.title or "")
+        print(f"series_check(): Series title full: {series_title_full}")
+        
+        # series category codes, unsure if there's always two parts to category, selects longest
+        series_category_codes = []
+        if len(val.category) >= 1:
+            for num in range(0, len(val.category)):
+                series_category_codes.append(val.catergory[num].code or "")
+        series_category_codes.sort(key=len, reverse=True)
+        series_category_code = series_category_codes[0]
+        print(
+            f"series_check(): Series category code, longest: {series_category_code}"
+        )
+
+        return (
+            series_description,
+            series_short,
+            series_medium,
+            series_long,
+            series_title_full,
+            series_category_code,
+        )
 
 
 def genre_retrieval(category_code, description, title):

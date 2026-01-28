@@ -148,20 +148,18 @@ def parse_payload_strict_json(raw_json: str) -> Series:
     - Type/schema issues -> ValidationError
     - Unexpected fields -> UnexpectedFieldError (with paths)
     """
+
+    if not raw_json.strip():
+        return None
+
+    data = json.loads(raw_json)
+    if "message" in data and data["message"] == "Service error":
+        return None
+    if "name" in data and data["name"] == "ResourceNotFoundError":
+        return None
+
     try:
-        if not raw_json.strip():
-            raise Exception("Empty JSON field encountered")
-
-        data = json.loads(raw_json)
-
-        if "message" in data and data["message"] == "Service error":
-            raise Exception("Service error encounted in JSON")
-
-        if "name" in data and data["name"] == "ResourceNotFoundError":
-            raise Exception("Resource not found error in JSON")
-
         return Series.model_validate_json(raw_json)
-
     except ValidationError as err:
         extras = _extract_extra_field_errors(err)
         if extras:

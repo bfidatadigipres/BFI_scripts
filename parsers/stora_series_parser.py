@@ -9,8 +9,8 @@ Notes
 """
 
 from __future__ import annotations
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from datetime import datetime, date
+from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 import json
 
@@ -42,7 +42,6 @@ class APIModel(BaseModel):
     Base model: does not tolerate unexpected fields initally to find
     all variables in sample of JSON data.
     """
-    # model_config = ConfigDict(extra="allow", populate_by_name=True)
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
@@ -51,6 +50,7 @@ class Summary(APIModel):
     medium: Optional[str] = None
     long: Optional[str] = None
     welsh: Optional[str] = None
+    supplemental: Optional[str] = None
 
 
 class Category(APIModel):
@@ -112,6 +112,14 @@ class Series(APIModel):
     id: str = None
     type: Optional[str] = None
     title: str = None
+    name: Optional[str] = None
+    message: Optional[str] = None
+    runtime: Optional[int] = None
+    keywords: Optional[List[Any]] = None
+    mood: Optional[List[Any]] = None
+    themes: Optional[List[Any]] = None
+    soundtrack: Optional[List[Any]] = None
+    locations: Optional[List[Any]] = None
     attribute: Optional[List[str]] = None
     category: Optional[List[Category]] = None
     contributor: Optional[List[Any]] = None
@@ -125,18 +133,15 @@ class Series(APIModel):
     deeplink: Optional[List[Any]] = None
     created_date: Optional[datetime] = Field(default=None, alias="createdAt")
     updated_date: Optional[datetime] = Field(default=None, alias="updatedAt")
+    deleted_date: Optional[datetime] = Field(default=None, alias="deletedAt")
 
 
-class RootPayload(APIModel):
-    series: Optional[List[Series]] = None
-
-
-def parse_payload(data: Dict[str, Any]) -> RootPayload:
+def parse_payload(data: Dict[str, Any]) -> Series:
     """Parse a decoded JSON dict into typed models."""
-    return RootPayload.model_validate(data)
+    return Series.model_validate(data)
 
 
-def parse_payload_strict_json(raw_json: str) -> RootPayload:
+def parse_payload_strict_json(raw_json: str) -> Series:
     """
     Strict parser:
     - Invalid JSON -> JSONDecodeError
@@ -144,7 +149,19 @@ def parse_payload_strict_json(raw_json: str) -> RootPayload:
     - Unexpected fields -> UnexpectedFieldError (with paths)
     """
     try:
-        return RootPayload.model_validate_json(raw_json)
+        if not raw_json.strip():
+            raise Exception("Empty JSON field encountered")
+
+        data = json.loads(raw_json)
+
+        if "message" in data and data["message"] == "Service error":
+            raise Exception("Service error encounted in JSON")
+
+        if "name" in data and data["name"] == "ResourceNotFoundError":
+            raise Exception("Resource not found error in JSON")
+
+        return Series.model_validate_json(raw_json)
+
     except ValidationError as err:
         extras = _extract_extra_field_errors(err)
         if extras:

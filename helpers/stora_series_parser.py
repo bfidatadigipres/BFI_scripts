@@ -108,57 +108,27 @@ class Contributor(APIModel):
     role: Optional[List[str]] = None
 
 
-class Asset(APIModel):
+class Series(APIModel):
     id: str = None
     type: Optional[str] = None
-    number: Optional[int] = None
-    total: Optional[int] = None
     title: str = None
-    runtime: Optional[int] = None
-    releaseDate: Optional[str] = None
-    productionYear: Optional[int] = None
-
     attribute: Optional[List[str]] = None
     category: Optional[List[Category]] = None
-
-    keywords: Optional[List[Any]] = None
-    mood: Optional[List[Any]] = None
-    themes: Optional[List[Any]] = None
-
     contributor: Optional[List[Any]] = None
-    soundtrack: Optional[List[Any]] = None
-    locations: Optional[List[Any]] = None
-
     certification: Optional[Dict[str, Any]] = None
     meta: Optional[Dict[str, Any]] = None
     summary: Optional[Summary] = None
-
     media: Optional[List[Media]] = None
     related: Optional[List[Related]] = None
     subject: Optional[List[Subject]] = None
-
     link: Optional[List[Any]] = None
     deeplink: Optional[List[Any]] = None
-    vod: Optional[Dict[str, Any]] = None
-
-
-class Item(APIModel):
-    id: Optional[str] = None
-    title: Optional[str] = None
-
-    date_time: Optional[datetime] = Field(default=None, alias="dateTime")
-    duration: Optional[int] = None
-
-    attribute: Optional[List[str]] = None
-    certification: Optional[Dict[str, Any]] = None
-    summary: Optional[Summary] = None
-    meta: Optional[Dict[str, Any]] = None
-
-    asset: Optional[Asset] = None
+    created_date: Optional[datetime] = Field(default=None, alias="createdAt")
+    updated_date: Optional[datetime] = Field(default=None, alias="updatedAt")
 
 
 class RootPayload(APIModel):
-    item: Optional[List[Item]] = None
+    series: Optional[List[Series]] = None
 
 
 def parse_payload(data: Dict[str, Any]) -> RootPayload:

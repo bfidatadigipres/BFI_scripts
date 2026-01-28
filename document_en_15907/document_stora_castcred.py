@@ -44,7 +44,7 @@ import requests
 sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib
 import utils
-from helpers import stora_json_parser as jp
+from helpers import stora_episode_parser as jp
 
 # Global vars
 TODAY: Final = str(datetime.datetime.now())

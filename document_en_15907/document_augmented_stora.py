@@ -44,7 +44,7 @@ sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
 from helpers import stora_helper
-from helpers import stora_json_parser as jp
+from helpers import stora_episode_parser as jp
 
 # Global variables
 STORAGE = os.environ["STORA_PATH"]

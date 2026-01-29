@@ -379,7 +379,7 @@ def main():
         print(local_checksum, remote_checksum)
         if local_checksum is None or local_checksum != remote_checksum:
             LOGGER.warning(
-                "Checksums absent / do not match: \n%s\n%s",
+                "Checksums absent / do not match: \nLocal MD5: %s\nRemote download: %s",
                 local_checksum,
                 remote_checksum,
             )

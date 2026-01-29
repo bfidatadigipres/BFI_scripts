@@ -38,13 +38,13 @@ import logging
 import os
 import sys
 from typing import Any, Final, Generator, Iterable, Optional
-
 import requests
 
 # Local packages
 sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib
 import utils
+from parsers import stora_episode_parser as jp
 
 # Global vars
 TODAY: Final = str(datetime.datetime.now())
@@ -245,89 +245,65 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
     """
 
     with open(fullpath, "r") as inf:
-        lines = json.load(inf)
-        for _ in lines.items():
+        lines = inf.read()
 
-            # Get titles
-            try:
-                item_title = lines["item"][0]["title"]
-            except (KeyError, IndexError):
-                item_title = ""
-            try:
-                item_asset_title = lines["item"][0]["asset"]["title"]
-            except (KeyError, IndexError):
-                item_asset_title = ""
+    val = jp.parse_payload_strict_json(lines)
 
-            # Get transmission time
-            try:
-                title_date_start_full = str(lines["item"][0]["dateTime"])
-                title_date_start = title_date_start_full[0:10]
-                print(f"Date of broadcast: {title_date_start}")
-            except (KeyError, IndexError):
-                title_date_start = ""
-            try:
-                time_full = str(lines["item"][0]["dateTime"])
-                time = time_full[11:19]
-                print(f"Time of broadcast: {time}")
-            except (KeyError, IndexError):
-                time = ""
+    item_title = (val.item[0].title or "")
+    item_asset_title = (val.item[0].asset.title or "")
+    title_date_start = (datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d") or "")
+    time = (datetime.datetime.strftime(val.item[0].date_time, "%H:%M:%S") or "")
+    print(f"Date of broadcast: {title_date_start}")
+    print(f"Time of broadcast: {time}")
 
-            # Get EPG category code
-            try:
-                code1 = lines["item"][0]["asset"]["category"][0]["code"]
-            except (KeyError, IndexError):
-                code1 = ""
-            try:
-                code2 = lines["item"][0]["asset"]["category"][1]["code"]
-            except (KeyError, IndexError):
-                code2 = ""
+    # Get EPG category code
+    category_codes = []
+    if len(val.item[0].asset.category) >= 1:
+        for num in range(0, len(val.item[0].asset.category)):
+            category_codes.append(val.item[0].asset.category[num].code)
+            
+    # Filter topics for non-fiction/fiction
+    if "factual-topics" in str(category_codes):
+        nfa_category = "nf"
+    elif "movie-drama" in str(category_codes):
+        nfa_category = "f"
+    elif "news-current-affairs" in str(category_codes):
+        nfa_category = "nf"
+    elif "sports:" in str(category_codes):
+        nfa_category = "nf"
+    elif "music-ballet" in str(category_codes):
+        nfa_category = "nf"
+    elif "arts-culture:" in str(category_codes):
+        nfa_category = "nf"
+    elif "social-political-issues" in str(category_codes):
+        nfa_category = "nf"
+    elif "leisure-hobbies" in str(category_codes):
+        nfa_category = "nf"
+    elif "show-game-show" in str(category_codes):
+        nfa_category = "nf"
+    else:
+        nfa_category = "f"
 
-            # Filter topics for non-fiction/fiction
-            if "factual-topics" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "movie-drama" in ((code1, code2)):
-                nfa_category = "f"
-            elif "news-current-affairs" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "sports:" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "music-ballet" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "arts-culture:" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "social-political-issues" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "leisure-hobbies" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "show-game-show" in ((code1, code2)):
-                nfa_category = "nf"
-            else:
-                nfa_category = "f"
+    # Get TV/Film
+    work = (val.item[0].asset.type or "")
+    if work == "movie":
+        work_type = "f"
+    else:
+        work_type = "tv"
+    credit_list = (val.item[0].asset.contributor or [])
 
-            # Get TV/Film
-            work = lines["item"][0]["asset"]["type"]
-            if work == "movie":
-                work_type = "f"
-            else:
-                work_type = "tv"
-            try:
-                credit_list = []
-                credit_list = lines["item"][0]["asset"]["contributor"]
-            except (KeyError, IndexError):
-                credit_list = []
-
-        return (
-            item_title,
-            item_asset_title,
-            nfa_category,
-            work_type,
-            title_date_start,
-            time,
-            credit_list,
-        )
+    return (
+        item_title,
+        item_asset_title,
+        nfa_category,
+        work_type,
+        title_date_start,
+        time,
+        credit_list,
+    )
 
 
-def retrieve_person(credit_list_raw: list[str], nfa_cat: str):
+def retrieve_person(credit_list_dct: list[dict[str, str]], nfa_cat: str):
     """
     Receives credits dictionary from main(), iterates over entries and creates
     list of dictionaries for credit/cast enumerated (5,10,15) in order retrieved
@@ -336,67 +312,28 @@ def retrieve_person(credit_list_raw: list[str], nfa_cat: str):
     credit_list = []
     cred_list = []
     cast_list = []
-    for dictionary in credit_list_raw:
-        try:
-            cred_id = dictionary["id"]
-        except (KeyError, IndexError):
-            cred_id = ""
-        try:
-            name = dictionary["name"]
-        except (KeyError, IndexError):
-            name = ""
-        try:
-            dofb = dictionary["dob"]
-        except (KeyError, IndexError):
-            dofb = ""
-        try:
-            dofd = dictionary["dod"]
-        except (KeyError, IndexError):
-            dofd = ""
-        try:
-            home = dictionary["from"]
-        except (KeyError, IndexError):
-            home = ""
-        try:
-            gender = dictionary["gender"]
-        except (KeyError, IndexError):
-            gender = ""
-        try:
-            character_type = dictionary["character"][0]["type"]
-        except (KeyError, IndexError):
-            character_type = ""
-        try:
-            character_name = dictionary["character"][0]["name"]
-        except (KeyError, IndexError):
-            character_name = ""
-        try:
-            roles = dictionary["role"]  # List of strings
-        except (KeyError, IndexError):
-            roles = ""
-        try:
-            meta = dictionary["meta"]
-        except (KeyError, IndexError):
-            meta = ""
-        try:
-            known_for = meta["best-known-for"]
+    for dictionary in credit_list_dct:
+        cred_id = dictionary.get("id", "")
+        name = dictionary.get("name", "")
+        dofb = dictionary.get("dob", "")
+        dofd = dictionary.get("dod", "")
+        home = dictionary.get("from", "")
+        gender = dictionary.get("gender", "")
+        character = dictionary.get("character")
+        if len(character) >= 1:
+            character_type = character[0].get("type", "") 
+            character_name = character[0].get("name", "")
+        roles = dictionary.get("role", [])  # List of strings
+        meta = dictionary.get("meta", {})
+        if len(meta) >= 1:
+            known_for = meta.get("best-known-for", "")
             known_for = known_for.replace("'", "'")
-        except (KeyError, IndexError):
-            known_for = ""
-        try:
-            early_life = meta["early-life"]
+            early_life = meta.get("early-life", "")
             early_life = early_life.replace("'", "'")
-        except (KeyError, IndexError):
-            early_life = ""
-        try:
-            career = meta["career"]
+            career = meta.get("career", "")
             career = career.replace("'", "'")
-        except (KeyError, IndexError):
-            career = ""
-        try:
-            trivia = meta["trivia"]
+            trivia = meta.get("trivia", "")
             trivia = trivia.replace("'", "'")
-        except (KeyError, IndexError):
-            trivia = ""
 
         # Build lists to generate cast/credit_dct
         credit_list = list(
@@ -595,8 +532,7 @@ def main():
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
         LOGGER.info("New file found for processing: %s", fullpath)
-        credit_data = ""
-        updates = False
+
         # Retrieve all data from EPG
         credit_data = retrieve_epg_data(fullpath)
         item_title = credit_data[0]

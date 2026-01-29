@@ -5,10 +5,10 @@ Take feed from nominated pointer file and process into Workflow jobs
 for next Multi Machine Environment in F47 (first was DigiBeta)
 
 Dependencies:
-1. Pointer file number 454 where Items are added for processing
-2. LOGS/d3_selecta.log
-3. dthree/selections.csv
-4. dthree/submitta.py
+1. Pointer file number ??? where Items are added for processing
+2. LOGS/tvam_selecta.log
+3. tvam/selections.csv
+4. tvam/submitta.py
 """
 
 # Public imports
@@ -32,17 +32,17 @@ LOGS = os.environ["LOG_PATH"]
 CID_API = utils.get_current_api()
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
-SELECTIONS = os.path.join(os.environ["WORKFLOW"], "dthree/selections.csv")
+SELECTIONS = os.path.join(os.environ["WORKFLOW"], "tvam/selections.csv")
 
 
 def get_candidates():
     """
-    Retrieve items from pointer file 454
+    Retrieve items from pointer file ???
     """
     q = {
         "command": "getpointerfile",
         "database": "items",
-        "number": 454,
+        "number": 454,  ???
         "output": "jsonv1",
     }
 
@@ -83,12 +83,12 @@ def main():
         print("Script run prevented by Storage Control document. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
-    write_to_log(f"=== Processing Items in D3 Pointer File === {DT_STR}\n")
+    write_to_log(f"=== Processing Items in TVAM 1inch Pointer File === {DT_STR}\n")
     write_to_log(
         "Fetching csv data, building selected items list and fetching candidates.\n"
     )
-    d3_select_csv = os.path.join(os.environ["WORKFLOW"], "dthree/selections.csv")
-    selects = selections.Selections(input_file=d3_select_csv)
+    tvam_select_csv = os.path.join(os.environ["WORKFLOW"], "tvam/selections.csv")
+    selects = selections.Selections(input_file=tvam_select_csv)
     selected_items = selects.list_items()
     candidates = get_candidates()
 
@@ -103,7 +103,7 @@ def main():
         for sel in selected_items:
             if obj == sel:
                 write_to_log(
-                    f"* Item already in dthree/selections.csv: {priref} {obj} - Matched to {sel}\n"
+                    f"* Item already in tvam/selections.csv: {priref} {obj} - Matched to {sel}\n"
                 )
                 matched = True
                 break
@@ -133,7 +133,7 @@ def main():
         d["location"] = t.location()
         d["uid"] = str(uuid.uuid4())
 
-        write_to_log("This tape will be added to dthree/selections.csv:\n")
+        write_to_log("This tape will be added to tvam/selections.csv:\n")
         write_to_log(f"{str(d)}\n")
 
         # Add tape to dthree/selections.csv if unique
@@ -151,7 +151,7 @@ def main():
             write_to_log("Failed to write data to selections.csv")
             sys.exit("Failed to write data to selections.csv")
 
-    write_to_log(f"=== Items in D3 Pointer File completed === {DT_STR}\n")
+    write_to_log(f"=== Items in TVAM 1inch Pointer File completed === {DT_STR}\n")
 
 
 def selections_add(data):
@@ -214,9 +214,9 @@ def selections_add(data):
 
 def write_to_log(message):
     """
-    Write to d3 selecta log
+    Write to tvam selecta log
     """
-    with open(os.path.join(LOGS, "d3_selecta.log"), "a") as file:
+    with open(os.path.join(LOGS, "tvam_selecta.log"), "a") as file:
         file.write(message)
         file.close()
 

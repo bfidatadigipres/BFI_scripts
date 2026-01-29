@@ -105,6 +105,28 @@ REQUEST_TYPE = {
     "VIDEOTRANSFEREXTERNAL": "Video transfer external",
     "VIDEOUNITINHOUSE": "Video unit inhouse",
 }
+CLIENTS = {
+    "BFI_Partner": "BFI partnered project",
+    "BFI_Project": "BFI project",
+    "Commercial": "Commercial organisation",
+    "Curatorial": "Curatorial",
+    "DONOR": "Donor",
+    "Educational": "Educational / Research",
+    "Film_Sales": "Film Sales",
+    "Individual": "Individual",
+    "Library": "Library",
+    "Mediatheque": "Mediatheque",
+    "Museum_Gallery": "Museum / Gallery",
+    "Other_Archive": "Archive - other",
+    "Overseas_Archive": "Archive - overseas",
+    "RegArchive": "Archive - regional",
+    "RightsHolder": "Rightsholder",
+    "ScreenOnline": "Screenonline",
+    "SouthBank": "Southbank",
+    "Trading": "Trading",
+    "UK_Cinema": "UK cinema",
+    "University": "University / Film school",
+}
 
 
 def retrieve_requested() -> list[str]:
@@ -140,7 +162,7 @@ def retrieve_requested() -> list[str]:
 
 def remove_duplicates(list_data: list[str]) -> list[str]:
     """
-    Sort and remove duplicatesdef remove_duplicates(list_data: list[str]) -> list[str]:
+    Sort and remove duplicates 
     """
 
     list_data.sort()
@@ -273,7 +295,7 @@ def main():
 
         # Make job metadata for Batch creation
         job_metadata = {}
-        deadline = (datetime.today() + timedelta(days=10)).strftime("%Y-%m-%d")
+        # deadline = (datetime.today() + timedelta(days=10)).strftime("%Y-%m-%d")
         request_date = job[18].strip()[:10]
         job_metadata["activity.code"] = job[7].strip()
         job_metadata["client.name"] = job[14].strip()
@@ -290,7 +312,7 @@ def main():
         job_metadata["request.from.email"] = email
         job_metadata["request.from.name"] = f"{firstname} {lastname}"
         job_metadata["request.date.received"] = request_date
-        job_metadata["negotiatedDeadline"] = deadline
+        # job_metadata["negotiatedDeadline"] = deadline
         job_metadata["input.name"] = uname
         LOGGER.info("Job metadata build: %s", job_metadata)
 
@@ -383,13 +405,13 @@ Hello {firstname.title()},
 Your original request details:
     Saved search: {job[6]}
     Activity code: {job[7]}
-    Request type: {REQUEST_TYPE.get(job[8])}
+    Request type: {REQUEST_TYPE.get(job[8], job[8])}
     Request outcome: {job[9]}
     Job description: {job[10]}
     Delivery date: {job[11]}
     Final destination: {job[12]}
     Specific instructions: {job[13]}
-    Client category: {job[4]}
+    Client category: {CLIENTS.get(job[4], job[4])}
     Client name: {job[14]}
     Contact details: {job[15]}
 

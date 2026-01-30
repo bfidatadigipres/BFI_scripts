@@ -316,6 +316,22 @@ def main():
         job_metadata["input.name"] = uname
         LOGGER.info("Job metadata build: %s", job_metadata)
 
+        # Sub in priref for credit.name 
+        if len(job_metadata["client.name"]) > 0:
+            LOGGER.info(
+                "Client.name populated - making P&I record for %s",
+                job_metadata["client.name"],
+            )
+            p_priref = create_people_record(job_metadata["client.name"])
+            LOGGER.info("Priref for client.name: %s - %s", p_priref, job_metadata["client.name"])
+            if not p_priref:
+                LOGGER.warning(
+                    "Person record failed to create: %s", job_metadata["client.name"]
+                )
+            else:
+                job_metadata.pop("client.name")
+                job_metadata["client.name.lref"] = p_priref
+
         # Create Workflow records
         print("* Creating Workflow records in CID...")
         print(job_metadata)
@@ -338,16 +354,6 @@ def main():
                 job,
             )
             continue
-        if len(job_metadata["client.name"]) > 0:
-            LOGGER.info(
-                "Client.name populated - making P&I record for %s",
-                job_metadata["client.name"],
-            )
-            p_priref = create_people_record(job_metadata["client.name"])
-            if not p_priref:
-                LOGGER.warning(
-                    "Person record failed to create: %s", job_metadata["client.name"]
-                )
 
         update_table(job_id, "Completed")
         send_email_update(email, firstname, "Workflow request completed", job)

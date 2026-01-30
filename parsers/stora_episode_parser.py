@@ -158,6 +158,8 @@ class Item(APIModel):
 
 
 class RootPayload(APIModel):
+    hasNext: Optional[bool] = None
+    total: Optional[int] = None
     item: Optional[List[Item]] = None
 
 

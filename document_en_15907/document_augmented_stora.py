@@ -370,12 +370,12 @@ def series_check(series_id):
 
         series_title_full = (val.title or "")
         print(f"series_check(): Series title full: {series_title_full}")
-        
+
         # series category codes, unsure if there's always two parts to category, selects longest
         series_category_codes = []
         if len(val.category) >= 1:
             for num in range(0, len(val.category)):
-                series_category_codes.append(val.catergory[num].code or "")
+                series_category_codes.append(val.category[num].code or "")
         series_category_codes.sort(key=len, reverse=True)
         series_category_code = series_category_codes[0]
         print(

@@ -58,6 +58,7 @@ DPI_BUCKETS = os.environ.get("DPI_BUCKET")
 MEDIA_REC_CSV = os.path.join(LOG_PATH, "duration_size_media_records.csv")
 MEDIAINFO_PATH = os.path.join(LOG_PATH, "cid_mediainfo")
 PERSISTENCE_LOG = os.path.join(LOG_PATH, "autoingest", "persistence_queue.csv")
+EMAIL = os.environ.get("DEV_EMAIL")
 CID_API = utils.get_current_api()
 TODAY = str(datetime.today())
 CODE = os.environ["CODE"]
@@ -378,6 +379,8 @@ def main():
         local_checksum, remote_checksum = make_check_md5(fpath, delivery_path, fname)
         print(local_checksum, remote_checksum)
         if local_checksum is None or local_checksum != remote_checksum:
+            # EMAIL ALERT HERE
+            send_email_alert(fpath)
             LOGGER.warning(
                 "Checksums absent / do not match: \nLocal MD5: %s\nRemote download: %s",
                 local_checksum,
@@ -614,6 +617,31 @@ def create_media_record(
             LOGGER.exception("Unable to create CID media record!")
             return None
 
+
+def send_email_alert(fname, fpath):
+    """
+    Send email to archive developers
+    to alert about failed Blobbed PUT
+    """
+    message = f"""
+    Dear Devs!
+    
+    This is an email alert that the Blobbing script has failed for file {fname} at path:
+    {fpath}
+    
+    This happened at:
+    {str(datetime.datetime.now())[:19]}
+    
+    Cordially,
+    Yourselves, in script form.
+    """    
+
+    success, error = utils.send_email(EMAIL, "WARNING: Failed blobbed PUT validation", message, "")
+    if success:
+        LOGGER.info("Email notification sent to %s", client_email)
+    else:
+        LOGGER.warning("Email notification failed in sending: %s", client_email)
+        LOGGER.warning("Error: %s", error)
 
 if __name__ == "__main__":
     main()

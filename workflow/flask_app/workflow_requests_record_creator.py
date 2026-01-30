@@ -162,7 +162,7 @@ def retrieve_requested() -> list[str]:
 
 def remove_duplicates(list_data: list[str]) -> list[str]:
     """
-    Sort and remove duplicates 
+    Sort and remove duplicates
     """
 
     list_data.sort()
@@ -316,7 +316,7 @@ def main():
         job_metadata["input.name"] = uname
         LOGGER.info("Job metadata build: %s", job_metadata)
 
-        # Sub in priref for credit.name 
+        # Sub in priref for credit.name
         if len(job_metadata["client.name"]) > 0:
             LOGGER.info(
                 "Client.name populated - making P&I record for %s",
@@ -455,11 +455,11 @@ def create_people_record(client_name):
         )
     if hits > 0:
         try:
-            priref = adlib.retrieve_field_name(result[0], "priref")[0]
+            priref = adlib.retrieve_field_name(result[0], "priref")
             LOGGER.info(
                 "Existing people record found for '%s': %s", client_name, priref
             )
-            return priref
+            return priref[0]
         except (KeyError, IndexError) as err:
             print(err)
 

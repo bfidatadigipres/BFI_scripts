@@ -51,6 +51,7 @@ class Summary(APIModel):
     medium: Optional[str] = None
     long: Optional[str] = None
     welsh: Optional[str] = None
+    supplemental: Optional[str] = None
 
 
 class Category(APIModel):

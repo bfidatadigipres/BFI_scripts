@@ -207,7 +207,7 @@ def retrieve_json(json_pth: str) -> dict[str, str]:
     series number match and enough episodes
     present for supplied episode_num
     """
-    with open(json_pth, "r") as file:
+    with open(json_pth, "r", encoding="latin1") as file:
         data = json.load(file)
 
     return data
@@ -274,7 +274,7 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
 
     j_data: dict[Optional[str], Optional[str]] = {}
     val.id and j_data.update({"work_id": val.id})
-    val.type and j_data.update({"type": val.type})  
+    val.type and j_data.update({"type": val.type})
     title_full = val.title
     if title_full:
         title, article = split_title(title_full)
@@ -323,7 +323,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
 
     s_data = {}
     val.id and s_data.update({"work_id": val.id})
-    val.type and s_data.update({"type": val.type})  
+    val.type and s_data.update({"type": val.type})
     title_full = val.title
     if title_full:
         title, article = split_title(title_full)
@@ -476,7 +476,7 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
                 genre_one_priref = ""
             try:
                 genre_two = data["genres"][category_code.strip("u")]["Genre2"]
-                for key, val in genre_two.items():
+                for _, val in genre_two.items():
                     genre_two_priref = val
                 print(
                     f"genre_retrieval(): Key value for genre_two_priref: {genre_two_priref}"
@@ -664,7 +664,7 @@ def main():
         sys.exit("* Cannot establish CID session, exiting script")
 
     if len(sys.argv) < 2:
-        sys.exit(f"Please try to launch this script again with the path to the CSV...")
+        sys.exit("Please try to launch this script again with the path to the CSV...")
     csv_path = sys.argv[1]
     if not os.path.isfile(csv_path):
         sys.exit(f"Problem with supplied CSV path {csv_path}")

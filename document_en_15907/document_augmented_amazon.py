@@ -39,7 +39,6 @@ import sys
 from typing import Any, Final, Optional
 import pandas
 import yaml
-from document_augmented_streaming_cast import create_contributors
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
@@ -274,7 +273,7 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
 
     j_data = {}
     val.id and j_data.update({"work_id": val.id})
-    val.type and j_data.update({"type": val.type})  
+    val.type and j_data.update({"type": val.type})
     title_full = val.title
     if title_full:
         title, article = split_title(title_full)
@@ -323,7 +322,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
 
     s_data = {}
     val.id and s_data.update({"work_id": val.id})
-    val.type and s_data.update({"type": val.type})  
+    val.type and s_data.update({"type": val.type})
     title_full = val.title
     if title_full:
         title, article = split_title(title_full)
@@ -474,7 +473,7 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
                 genre_one_priref = ""
             try:
                 genre_two = data["genres"][category_code.strip("u")]["Genre2"]
-                for key, val in genre_two.items():
+                for _, val in genre_two.items():
                     genre_two_priref = val
                 print(
                     f"genre_retrieval(): Key value for genre_two_priref: {genre_two_priref}"

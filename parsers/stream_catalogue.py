@@ -119,6 +119,7 @@ class Series(APIModel):
     message: Optional[str] = None
     runtime: Optional[int] = None
     releaseDate: Optional[str] = None
+    productionYear: Optional[int] = None
     keywords: Optional[List[Any]] = None
     mood: Optional[List[Any]] = None
     themes: Optional[List[Any]] = None
@@ -160,7 +161,9 @@ def parse_payload_strict_json(raw_json: str) -> Series:
     data = json.loads(raw_json)
     if "message" in data and data["message"] == "Service error":
         return None
-    if "name" in data and data["name"] == "ResourceNotFoundError":
+    elif "message" in data and "does not exist." in data["message"]:
+        return None
+    elif "name" in data and "NotFound" in data["name"]:
         return None
 
     try:

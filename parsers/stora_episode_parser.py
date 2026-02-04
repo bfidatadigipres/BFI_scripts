@@ -176,6 +176,18 @@ def parse_payload_strict_json(raw_json: str) -> RootPayload:
     - Type/schema issues -> ValidationError
     - Unexpected fields -> UnexpectedFieldError (with paths)
     """
+
+    if not raw_json.strip():
+        return None
+
+    data = json.loads(raw_json)
+    if "message" in data and data["message"] == "Service error":
+        return None
+    elif "message" in data and "does not exist." in data["message"]:
+        return None
+    elif "name" in data and "NotFound" in data["name"]:
+        return None
+
     try:
         return RootPayload.model_validate_json(raw_json)
     except ValidationError as err:

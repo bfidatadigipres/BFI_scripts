@@ -33,12 +33,10 @@ NOTES: Configured for adlib_v3, API will need
 """
 
 import datetime
-import json
 import logging
 import os
 import sys
-from typing import Any, Final, Optional, Sequence
-
+from typing import Any, Final, Optional
 import pandas
 import yaml
 from document_augmented_streaming_cast import create_contributors
@@ -49,6 +47,7 @@ import utils
 from parsers import stream_catalogue as ct
 from parsers import stream_episode as ep
 from parsers import stream_season as sp
+from document_augmented_streaming_cast import create_contributors
 
 # Global variables
 STORAGE: Final = os.environ.get("QNAP_IMAGEN")
@@ -166,8 +165,8 @@ def split_title(title_article: str) -> tuple[str, str]:
         title = " ".join(ttl)
         title_art = title_split[0]
         return title, title_art
-    else:
-        return title_article, "-"
+
+    return title_article, "-"
 
 
 def get_folder_match(foldername: str) -> list[str]:
@@ -466,7 +465,7 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
                         )
                     genre_one_priref: str = ""
                 else:
-                    for key, val in genre_one.items():
+                    for _, val in genre_one.items():
                         genre_one_priref: str = val
                     print(
                         f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
@@ -501,7 +500,6 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
 
 def make_work_dictionary(
     episode_no: str,
-    episode_id: str,
     csv_data: dict[str, str],
     cat_dct: Optional[dict[str, str]],
     json_dct: dict[str, str],
@@ -584,7 +582,7 @@ def make_work_dictionary(
         work_dict["cat_id"] = ""
 
     if "imdb_id" in json_dct:
-        work_dict["imdb_id"] = json_dct["imdb_id"]        
+        work_dict["imdb_id"] = json_dct["imdb_id"]
     if "production_year" in json_dct:
         work_dict["production_year"] = json_dct["production_year"]
     elif "production_year" in cat_dct:
@@ -770,7 +768,7 @@ def main():
                 print("SKIPPING: Missing data from JSON files.")
                 continue
             # Make monographic work here
-            data_dct = make_work_dictionary("", "", csv_data, cat_dct, mono_dct)
+            data_dct = make_work_dictionary("", csv_data, cat_dct, mono_dct)
             print(f"Dictionary for monograph creation: \n{data_dct}")
             print("*************")
             record, series_work, work, work_restricted, manifestation, item = (
@@ -881,7 +879,7 @@ def main():
                 series_data = retrieve_json(os.path.join(prog_path, series_json[0]))
                 series_dct = get_season_data(series_data)
                 series_data_dct = make_work_dictionary(
-                    "", "", csv_data, None, series_dct
+                    "", csv_data, None, series_dct
                 )
                 record, series_work, work, work_restricted, manifestation, item = (
                     build_defaults(series_data_dct)
@@ -894,7 +892,6 @@ def main():
                 series_priref = create_series_work(
                     patv_id,
                     series_data_dct,
-                    csv_data,
                     series_work,
                     work_restricted,
                     record,
@@ -917,17 +914,17 @@ def main():
                     episodes = [episode]
                     total_eps = 1
                 count = 0
-                for ep in episodes:
+                for eps in episodes:
                     LOGGER.info(
                         "Creating one-off episode record for %s episode number %s",
                         title,
-                        ep,
+                        eps,
                     )
                     success = make_episodes(
                         series_priref,
                         work_title,
                         work_title_art,
-                        int(ep),
+                        int(eps),
                         season_fpaths,
                         title,
                         csv_data,
@@ -1058,7 +1055,7 @@ def make_episodes(
     # Make episodic work here
     episode_id = episode_folder.split("_")[-1]
     print(f"** Episode ID: {episode_id} {title}")
-    data_dct = make_work_dictionary(num, episode_id, csv_data, ep_cat_dct, ep_dct)
+    data_dct = make_work_dictionary(num, csv_data, ep_cat_dct, ep_dct)
     print(f"Dictionary for Work creation:\n{data_dct}")
     print("**************")
     record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)
@@ -1287,7 +1284,6 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
 def create_series_work(
     patv_id: str,
     series_dct: dict[str, str],
-    csv_data,
     series_work: list[dict[str, str]],
     work_restricted: list[dict[str, str]],
     record: list[dict[str, str]],

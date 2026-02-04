@@ -229,7 +229,7 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
         title, article = split_title(val.title)
         c_data.update({"title": title})
         c_data.update({"title_article": article})
-    val.productionYear and c_data.append({"production_year": str(val.productionYear)})
+    val.productionYear and c_data.update({"production_year": str(val.productionYear)})
     val.runtime and c_data.update({"runtime": val.runtime})
     val.certification.get("netflix") and c_data.update({"cert_netflix": val.certification.get("netflix")})
     val.certification.get("bbfc") and c_data.update({"cert_bbfc": val.certification.get("bbfc")})
@@ -281,19 +281,19 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
         title, article = split_title(title_full)
         j_data.update({"title": title})
         j_data.update({"title_article": article})
-    val.productionYear and j_data.append({"production_year": str(val.productionYear)})
-    val.runtime and j_data.append({"runtime": val.runtime})
-    val.number and j_data.append({"episode_number": val.number})
-    val.total and j_data.append({"episode_total": val.total})
+    val.productionYear and j_data.update({"production_year": str(val.productionYear)})
+    val.runtime and j_data.update({"runtime": val.runtime})
+    val.number and j_data.update({"episode_number": val.number})
+    val.total and j_data.update({"episode_total": val.total})
 
     genres = []
     for cat in val.category:
         genres.append(cat.code)
     genres and j_data.update({"genres": genres})
 
-    val.meta.get('episode') and j_data.append({"episode_number": val.meta.get('episode')})
-    val.meta.get('episodeTotal') and j_data.append({"episode_total": val.meta.get('episodeTotal')})
-    val.meta.get('imdbId') and j_data.append({'imdb_id': val.meta.get('imdbId')})
+    val.meta.get('episode') and j_data.update({"episode_number": val.meta.get('episode')})
+    val.meta.get('episodeTotal') and j_data.update({"episode_total": val.meta.get('episodeTotal')})
+    val.meta.get('imdbId') and j_data.update({'imdb_id': val.meta.get('imdbId')})
     val.certification.get("netflix") and j_data.update({"cert_netflix": val.certification.get("netflix")})
     val.certification.get("bbfc") and j_data.update({"cert_bbfc": val.certification.get("bbfc")})
 
@@ -330,18 +330,18 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         title, article = split_title(title_full)
         s_data.update({"title": title})
         s_data.update({"title_article": article})
-    val.productionYear and s_data.append({"production_year": str(val.productionYear)})
-    val.runtime and s_data.append({"runtime": val.runtime})
-    val.number and s_data.append({"episode_number": val.number})
-    val.total and s_data.append({"episode_total": val.total})
+    val.productionYear and s_data.update({"production_year": str(val.productionYear)})
+    val.runtime and s_data.update({"runtime": val.runtime})
+    val.number and s_data.update({"episode_number": val.number})
+    val.total and s_data.update({"episode_total": val.total})
 
     genres = []
     for cat in val.category:
         genres.append(cat.code)
     genres and s_data.update({"genres": genres})
 
-    val.meta.get('episode') and s_data.append({"episode_number": val.meta.get('episode')})
-    val.meta.get('episodeTotal') and s_data.append({"episode_total": val.meta.get('episodeTotal')})
+    val.meta.get('episode') and s_data.update({"episode_number": val.meta.get('episode')})
+    val.meta.get('episodeTotal') and s_data.update({"episode_total": val.meta.get('episodeTotal')})
     val.certification.get("netflix") and s_data.update({"cert_netflix": val.certification.get("netflix")})
     val.certification.get("bbfc") and s_data.update({"cert_bbfc": val.certification.get("bbfc")})
 

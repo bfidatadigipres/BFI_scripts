@@ -14,7 +14,7 @@ from pydantic.functional_validators import BeforeValidator
 from pydantic_csv import BasemodelCSVReader
 
 CHNL = {
-    "5STAR", "CH4", "5", "E4", "Film4", "ITV1", "ITV2", "ITV3", "ITV4", "ITVQuiz", "More4"
+    "5STAR", "CH4", "5", "E4", "Film4", "ITV1", "ITV1 HD", "ITV2", "ITV3", "ITV4", "ITVQuiz", "More4"
 }
 
 def parse_channel(v):

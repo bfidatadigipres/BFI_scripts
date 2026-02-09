@@ -278,7 +278,7 @@ def find_repeats(asset_id):
     PATV showings of a manifestation
     """
 
-    search = f'alternative_number="{asset_id}"'
+    search = f'alternative_number="{asset_id}" AND alternative_number.type="PATV asset id"'
     sleep(1)
     hits, result = adlib.retrieve_record(CID_API, "manifestations", search, "1")
     print(f"*** find_repeats(): {hits}\n{result}")

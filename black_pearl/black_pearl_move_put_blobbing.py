@@ -309,182 +309,208 @@ def main():
         f for f in os.listdir(autoingest) if os.path.isfile(os.path.join(autoingest, f))
     ]
     files.sort()
-    if not files:
-        sys.exit()
+    if files:
 
-    LOGGER.info(
-        "======== START Black Pearl blob ingest and validation %s START ========",
-        sys.argv[1],
-    )
+        LOGGER.info(
+            "======== START Black Pearl blob ingest and validation %s START ========",
+            sys.argv[1],
+        )
 
-    for fname in files:
-        if not utils.check_control("black_pearl") or not utils.check_control(
-            "pause_scripts"
-        ):
+        for fname in files:
+            if not utils.check_control("black_pearl") or not utils.check_control(
+                "pause_scripts"
+            ):
+                LOGGER.info(
+                    "Script run prevented by downtime_control.json. Script exiting."
+                )
+                sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+            if ".DS_Store" in fname:
+                continue
+            if fname.startswith("."):
+                continue
+            if fname.endswith((".txt", ".md5", ".log", ".mhl", ".ini", ".json")):
+                continue
+            fpath = os.path.join(autoingest, fname)
+
+            # Begin blobbed PUT (bool argument for checksum validation off/on in ds3Helpers)
+            tic = time.perf_counter()
+            LOGGER.info("Beginning PUT of blobbing file %s", fname)
+            put_job_id = bp.put_single_file(fpath, fname, bucket, check=True)
+            toc = time.perf_counter()
+            checksum_put_time = (toc - tic) // 60
             LOGGER.info(
-                "Script run prevented by downtime_control.json. Script exiting."
+                "** Total time in minutes for PUT WITH BP hash validation: %s",
+                checksum_put_time,
             )
-            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-        if ".DS_Store" in fname:
-            continue
-        if fname.startswith("."):
-            continue
-        if fname.endswith((".txt", ".md5", ".log", ".mhl", ".ini", ".json")):
-            continue
-        fpath = os.path.join(autoingest, fname)
 
-        # Begin blobbed PUT (bool argument for checksum validation off/on in ds3Helpers)
-        tic = time.perf_counter()
-        LOGGER.info("Beginning PUT of blobbing file %s", fname)
-        put_job_id = bp.put_single_file(fpath, fname, bucket, check=True)
-        toc = time.perf_counter()
-        checksum_put_time = (toc - tic) // 60
-        LOGGER.info(
-            "** Total time in minutes for PUT WITH BP hash validation: %s",
-            checksum_put_time,
-        )
+            # Confirm job list exists
+            if not put_job_id:
+                LOGGER.warning(
+                    "JOB list retrieved for file is not correct. %s: %s", fname, put_job_id
+                )
+                LOGGER.warning(
+                    "Skipping further verification stages. Please investigate error."
+                )
+                continue
+            LOGGER.info("Successfully written data to BP. Job ID for file: %s", put_job_id)
 
-        # Confirm job list exists
-        if not put_job_id:
-            LOGGER.warning(
-                "JOB list retrieved for file is not correct. %s: %s", fname, put_job_id
+            # Begin retrieval
+            delivery_path = os.path.join(download_folder, fname)
+            get_job_id = bp.download_bp_object(fname, download_folder, bucket)
+            print(f"File downloaded: {delivery_path}")
+            if not os.path.exists(delivery_path):
+                LOGGER.warning(
+                    "Skipping: Failed to download file from Black Pearl: %s", delivery_path
+                )
+                continue
+            LOGGER.info("Retrieved asset again. GET job ID: %s", get_job_id)
+            toc2 = time.perf_counter()
+            checksum_put_time2 = (toc2 - toc) // 60
+            LOGGER.info(
+                "** Total time in minutes for retrieval of BP item: %s", checksum_put_time2
             )
-            LOGGER.warning(
-                "Skipping further verification stages. Please investigate error."
-            )
-            continue
-        LOGGER.info("Successfully written data to BP. Job ID for file: %s", put_job_id)
 
-        # Begin retrieval
-        delivery_path = os.path.join(download_folder, fname)
-        get_job_id = bp.download_bp_object(fname, download_folder, bucket)
-        print(f"File downloaded: {delivery_path}")
-        if not os.path.exists(delivery_path):
-            LOGGER.warning(
-                "Skipping: Failed to download file from Black Pearl: %s", delivery_path
+            # Checksum validation
+            print(
+                "Obtaining checksum for local file and creating one for downloaded file..."
             )
-            continue
-        LOGGER.info("Retrieved asset again. GET job ID: %s", get_job_id)
-        toc2 = time.perf_counter()
-        checksum_put_time2 = (toc2 - toc) // 60
-        LOGGER.info(
-            "** Total time in minutes for retrieval of BP item: %s", checksum_put_time2
-        )
-
-        # Checksum validation
-        print(
-            "Obtaining checksum for local file and creating one for downloaded file..."
-        )
-        LOGGER.info(
-            "Generating checksum for downloaded file and comparing to existing local MD5."
-        )
-        local_checksum, remote_checksum = make_check_md5(fpath, delivery_path, fname)
-        print(local_checksum, remote_checksum)
-        if local_checksum is None or local_checksum != remote_checksum:
-            # EMAIL ALERT HERE
-            send_email_alert(fname, fpath, "This was a checksum comparison failure for a new file.")
-            LOGGER.warning(
-                "Checksums absent / do not match: \nLocal MD5: %s\nRemote download: %s",
+            LOGGER.info(
+                "Generating checksum for downloaded file and comparing to existing local MD5."
+            )
+            local_checksum, remote_checksum = make_check_md5(fpath, delivery_path, fname)
+            print(local_checksum, remote_checksum)
+            if local_checksum is None or local_checksum != remote_checksum:
+                # EMAIL ALERT HERE
+                send_email_alert(fname, fpath, "This was a checksum comparison failure for a new file.")
+                LOGGER.warning(
+                    "Checksums absent / do not match: \nLocal MD5: %s\nRemote download: %s",
+                    local_checksum,
+                    remote_checksum,
+                )
+                LOGGER.warning("Skipping further actions with this file. Upload failed.")
+                LOGGER.warning("Deleting downloaded file to save space: %s", delivery_path)
+                os.remove(delivery_path)
+                if not os.path.exists(error_folder):
+                    os.makedirs(error_folder, mode=0o777, exist_ok=True)
+                LOGGER.warning("Moving file to error folder for human assessment")
+                shutil.move(fpath, error_folder)
+                persistence_log_message(
+                    "Failed fixity check: checksums do not match", fpath, wpath, fname
+                )
+                continue
+            LOGGER.info(
+                "Checksums match for file >1TB local and stored on Black Pearl:\n%s\n%s",
                 local_checksum,
                 remote_checksum,
             )
-            LOGGER.warning("Skipping further actions with this file. Upload failed.")
-            LOGGER.warning("Deleting downloaded file to save space: %s", delivery_path)
-            os.remove(delivery_path)
-            if not os.path.exists(error_folder):
-                os.makedirs(error_folder, mode=0o777, exist_ok=True)
-            LOGGER.warning("Moving file to error folder for human assessment")
-            shutil.move(fpath, error_folder)
-            persistence_log_message(
-                "Failed fixity check: checksums do not match", fpath, wpath, fname
-            )
-            continue
-        LOGGER.info(
-            "Checksums match for file >1TB local and stored on Black Pearl:\n%s\n%s",
-            local_checksum,
-            remote_checksum,
-        )
-        toc3 = time.perf_counter()
-        checksum_put_time3 = (toc3 - toc2) // 60
-        LOGGER.info(
-            "Total time in minutes for checksum creation and comparison: %s",
-            checksum_put_time3,
-        )
-
-        # Delete downloaded file and move to further validation checks
-        LOGGER.info("Deleting downloaded file: %s", delivery_path)
-        os.remove(delivery_path)
-
-        # App size, duration data to CSV
-        byte_size = utils.get_size(fpath)
-        object_number = utils.get_object_number(fname)
-        duration = utils.get_duration(fpath)
-        duration_ms = utils.get_ms(fpath)
-        if duration or duration_ms:
-            LOGGER.info("Duration: %s MS: %s", duration, duration_ms)
-
-        # Handle string returns - back up to CSV
-        if not duration:
-            duration = ""
-        elif "N/A" in str(duration):
-            duration = ""
-        if not duration_ms:
-            duration_ms = ""
-        elif "N/A" in str(duration_ms):
-            duration_ms = ""
-        if not byte_size:
-            byte_size = ""
-        if object_number is None:
-            object_number = ""
-
-        # Make global log message
-        LOGGER.info("Writing persistence checking message to persistence_queue.csv.")
-        persistence_log_message("Ready for persistence checking", fpath, wpath, fname)
-
-        # Prepare move path to not include XML/MXF for transcoding
-        ingest_path = os.path.split(autoingest)[0]
-        root_path = os.path.split(ingest_path)[0]
-        if "black_pearl_netflix_ingest" in autoingest and not fname.endswith(
-            (".mov", ".MOV")
-        ):
-            move_path = os.path.join(root_path, "completed", fname)
-        elif "black_pearl_amazon_ingest" in autoingest and fname.endswith(
-            (".mov", ".MOV")
-        ):
-            move_path = os.path.join(root_path, "completed", fname)
-        else:
-            move_path = os.path.join(root_path, "transcode", fname)
-
-        # Check for Media Record first and clean up file if found
-        LOGGER.info("Checking if Media record already exists for file: %s", fname)
-        media_priref, access_mp4 = check_for_media_record(fname)
-        if media_priref:
+            toc3 = time.perf_counter()
+            checksum_put_time3 = (toc3 - toc2) // 60
             LOGGER.info(
-                "Media record %s already exists for file: %s", media_priref, fpath
+                "Total time in minutes for checksum creation and comparison: %s",
+                checksum_put_time3,
             )
-            # Check for already deleted message in global.log
-            deletion_confirm = utils.check_global_log(
-                fname, "Successfully deleted file"
+
+            # Delete downloaded file and move to further validation checks
+            LOGGER.info("Deleting downloaded file: %s", delivery_path)
+            os.remove(delivery_path)
+
+            # App size, duration data to CSV
+            byte_size = utils.get_size(fpath)
+            object_number = utils.get_object_number(fname)
+            duration = utils.get_duration(fpath)
+            duration_ms = utils.get_ms(fpath)
+            if duration or duration_ms:
+                LOGGER.info("Duration: %s MS: %s", duration, duration_ms)
+
+            # Handle string returns - back up to CSV
+            if not duration:
+                duration = ""
+            elif "N/A" in str(duration):
+                duration = ""
+            if not duration_ms:
+                duration_ms = ""
+            elif "N/A" in str(duration_ms):
+                duration_ms = ""
+            if not byte_size:
+                byte_size = ""
+            if object_number is None:
+                object_number = ""
+
+            # Make global log message
+            LOGGER.info("Writing persistence checking message to persistence_queue.csv.")
+            persistence_log_message("Ready for persistence checking", fpath, wpath, fname)
+
+            # Prepare move path to not include XML/MXF for transcoding
+            ingest_path = os.path.split(autoingest)[0]
+            root_path = os.path.split(ingest_path)[0]
+            if "black_pearl_netflix_ingest" in autoingest and not fname.endswith(
+                (".mov", ".MOV")
+            ):
+                move_path = os.path.join(root_path, "completed", fname)
+            elif "black_pearl_amazon_ingest" in autoingest and fname.endswith(
+                (".mov", ".MOV")
+            ):
+                move_path = os.path.join(root_path, "completed", fname)
+            else:
+                move_path = os.path.join(root_path, "transcode", fname)
+
+            # Check for Media Record first and clean up file if found
+            LOGGER.info("Checking if Media record already exists for file: %s", fname)
+            media_priref, access_mp4 = check_for_media_record(fname)
+            if media_priref:
+                LOGGER.info(
+                    "Media record %s already exists for file: %s", media_priref, fpath
+                )
+                # Check for already deleted message in global.log
+                deletion_confirm = utils.check_global_log(
+                    fname, "Successfully deleted file"
+                )
+                if deletion_confirm:
+                    LOGGER.info(
+                        "DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s",
+                        deletion_confirm,
+                    )
+                    try:
+                        os.remove(fpath)
+                        LOGGER.info("Deleted file: %s", fpath)
+                    except Exception as err:
+                        LOGGER.warning("Unable to delete asset: %s %s", fpath, err)
+                        LOGGER.warning("Manual inspection of asset required")
+                elif not access_mp4:
+                    persistence_log_message(
+                        "Persistence checks passed: delete file", fpath, wpath, fname
+                    )
+                    LOGGER.info(
+                        "File has media record but has no Access MP4. Moving to transcode folder and updating global.log for deletion."
+                    )
+                    # Move to next folder for autoingest deletion - may not be duplicate
+                    try:
+                        shutil.move(fpath, move_path)
+                    except Exception:
+                        LOGGER.warning(
+                            "MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s",
+                            fpath,
+                            move_path,
+                        )
+                else:
+                    LOGGER.warning(
+                        "Problem with file %s: Has media record but no deletion message in global.log",
+                        fpath,
+                    )
+                continue
+
+            # Create CID media record only if all BP checks pass and no CID Media record already exists
+            LOGGER.info("No Media record found for file: %s", fname)
+            LOGGER.info(
+                "Creating media record and linking via object_number: %s", object_number
             )
-            if deletion_confirm:
-                LOGGER.info(
-                    "DELETING DUPLICATE: File has Media record, and deletion confirmation in global.log \n%s",
-                    deletion_confirm,
-                )
-                try:
-                    os.remove(fpath)
-                    LOGGER.info("Deleted file: %s", fpath)
-                except Exception as err:
-                    LOGGER.warning("Unable to delete asset: %s %s", fpath, err)
-                    LOGGER.warning("Manual inspection of asset required")
-            elif not access_mp4:
-                persistence_log_message(
-                    "Persistence checks passed: delete file", fpath, wpath, fname
-                )
-                LOGGER.info(
-                    "File has media record but has no Access MP4. Moving to transcode folder and updating global.log for deletion."
-                )
-                # Move to next folder for autoingest deletion - may not be duplicate
+            media_priref = create_media_record(
+                object_number, duration, byte_size, fname, bucket
+            )
+            print(media_priref)
+
+            if media_priref:
+                # Move file to transcode folder
                 try:
                     shutil.move(fpath, move_path)
                 except Exception:
@@ -493,64 +519,36 @@ def main():
                         fpath,
                         move_path,
                     )
+
+                # Make global log message
+                LOGGER.info(
+                    "Writing persistence checking message to persistence_queue.csv."
+                )
+                persistence_log_message(
+                    "Persistence checks passed: delete file", fpath, wpath, fname
+                )
             else:
-                LOGGER.warning(
-                    "Problem with file %s: Has media record but no deletion message in global.log",
-                    fpath,
-                )
-            continue
-
-        # Create CID media record only if all BP checks pass and no CID Media record already exists
-        LOGGER.info("No Media record found for file: %s", fname)
-        LOGGER.info(
-            "Creating media record and linking via object_number: %s", object_number
-        )
-        media_priref = create_media_record(
-            object_number, duration, byte_size, fname, bucket
-        )
-        print(media_priref)
-
-        if media_priref:
-            # Move file to transcode folder
-            try:
-                shutil.move(fpath, move_path)
-            except Exception:
-                LOGGER.warning(
-                    "MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s",
-                    fpath,
-                    move_path,
-                )
-
-            # Make global log message
+                LOGGER.warning("File %s has no associated CID media record created.", fname)
+                LOGGER.warning("File will be left in folder for manual intervention.")
+            toc4 = time.perf_counter()
+            whole_put_time = (toc4 - tic) // 60
             LOGGER.info(
-                "Writing persistence checking message to persistence_queue.csv."
+                "** Total time for whole process for PUT with BP hash validation: %s",
+                whole_put_time,
             )
-            persistence_log_message(
-                "Persistence checks passed: delete file", fpath, wpath, fname
-            )
-        else:
-            LOGGER.warning("File %s has no associated CID media record created.", fname)
-            LOGGER.warning("File will be left in folder for manual intervention.")
-        toc4 = time.perf_counter()
-        whole_put_time = (toc4 - tic) // 60
-        LOGGER.info(
-            "** Total time for whole process for PUT with BP hash validation: %s",
-            whole_put_time,
-        )
-
 
     # Run check for any stuck after failing checksum verifications, try again
-    files = [
+    efiles = [
         f for f in os.listdir(error_folder) if os.path.isfile(os.path.join(error_folder, f))
     ]
-    files.sort()
-    if not files:
+    efiles.sort()
+    if not efiles:
         LOGGER.info(
             f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========"
         )
         sys.exit()
     LOGGER.info("Files found in 'error/' path that need attention: %s", ', '.join(files))
-    for fname in files:
+    for fname in efiles:
         fpath = os.path.join(error_folder, fname)
 
         # Check Errored file made it into Black Pearl tape library

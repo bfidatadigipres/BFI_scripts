@@ -64,7 +64,7 @@ def check_no_bp_status(fname: str, bucket_list: list[str]) -> bool:
                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
                 exist_across_buckets.append("DOESNTEXIST")
             elif str(result.result) == "EXISTS":
-                print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                print(f"File {fname} found in Black Pearl bucket {bucket}")
                 exist_across_buckets.append("PRESENT")
         except Exception as err:
             print(err)

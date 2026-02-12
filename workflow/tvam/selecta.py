@@ -112,13 +112,17 @@ def main():
 
         # Model tape carrier
         write_to_log(f"Modelling tape carrier for item {priref} {obj}\n")
+        t = None
         try:
             t = tape_model.Tape(obj)
-        except Exception:
-            write_to_log(f"Could not model tape from object: {obj}")
+        except Exception as err:
+            write_to_log(f"Could not model tape from object: {obj}\n{err}")
             continue
 
         # Get data
+        if not t.package_number:
+            write_to_log(f"Skipping: Tape model did not find package number: {obj}")
+            continue
         fmt = t.format()
         d = t.identifiers
         d["format"] = fmt

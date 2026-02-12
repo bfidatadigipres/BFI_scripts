@@ -43,13 +43,9 @@ def get_csv(csv_path):
         for r in rows:
             try:
                 uid = r[0]
-            except IndexError:
-                pass
-            try:
                 submissions[uid] = r[1:]
-            except IndexError:
-                pass
-        file.close()
+            except IndexError as err:
+                print(err)
 
     return submissions
 

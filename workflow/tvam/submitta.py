@@ -41,8 +41,14 @@ def get_csv(csv_path):
     with open(csv_path, "r") as file:
         rows = csv.reader(file)
         for r in rows:
-            uid = r[0]
-            submissions[uid] = r[1:]
+            try:
+                uid = r[0]
+            except IndexError:
+                pass
+            try:
+                submissions[uid] = r[1:]
+            except IndexError:
+                pass
         file.close()
 
     return submissions

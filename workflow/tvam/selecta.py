@@ -5,7 +5,7 @@ Take feed from nominated pointer file and process into Workflow jobs
 for next Multi Machine Environment in F47 (first was DigiBeta)
 
 Dependencies:
-1. Pointer file number ??? where Items are added for processing
+1. Pointer file number 1751043742, where Items are added for processing
 2. LOGS/tvam_selecta.log
 3. tvam/selections.csv
 4. tvam/submitta.py
@@ -42,7 +42,7 @@ def get_candidates():
     q = {
         "command": "getpointerfile",
         "database": "items",
-        "number": 454,  ???
+        "number": 1751043742,
         "output": "jsonv1",
     }
 
@@ -126,7 +126,11 @@ def main():
         dates = t.content_dates()
         if dates:
             d["content_dates"] = ",".join([str(i) for i in dates])
-
+        if not t.get_identifiers():
+            write_to_log(
+                f"Skipping write to CSV, get_identifiers() returned None: {t.get_identifiers()}"
+            )
+            continue
         item_ids = [i["object_number"] for i in t.get_identifiers()]
         d["items"] = ",".join(item_ids)
         d["item_count"] = len(item_ids)

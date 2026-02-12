@@ -8,7 +8,6 @@
   <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
   <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
   <rule name="Video/Format is AVC" value="Format" tracktype="Video" occurrence="*" operator="=">AVC</rule>
-<<<<<<< HEAD
   <rule name="Video/Format_Profile is High" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">High</rule>
   <policy type="or" name="Video widths">
     <rule name="Video/Width is 1920" value="Width" tracktype="Video" occurrence="*" operator="=">1920</rule>
@@ -22,12 +21,8 @@
     <rule name="Video/Height is 480" value="Height" tracktype="Video" occurrence="*" operator="=">480</rule>
     <rule name="Video/Height is 486" value="Height" tracktype="Video" occurrence="*" operator="=">486</rule>
     <rule name="Video/Height is 720" value="Height" tracktype="Video" occurrence="*" operator="=">720</rule>
-
   </policy>
-=======
   <rule name="Video/Rotation is 0.000" value="Rotation" tracktype="Video" occurrence="*" operator="=">0.000</rule>
-  <rule name="Video/FrameRate_Mode is CFR" value="FrameRate_Mode" tracktype="Video" occurrence="*" operator="=">CFR</rule>
->>>>>>> 322f089 (Updates to policies)
   <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="=">YUV</rule>
   <rule name="Video/ChromaSubsampling is 4:2:0" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:0</rule>
   <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>

@@ -1336,7 +1336,7 @@ def make_jpg(
             filepath,
             err,
         )
-
+    os.chmod(outfile, 0o777)
     if os.path.exists(outfile):
         return outfile
 

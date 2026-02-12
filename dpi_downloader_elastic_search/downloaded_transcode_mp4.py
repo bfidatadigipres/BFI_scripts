@@ -610,6 +610,7 @@ def get_jpeg(seconds: int, fullpath: str, outpath: str) -> bool:
     command = " ".join(cmd)
     try:
         subprocess.call(cmd)
+        os.chmod(outpath, 0o777)
         return True
     except Exception as err:
         logger.warning(
@@ -1351,7 +1352,7 @@ def make_jpg(
             filepath,
             err,
         )
-
+    os.chmod(outfile, 0o777)
     if os.path.exists(outfile):
         return outfile
 

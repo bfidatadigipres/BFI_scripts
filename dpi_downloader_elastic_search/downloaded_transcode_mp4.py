@@ -248,31 +248,35 @@ def transcode_mp4(fullpath: str) -> str:
         width = get_width(fullpath)
         duration, vs = get_duration(fullpath)
         log_build.append(
-            f"Data retrieved: Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs"
+            f"Data retrieved: Stream number: {stream_count} Audio {audio}, DAR {dar}, PAR {par}, Height {height}, Width {width}, Duration {duration} secs"
         )
         print(audio, dar, par, height, width, duration)
-        # CID transcode paths - maintain imagen era names where collected
+        # CID transcode paths
         if maintain_names:
             outpath = os.path.join(transcode_pth, f"{maintain_names[0]}.mp4")
             outpath2 = os.path.join(transcode_pth, maintain_names[0])
         else:
             outpath = os.path.join(transcode_pth, f"{fname}.mp4")
             outpath2 = os.path.join(transcode_pth, fname)
-        log_build.append(f"{local_time()}\tINFO\tMP4 destination will be: {outpath2}")
         print(outpath)
         print(outpath2)
 
         # Check stream count and see if 'DL' 'DR' present
-        if stream_count:
-            if len(stream_count) > 6:
-                mixed_dict = check_for_mixed_audio(fullpath)
-            else:
-                mixed_dict = None
-        else:
-            mixed_dict = None
+        mixed_dict = check_for_mixed_audio(fullpath)
 
         # Check if FL FR present
         fl_fr = check_for_fl_fr(fullpath)
+
+        # Check for 12 channels in one stream as 7.1.4 flag
+        twelve_chnl = False
+        discretes = utils.get_metadata("Audio", "ChannelLayout", fullpath)
+        if "Discrete" in discretes:
+            if discretes.count("Discrete") >= 12:
+                twelve_chnl = True
+        audio_channels = utils.get_metadata("General", "Audio_Channels_Total", fullpath)
+        audio_count = utils.get_metadata("General", "AudioCount", fullpath)
+        if audio_count.strip() == "1" and audio_channels.strip() == "12":
+            twelve_chnl = True
 
         # Build FFmpeg command based on dar/height
         print("Launching create_transcode() function")
@@ -288,6 +292,7 @@ def transcode_mp4(fullpath: str) -> str:
             vs,
             mixed_dict,
             fl_fr,
+            twelve_chnl,
         )
         if not ffmpeg_cmd:
             log_build.append(
@@ -963,6 +968,7 @@ def create_transcode(
     vs: str,
     mixed_dict: Optional[dict[str, int]],
     fl_fr: bool,
+    twelve_chnl: bool,
 ) -> Optional[list[str]]:
     """
     Builds FFmpeg command based on height/dar input
@@ -1114,6 +1120,18 @@ def create_transcode(
         ]
     elif fl_fr is True:
         map_audio = ["-map", "0:a?", "-c:a", "aac", "-ac", "2", "-dn"]
+    elif twelve_chnl is True:
+        map_audio = [
+            "-map",
+            "0:a?",
+            "-af",
+            "pan=stereo|c0=FL+0.707*FC|c1=FR+0.707*FC",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-dn",
+        ]
     elif default and audio:
         print(f"Default {default}, Audio {audio}")
         map_audio = [
@@ -1127,10 +1145,11 @@ def create_transcode(
         ]
     else:
         map_audio = ["-map", "0:a?", "-c:a", "aac", "-dn"]
+    print(f"Audio command chosen: {map_audio}")
 
+    # Calculate height/width to decide HD scale path
     height = int(height)
     width = int(width)
-    # Calculate height/width to decide HD scale path
     aspect = round(width / height, 3)
     cmd_mid = []
 
@@ -1170,6 +1189,10 @@ def create_transcode(
         cmd_mid = crop_sd_608
     elif height == 576 and dar == "1.85:1":
         cmd_mid = crop_sd_16x9
+    elif height == 576 and aspect < 1.778:
+        cmd_mid = scale_sd_4x3
+    elif width <= 768 and aspect < 1.778:
+        cmd_mid = scale_sd_4x3
     elif height < 720 and dar == "16:9":
         cmd_mid = scale_sd_16x9
     elif height < 720 and dar == "4:3":
@@ -1187,6 +1210,8 @@ def create_transcode(
     elif width >= 1920 and aspect < 1.778:
         cmd_mid = fhd_all
     elif height >= 1080 and aspect >= 1.778:
+        cmd_mid = fhd_letters
+    elif height > 720 and aspect >= 1.778:
         cmd_mid = fhd_letters
     print(f"Middle command chosen: {cmd_mid}")
 

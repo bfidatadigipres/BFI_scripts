@@ -318,9 +318,9 @@ def transcode_mp4(fullpath: str) -> str:
                 universal_newlines=True,
                 stderr=subprocess.PIPE,
             ).stderr
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             log_build.append(
-                f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}"
+                f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}\n{e}"
             )
             log_build.append(
                 f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
@@ -349,7 +349,7 @@ def transcode_mp4(fullpath: str) -> str:
             log_build.append(
                 f"{local_time()}\tINFO\tDeleting transcoded MP4 and leaving file for repeated transcode attempt"
             )
-            # os.remove(outpath)
+            os.remove(outpath)
             log_build.append(
                 f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
             )

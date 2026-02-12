@@ -687,7 +687,7 @@ def transcode_mp4_access(fpath, arg: str) -> str:
     try:
         subprocess.call(ffmpeg_call)
         logger_data.append("Subprocess call for FFmpeg command successful")
-    except Exception as err:
+    except subprocess.CalledProcessError as err:
         logger_data.append(f"WARNING: FFmpeg command failed: {ffmpeg_call_neat}\n{err}")
         log_clean = list(dict.fromkeys(logger_data))
         for line in log_clean:

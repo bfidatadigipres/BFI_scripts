@@ -43,7 +43,7 @@ def get_candidates():
     q = {
         "command": "getpointerfile",
         "database": "items",
-        "number": 1208,
+        "number": 762,
         "output": "jsonv1",
     }
 
@@ -120,6 +120,9 @@ def main():
             continue
 
         # Get data
+        if not t.package_number:
+            write_to_log(f"Skipping: Tape model did not find package number: {obj}")
+            continue
         fmt = t.format()
         # Process only Digibetas
         if fmt != "Digital Betacam":

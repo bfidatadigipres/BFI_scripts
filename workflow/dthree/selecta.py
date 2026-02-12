@@ -119,6 +119,9 @@ def main():
             continue
 
         # Get data
+        if not t.package_number:
+            write_to_log(f"Skipping: Tape model did not find package number: {obj}")
+            continue
         fmt = t.format()
         d = t.identifiers
         d["format"] = fmt

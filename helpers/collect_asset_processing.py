@@ -159,6 +159,9 @@ def main() -> None:
         if os.path.exists(fpath):
             LOGGER.warning("ERROR! Old file path still exists!\n%s", fpath)
             sys.exit("Aborting, in case of permission issues!")
+        if not os.path.exists(new_fpath):
+            LOGGER.warning("New file path cannot be found in Autoingest:\n%s", new_fpath)
+            sys.exit("Aborting, in case of permissions issues!")
         LOGGER.info("Successfully moved path to Autoingest with renaming:\n%s\n%s", fpath, new_fpath)
 
     LOGGER.info("==== Collections Asset renaming script COMPLETED ====")

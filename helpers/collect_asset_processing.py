@@ -4,6 +4,10 @@ Locate the file in subfolder
 and rename N_12345_01of01.mp4
 Move into local autoingest path
 
+NOTE: WAITING TO HEAR ABOUT DECISION
+TO CLEAR OUT ALL EXISTING DIGITAL MEDIA
+RECORDS. REFACTORING NEEDED IF THIS HAPPENS
+
 2026
 """
 
@@ -19,7 +23,7 @@ import utils
 
 # Global vars
 STORAGE = os.environ.get("QNAP_05")
-AUTOINGEST = os.path.join(os.environ.get("AUTOINGEST_QNAP05"), "ingest/autodetect")
+AUTOINGEST = os.path.join(os.environ.get("AUTOINGEST_QNAP05"), "ingest/autodetect/legacy")
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 
@@ -76,23 +80,22 @@ def transform_name(fname: str) -> Optional[str]:
     return None
 
 
-def check_item(priref: str, object_num: str) -> bool:
+def check_item(search: str, database: str, field: str) -> Optional[str]:
     """
     Use requests to retrieve priref/RNA data for item object number
     """
-    search = f"priref='{priref}'"
-    record = adlib.retrieve_record(CID_API, "items", search, "1")[1]
+
+    hits, record = adlib.retrieve_record(CID_API, database, search, "0")
+    if hits == 0:
+        "No hits"
     if record is None:
         return None
 
-    ob_num = adlib.retrieve_field_name(record[0], "object_number")[0]
-    if not ob_num:
-        return False
+    fetched_field = adlib.retrieve_field_name(record[0], [field])[0]
+    if not fetched_field:
+        return ""
 
-    if ob_num == object_num:
-        return True
-
-    return False
+    return fetched_field
 
 
 def main() -> None:
@@ -105,7 +108,7 @@ def main() -> None:
     Move renamed version to
     local autoingest.
     """
-    
+
     if not utils.check_control("power_off_all"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -117,7 +120,7 @@ def main() -> None:
         sys.exit("* Cannot establish CID session, exiting script")
     if not sys.argv[1]:
         sys.exit("No CSV path supplied, exiting.")
-    
+
     LOGGER.info("==== Collections Asset renaming script START ========")
     for fname, folderpath, priref in yield_csv_rows(sys.argv[1]):
         fpath = make_file_path(fname, folderpath)
@@ -132,19 +135,47 @@ def main() -> None:
             LOGGER.warning("Skipping: Filename failed transformation {fname}")
             continue
         object_number = utils.get_object_number(new_fname)
-        cid_check = check_item(priref, object_number)
+
+        # JMW CHECK HERE FOR NO HITS - CHANGE PATH FOR INGEST FROM LEGACY
+        obj = check_item(f"priref='{priref}'", "items", "object_number")
         if cid_check is None:
             LOGGER.warning("Error retrieving data from CID with priref: %s", priref)
             continue
-        if cid_check is False:
-            LOGGER.warning("Object number %s did not match that found from priref %s", object_number, priref)
+        if cid_check == "No hits":
+            LOGGER.warning("No matching record found for priref %s", priref)
+            continue
+        if cid_check == "":
+            LOGGER.warning("Object number %s could not be retrieved from priref %s", object_number, priref)
+            continue
+        if obj != object_number:
+            LOGGER.warning("Object number %s does not match that from priref %s", object_number, obj)
             continue
 
-        LOGGER.info("Filename converted from %s to %s", fname, new_fname)
-        LOGGER.info("CID record matched to priref %s/object number %s", priref, object_number)
-        LOGGER.info("Moving %s to processing/ to rename")
+        LOGGER.info("Filename will be converted from %s to %s", fname, new_fname)
+        LOGGER.info("CID record matched to priref %s/object number %s", priref, obj)
 
-        # Begin renaming move to AUTOINGEST
+        # Ident which autoingest path (with/without dm rcord)
+        ref_num = check_item(f"object_number='{obj}'", "media", "reference_number")
+        if ref_num is None:
+            LOGGER.warning("Error retrieving data from CID with priref: %s", priref)
+            continue
+        if ref_num is "":
+            LOGGER.warning("Object number %s could not be retrieved from priref %s", obj, priref)
+            continue
+        if ref_num == "No hits":
+            LOGGER.warning("No matching Digital Media record found for object number %s", obj)
+            continue
+        if ref_num.strip() != fname:
+            LOGGER.warning("Reference number %s does not match File name %s", ref_num, fname)
+            continue
+        imagen_name = check_item(f"object_number='{obj}'", "media", "imagen.media.original_filename")
+        if imagen_name is None or imagen_name is "No hits":
+            LOGGER.warning("Error retrieving data from CID with object_number: %s", obj)
+            continue
+        if len(imagen_name) > 0:
+            LOGGER.warning("Imagen.media.original_filename present %s - do not ingest this twice!", imagen_name)
+            continue
+
         new_fpath = os.path.join(AUTOINGEST, new_fname)
         if os.path.exists(new_fpath):
             LOGGER.warning("SKIPPING: New file path already exists:\n%s", new_fpath)
@@ -165,6 +196,7 @@ def main() -> None:
         LOGGER.info("Successfully moved path to Autoingest with renaming:\n%s\n%s", fpath, new_fpath)
 
     LOGGER.info("==== Collections Asset renaming script COMPLETED ====")
+
 
 if __name__ == "__main__":
     main()

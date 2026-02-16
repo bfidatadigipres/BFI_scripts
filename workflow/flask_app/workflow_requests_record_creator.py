@@ -42,7 +42,7 @@ import os
 import sys
 import logging
 import itertools
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Final, Optional
 
 # Local imports
@@ -204,8 +204,8 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
 
     item_list = []
     for priref in prirefs:
-        bool = check_priref_is_item(priref)
-        if bool is True:
+        boolean = check_priref_is_item(priref)
+        if boolean is True:
             item_list.append(priref)
         else:
             LOGGER.warning(
@@ -221,7 +221,7 @@ def check_priref_is_item(priref):
     check here they confirm to Items
     """
     search = f"priref='{priref}' and Df=item"
-    hits, rec = adlib.retrieve_record(CID_API, "items", search, 0)
+    hits = adlib.retrieve_record(CID_API, "items", search, 0)[0]
 
     if hits is None:
         return "Failure to reach API"
@@ -356,7 +356,7 @@ def main():
             continue
 
         update_table(job_id, "Completed")
-        send_email_update(email, firstname, "Workflow request completed", job, job_id)
+        send_email_update(email, firstname, "Workflow request completed", job)
 
     LOGGER.info(
         "=== Workflow requests record creation completed %s ===",

@@ -267,7 +267,7 @@ def download_bp_object(fname: str, outpath: str, bucket: str) -> str:
         ds3Helpers.HelperGetObject(fname, file_path)
     ]
     try:
-        get_job_id: str = HELPER.get_objects(get_objects, bucket)
+        get_job_id: str = HELPER.get_objects(get_objects, bucket, max_threads=1)
         print(f"BP get job ID: {get_job_id}")
     except Exception as err:
         raise Exception(f"Unable to retrieve file {fname} from Black Pearl: {err}")

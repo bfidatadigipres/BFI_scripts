@@ -314,7 +314,10 @@ def put_single_file(fpath: str, ref_num, bucket_name, check=False) -> Optional[s
     ]
     try:
         put_job_id: str = HELPER.put_objects(
-            put_objects=put_obj, bucket=bucket_name, calculate_checksum=bool(check)
+            put_objects=put_obj,
+            bucket=bucket_name,
+            max_threads=1,
+            calculate_checksum=bool(check)
         )
         print(f"PUT COMPLETE - JOB ID retrieved: {put_job_id}")
         return put_job_id

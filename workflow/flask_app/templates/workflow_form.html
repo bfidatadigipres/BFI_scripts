@@ -39,6 +39,13 @@
             text-align: center;
         }
 
+        .header-bar img {
+            height: 80px;
+            width: auto;
+            display: block;
+            margin: 0 auto 8px;
+         }
+
         /* Status Bar */
         .user-status-container {
             background-color: #888888;
@@ -156,14 +163,9 @@
 </head>
 <body>
     <div class="container">
-        <div class="logo-wrap">
-            <img class="logo"
-                src="{{ url_for('static', filename='img/logo.png') }}"
-                alt="Company logo">
-        </div>
-
         <!-- Title Bar -->
         <div class="header-bar">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Company logo">
             Workflow Request Form
         </div>
 

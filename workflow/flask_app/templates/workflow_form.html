@@ -156,6 +156,11 @@
 </head>
 <body>
     <div class="container">
+        <div class="logo-wrap">
+            <img class="logo"
+                src="{{ url_for('static', filename='img/logo.png') }}"
+                alt="Company logo">
+        </div>
 
         <!-- Title Bar -->
         <div class="header-bar">
@@ -275,7 +280,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="description">Job Title (Required)</label>
+                        <label for="description">Job Name (Required)</label>
                         <textarea id="description" name="description" rows="1" required></textarea>
                     </div>
 
@@ -291,7 +296,7 @@
 
                     <div class="form-group">
                         <label for="instructions">Special Instructions (Optional)</label>
-                        <textarea id="instructions" name="instructions" rows="3"></textarea>
+                        <textarea id="instructions" name="instructions" rows="1"></textarea>
                     </div>
 
                     <div class="form-group">

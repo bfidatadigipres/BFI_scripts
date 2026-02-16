@@ -88,10 +88,38 @@
             border-radius: 4px;
             text-align: center;
         }
+
+        /* Logo */
+        .logo-wrap {
+            display: flex;
+            justify-content: center;
+            padding: 18px 20px 0;
+        }
+
+        .logo {
+            max-width: 40px;
+            width: 100%;
+            height: auto;
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="container">
+            <div class="logo-wrap">
+                <img class="logo"
+                    src="{{ url_for('static', filename='img/logo.png') }}"
+                    alt="Company logo">
+            </div>
+
+            <div class="header-bar">
+                Workflow Request Login
+            </div>
+
+            <div class="content">
+            </div>
+        </div>
         <div class="header-bar">
             Workflow Request Login
         </div>

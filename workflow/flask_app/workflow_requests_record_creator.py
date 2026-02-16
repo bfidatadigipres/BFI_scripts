@@ -356,7 +356,7 @@ def main():
             continue
 
         update_table(job_id, "Completed")
-        send_email_update(email, firstname, "Workflow request completed", job)
+        send_email_update(email, firstname, "Workflow request completed", job, job_id)
 
     LOGGER.info(
         "=== Workflow requests record creation completed %s ===",
@@ -387,7 +387,7 @@ def update_table(job_id: str, new_status: str) -> None:
 
 
 def send_email_update(
-    client_email: str, firstname: str, status: str, job: list
+    client_email: str, firstname: str, status: str, job: list,
 ) -> None:
     """
     Update user that their item has been
@@ -399,24 +399,27 @@ def send_email_update(
         message = (
             f"You workflow request completed successfully at {str(datetime.now())}."
         )
+        subject = "CID Workflow request notification: SUCCESSFUL"
     else:
-        message = f"I'm sorry but some / all of your workflow job request failed at {str(datetime.now())}.\nReport: {status}."
+        message = f"Your workflow job request failed at {str(datetime.now())[:16]}.\nReport: [ERROR] {status}."
+        subject = "CID Workflow request notification: FAILED"
 
-    subject = "CID Workflow request notification"
     body = f"""
 Hello {firstname.title()},
 
 {message}
 
 Your original request details:
+    Job number: {job[5]} Job name: {job[10]}
+    
     Saved search: {job[6]}
+    Specific instructions: {job[13]}
+
     Activity code: {job[7]}
     Request type: {REQUEST_TYPE.get(job[8], job[8])}
     Request outcome: {job[9]}
-    Job description: {job[10]}
     Delivery date: {job[11]}
     Final destination: {job[12]}
-    Specific instructions: {job[13]}
     Client category: {CLIENTS.get(job[4], job[4])}
     Client name: {job[14]}
     Contact details: {job[15]}

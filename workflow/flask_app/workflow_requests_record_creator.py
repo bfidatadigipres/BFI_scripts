@@ -323,7 +323,9 @@ def main():
                 job_metadata["client.name"],
             )
             p_priref = create_people_record(job_metadata["client.name"])
-            LOGGER.info("Priref for client.name: %s - %s", p_priref, job_metadata["client.name"])
+            LOGGER.info(
+                "Priref for client.name: %s - %s", p_priref, job_metadata["client.name"]
+            )
             if not p_priref:
                 LOGGER.warning(
                     "Person record failed to create: %s", job_metadata["client.name"]
@@ -387,7 +389,10 @@ def update_table(job_id: str, new_status: str) -> None:
 
 
 def send_email_update(
-    client_email: str, firstname: str, status: str, job: list,
+    client_email: str,
+    firstname: str,
+    status: str,
+    job: list,
 ) -> None:
     """
     Update user that their item has been
@@ -411,7 +416,7 @@ Hello {firstname.title()},
 
 Your original request details:
     Job number: {job[5]} Job name: {job[10]}
-    
+
     Saved search: {job[6]}
     Specific instructions: {job[13]}
 

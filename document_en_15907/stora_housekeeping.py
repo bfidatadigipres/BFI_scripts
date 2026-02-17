@@ -102,14 +102,26 @@ def main():
     empty folders created ahead of today for future recordings
     """
     if not utils.check_control("power_off_all"):
-        logger.info("Script run prevented by downtime_control.json. Script exiting. -> power_off_all")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting. -> power_off_all")
+        logger.info(
+            "Script run prevented by downtime_control.json. Script exiting. -> power_off_all"
+        )
+        sys.exit(
+            "Script run prevented by downtime_control.json. Script exiting. -> power_off_all"
+        )
     if not utils.check_control("pause_scripts"):
-        logger.info("Script run prevented by downtime_control.json. Script exiting. -> pause_scripts")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting. -> pause_scripts")
+        logger.info(
+            "Script run prevented by downtime_control.json. Script exiting. -> pause_scripts"
+        )
+        sys.exit(
+            "Script run prevented by downtime_control.json. Script exiting. -> pause_scripts"
+        )
     if not utils.check_storage(STORA_PATH):
-        logger.info("Script run prevented by storage_control.json. Script exiting. -> stora_path")
-        sys.exit("Script run prevented by storage_control.json. Script exiting. -> stora_path")
+        logger.info(
+            "Script run prevented by storage_control.json. Script exiting. -> stora_path"
+        )
+        sys.exit(
+            "Script run prevented by storage_control.json. Script exiting. -> stora_path"
+        )
 
     logger.info("=========== stora_housekeeping.py START ===========")
     period = []
@@ -167,9 +179,7 @@ def main():
                     )
                     continue
 
-                print(
-                    f"MOVING folder - Problem or Stream.mpeg2.ts NOT found: {line}"
-                )
+                print(f"MOVING folder - Problem or Stream.mpeg2.ts NOT found: {line}")
                 logger.info("MOVING FOLDER: No PROBLEM or STREAM found in %s", line)
                 line_split = line.split("STORA/")[-1]
                 new_path = os.path.split(os.path.join(ARCHIVE_PATH, line_split))[0]
@@ -191,10 +201,11 @@ def main():
                     data = os.listdir(line)
                     for d in data:
                         try:
-                            shutil.move(os.path.join(line, d), os.path.join(new_path, foldername))
-                            print(
-                                f"Move path: {line}/{d} to {new_path}/{foldername}"
+                            shutil.move(
+                                os.path.join(line, d),
+                                os.path.join(new_path, foldername),
                             )
+                            print(f"Move path: {line}/{d} to {new_path}/{foldername}")
                             logger.info(
                                 "Moving folder: %s to %s",
                                 os.path.join(line, d),

@@ -323,7 +323,9 @@ def main():
                 LOGGER.info(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )
-                sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+                sys.exit(
+                    "Script run prevented by downtime_control.json. Script exiting."
+                )
             if ".DS_Store" in fname:
                 continue
             if fname.startswith("."):
@@ -346,13 +348,17 @@ def main():
             # Confirm job list exists
             if not put_job_id:
                 LOGGER.warning(
-                    "JOB list retrieved for file is not correct. %s: %s", fname, put_job_id
+                    "JOB list retrieved for file is not correct. %s: %s",
+                    fname,
+                    put_job_id,
                 )
                 LOGGER.warning(
                     "Skipping further verification stages. Please investigate error."
                 )
                 continue
-            LOGGER.info("Successfully written data to BP. Job ID for file: %s", put_job_id)
+            LOGGER.info(
+                "Successfully written data to BP. Job ID for file: %s", put_job_id
+            )
 
             # Begin retrieval
             delivery_path = os.path.join(download_folder, fname)
@@ -360,14 +366,16 @@ def main():
             print(f"File downloaded: {delivery_path}")
             if not os.path.exists(delivery_path):
                 LOGGER.warning(
-                    "Skipping: Failed to download file from Black Pearl: %s", delivery_path
+                    "Skipping: Failed to download file from Black Pearl: %s",
+                    delivery_path,
                 )
                 continue
             LOGGER.info("Retrieved asset again. GET job ID: %s", get_job_id)
             toc2 = time.perf_counter()
             checksum_put_time2 = (toc2 - toc) // 60
             LOGGER.info(
-                "** Total time in minutes for retrieval of BP item: %s", checksum_put_time2
+                "** Total time in minutes for retrieval of BP item: %s",
+                checksum_put_time2,
             )
 
             # Checksum validation
@@ -377,18 +385,28 @@ def main():
             LOGGER.info(
                 "Generating checksum for downloaded file and comparing to existing local MD5."
             )
-            local_checksum, remote_checksum = make_check_md5(fpath, delivery_path, fname)
+            local_checksum, remote_checksum = make_check_md5(
+                fpath, delivery_path, fname
+            )
             print(local_checksum, remote_checksum)
             if local_checksum is None or local_checksum != remote_checksum:
                 # EMAIL ALERT HERE
-                send_email_alert(fname, fpath, "This was a checksum comparison failure for a new file.")
+                send_email_alert(
+                    fname,
+                    fpath,
+                    "This was a checksum comparison failure for a new file.",
+                )
                 LOGGER.warning(
                     "Checksums absent / do not match: \nLocal MD5: %s\nRemote download: %s",
                     local_checksum,
                     remote_checksum,
                 )
-                LOGGER.warning("Skipping further actions with this file. Upload failed.")
-                LOGGER.warning("Deleting downloaded file to save space: %s", delivery_path)
+                LOGGER.warning(
+                    "Skipping further actions with this file. Upload failed."
+                )
+                LOGGER.warning(
+                    "Deleting downloaded file to save space: %s", delivery_path
+                )
                 os.remove(delivery_path)
                 if not os.path.exists(error_folder):
                     os.makedirs(error_folder, mode=0o777, exist_ok=True)
@@ -437,8 +455,12 @@ def main():
                 object_number = ""
 
             # Make global log message
-            LOGGER.info("Writing persistence checking message to persistence_queue.csv.")
-            persistence_log_message("Ready for persistence checking", fpath, wpath, fname)
+            LOGGER.info(
+                "Writing persistence checking message to persistence_queue.csv."
+            )
+            persistence_log_message(
+                "Ready for persistence checking", fpath, wpath, fname
+            )
 
             # Prepare move path to not include XML/MXF for transcoding
             ingest_path = os.path.split(autoingest)[0]
@@ -528,7 +550,9 @@ def main():
                     "Persistence checks passed: delete file", fpath, wpath, fname
                 )
             else:
-                LOGGER.warning("File %s has no associated CID media record created.", fname)
+                LOGGER.warning(
+                    "File %s has no associated CID media record created.", fname
+                )
                 LOGGER.warning("File will be left in folder for manual intervention.")
             toc4 = time.perf_counter()
             whole_put_time = (toc4 - tic) // 60
@@ -539,7 +563,9 @@ def main():
 
     # Run check for any stuck after failing checksum verifications, try again
     efiles = [
-        f for f in os.listdir(error_folder) if os.path.isfile(os.path.join(error_folder, f))
+        f
+        for f in os.listdir(error_folder)
+        if os.path.isfile(os.path.join(error_folder, f))
     ]
     efiles.sort()
     if not efiles:
@@ -547,16 +573,24 @@ def main():
             f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========"
         )
         sys.exit()
-    LOGGER.info("Files found in 'error/' path that need attention: %s", ', '.join(files))
+    LOGGER.info(
+        "Files found in 'error/' path that need attention: %s", ", ".join(files)
+    )
     for fname in efiles:
         fpath = os.path.join(error_folder, fname)
 
         # Check Errored file made it into Black Pearl tape library
         doesnt_exist = bp.check_no_bp_status(fname, [bucket])
         if doesnt_exist is True:
-            LOGGER.warning("Skipping: File in 'error/' path that has not been written to Black Pearl: %s", fname)
+            LOGGER.warning(
+                "Skipping: File in 'error/' path that has not been written to Black Pearl: %s",
+                fname,
+            )
             continue
-        LOGGER.info("%s found in Black Pearl tape library - attempting download/checksum match retry", fname)
+        LOGGER.info(
+            "%s found in Black Pearl tape library - attempting download/checksum match retry",
+            fname,
+        )
 
         # Begin retrieval
         toc = time.perf_counter()
@@ -574,7 +608,7 @@ def main():
         LOGGER.info(
             "** Total time in minutes for retrieval of BP item: %s", checksum_put_time2
         )
-        
+
         # Checksum validation
         print(
             "Obtaining checksum for local file and creating one for downloaded file..."
@@ -833,12 +867,15 @@ This happened at: {str(datetime.now())[:19]}
 Cordially,
 Yourselves, in binary."""
 
-    success, error = utils.send_email(EMAIL, "WARNING: Failed blobbed PUT validation", message, "")
+    success, error = utils.send_email(
+        EMAIL, "WARNING: Failed blobbed PUT validation", message, ""
+    )
     if success:
         LOGGER.info("Email notification sent to %s", EMAIL)
     else:
         LOGGER.warning("Email notification failed in sending: %s", EMAIL)
         LOGGER.warning("Error: %s", error)
+
 
 if __name__ == "__main__":
     main()

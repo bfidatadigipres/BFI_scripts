@@ -83,6 +83,7 @@ CHANNEL = {
     "5star": os.environ["PA_5STAR"],
 }
 
+
 def check_control() -> None:
     """
     Check control JSON for downtime request

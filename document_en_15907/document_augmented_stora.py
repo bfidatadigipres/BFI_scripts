@@ -278,7 +278,9 @@ def find_repeats(asset_id):
     PATV showings of a manifestation
     """
 
-    search = f'alternative_number="{asset_id}" AND alternative_number.type="PATV asset id"'
+    search = (
+        f'alternative_number="{asset_id}" AND alternative_number.type="PATV asset id"'
+    )
     sleep(1)
     hits, result = adlib.retrieve_record(CID_API, "manifestations", search, "1")
     print(f"*** find_repeats(): {hits}\n{result}")
@@ -356,19 +358,17 @@ def series_check(series_id):
 
         # Sort and return longest of descriptions
         series_descriptions = []
-        series_short = (val.summary.short or "")
+        series_short = val.summary.short or ""
         series_descriptions.append(series_short)
-        series_medium = (val.summary.medium or "")
+        series_medium = val.summary.medium or ""
         series_descriptions.append(series_medium)
-        series_long = (val.summary.long or "")
+        series_long = val.summary.long or ""
         series_descriptions.append(series_long)
         series_descriptions.sort(key=len, reverse=True)
         series_description = series_descriptions[0]
-        print(
-            f"series_check(): Series description longest: {series_description}"
-        )
+        print(f"series_check(): Series description longest: {series_description}")
 
-        series_title_full = (val.title or "")
+        series_title_full = val.title or ""
         print(f"series_check(): Series title full: {series_title_full}")
 
         # series category codes, unsure if there's always two parts to category, selects longest
@@ -378,9 +378,7 @@ def series_check(series_id):
                 series_category_codes.append(val.category[num].code or "")
         series_category_codes.sort(key=len, reverse=True)
         series_category_code = series_category_codes[0]
-        print(
-            f"series_check(): Series category code, longest: {series_category_code}"
-        )
+        print(f"series_check(): Series category code, longest: {series_category_code}")
 
         return (
             series_description,
@@ -414,7 +412,9 @@ def genre_retrieval(category_code, description, title):
                 print(
                     f"genre_retrieval(): Undefined category_code discovered: {category_code}"
                 )
-                with open(os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a") as genre_log:
+                with open(
+                    os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a"
+                ) as genre_log:
                     genre_log.write("\n")
                     genre_log.write(
                         f"Category: {category_code}     Title: {title}     Description: {description}"
@@ -423,7 +423,9 @@ def genre_retrieval(category_code, description, title):
             else:
                 for _, val in genre_one.items():
                     genre_one_priref = val
-                print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
+                print(
+                    f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
+                )
             try:
                 genre_two = data["genres"][category_code.strip("u")]["Genre2"]
                 for _, val in genre_two.items():
@@ -446,7 +448,7 @@ def genre_retrieval(category_code, description, title):
                 for _, val in subject_two.items():
                     subject_two_priref = val
                 print(
-                   f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}"
+                    f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}"
                 )
             except (IndexError, KeyError):
                 subject_two_priref = ""
@@ -462,7 +464,9 @@ def genre_retrieval(category_code, description, title):
             logger.warning(
                 "%s -- New category not in EPG_genre_map.yaml: %s", category_code, title
             )
-            with open(os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a") as genre_log:
+            with open(
+                os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a"
+            ) as genre_log:
                 genre_log.write("\n")
                 genre_log.write(
                     f"Category: {category_code}     Title: {title}     Description: {description}"
@@ -524,8 +528,8 @@ def fetch_lines(fullpath, json_dct):
     val = jp.parse_payload_strict_json(json_dct)
 
     print(f"Fullpath for file being handled: {fullpath}")
-    title_whole = (val.item[0].asset.title or "")
-    title_new = (val.item[0].title or "")
+    title_whole = val.item[0].asset.title or ""
+    title_new = val.item[0].title or ""
 
     # This block is for correct title formatting, and flagging 'Generic'
     if title_whole.title().startswith("Generic"):
@@ -546,17 +550,17 @@ def fetch_lines(fullpath, json_dct):
     title = title.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
 
     description = []
-    d_short = (val.item[0].summary.short or "")
+    d_short = val.item[0].summary.short or ""
     if len(d_short) > 0:
         d_short = d_short.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
         epg_dict["d_short"] = d_short
         description.append(d_short)
-    d_medium = (val.item[0].summary.medium or "")
+    d_medium = val.item[0].summary.medium or ""
     if len(d_medium) > 0:
         d_medium = d_medium.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
         epg_dict["d_medium"] = d_medium
         description.append(d_medium)
-    d_long = (val.item[0].summary.long or "")
+    d_long = val.item[0].summary.long or ""
     if len(d_long) > 0:
         d_long = d_long.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
         epg_dict["d_long"] = d_long
@@ -585,13 +589,15 @@ def fetch_lines(fullpath, json_dct):
         epg_dict["title_article"] = title_article
     epg_dict["description"] = description
 
-    title_date_start = (datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d") or "")
+    title_date_start = (
+        datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d") or ""
+    )
     if len(title_date_start) >= 8:
         epg_dict["title_date_start"] = title_date_start
-    time = (datetime.datetime.strftime(val.item[0].date_time, "%H:%M:%S") or "")
+    time = datetime.datetime.strftime(val.item[0].date_time, "%H:%M:%S") or ""
     if len(time) >= 6:
         epg_dict["time"] = time
-    duration = (str(val.item[0].duration) or "")
+    duration = str(val.item[0].duration) or ""
     if len(duration) > 0:
         epg_dict["duration_total"] = duration
 
@@ -611,9 +617,7 @@ def fetch_lines(fullpath, json_dct):
     if len(asset_attribute) > 0:
         epg_dict["asset_attribute"] = asset_attribute
     list_attributes = attribute + asset_attribute + [group] + [cert]
-    epg_dict["epg_attribute"] = ", ".join(
-            str(x) for x in list_attributes if len(x) > 0
-        )
+    epg_dict["epg_attribute"] = ", ".join(str(x) for x in list_attributes if len(x) > 0)
 
     if "black-and-white" in str(asset_attribute):
         colour_manifestation = "B"
@@ -623,7 +627,7 @@ def fetch_lines(fullpath, json_dct):
         print("This is being classed as a colour item")
     epg_dict["colour_manifestation"] = colour_manifestation
 
-    asset_id = (val.item[0].asset.id or None)
+    asset_id = val.item[0].asset.id or None
     if asset_id is None:
         raise Exception from "Asset ID is missing! Cannot proceed"
     else:
@@ -648,11 +652,11 @@ def fetch_lines(fullpath, json_dct):
     if series_id:
         epg_dict["series_id"] = str(series_id)
 
-    episode_total = (val.item[0].asset.meta.get("episodeTotal") or None)
+    episode_total = val.item[0].asset.meta.get("episodeTotal") or None
     if episode_total:
         epg_dict["episode_total"] = episode_total
 
-    episode_number = (val.item[0].asset.meta.get("episode") or None)
+    episode_number = val.item[0].asset.meta.get("episode") or None
     logger.info("Episode number: %s", episode_number)
     if "&" in str(episode_number):
         episode_number = episode_number.split("&")
@@ -682,7 +686,7 @@ def fetch_lines(fullpath, json_dct):
     print(category_code)
     epg_dict["category_code"] = category_code
 
-    work = (val.item[0].asset.type or None)
+    work = val.item[0].asset.type or None
     if work:
         epg_dict["work"] = work
 

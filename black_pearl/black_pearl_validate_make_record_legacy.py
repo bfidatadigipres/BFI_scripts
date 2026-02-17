@@ -63,7 +63,7 @@ CID_API = utils.get_current_api()
 INGEST_CONFIG = os.path.join(CODE_PATH, "black_pearl/dpi_ingests.yaml")
 MEDIA_REC_CSV = os.path.join(LOG_PATH, "duration_size_media_records.csv")
 PERSISTENCE_LOG = os.path.join(LOG_PATH, "autoingest", "persistence_queue.csv")
-CSV_PATH = "" # Path for catching failed digital media updates - may not be needed
+CSV_PATH = ""  # Path for catching failed digital media updates - may not be needed
 
 # Setup logging
 logger = logging.getLogger("black_pearl_validate_make_record_legacy")
@@ -75,9 +75,7 @@ HDLR.setFormatter(FORMATTER)
 logger.addHandler(HDLR)
 logger.setLevel(logging.INFO)
 
-LOG_PATHS = {
-    os.environ["QNAP_05"]: os.environ["L_QNAP05"]
-}
+LOG_PATHS = {os.environ["QNAP_05"]: os.environ["L_QNAP05"]}
 
 
 def retrieve_json_data(foldername: str) -> str:
@@ -143,9 +141,7 @@ def check_for_media_record(obj: str, session: requests.Session) -> Optional[str,
     In which case the file may be a duplicate
     """
     priref = ref_num = ""
-    search = (
-        f"object.object_number='{obj}'"
-    )
+    search = f"object.object_number='{obj}'"
 
     try:
         result = adlib.retrieve_record(
@@ -160,9 +156,7 @@ def check_for_media_record(obj: str, session: requests.Session) -> Optional[str,
         except (KeyError, IndexError):
             pass
         try:
-            ref_num = adlib.retrieve_field_name(
-                result[0], "reference_number"
-            )[0]
+            ref_num = adlib.retrieve_field_name(result[0], "reference_number")[0]
         except (KeyError, IndexError):
             pass
     return priref, ref_num
@@ -201,7 +195,7 @@ def main():
         if not utils.check_storage(autoingest):
             logger.info(
                 "Skipping path - storage_control.json returned ‘False’ for path %s",
-                autoingest
+                autoingest,
             )
             continue
 
@@ -577,7 +571,9 @@ def process_files(
         media_priref, ref_num = check_for_media_record(object_number, session)
         if not media_priref:
             logger.warninig(
-                "SKIPPING: Media record could not be matched to file %s %s", object_number, fpath
+                "SKIPPING: Media record could not be matched to file %s %s",
+                object_number,
+                fpath,
             )
             continue
 
@@ -598,9 +594,11 @@ def process_files(
             logger.info("Media record %s updated: %s", media_priref)
             check_list.append(file)
         else:
-            logger.warning("File %s was not updated to CID media record %s", file, media_priref)
+            logger.warning(
+                "File %s was not updated to CID media record %s", file, media_priref
+            )
             logger.warning("Manual update will be needed from CSV file: %s", CSV_PATH)
-            
+
         # Move file to transcode folder
         try:
             shutil.move(fpath, move_path)
@@ -609,13 +607,11 @@ def process_files(
                 "MOVE FAILURE: %s DID NOT MOVE TO TRANSCODE FOLDER: %s %s",
                 fpath,
                 move_path,
-                err
+                err,
             )
 
         # Make global log message
-        logger.info(
-            "Writing persistence checking message to persistence_queue.csv."
-        )
+        logger.info("Writing persistence checking message to persistence_queue.csv.")
         persistence_log_message(
             "Persistence checks passed: delete file", fpath, wpath, file
         )
@@ -701,7 +697,9 @@ def update_media_record(
         logger.info("Media record: %s", media_rec)
         if media_rec:
             try:
-                imagen_fname = adlib.retrieve_field_name(media_rec, "imagen.media.original_filename")[0]
+                imagen_fname = adlib.retrieve_field_name(
+                    media_rec, "imagen.media.original_filename"
+                )[0]
                 print(f"** CID media record updated {imagen_fname}")
                 logger.info("CID media record updated %s", imagen_fname)
             except Exception as err:

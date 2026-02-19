@@ -538,6 +538,9 @@ def main():
             )
 
     # Run check for any stuck after failing checksum verifications, try again
+
+    if not os.path.exists(error_folder):
+        os.makedirs(error_folder, mode=0o777, exist_ok=True)
     efiles = [
         f for f in os.listdir(error_folder) if os.path.isfile(os.path.join(error_folder, f))
     ]
@@ -574,7 +577,7 @@ def main():
         LOGGER.info(
             "** Total time in minutes for retrieval of BP item: %s", checksum_put_time2
         )
-        
+
         # Checksum validation
         print(
             "Obtaining checksum for local file and creating one for downloaded file..."

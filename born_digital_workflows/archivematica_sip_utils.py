@@ -806,7 +806,7 @@ def download_aip(aip_uuid: str, dpath: str, fn: str):
             if content:
                 fname = content.split('filename=')[-1].strip('"')
             else:
-                fname = f"{fn}.tar
+                fname = f"{fn}.tar"
             download_path = os.path.join(dpath, fname)
             
             with open(download_path, "wb") as file:
@@ -814,6 +814,7 @@ def download_aip(aip_uuid: str, dpath: str, fn: str):
                     if chunk:
                         file.write(chunk)
             if os.path.isfile(download_path):
-                return download_file
+                return download_path
     except requests.exceptions.RequestException as err:
-        raise Exception from err
+        print(err)
+        return None

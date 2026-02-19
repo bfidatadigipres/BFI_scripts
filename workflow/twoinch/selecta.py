@@ -33,7 +33,7 @@ LOGS = os.environ["LOG_PATH"]
 CID_API = utils.get_current_api()
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
-SELECTIONS = os.path.join(os.environ["WORKFLOW"], "twoinch/selections.csv")
+SELECTIONS = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/twoinch/selections.csv")
 
 
 def get_candidates():
@@ -80,16 +80,12 @@ def main():
     if not utils.cid_check(CID_API):
         print("* Cannot establish CID session, exiting script")
         sys.exit()
-    if not utils.check_storage(SELECTIONS):
-        print("Script run prevented by Storage Control document. Script exiting.")
-        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     write_to_log(f"=== Processing Items in 2inch Pointer File === {DT_STR}\n")
     write_to_log(
         "Fetching csv data, building selected items list and fetching candidates.\n"
     )
-    twoinch_select_csv = os.path.join(os.environ["WORKFLOW"], "twoinch/selections.csv")
-    selects = selections.Selections(input_file=twoinch_select_csv)
+    selects = selections.Selections(input_file=SELECTIONS)
     selected_items = selects.list_items()
     candidates = get_candidates()
 

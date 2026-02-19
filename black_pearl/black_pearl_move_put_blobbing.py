@@ -52,7 +52,7 @@ import utils
 LOG_PATH = os.environ["LOG_PATH"]
 CHECKSUM_PATH = os.path.join(LOG_PATH, "checksum_md5")
 CONTROL_JSON = os.environ["CONTROL_JSON"]
-INGEST_CONFIG = os.path.join(os.environ["CODE"], "black_pearl/dpi_ingests.yaml")
+INGEST_CONFIG = os.path.join(os.environ["CODE_DEPENDS"], "black_pearl/dpi_ingests.yaml")
 JSON_END = os.environ["JSON_END_POINT"]
 DPI_BUCKETS = os.environ.get("DPI_BUCKET")
 MEDIA_REC_CSV = os.path.join(LOG_PATH, "duration_size_media_records.csv")

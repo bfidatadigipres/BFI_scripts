@@ -29,7 +29,10 @@ import utils
 
 # Global variables
 LOGS = os.environ["LOG_PATH"]
-VT10 = os.path.join(os.environ["WORKFLOW"], "vtten/")
+SUB_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/vtten/submissions.csv")
+SEL_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/vtten/selections.csv")
+ERR_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/vtten/errors.csv")
+CONFIG = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/vtten/config.yaml")
 NOW = datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 
@@ -55,13 +58,10 @@ def main():
     """
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_storage(VT10):
-        print("Script run prevented by Storage Control document. Script exiting.")
-        sys.exit("Script run prevented by storage_control.json. Script exiting.")
     write_to_log(f"=== Processing Items in VT10 selections.csv === {DT_STR}\n")
 
     # Load configuration variables
-    configuration = yaml.safe_load(open(os.path.join(VT10, "config.yaml"), "r"))
+    configuration = yaml.safe_load(open(CONFIG, "r")
     batch_size = configuration["Batches"]["TapesPerBatch"]
     batches_per_iteration = configuration["Batches"]["BatchesPerIteration"]
 
@@ -69,13 +69,13 @@ def main():
     for _ in range(0, batches_per_iteration):
 
         # Load submissions
-        print("* Opening vtten/submissions csv...")
+        print("* Opening vtten/submissions.csv...")
         submissions = {}
-        submissions = get_csv(os.path.join(VT10, "submissions.csv"))
+        submissions = get_csv(SUB_CSV)
 
         # Load selections
-        print("* Opening vtten/selections csv...")
-        df = pd.read_csv(os.path.join(VT10, "selections.csv"))
+        print("* Opening vtten/selections.csv...")
+        df = pd.read_csv(SEL_CSV)
 
         # Remove submissions from selections data frame
         print("* Removing vt10 submissions from vt10 selections...")
@@ -120,7 +120,7 @@ def main():
 
             # Track submission
             print("* Writing vt10 submissions to vtten/submissions.csv...")
-            with open(os.path.join(VT10, "submissions.csv"), "a") as of:
+            with open(SUB_CSV, "a") as of:
                 writer = csv.writer(of)
                 writer.writerow(submission)
 
@@ -153,7 +153,7 @@ def main():
                 ",".join(batch_items),
             ]
 
-            with open(os.path.join(VT10, "errors.csv"), "a") as of:
+            with open(ERR_CSV, "a") as of:
                 writer = csv.writer(of)
                 writer.writerow(error_row)
 

@@ -338,7 +338,11 @@ class BatchBuild:
                 "purpose": purpose,
             },
             "payload": {
-                "Pick items": {"destination": destination},
+                "Pick items": {
+                    "destination": destination,
+                    "assigned_to.lref": "720",
+                    "assigned_to.lref": "717",
+                },
             },
         }
 

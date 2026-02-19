@@ -543,7 +543,6 @@ def fetch_lines(fullpath, json_dct):
 
     # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
     title, title_article = split_title(title_for_split)
-    title = title.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
 
     description = []
     d_short = (val.item[0].summary.short or "")
@@ -580,6 +579,7 @@ def fetch_lines(fullpath, json_dct):
                 print(f"Replacement title for 'Close': {title}")
                 print(f"Replacement description: {description}")
 
+    title = title.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
     epg_dict["title"] = title
     if title_article:
         epg_dict["title_article"] = title_article

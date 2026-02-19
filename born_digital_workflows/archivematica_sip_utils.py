@@ -13,10 +13,11 @@ import base64
 import json
 import os
 import sys
+from typing import Optional, List, Any, Dict
 from urllib.parse import urlencode
 import paramiko
 import requests
-from typing import Optional, List, Any, Dict
+
 
 TS_UUID = os.environ.get("AM_TS_UUID")  # Archivematica Transfer Storage address uuid
 SFTP_USR = os.environ.get("AM_SFTP_US")  # Transfer Storage user
@@ -524,7 +525,7 @@ def get_all_atom_objects()-> Optional[List[Any]]:
         for item in new_ob["results"]:
             all_list.append(item)
     if len(all_list) != total_obs:
-        print(f"May not have retrieved all information objects correctly!")
+        print("May not have retrieved all information objects correctly!")
 
     return all_list
 

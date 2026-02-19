@@ -16,6 +16,7 @@ import sys
 from urllib.parse import urlencode
 import paramiko
 import requests
+from typing import Optional, List, Any, Dict
 
 TS_UUID = os.environ.get("AM_TS_UUID")  # Archivematica Transfer Storage address uuid
 SFTP_USR = os.environ.get("AM_SFTP_US")  # Transfer Storage user
@@ -51,7 +52,7 @@ if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_USR or not SFTP_KEY:
     )
 
 
-def sftp_connect():
+def sftp_connect() -> paramiko.sftp_client.SFTPClient:
     """
     Make connection to Archivematica SFTP
     """
@@ -61,7 +62,7 @@ def sftp_connect():
     return ssh_client.open_sftp()
 
 
-def sftp_listdir(rpath):
+def sftp_listdir(rpath: str) -> List[Any]:
     """
     Call SFTP connection's listdir data
     with exception handling
@@ -76,7 +77,7 @@ def sftp_listdir(rpath):
     return check_folder
 
 
-def send_to_sftp(fpath, top_folder):
+def send_to_sftp(fpath: str, top_folder: str) -> Optional[List[Any]]:
     """
     Arg fpath must be to file level (not folder)
     Supply arg top_folder without trailing '/'
@@ -169,7 +170,7 @@ def send_to_sftp(fpath, top_folder):
     return files
 
 
-def send_metadata_to_sftp(fpath, top_folder):
+def send_metadata_to_sftp(fpath: str, top_folder: str) -> Optional[List[Any]]:
     """
     Check for parent folder, if absent mkdir
     First step SFTP into Storage Service, then check
@@ -189,7 +190,6 @@ def send_metadata_to_sftp(fpath, top_folder):
 
     # Create ssh / sftp object
     sftp = sftp_connect()
-    check_folder = sftp.listdir("sftp-transfer-source/API_Uploads")
     try:
         root_contents = sftp.listdir(remote_path)
         print(f"Root of remote_path: {root_contents}")
@@ -237,7 +237,7 @@ def send_metadata_to_sftp(fpath, top_folder):
     return files
 
 
-def sftp_put(sftp_object, fpath, relpath):
+def sftp_put(sftp_object: paramiko.sftp_client.SFTPClient, fpath: str, relpath: str) -> bool:
     """
     Handle PUT to sftp using
     open SFTP connection
@@ -257,7 +257,7 @@ def sftp_put(sftp_object, fpath, relpath):
         return False
 
 
-def sftp_mkdir(sftp_object, relpath):
+def sftp_mkdir(sftp_object: paramiko.sftp_client.SFTPClient, relpath: str) -> Optional[List[str]]:
     """
     Handle making directory
     using open sftp connection
@@ -278,7 +278,7 @@ def sftp_mkdir(sftp_object, relpath):
     return None
 
 
-def check_sftp_status(fpath, top_folder):
+def check_sftp_status(fpath: str, top_folder: str) -> List[str]:
     """
     Check if a file already been
     PUT to SFTP folder API_Uploads
@@ -300,8 +300,8 @@ def check_sftp_status(fpath, top_folder):
 
 
 def send_as_package(
-    fpath, top_folder, atom_slug, item_priref, process_config, auto_approve_arg
-):
+    fpath: str, top_folder: str, atom_slug: str, item_priref: str, process_config: str, auto_approve_arg: bool
+) -> Optional[Dict[str, Any]]:
     """
     Send a package using v2 beta package, subject to change!
     Args: fpath from top level no trailing /, AToM slug if known,
@@ -352,7 +352,7 @@ def send_as_package(
     return None
 
 
-def get_transfer_status(uuid):
+def get_transfer_status(uuid: str) -> Optional[Dict[str, Any]]:
     """
     Look for transfer status of new transfer/package.
     Returns transfer dictionary with 'status': 'COMPLETED' and
@@ -380,7 +380,7 @@ def get_transfer_status(uuid):
     return None
 
 
-def get_ingest_status(sip_uuid):
+def get_ingest_status(sip_uuid: str) -> Optional[Dict[str, Any]]:
     """
     Look for ingest status of new transfer/package.
     Returns directory name, message, 'status': 'COMPLETE',
@@ -408,7 +408,7 @@ def get_ingest_status(sip_uuid):
     return None
 
 
-def get_transfer_list():
+def get_transfer_list() -> Optional[Dict[str, Any]]:
     """
     Calls to retrieve UUID for
     transfers already in Archivematica
@@ -432,7 +432,7 @@ def get_transfer_list():
     return None
 
 
-def get_location_uuids():
+def get_location_uuids() -> Optional[List[Dict[str, Any]]]:
     """
     Call the v2 locations to retrieve
     UUID locations for different
@@ -457,7 +457,7 @@ def get_location_uuids():
         return None
 
 
-def get_atom_objects(skip_path):
+def get_atom_objects(skip_path: str) -> Optional[Dict[str, Any]]:
     """
     Return json dict containting
     list of all objects found in AtoM.
@@ -492,7 +492,7 @@ def get_atom_objects(skip_path):
     return None
 
 
-def get_all_atom_objects():
+def get_all_atom_objects()-> Optional[List[Any]]:
     """
     Handle skip iteration through all available
     information objects, call get_atom_objects
@@ -528,7 +528,7 @@ def get_all_atom_objects():
     return all_list
 
 
-def get_slug_match(slug_match):
+def get_slug_match(slug_match: str) -> bool:
     """
     Handles retrieval of all AtoM information objects
     then builds list of slugs and attempts to match to
@@ -555,7 +555,7 @@ def get_slug_match(slug_match):
     return False
 
 
-def delete_sip(sip_uuid):
+def delete_sip(sip_uuid: str) -> Optional[str]:
     """
     Remove (hide) a SIP from Archivematica
     after it's been transfered in error.
@@ -583,7 +583,7 @@ def delete_sip(sip_uuid):
     return None
 
 
-def reingest_v2_aip(aip_uuid, type, process_config):
+def reingest_v2_aip(aip_uuid: str, re_type: str, process_config: str) -> Optional[Dict[str, Any]]:
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
@@ -598,7 +598,7 @@ def reingest_v2_aip(aip_uuid, type, process_config):
     # Create payload and post
     data_payload = {
         "pipeline": SS_PIPE,
-        "reingest_type": type,
+        "reingest_type": re_type,
         "processing_config": process_config,
     }
     payload = json.dumps(data_payload)
@@ -625,7 +625,7 @@ def reingest_v2_aip(aip_uuid, type, process_config):
     return None
 
 
-def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
+def reingest_aip(aip_uuid_name: str, aip_uuid: str, ingest_type: str) -> Optional[Dict[str, Any]]:
     """
     Alternative endpoint for reingesting an AIP.
     Reingest type can be:
@@ -665,7 +665,7 @@ def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
     return None
 
 
-def metadata_copy_reingest(sip_uuid, source_mdata_path):
+def metadata_copy_reingest(sip_uuid: str, source_mdata_path: str) -> Optional[Dict[str, Any]]:
     """
     Arg source_mdata_path should be from top level folder
     to metadata only, not absolute path. Top level folder
@@ -707,7 +707,7 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     return None
 
 
-def approve_aip_reingest(uuid):
+def approve_aip_reingest(uuid: str) -> Optional[Dict[str, Any]]:
     """
     Send approval for reingest.
     This cannot be automated in reingest functions.
@@ -736,7 +736,7 @@ def approve_aip_reingest(uuid):
     return None
 
 
-def approve_transfer(dir_name):
+def approve_transfer(dir_name: str) -> Optional[Dict[str, Any]]:
     """
     Find transfer that needs approval
     And approve if dir-name matches
@@ -793,7 +793,7 @@ def approve_transfer(dir_name):
                     print(f"Response as text:\n{response.text}")
 
 
-def download_aip(aip_uuid: str, dpath: str, fn: str):
+def download_aip(aip_uuid: str, dpath: str, fn: str) -> Optional[str]:
     """
     Fetch an AIP stream and 
     write to download path as TAR file

@@ -61,7 +61,7 @@ def main():
     write_to_log(f"=== Processing Items in VT10 selections.csv === {DT_STR}\n")
 
     # Load configuration variables
-    configuration = yaml.safe_load(open(CONFIG, "r")
+    configuration = yaml.safe_load(open(CONFIG, "r"))
     batch_size = configuration["Batches"]["TapesPerBatch"]
     batches_per_iteration = configuration["Batches"]["BatchesPerIteration"]
 

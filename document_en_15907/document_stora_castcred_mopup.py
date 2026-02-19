@@ -260,10 +260,12 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
 
     val = jp.parse_payload_strict_json(lines)
 
-    item_title = (val.item[0].title or "")
-    item_asset_title = (val.item[0].asset.title or "")
-    utc_time = (datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d %H:%M:%S") or "")
-    asset_id = (val.item[0].asset.id or "")
+    item_title = val.item[0].title or ""
+    item_asset_title = val.item[0].asset.title or ""
+    utc_time = (
+        datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d %H:%M:%S") or ""
+    )
+    asset_id = val.item[0].asset.id or ""
     print(f"UTC broadcast: {utc_time}")
     print(f"Asset ID: {asset_id}")
 
@@ -296,12 +298,12 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
         nfa_category = "f"
 
     # Get TV/Film
-    work = (val.item[0].asset.type or "")
+    work = val.item[0].asset.type or ""
     if work == "movie":
         work_type = "f"
     else:
         work_type = "tv"
-    credit_list = (val.item[0].asset.contributor or [])
+    credit_list = val.item[0].asset.contributor or []
 
     return (
         item_title,
@@ -426,26 +428,38 @@ def cid_person_check(credit_id, session):
     return priref, name, activity_types
 
 
-def cid_work_locator(utc: str, asset_id:str, title:str, session: requests.Session) -> Optional[str]:
+def cid_work_locator(
+    utc: str, asset_id: str, title: str, session: requests.Session
+) -> Optional[str]:
     """
     Retrieve CID parent work by matching
     PA Media asset ID and UTC timestamp
     to manifestation represented by JSON
     """
     search = f"(grouping.lref='398775' AND alternative_number='{asset_id}' AND UTC_timestamp='{utc}')"
-    rec = adlib.retrieve_record(CID_API, "manifestations", search, 1, session, ["part_of_reference.lref"])[1]
+    rec = adlib.retrieve_record(
+        CID_API, "manifestations", search, 1, session, ["part_of_reference.lref"]
+    )[1]
     if not rec:
-        LOGGER.exception("Cannot match UTC timestamp and title to Manifestation '%s':\n%s", title, search)
+        LOGGER.exception(
+            "Cannot match UTC timestamp and title to Manifestation '%s':\n%s",
+            title,
+            search,
+        )
         return None
 
     work_priref = adlib.retrieve_field_name(rec[0], "part_of_reference.lref")[0]
     print(work_priref)
 
     if not work_priref:
-        LOGGER.exception("Not able to trace work parent from Manifestation match: %s", rec)
+        LOGGER.exception(
+            "Not able to trace work parent from Manifestation match: %s", rec
+        )
         return None
     if not len(work_priref) > 0:
-        LOGGER.exception("Not able to trace work parent from Manifestation match: %s", rec)
+        LOGGER.exception(
+            "Not able to trace work parent from Manifestation match: %s", rec
+        )
         return None
 
     return work_priref
@@ -518,7 +532,9 @@ def main():
         LOGGER.info("Checking path for documented JSON: %s", archive_path)
         print(archive_path)
 
-        file_list = glob.glob(f"{archive_path}/**/*.json.documented_castcred", recursive=True)
+        file_list = glob.glob(
+            f"{archive_path}/**/*.json.documented_castcred", recursive=True
+        )
         LOGGER.info(f"{len(file_list)} JSON files found for processing")
         file_list.sort()
 
@@ -527,11 +543,15 @@ def main():
             root, file = os.path.split(fullpath)
             if not file.endswith("json.documented_castcred"):
                 continue
-            if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
+            if not utils.check_control("pause_scripts") or not utils.check_control(
+                "stora"
+            ):
                 LOGGER.info(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )
-                sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+                sys.exit(
+                    "Script run prevented by downtime_control.json. Script exiting."
+                )
             LOGGER.info("New file found for processing: %s", fullpath)
 
             # Retrieve all data from EPG
@@ -549,7 +569,9 @@ def main():
 
             # Get people data
             if len(credit_list) == 0:
-                LOGGER.info("SKIPPING: %s - No cast or credit data\n%s", title, fullpath)
+                LOGGER.info(
+                    "SKIPPING: %s - No cast or credit data\n%s", title, fullpath
+                )
                 LOGGER.info("Renaming JSON with _castcred appended\n")
                 rename(root, file, title)
                 continue
@@ -570,7 +592,12 @@ def main():
                 )
                 continue
 
-            LOGGER.info("Programme asset_id %s and UTC time %s matched to Work: %s", asset_id, utc_time, work_priref)
+            LOGGER.info(
+                "Programme asset_id %s and UTC time %s matched to Work: %s",
+                asset_id,
+                utc_time,
+                work_priref,
+            )
             # Check work for evidence of cast/credit
             process_cast = check_work_has_credits(work_priref, session)
             if process_cast is True:
@@ -579,7 +606,9 @@ def main():
                 rename(root, file, title)
                 continue
             if process_cast is None:
-                LOGGER.info("SKIPPING as Work check returned None, failed to search for cast/credits\n")
+                LOGGER.info(
+                    "SKIPPING as Work check returned None, failed to search for cast/credits\n"
+                )
                 continue
 
             print(f"Title: {title}")
@@ -615,10 +644,13 @@ def main():
                             trivia = cast_dct_data[4]
 
                             # Make Person record
-                            person_priref = make_person_record(session, cast_dct_formatted)
+                            person_priref = make_person_record(
+                                session, cast_dct_formatted
+                            )
                             if not person_priref:
                                 LOGGER.warning(
-                                    "Failure to create person record for %s\n", cast_name
+                                    "Failure to create person record for %s\n",
+                                    cast_name,
                                 )
                                 continue
                             LOGGER.info(
@@ -633,7 +665,9 @@ def main():
                                     person_priref, known_for, early_life, bio, trivia
                                 )
                                 if len(payload) > 90:
-                                    success = write_payload(payload, person_priref, session)
+                                    success = write_payload(
+                                        payload, person_priref, session
+                                    )
                                     if success:
                                         LOGGER.info(
                                             "** Payload data successfully written to Person record %s, %s",
@@ -704,8 +738,12 @@ def main():
                 cast_dct_sorted = sort_cast_dct(cast_list)
                 # Append cast/credit and edit name blocks to work_append_dct
                 LOGGER.info("** Appending cast data to work record now...")
-                cast_xml = adlib.create_grouped_data(work_priref, "cast", cast_dct_sorted)
-                update_rec = adlib.post(CID_API, cast_xml, "works", "updaterecord", session)
+                cast_xml = adlib.create_grouped_data(
+                    work_priref, "cast", cast_dct_sorted
+                )
+                update_rec = adlib.post(
+                    CID_API, cast_xml, "works", "updaterecord", session
+                )
                 if update_rec:
                     updates = True
             else:
@@ -741,10 +779,13 @@ def main():
                             cred_trivia = cred_dct_data[4]
 
                             # Make Person record
-                            person_priref = make_person_record(session, cred_dct_formatted)
+                            person_priref = make_person_record(
+                                session, cred_dct_formatted
+                            )
                             if not person_priref:
                                 LOGGER.warning(
-                                    "Failure to create person record for %s\n", person_name
+                                    "Failure to create person record for %s\n",
+                                    person_name,
                                 )
                                 continue
 
@@ -849,7 +890,9 @@ def main():
                     work_priref, "credits", cred_dct_sorted
                 )
                 print(cred_xml)
-                update_rec = adlib.post(CID_API, cred_xml, "works", "updaterecord", session)
+                update_rec = adlib.post(
+                    CID_API, cred_xml, "works", "updaterecord", session
+                )
                 if update_rec:
                     updates = True
 
@@ -860,11 +903,17 @@ def main():
                 work_edit_data = [
                     {"edit.date": TODAY_DATE},
                     {"edit.name": "datadigipres"},
-                    {"edit.notes": "Automated cast and credit update from PATV augmented EPG metadata"},
+                    {
+                        "edit.notes": "Automated cast and credit update from PATV augmented EPG metadata"
+                    },
                     {"edit.time": str(datetime.datetime.now())[11:19]},
                 ]
-                edit_xml = adlib.create_grouped_data(work_priref, "Edit", [work_edit_data])
-                update_rec = adlib.post(CID_API, edit_xml, "works", "updaterecord", session)
+                edit_xml = adlib.create_grouped_data(
+                    work_priref, "Edit", [work_edit_data]
+                )
+                update_rec = adlib.post(
+                    CID_API, edit_xml, "works", "updaterecord", session
+                )
                 LOGGER.info(
                     "Cast/credit data successfully updated to Work %s\n", work_priref
                 )

@@ -230,13 +230,19 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
         c_data.update({"title_article": article})
     val.productionYear and c_data.update({"production_year": str(val.productionYear)})
     val.runtime and c_data.update({"runtime": val.runtime})
-    val.certification.get("netflix") and c_data.update({"cert_netflix": val.certification.get("netflix")})
-    val.certification.get("bbfc") and c_data.update({"cert_bbfc": val.certification.get("bbfc")})
+    val.certification.get("netflix") and c_data.update(
+        {"cert_netflix": val.certification.get("netflix")}
+    )
+    val.certification.get("bbfc") and c_data.update(
+        {"cert_bbfc": val.certification.get("bbfc")}
+    )
     val.meta.get("writers") and c_data.update({"writers": val.meta.get("writers")})
     cast_all = val.meta.get("cast")
     if cast_all:
         c_data.update({"cast": cast_all.split(",")})
-    val.meta.get("directors") and c_data.update({"directors": val.meta.get("directors")})
+    val.meta.get("directors") and c_data.update(
+        {"directors": val.meta.get("directors")}
+    )
     genres_all = val.meta.get("genres")
     if genres_all:
         c_data.update({"genres": genres_all.split(",")})
@@ -251,7 +257,11 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
     long_desc = val.summary.long
     if long_desc:
         c_data.update({"d_long": long_desc.replace("'", "'")})
-    c_data.update({"start_date": val.availability.get("start")[:10]}) if val.availability.get("start") else c_data.update({"start_date": ""})
+    (
+        c_data.update({"start_date": val.availability.get("start")[:10]})
+        if val.availability.get("start")
+        else c_data.update({"start_date": ""})
+    )
     for link in val.deeplink:
         if link.get("rel") == "url":
             c_data.update({"browse_url": link["href"]})
@@ -290,11 +300,19 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
         genres.append(cat.code)
     genres and j_data.update({"genres": genres})
 
-    val.meta.get('episode') and j_data.update({"episode_number": val.meta.get('episode')})
-    val.meta.get('episodeTotal') and j_data.update({"episode_total": val.meta.get('episodeTotal')})
-    val.meta.get('imdbId') and j_data.update({'imdb_id': val.meta.get('imdbId')})
-    val.certification.get("netflix") and j_data.update({"cert_netflix": val.certification.get("netflix")})
-    val.certification.get("bbfc") and j_data.update({"cert_bbfc": val.certification.get("bbfc")})
+    val.meta.get("episode") and j_data.update(
+        {"episode_number": val.meta.get("episode")}
+    )
+    val.meta.get("episodeTotal") and j_data.update(
+        {"episode_total": val.meta.get("episodeTotal")}
+    )
+    val.meta.get("imdbId") and j_data.update({"imdb_id": val.meta.get("imdbId")})
+    val.certification.get("netflix") and j_data.update(
+        {"cert_netflix": val.certification.get("netflix")}
+    )
+    val.certification.get("bbfc") and j_data.update(
+        {"cert_bbfc": val.certification.get("bbfc")}
+    )
 
     short_desc = val.summary.short
     if short_desc:
@@ -307,7 +325,9 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
         j_data.update({"d_long": long_desc.replace("'", "'")})
 
     val.contributor and j_data.update({"contributors": val.contributor})
-    val.vod.get("netflix-uk").get("start") and j_data.update({"start_date": val.vod.get("netflix-uk").get("start")[:10]})
+    val.vod.get("netflix-uk").get("start") and j_data.update(
+        {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+    )
 
     return j_data
 
@@ -339,10 +359,18 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         genres.append(cat.code)
     genres and s_data.update({"genres": genres})
 
-    val.meta.get('episode') and s_data.update({"episode_number": val.meta.get('episode')})
-    val.meta.get('episodeTotal') and s_data.update({"episode_total": val.meta.get('episodeTotal')})
-    val.certification.get("netflix") and s_data.update({"cert_netflix": val.certification.get("netflix")})
-    val.certification.get("bbfc") and s_data.update({"cert_bbfc": val.certification.get("bbfc")})
+    val.meta.get("episode") and s_data.update(
+        {"episode_number": val.meta.get("episode")}
+    )
+    val.meta.get("episodeTotal") and s_data.update(
+        {"episode_total": val.meta.get("episodeTotal")}
+    )
+    val.certification.get("netflix") and s_data.update(
+        {"cert_netflix": val.certification.get("netflix")}
+    )
+    val.certification.get("bbfc") and s_data.update(
+        {"cert_bbfc": val.certification.get("bbfc")}
+    )
 
     short_desc = val.summary.short
     if short_desc:
@@ -355,7 +383,9 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         s_data.update({"d_long": long_desc.replace("'", "'")})
 
     val.contributor and s_data.update({"contributors": val.contributor})
-    val.vod.get("netflix-uk").get("start") and s_data.update({"start_date": val.vod.get("netflix-uk").get("start")[:10]})
+    val.vod.get("netflix-uk").get("start") and s_data.update(
+        {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+    )
 
     return s_data
 

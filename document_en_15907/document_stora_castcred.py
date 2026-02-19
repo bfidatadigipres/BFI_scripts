@@ -249,10 +249,12 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
 
     val = jp.parse_payload_strict_json(lines)
 
-    item_title = (val.item[0].title or "")
-    item_asset_title = (val.item[0].asset.title or "")
-    utc_time = (datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d %H:%M:%S") or "")
-    asset_id = (val.item[0].asset.id or "")
+    item_title = val.item[0].title or ""
+    item_asset_title = val.item[0].asset.title or ""
+    utc_time = (
+        datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d %H:%M:%S") or ""
+    )
+    asset_id = val.item[0].asset.id or ""
     print(f"UTC broadcast: {utc_time}")
     print(f"Asset ID: {asset_id}")
 
@@ -261,7 +263,7 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
     if len(val.item[0].asset.category) >= 1:
         for num in range(0, len(val.item[0].asset.category)):
             category_codes.append(val.item[0].asset.category[num].code or "")
-            
+
     # Filter topics for non-fiction/fiction
     if "factual-topics" in str(category_codes):
         nfa_category = "nf"
@@ -285,12 +287,12 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
         nfa_category = "f"
 
     # Get TV/Film
-    work = (val.item[0].asset.type or "")
+    work = val.item[0].asset.type or ""
     if work == "movie":
         work_type = "f"
     else:
         work_type = "tv"
-    credit_list = (val.item[0].asset.contributor or [])
+    credit_list = val.item[0].asset.contributor or []
 
     return (
         item_title,
@@ -415,22 +417,32 @@ def cid_person_check(credit_id, session):
     return priref, name, activity_types
 
 
-def cid_work_locator(utc: str, asset_id:str, title:str, session: requests.Session) -> Optional[str]:
+def cid_work_locator(
+    utc: str, asset_id: str, title: str, session: requests.Session
+) -> Optional[str]:
     """
     Retrieve CID parent work by matching
     PA Media asset ID and UTC timestamp
     to manifestation represented by JSON
     """
     search = f"(grouping.lref='398775' AND alternative_number='{asset_id}' AND UTC_timestamp='{utc}')"
-    rec = adlib.retrieve_record(CID_API, "manifestations", search, 1, session, ["part_of_reference.lref"])[1]
+    rec = adlib.retrieve_record(
+        CID_API, "manifestations", search, 1, session, ["part_of_reference.lref"]
+    )[1]
     if not rec:
-        LOGGER.exception("Cannot match UTC timestamp and title to Manifestation '%s':\n%s", title, search)
+        LOGGER.exception(
+            "Cannot match UTC timestamp and title to Manifestation '%s':\n%s",
+            title,
+            search,
+        )
         return None
 
     work_priref = adlib.retrieve_field_name(rec[0], "part_of_reference.lref")[0]
     print(work_priref)
     if not len(work_priref) > 0:
-        LOGGER.exception("Not able to trace work parent from Manifestation match: %s", rec)
+        LOGGER.exception(
+            "Not able to trace work parent from Manifestation match: %s", rec
+        )
         return None
 
     return work_priref
@@ -548,7 +560,12 @@ def main():
             )
             continue
 
-        LOGGER.info("Programme asset_id %s and UTC time %s matched to Work: %s", asset_id, utc_time, work_priref)
+        LOGGER.info(
+            "Programme asset_id %s and UTC time %s matched to Work: %s",
+            asset_id,
+            utc_time,
+            work_priref,
+        )
         # Check work for evidence of cast/credit
         process_cast = check_work_has_credits(work_priref, session)
         if process_cast is False:
@@ -839,7 +856,9 @@ def main():
             work_edit_data = [
                 {"edit.date": TODAY_DATE},
                 {"edit.name": "datadigipres"},
-                {"edit.notes": "Automated cast and credit update from PATV augmented EPG metadata"},
+                {
+                    "edit.notes": "Automated cast and credit update from PATV augmented EPG metadata"
+                },
                 {"edit.time": str(datetime.datetime.now())[11:19]},
             ]
             edit_xml = adlib.create_grouped_data(work_priref, "Edit", [work_edit_data])

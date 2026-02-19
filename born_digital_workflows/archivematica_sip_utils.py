@@ -791,3 +791,29 @@ def approve_transfer(dir_name):
                 except ValueError:
                     print("Response not supplied in JSON format")
                     print(f"Response as text:\n{response.text}")
+
+
+def download_aip(aip_uuid: str, dpath: str, fn: str):
+    """
+    Fetch an AIP stream and 
+    write to download path as TAR file
+    """
+    ENDPOINT = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/download/"
+
+    try:
+        with requests.get(ENDPOINT, headers=SS_HEADER, stream=True) as response:
+            content = response.headers.get("Content-Disposition")
+            if content:
+                fname = content.split('filename=')[-1].strip('"')
+            else:
+                fname = f"{fn}.tar
+            download_path = os.path.join(dpath, fname)
+            
+            with open(download_path, "wb") as file:
+                for chunk in response.iter_content(chunk=8192):
+                    if chunk:
+                        file.write(chunk)
+            if os.path.isfile(download_path):
+                return download_file
+    except requests.exceptions.RequestException as err:
+        raise Exception from err

@@ -39,7 +39,9 @@ def cid_call_txt_dump():
 
     logging.info("Downloading prirefs with search: %s", search)
     try:
-        url_ingests = requests.get(f"{API}?database=prirefcollectraw&search={search}&limit=0")
+        url_ingests = requests.get(f"{API}?database=prirefcollectraw&search={search}&limit=0", timeout=30)
+    except requests.exceptions.Timeout:
+        print("Timed out at 30 seconds")
     except (requests.exceptions.RequestException) as err:
         raise SystemExit(err) from err
 
@@ -57,7 +59,9 @@ def cid_call_txt_dump():
     search2 = """(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->(modification>='2026-02-15' and modification<='2026-02-19'))"""
     logging.info("Downloading second batch of prirefs with search: %s", search)
     try:
-        response_work_changes = requests.get(f"{API}?database=prirefcollectraw&search={search2}&limit=0")
+        response_work_changes = requests.get(f"{API}?database=prirefcollectraw&search={search2}&limit=0", timeout=30)
+    except requests.exceptions.Timeout:
+        print("Timed out at 30 seconds")
     except (requests.exceptions.RequestException) as err:
         raise SystemExit(err) from err
 
@@ -96,8 +100,11 @@ def main():
 
             search = f"priref={priref}"
             try:
-                xml = requests.get(f"{API}?database=elasticsearchitems&search={search}")
+                xml = requests.get(f"{API}?database=elasticsearchitems&search={search}", timeout=30)
                 xml_text = xml.text
+            except requests.exceptions.Timeout:
+                logging.warning("Timed out at 30 seconds")
+                continue
             except requests.exceptions.RequestException as err:
                 logging.error("%s - could not fetch xml from CID API:\n%s", priref, err)
                 continue

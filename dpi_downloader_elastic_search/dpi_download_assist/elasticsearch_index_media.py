@@ -36,7 +36,10 @@ def call_cid_for_data():
     search = "(object.object_number->Df=item) and (imagen.media.original_filename=* and modification>today-2)"
 
     try:
-        response = requests.get(f"{API}?database=prirefmediaraw&search={search}&limit=0")
+        response = requests.get(f"{API}?database=prirefmediaraw&search={search}&limit=0", timeout=30)
+    except requests.exceptions.Timeout as err:
+        print("Timed out at 30 seconds!")
+        raise SystemExit(err) from err
     except requests.exceptions.RequestException as err:
         raise SystemExit(err) from err
 
@@ -75,8 +78,11 @@ def main():
 
             search = f"priref={priref}"
             try:
-                xml = requests.get(f"{API}?database=elasticsearchmedia&search={search}")
+                xml = requests.get(f"{API}?database=elasticsearchmedia&search={search}", timeout=30)
                 xml_text = xml.text
+            except requests.exceptions.Timeout as err:
+                print("Timed out at 30 seconds!")
+                continue
             except requests.exceptions.RequestException as err:
                 logging.error("%s - could not fetch xml from CID API: %s", priref, err)
                 continue

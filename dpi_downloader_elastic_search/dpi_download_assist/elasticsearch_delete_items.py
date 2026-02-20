@@ -7,16 +7,14 @@ index entries mapped from
 CSV_PATH file
 
 DEPENDENCY:
-Must run in ENV with
+Must run from ENV with
 elasticsearch7
 """
 
 import os
-import sys
 import csv
 import logging
-from elasticsearch7 import Elasticsearch, TransportError, ConnectionError
-from datetime import datetime
+import elasticsearch7 as es
 
 ES_HOST = os.environ.get("ES_PATH")
 LOG_PATH = os.environ.get("LOG_PATH")
@@ -44,16 +42,16 @@ def main():
     logger.info("Elasticsearch delete items start =======================")
     index_name = "dpi_items"
     try:
-        client = Elasticsearch(ES_HOST)
+        client = es.Elasticsearch(ES_HOST)
         logger.info("Successfully connected to Elasticsearch.")
-    except ConnectionError as err:
+    except es.ConnectionError as err:
         logger.error("ConnectionError: %s", err)
         return
 
     try:
         client_count = client.count(index=index_name)
-        logger.info(f"Index %s contains %s documents initially.", index_name, client_count.get("count"))
-    except TransportError as err:
+        logger.info("Index %s contains %s documents initially.", index_name, client_count.get("count"))
+    except es.TransportError as err:
         logger.error("TransportError before deletion: %s", err.info)
 
     logger.info("Comparing Clients to CSV contents...")
@@ -77,15 +75,15 @@ def main():
                         logger.info("Successfully deleted %s", doc_id)
                     else:
                         logger.info("Skipped non-existent document: %s", doc_id)
-                except TransportError as e:
+                except es.TransportError as e:
                     logger.error("Error deleting %s: %s", doc_id, e.info)
 
         final_count = client.count(index=index_name)
-        logger.info(f"Documents deleted: %s, Skipped (already deleted/empty): %s", success, skip)
+        logger.info("Documents deleted: %s, Skipped (already deleted/empty): %s", success, skip)
         logger.info("Documents remaining in index: %s", final_count.get('count'))
 
     except FileNotFoundError:
-        log_error(log_path, "CSV file not found.")
+        logger.error("CSV file not found.")
     logger.info("Elasticsearch delete items complete ====================")
 
 

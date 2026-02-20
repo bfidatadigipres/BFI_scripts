@@ -8,17 +8,14 @@ video viewer.
 """
 
 # Imports
-from json import dumps, loads
-from xmljson import parker
-import xml.etree.ElementTree as ET
-from elasticsearch import Elasticsearch
-import requests
 import os
 import sys
-import subprocess
-import csv
-from datetime import timedelta
 import logging
+from json import dumps
+import xml.etree.ElementTree as ET
+from elasticsearch import Elasticsearch
+from xmljson import parker
+import requests
 
 sys.path.append(os.environ.get("CODE"))
 import utils
@@ -41,7 +38,7 @@ def call_cid_for_data():
     try:
         response = requests.get(f"{API}?database=prirefmediaraw&search={search}&limit=0")
     except requests.exceptions.RequestException as err:
-        raise SystemExit(err)
+        raise SystemExit(err) from err
 
     with open(TXT_DUMP, 'w+') as txtfile:
         txtfile.write(response.text)
@@ -74,7 +71,7 @@ def main():
             priref = line.strip()
             print(priref)
             if count % 100 == 0:
-                print('{} media prirefs processed'.format(count))
+                print(f"{count} media prirefs processed!")
 
             search = f"priref={priref}"
             try:
@@ -92,7 +89,7 @@ def main():
 
             if status == 'error-free':
                 try:
-                    xmltree = (ET.fromstring(xml_text))
+                    xmltree = ET.fromstring(xml_text)
                 except Exception as err:
                     logging.error("%s - could not convert to xml using xmltree:\n%s", priref, err)
                     continue

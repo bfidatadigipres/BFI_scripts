@@ -8,17 +8,17 @@ video viewer.
 """
 
 # Imports
-from json import dumps, loads
+import os
+import sys
+import logging
+from json import dumps
 from xmljson import parker
 import xml.etree.ElementTree as ET
 from elasticsearch import Elasticsearch
 import requests
-import os
-import sys
-import subprocess
-import csv
-from datetime import timedelta
-import logging
+
+sys.path.append(os.environ.get("CODE"))
+import utils
 
 API = os.environ.get("CID_API1")
 ES_PATH = os.environ.get("ES_SEARCH_PATH")
@@ -33,36 +33,33 @@ def cid_call_txt_dump():
     """
     Fetch URL ingests
     """
-    search = "(Df=item and reproduction.reference->imagen.media.original_filename=* and modification>today-2)"
+    # search = "(Df=item and reproduction.reference->imagen.media.original_filename=* and modification>today-2)"
     # search = "(priref=158847299,159129143,159151027)"
-    # search = """(Df=item and reproduction.reference->imagen.media.original_filename=* \
-                  and (modification>='2025-11-20' and modification<='2025-12-01')"""
+    search = """(Df=item and reproduction.reference->imagen.media.original_filename=* and (modification>='2026-02-15' and modification<='2026-02-19')"""
 
     logging.info("Downloading prirefs with search: %s", search)
     try:
         url_ingests = requests.get(f"{API}?database=prirefcollectraw&search={search}&limit=0")
     except (requests.exceptions.RequestException) as err:
-        raise SystemExit(err)
+        raise SystemExit(err) from err
 
-   if not url_ingest.text:
-      logging.warning("No URL ingests found!")
-      sys.exit("No URLs found for ingest")
+    if not url_ingests.text:
+        logging.warning("No URL ingests found!")
+        sys.exit("No URLs found for ingest")
 
-    logging.info("Retrieve prirefs:\n%s", ", ".join(url_ingest.text.split("\r\n")))
+    logging.info("Retrieve prirefs:\n%s", ", ".join(url_ingests.text.split("\r\n")))
     with open(TXT_DUMP, 'w+') as txtfile:
-        txtfile.write(response_ingests.text + '\n')
-    logging.info(f"Ingest prirefs written to {TXT_DUMP}")
+        txtfile.write(url_ingests.text + '\n')
+    logging.info("Ingest prirefs written to %s", TXT_DUMP)
 
     # Fetch Item records based on edits in the grandparent Work record for ingested Items
-    search2 = "(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->edit.date>today-2)"
-    # search2 = """(Df=item and reproduction.reference->imagen.media.original_filename=*) \
-                   and (part_of_reference->part_of_reference->(modification>='2025-10-01' \
-                   and modification<='2025-10-10'))"""
+    # search2 = "(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->edit.date>today-2)"
+    search2 = """(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->(modification>='2026-02-15' and modification<='2026-02-19'))"""
     logging.info("Downloading second batch of prirefs with search: %s", search)
     try:
         response_work_changes = requests.get(f"{API}?database=prirefcollectraw&search={search2}&limit=0")
     except (requests.exceptions.RequestException) as err:
-        raise SystemExit(err)
+        raise SystemExit(err) from err
 
     with open(TXT_DUMP, 'a') as txtfile:
         txtfile.write(response_work_changes.text)
@@ -73,7 +70,7 @@ def main():
     """
     Trigger retrieval of CID item data
     and push into elastic search index
-    """
+
     if not utils.check_control("pause_scripts"):
         logging.info(
             "Script run prevented by downtime_control.json. Script exiting."
@@ -82,18 +79,20 @@ def main():
     if not utils.cid_check(API):
         logging.warning("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
-
-    cid_call_text_dump()
+    """
+    logging.info("Elasticsearch Index Items start ================================")
+    cid_call_txt_dump()
     es = Elasticsearch(ES_PATH)
 
-    # Use with open for the .txt file and read line by line
+    # Use with open for the .txt file and read line
+    logging.info("Opening file: %s", TXT_DUMP)
     with open(TXT_DUMP) as txt_file:
         for count, line in enumerate(txt_file, 1):
             xml_text = ""
             status = ""
             priref = line.strip()
             if count % 100 == 0:
-                print('{} item prirefs processed'.format(count))
+                print(f"{count} item prirefs processed")
 
             search = f"priref={priref}"
             try:
@@ -112,7 +111,7 @@ def main():
 
             if status == 'error-free':
                 try:
-                    xmltree = (ET.fromstring(xml_text))
+                    xmltree = ET.fromstring(xml_text)
                 except Exception as err:
                     logging.error("%s - could not convert to xml using xmltree:\n%s", priref, err)
                     continue
@@ -130,6 +129,8 @@ def main():
             else:
                 logging.error("%s - could not fetch xml from CID API", priref)
                 continue
+
+    logging.info("Elasticsearch Index Items end ==================================")
 
 
 if __name__ == "__main__":

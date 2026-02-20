@@ -64,7 +64,7 @@ def check_no_bp_status(fname: str, bucket_list: list[str]) -> bool:
                 print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
                 exist_across_buckets.append("DOESNTEXIST")
             elif str(result.result) == "EXISTS":
-                print(f"File {fname} NOT found in Black Pearl bucket {bucket}")
+                print(f"File {fname} found in Black Pearl bucket {bucket}")
                 exist_across_buckets.append("PRESENT")
         except Exception as err:
             print(err)
@@ -267,7 +267,7 @@ def download_bp_object(fname: str, outpath: str, bucket: str) -> str:
         ds3Helpers.HelperGetObject(fname, file_path)
     ]
     try:
-        get_job_id: str = HELPER.get_objects(get_objects, bucket)
+        get_job_id: str = HELPER.get_objects(get_objects, bucket, max_threads=1)
         print(f"BP get job ID: {get_job_id}")
     except Exception as err:
         raise Exception(f"Unable to retrieve file {fname} from Black Pearl: {err}")
@@ -314,7 +314,10 @@ def put_single_file(fpath: str, ref_num, bucket_name, check=False) -> Optional[s
     ]
     try:
         put_job_id: str = HELPER.put_objects(
-            put_objects=put_obj, bucket=bucket_name, calculate_checksum=bool(check)
+            put_objects=put_obj,
+            bucket=bucket_name,
+            max_threads=1,
+            calculate_checksum=bool(check),
         )
         print(f"PUT COMPLETE - JOB ID retrieved: {put_job_id}")
         return put_job_id

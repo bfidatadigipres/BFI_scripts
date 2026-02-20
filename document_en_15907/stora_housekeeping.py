@@ -102,14 +102,26 @@ def main():
     empty folders created ahead of today for future recordings
     """
     if not utils.check_control("power_off_all"):
-        logger.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        logger.info(
+            "Script run prevented by downtime_control.json. Script exiting. -> power_off_all"
+        )
+        sys.exit(
+            "Script run prevented by downtime_control.json. Script exiting. -> power_off_all"
+        )
     if not utils.check_control("pause_scripts"):
-        logger.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        logger.info(
+            "Script run prevented by downtime_control.json. Script exiting. -> pause_scripts"
+        )
+        sys.exit(
+            "Script run prevented by downtime_control.json. Script exiting. -> pause_scripts"
+        )
     if not utils.check_storage(STORA_PATH):
-        logger.info("Script run prevented by storage_control.json. Script exiting.")
-        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+        logger.info(
+            "Script run prevented by storage_control.json. Script exiting. -> stora_path"
+        )
+        sys.exit(
+            "Script run prevented by storage_control.json. Script exiting. -> stora_path"
+        )
 
     logger.info("=========== stora_housekeeping.py START ===========")
     period = []
@@ -125,7 +137,6 @@ def main():
             line = line.rstrip("\n")
             if any(dt in line for dt in date_range):
                 logger.info("Folder in date range to process: %s", line)
-
                 # Skip immediately if stream found
                 files = os.listdir(line)
                 if "stream.mpeg2.ts" in files:
@@ -167,62 +178,60 @@ def main():
                         line,
                     )
                     continue
-                else:
-                    print(
-                        f"MOVING folder - Problem or Stream.mpeg2.ts NOT found: {line}"
-                    )
-                    logger.info("MOVING FOLDER: No PROBLEM or STREAM found in %s", line)
-                    line_split = line.split("/")
-                    line_split = line_split[5:9]
-                    line_join = "/".join(line_split)
-                    new_path = os.path.join(ARCHIVE_PATH, line_join)
-                    try:
-                        os.makedirs(new_path, mode=0o777, exist_ok=True)
-                        print(f"New path mkdir: {new_path}")
-                    except OSError as error:
-                        print(f"Unable to make new directory {new_path}")
-                        logger.warning(
-                            "Unable to make new directory: %s\n %s", new_path, error
-                        )
-                        continue
-                    foldername = os.path.basename(line)
-                    if os.path.exists(os.path.join(new_path, foldername)):
-                        data = os.listdir(line)
-                        for d in data:
-                            try:
-                                shutil.move(
-                                    os.path.join(line, d),
-                                    os.path.join(new_path, foldername),
-                                )
-                                print(
-                                    f"Move path: {line}/{d} to {new_path}/{foldername}"
-                                )
-                                logger.info(
-                                    "Moving folder: %s to %s",
-                                    os.path.join(line, d),
-                                    os.path.join(new_path, foldername),
-                                )
-                            except Exception:
-                                print(
-                                    f"Unable to move folder {line}/{d}, into {new_path}/{foldername}"
-                                )
-                                logger.exception(
-                                    "Unable to move folder %s, into %s",
-                                    os.path.join(line, d),
-                                    os.path.join(new_path, foldername),
-                                )
-                                continue
 
-                    try:
-                        shutil.move(line, new_path)
-                        print(f"Move path: {line} to {new_path}")
-                        logger.info("Moving folder: %s to %s", line, new_path)
-                    except Exception:
-                        print(f"Unable to move folder {line}, into {new_path}")
-                        logger.exception(
-                            "Unable to move folder %s, into %s", line, new_path
-                        )
-                        continue
+                print(f"MOVING folder - Problem or Stream.mpeg2.ts NOT found: {line}")
+                logger.info("MOVING FOLDER: No PROBLEM or STREAM found in %s", line)
+                line_split = line.split("STORA/")[-1]
+                new_path = os.path.split(os.path.join(ARCHIVE_PATH, line_split))[0]
+                print(f"*************{new_path}**************")
+                try:
+                    os.makedirs(new_path, mode=0o777, exist_ok=True)
+                    print(f"New path mkdir: {new_path}")
+                except OSError as error:
+                    print(error)
+                    print(f"Unable to make new directory {new_path}")
+                    logger.warning(
+                        "Unable to make new directory: %s\n %s", new_path, error
+                    )
+                    continue
+                foldername = os.path.basename(line)
+                print(line)
+                print(foldername)
+                if os.path.exists(os.path.join(new_path, foldername)):
+                    data = os.listdir(line)
+                    for d in data:
+                        try:
+                            shutil.move(
+                                os.path.join(line, d),
+                                os.path.join(new_path, foldername),
+                            )
+                            print(f"Move path: {line}/{d} to {new_path}/{foldername}")
+                            logger.info(
+                                "Moving folder: %s to %s",
+                                os.path.join(line, d),
+                                os.path.join(new_path, foldername),
+                            )
+                        except Exception:
+                            print(
+                                f"Unable to move folder {line}/{d}, into {new_path}/{foldername}"
+                            )
+                            logger.exception(
+                                "Unable to move folder %s, into %s",
+                                os.path.join(line, d),
+                                os.path.join(new_path, foldername),
+                            )
+                            continue
+
+                try:
+                    shutil.move(line, new_path)
+                    print(f"Move path: {line} to {new_path}")
+                    logger.info("Moving folder: %s to %s", line, new_path)
+                except Exception:
+                    print(f"Unable to move folder {line}, into {new_path}")
+                    logger.exception(
+                        "Unable to move folder %s, into %s", line, new_path
+                    )
+                    continue
 
                 # New block to move top level recording.log etc only if move above completes
                 pth_split_old = os.path.split(line)[0]
@@ -238,11 +247,13 @@ def main():
                 for file in files:
                     if "recording" in file:
                         shutil.move(os.path.join(pth_split_old, file), new_move_path)
+                        print(f"Moving recording.log to new_move_path: {new_move_path}")
                     elif "restart_" in file:
                         shutil.move(os.path.join(pth_split_old, file), new_move_path)
+                        print(f"Moving restart doc to new_move_path: {new_move_path}")
                     elif "schedule_" in file:
                         shutil.move(os.path.join(pth_split_old, file), new_move_path)
-
+                        print(f"Moving schedule_ to new_move_path: {new_move_path}")
             else:
                 logger.info("SKIPPING OUT OF RANGE FOLDER: %s", line)
 

@@ -25,10 +25,9 @@ def framemd5_manifest(cmd: list[str]) -> bytes:
 
     # Append framemd5 arguments to given command
     cmd.extend(["-loglevel", "quiet", "-hide_banner", "-f", "framemd5", "-"])
-    command = " ".join(cmd)
 
     try:
-        p = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
+        p = subprocess.check_output(cmd, shell=False, stderr=subprocess.STDOUT)
         return p
     except subprocess.CalledProcessError as err:
         raise RuntimeError(
@@ -39,8 +38,7 @@ def framemd5_manifest(cmd: list[str]) -> bytes:
 def segment(cmd: list[str]):
     """Trim a new file from the given source"""
 
-    command = " ".join(cmd)
-    status = subprocess.call(command, shell=True)
+    status = subprocess.call(cmd, shell=False, check=True)
     if status == 0:
         return True
 

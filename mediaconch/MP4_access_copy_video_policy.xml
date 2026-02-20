@@ -1,11 +1,12 @@
 <?xml version="1.0"?>
-<policy type="and" name="MP4 access copy creation policy">
+<policy type="and" name="MP4 access transcoding checks" license="MIT">
+  <description>Test that the MP4 transcode is configured as expected.
+  - Correct extensions, codecs, formats, pixel aspect ratio, height/width.
+  - Audio ignored as may not be present in some cases.</description>
   <rule name="General/VideoCount is 1" value="VideoCount" tracktype="General" occurrence="*" operator="=">1</rule>
+  <rule name="General/FileExtension is mp4" value="FileExtension" tracktype="General" occurrence="*" operator="=">mp4</rule>
   <rule name="General/Format is MPEG-4" value="Format" tracktype="General" occurrence="*" operator="=">MPEG-4</rule>
-  <rule name="General/Format_Profile is Base Media" value="Format_Profile" tracktype="General" occurrence="*" operator="=">Base Media</rule>
   <rule name="General/IsStreamable is Yes" value="IsStreamable" tracktype="General" occurrence="*" operator="=">Yes</rule>
-  <rule name="General/File_Modified_Date exists" value="File_Modified_Date" tracktype="General" occurrence="*" operator="exists"></rule>
-  <rule name="General/Duration exists" value="Duration" tracktype="General" occurrence="*" operator="exists"></rule>
   <rule name="Video/Format is AVC" value="Format" tracktype="Video" occurrence="*" operator="=">AVC</rule>
   <rule name="Video/Format_Profile is High" value="Format_Profile" tracktype="Video" occurrence="*" operator="=">High</rule>
   <policy type="or" name="Video widths">
@@ -20,10 +21,30 @@
     <rule name="Video/Height is 480" value="Height" tracktype="Video" occurrence="*" operator="=">480</rule>
     <rule name="Video/Height is 486" value="Height" tracktype="Video" occurrence="*" operator="=">486</rule>
     <rule name="Video/Height is 720" value="Height" tracktype="Video" occurrence="*" operator="=">720</rule>
-
   </policy>
+  <rule name="Video/Rotation is 0.000" value="Rotation" tracktype="Video" occurrence="*" operator="=">0.000</rule>
   <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="=">YUV</rule>
   <rule name="Video/ChromaSubsampling is 4:2:0" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:0</rule>
-  <rule name="Video/BitDepth is 8" value="BitDepth" tracktype="Video" occurrence="*" operator="=">8</rule>
   <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+  <rule name="Duration field exists" value="Duration" tracktype="Video" occurrence="*" operator="exists"/>
+  <policy type="or" name="Width is 640, 704, 720, 768, 1024, 1280 or 1920">
+    <rule name="Video/Width is 1920" value="Width" tracktype="Video" occurrence="*" operator="=">1920</rule>
+    <rule name="Video/Width is 1280" value="Width" tracktype="Video" occurrence="*" operator="=">1280</rule>
+    <rule name="Video/Width is 1024" value="Width" tracktype="Video" occurrence="*" operator="=">1024</rule>
+    <rule name="Video/Width is 768" value="Width" tracktype="Video" occurrence="*" operator="=">768</rule>
+    <rule name="Video/Width is 720" value="Width" tracktype="Video" occurrence="*" operator="=">720</rule>
+    <rule name="Video/Width is 704" value="Width" tracktype="Video" occurrence="*" operator="=">704</rule>
+    <rule name="Video/Width is 640" value="Width" tracktype="Video" occurrence="*" operator="=">640</rule>
+  </policy>
+  <policy type="or" name="Height is 480, 486, 576, 720 or 1080">
+    <rule name="Video/Height is 1080" value="Height" tracktype="Video" occurrence="*" operator="=">1080</rule>
+    <rule name="Video/Height is 720" value="Height" tracktype="Video" occurrence="*" operator="=">720</rule>
+    <rule name="Video/Height is 576" value="Height" tracktype="Video" occurrence="*" operator="=">576</rule>
+    <rule name="Video/Height is 486" value="Height" tracktype="Video" occurrence="*" operator="=">486</rule>
+    <rule name="Video/Height is 480" value="Height" tracktype="Video" occurrence="*" operator="=">480</rule>
+  </policy>
+  <policy type="or" name="Bit depth 8 or 10 bits">
+    <rule name="Video/BitDepth is 8" value="BitDepth" tracktype="Video" occurrence="*" operator="=">8</rule>
+    <rule name="Video/BitDepth is 10" value="BitDepth" tracktype="Video" occurrence="*" operator="=">10</rule>
+  </policy>
 </policy>

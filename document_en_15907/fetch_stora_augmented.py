@@ -47,7 +47,6 @@ END: Final = f"{YESTERDAY_CLEAN}T23:59:00"
 # If a different date period needs targeting use:
 # START = '2025-01-24T00:00:00'
 # END = '2025-01-24T23:59:00'
-
 DATE_PATH: Final = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH: Final = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}

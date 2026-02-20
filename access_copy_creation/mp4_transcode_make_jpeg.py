@@ -295,7 +295,7 @@ def main():
             vs,
             mixed_dict,
             fl_fr,
-            twelve_chnl
+            twelve_chnl,
         )
         if not ffmpeg_cmd:
             log_build.append(
@@ -323,7 +323,7 @@ def main():
             ).stderr
         except subprocess.CalledProcessError as e:
             log_build.append(
-                f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}"
+                f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}\n{e}"
             )
             log_build.append(
                 f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
@@ -719,7 +719,7 @@ def get_par(fullpath: str) -> str:
     return par_full[:5]
 
 
-def remove_stream_repeats(value:str, fullpath: str) -> str:
+def remove_stream_repeats(value: str, fullpath: str) -> str:
     """
     Deals with instances where height/width/DAR/PAR return
     multiple values for multiple streams - Video stream only
@@ -746,7 +746,7 @@ def get_height(fullpath: str) -> str:
 
     sampled_height = utils.get_metadata("Video", "Sampled_Height", fullpath)
     reg_height = utils.get_metadata("Video", "Height", fullpath)
-    
+
     try:
         int(sampled_height)
     except ValueError:
@@ -787,7 +787,7 @@ def get_width(fullpath: str) -> str:
 
     width = utils.get_metadata("Video", "Width/String", fullpath)
     clap_width = utils.get_metadata("Video", "Width_CleanAperture/String", fullpath)
-    
+
     if width.startswith("720 ") and clap_width.startswith("703 "):
         return "703"
     if width.startswith("720 "):
@@ -1166,7 +1166,7 @@ def create_transcode(
             "aac",
             "-b:a",
             "192k",
-            "-dn"
+            "-dn",
         ]
     elif default and audio:
         print(f"Default {default}, Audio {audio}")
@@ -1226,6 +1226,8 @@ def create_transcode(
     elif height == 576 and dar == "1.85:1":
         cmd_mid = crop_sd_16x9
     elif height == 576 and aspect < 1.778:
+        cmd_mid = scale_sd_4x3
+    elif width <= 768 and aspect < 1.778:
         cmd_mid = scale_sd_4x3
     elif height < 720 and dar == "16:9":
         cmd_mid = scale_sd_16x9
@@ -1334,7 +1336,7 @@ def make_jpg(
             filepath,
             err,
         )
-
+    os.chmod(outfile, 0o777)
     if os.path.exists(outfile):
         return outfile
 

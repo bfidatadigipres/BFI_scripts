@@ -44,6 +44,8 @@ sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
 from helpers import stora_helper
+from parsers import stora_episode_parser as jp
+from parsers import stora_series_parser as sp
 
 # Global variables
 STORAGE = os.environ["STORA_PATH"]
@@ -57,7 +59,7 @@ CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
 CSV_FAILURES = os.path.join(LOG_PATH, "failed_mpeg_ts_files.csv")
 MPEG_TS_POLICY = os.path.join(os.environ["MEDIACONCH"], "mpeg_ts_policy.xml")
 SUBS_PTH = os.environ["SUBS_PATH2"]
-GENRE_PTH = os.path.split(SUBS_PTH)[0]
+GENRE_PTH = SUBS_PTH.split("subtitles_not_in_cid/")[0]
 CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
 
@@ -276,7 +278,9 @@ def find_repeats(asset_id):
     PATV showings of a manifestation
     """
 
-    search = f'alternative_number="{asset_id}"'
+    search = (
+        f'alternative_number="{asset_id}" AND alternative_number.type="PATV asset id"'
+    )
     sleep(1)
     hits, result = adlib.retrieve_record(CID_API, "manifestations", search, "1")
     print(f"*** find_repeats(): {hits}\n{result}")
@@ -339,6 +343,7 @@ def series_check(series_id):
             continue
         if not files.endswith(".json"):
             continue
+
         filename = os.path.splitext(files)[0]
         fullpath = os.path.join(SERIES_CACHE_PATH, files)
         print(f"series_check(): MATCH! {filename} with Series_ID {series_id}")
@@ -346,68 +351,43 @@ def series_check(series_id):
             f"series_check(): Json to be opened and read for series data retrieval: {fullpath}"
         )
         with open(fullpath, "r", encoding="utf-8") as inf:
-            lines = json.load(inf)
-            if "ResourceNotFoundError" in str(lines):
-                continue
-            for _ in lines:
-                series_descriptions = []
-                try:
-                    series_short = lines["summary"]["short"]
-                    series_descriptions.append(series_short)
-                except (IndexError, TypeError, KeyError):
-                    series_short = ""
-                    series_descriptions.append(series_short)
-                try:
-                    series_medium = lines["summary"]["medium"]
-                    series_descriptions.append(series_medium)
-                except (IndexError, TypeError, KeyError):
-                    series_medium = ""
-                    series_descriptions.append(series_medium)
-                try:
-                    series_long = lines["summary"]["long"]
-                    series_descriptions.append(series_long)
-                except (IndexError, TypeError, KeyError):
-                    series_long = ""
-                    series_descriptions.append(series_long)
-                # Sort and return longest of descriptions
-                series_descriptions.sort(key=len, reverse=True)
-                series_description = series_descriptions[0]
-                print(
-                    f"series_check(): Series description longest: {series_description}"
-                )
-                try:
-                    series_title_full = lines["title"]
-                    print(f"series_check(): Series title full: {series_title_full}")
-                except (IndexError, TypeError, KeyError):
-                    series_title_full = ""
-                series_category_codes = []
-                # series category codes, unsure if there's always two parts to category, selects longest
-                try:
-                    series_category_code_one = lines["category"][0]["code"]
-                    series_category_codes.append(series_category_code_one)
-                except (IndexError, TypeError, KeyError):
-                    series_category_code_one = ""
-                    series_category_codes.append(series_category_code_one)
-                try:
-                    series_category_code_two = lines["category"][1]["code"]
-                    series_category_codes.append(series_category_code_two)
-                except (IndexError, TypeError, KeyError):
-                    series_category_code_two = ""
-                    series_category_codes.append(series_category_code_two)
-                series_category_codes.sort(key=len, reverse=True)
-                series_category_code = series_category_codes[0]
-                print(
-                    f"series_check(): Series category code, longest: {series_category_code}"
-                )
+            lines = inf.read()
+        val = sp.parse_payload_strict_json(lines)
+        if not val:
+            return None
 
-                return (
-                    series_description,
-                    series_short,
-                    series_medium,
-                    series_long,
-                    series_title_full,
-                    series_category_code,
-                )
+        # Sort and return longest of descriptions
+        series_descriptions = []
+        series_short = val.summary.short or ""
+        series_descriptions.append(series_short)
+        series_medium = val.summary.medium or ""
+        series_descriptions.append(series_medium)
+        series_long = val.summary.long or ""
+        series_descriptions.append(series_long)
+        series_descriptions.sort(key=len, reverse=True)
+        series_description = series_descriptions[0]
+        print(f"series_check(): Series description longest: {series_description}")
+
+        series_title_full = val.title or ""
+        print(f"series_check(): Series title full: {series_title_full}")
+
+        # series category codes, unsure if there's always two parts to category, selects longest
+        series_category_codes = []
+        if len(val.category) >= 1:
+            for num in range(0, len(val.category)):
+                series_category_codes.append(val.category[num].code or "")
+        series_category_codes.sort(key=len, reverse=True)
+        series_category_code = series_category_codes[0]
+        print(f"series_check(): Series category code, longest: {series_category_code}")
+
+        return (
+            series_description,
+            series_short,
+            series_medium,
+            series_long,
+            series_title_full,
+            series_category_code,
+        )
 
 
 def genre_retrieval(category_code, description, title):
@@ -419,75 +399,79 @@ def genre_retrieval(category_code, description, title):
         print(
             f"genre_retrieval(): The genre data is being retrieved for: {category_code}"
         )
-        for _ in data:
-            if category_code in data["genres"]:
-                genre_one = []
-                genre_two = []
-                subject_one = []
-                subject_two = []
-                try:
-                    genre_one = data["genres"][category_code.strip("u")]["Genre"]
-                    print(f"genre_retrieval(): Genre one: {genre_one}")
-                    if "Undefined" in genre_one:
-                        print(
-                            f"genre_retrieval(): Undefined category_code discovered: {category_code}"
-                        )
-                        with open(
-                            f"{GENRE_PTH}redux_undefined_genres.txt", "a"
-                        ) as genre_log:
-                            print(
-                                "genre_retrieval(): Writing Undefined category details to genre log"
-                            )
-                            genre_log.write("\n")
-                            genre_log.write(
-                                f"Category: {category_code}     Title: {title}     Description: {description}"
-                            )
-                        genre_one_priref = ""
-                    else:
-                        for _, val in genre_one.items():
-                            genre_one_priref = val
-                        print(
-                            f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
-                        )
-                except (IndexError, TypeError, KeyError):
-                    genre_one_priref = ""
-                try:
-                    genre_two = data["genres"][category_code.strip("u")]["Genre2"]
-                    for _, val in genre_two.items():
-                        genre_two_priref = val
-                    print(
-                        f"genre_retrieval(): Key value for genre_two_priref: {genre_two_priref}"
-                    )
-                except (IndexError, TypeError, KeyError):
-                    genre_two_priref = ""
-                try:
-                    subject_one = data["genres"][category_code.strip("u")]["Subject"]
-                    for _, val in subject_one.items():
-                        subject_one_priref = val
-                    print(
-                        f"genre_retrieval(): Key value for subject_one_priref: {subject_one_priref}"
-                    )
-                except (IndexError, TypeError, KeyError):
-                    subject_one_priref = ""
-                try:
-                    subject_two = data["genres"][category_code.strip("u")]["Subject2"]
-                    for _, val in subject_two.items():
-                        subject_two_priref = val
-                    print(
-                        f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}"
-                    )
-                except (IndexError, TypeError, KeyError):
-                    subject_two_priref = ""
-                return [
-                    genre_one_priref,
-                    genre_two_priref,
-                    subject_one_priref,
-                    subject_two_priref,
-                ]
+    for _ in data:
+        if category_code in data["genres"]:
+            genre_one = {}
+            genre_two = {}
+            subject_one = {}
+            subject_two = {}
 
+            genre_one = data["genres"][category_code.strip("u")]["Genre"]
+            print(f"genre_retrieval(): Genre one: {genre_one}")
+            if "Undefined" in str(genre_one):
+                print(
+                    f"genre_retrieval(): Undefined category_code discovered: {category_code}"
+                )
+                with open(
+                    os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a"
+                ) as genre_log:
+                    genre_log.write("\n")
+                    genre_log.write(
+                        f"Category: {category_code}     Title: {title}     Description: {description}"
+                    )
+                genre_one_priref = ""
+            else:
+                for _, val in genre_one.items():
+                    genre_one_priref = val
+                print(
+                    f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
+                )
+            try:
+                genre_two = data["genres"][category_code.strip("u")]["Genre2"]
+                for _, val in genre_two.items():
+                    genre_two_priref = val
+            except (IndexError, KeyError):
+                genre_two_priref = ""
+
+            try:
+                subject_one = data["genres"][category_code.strip("u")]["Subject"]
+                for _, val in subject_one.items():
+                    subject_one_priref = val
+                print(
+                    f"genre_retrieval(): Key value for subject_one_priref: {subject_one_priref}"
+                )
+            except (IndexError, KeyError):
+                subject_one_priref = ""
+
+            try:
+                subject_two = data["genres"][category_code.strip("u")]["Subject2"]
+                for _, val in subject_two.items():
+                    subject_two_priref = val
+                print(
+                    f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}"
+                )
+            except (IndexError, KeyError):
+                subject_two_priref = ""
+
+            return [
+                genre_one_priref,
+                genre_two_priref,
+                subject_one_priref,
+                subject_two_priref,
+            ]
+
+        else:
             logger.warning(
                 "%s -- New category not in EPG_genre_map.yaml: %s", category_code, title
             )
+            with open(
+                os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a"
+            ) as genre_log:
+                genre_log.write("\n")
+                genre_log.write(
+                    f"Category: {category_code}     Title: {title}     Description: {description}"
+                )
+            return []
 
 
 def csv_retrieve(fullpath):
@@ -534,355 +518,314 @@ def csv_retrieve(fullpath):
     return (csv_desc, csv_act, csv_dump)
 
 
-def fetch_lines(fullpath, lines):
+def fetch_lines(fullpath, json_dct):
     """
     Function to extract all required fields
     and return as a dictionary
     """
     epg_dict = {}
     generic = False
-    for _ in lines:
-        print(f"Fullpath for file being handled: {fullpath}")
-        try:
-            title_whole = lines["item"][0]["asset"]["title"]
-        except (IndexError, KeyError, TypeError):
-            title_whole = ""
-        try:
-            title_new = lines["item"][0]["title"]
-        except (IndexError, KeyError, TypeError):
-            title_new = ""
+    val = jp.parse_payload_strict_json(json_dct)
 
-        # This block is for correct title formatting, and flagging 'Generic'
-        if title_whole.title().startswith("Generic"):
-            print(title_whole)
+    print(f"Fullpath for file being handled: {fullpath}")
+    title_whole = val.item[0].asset.title or ""
+    title_new = val.item[0].title or ""
+
+    # This block is for correct title formatting, and flagging 'Generic'
+    if title_whole.title().startswith("Generic"):
+        print(title_whole)
+        title_for_split = title_new
+        generic = True
+    elif title_whole == "":
+        title_for_split = title_new
+    else:
+        title_bare = "".join(str for str in title_whole if str.isalnum())
+        if title_bare.isnumeric():
             title_for_split = title_new
-            generic = True
-        elif title_whole == "":
-            title_for_split = title_new
         else:
-            title_bare = "".join(str for str in title_whole if str.isalnum())
-            if title_bare.isnumeric():
-                title_for_split = title_new
-            else:
-                title_for_split = title_whole
+            title_for_split = title_whole
 
-        # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
-        title, title_article = split_title(title_for_split)
-        title = title.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
+    # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
+    title, title_article = split_title(title_for_split)
 
-        description = []
-        try:
-            d_short = lines["item"][0]["summary"]["short"]
-            d_short = d_short.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
-            epg_dict["d_short"] = d_short
-            description.append(d_short)
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            d_medium = lines["item"][0]["summary"]["medium"]
-            d_medium = d_medium.replace("\xe2\x80\x99", "'").replace(
-                "\xe2\x80\x93", "-"
-            )
-            epg_dict["d_medium"] = d_medium
-            description.append(d_medium)
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            d_long = lines["item"][0]["summary"]["long"]
-            d_long = d_long.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
-            epg_dict["d_long"] = d_long
-            description.append(d_long)
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
+    description = []
+    d_short = val.item[0].summary.short or ""
+    if len(d_short) > 0:
+        d_short = d_short.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
+        epg_dict["d_short"] = d_short
+        description.append(d_short)
+    d_medium = val.item[0].summary.medium or ""
+    if len(d_medium) > 0:
+        d_medium = d_medium.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
+        epg_dict["d_medium"] = d_medium
+        description.append(d_medium)
+    d_long = val.item[0].summary.long or ""
+    if len(d_long) > 0:
+        d_long = d_long.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
+        epg_dict["d_long"] = d_long
+        description.append(d_long)
 
-        # Sorts to longest first which populates description var
-        description.sort(key=len, reverse=True)
-        if len(description) > 0:
-            description = description[0]
-        else:
-            description = ""
+    # Sorts to longest first which populates description var
+    description.sort(key=len, reverse=True)
+    if len(description) > 0:
+        description = description[0]
+    else:
+        description = ""
 
-        # For closed programming, overwrites title/desc var
-        if title == "Close":
-            print(f"Title has 'Close' as name: {fullpath}")
-            for key, val in CHANNELS.items():
-                if f"/{key}/" in fullpath:
-                    print(f"Key that's in fullpath: {key}")
-                    title = val[1]
-                    description = val[2]
-                    print(f"Replacement title for 'Close': {title}")
-                    print(f"Replacement description: {description}")
-
-        epg_dict["title"] = title
-        if title_article:
-            epg_dict["title_article"] = title_article
-        epg_dict["description"] = description
-
-        try:
-            title_date_start_full = lines["item"][0]["dateTime"]
-            title_date_start = str(title_date_start_full)[0:10]
-            epg_dict["title_date_start"] = title_date_start
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            time_full = lines["item"][0]["dateTime"]
-            time = str(time_full)[11:19]
-            epg_dict["time"] = time
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            duration = lines["item"][0]["duration"]
-            duration_total = str(duration)
-            epg_dict["duration_total"] = duration_total
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            certification = lines["item"][0]["certification"]["bbfc"]
-            epg_dict["certification"] = [certification]
-        except (IndexError, KeyError, TypeError):
-            certification = ""
-        try:
-            group = lines["item"][0]["meta"]["group"]
-            group = str(group)
-            epg_dict["group"] = [group]
-        except (IndexError, KeyError, TypeError):
-            group = ""
-        try:
-            attribute = lines["item"][0]["attribute"]
-            asset_attribute = lines["item"][0]["asset"]["attribute"]
-            epg_dict["attribute"] = attribute
-            epg_dict["asset_attribute"] = asset_attribute
-            list_attributes = attribute + asset_attribute + [group] + [certification]
-            epg_dict["epg_attribute"] = ", ".join(
-                str(x) for x in list_attributes if len(x) > 0
-            )
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-
-        if "black-and-white" in str(asset_attribute):
-            colour_manifestation = "B"
-            print("This is a black and white item")
-        else:
-            colour_manifestation = "C"
-            print("This is being classed as a colour item")
-
-        epg_dict["colour_manifestation"] = colour_manifestation
-
-        try:
-            asset_id = lines["item"][0]["asset"]["id"]
-            epg_dict["asset_id"] = asset_id
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            related_content = lines["item"][0]["asset"]["related"]
-            related_content = str(related_content)
-            epg_dict["related_content"] = related_content
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            series_number = lines["item"][0]["asset"]["related"][0]["number"]
-            epg_dict["series_number"] = int(series_number)
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            series_id = lines["item"][0]["asset"]["related"][1]["id"]
-            epg_dict["series_id"] = str(series_id)
-        except (IndexError, KeyError, TypeError):
-            series_id = None
-        nested_id = check_id(fullpath)
-        if nested_id is None:
-            pass
-        else:
-            if len(nested_id) == 36 and nested_id != series_id:
-                logger.warning(
-                    "Retrieved Series ID %s likely not 'series' - exchanged for %s",
-                    series_id,
-                    nested_id,
-                )
-                series_id = nested_id
-                epg_dict["series_id"] = str(series_id)
-        try:
-            episode_total = lines["item"][0]["asset"]["meta"]["episodeTotal"]
-            epg_dict["episode_total"] = episode_total
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            episode_number = lines["item"][0]["asset"]["meta"]["episode"]
-            logger.info("Episode number: %s", episode_number)
-        except (IndexError, KeyError, TypeError):
-            episode_number = ""
-        if "&" in str(episode_number):
-            episode_number = episode_number.split("&")
-            logger.info(
-                "& found in episode_number: %s - %s",
-                episode_number,
-                type(episode_number),
-            )
-            print(
-                f"Episode number contains '&' and has been split {len(episode_number)} times"
-            )
-        epg_dict["episode_number"] = episode_number
-        category_codes = []
-        try:
-            category_code_one = lines["item"][0]["asset"]["category"][0]["code"]
-            category_codes.append(category_code_one)
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        try:
-            category_code_two = lines["item"][0]["asset"]["category"][1]["code"]
-            category_codes.append(category_code_two)
-        except (IndexError, KeyError, TypeError) as err:
-            print(err)
-        # Sort for longest
-        category_codes.sort(key=len, reverse=True)
-        if len(category_codes) > 1:
-            category_code = category_codes[0]
-        else:
-            category_code = category_codes
-        epg_dict["category_code"] = category_code
-        try:
-            work = lines["item"][0]["asset"]["type"]
-            epg_dict["work"] = work
-        except (IndexError, KeyError, TypeError):
-            work = ""
-
-        # Broadcast details
-        if "bbc" in fullpath or "cbeebies" in fullpath or "cbbc" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "454"
-            print(f"Broadcast company set to BBC in {fullpath}")
-        elif "itv" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "20425"
-            print(f"Broadcast company set to ITV in {fullpath}")
-        elif "more4" in fullpath or "film4" in fullpath or "/e4/" in fullpath:
-            code_type = "MPEG-2"
-            broadcast_company = "73319"
-            print(f"Broadcast company set to Channel4 in {fullpath}")
-        elif "channel4" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "73319"
-            print(f"Broadcast company set to Channel4 in {fullpath}")
-        elif "5star" in fullpath or "five" in fullpath:
-            code_type = "MPEG-2"
-            broadcast_company = "24404"
-            print(f"Broadcast company set to Five in {fullpath}")
-        elif "sky_news" in fullpath:
-            code_type = "MPEG-2"
-            broadcast_company = "78200"
-            print(f"Broadcast company set to Sky News in {fullpath}")
-        elif "skyarts" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "150001"
-            print(f"Broadcast company set to Sky Arts in {fullpath}")
-        elif "skymixhd" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "999939366"
-            print(f"Broadcast company set to Sky Mix in {fullpath}")
-        elif "al_jazeera" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "125338"
-            print(f"Broadcast company set to Al Jazeera in {fullpath}")
-        elif "gb_news" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "999831694"
-            print(f"Broadcast company set to GB News in {fullpath}")
-        elif "talk_tv" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "999883795"
-            print(f"Broadcast company set to Talk TV in {fullpath}")
-        elif "/u_dave" in fullpath:
-            code_type = "MPEG-2"
-            broadcast_company = "999929397"
-            print(f"Broadcast company set to U&Dave in {fullpath}")
-        elif "/u_drama" in fullpath:
-            code_type = "MPEG-2"
-            broadcast_company = "999929393"
-            print(f"Broadcast company set to U&Drama in {fullpath}")
-        elif "/u_yesterday" in fullpath:
-            code_type = "MPEG-2"
-            broadcast_company = "999929396"
-            print(f"Broadcast company set to U&Yesterday in {fullpath}")
-        elif "qvc" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "999939374"
-            print(f"Broadcast company set to QVC UK in {fullpath}")
-        elif "togethertv" in fullpath:
-            code_type = "MPEG-4 AVC"
-            broadcast_company = "999939362"
-            print(f"Broadcast company set to Together TV in {fullpath}")
-        else:
-            broadcast_company = None
-
-        if broadcast_company:
-            epg_dict["broadcast_company"] = broadcast_company
-        if code_type:
-            epg_dict["code_type"] = code_type
-
-        # Broadcast details
-        for key, val in CHANNELS.items():
+    # For closed programming, overwrites title/desc var
+    if title == "Close":
+        print(f"Title has 'Close' as name: {fullpath}")
+        for key, value in CHANNELS.items():
             if f"/{key}/" in fullpath:
-                try:
-                    channel = val[0]
-                    print(f"Broadcast channel is {channel}")
-                    epg_dict["channel"] = channel
-                except (IndexError, TypeError, KeyError) as err:
-                    print(err)
+                print(f"Key that's in fullpath: {key}")
+                title = value[1]
+                description = value[2]
+                print(f"Replacement title for 'Close': {title}")
+                print(f"Replacement description: {description}")
 
-        # Sort category data
-        try:
-            category_data = genre_retrieval(category_code, description, title)
-            print(f"Category data from genre_retrieval(): {category_data}")
-            work_genre_one = category_data[0]
-            print(f"Genre one work priref: {work_genre_one}")
-            epg_dict["work_genre_one"] = work_genre_one
-            if len(category_data[1]) > 0:
-                work_genre_two = category_data[1]
-                print(f"Genre two work priref: {work_genre_two}")
-                epg_dict["work_genre_two"] = work_genre_two
-            if len(category_data[2]) > 0:
-                work_subject_one = category_data[2]
-                print(f"Subject one work priref: {work_subject_one}")
-                epg_dict["work_subject_one"] = work_subject_one
-            if len(category_data[3]) > 0:
-                work_subject_two = category_data[3]
-                print(f"Subject two work priref: {work_subject_two}")
-                epg_dict["work_subject_two"] = work_subject_two
-        except (IndexError, TypeError, KeyError) as err:
-            print(err)
+    title = title.replace("\xe2\x80\x99", "'").replace("\xe2\x80\x93", "-")
+    epg_dict["title"] = title
+    if title_article:
+        epg_dict["title_article"] = title_article
+    epg_dict["description"] = description
 
-        if "factual-topics" in category_code:
-            nfa_category = "D"
-        elif "movie-drama" in category_code:
-            nfa_category = "F"
-        elif "news-current-affairs" in category_code:
-            nfa_category = "D"
-        elif "sports:" in category_code:
-            nfa_category = "D"
-        elif "music-ballet" in category_code:
-            nfa_category = "D"
-        elif "arts-culture:" in category_code:
-            nfa_category = "D"
-        elif "social-political-issues" in category_code:
-            nfa_category = "D"
-        elif "leisure-hobbies" in category_code:
-            nfa_category = "D"
-        elif "show-game-show" in category_code:
-            nfa_category = "D"
-        elif "quiz-show" in category_code:
-            nfa_category = "D"
-        else:
-            nfa_category = "F"
-        epg_dict["nfa_category"] = nfa_category
+    title_date_start = (
+        datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d") or ""
+    )
+    if len(title_date_start) >= 8:
+        epg_dict["title_date_start"] = title_date_start
+    time = datetime.datetime.strftime(val.item[0].date_time, "%H:%M:%S") or ""
+    if len(time) >= 6:
+        epg_dict["time"] = time
+    duration = str(val.item[0].duration) or ""
+    if len(duration) > 0:
+        epg_dict["duration_total"] = duration
 
-        # Generate work_type
-        if "work" in epg_dict:
-            if work in ("episode", "one-off"):
-                work_type = "T"
-            elif work == "movie":
-                work_type = "F"
-            print(f"Work type = {work_type}")
-            epg_dict["work_type"] = work_type
+    cert = ""
+    if "bbfc" in str(val.item[0].certification):
+        cert = str(val.item[0].certification.get("bbfc"))
+        epg_dict["certification"] = [cert]
+
+    group = str(val.item[0].meta.get("group", ""))
+    if len(group) > 0:
+        epg_dict["group"] = [group]
+
+    attribute = val.item[0].attribute or []
+    if len(attribute) > 0:
+        epg_dict["attribute"] = attribute
+    asset_attribute = val.item[0].asset.attribute or []
+    if len(asset_attribute) > 0:
+        epg_dict["asset_attribute"] = asset_attribute
+    list_attributes = attribute + asset_attribute + [group] + [cert]
+    epg_dict["epg_attribute"] = ", ".join(str(x) for x in list_attributes if len(x) > 0)
+
+    if "black-and-white" in str(asset_attribute):
+        colour_manifestation = "B"
+        print("This is a black and white item")
+    else:
+        colour_manifestation = "C"
+        print("This is being classed as a colour item")
+    epg_dict["colour_manifestation"] = colour_manifestation
+
+    asset_id = val.item[0].asset.id or None
+    if asset_id is None:
+        raise Exception from "Asset ID is missing! Cannot proceed"
+    else:
+        epg_dict["asset_id"] = asset_id
+
+    series_number = series_id = None
+    if val.item[0].asset.related:
+        series_number = val.item[0].asset.related[0].number
+        if series_number:
+            epg_dict["series_number"] = int(series_number)
+        series_id = val.item[0].asset.related[0].id
+
+    nested_id = check_id(fullpath)
+    if nested_id is not None:
+        if len(nested_id) == 36 and nested_id != series_id:
+            logger.warning(
+                "Retrieved Series ID %s likely not 'series' - exchanged for %s",
+                series_id,
+                nested_id,
+            )
+            series_id = nested_id
+    if series_id:
+        epg_dict["series_id"] = str(series_id)
+
+    episode_total = val.item[0].asset.meta.get("episodeTotal") or None
+    if episode_total:
+        epg_dict["episode_total"] = episode_total
+
+    episode_number = val.item[0].asset.meta.get("episode") or None
+    logger.info("Episode number: %s", episode_number)
+    if "&" in str(episode_number):
+        episode_number = episode_number.split("&")
+        logger.info(
+            "& found in episode_number: %s - %s",
+            episode_number,
+            type(episode_number),
+        )
+        print(
+            f"Episode number contains '&' and has been split {len(episode_number)} times"
+        )
+    epg_dict["episode_number"] = episode_number
+
+    category_codes = []
+    if len(val.item[0].asset.category) >= 1:
+        print("=------ CATEGORY CREATION -------=")
+        for num in range(0, len(val.item[0].asset.category)):
+            category_codes.append(val.item[0].asset.category[num].code)
+    print(category_codes)
+
+    # Sort for longest
+    category_codes.sort(key=len, reverse=True)
+    if len(category_codes) > 1:
+        category_code = category_codes[0]
+    else:
+        category_code = category_codes
+    print(category_code)
+    epg_dict["category_code"] = category_code
+
+    work = val.item[0].asset.type or None
+    if work:
+        epg_dict["work"] = work
+
+    # Broadcast details
+    if "bbc" in fullpath or "cbeebies" in fullpath or "cbbc" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "454"
+        print(f"Broadcast company set to BBC in {fullpath}")
+    elif "itv" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "20425"
+        print(f"Broadcast company set to ITV in {fullpath}")
+    elif "more4" in fullpath or "film4" in fullpath or "/e4/" in fullpath:
+        code_type = "MPEG-2"
+        broadcast_company = "73319"
+        print(f"Broadcast company set to Channel4 in {fullpath}")
+    elif "channel4" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "73319"
+        print(f"Broadcast company set to Channel4 in {fullpath}")
+    elif "5star" in fullpath or "five" in fullpath:
+        code_type = "MPEG-2"
+        broadcast_company = "24404"
+        print(f"Broadcast company set to Five in {fullpath}")
+    elif "sky_news" in fullpath:
+        code_type = "MPEG-2"
+        broadcast_company = "78200"
+        print(f"Broadcast company set to Sky News in {fullpath}")
+    elif "skyarts" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "150001"
+        print(f"Broadcast company set to Sky Arts in {fullpath}")
+    elif "skymixhd" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "999939366"
+        print(f"Broadcast company set to Sky Mix in {fullpath}")
+    elif "al_jazeera" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "125338"
+        print(f"Broadcast company set to Al Jazeera in {fullpath}")
+    elif "gb_news" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "999831694"
+        print(f"Broadcast company set to GB News in {fullpath}")
+    elif "talk_tv" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "999883795"
+        print(f"Broadcast company set to Talk TV in {fullpath}")
+    elif "/u_dave" in fullpath:
+        code_type = "MPEG-2"
+        broadcast_company = "999929397"
+        print(f"Broadcast company set to U&Dave in {fullpath}")
+    elif "/u_drama" in fullpath:
+        code_type = "MPEG-2"
+        broadcast_company = "999929393"
+        print(f"Broadcast company set to U&Drama in {fullpath}")
+    elif "/u_yesterday" in fullpath:
+        code_type = "MPEG-2"
+        broadcast_company = "999929396"
+        print(f"Broadcast company set to U&Yesterday in {fullpath}")
+    elif "qvc" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "999939374"
+        print(f"Broadcast company set to QVC UK in {fullpath}")
+    elif "togethertv" in fullpath:
+        code_type = "MPEG-4 AVC"
+        broadcast_company = "999939362"
+        print(f"Broadcast company set to Together TV in {fullpath}")
+    else:
+        broadcast_company = None
+
+    if broadcast_company:
+        epg_dict["broadcast_company"] = broadcast_company
+    if code_type:
+        epg_dict["code_type"] = code_type
+
+    # Broadcast details
+    for key, val in CHANNELS.items():
+        if f"/{key}/" in fullpath:
+            try:
+                channel = val[0]
+                print(f"Broadcast channel is {channel}")
+                epg_dict["channel"] = channel
+            except (IndexError, TypeError, KeyError) as err:
+                print(err)
+
+    # Sort category data
+    category_data = genre_retrieval(category_code, description, title)
+    print(f"Category data from genre_retrieval(): {category_data}")
+    total_category = len(category_data)
+    if total_category >= 1:
+        work_genre_one = category_data[0]
+        print(f"Genre one work priref: {work_genre_one}")
+        epg_dict["work_genre_one"] = work_genre_one
+    if total_category >= 2:
+        work_genre_two = category_data[1]
+        print(f"Genre two work priref: {work_genre_two}")
+        epg_dict["work_genre_two"] = work_genre_two
+    if total_category >= 3:
+        work_subject_one = category_data[2]
+        print(f"Subject one work priref: {work_subject_one}")
+        epg_dict["work_subject_one"] = work_subject_one
+    if total_category == 4:
+        work_subject_two = category_data[3]
+        print(f"Subject two work priref: {work_subject_two}")
+        epg_dict["work_subject_two"] = work_subject_two
+
+    if "factual-topics" in category_code:
+        nfa_category = "D"
+    elif "movie-drama" in category_code:
+        nfa_category = "F"
+    elif "news-current-affairs" in category_code:
+        nfa_category = "D"
+    elif "sports:" in category_code:
+        nfa_category = "D"
+    elif "music-ballet" in category_code:
+        nfa_category = "D"
+    elif "arts-culture:" in category_code:
+        nfa_category = "D"
+    elif "social-political-issues" in category_code:
+        nfa_category = "D"
+    elif "leisure-hobbies" in category_code:
+        nfa_category = "D"
+    elif "show-game-show" in category_code:
+        nfa_category = "D"
+    elif "quiz-show" in category_code:
+        nfa_category = "D"
+    else:
+        nfa_category = "F"
+    epg_dict["nfa_category"] = nfa_category
+
+    # Generate work_type
+    if "work" in epg_dict:
+        if work in ("episode", "one-off"):
+            work_type = "T"
+        elif work == "movie":
+            work_type = "F"
+        print(f"Work type = {work_type}")
+        epg_dict["work_type"] = work_type
 
     return generic, epg_dict
 
@@ -935,11 +878,11 @@ def main():
 
         print(f"\nFullpath for file being handled: {fullpath}")
         with open(fullpath, "r", encoding="utf-8") as inf:
-            lines = json.load(inf)
+            json_data = inf.read()
 
         # Retrieve all data needed from JSON
-        if lines:
-            generic, epg_dict = fetch_lines(fullpath, lines)
+        if json_data:
+            generic, epg_dict = fetch_lines(fullpath, json_data)
         else:
             print("No EPG dictionary found. Skipping!")
             continue

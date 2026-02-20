@@ -456,6 +456,57 @@ class VT10Batch:
         return self.batch.successfully_completed
 
 
+class TVAMBatch:
+    """
+    Create a tree of Workflow activities specific to TVAM 1inch video encoding (currently modelled from VT10):
+      - Pick
+      - Encode
+      - Return
+
+    To use:
+
+        # Items
+        item_prirefs = [123, 567]
+
+        # Job metadata
+        topnode_metadata = {'description': 'TV-AM / AVP / etc',
+                            'completion.date': '2026-01-31'}
+
+        # Create
+        b = TVAMBatch(l, **topnode_metadata)
+    """
+
+    def __init__(self, items=None, **kwargs):
+        # Default metadata
+        d = {
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "402479",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "VTR-10 - Video Copying",
+                "request.details": "Transfer to preservation and proxy formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK03A06000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
+
+        # Add any additional metadata to the topNode
+        for k in kwargs:
+            d["topNode"][k] = kwargs[k]
+
+        # Create
+        self.batch = Batch(items, **d)
+
+    @property
+    def successfully_completed(self):
+        return self.batch.successfully_completed
+
+
 class D3Batch:
     """
     Create a tree of Workflow activities specific to D3 video encoding (currently modelled from VT10):

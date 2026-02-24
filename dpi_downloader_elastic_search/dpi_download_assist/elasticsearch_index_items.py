@@ -33,9 +33,10 @@ def cid_call_txt_dump():
     """
     Fetch URL ingests
     """
-    # search = "(Df=item and reproduction.reference->imagen.media.original_filename=* and modification>today-2)"
+    search = "(Df=item and reproduction.reference->imagen.media.original_filename=* and modification>today-2)"
+    # Alternative searches for clean up work:
     # search = "(priref=158847299,159129143,159151027)"
-    search = """(Df=item and reproduction.reference->imagen.media.original_filename=* and (modification>='2026-02-15' and modification<='2026-02-19')"""
+    # search = "(Df=item and reproduction.reference->imagen.media.original_filename=* and (modification>='2026-02-15' and modification<='2026-02-19')"
 
     logging.info("Downloading prirefs with search: %s", search)
     try:
@@ -55,8 +56,10 @@ def cid_call_txt_dump():
     logging.info("Ingest prirefs written to %s", TXT_DUMP)
 
     # Fetch Item records based on edits in the grandparent Work record for ingested Items
-    # search2 = "(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->edit.date>today-2)"
-    search2 = """(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->(modification>='2026-02-15' and modification<='2026-02-19'))"""
+    search2 = "(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->edit.date>today-2)"
+    # Alternative search for clean up work:
+    # search2 = "(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->(modification>='2026-02-15' and modification<='2026-02-19'))"
+
     logging.info("Downloading second batch of prirefs with search: %s", search)
     try:
         response_work_changes = requests.get(f"{API}?database=prirefcollectraw&search={search2}&limit=0", timeout=30)

@@ -12,9 +12,9 @@ import json
 import logging
 import os
 import sys
+import csv
 from datetime import date, timedelta
-from time import sleep
-from typing import Final
+from typing import Final, Generator, Optional, List
 
 # Local import
 CODE_PATH = os.path.join(os.environ.get("CODE"), "document_en_15907/techedge")
@@ -29,6 +29,10 @@ STORAGE_PATH: Final = os.environ["ADVERTS_PATH"]
 LOG_PATH: Final = os.environ["LOG_PATH"]
 CODE_PATH: Final = os.environ["CODE"]
 CONTROL: Final = os.path.join(LOG_PATH, "downtime_control.json")
+DEST: Final = os.path.join(
+    os.environ.get("ADMIN"),
+    "datasets/adverts_techedge_no_dupes/"
+)
 
 # Setup logging
 LOGGER = logging.getLogger("retrieve_historical_data")
@@ -40,21 +44,36 @@ hdlr.setFormatter(formatter)
 LOGGER.addHandler(hdlr)
 LOGGER.setLevel(logging.INFO)
 
+OMIT = [
+    "SKYADSMART000",
+    "C4ADDRESSABLE",
+    "ITVADDRESSABLE"
+]
 
-def check_control() -> None:
-    """
-    Check control JSON for downtime request
-    """
-    with open(CONTROL) as control:
-        j = json.load(control)
-        if not j["pause_scripts"]:
-            LOGGER.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
-            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+HEADER = [
+    "Channel",
+    "Date",
+    "Start time",
+    "Film Code",
+    "Break Code",
+    "Advertiser",
+    "Brand",
+    "Agency",
+    "Holding Company",
+    "BARB Prog Before",
+    "BARB Prog After",
+    "Sales House",
+    "Major category",
+    "Mid category",
+    "Minor category",
+    "All PIB rel",
+    "All PIB pos",
+    "Log Station (2010-)",
+    "Impacts A4+"
+]
 
 
-def date_range(start_date, end_date):
+def date_range(start_date: str, end_date: str) -> Generator[str]:
     """
     Set date range, and yield one
     at a time back to main.
@@ -67,7 +86,7 @@ def date_range(start_date, end_date):
         yield str(start_date + timedelta(n))
 
 
-def check_for_existing(target_date):
+def check_for_existing(target_date: str) -> bool:
     """
     See if match already in ADVERTS path
     """
@@ -77,6 +96,40 @@ def check_for_existing(target_date):
             return True
 
     return False
+
+
+def yield_csv_rows(cpath: str) -> Generator[List[str]]:
+    """
+    Open CSV path supplied and yield rows
+    Args:
+        cpath (str): Path to CSV
+    """
+    with open(cpath, "r", encoding="latin1") as data:
+        rows = csv.reader(data)
+        next(rows)
+        for row in rows:
+            print(row)
+            yield row
+
+
+def make_new_csv(csv_title: str) -> Optional[str]:
+    """
+    Create a new CSV
+    return CSV path
+    """
+    cpath = os.path.join(DEST, csv_title)
+    if os.path.exists(cpath):
+        print(f"Path already exists: {cpath}")
+        return None
+
+    with open(cpath, "a") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(HEADER)
+
+    if os.path.exists(cpath):
+        return cpath
+
+    return None
 
 
 def main() -> None:
@@ -100,7 +153,7 @@ def main() -> None:
     start_date = end_date - timedelta(days=7)
     sftp = ut.sftp_connect()
     LOGGER.info(
-        "========== Fetch historical adverts data script STARTED ==============================================="
+        "========== Fetch adverts data & cleanse script STARTED ==============================================="
     )
 
     for target_date in date_range(start_date, end_date):
@@ -110,11 +163,26 @@ def main() -> None:
         download_path = ut.get_metadata(target_date, sftp)
         if not download_path:
             LOGGER.warning("Match for date path was not found yet: %s", target_date)
+            continue
         elif os.path.isfile(download_path):
             LOGGER.info("New download: %s", download_path)
 
+        # Create cleaned version
+        clean_csv = make_new_csv(f"{target_date}_BFIExport.csv")
+        if clean_csv is None:
+            print(f"Missing destination path: {clean_csv}")
+            continue
+        with open(clean_csv, "a", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            for row in yield_csv_rows(download_path):
+                print(type(row))
+                match = [x for x in OMIT if x == row[3]]
+                if match:
+                    continue
+                writer.writerow(row)
+
     LOGGER.info(
-        "========== Fetch historical adverts data script ENDED ================================================"
+        "========== Fetch adverts data & cleanse script ENDED ================================================"
     )
 
 

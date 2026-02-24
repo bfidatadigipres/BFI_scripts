@@ -23,7 +23,7 @@ import utils
 API = os.environ.get("CID_API1")
 ES_PATH = os.environ.get("ES_SEARCH_PATH")
 LOG_PATH = os.environ.get("LOG_PATH")
-LOG = os.path.join(LOG_PATH, "elastic_search_item_indexing.log")
+LOG = os.path.join(LOG_PATH, "elasticsearch_item_index.log")
 ADMIN = os.environ.get("CODE")
 TXT_DUMP = os.path.join(ADMIN, "dpi_downloader_elastic_search/dpi_download_assist/item_prirefs.txt")
 logging.basicConfig(filename=LOG, level=logging.INFO, format="%(asctime)s %(message)s", filemode="w")
@@ -40,7 +40,7 @@ def cid_call_txt_dump():
 
     logging.info("Downloading prirefs with search: %s", search)
     try:
-        url_ingests = requests.get(f"{API}?database=prirefcollectraw&search={search}&limit=0", timeout=30)
+        url_ingests = requests.get(f"{API}?database=prirefcollectraw&search={search}&limit=0", timeout=300)
     except requests.exceptions.Timeout:
         print("Timed out at 30 seconds")
     except (requests.exceptions.RequestException) as err:
@@ -51,7 +51,7 @@ def cid_call_txt_dump():
         sys.exit("No URLs found for ingest")
 
     logging.info("Retrieve prirefs:\n%s", ", ".join(url_ingests.text.split("\r\n")))
-    with open(TXT_DUMP, 'w+') as txtfile:
+    with open(TXT_DUMP, 'w') as txtfile:
         txtfile.write(url_ingests.text + '\n')
     logging.info("Ingest prirefs written to %s", TXT_DUMP)
 
@@ -62,14 +62,16 @@ def cid_call_txt_dump():
 
     logging.info("Downloading second batch of prirefs with search: %s", search)
     try:
-        response_work_changes = requests.get(f"{API}?database=prirefcollectraw&search={search2}&limit=0", timeout=30)
-    except requests.exceptions.Timeout:
+        response = requests.get(f"{API}?database=prirefcollectraw&search={search2}&limit=0", timeout=300)
+        print(response)
+    except requests.exceptions.Timeout as err:
         print("Timed out at 30 seconds")
-    except (requests.exceptions.RequestException) as err:
+        raise SystemExit(err) from err
+    except requests.exceptions.RequestException as err:
         raise SystemExit(err) from err
 
     with open(TXT_DUMP, 'a') as txtfile:
-        txtfile.write(response_work_changes.text)
+        txtfile.write(response.text)
     logging.info("Work change prirefs written to %s", TXT_DUMP)
 
 
@@ -77,16 +79,13 @@ def main():
     """
     Trigger retrieval of CID item data
     and push into elastic search index
-
+    """
     if not utils.check_control("pause_scripts"):
         logging.info(
             "Script run prevented by downtime_control.json. Script exiting."
         )
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.cid_check(API):
-        logging.warning("* Cannot establish CID session, exiting script")
-        sys.exit("* Cannot establish CID session, exiting script")
-    """
+
     logging.info("Elasticsearch Index Items start ================================")
     cid_call_txt_dump()
     es = Elasticsearch(ES_PATH)

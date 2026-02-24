@@ -31,7 +31,7 @@ import utils
 from parsers import techedge_csv as tec
 
 # Global variables
-CODE_PATH = os.environ["CODE"]
+CODE_PATH = os.environ["CODE_DEPENDS"]
 GENRE_MAP = os.path.join(CODE_PATH, "document_en_15907/EPG_genre_mapping.yaml")
 SERIES_LIST = os.path.join(CODE_PATH, "document_en_15907/series_list.json")
 LOG_PATH = os.environ["LOG_PATH"]

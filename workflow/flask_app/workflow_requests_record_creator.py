@@ -212,10 +212,6 @@ def main():
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
-    LOGGER.info(
-        "=== Workflow requests record creation start %s ===", str(datetime.now())[:18]
-    )
-
     requested_jobs = retrieve_requested()
     print(requested_jobs)
     if len(requested_jobs) == 0:

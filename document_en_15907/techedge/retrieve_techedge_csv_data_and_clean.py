@@ -8,21 +8,20 @@ and augmentation of CID record data
 2025
 """
 
-import json
-import logging
 import os
 import sys
 import csv
+import logging
+import subprocess
 from datetime import date, timedelta
-from typing import Final, Generator, Optional, List
-
-# Local import
-CODE_PATH = os.path.join(os.environ.get("CODE"), "document_en_15907/techedge")
-sys.path.append(CODE_PATH)
-import sftp_utils as ut
+from typing import Final, Iterator, Optional, List, Any
 
 sys.path.append(os.environ.get("CODE"))
 import utils
+
+CODE_PATH = os.path.join(os.environ.get("CODE"), "document_en_15907/techedge")
+sys.path.append(CODE_PATH)
+import sftp_utils as ut
 
 # Global variables
 STORAGE_PATH: Final = os.environ["ADVERTS_PATH"]
@@ -37,7 +36,7 @@ DEST: Final = os.path.join(
 # Setup logging
 LOGGER = logging.getLogger("retrieve_historical_data")
 hdlr = logging.FileHandler(
-    os.path.join(LOG_PATH, "retrieve_historical_adverts_metadata.log")
+    os.path.join(LOG_PATH, "retrieve_techedge_csv_data_and_clean.log")
 )
 formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
@@ -73,7 +72,7 @@ HEADER = [
 ]
 
 
-def date_range(start_date: str, end_date: str) -> Generator[str]:
+def date_range(start_date: str, end_date: str) -> Iterator[str]:
     """
     Set date range, and yield one
     at a time back to main.
@@ -90,15 +89,14 @@ def check_for_existing(target_date: str) -> bool:
     """
     See if match already in ADVERTS path
     """
-    files = [x for x in os.listdir(STORAGE_PATH)]
-    for file in files:
+    for file in os.listdir(STORAGE_PATH):
         if file.startswith(target_date):
             return True
 
     return False
 
 
-def yield_csv_rows(cpath: str) -> Generator[List[str]]:
+def yield_csv_rows(cpath: str) -> Iterator[List[str]]:
     """
     Open CSV path supplied and yield rows
     Args:
@@ -153,7 +151,7 @@ def main() -> None:
     start_date = end_date - timedelta(days=7)
     sftp = ut.sftp_connect()
     LOGGER.info(
-        "========== Fetch adverts data & cleanse script STARTED ==============================================="
+        "========== Fetch adverts data & cleanse script STARTED ==================================="
     )
 
     for target_date in date_range(start_date, end_date):
@@ -168,10 +166,13 @@ def main() -> None:
             LOGGER.info("New download: %s", download_path)
 
         # Create cleaned version
+        LOGGER.info("Creating cleaned up CSV version...")
+        os.chmod(download_path, mode=0o777)
         clean_csv = make_new_csv(f"{target_date}_BFIExport.csv")
         if clean_csv is None:
             print(f"Missing destination path: {clean_csv}")
             continue
+        os.chmod(clean_csv, mode=0o777)
         with open(clean_csv, "a", newline="") as csvfile:
             writer = csv.writer(csvfile)
             for row in yield_csv_rows(download_path):
@@ -180,9 +181,32 @@ def main() -> None:
                 if match:
                     continue
                 writer.writerow(row)
+        try:
+            count1 = subprocess.run(
+                ["wc", "-l", download_path],
+                capture_output=True,
+                check=True,
+                text=True,
+                shell=False
+            )
+            count2 = subprocess.run(
+                ["wc", "-l", clean_csv],
+                capture_output=True,
+                check=True,
+                text=True,
+                shell=False
+            )
+            LOGGER.info(
+                "New CSV created: Downloaded line count %s / Clean up CSV line count %s",
+                count1.stdout.split(" ")[0],
+                count2.stdout.split(" ")[0]
+            )
+        except Exception as err:
+            LOGGER.warning("Could not access CSV lengths: %s", err)
+            print(err)
 
     LOGGER.info(
-        "========== Fetch adverts data & cleanse script ENDED ================================================"
+        "========== Fetch adverts data & cleanse script ENDED ===================================="
     )
 
 

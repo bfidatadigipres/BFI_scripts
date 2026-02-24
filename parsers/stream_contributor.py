@@ -18,6 +18,7 @@ import json
 class UnexpectedFieldError(ValueError):
     """Raised if a JSON contains unanticipated field"""
 
+
 def _extract_extra_field_errors(e: ValidationError) -> List[Tuple[str, str]]:
     """
     Returns list of (json_path, message) for extra-field errors.
@@ -42,6 +43,7 @@ class APIModel(BaseModel):
     Base model: does not tolerate unexpected fields initally to find
     all variables in sample of JSON data.
     """
+
     # model_config = ConfigDict(extra="allow", populate_by_name=True)
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -105,4 +107,3 @@ def parse_payload_strict_json(raw_json: str) -> RootPayload:
         raise
     except json.JSONDecodeError:
         raise
-

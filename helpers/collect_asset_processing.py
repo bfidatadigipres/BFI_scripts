@@ -23,7 +23,9 @@ import utils
 
 # Global vars
 STORAGE = os.environ.get("QNAP_05")
-AUTOINGEST = os.path.join(os.environ.get("AUTOINGEST_QNAP05"), "ingest/autodetect/legacy")
+AUTOINGEST = os.path.join(
+    os.environ.get("AUTOINGEST_QNAP05"), "ingest/autodetect/legacy"
+)
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 
@@ -64,7 +66,7 @@ def transform_name(fname: str) -> Optional[str]:
     Transform filename to correct DPI filename
 
     Args:
-        fname (str): Filename as found in 
+        fname (str): Filename as found in
     Returns:
         Optional[str]: Transformed name or NoneType
     """
@@ -145,10 +147,18 @@ def main() -> None:
             LOGGER.warning("No matching record found for priref %s", priref)
             continue
         if cid_check == "":
-            LOGGER.warning("Object number %s could not be retrieved from priref %s", object_number, priref)
+            LOGGER.warning(
+                "Object number %s could not be retrieved from priref %s",
+                object_number,
+                priref,
+            )
             continue
         if obj != object_number:
-            LOGGER.warning("Object number %s does not match that from priref %s", object_number, obj)
+            LOGGER.warning(
+                "Object number %s does not match that from priref %s",
+                object_number,
+                obj,
+            )
             continue
 
         LOGGER.info("Filename will be converted from %s to %s", fname, new_fname)
@@ -160,20 +170,31 @@ def main() -> None:
             LOGGER.warning("Error retrieving data from CID with priref: %s", priref)
             continue
         if ref_num is "":
-            LOGGER.warning("Object number %s could not be retrieved from priref %s", obj, priref)
+            LOGGER.warning(
+                "Object number %s could not be retrieved from priref %s", obj, priref
+            )
             continue
         if ref_num == "No hits":
-            LOGGER.warning("No matching Digital Media record found for object number %s", obj)
+            LOGGER.warning(
+                "No matching Digital Media record found for object number %s", obj
+            )
             continue
         if ref_num.strip() != fname:
-            LOGGER.warning("Reference number %s does not match File name %s", ref_num, fname)
+            LOGGER.warning(
+                "Reference number %s does not match File name %s", ref_num, fname
+            )
             continue
-        imagen_name = check_item(f"object_number='{obj}'", "media", "imagen.media.original_filename")
+        imagen_name = check_item(
+            f"object_number='{obj}'", "media", "imagen.media.original_filename"
+        )
         if imagen_name is None or imagen_name is "No hits":
             LOGGER.warning("Error retrieving data from CID with object_number: %s", obj)
             continue
         if len(imagen_name) > 0:
-            LOGGER.warning("Imagen.media.original_filename present %s - do not ingest this twice!", imagen_name)
+            LOGGER.warning(
+                "Imagen.media.original_filename present %s - do not ingest this twice!",
+                imagen_name,
+            )
             continue
 
         new_fpath = os.path.join(AUTOINGEST, new_fname)
@@ -191,9 +212,15 @@ def main() -> None:
             LOGGER.warning("ERROR! Old file path still exists!\n%s", fpath)
             sys.exit("Aborting, in case of permission issues!")
         if not os.path.exists(new_fpath):
-            LOGGER.warning("New file path cannot be found in Autoingest:\n%s", new_fpath)
+            LOGGER.warning(
+                "New file path cannot be found in Autoingest:\n%s", new_fpath
+            )
             sys.exit("Aborting, in case of permissions issues!")
-        LOGGER.info("Successfully moved path to Autoingest with renaming:\n%s\n%s", fpath, new_fpath)
+        LOGGER.info(
+            "Successfully moved path to Autoingest with renaming:\n%s\n%s",
+            fpath,
+            new_fpath,
+        )
 
     LOGGER.info("==== Collections Asset renaming script COMPLETED ====")
 

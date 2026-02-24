@@ -14,8 +14,20 @@ from pydantic.functional_validators import BeforeValidator
 from pydantic_csv import BasemodelCSVReader
 
 CHNL = {
-    "5STAR", "CH4", "5", "E4", "Film4", "ITV1", "ITV1 HD", "ITV2", "ITV3", "ITV4", "ITVQuiz", "More4"
+    "5STAR",
+    "CH4",
+    "5",
+    "E4",
+    "Film4",
+    "ITV1",
+    "ITV1 HD",
+    "ITV2",
+    "ITV3",
+    "ITV4",
+    "ITVQuiz",
+    "More4",
 }
+
 
 def parse_channel(v):
     if v is None or v == "":
@@ -23,6 +35,7 @@ def parse_channel(v):
     if v not in CHNL:
         raise ValueError(f"Invalid channel: {v!r}")
     return v
+
 
 def parse_film_code(v):
     if v is None or v == "":
@@ -34,6 +47,7 @@ def parse_film_code(v):
         raise ValueError(f"Illegal characters in Film Code: {v!r}")
     return v.upper()
 
+
 def parse_break_code(v):
     if v is None or v == "":
         return None
@@ -44,6 +58,7 @@ def parse_break_code(v):
         raise ValueError(f"Illegal characters in Break Code: {v!r}")
     return v.upper()
 
+
 def parse_impacts_pos(v):
     if v is None or v == "":
         return None
@@ -52,10 +67,12 @@ def parse_impacts_pos(v):
         raise ValueError(f"Invalid length/range for number: {v!r}")
     return v
 
+
 ChannelStr = Annotated[str | None, BeforeValidator(parse_channel)]
 FilmCodeStr = Annotated[str | None, BeforeValidator(parse_film_code)]
 BreakCodeStr = Annotated[str | None, BeforeValidator(parse_break_code)]
 ImpactsPosInt = Annotated[int | None, BeforeValidator(parse_impacts_pos)]
+
 
 class Data(BaseModel):
     model_config = ConfigDict(extra="forbid")

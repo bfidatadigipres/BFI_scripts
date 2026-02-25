@@ -812,7 +812,7 @@ def download_aip(aip_uuid: str, dpath: str, fn: str) -> Optional[str]:
             download_path = os.path.join(dpath, fname)
 
             with open(download_path, "wb") as file:
-                for chunk in response.iter_content(chunk=8192):
+                for chunk in response.iter_content(8192):
                     if chunk:
                         file.write(chunk)
             if os.path.isfile(download_path):

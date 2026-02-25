@@ -820,3 +820,7 @@ def download_aip(aip_uuid: str, dpath: str, fn: str) -> Optional[str]:
     except requests.exceptions.RequestException as err:
         print(err)
         return None
+
+
+def download_access_file(fname: str) -> Optional[str]:
+    pass

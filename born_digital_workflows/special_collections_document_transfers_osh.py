@@ -274,7 +274,7 @@ def main() -> None:
     )
 
     sess = adlib.create_session()
-    statuses = ["OPEN"]
+    statuses = ["OPEN", "CLOSED"]
     for status in statuses:
         print(f"***** Processing: {status}")
         LOGGER.info("Processing status: %s", status)

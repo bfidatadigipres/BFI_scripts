@@ -212,19 +212,12 @@ def main():
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
-    LOGGER.info(
-        "=== Workflow requests record creation start %s ===", str(datetime.now())[:18]
-    )
-
     requested_jobs = retrieve_requested()
     print(requested_jobs)
     if len(requested_jobs) == 0:
         sys.exit("No jobs found, script exiting")
 
-    LOGGER.info(
-        "=== Workflow requests record creation start %s ===", str(datetime.now())[:18]
-    )
-
+    LOGGER.info("=== Workflow requests record creation start ===")
     LOGGER.info("Requested jobs found: %s", len(requested_jobs))
 
     # Iterate jobs
@@ -331,10 +324,7 @@ def main():
         update_table(job_id, "Completed")
         send_email_update(email, firstname, "Workflow request completed", job)
 
-    LOGGER.info(
-        "=== Workflow requests record creation completed %s ===",
-        str(datetime.now())[:18],
-    )
+    LOGGER.info("=== Workflow requests record creation completed ===")
 
 
 def update_table(job_id: str, new_status: str) -> None:

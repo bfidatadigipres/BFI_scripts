@@ -120,7 +120,7 @@ def main():
 
             # Track submission
             print("* Writing 2inch submissions to twoinch/submissions.csv...")
-            with open(os.path.join(SUB_CSV, "a") as of:
+            with open(SUB_CSV, "a") as of:
                 writer = csv.writer(of)
                 writer.writerow(submission)
 

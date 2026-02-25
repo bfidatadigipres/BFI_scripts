@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
 """
-Fetch daily CSV from Tech Edge SFTP
+BAU fetch CSV from Tech Edge SFTP
 for integration into Adverts project
 and augmentation of CID record data
+
+Must leave 10 day clearance for
+all metadata augmentation to CSV
+from TechEdge. If less than 10 days
+then 'Missing' rows appear and BARB
+data and Break codes are absent.
 
 2025
 """
@@ -147,8 +153,8 @@ def main() -> None:
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
-    end_date = date.today()
-    start_date = end_date - timedelta(days=7)
+    end_date = date.today() - timedelta(days=10)
+    start_date = end_date - timedelta(days=3)
     sftp = ut.sftp_connect()
     LOGGER.info(
         "========== Fetch adverts data & cleanse script STARTED ==================================="

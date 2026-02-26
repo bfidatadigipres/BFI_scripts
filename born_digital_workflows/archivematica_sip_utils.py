@@ -885,14 +885,13 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
     os.makedirs(dpath, exist_ok=True)
 
     fn_base = ref_code.replace("-", "_")
-    headers = dict(HEADER_META or {})
     headers.setdefault("REST-API-Key", API_KEY)
     tmp_path = os.path.join(dpath, fn_base + ".part")
 
     try:
         with requests.get(
             endpoint,
-            headers=headers,
+            headers=ATOM_HEADER,
             auth=("bfi", ATOM_AUTH),
             stream=True,
             allow_redirects=True,

@@ -885,7 +885,6 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
     os.makedirs(dpath, exist_ok=True)
 
     fn_base = ref_code.replace("-", "_")
-    headers.setdefault("REST-API-Key", API_KEY)
     tmp_path = os.path.join(dpath, fn_base + ".part")
 
     try:

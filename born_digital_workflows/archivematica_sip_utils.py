@@ -477,7 +477,7 @@ def get_atom_objects(skip_path: str) -> Optional[Dict[str, Any]]:
             # accept_redirect=True,
         )
         objects = json.loads(response.text)
-        print(f"Objects received: {objects}")
+
         if objects.get("results", None):
             return objects
 
@@ -893,7 +893,7 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
         with requests.get(
             endpoint,
             headers=headers,
-            auth=(SS_NAME, SS_KEY),
+            auth=(ATOM_AUTH, ATOM_KEY),
             stream=True,
             allow_redirects=True,
             timeout=(10, 300),

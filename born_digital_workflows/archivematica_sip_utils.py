@@ -12,6 +12,7 @@ special_collections_document_transfers_osh.py
 import base64
 import json
 import os
+import re
 import sys
 import mimetypes
 from typing import Optional, List, Any, Dict

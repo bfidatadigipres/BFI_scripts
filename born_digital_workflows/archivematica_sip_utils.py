@@ -872,6 +872,7 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
     extensions, rename file.
     """
 
+    print("Getting slug from AtoM")
     info = get_specific_atom_object(ref_code)
     if not info:
         return None
@@ -879,14 +880,18 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
     slug = info.get("slug")
     if not slug:
         return None
-
+    print(f"Slug: {slug}")
+    
     base = ATOM_URL if ATOM_URL.endswith("/") else ATOM_URL + "/"
     endpoint = urljoin(base, f"informationobjects/{slug}/digitalobject")
     os.makedirs(dpath, exist_ok=True)
+    print(f"Path endpoint: {endpoint}")
 
     fn_base = ref_code.replace("-", "_")
     tmp_path = os.path.join(dpath, fn_base + ".part")
+    print(f"Temp path for download: {tmp_path}")
 
+    print("Calling requests...")
     try:
         with requests.get(
             endpoint,
@@ -896,6 +901,7 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
             allow_redirects=True,
             timeout=(10, 300),
         ) as r:
+            print(r.text)
             try:
                 r.raise_for_status()
             except requests.HTTPError:
@@ -908,6 +914,7 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
                 )
 
             # Get extension
+            print("Attmpting to get extension...")
             cd = r.headers.get("Content-Disposition", "")
             server_name = _filename_from_content_disposition(cd)
 
@@ -919,20 +926,21 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
                 ctype = (r.headers.get("Content-Type") or "").split(";")[0].strip()
                 ext = mimetypes.guess_extension(ctype) or ""
 
+            print(f"Guessed extensions: {ext}")
             final_path = os.path.join(dpath, fn_base + ext)
-
+            print("Writing file to tmp_path")
             with open(tmp_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=1024 * 1024):
                     if chunk:
                         f.write(chunk)
-
+            print("Checking file length...")
             cl = r.headers.get("Content-Length")
             if cl is not None and os.path.getsize(tmp_path) != int(cl):
                 raise RuntimeError(
                     f"Incomplete download: wrote {os.path.getsize(tmp_path)} bytes, "
                     f"expected {cl}"
                 )
-
+            print(f"Renaming file... {final_path}")
             os.replace(tmp_path, final_path)
             return final_path
 

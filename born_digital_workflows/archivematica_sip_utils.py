@@ -530,6 +530,40 @@ def get_all_atom_objects()-> Optional[List[Any]]:
     return all_list
 
 
+def get_specific_atom_object(ob_num):
+    """
+    Handle skip iteration through all available
+    information objects, call get_atom_objects
+    with interative skip numbers from totals.
+    """
+
+    endpoint = os.path.join(ATOM_URL, "informationobjects")
+    objects = get_atom_objects(endpoint)
+    if not objects:
+        print("Warning, unable to find any informationobjects")
+        return None
+
+    total_obs = objects.get("total", None)
+    if not isinstance(total_obs, int):
+        print(f"Warning, unable to get total information objects from API: {objects}")
+        return None
+
+    for item in objects["results"]:
+        if ob_num in item.get("return_code"):
+            return item
+
+    runs = total_obs // 10
+    for num in range(1, runs + 1):
+        skip_endpoint = f"{endpoint}?skip={num}0"
+        new_ob = get_atom_objects(skip_endpoint)
+        if not new_ob:
+            continue
+        for item in new_ob["results"]:
+            if ob_num in item.get("return_code"):
+                return item
+    return None
+
+
 def get_slug_match(slug_match: str) -> bool:
     """
     Handles retrieval of all AtoM information objects
@@ -822,5 +856,35 @@ def download_aip(aip_uuid: str, dpath: str, fn: str) -> Optional[str]:
         return None
 
 
-def download_access_file(fname: str) -> Optional[str]:
-    pass
+def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
+    """
+    ref_code: BFI record object_number
+    Find a filename and download
+    the normalised version
+    """
+
+    info = get_specific_atom_object(ref_code)
+    if not info:
+        return None
+
+    slug = info.get("slug")
+    endpoint = os.path.join(ATOM_URL, f"informationobjects/{slug}/digitalobject")
+
+    try:
+        with requests.get(endpoint, headers=HEADER_META, stream=True) as response:
+            content = response.headers.get("Content-Disposition")
+            if content:
+                fname = content.split('filename=')[-1].strip('"')
+            else:
+                fname = f"{fn}.tar"
+            download_path = os.path.join(dpath, fname)
+
+            with open(download_path, "wb") as file:
+                for chunk in response.iter_content(8192):
+                    if chunk:
+                        file.write(chunk)
+            if os.path.isfile(download_path):
+                return download_path
+    except requests.exceptions.RequestException as err:
+        print(err)
+        return None

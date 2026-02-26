@@ -893,7 +893,7 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
         with requests.get(
             endpoint,
             headers=headers,
-            auth=(ATOM_AUTH, ATOM_KEY),
+            auth=("bfi", ATOM_AUTH),
             stream=True,
             allow_redirects=True,
             timeout=(10, 300),

@@ -13,8 +13,9 @@ import base64
 import json
 import os
 import sys
+import mimetypes
 from typing import Optional, List, Any, Dict
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 import paramiko
 import requests
 
@@ -549,7 +550,7 @@ def get_specific_atom_object(ob_num):
         return None
 
     for item in objects["results"]:
-        if ob_num in item.get("return_code"):
+        if ob_num in item.get("reference_code"):
             return item
 
     runs = total_obs // 10
@@ -559,7 +560,7 @@ def get_specific_atom_object(ob_num):
         if not new_ob:
             continue
         for item in new_ob["results"]:
-            if ob_num in item.get("return_code"):
+            if ob_num in item.get("reference_code"):
                 return item
     return None
 
@@ -856,11 +857,19 @@ def download_aip(aip_uuid: str, dpath: str, fn: str) -> Optional[str]:
         return None
 
 
+def _filename_from_content_disposition(cd: str) -> Optional[str]:
+    # Very small helper; handles: attachment; filename="x.pdf"
+    if not cd:
+        return None
+    m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)"?', cd)
+    return m.group(1) if m else None
+
+
 def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
     """
-    ref_code: BFI record object_number
-    Find a filename and download
-    the normalised version
+    Build endpoint from slug (retrieve using ref_code)
+    Attempt download of file to dpath, and check for
+    extensions, rename file.
     """
 
     info = get_specific_atom_object(ref_code)
@@ -868,23 +877,72 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
         return None
 
     slug = info.get("slug")
-    endpoint = os.path.join(ATOM_URL, f"informationobjects/{slug}/digitalobject")
+    if not slug:
+        return None
+
+    base = ATOM_URL if ATOM_URL.endswith("/") else ATOM_URL + "/"
+    endpoint = urljoin(base, f"informationobjects/{slug}/digitalobject")
+    os.makedirs(dpath, exist_ok=True)
+
+    fn_base = ref_code.replace("-", "_")
+    headers = dict(HEADER_META or {})
+    headers.setdefault("REST-API-Key", API_KEY)
+    tmp_path = os.path.join(dpath, fn_base + ".part")
 
     try:
-        with requests.get(endpoint, headers=HEADER_META, stream=True) as response:
-            content = response.headers.get("Content-Disposition")
-            if content:
-                fname = content.split('filename=')[-1].strip('"')
-            else:
-                fname = f"{fn}.tar"
-            download_path = os.path.join(dpath, fname)
+        with requests.get(
+            endpoint,
+            headers=headers,
+            auth=(SS_NAME, SS_KEY),
+            stream=True,
+            allow_redirects=True,
+            timeout=(10, 300),
+        ) as r:
+            try:
+                r.raise_for_status()
+            except requests.HTTPError:
+                body_snippet = (r.text or "")[:500]
+                raise RuntimeError(
+                    f"Download failed: {r.status_code} {r.reason}\n"
+                    f"Final URL: {r.url}\n"
+                    f"Content-Type: {r.headers.get('Content-Type')}\n"
+                    f"Body (first 500 chars):\n{body_snippet}"
+                )
 
-            with open(download_path, "wb") as file:
-                for chunk in response.iter_content(8192):
+            # Get extension
+            cd = r.headers.get("Content-Disposition", "")
+            server_name = _filename_from_content_disposition(cd)
+
+            ext = ""
+            if server_name:
+                _, ext = os.path.splitext(server_name)
+
+            if not ext:
+                ctype = (r.headers.get("Content-Type") or "").split(";")[0].strip()
+                ext = mimetypes.guess_extension(ctype) or ""
+
+            final_path = os.path.join(dpath, fn_base + ext)
+
+            with open(tmp_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
                     if chunk:
-                        file.write(chunk)
-            if os.path.isfile(download_path):
-                return download_path
-    except requests.exceptions.RequestException as err:
+                        f.write(chunk)
+
+            cl = r.headers.get("Content-Length")
+            if cl is not None and os.path.getsize(tmp_path) != int(cl):
+                raise RuntimeError(
+                    f"Incomplete download: wrote {os.path.getsize(tmp_path)} bytes, "
+                    f"expected {cl}"
+                )
+
+            os.replace(tmp_path, final_path)
+            return final_path
+
+    except Exception as err:
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except OSError:
+            pass
         print(err)
         return None

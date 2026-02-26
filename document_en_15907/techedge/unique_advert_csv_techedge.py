@@ -13,7 +13,9 @@ incorrectly capitalised lines
 
 import os
 import csv
+import sys
 import logging
+import collections
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -31,67 +33,6 @@ FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-
-OMIT = [
-    "SKYADSMART000",
-    "C4ADDRESSABLE",
-    "ITVADDRESSABLE"
-]
-
-HEADER = [
-    "Channel",
-    "Date",
-    "Start time",
-    "Film Code",
-    "Break Code",
-    "Advertiser",
-    "Brand",
-    "Agency",
-    "Holding Company",
-    "BARB Prog Before",
-    "BARB Prog After",
-    "Sales House",
-    "Major category",
-    "Mid category",
-    "Minor category",
-    "All PIB rel",
-    "All PIB pos",
-    "Log Station (2010-)",
-    "Impacts A4+"
-]
-
-def yield_csv_rows(cpath: str) -> List[str]:
-    """
-    Open CSV path supplied and yield rows
-    Args:
-        cpath (str): Path to CSV
-    """
-    with open(cpath, "r", encoding="latin1") as data:
-        rows = csv.reader(data)
-        next(rows)
-        for row in rows:
-            print(row)
-            yield row
-
-
-def make_new_csv(csv_title):
-    """
-    Create a new CSV
-    return CSV path
-    """
-    cpath = os.path.join(DEST, csv_title)
-    if os.path.exists(cpath):
-        print(f"Path already exists: {cpath}")
-        return None
-
-    with open(cpath, "a") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(HEADER)
-
-    if os.path.exists(cpath):
-        return cpath
-
-    return None
 
 
 def yield_date():
@@ -120,35 +61,24 @@ def main():
     OMITS list and write allowed
     data to new CSV
     """
-    csv2 = make_new_csv(f"Unique_adverts_BFIExport.csv")
-    if csv2 is None:
-        print(f"Missing destination path: {csv2}")
-        continue
-    with open(csv2, "a", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-
-    for dt in yield_date():
-        csv1 = os.path.join(SOURCE, f"{dt}_BFIExport.csv")
-        if not os.path.exists(csv1):
-            print(f"Missing source path: {csv1}")
-            continue
-        for row in yield_csv_rows(csv1):
-            print(f"Matching film code: {row[3]}")
-            match = match_film_code(row[3], csv2)
-            if match:
+    seen_keys = set()
+    csv2 = os.path.join(SOURCE, f"Unique_adverts_BFIExport.csv")
+    with open(csv2, "a", newline="", encoding="latin1") as f:
+        writer = csv.writer(f)
+        for dt in yield_date():
+            csv1 = os.path.join(SOURCE, f"{dt}_BFIExport.csv")
+            if not os.path.exists(csv1):
+                print(f"Missing source path: {csv1}")
                 continue
-            writer.writerow(row)
-
-
-def match_film_code(code: str, csvpath: str) -> bool:
-    """
-    Match film code if found
-    in new CSV - return true for match
-    """
-    for row in yield_csv_rows(csvpath):
-        if code == row[3]:
-            return True
-    return False
+            print(f"\nPROCESSING: {csv1}")
+            with open(csv1, newline="", encoding="latin1") as file:
+                reader = csv.reader(file)
+                for row in reader:
+                    key = row[3]
+                    if key not in seen_keys:
+                        print(f"New unique key found: {key}:\n{row}")
+                        seen_keys.add(key)
+                        writer.writerow(row)
 
 
 if __name__ == "__main__":

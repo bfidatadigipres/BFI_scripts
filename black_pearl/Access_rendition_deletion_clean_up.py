@@ -68,10 +68,13 @@ def extract_objects_sort(obj_list: list[dict]) -> tuple(Dict[str, str], Dict[str
     """
     found_items = {}
     for obj in obj_list:
+        print(obj)
         version_id = creation_date = None
         data = obj.get("Blobs").get("ObjectList")
+        latest = data[0].get("Latest")
         version_id = data[0].get("VersionId")
         creation_date = obj.get("CreationDate")
+        print(f"{version_id} - {creation_date} - {latest}")
         if version_id and creation_date:
             found_items[creation_date] = version_id
 
@@ -100,33 +103,39 @@ def main() -> None:
         sys.exit("Code cannot run at this time.")
     
     for row in yield_csv_rows(CSV_PTH):
-        LOGGER.info("Cleaning up first row entry: %s", row[1])
+        print(f"FILE: {row[1]}")
+        #LOGGER.info("Cleaning up first row entry: %s", row[1])
         try:
             fname = row[1]
         except IndexError as err:
-            LOGGER.warning("No entry found in row: %s", err)
+            #LOGGER.warning("No entry found in row: %s", err)
             continue
 
         obj_list = bp.get_object_list_items(fname)
         if obj_list is None or len(obj_list) == 0:
-            LOGGER.info("Unable to retrieve data from Black Pearl on file: %s", fname)
+            #LOGGER.info("Unable to retrieve data from Black Pearl on file: %s", fname)
             continue
 
         LOGGER.info("Retrieved %s items for file: %s", len(obj_list.get("ObjectList")), fname)
         if len(obj_list.get("ObjectList")) == 1:
-            LOGGER.info("This file has just returned one version. Skipping")
+            #LOGGER.info("This file has just returned one version. Skipping")
             continue
         
         preserved_items, to_delete = extract_objects_sort(obj_list)
-        LOGGER.info(
-            "Preserving %s with creation date %s and version Id %s",
-            fname, preserved_items[0], preserved_items[1]
-        )
-        LOGGER.info(
-            "Item creation dates and version_ids for deletion:\n%s\n%s\n",
-            ", ".join(to_delete.keys()),
-            ", ".join(to_delete.values()),
-        )
+        print(f"KEEP: {preserved_items}")
+        print(f"DELETE:\n{to_delete}")
+
+        #LOGGER.info(
+        #    "Preserving %s with creation date %s and version Id %s",
+        #    fname, preserved_items[0], preserved_items[1]
+        #)
+        #LOGGER.info(
+        #    "Item creation dates and version_ids for deletion:\n%s\n%s\n",
+        #    ", ".join(to_delete.keys()),
+        #    ", ".join(to_delete.values()),
+        #)
+        print("------------------------------------------")
+
         """
         success = delete_existing_proxy(fname, to_delete, len(obj_list))
         if not success:

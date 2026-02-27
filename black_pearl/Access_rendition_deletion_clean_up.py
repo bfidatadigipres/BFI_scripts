@@ -29,7 +29,7 @@ import utils
 
 # Global vars
 LOG_PATH: Final = os.environ["LOG_PATH"]
-STORAGE: Final = os.environ["TRANSCODING"]
+STORAGE: Final = os.environ["ADMIN"]
 CSV_PTH: Final = os.path.join(STORAGE, "false_latest_flag.csv")
 BUCKET: Final = "Access_Renditions_backup"
 
@@ -100,9 +100,9 @@ def main() -> None:
         sys.exit("Code cannot run at this time.")
     
     for row in yield_csv_rows(CSV_PTH):
-        LOGGER.info("Cleaning up first row entry: %s", row[0])
+        LOGGER.info("Cleaning up first row entry: %s", row[1])
         try:
-            fname = row[0]
+            fname = row[1]
         except IndexError as err:
             LOGGER.warning("No entry found in row: %s", err)
             continue

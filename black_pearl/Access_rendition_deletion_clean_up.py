@@ -20,7 +20,7 @@ import os
 import sys
 import csv
 from datetime import datetime
-from typing import Final, Dict, List, Any, Generator
+from typing import Final, Dict, List, Any
 
 # Local imports
 import bp_utils as bp
@@ -44,7 +44,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def yield_csv_rows(cpath: str) -> Generator[List[str]]:
+def yield_csv_rows(cpath: str) -> List[str]:
     """
     Open CSV path supplied and yield rows
     Args:
@@ -52,16 +52,15 @@ def yield_csv_rows(cpath: str) -> Generator[List[str]]:
     """
     with open(cpath, "r", encoding="latin1") as data:
         rows = csv.reader(data)
-        next(rows)
         for row in rows:
-            yield row.split(",")
+            yield row[0].split(" ")
 
 
-def extract_objects_sort(obj_list: list[dict]) -> tuple(Dict[str, str], Dict[str, Any]):
+def extract_objects_sort(obj_list):
     """
     Iterate list of objects
     extracting version_id and
-    creation_date. Sort into 
+    creation_date. Sort into
     oldest -> newest
     Return all but last (newest)
     for deletions
@@ -98,52 +97,50 @@ def main() -> None:
       and where/if found retain this version
     - Log clean up procedures
     """
-    
-    if not utils.check_control("pause_all_code"):
+    if not utils.check_control("power_off_all"):
         sys.exit("Code cannot run at this time.")
-    
+
+    LOGGER.info("=== Access_Rendition_backup bucket clean up START ====================")
     for row in yield_csv_rows(CSV_PTH):
-        print(f"FILE: {row[1]}")
-        #LOGGER.info("Cleaning up first row entry: %s", row[1])
+        print(row)
+        LOGGER.info("Row entry: %s", row[1])
         try:
             fname = row[1]
         except IndexError as err:
-            #LOGGER.warning("No entry found in row: %s", err)
+            LOGGER.warning("SKIP: Cannot access filename from row: %s", err)
             continue
 
         obj_list = bp.get_object_list_items(fname)
         if obj_list is None or len(obj_list) == 0:
-            #LOGGER.info("Unable to retrieve data from Black Pearl on file: %s", fname)
+            LOGGER.info("SKIP: Unable to retrieve data from Black Pearl on file: %s", fname)
             continue
 
-        LOGGER.info("Retrieved %s items for file: %s", len(obj_list.get("ObjectList")), fname)
-        if len(obj_list.get("ObjectList")) == 1:
-            #LOGGER.info("This file has just returned one version. Skipping")
+        LOGGER.info("Retrieved %s items for file: %s", len(obj_list), fname)
+        if len(obj_list) == 1:
+            LOGGER.info("SKIP: File %s has just returned one version", fname)
             continue
-        
+
         preserved_items, to_delete = extract_objects_sort(obj_list)
         print(f"KEEP: {preserved_items}")
         print(f"DELETE:\n{to_delete}")
 
-        #LOGGER.info(
-        #    "Preserving %s with creation date %s and version Id %s",
-        #    fname, preserved_items[0], preserved_items[1]
-        #)
-        #LOGGER.info(
-        #    "Item creation dates and version_ids for deletion:\n%s\n%s\n",
-        #    ", ".join(to_delete.keys()),
-        #    ", ".join(to_delete.values()),
-        #)
-        print("------------------------------------------")
+        LOGGER.info(
+            "Preserving %s with creation date %s and version Id %s",
+            fname, preserved_items[0], preserved_items[1]
+        )
+        LOGGER.info(
+            "Item creation dates and version_ids for deletion:\n%s\n%s\n",
+            ", ".join(to_delete.keys()),
+            ", ".join(to_delete.values()),
+        )
 
-        """
         success = delete_existing_proxy(fname, to_delete, len(obj_list))
         if not success:
             LOGGER.warning("%s - Deletions not fully successful")
             continue
-
         LOGGER.info("Completed: Clean up of spare files for %s", fname)
-        """
+
+    LOGGER.info("=== Access_Rendition_backup bucket clean up END ======================")
 
 
 def delete_existing_proxy(fname: str, deletions: dict[str, str], total) -> bool:
@@ -156,7 +153,7 @@ def delete_existing_proxy(fname: str, deletions: dict[str, str], total) -> bool:
         LOGGER.info("No files being replaced at this time")
         return False
 
-    count = 0   
+    count = 0
     for key, val in deletions.items():
         LOGGER.info("Deletion stage received: %s | %s | %s", fname, key, val)
         confirmed = bp.delete_black_pearl_object(fname, val, BUCKET)

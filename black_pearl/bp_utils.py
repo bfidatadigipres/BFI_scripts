@@ -7,7 +7,7 @@ to one utility module
 
 import json
 import os
-from typing import Optional, Union
+from typing import Optional, Union, List, Dict, Any
 
 from ds3 import ds3, ds3Helpers
 
@@ -217,6 +217,31 @@ def get_object_list(
     return confirmed, md5, length
 
 
+
+def get_object_list_items(fname: str) -> Optional[List[Dict[str, Any]]]:
+    """
+    Get all details to check file persisted
+    """
+
+    request = ds3.GetObjectsWithFullDetailsSpectraS3Request(
+        name=f"{fname}", include_physical_placement=True
+    )
+    try:
+        result = CLIENT.get_objects_with_full_details_spectra_s3(request)
+        data = result.result
+    except Exception as err:
+        print(err)
+        return None
+
+    try:
+        obj_list = data.get("ObjectList")
+    except KeyError as err:
+        print(err)
+        obj_list = []
+    
+    return obj_list
+    
+
 def put_directory(directory_pth: str, bucket: str) -> Optional[list[str]]:
     """
     Add the directory to black pearl using helper (no MD5)
@@ -327,7 +352,7 @@ def put_single_file(fpath: str, ref_num, bucket_name, check=False) -> Optional[s
 
 
 def delete_black_pearl_object(
-    ref_num: str, version: Optional[str], bucket: str
+    ref_num: str, version: str, bucket: str
 ) -> Optional[ds3.DeleteObjectResponse]:
     """
     Receive reference number and initiate

@@ -12,10 +12,14 @@ special_collections_document_transfers_osh.py
 import base64
 import json
 import os
+import re
 import sys
-from urllib.parse import urlencode
+import mimetypes
+from typing import Optional, List, Any, Dict
+from urllib.parse import urlencode, urljoin
 import paramiko
 import requests
+
 
 TS_UUID = os.environ.get("AM_TS_UUID")  # Archivematica Transfer Storage address uuid
 SFTP_USR = os.environ.get("AM_SFTP_US")  # Transfer Storage user
@@ -51,7 +55,7 @@ if not ARCH_URL or not API_NAME or not API_KEY or not SFTP_USR or not SFTP_KEY:
     )
 
 
-def sftp_connect():
+def sftp_connect() -> paramiko.sftp_client.SFTPClient:
     """
     Make connection to Archivematica SFTP
     """
@@ -61,7 +65,7 @@ def sftp_connect():
     return ssh_client.open_sftp()
 
 
-def sftp_listdir(rpath):
+def sftp_listdir(rpath: str) -> List[Any]:
     """
     Call SFTP connection's listdir data
     with exception handling
@@ -76,7 +80,7 @@ def sftp_listdir(rpath):
     return check_folder
 
 
-def send_to_sftp(fpath, top_folder):
+def send_to_sftp(fpath: str, top_folder: str) -> Optional[List[Any]]:
     """
     Arg fpath must be to file level (not folder)
     Supply arg top_folder without trailing '/'
@@ -132,9 +136,7 @@ def send_to_sftp(fpath, top_folder):
                 f"Failed to make new directory for {os.path.join(remote_path, container)}"
             )
             return None
-    else:
-        print(f"Folder {container} found in Archivematica already")
-
+    print(f"Folder {container} found in Archivematica already")
     print(
         f"Moving file {file} into Archivematica path {os.path.join(remote_path, container)}"
     )
@@ -142,10 +144,9 @@ def send_to_sftp(fpath, top_folder):
     if response is False:
         print(f"Failed to send file to SFTP: {file} / {fpath}")
         return None
-    else:
-        print(
-            f"File {file} successfully PUT to {os.path.join(remote_path, container, file)}"
-        )
+    print(
+        f"File {file} successfully PUT to {os.path.join(remote_path, container, file)}"
+    )
     print("Making CSV folder...")
     m_relpath = os.path.join(remote_path, container, "metadata/")
     mpath = os.path.join(os.path.split(fpath)[0], "metadata/")
@@ -169,7 +170,7 @@ def send_to_sftp(fpath, top_folder):
     return files
 
 
-def send_metadata_to_sftp(fpath, top_folder):
+def send_metadata_to_sftp(fpath: str, top_folder: str) -> Optional[List[Any]]:
     """
     Check for parent folder, if absent mkdir
     First step SFTP into Storage Service, then check
@@ -189,12 +190,11 @@ def send_metadata_to_sftp(fpath, top_folder):
 
     # Create ssh / sftp object
     sftp = sftp_connect()
-    check_folder = sftp.listdir("sftp-transfer-source/API_Uploads")
     try:
         root_contents = sftp.listdir(remote_path)
         print(f"Root of remote_path: {root_contents}")
     except OSError as err:
-        print(f"Error attempting to retrieve path {remote_path}")
+        print(f"Error attempting to retrieve path {remote_path}\n{err}")
         root_contents = ""
         success = sftp_mkdir(sftp, remote_path)
         if not success:
@@ -229,15 +229,14 @@ def send_metadata_to_sftp(fpath, top_folder):
         if response is False:
             print(f"Failed to send file to SFTP: 'metadata.csv' / {m_relpath}")
             return None
-        else:
-            print(f"File 'metadata.csv' successfully PUT to {m_relpath}")
+        print(f"File 'metadata.csv' successfully PUT to {m_relpath}")
 
     files = sftp.listdir(os.path.join(remote_path, container))
     sftp.close()
     return files
 
 
-def sftp_put(sftp_object, fpath, relpath):
+def sftp_put(sftp_object: paramiko.sftp_client.SFTPClient, fpath: str, relpath: str) -> bool:
     """
     Handle PUT to sftp using
     open SFTP connection
@@ -257,7 +256,7 @@ def sftp_put(sftp_object, fpath, relpath):
         return False
 
 
-def sftp_mkdir(sftp_object, relpath):
+def sftp_mkdir(sftp_object: paramiko.sftp_client.SFTPClient, relpath: str) -> Optional[List[str]]:
     """
     Handle making directory
     using open sftp connection
@@ -265,7 +264,7 @@ def sftp_mkdir(sftp_object, relpath):
     try:
         sftp_object.mkdir(relpath)
     except OSError as err:
-        print(f"Error attempting to MKDIR {relpath}")
+        print(f"Error attempting to MKDIR {relpath}\n{err}")
         return None
 
     relpath = relpath.rstrip("/")
@@ -278,14 +277,14 @@ def sftp_mkdir(sftp_object, relpath):
     return None
 
 
-def check_sftp_status(fpath, top_folder):
+def check_sftp_status(fpath: str, top_folder: str) -> List[str]:
     """
     Check if a file already been
     PUT to SFTP folder API_Uploads
     before intiating repeat upload
     """
     relpath = fpath.split(top_folder)[-1]
-    whole_path, file = os.path.split(relpath)
+    whole_path, _ = os.path.split(relpath)
     remote_path = f"sftp-transfer-source/API_Uploads/{top_folder}/{whole_path}"
     print(f"Checking path: {remote_path}")
 
@@ -300,8 +299,13 @@ def check_sftp_status(fpath, top_folder):
 
 
 def send_as_package(
-    fpath, top_folder, atom_slug, item_priref, process_config, auto_approve_arg
-):
+    fpath: str,
+    top_folder: str,
+    atom_slug: str,
+    item_priref: str,
+    process_config: str,
+    auto_approve_arg: bool
+) -> Optional[Dict[str, Any]]:
     """
     Send a package using v2 beta package, subject to change!
     Args: fpath from top level no trailing /, AToM slug if known,
@@ -311,7 +315,7 @@ def send_as_package(
     AtoM slug, used to build readable web URLs
     """
     # Build correct folder paths
-    PACKAGE_ENDPOINT = os.path.join(ARCH_URL, "api/v2beta/package")
+    package_endpoint = os.path.join(ARCH_URL, "api/v2beta/package")
     folder_path = os.path.basename(fpath)
     path_str = (
         f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{top_folder}/{fpath}"
@@ -333,7 +337,7 @@ def send_as_package(
     print(f"Starting transfer of {path_str}")
     try:
         response = requests.post(
-            PACKAGE_ENDPOINT, headers=HEADER, data=json.dumps(data_payload)
+            package_endpoint, headers=HEADER, data=json.dumps(data_payload)
         )
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
@@ -352,7 +356,7 @@ def send_as_package(
     return None
 
 
-def get_transfer_status(uuid):
+def get_transfer_status(uuid: str) -> Optional[Dict[str, Any]]:
     """
     Look for transfer status of new transfer/package.
     Returns transfer dictionary with 'status': 'COMPLETED' and
@@ -380,7 +384,7 @@ def get_transfer_status(uuid):
     return None
 
 
-def get_ingest_status(sip_uuid):
+def get_ingest_status(sip_uuid: str) -> Optional[Dict[str, Any]]:
     """
     Look for ingest status of new transfer/package.
     Returns directory name, message, 'status': 'COMPLETE',
@@ -408,18 +412,18 @@ def get_ingest_status(sip_uuid):
     return None
 
 
-def get_transfer_list():
+def get_transfer_list() -> Optional[Dict[str, Any]]:
     """
     Calls to retrieve UUID for
     transfers already in Archivematica
     """
 
-    COMPLETED = os.path.join(ARCH_URL, "api/transfer/completed/")
+    completed = os.path.join(ARCH_URL, "api/transfer/completed/")
     api_key = f"{API_NAME}:{API_KEY}"
     headers = {"Accept": "*/*", "Authorization": f"ApiKey {api_key}"}
 
     try:
-        response = requests.get(COMPLETED, headers=headers)
+        response = requests.get(completed, headers=headers)
         response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
 
         data = response.json()
@@ -432,13 +436,13 @@ def get_transfer_list():
     return None
 
 
-def get_location_uuids():
+def get_location_uuids() -> Optional[List[Dict[str, Any]]]:
     """
     Call the v2 locations to retrieve
     UUID locations for different
     Archivematica services
     """
-    SS_END = f"{ARCH_URL}:8000/api/v2/location/"
+    ss_end = f"{ARCH_URL}:8000/api/v2/location/"
     api_key = f"{SS_NAME}:{SS_KEY}"
     headers = {
         "Authorization": f"ApiKey {api_key}",
@@ -447,9 +451,9 @@ def get_location_uuids():
     }
 
     try:
-        respnse = requests.get(SS_END, headers=headers)
-        respnse.raise_for_status()
-        data = json.loads(respnse.text)
+        response = requests.get(ss_end, headers=headers)
+        response.raise_for_status()
+        data = json.loads(response.text)
         if "objects" in data:
             return data["objects"]
     except requests.exceptions.RequestException as err:
@@ -457,7 +461,7 @@ def get_location_uuids():
         return None
 
 
-def get_atom_objects(skip_path):
+def get_atom_objects(skip_path: str) -> Optional[Dict[str, Any]]:
     """
     Return json dict containting
     list of all objects found in AtoM.
@@ -474,7 +478,7 @@ def get_atom_objects(skip_path):
             # accept_redirect=True,
         )
         objects = json.loads(response.text)
-        print(f"Objects received: {objects}")
+
         if objects.get("results", None):
             return objects
 
@@ -492,7 +496,7 @@ def get_atom_objects(skip_path):
     return None
 
 
-def get_all_atom_objects():
+def get_all_atom_objects()-> Optional[List[Any]]:
     """
     Handle skip iteration through all available
     information objects, call get_atom_objects
@@ -523,12 +527,46 @@ def get_all_atom_objects():
         for item in new_ob["results"]:
             all_list.append(item)
     if len(all_list) != total_obs:
-        print(f"May not have retrieved all information objects correctly!")
+        print("May not have retrieved all information objects correctly!")
 
     return all_list
 
 
-def get_slug_match(slug_match):
+def get_specific_atom_object(ob_num):
+    """
+    Handle skip iteration through all available
+    information objects, call get_atom_objects
+    with interative skip numbers from totals.
+    """
+
+    endpoint = os.path.join(ATOM_URL, "informationobjects")
+    objects = get_atom_objects(endpoint)
+    if not objects:
+        print("Warning, unable to find any informationobjects")
+        return None
+
+    total_obs = objects.get("total", None)
+    if not isinstance(total_obs, int):
+        print(f"Warning, unable to get total information objects from API: {objects}")
+        return None
+
+    for item in objects["results"]:
+        if ob_num in item.get("reference_code"):
+            return item
+
+    runs = total_obs // 10
+    for num in range(1, runs + 1):
+        skip_endpoint = f"{endpoint}?skip={num}0"
+        new_ob = get_atom_objects(skip_endpoint)
+        if not new_ob:
+            continue
+        for item in new_ob["results"]:
+            if ob_num in item.get("reference_code"):
+                return item
+    return None
+
+
+def get_slug_match(slug_match: str) -> bool:
     """
     Handles retrieval of all AtoM information objects
     then builds list of slugs and attempts to match to
@@ -555,15 +593,15 @@ def get_slug_match(slug_match):
     return False
 
 
-def delete_sip(sip_uuid):
+def delete_sip(sip_uuid: str) -> Optional[str]:
     """
     Remove (hide) a SIP from Archivematica
     after it's been transfered in error.
     This function has not been fully tested.
     """
-    ENDPOINT = f"{ARCH_URL}/api/ingest/{sip_uuid}/delete/"
+    endpoint = f"{ARCH_URL}/api/ingest/{sip_uuid}/delete/"
     try:
-        response = requests.delete(ENDPOINT, headers=HEADER)
+        response = requests.delete(endpoint, headers=HEADER)
         response.raise_for_status()
         print(f"Package deletion success: {response.text}:")
         return response.text
@@ -583,7 +621,7 @@ def delete_sip(sip_uuid):
     return None
 
 
-def reingest_v2_aip(aip_uuid, type, process_config):
+def reingest_v2_aip(aip_uuid: str, re_type: str, process_config: str) -> Optional[Dict[str, Any]]:
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
@@ -593,18 +631,18 @@ def reingest_v2_aip(aip_uuid, type, process_config):
     Returns 'reingest_uuid' key needed for metadata upload.
     You cannot supply slugs (access_system_id) using this endpoint
     """
-    PACKAGE_ENDPOINT = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/reingest/"
+    package_endpoint = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/reingest/"
 
     # Create payload and post
     data_payload = {
         "pipeline": SS_PIPE,
-        "reingest_type": type,
+        "reingest_type": re_type,
         "processing_config": process_config,
     }
     payload = json.dumps(data_payload)
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
-        response = requests.post(PACKAGE_ENDPOINT, headers=SS_HEADER, data=payload)
+        response = requests.post(package_endpoint, headers=SS_HEADER, data=payload)
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
         print(response.text)
@@ -625,7 +663,7 @@ def reingest_v2_aip(aip_uuid, type, process_config):
     return None
 
 
-def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
+def reingest_aip(aip_uuid_name: str, aip_uuid: str, ingest_type: str) -> Optional[Dict[str, Any]]:
     """
     Alternative endpoint for reingesting an AIP.
     Reingest type can be:
@@ -633,7 +671,7 @@ def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
     - PARTIAL (metadata only)
     You cannot supply slugs (access_system_id) using this endpoint
     """
-    ENDPOINT = f"{ARCH_URL}/api/transfer/reingest/"
+    endpoint = f"{ARCH_URL}/api/transfer/reingest/"
 
     # Create payload and post
     data_payload = {
@@ -644,7 +682,7 @@ def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
     payload = json.dumps(data_payload)
     print(f"Starting reingest of AIP UUID: {aip_uuid}")
     try:
-        response = requests.post(ENDPOINT, headers=HEADER, data=payload)
+        response = requests.post(endpoint, headers=HEADER, data=payload)
         response.raise_for_status()
         print(f"Package transfer initiatied - status code {response.status_code}:")
         print(response.text)
@@ -665,7 +703,7 @@ def reingest_aip(aip_uuid_name, aip_uuid, ingest_type):
     return None
 
 
-def metadata_copy_reingest(sip_uuid, source_mdata_path):
+def metadata_copy_reingest(sip_uuid: str, source_mdata_path: str) -> Optional[Dict[str, Any]]:
     """
     Arg source_mdata_path should be from top level folder
     to metadata only, not absolute path. Top level folder
@@ -677,7 +715,7 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     """
     from urllib.parse import urlencode
 
-    MDATA_ENDPOINT = os.path.join(ARCH_URL, "api/ingest/copy_metadata_files/")
+    mdata_endpoint = os.path.join(ARCH_URL, "api/ingest/copy_metadata_files/")
     mdata_path_str = (
         f"{TS_UUID}:/bfi-sftp/sftp-transfer-source/API_Uploads/{source_mdata_path}"
     )
@@ -688,7 +726,7 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     print(json.dumps(data_payload))
     print(f"Starting transfer of {mdata_path_str}")
     try:
-        response = requests.post(MDATA_ENDPOINT, headers=HEADER_META, data=data_payload)
+        response = requests.post(mdata_endpoint, headers=HEADER_META, data=data_payload)
         response.raise_for_status()
         print(f"Metadata copy initiatied - status code {response.status_code}")
         print(response.text)
@@ -707,17 +745,17 @@ def metadata_copy_reingest(sip_uuid, source_mdata_path):
     return None
 
 
-def approve_aip_reingest(uuid):
+def approve_aip_reingest(uuid: str) -> Optional[Dict[str, Any]]:
     """
     Send approval for reingest.
     This cannot be automated in reingest functions.
     """
-    END = f"{ARCH_URL}/api/ingest/reingest/approve/"
+    endpoint = f"{ARCH_URL}/api/ingest/reingest/approve/"
 
     payload = urlencode({"uuid": uuid})
 
     try:
-        response = requests.post(END, headers=HEADER_META, data=payload)
+        response = requests.post(endpoint, headers=HEADER_META, data=payload)
         response.raise_for_status()
         print(f"AIP reingest started {response.status_code}")
         print(response.text)
@@ -736,16 +774,16 @@ def approve_aip_reingest(uuid):
     return None
 
 
-def approve_transfer(dir_name):
+def approve_transfer(dir_name: str) -> Optional[Dict[str, Any]]:
     """
     Find transfer that needs approval
     And approve if dir-name matches
     """
-    GET_UNAPPROVED = f"{ARCH_URL}/api/transfer/unapproved/"
-    APPROVE_TRANSFER = f"{ARCH_URL}/api/transfer/approve/"
+    get_unapproved = f"{ARCH_URL}/api/transfer/unapproved/"
+    approve_transfer = f"{ARCH_URL}/api/transfer/approve/"
 
     try:
-        response = requests.get(GET_UNAPPROVED, headers=HEADER_META)
+        response = requests.get(get_unapproved, headers=HEADER_META)
         response.raise_for_status()
         print(f"Tranfers unapproved: {response.status_code}")
         print(response.text)
@@ -774,7 +812,7 @@ def approve_transfer(dir_name):
                 )
                 try:
                     response = requests.post(
-                        APPROVE_TRANSFER, headers=HEADER_META, data=payload
+                        approve_transfer, headers=HEADER_META, data=payload
                     )
                     response.raise_for_status()
                     print(f"Tranfers unapproved: {response.status_code}")
@@ -791,3 +829,119 @@ def approve_transfer(dir_name):
                 except ValueError:
                     print("Response not supplied in JSON format")
                     print(f"Response as text:\n{response.text}")
+
+
+def download_aip(aip_uuid: str, dpath: str, fn: str) -> Optional[str]:
+    """
+    Fetch an AIP stream and 
+    write to download path as TAR file
+    """
+    endpoint = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/download/"
+
+    try:
+        with requests.get(endpoint, headers=SS_HEADER, stream=True) as response:
+            content = response.headers.get("Content-Disposition")
+            if content:
+                fname = content.split('filename=')[-1].strip('"')
+            else:
+                fname = f"{fn}.tar"
+            download_path = os.path.join(dpath, fname)
+
+            with open(download_path, "wb") as file:
+                for chunk in response.iter_content(8192):
+                    if chunk:
+                        file.write(chunk)
+            if os.path.isfile(download_path):
+                return download_path
+    except requests.exceptions.RequestException as err:
+        print(err)
+        return None
+
+
+def _filename_from_content_disposition(cd: str) -> Optional[str]:
+    """
+    Attempts to ID extensions
+    """
+    if not cd:
+        return None
+    m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)"?', cd)
+    return m.group(1) if m else None
+
+
+def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
+    """
+    Build endpoint from slug (retrieve using ref_code)
+    Attempt download of file to dpath, and check for
+    extensions, rename file.
+    """
+
+    info = get_specific_atom_object(ref_code)
+    if not info:
+        return None
+
+    slug = info.get("slug")
+    if not slug:
+        return None
+    
+    base = ATOM_URL if ATOM_URL.endswith("/") else ATOM_URL + "/"
+    endpoint = urljoin(base, f"informationobjects/{slug}/digitalobject")
+    os.makedirs(dpath, exist_ok=True)
+
+    fn_base = ref_code.replace("-", "_")
+    tmp_path = os.path.join(dpath, fn_base + ".part")
+
+    try:
+        with requests.get(
+            endpoint,
+            headers=ATOM_HEADER,
+            auth=("bfi", ATOM_AUTH),
+            stream=True,
+            allow_redirects=True,
+            timeout=(10, 300),
+        ) as r:
+            print(r.text)
+            try:
+                r.raise_for_status()
+            except requests.HTTPError:
+                body_snippet = (r.text or "")[:500]
+                raise RuntimeError(
+                    f"Download failed: {r.status_code} {r.reason}\n"
+                    f"Final URL: {r.url}\n"
+                    f"Content-Type: {r.headers.get('Content-Type')}\n"
+                    f"Body (first 500 chars):\n{body_snippet}"
+                )
+
+            # Get extension
+            cd = r.headers.get("Content-Disposition", "")
+            server_name = _filename_from_content_disposition(cd)
+            ext = ""
+            if server_name:
+                _, ext = os.path.splitext(server_name)
+
+            if not ext:
+                ctype = (r.headers.get("Content-Type") or "").split(";")[0].strip()
+                ext = mimetypes.guess_extension(ctype) or ""
+
+            final_path = os.path.join(dpath, fn_base + ext)
+            with open(tmp_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
+
+            cl = r.headers.get("Content-Length")
+            if cl is not None and os.path.getsize(tmp_path) != int(cl):
+                raise RuntimeError(
+                    f"Incomplete download: wrote {os.path.getsize(tmp_path)} bytes, "
+                    f"expected {cl}"
+                )
+            os.replace(tmp_path, final_path)
+            return final_path
+
+    except Exception as err:
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except OSError:
+            pass
+        print(err)
+        return None

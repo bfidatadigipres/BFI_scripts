@@ -348,13 +348,14 @@ def create_record_data(api, database, session, priref, data=None):
     if not frag:
         return False
 
-    record = etree.XML("<record></record>")
+    parser = etree.XMLParser(resolve_entities=False)
+    record = etree.XML("<record></record>", parser=parser)
     if not priref:
-        record.append(etree.fromstring("<priref>0</priref>"))
+        record.append(etree.fromstring("<priref>0</priref>", parser=parser))
     else:
-        record.append(etree.fromstring(f"<priref>{priref}</priref>"))
+        record.append(etree.fromstring(f"<priref>{priref}</priref>", parser=parser))
     for i in frag:
-        record.append(etree.fromstring(i))
+        record.append(etree.fromstring(i, parser=parser))
 
     # Convert XML object to string
     payload = etree.tostring(record)
@@ -421,7 +422,9 @@ def get_fragments(obj):
                 sub_item, parser=etree.XMLParser(remove_blank_text=True)
             )
             for itm in list_item:
-                xml = etree.fromstring(etree.tostring(itm))
+                xml = etree.fromstring(
+                    etree.tostring(itm), parser=etree.XMLParser(resolve_entities=False)
+                )
                 data.append(etree.tostring(xml))
         except Exception as err:
             raise TypeError(f"Invalid XML:\n{sub_item}") from err

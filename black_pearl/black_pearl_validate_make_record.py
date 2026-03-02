@@ -63,7 +63,7 @@ BPINGEST_AMAZON = os.environ["BP_INGEST_AMAZON"]
 LOG_PATH = os.environ["LOG_PATH"]
 JSON_PATH = os.path.join(LOG_PATH, "black_pearl")
 CID_API = utils.get_current_api()
-INGEST_CONFIG = os.path.join(CODE_PATH, "black_pearl/dpi_ingests.yaml")
+INGEST_CONFIG = os.path.join(os.environ.get("CODE_DEPENDS"), "black_pearl/dpi_ingests.yaml")
 MEDIA_REC_CSV = os.path.join(LOG_PATH, "duration_size_media_records.csv")
 PERSISTENCE_LOG = os.path.join(LOG_PATH, "autoingest", "persistence_queue.csv")
 
@@ -80,7 +80,7 @@ logger.setLevel(logging.INFO)
 LOG_PATHS = {
     os.environ["QNAP_VID"]: os.environ["L_QNAP01"],
     os.environ["QNAP_08"]: os.environ["L_QNAP08"],
-    os.environ["QNAP08_OSH"]: os.environ["L_QNAP08_OSH"],
+    # os.environ["QNAP08_OSH"]: os.environ["L_QNAP08_OSH"],
     os.environ["QNAP_10"]: os.environ["L_QNAP10"],
     os.environ["QNAP_H22"]: os.environ["L_QNAP02"],
     os.environ["GRACK_H22"]: os.environ["L_GRACK02"],
@@ -700,7 +700,12 @@ def process_files(
             "Creating media record and linking via object_number: %s", object_number
         )
         logger.info(
-            "** Attempting creation of media record for %s, %s, %s, %s, %s", file, object_number, duration, byte_size, bucket
+            "** Attempting creation of media record for %s, %s, %s, %s, %s",
+            file,
+            object_number,
+            duration,
+            byte_size,
+            bucket,
         )
         media_priref = create_media_record(
             object_number, duration, byte_size, file, bucket, session
@@ -829,7 +834,6 @@ def create_media_record(
     except Exception:
         print(f"\nUnable to create CID media record for {ob_num}")
         logger.exception("Unable to create CID media record!")
-
 
     return media_priref
 

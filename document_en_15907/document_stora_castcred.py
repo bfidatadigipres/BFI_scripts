@@ -38,13 +38,13 @@ import logging
 import os
 import sys
 from typing import Any, Final, Generator, Iterable, Optional
-
 import requests
 
 # Local packages
 sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib
 import utils
+from parsers import stora_episode_parser as jp
 
 # Global vars
 TODAY: Final = str(datetime.datetime.now())
@@ -245,89 +245,67 @@ def retrieve_epg_data(fullpath: str) -> tuple[str, str, str, str, str, str, list
     """
 
     with open(fullpath, "r") as inf:
-        lines = json.load(inf)
-        for _ in lines.items():
+        lines = inf.read()
 
-            # Get titles
-            try:
-                item_title = lines["item"][0]["title"]
-            except (KeyError, IndexError):
-                item_title = ""
-            try:
-                item_asset_title = lines["item"][0]["asset"]["title"]
-            except (KeyError, IndexError):
-                item_asset_title = ""
+    val = jp.parse_payload_strict_json(lines)
 
-            # Get transmission time
-            try:
-                title_date_start_full = str(lines["item"][0]["dateTime"])
-                title_date_start = title_date_start_full[0:10]
-                print(f"Date of broadcast: {title_date_start}")
-            except (KeyError, IndexError):
-                title_date_start = ""
-            try:
-                time_full = str(lines["item"][0]["dateTime"])
-                time = time_full[11:19]
-                print(f"Time of broadcast: {time}")
-            except (KeyError, IndexError):
-                time = ""
+    item_title = val.item[0].title or ""
+    item_asset_title = val.item[0].asset.title or ""
+    utc_time = (
+        datetime.datetime.strftime(val.item[0].date_time, "%Y-%m-%d %H:%M:%S") or ""
+    )
+    asset_id = val.item[0].asset.id or ""
+    print(f"UTC broadcast: {utc_time}")
+    print(f"Asset ID: {asset_id}")
 
-            # Get EPG category code
-            try:
-                code1 = lines["item"][0]["asset"]["category"][0]["code"]
-            except (KeyError, IndexError):
-                code1 = ""
-            try:
-                code2 = lines["item"][0]["asset"]["category"][1]["code"]
-            except (KeyError, IndexError):
-                code2 = ""
+    # Get EPG category code
+    category_codes = []
+    if len(val.item[0].asset.category) >= 1:
+        for num in range(0, len(val.item[0].asset.category)):
+            category_codes.append(val.item[0].asset.category[num].code or "")
 
-            # Filter topics for non-fiction/fiction
-            if "factual-topics" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "movie-drama" in ((code1, code2)):
-                nfa_category = "f"
-            elif "news-current-affairs" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "sports:" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "music-ballet" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "arts-culture:" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "social-political-issues" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "leisure-hobbies" in ((code1, code2)):
-                nfa_category = "nf"
-            elif "show-game-show" in ((code1, code2)):
-                nfa_category = "nf"
-            else:
-                nfa_category = "f"
+    # Filter topics for non-fiction/fiction
+    if "factual-topics" in str(category_codes):
+        nfa_category = "nf"
+    elif "movie-drama" in str(category_codes):
+        nfa_category = "f"
+    elif "news-current-affairs" in str(category_codes):
+        nfa_category = "nf"
+    elif "sports:" in str(category_codes):
+        nfa_category = "nf"
+    elif "music-ballet" in str(category_codes):
+        nfa_category = "nf"
+    elif "arts-culture:" in str(category_codes):
+        nfa_category = "nf"
+    elif "social-political-issues" in str(category_codes):
+        nfa_category = "nf"
+    elif "leisure-hobbies" in str(category_codes):
+        nfa_category = "nf"
+    elif "show-game-show" in str(category_codes):
+        nfa_category = "nf"
+    else:
+        nfa_category = "f"
 
-            # Get TV/Film
-            work = lines["item"][0]["asset"]["type"]
-            if work == "movie":
-                work_type = "f"
-            else:
-                work_type = "tv"
-            try:
-                credit_list = []
-                credit_list = lines["item"][0]["asset"]["contributor"]
-            except (KeyError, IndexError):
-                credit_list = []
+    # Get TV/Film
+    work = val.item[0].asset.type or ""
+    if work == "movie":
+        work_type = "f"
+    else:
+        work_type = "tv"
+    credit_list = val.item[0].asset.contributor or []
 
-        return (
-            item_title,
-            item_asset_title,
-            nfa_category,
-            work_type,
-            title_date_start,
-            time,
-            credit_list,
-        )
+    return (
+        item_title,
+        item_asset_title,
+        nfa_category,
+        work_type,
+        utc_time,
+        asset_id,
+        credit_list,
+    )
 
 
-def retrieve_person(credit_list_raw: list[str], nfa_cat: str):
+def retrieve_person(credit_list_dct: list[dict[str, str]], nfa_cat: str):
     """
     Receives credits dictionary from main(), iterates over entries and creates
     list of dictionaries for credit/cast enumerated (5,10,15) in order retrieved
@@ -336,67 +314,31 @@ def retrieve_person(credit_list_raw: list[str], nfa_cat: str):
     credit_list = []
     cred_list = []
     cast_list = []
-    for dictionary in credit_list_raw:
+    for dictionary in credit_list_dct:
+        cred_id = dictionary.get("id", "")
+        name = dictionary.get("name", "")
+        dofb = dictionary.get("dob", "")
+        dofd = dictionary.get("dod", "")
+        home = dictionary.get("from", "")
+        gender = dictionary.get("gender", "")
+        character = dictionary.get("character")
+        print(character)
         try:
-            cred_id = dictionary["id"]
-        except (KeyError, IndexError):
-            cred_id = ""
-        try:
-            name = dictionary["name"]
-        except (KeyError, IndexError):
-            name = ""
-        try:
-            dofb = dictionary["dob"]
-        except (KeyError, IndexError):
-            dofb = ""
-        try:
-            dofd = dictionary["dod"]
-        except (KeyError, IndexError):
-            dofd = ""
-        try:
-            home = dictionary["from"]
-        except (KeyError, IndexError):
-            home = ""
-        try:
-            gender = dictionary["gender"]
-        except (KeyError, IndexError):
-            gender = ""
-        try:
-            character_type = dictionary["character"][0]["type"]
-        except (KeyError, IndexError):
+            character_type = character[0].get("type")
+            character_name = character[0].get("name")
+        except IndexError:
             character_type = ""
-        try:
-            character_name = dictionary["character"][0]["name"]
-        except (KeyError, IndexError):
             character_name = ""
-        try:
-            roles = dictionary["role"]  # List of strings
-        except (KeyError, IndexError):
-            roles = ""
-        try:
-            meta = dictionary["meta"]
-        except (KeyError, IndexError):
-            meta = ""
-        try:
-            known_for = meta["best-known-for"]
-            known_for = known_for.replace("'", "'")
-        except (KeyError, IndexError):
-            known_for = ""
-        try:
-            early_life = meta["early-life"]
-            early_life = early_life.replace("'", "'")
-        except (KeyError, IndexError):
-            early_life = ""
-        try:
-            career = meta["career"]
-            career = career.replace("'", "'")
-        except (KeyError, IndexError):
-            career = ""
-        try:
-            trivia = meta["trivia"]
-            trivia = trivia.replace("'", "'")
-        except (KeyError, IndexError):
-            trivia = ""
+        roles = dictionary.get("role", [])  # List of strings
+        meta = dictionary.get("meta", {})
+        known_for = meta.get("best-known-for", "")
+        known_for = known_for.replace("'", "'")
+        early_life = meta.get("early-life", "")
+        early_life = early_life.replace("'", "'")
+        career = meta.get("career", "")
+        career = career.replace("'", "'")
+        trivia = meta.get("trivia", "")
+        trivia = trivia.replace("'", "'")
 
         # Build lists to generate cast/credit_dct
         credit_list = list(
@@ -475,77 +417,62 @@ def cid_person_check(credit_id, session):
     return priref, name, activity_types
 
 
-def cid_work_check(search, session):
+def cid_work_locator(
+    utc: str, asset_id: str, title: str, session: requests.Session
+) -> Optional[str]:
     """
-    Retrieve CID work record priref where search matches
+    Retrieve CID parent work by matching
+    PA Media asset ID and UTC timestamp
+    to manifestation represented by JSON
     """
-    prirefs = []
-    edit_names = []
-
-    try:
-        hits, record = adlib.retrieve_record(
-            CID_API, "works", search, "0", session, ["priref", "input.notes, edit.name"]
+    search = f"(grouping.lref='398775' AND alternative_number='{asset_id}' AND UTC_timestamp='{utc}')"
+    rec = adlib.retrieve_record(
+        CID_API, "manifestations", search, 1, session, ["part_of_reference.lref"]
+    )[1]
+    if not rec:
+        LOGGER.exception(
+            "Cannot match UTC timestamp and title to Manifestation '%s':\n%s",
+            title,
+            search,
         )
-        print(hits, record)
+        return None
+
+    work_priref = adlib.retrieve_field_name(rec[0], "part_of_reference.lref")[0]
+    print(work_priref)
+    if not len(work_priref) > 0:
+        LOGGER.exception(
+            "Not able to trace work parent from Manifestation match: %s", rec
+        )
+        return None
+
+    return work_priref
+
+
+def check_work_has_credits(priref: str, session: requests.Session) -> bool:
+    """
+    Retrieve work priref and check if cast/credit already populated
+    Return False if no cast/cred found - True is found
+    """
+    search = f"priref='{priref}'"
+    print(search)
+    try:
+        record = adlib.retrieve_record(CID_API, "works", search, 1, session)[1]
     except (KeyError, IndexError):
         LOGGER.exception(
-            "cid_work_check(): Unable to check for person record with search %s", search
-        )
-    if hits is None:
-        raise Exception(f"CID API was unreachable for Works search: {search}")
-    if hits == 0:
-        return None, None
-
-    if hits == 1:
-        priref = adlib.retrieve_field_name(record[0], "priref")[0]
-        input_note = adlib.retrieve_field_name(record[0], "input.notes")[0]
-        edit_name = adlib.retrieve_field_name(record[0], "edit.name")[0]
-
-        if "STORA off-air television capture" in str(input_note):
-            return [priref], [edit_name]
-
-    for num in range(0, hits):
-        print("Fetch priref and edit_name from record")
-        try:
-            priref = adlib.retrieve_field_name(record[num], "priref")[0]
-            input_note = adlib.retrieve_field_name(record[num], "input.notes")[0]
-        except (KeyError, IndexError, TypeError):
-            priref = ""
-            input_note = ""
-        try:
-            edit_name = adlib.retrieve_field_name(record[num], "edit.name")[0]
-        except (KeyError, IndexError):
-            edit_name = ""
-
-        if "STORA off-air television capture" in str(input_note):
-            prirefs.append(priref)
-            edit_names.append(edit_name)
-
-    return prirefs, edit_names
-
-
-def cid_manifestation_check(priref, session):
-    """
-    Retrieve Manifestation transmission start time from parent priref
-    """
-    search = f"(part_of_reference.lref='{priref}')"
-    try:
-        record = adlib.retrieve_record(
-            CID_API, "manifestations", search, "0", session, ["transmission_start_time"]
-        )[1]
-        print("-------------------")
-        print(record)
-    except (KeyError, IndexError):
-        LOGGER.exception(
-            "cid_manifestation_check(): Unable to check for record with priref: %s",
+            "cid_check_for_cast(): Unable to check work record with priref: %s",
             priref,
         )
-        record = None
+        return None
+    print(record)
     if not record:
         return None
     try:
-        start_time = adlib.retrieve_field_name(record[0], "transmission_start_time")[0]
-        return start_time
+        cast = adlib.retrieve_field_name(record[0], "cast.credit_type")[0]
+        cred = adlib.retrieve_field_name(record[0], "credit.type")[0]
+        if cast is None and cred is None:
+            return False
+        else:
+            return True
     except (KeyError, IndexError):
         LOGGER.info(
             "cid_manifestation_check(): Unable to extract start time for manifestation"
@@ -595,108 +522,67 @@ def main():
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
         LOGGER.info("New file found for processing: %s", fullpath)
-        credit_data = ""
-        updates = False
+
         # Retrieve all data from EPG
         credit_data = retrieve_epg_data(fullpath)
         item_title = credit_data[0]
         item_asset_title = credit_data[1]
         nfa_cat = credit_data[2]
-        date = credit_data[4]
-        time = credit_data[5]
+        # work_type = credit_data[3] UNUSED
+        utc_time = credit_data[4]
+        asset_id = credit_data[5]
         credit_list = credit_data[6]
 
         # Process title data
-        try:
-            title, title_art = title_filter(item_asset_title, item_title)
-            LOGGER.info("Title for search: %s %s", title_art, title)
-        except Exception:
-            title = ""
-            title_art = ""
+        title, title_art = title_filter(item_asset_title, item_title)
+        LOGGER.info("Title for search: %s %s", title_art, title)
 
         # Get people data
-        if len(credit_list) > 0:
-            LOGGER.info("Cast and credit information available for this record")
-            cast_dct, cred_dct = retrieve_person(credit_list, nfa_cat)
-            print(cast_dct)
-            print(cred_dct)
-        else:
+        if len(credit_list) == 0:
             LOGGER.info("SKIPPING: %s - No cast or credit data\n%s", title, fullpath)
             LOGGER.info("Renaming JSON with _castcred appended\n")
             rename(root, file, title)
             continue
 
+        LOGGER.info("Cast and credit information available for this record")
+        cast_dct, cred_dct = retrieve_person(credit_list, nfa_cat)
+        print(cast_dct)
+        print(cred_dct)
+
         # Check in CID for Work title/date match
-        search = f"(title='{title}' AND title_date_start='{date}')"
-        print(search)
-        prirefs = cid_work_check(search, session)[0]
-        if not prirefs:
+        work_priref = cid_work_locator(utc_time, asset_id, title, session)
+        if not work_priref:
             LOGGER.info(
-                "SKIPPING: Likely repeat as no work record data found for %s transmitted on %s",
+                "SKIPPING: Cannot match '%s' manifestation record '%s' transmitted on '%s'\n",
                 title,
-                date,
+                asset_id,
+                utc_time,
             )
-            LOGGER.info("Renaming JSON with _castcred appended\n")
-            rename(root, file, title)
             continue
 
-        work_priref = ""
-        time_match = False
-        # Iterate all potential matches for transmission time match
-        if len(prirefs) > 0:
-            for work_priref_check in prirefs:
-                LOGGER.info(
-                    "Priref found that matches date/title: %s", work_priref_check
-                )
-                LOGGER.info(
-                    "Checking work manifestation to see if broadcast times match..."
-                )
-
-                # Check manifestation for matching transmission time
-                transmission_time = cid_manifestation_check(work_priref_check, session)
-                if not transmission_time:
-                    continue
-                print(f"If {str(time)} == {str(transmission_time[:8])}:")
-                if str(time) == str(transmission_time)[:8]:
-                    LOGGER.info(
-                        "Programme times match: %s and %s\n",
-                        time,
-                        transmission_time[0:8],
-                    )
-                    time_match = True
-                    work_priref = work_priref_check
-                    break
-                else:
-                    LOGGER.warning(
-                        "Programme times DO NOT MATCH this work: %s and %s\n",
-                        time,
-                        transmission_time[:8],
-                    )
-                    time_match = False
-                    work_priref = ""
-                    continue
-
-        if len(work_priref) == 0:
-            LOGGER.info(
-                "PROBLEM: Prirefs found but no transmission times matched for %s %s",
-                title,
-                date,
-            )
+        LOGGER.info(
+            "Programme asset_id %s and UTC time %s matched to Work: %s",
+            asset_id,
+            utc_time,
+            work_priref,
+        )
+        # Check work for evidence of cast/credit
+        process_cast = check_work_has_credits(work_priref, session)
+        if process_cast is False:
             LOGGER.info("Renaming JSON with _castcred appended\n")
             rename(root, file, title)
             continue
 
         print(f"Title: {title}")
         print(f"Priref: {work_priref}")
-        print(f"Matching transmission times: {time} {transmission_time[:8]}")
-        print(f"Time match = {time_match}\n")
+        print(f"Matching manifestation data: {utc_time} {asset_id}")
 
         cast_list = []
         cred_list = []
 
         # BEGIN CAST DATA GENERATION
         person_priref, person_name, person_act_type = "", "", ""
-        if len(cast_dct) > 0 and time_match:
+        if len(cast_dct) > 0 and process_cast:
             for key, val in cast_dct.items():
                 cast_sort = str(key)
                 cast_sort.zfill(2)  # 50, 55, 60
@@ -725,7 +611,7 @@ def main():
                         person_priref = make_person_record(session, cast_dct_formatted)
                         if not person_priref:
                             LOGGER.warning(
-                                "Failure to create person record for %s", cast_name
+                                "Failure to create person record for %s\n", cast_name
                             )
                             continue
                         LOGGER.info(
@@ -815,14 +701,16 @@ def main():
             LOGGER.info("** Appending cast data to work record now...")
             cast_xml = adlib.create_grouped_data(work_priref, "cast", cast_dct_sorted)
             update_rec = adlib.post(CID_API, cast_xml, "works", "updaterecord", session)
-            updates = True
+            if update_rec:
+                updates = True
 
         else:
             LOGGER.info("No Cast dictionary information for work %s", title)
 
+        updates = False
         person_priref, person_name, person_act_type = "", "", ""
         # Create credit data records
-        if len(cred_dct) > 0 and time_match:
+        if len(cred_dct) > 0 and process_cast:
             for key, val in cred_dct.items():
                 print(val)
                 cred_sort = str(key)
@@ -852,7 +740,7 @@ def main():
                         person_priref = make_person_record(session, cred_dct_formatted)
                         if not person_priref:
                             LOGGER.warning(
-                                "Failure to create person record for %s", person_name
+                                "Failure to create person record for %s\n", person_name
                             )
                             continue
 
@@ -958,7 +846,8 @@ def main():
             )
             print(cred_xml)
             update_rec = adlib.post(CID_API, cred_xml, "works", "updaterecord", session)
-            updates = True
+            if update_rec:
+                updates = True
 
         else:
             LOGGER.info("No Credit dictionary information for work %s", title)

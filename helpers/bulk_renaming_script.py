@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 """
+Written for DR-488
+
 Code to rename files into one of two categories:
 - N-123456.ext (correct N_ and add 01of01 partwhole)
 - N-123456_01of01.ext (correct N_)
@@ -9,6 +11,12 @@ Supply path to files and capture as sys.argv[1]
 Move renamed file to local autodetect path
 For legacy Collections Search MP4 ingest to DPI
 
+Note: Waiting to see if the code runs from a supplied
+      CSV with files to be handled, or if a folder will
+      be supplied containing only those that require
+      01of01 adding and N- changing to N_, then ingesting
+      to CID via usual methods.
+
 2025
 """
 
@@ -16,6 +24,7 @@ import logging
 import os
 import shutil
 import sys
+import csv
 from pathlib import Path
 from typing import Generator
 

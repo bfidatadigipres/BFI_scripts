@@ -344,7 +344,6 @@ def probe_metadata(arg, stream, fpath):
         new_args = arg
     try:
         probe = ffmpeg.probe(fpath)
-        #        print(probe['streams'])
         for i in probe["streams"]:
             if i["codec_type"] == stream and new_args == "DURATION":
                 return i["tags"][new_args]
@@ -653,7 +652,7 @@ def send_email(
         msg["Subject"] = subject
 
         if files != "" and files is not None:
-            if os.path.getsize(files) < 500000:
+            if os.path.getsize(files) <= 274878100:
                 with open(files, "rb") as file:
                     attachment_package = MIMEBase("application", "octet-stream")
                     attachment_package.set_payload((file).read())

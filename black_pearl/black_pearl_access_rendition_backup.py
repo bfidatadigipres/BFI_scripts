@@ -40,7 +40,7 @@ LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.environ["CONTROL_JSON"]
 STORAGE = os.environ["TRANSCODING"]
 INGEST_POINT = os.path.join(STORAGE, "mp4_proxy_backup_ingest_bfi/")
-MOD_MAX = 30
+MOD_MAX = 8
 UPLOAD_MAX = 1099511627776
 BUCKET = "Access_Renditions_backup"
 
@@ -105,7 +105,7 @@ def move_to_ingest_folder(new_path: str, file_list: list[str]):
 
 
 def delete_existing_proxy(file_list: list[str]) -> list[str]:
-    """
+    """version_id = bp.get_version_id(ref_num)
     A proxy is being replaced so the
     existing version should be cleared
     """
@@ -113,7 +113,8 @@ def delete_existing_proxy(file_list: list[str]) -> list[str]:
         LOGGER.info("No files being replaced at this time")
         return []
     for file in file_list:
-        confirmed = bp_utils.delete_black_pearl_object(file, None, BUCKET)
+        version_id = bp_utils.get_version_id(file)
+        confirmed = bp_utils.delete_black_pearl_object(file, version_id, BUCKET)
         print(type(confirmed))
         if confirmed:
             sleep(10)

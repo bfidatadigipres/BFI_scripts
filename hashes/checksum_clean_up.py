@@ -149,7 +149,6 @@ def main():
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
     if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if len(sys.argv) != 2:
         LOGGER.warning("SCRIPT NOT STARTING: MD5 path argument error: %s", sys.argv)
@@ -272,7 +271,7 @@ def main():
                     checksum,
                     record,
                 )
-            if md5 in str(record):
+            if f"checksum.value: {md5}" in str(record):
                 LOGGER.info(
                     "%s -- Successfully written checksum data to Checksum fields! Deleting checksum file",
                     fname,

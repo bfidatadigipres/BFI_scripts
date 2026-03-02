@@ -60,7 +60,7 @@ with sqlite3.connect(DBASE) as conn:
             description TEXT NOT NULL,
             delivery_date TEXT NOT NULL,
             destination TEXT NOT NULL,
-            instructions TEXT,
+            instructions TEXT NOT NULL,
             client_name TEXT NOT NULL,
             contact_details TEXT,
             department TEXT NOT NULL,

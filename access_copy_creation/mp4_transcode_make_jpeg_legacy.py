@@ -981,7 +981,7 @@ def create_transcode(
         "-c:v",
         "libx264",
         "-crf",
-        "0",
+        "16",
     ]
 
     pix = ["-pix_fmt", "yuv420p"]
@@ -1171,6 +1171,10 @@ def create_transcode(
         cmd_mid = crop_sd_608
     elif height == 576 and dar == "1.85:1":
         cmd_mid = crop_sd_16x9
+    elif height == 576 and aspect < 1.778:
+        cmd_mid = scale_sd_4x3
+    elif width <= 768 and aspect < 1.778:
+        cmd_mid = scale_sd_4x3
     elif height < 720 and dar == "16:9":
         cmd_mid = scale_sd_16x9
     elif height < 720 and dar == "4:3":
@@ -1188,6 +1192,8 @@ def create_transcode(
     elif width >= 1920 and aspect < 1.778:
         cmd_mid = fhd_all
     elif height >= 1080 and aspect >= 1.778:
+        cmd_mid = fhd_letters
+    elif height > 720 and aspect >= 1.778:
         cmd_mid = fhd_letters
     print(f"Middle command chosen: {cmd_mid}")
 

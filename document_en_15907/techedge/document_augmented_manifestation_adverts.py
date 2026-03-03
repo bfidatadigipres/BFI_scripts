@@ -1,40 +1,50 @@
 #!/usr/bin/env python3
 
 """
-WIP:
+Adverts record creation pass two:
+- Iterate daily advert creation CSV
+  looking for each independent advert
+  timing, placement within advert block 
+  and channel information
+- Using Film Code link to single work
+  inherit title from this(?) but copy
+  original descriptive fields to UTB
+  for long-term reference
+- Consider quantity of manifestations
+  linked to a single work, how we manage
+  large volumes.
 
-Quickly worked through functions
-main() not yet completed
-Thesaurus terms need appending where indicated
+Dependencies:
+2 week delay for TechEdge full
+metadata enrichment.
 
-ML use for people record creation?
+Parser needs updating when CSV finalised
+
+Consider:
+If a new advert does not find
+a match to Work - way to retry
+individual CSV entries
 
 2026
 """
 
 # Public packages
 import os
-import csv
 import sys
-import glob
-import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import logging
-import shutil
 from time import sleep
 import tenacity
-import yaml
 from typing import Optional
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
-from parsers import techedge_csv as tec
+from parsers import techedge_csv as te
 
 # Global variables
 STORAGE = # Path to CSVs
-CODE_PATH = os.environ.get("CODE_DEPENDS")
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 
@@ -48,7 +58,7 @@ LOGGER.setLevel(logging.INFO)
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def advert_exists_query(film_code: str) -> Optional[bool]:
+def advert_exists_query(film_code: str) -> Optional[str]:
     """
     Sends request for advert hit
     """
@@ -65,7 +75,7 @@ def advert_exists_query(film_code: str) -> Optional[bool]:
     print(f"Hits {hit_count}\n{record}")
     if hit_count is None:
         print(
-            f"Unable to match film cod: {film_code}"
+            f"Unable to match film code: {film_code}"
         )
         return None
     if hit_count == 0:
@@ -73,10 +83,11 @@ def advert_exists_query(film_code: str) -> Optional[bool]:
         return False
     if "alternative_number.type" in str(record):
         antype = adlib.retrieve_field_name(record[0], "alternative_number.type")[0]
+        priref = adlib.retrieve_field_name(record[0], "priref")[0]
         if "Unique advert identifier - TechEdge" == antype:
-            return True
+            return priref
         
-    return False
+    return None
 
 
 def genre_match(major: str, mid: str, minor: str) -> Optional[str]:
@@ -120,20 +131,6 @@ def get_utc(date_start: str, start_time: str) -> Optional[str]:
     return UTC_timestamp
 
 
-def yield_csv(fullpath):
-    """
-    Read CSV and return one at a time
-    skipping lines not required
-
-    Args:
-        fullpath (str): path to CSV
-    """
-    with open(fullpath, "r", encoding="utf-8") as inf:
-        rows = csv.reader(inf)
-        for row in rows:
-            return row
-
-
 def main():
     """
     Iterates through .csv files in TechEdge folders of storage_path
@@ -148,22 +145,11 @@ def main():
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     LOGGER.info(
-        "========== Adverts documentation script STARTED ==============================================="
+        "========== Adverts manifestation documentation script STARTED ==============================================="
     )
 
-    file_list = glob.glob(f"{STORAGE_PATH}/**/*.json", recursive=True)
-    file_list.sort()
-    print(f"Found JSON file total: {len(file_list)}")
-
-    for fullpath in file_list:
-        if FAILURE_COUNTER > 2:
-            LOGGER.critical(
-                "Multiple CID item record creation failures. Script exiting."
-            )
-            sys.exit(
-                "Multiple CID item record creation failures detected. Script exiting."
-            )
-        if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
+    for row in te.iter_techedge_rows(STORAGE):
+        if not utils.check_control("pause_scripts"):
             LOGGER.info(
                 "Script run prevented by downtime_control.json. Script exiting."
             )
@@ -172,68 +158,20 @@ def main():
             LOGGER.warning("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
 
-        root, file = os.path.split(fullpath)
-        if not os.path.exists(os.path.join(root, "stream.mpeg2.ts")):
-            LOGGER.info("Skipping: No stream file found in path: %s", root)
-            continue
-        if not os.path.exists(fullpath):
-            continue
-        if not file.endswith(".json") or not file.startswith("info_"):
-            continue
-        new_work = False
+        LOGGER.info("Processing row: %s", ", ".join(row))
 
-        print(f"\nFullpath for file being handled: {fullpath}")
-        with open(fullpath, "r", encoding="utf-8") as inf:
-            json_data = inf.read()
-
-        # Retrieve all data needed from JSON
-        if json_data:
-            generic, epg_dict = fetch_lines(fullpath, json_data)
-        else:
-            print("No EPG dictionary found. Skipping!")
+        # Check if parent work exists
+        film_code = row.film_code or ""
+        wpriref = advert_exists_query(film_code)
+        if not wpriref:
+            LOGGER.warning("Work does not exist for Advert %s - %s", film_code, wpriref)
             continue
-        if generic is True:
-            print("Generic episode title found")
-        title = epg_dict["title"]
-        print(f"Title: {title}")
-        description = epg_dict["description"]
-        print(f"Longest Description: {description}")
-        broadcast_channel = ""
-        if "channel" in epg_dict:
-            channel = epg_dict["channel"]
-            print(f"Channel selected: {channel}")
-        if "broadcast_channel" in epg_dict:
-            broadcast_channel = epg_dict["broadcast_channel"]
-            print(f"Broadcaster: {broadcast_channel}")
-
-        # CSV data gather
-        csv_data = csv_retrieve(os.path.join(root, "info.csv"))
-        if csv_data:
-            try:
-                csv_description = csv_data[0]
-                csv_actual_duration = csv_data[1]
-                print(f"** CSV DESCRIPTION: {csv_description}")
-                print(f"** CSV ACTUAL DURATION: {csv_actual_duration}")
-                csv_dump = csv_data[2]
-                print(f"** CSV DATA FOR UTB: {csv_dump}")
-            except (IndexError, TypeError, KeyError) as err:
-                csv_data = []
-                csv_description = ""
-                csv_actual_duration = ""
-                csv_dump = ""
-                print(err)
-        else:
-            csv_data = []
-            csv_description = ""
-            csv_actual_duration = ""
-            csv_dump = ""
 
         # Get defaults as lists of dictionary pairs
-        rec_def, ser_def, work_def, work_res_def, man_def, item_def = build_defaults(
-            epg_dict
-        )
+        rec_def, man_def, item_def = build_defaults(row, wpriref)
 
-        # Asset id check here
+        # JMW up to here 
+    
         work_priref = ""
         if "asset_id" in epg_dict:
             print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")

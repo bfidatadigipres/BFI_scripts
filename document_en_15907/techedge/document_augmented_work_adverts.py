@@ -1,22 +1,33 @@
 #!/usr/bin/env python3
 
 """
-WIP:
+Adverts record creation pass one:
+- Work through CSV of unique adverts
+  with LLM enhanced descriptive metadata.
+- Validate CSV row data with Pydantic
+- Inform creation of Work and People
+  record using the row data.
 
-Quickly worked through functions
-main() not yet completed
-Thesaurus terms need appending where indicated
+Dependencies:
+2 week delay for TechEdge full
+metadata enrichment and additional
+parsing of TechEdge data through LLM
+for cleaning/amendment to descriptive
+columns.
 
-ML use for people record creation?
+Parser needs updating when CSV finalised
+
+Only new adverts (decided by unique
+film_code value) are to have new works
+created. Creation pass two to make
+manifestations for channel appearances
 
 2026
 """
 
 # Public packages
 import os
-import csv
 import sys
-import glob
 from datetime import datetime
 import logging
 from time import sleep
@@ -30,7 +41,6 @@ from parsers import techedge_csv as te
 
 # Global variables
 STORAGE = # Path to CSVs
-CODE_PATH = os.environ.get("CODE_DEPENDS")
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 
@@ -130,20 +140,6 @@ def genre_match(major: str, mid: str, minor: str) -> Optional[str]:
             genres["Minor"] = v
 
     return genres
-
-
-def yield_csv(fullpath):
-    """
-    Read CSV and return one at a time
-    skipping lines not required
-
-    Args:
-        fullpath (str): path to CSV
-    """
-    with open(fullpath, "r", encoding="utf-8") as inf:
-        rows = csv.reader(inf)
-        for row in rows:
-            return row
 
 
 def main():

@@ -1,5 +1,5 @@
 """
-Pydantic models for the TechEdge CSV data.
+Pydantic models for the TechEdge CSV data (raw not cleaned data)
 
 Notes
 - Unknown/extra keys are forbidden

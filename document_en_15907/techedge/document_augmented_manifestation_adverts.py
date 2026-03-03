@@ -5,8 +5,9 @@ WIP:
 
 Quickly worked through functions
 main() not yet completed
-People record creation / appending needs adding
 Thesaurus terms need appending where indicated
+
+ML use for people record creation?
 
 2026
 """
@@ -24,236 +25,81 @@ import shutil
 from time import sleep
 import tenacity
 import yaml
+from typing import Optional
 
-sys.path.append(os.environ["CODE"])
+sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
 from parsers import techedge_csv as tec
 
 # Global variables
-CODE_PATH = os.environ["CODE_DEPENDS"]
-GENRE_MAP = os.path.join(CODE_PATH, "document_en_15907/EPG_genre_mapping.yaml")
-SERIES_LIST = os.path.join(CODE_PATH, "document_en_15907/series_list.json")
-LOG_PATH = os.environ["LOG_PATH"]
-CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
+STORAGE = # Path to CSVs
+CODE_PATH = os.environ.get("CODE_DEPENDS")
+LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
-FAILURE_COUNTER = 0
 
 # Setup logging
-logger = logging.getLogger("document_augmented_adverts")
-hdlr = logging.FileHandler(os.path.join(LOG_PATH, "document_augmented_adverts.log"))
-formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
-
-# Some date variables for path configuration - PROB NEEDED FOR BAU WORK
-# TODAY = datetime.date.today()
-# YESTERDAY = TODAY - datetime.timedelta(days=1)
-# YESTERDAY_CLEAN = YESTERDAY.strftime("%Y-%m-%d")
-# YEAR_PATH = YESTERDAY_CLEAN[:4]
-# YEAR_PATH = '2025'
-# STORAGE_PATH = STORAGE + YEAR_PATH
-
-# Match CSV channel to list: STORA channel name, code_type, broadcast_company
-CHANNELS = {
-    "ITV1": ["ITV HD", "MPEG-4 AVC", "20425"],
-    "ITV2": ["ITV2", "MPEG-4 AVC", "20425"],
-    "ITV3": ["ITV3", "MPEG-4 AVC", "20425"],
-    "ITV4": ["ITV4", "MPEG-4 AVC", "20425"],
-    "ITVQuiz": ["ITVBe", "MPEG-4 AVC", "20425"], # JMW Do we need this one any longer Stephen?
-    "CH4": [
-        "Channel 4 HD", 
-        "MPEG-4 AVC",
-        "73319"
-    ],
-    "More4": ["More4", "MPEG-2", "73319"],
-    "E4": ["E4", "MPEG-2", "73319"],
-    "Film4": ["Film4", "MPEG-2", "73319"],
-    "5": ["Channel 5 HD", "MPEG-2", "24404"],
-    "5STAR": ["5STAR", "MPEG-2", "24404"],
-}
-
-
-def look_up_series_list(alternative_num):
-    """
-    Check if series requires annual series creation
-    JMW KEEP THIS FOR ADVERTS
-    """
-
-    if alternative_num.strip() == "2af14f77-ef15-517c-a463-04dc0a7c81ad":
-        return "BBC News"
-    with open(SERIES_LIST, "r") as file:
-        slist = json.load(file)
-        if alternative_num in slist:
-            return True
-    return False
+LOGGER = logging.getLogger("document_augmented_work_adverts")
+HDLR = logging.FileHandler(os.path.join(LOG_PATH, "document_augmented_work_adverts.log"))
+FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
+HDLR.setFormatter(FORMATTER)
+LOGGER.addHandler(HDLR)
+LOGGER.setLevel(logging.INFO)
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def cid_series_query(series_id):
+def advert_exists_query(film_code: str) -> Optional[bool]:
     """
-    Sends CID request for series_id data
-    JMW KEEP THIS
+    Sends request for advert hit
     """
 
-    print(f"CID SERIES QUERY: {series_id}")
-    search = f'alternative_number="{series_id}"'
-    sleep(1)
+    search = f'alternative_number="{film_code}"'
     try:
-        hit_count, series_query_result = adlib.retrieve_record(
-            CID_API, "works", search, "1"
+        hit_count, record = adlib.retrieve_record(
+            CID_API, "works", search, "1", ["alternative_number.type"]
         )
     except Exception as err:
         print(err)
         raise Exception
 
-    print(f"cid_series_query(): {hit_count}\n{series_query_result}")
-    if hit_count is None or hit_count == 0:
+    print(f"Hits {hit_count}\n{record}")
+    if hit_count is None:
         print(
-            f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id}"
+            f"Unable to match film cod: {film_code}"
         )
-        print(
-            "cid_series_query(): Series hit count and series priref will return empty strings"
-        )
-        return hit_count, ""
-    if "priref" in str(series_query_result):
-        series_priref = adlib.retrieve_field_name(series_query_result[0], "priref")[0]
-        print(f"cid_series_query(): Series priref: {series_priref}")
-    else:
-        print("cid_series_query(): Unable to access series_priref")
-        return hit_count, ""
-
-    return hit_count, series_priref
-
-
-@tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def find_repeats(asset_id):
-    """
-    Use asset_id to check in CID for duplicate
-    advert showings of a manifestation
-    JMW KEEP THIS FOR FILM CODE CHECKS
-    """
-
-    search = f'alternative_number="{asset_id}" AND alternative_number.type="Unique advert identifier - TechEdge"'
-    sleep(1)
-    hits, result = adlib.retrieve_record(CID_API, "manifestations", search, "1")
-    print(f"*** find_repeats(): {hits}\n{result}")
-    if hits is None:
-        print(f"CID API could not be reached for Manifestations search: {search}")
         return None
-    if hits == 0:
-        return 0
-    try:
-        man_priref = adlib.retrieve_field_name(result[0], "priref")[0]
-    except (IndexError, TypeError, KeyError):
-        return None
-    sleep(1)
-    full_result = adlib.retrieve_record(
-        CID_API,
-        "manifestations",
-        f'priref="{man_priref}"',
-        "1",
-        ["alternative_number.type", "part_of_reference.lref"],
-    )[1]
-    if not full_result:
-        return None
-    try:
-        print(full_result[0])
-        alt_num_type = adlib.retrieve_field_name(
-            full_result[0], "alternative_number.type"
-        )[0]
-    except (IndexError, TypeError, KeyError):
-        alt_num_type = ""
-    try:
-        ppriref = adlib.retrieve_field_name(full_result[0], "part_of_reference.lref")[0]
-    except (IndexError, TypeError, KeyError):
-        ppriref = ""
-
-    print(f"********** Alternative number type: {alt_num_type} ************")
-    if ppriref is None:
-        return None
-    print(
-        f"Priref with matching asset_id in CID: {man_priref} / Parent Work: {ppriref}"
-    )
-    if len(ppriref) > 1:
-        return ppriref
+    if hit_count == 0:
+        print(f"No match found for Film Code {film_code}")
+        return False
+    if "alternative_number.type" in str(record):
+        antype = adlib.retrieve_field_name(record[0], "alternative_number.type")[0]
+        if "Unique advert identifier - TechEdge" == antype:
+            return True
+        
+    return False
 
 
-def genre_retrieval(category_code, description, title):
+def genre_match(major: str, mid: str, minor: str) -> Optional[str]:
     """
-    Retrieve genre data, return as list
+    Match major, mid, minor categories to thesaurus terms
+    Unsure where these will sit, assume Work.
     """
-    with open(GENRE_MAP, "r", encoding="utf8") as files:
-        data = yaml.load(files, Loader=yaml.FullLoader)
-        print(
-            f"genre_retrieval(): The genre data is being retrieved for: {category_code}"
-        )
-    for _ in data:
-        if category_code in data["genres"]:
-            genre_one = {}
-            genre_two = {}
-            subject_one = {}
-            subject_two = {}
+    dict_matches = {
+        "Entertainment & leisure": "THESAURUS",
+        "Leisure activities": "THESAURUS",
+        "Theatres musicals & plays": "THESAURUS",
+    }
 
-            genre_one = data["genres"][category_code.strip("u")]["Genre"]
-            print(f"genre_retrieval(): Genre one: {genre_one}")
-            if "Undefined" in str(genre_one):
-                print(
-                    f"genre_retrieval(): Undefined category_code discovered: {category_code}"
-                )
-                with open(os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a") as genre_log:
-                    genre_log.write("\n")
-                    genre_log.write(
-                        f"Category: {category_code}     Title: {title}     Description: {description}"
-                    )
-                genre_one_priref = ""
-            else:
-                for _, val in genre_one.items():
-                    genre_one_priref = val
-                print(f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}")
-            try:
-                genre_two = data["genres"][category_code.strip("u")]["Genre2"]
-                for _, val in genre_two.items():
-                    genre_two_priref = val
-            except (IndexError, KeyError):
-                genre_two_priref = ""
+    genres = {}
 
-            try:
-                subject_one = data["genres"][category_code.strip("u")]["Subject"]
-                for _, val in subject_one.items():
-                    subject_one_priref = val
-                print(
-                    f"genre_retrieval(): Key value for subject_one_priref: {subject_one_priref}"
-                )
-            except (IndexError, KeyError):
-                subject_one_priref = ""
-
-            try:
-                subject_two = data["genres"][category_code.strip("u")]["Subject2"]
-                for _, val in subject_two.items():
-                    subject_two_priref = val
-                print(f"genre_retrieval(): Key value for subject_two_priref: {subject_two_priref}")
-            except (IndexError, KeyError):
-                subject_two_priref = ""
-
-            return [
-                genre_one_priref,
-                genre_two_priref,
-                subject_one_priref,
-                subject_two_priref,
-            ]
-
-        else:
-            logger.warning(
-                "%s -- New category not in EPG_genre_map.yaml: %s", category_code, title
-            )
-            with open(os.path.join(GENRE_PTH, "redux_undefined_genres.txt"), "a") as genre_log:
-                genre_log.write("\n")
-                genre_log.write(
-                    f"Category: {category_code}     Title: {title}     Description: {description}"
-                )
-            return []
+    for k, v in dict_matches.items():
+        if k == major:
+            genres["Major"] = v
+        if k == mid:
+            genres["Middle"] = v
+        if k == minor:
+            genres["Minor"] = v
+    return genres
 
 
 def get_utc(date_start: str, start_time: str) -> Optional[str]:
@@ -290,17 +136,19 @@ def yield_csv(fullpath):
 
 def main():
     """
-    Iterates through .json files in STORA folders of storage_path
-    extracts necessary data into variable. Checks if show is repeat
+    Iterates through .csv files in TechEdge folders of storage_path
+    extracts necessary data into variables. Checks if advert is repeat
     if yes - make manifestation/item only and link to work_priref
     if no - make series/work/manifestation and item record
+    
+    JMW - check if no requirement for different channel ads to be listed separately
     """
     if not utils.check_storage(STORAGE):
-        logger.info("Script run prevented by storage_control.json. Script exiting.")
+        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
-    logger.info(
-        "========== STORA documentation script STARTED ==============================================="
+    LOGGER.info(
+        "========== Adverts documentation script STARTED ==============================================="
     )
 
     file_list = glob.glob(f"{STORAGE_PATH}/**/*.json", recursive=True)
@@ -309,24 +157,24 @@ def main():
 
     for fullpath in file_list:
         if FAILURE_COUNTER > 2:
-            logger.critical(
+            LOGGER.critical(
                 "Multiple CID item record creation failures. Script exiting."
             )
             sys.exit(
                 "Multiple CID item record creation failures detected. Script exiting."
             )
         if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
-            logger.info(
+            LOGGER.info(
                 "Script run prevented by downtime_control.json. Script exiting."
             )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         if not utils.cid_check(CID_API):
-            logger.warning("* Cannot establish CID session, exiting script")
+            LOGGER.warning("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
 
         root, file = os.path.split(fullpath)
         if not os.path.exists(os.path.join(root, "stream.mpeg2.ts")):
-            logger.info("Skipping: No stream file found in path: %s", root)
+            LOGGER.info("Skipping: No stream file found in path: %s", root)
             continue
         if not os.path.exists(fullpath):
             continue
@@ -395,7 +243,7 @@ def main():
             print(
                 "Cannot retrieve Work parent data. Maybe missing in CID or problems accessing dB via API. Skipping"
             )
-            logger.warning(
+            LOGGER.warning(
                 "Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s",
                 epg_dict["asset_id"],
             )
@@ -410,33 +258,10 @@ def main():
                 print("Generic in title, assuming programme is new content")
                 new_work = True
             else:
-                logger.info(
+                LOGGER.info(
                     "** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s",
                     work_priref,
                 )
-
-        # Check file health with policy verification - skip if broken MPEG file
-        acquired_filename = os.path.join(root, "stream.mpeg2.ts")
-        print(f"Path for programme stream content: {acquired_filename}")
-        """
-        success, response = utils.get_mediaconch(acquired_filename, MPEG_TS_POLICY)
-        if success is False:
-            # Fix 'BROKEN' to folder name, update failure CSV
-            logger.warning(
-                "File found that has failed MPEG-TS policy:\n%s", acquired_filename
-            )
-            logger.warning("Marking JSON with .PROBLEM")
-            mark_broken_stream(fullpath, acquired_filename)
-            logger.warning("Marking stream.mpeg2.ts.BROKEN and updating CSV")
-            update_broken_ts(acquired_filename, work_priref, response, epg_dict)
-            continue
-        logger.info("MPEG-TS passed MediaConch check: %s", success)
-        print(response)
-        """
-
-        # Make news channels new works for all live programming
-        if channel in NEWS_CHANNELS:
-            new_work = True
 
         if new_work is True:
             # Create the Work record here, and populate work_priref
@@ -459,13 +284,13 @@ def main():
                     bbc_split = False
                 elif series_chck is True:
                     series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
-                    logger.info("Series found for annual refresh: %s", series_chck)
+                    LOGGER.info("Series found for annual refresh: %s", series_chck)
                     bbc_split = False
 
                 series_return = cid_series_query(series_id)
                 if series_return[0] is None:
                     print(f"CID Series data not retrieved: {epg_dict['series_id']}")
-                    logger.warning(
+                    LOGGER.warning(
                         "Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s",
                         epg_dict["series_id"],
                     )
@@ -488,7 +313,7 @@ def main():
                         bbc_split,
                     )
                     if not series_work_id:
-                        logger.warning(
+                        LOGGER.warning(
                             "Skipping further actions: Creation of series failed as no series_work_id found: \n%s",
                             epg_dict["series_id"],
                         )
@@ -584,65 +409,8 @@ def main():
                 )
                 continue
 
-        """
-        # Build webvtt payload [deprecated]
-        if webvtt_payload:
-            success = push_payload(item_data[1], webvtt_payload)
-            if not success:
-                logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
-        """
-        # Rename JSON with .documented
-        documented = f"{fullpath}.documented"
-        print(f"* Renaming {fullpath} to {documented}")
-        try:
-            os.rename(fullpath, f"{fullpath}.documented")
-        except Exception as err:
-            print(f"** PROBLEM: Could not rename {fullpath} to {documented}")
-            logger.warning(
-                "%s\tCould not rename to %s. Error: %s", fullpath, documented, err
-            )
-
-        # Rename transport stream file with Item object number and move to autoingest
-        item_object_number_underscore = item_data[0].replace("-", "_")
-        new_filename = f"{item_object_number_underscore}_01of01.ts"
-        destination = f"{AUTOINGEST_PATH}{new_filename}"
-        print(f"* Renaming {acquired_filename} to {destination}")
-        try:
-            shutil.move(acquired_filename, destination)
-            logger.info(
-                "%s\tRenamed %s to %s", fullpath, acquired_filename, destination
-            )
-        except Exception as err:
-            print(
-                f"** PROBLEM: Could not rename & move {acquired_filename} to {destination}"
-            )
-            logger.warning(
-                "%s\tCould not rename & move %s to %s. Error: %s",
-                fullpath,
-                acquired_filename,
-                destination,
-                err,
-            )
-
-        # Rename .vtt subtitle file with Item object number and move to Isilon for use later in MTQ workflow
-        if webvtt_payload is not None:
-            new_vtt_name = f"{item_object_number_underscore}_01of01.vtt"
-            new_vtt = f"{SUBS_PTH}{new_vtt_name}"
-            print(f"* Renaming {old_webvtt} to {new_vtt}")
-            try:
-                shutil.move(old_webvtt, new_vtt)
-                logger.info("%s\tRenamed %s to %s", fullpath, old_webvtt, new_vtt)
-            except Exception as err:
-                print(f"** PROBLEM: Could not rename {old_webvtt} to {new_vtt}")
-                logger.warning(
-                    "%s\tCould not rename %s to %s. Error: %s",
-                    fullpath,
-                    old_webvtt,
-                    new_vtt,
-                    err,
-                )
-    logger.info(
-        "========== STORA documentation script END ===================================================\n"
+    LOGGER.info(
+        "========== Adverts documentation script END ===================================================\n"
     )
 
 
@@ -806,15 +574,15 @@ def create_work(record: dict, work: dict, work_restriction: dict) -> Optional[st
         return None
     try:
         sleep(1)
-        logger.info("Attempting to create Work record for item %s", title)
+        LOGGER.info("Attempting to create Work record for item %s", title)
         work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
         print(f"create_work(): {work_rec}")
     except Exception as err:
         print(f"* Unable to create Work record for <{title}>\n{err}")
-        logger.warning(
+        LOGGER.warning(
             "%s\tUnable to create Work record for <%s>", title
         )
-        logger.warning(err)
+        LOGGER.warning(err)
 
     # Allow for retry if record priref creation crash:
     if len(work_rec) == 0:
@@ -823,17 +591,17 @@ def create_work(record: dict, work: dict, work_restriction: dict) -> Optional[st
     if "Duplicate key in unique index 'invno':" in str(work_rec):
         try:
             sleep(1)
-            logger.info(
+            LOGGER.info(
                 "Attempting to create Work record for item %s", title
             )
             work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
             print(f"create_work(): {work_rec}")
         except Exception as err:
             print(f"* Unable to create Work record for <{title}>\n{err}")
-            logger.warning(
+            LOGGER.warning(
                 "Unable to create Work record for <%s>", title
             )
-            logger.warning(err)
+            LOGGER.warning(err)
 
     try:
         print("Populating work_id and object_number variables")
@@ -842,9 +610,9 @@ def create_work(record: dict, work: dict, work_restriction: dict) -> Optional[st
         print(
             f"* Work record created with Priref {work_id} Object number {object_number}"
         )
-        logger.info("Work record created with priref %s", work_id)
+        LOGGER.info("Work record created with priref %s", work_id)
     except (IndexError, TypeError, KeyError) as err:
-        logger.warning(
+        LOGGER.warning(
             "Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s",
             title,
         )
@@ -888,12 +656,12 @@ def create_manifestation(work_priref: str, record: dict, manifestation: dict) ->
         return None
     try:
         sleep(1)
-        logger.info("Attempting to create Manifestation record for item %s", title)
+        LOGGER.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, "manifestations", "insertrecord")
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
-        logger.warning(
+        LOGGER.warning(
             "Unable to write manifestation record <%s> %s", manifestation_id, err
         )
 
@@ -901,14 +669,14 @@ def create_manifestation(work_priref: str, record: dict, manifestation: dict) ->
     if "Duplicate key in unique index 'invno':" in str(man_rec):
         try:
             sleep(1)
-            logger.info("Attempting to create Manifestation record for item %s", title)
+            LOGGER.info("Attempting to create Manifestation record for item %s", title)
             man_rec = adlib.post(
                 CID_API, man_values_xml, "manifestations", "insertrecord"
             )
             print(f"create_manifestation(): {man_rec}")
         except Exception as err:
             print(f"*** Unable to write manifestation record: {err}")
-            logger.warning(
+            LOGGER.warning(
                 "Unable to write manifestation record <%s> %s", manifestation_id, err
             )
 
@@ -920,12 +688,12 @@ def create_manifestation(work_priref: str, record: dict, manifestation: dict) ->
         print(
             f"* Manifestation record created with Priref {manifestation_id} Object number {object_number}"
         )
-        logger.info(
+        LOGGER.info(
             "Manifestation record created with priref %s",
             manifestation_id,
         )
     except (IndexError, KeyError, TypeError) as err:
-        logger.warning("Failed to retrieve Priref from record created for - %s", title)
+        LOGGER.warning("Failed to retrieve Priref from record created for - %s", title)
         raise Exception(
             "Failed to retrieve Priref/Object Number from record creation."
         ).with_traceback(err.__traceback__)
@@ -954,13 +722,13 @@ def create_cid_item_record(work_id: str, manifestation_id: str, record: dict, it
 
     try:
         sleep(1)
-        logger.info(
+        LOGGER.info(
             "Attempting to create CID item record for item %s", title
         )
         item_rec = adlib.post(CID_API, item_values_xml, "items", "insertrecord")
         print(f"create_cid_item_record(): {item_rec}")
     except Exception as err:
-        logger.warning(
+        LOGGER.warning(
             "PROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion",
             title,
         )
@@ -970,13 +738,13 @@ def create_cid_item_record(work_id: str, manifestation_id: str, record: dict, it
     if "Duplicate key in unique index 'invno':" in str(item_rec):
         try:
             sleep(1)
-            logger.info(
+            LOGGER.info(
                 "Attempting to create CID item record for item %s", title
             )
             item_rec = adlib.post(CID_API, item_values_xml, "items", "insertrecord")
             print(f"create_cid_item_record(): {item_rec}")
         except Exception as err:
-            logger.warning(
+            LOGGER.warning(
                 "%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion",
                 title,
             )
@@ -990,14 +758,14 @@ def create_cid_item_record(work_id: str, manifestation_id: str, record: dict, it
         print(
             f"* Item record created with Priref {item_id} Object number {item_object_number}"
         )
-        logger.info("Item record created with priref %s", item_id)
+        LOGGER.info("Item record created with priref %s", item_id)
     except (IndexError, KeyError, TypeError) as err:
-        logger.warning("Failed to retrieve Priref from record created %s", err)
+        LOGGER.warning("Failed to retrieve Priref from record created %s", err)
         raise Exception(
             "Failed to retrieve Priref/Object Number from record creation."
         ).with_traceback(err.__traceback__)
     if item_rec is None:
-        logger.warning(
+        LOGGER.warning(
             "PROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion",
             title,
         )

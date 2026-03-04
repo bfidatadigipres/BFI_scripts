@@ -162,65 +162,6 @@ CHANNELS = {
 }
 
 
-def split_title(title_article):
-    """
-    An exception needs adding for "Die " as German language content
-    This list is not comprehensive.
-    """
-    if title_article.startswith(
-        (
-            "A ",
-            "An ",
-            "Am ",
-            "Al-",
-            "As ",
-            "Az ",
-            "Bir ",
-            "Das ",
-            "De ",
-            "Dei ",
-            "Den ",
-            "Der ",
-            "Det ",
-            "Di ",
-            "Dos ",
-            "Een ",
-            "Eene",
-            "Ei ",
-            "Ein ",
-            "Eine",
-            "Eit ",
-            "El ",
-            "el-",
-            "En ",
-            "Et ",
-            "Ett ",
-            "Het ",
-            "Il ",
-            "Na ",
-            "A'",
-            "L'",
-            "La ",
-            "Le ",
-            "Les ",
-            "Los ",
-            "The ",
-            "Un ",
-            "Une ",
-            "Uno ",
-            "Y ",
-            "Yr ",
-        )
-    ):
-        title_split = title_article.split()
-        ttl = title_split[1:]
-        title = " ".join(ttl)
-        title_art = title_split[0]
-        return title, title_art
-
-    return title_article, ""
-
-
 def look_up_series_list(alternative_num):
     """
     Check if series requires annual series creation
@@ -546,7 +487,7 @@ def fetch_lines(fullpath, json_dct):
             title_for_split = title_whole
 
     # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
-    title, title_article = split_title(title_for_split)
+    title, title_article = utils.split_title(title_for_split)
 
     description = []
     d_short = val.item[0].summary.short or ""
@@ -1233,8 +1174,8 @@ def create_series(
         )
         return None
     try:
-        series_title = split_title(series_title_full)[0]
-        series_title_article = split_title(series_title_full)[1]
+        series_title = utils.split_title(series_title_full)[0]
+        series_title_article = utils.split_title(series_title_full)[1]
         print(f"***** Series title: {series_title}, and article {series_title_article}")
     except (IndexError, TypeError, KeyError):
         series_title = series_title_full

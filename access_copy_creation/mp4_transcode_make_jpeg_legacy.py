@@ -1028,7 +1028,7 @@ def create_transcode(
         "-c:v",
         "libx264",
         "-crf",
-        "17",
+        "16",
     ]
 
     pix = ["-pix_fmt", "yuv420p"]

@@ -104,70 +104,11 @@ def get_folder_title(article: str, title: str) -> str:
         .replace("!", "")
         .replace("’", "")
     )
-    if article != "-":
+    if article != "":
         title = f'{article}_{title.replace(" ", "_")}_'
     else:
         title = f'{title.replace(" ", "_")}_'
     return title
-
-
-def split_title(title_article: str) -> tuple[str, str]:
-    """
-    An exception needs adding for "Die " as German language content
-    This list is not comprehensive.
-    """
-    if title_article.startswith(
-        (
-            "A ",
-            "An ",
-            "Am ",
-            "Al-",
-            "As ",
-            "Az ",
-            "Bir ",
-            "Das ",
-            "De ",
-            "Dei ",
-            "Den ",
-            "Der ",
-            "Det ",
-            "Di ",
-            "Dos ",
-            "Een ",
-            "Eene",
-            "Ei ",
-            "Ein ",
-            "Eine",
-            "Eit ",
-            "El ",
-            "el-",
-            "En ",
-            "Et ",
-            "Ett ",
-            "Het ",
-            "Il ",
-            "Na ",
-            "A'",
-            "L'",
-            "La ",
-            "Le ",
-            "Les ",
-            "Los ",
-            "The ",
-            "Un ",
-            "Une ",
-            "Uno ",
-            "Y ",
-            "Yr ",
-        )
-    ):
-        title_split: list[str] = title_article.split()
-        ttl = title_split[1:]
-        title = " ".join(ttl)
-        title_art = title_split[0]
-        return title, title_art
-
-    return title_article, "-"
 
 
 def get_folder_match(foldername: str) -> list[str]:
@@ -225,7 +166,7 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
     c_data: dict[Optional[str], Optional[str]] = {}
     val.id and c_data.update({"cat_id": val.id})
     if val.title:
-        title, article = split_title(val.title)
+        title, article = utils.split_title(val.title)
         c_data.update({"title": title})
         c_data.update({"title_article": article})
     val.productionYear and c_data.update({"production_year": str(val.productionYear)})
@@ -287,7 +228,7 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
     val.type and j_data.update({"type": val.type})
     title_full = val.title
     if title_full:
-        title, article = split_title(title_full)
+        title, article = utils.split_title(title_full)
         j_data.update({"title": title})
         j_data.update({"title_article": article})
     val.productionYear and j_data.update({"production_year": str(val.productionYear)})
@@ -346,7 +287,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
     val.type and s_data.update({"type": val.type})
     title_full = val.title
     if title_full:
-        title, article = split_title(title_full)
+        title, article = utils.split_title(title_full)
         s_data.update({"title": title})
         s_data.update({"title_article": article})
     val.productionYear and s_data.update({"production_year": str(val.productionYear)})
@@ -928,7 +869,7 @@ def main():
                 record, series_work, work, work_restricted, manifestation, item = (
                     build_defaults(series_data_dct)
                 )
-                work_title, work_title_art = split_title(series_data_dct["title"])
+                work_title, work_title_art = utils.split_title(series_data_dct["title"])
 
                 # Make series work here
                 if not series_data_dct:
@@ -1343,7 +1284,7 @@ def create_series_work(
         series_work_values.append({"title.language": "English"})
         series_work_values.append({"title.type": "05_MAIN"})
     if "title_article" in series_dct:
-        if series_dct["title_article"] != "-" and series_dct["title_article"] != "":
+        if series_dct["title_article"] != "":
             series_work_values.append({"title.article": series_dct["title_article"]})
     if len("patv_id") > 0:
         series_work_values.append({"alternative_number.type": "PATV Netflix asset ID"})
@@ -1490,15 +1431,12 @@ def create_work(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             work_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art != "-" and work_title_art != "":
+            if work_title_art != "":
                 work_values.append({"title.article": work_title_art})
         else:
             work_values.append({"title": work_dict["title"]})
             if "title_article" in work_dict:
-                if (
-                    work_dict["title_article"] != "-"
-                    and work_dict["title_article"] != ""
-                ):
+                if work_dict["title_article"] != "":
                     work_values.append({"title.article": work_dict["title_article"]})
         work_values.append({"title.language": "English"})
         work_values.append({"title.type": "05_MAIN"})
@@ -1657,10 +1595,7 @@ def create_manifestation(
         else:
             manifestation_values.append({"title": work_dict["title"]})
             if "title_article" in work_dict:
-                if (
-                    work_dict["title_article"] != "-"
-                    and work_dict["title_article"] != ""
-                ):
+                if work_dict["title_article"] != "":
                     manifestation_values.append(
                         {"title.article": work_dict["title_article"]}
                     )
@@ -1796,10 +1731,7 @@ def create_item(
         else:
             item_values.append({"title": work_dict["title"]})
             if "title_article" in work_dict:
-                if (
-                    work_dict["title_article"] != "-"
-                    and work_dict["title_article"] != ""
-                ):
+                if work_dict["title_article"] != "":
                     item_values.append({"title.article": work_dict["title_article"]})
         item_values.append({"title.language": "English"})
         item_values.append({"title.type": "05_MAIN"})

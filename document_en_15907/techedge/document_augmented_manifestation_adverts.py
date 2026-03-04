@@ -131,12 +131,71 @@ def get_utc(date_start: str, start_time: str) -> Optional[str]:
     return UTC_timestamp
 
 
+def split_title(title_article):
+    """
+    An exception needs adding for "Die " as German language content
+    This list is not comprehensive.
+    """
+    if title_article.startswith(
+        (
+            "A ",
+            "An ",
+            "Am ",
+            "Al-",
+            "As ",
+            "Az ",
+            "Bir ",
+            "Das ",
+            "De ",
+            "Dei ",
+            "Den ",
+            "Der ",
+            "Det ",
+            "Di ",
+            "Dos ",
+            "Een ",
+            "Eene",
+            "Ei ",
+            "Ein ",
+            "Eine",
+            "Eit ",
+            "El ",
+            "el-",
+            "En ",
+            "Et ",
+            "Ett ",
+            "Het ",
+            "Il ",
+            "Na ",
+            "A'",
+            "L'",
+            "La ",
+            "Le ",
+            "Les ",
+            "Los ",
+            "The ",
+            "Un ",
+            "Une ",
+            "Uno ",
+            "Y ",
+            "Yr ",
+        )
+    ):
+        title_split = title_article.split()
+        ttl = title_split[1:]
+        title = " ".join(ttl)
+        title_art = title_split[0]
+        return title, title_art
+
+    return title_article, ""
+
+
 def main():
     """
     Iterates through .csv files in TechEdge folders of storage_path
     extracts necessary data into variables. Checks if advert is repeat
-    if yes - make manifestation/item only and link to work_priref
-    if no - make series/work/manifestation and item record
+    if yes - make manifestation only and link to work_priref
+    if no - need to consider skipping or seeking out work data from other CSV
     
     JMW - check if no requirement for different channel ads to be listed separately
     """
@@ -145,7 +204,7 @@ def main():
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     LOGGER.info(
-        "========== Adverts manifestation documentation script STARTED ==============================================="
+        "========== Adverts manifestation documentation script STARTED ==========================="
     )
 
     for row in te.iter_techedge_rows(STORAGE):
@@ -170,185 +229,51 @@ def main():
         # Get defaults as lists of dictionary pairs
         rec_def, man_def, item_def = build_defaults(row, wpriref)
 
-        # JMW up to here 
-    
-        work_priref = ""
-        if "asset_id" in epg_dict:
-            print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
-            work_priref = find_repeats(epg_dict["asset_id"])
-            print(work_priref)
-        if work_priref is None:
-            print(
-                "Cannot retrieve Work parent data. Maybe missing in CID or problems accessing dB via API. Skipping"
-            )
-            LOGGER.warning(
-                "Skipping further actions: Failed to retrieve response from CID API for asset_id search: \n%s",
-                epg_dict["asset_id"],
-            )
-            continue
-        elif work_priref == 0:
-            new_work = True
-        elif len(work_priref) > 4:
-            print(
-                f"**** JSON file found to have repeated Asset ID, previous work: {work_priref}"
-            )
-            if generic is True:
-                print("Generic in title, assuming programme is new content")
-                new_work = True
-            else:
-                LOGGER.info(
-                    "** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s",
-                    work_priref,
-                )
-
-        if new_work is True:
-            # Create the Work record here, and populate work_priref
-            print(
-                "JSON file does not have repeated asset_id. Creating new work record..."
-            )
-            series_return = []
-            series_work_id = ""
-            if "series_id" in epg_dict:
-                print("Series ID exists, trying to retrieve series data from CID")
-                # Check if series already in CID and/or series_cache, if not generate series_cache json
-                series_chck = look_up_series_list(epg_dict["series_id"])
-                month = ""
-                if series_chck == "BBC News":
-                    bbc_split = True
-                    month = root.split("/")[-4]
-                    series_id = f"{YEAR_PATH}_{month}_{epg_dict['series_id']}"
-                elif series_chck is False:
-                    series_id = epg_dict["series_id"]
-                    bbc_split = False
-                elif series_chck is True:
-                    series_id = f"{YEAR_PATH}_{epg_dict['series_id']}"
-                    LOGGER.info("Series found for annual refresh: %s", series_chck)
-                    bbc_split = False
-
-                series_return = cid_series_query(series_id)
-                if series_return[0] is None:
-                    print(f"CID Series data not retrieved: {epg_dict['series_id']}")
-                    LOGGER.warning(
-                        "Skipping further actions: Failed to retrieve response from CID API for series_work_id search: \n%s",
-                        epg_dict["series_id"],
-                    )
-                    continue
-
-                hit_count = series_return[0]
-                series_work_id = series_return[1]
-                if hit_count == 0:
-                    print(
-                        "This Series does not exist yet in CID - attempting creation now"
-                    )
-                    # Launch create series function
-                    series_work_id = create_series(
-                        fullpath,
-                        ser_def,
-                        work_res_def,
-                        epg_dict,
-                        series_id,
-                        month,
-                        bbc_split,
-                    )
-                    if not series_work_id:
-                        LOGGER.warning(
-                            "Skipping further actions: Creation of series failed as no series_work_id found: \n%s",
-                            epg_dict["series_id"],
-                        )
-                        continue
-
-            # Create Work
-            work_values = []
-            work_values.extend(rec_def)
-            work_values.extend(work_def)
-            work_values.extend(work_res_def)
-            work_priref = create_work(
-                fullpath,
-                series_work_id,
-                work_values,
-                csv_description,
-                csv_dump,
-                epg_dict,
-            )
-
-        if not work_priref:
-            print(
-                f"Work error, priref not numeric from new file creation: {work_priref}"
-            )
-            continue
-        if not work_priref.isnumeric() and new_work is True:
-            print(
-                f"Work error, priref not numeric from new file creation: {work_priref}"
-            )
-            continue
-
         # Create CID manifestation record
         manifestation_values = []
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
-        manifestation_priref = create_manifestation(
-            fullpath, work_priref, csv_actual_duration, manifestation_values, epg_dict
-        )
+        mpriref = create_manifestation(wpriref, manifestation_values)
 
-        if not manifestation_priref:
+        if not mpriref:
             print(
-                f"CID Manifestation priref not retrieved for manifestation: {manifestation_priref}"
+                f"CID Manifestation priref not retrieved for manifestation: {mpriref}"
             )
-            if new_work:
-                print(f"*** Manual clean up needed for Work {work_priref}")
             sys.exit("Exiting for failure to create new manifestations")
 
-        # Check if subtitles are populated
-        old_webvtt = os.path.join(root, "subtitles.vtt")
-        webvtt_payload = build_webvtt_dct(old_webvtt)
 
-        # Create CID item record
+        # JMW - Create CID item record for these??
+        # Still to decide access method / file type
+        # Possibly just the first Work will have manifestation / item and no others
         item_values = []
         item_values.extend(rec_def)
         item_values.extend(item_def)
         item_data = create_cid_item_record(
-            work_priref,
-            manifestation_priref,
-            acquired_filename,
-            fullpath,
-            file,
-            new_work,
+            wpriref,
+            mpriref,
             item_values,
-            epg_dict,
-        )
+            )
         print(f"item_object_number: {item_data}")
 
         if item_data is None:
             print(
-                f"CID Item object number not retrieved for manifestation: {manifestation_priref}"
+                f"CID Item object number not retrieved for manifestation: {mpriref}"
             )
-            if new_work:
-                print(
-                    f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}"
-                )
-                continue
-            else:
-                print(
-                    f"*** Manual clean up needed for Manifestation {manifestation_priref}"
-                )
-                continue
+            print(
+                f"*** Manual clean up needed for Manifestation {mpriref}"
+            )
+            continue
         if len(item_data[0]) == 0 or len(item_data[1]) == 0:
             print(
                 f"Error retrieving Item record priref and object number. Skipping completion of this programme, manual clean up of records needed."
             )
-            if new_work:
-                print(
-                    f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}"
-                )
-                continue
-            else:
-                print(
-                    f"*** Manual clean up needed for Manifestation {manifestation_priref}"
-                )
-                continue
+            print(
+                f"*** Manual clean up needed for Manifestation {mpriref}"
+            )
+            continue
 
     LOGGER.info(
-        "========== Adverts documentation script END ===================================================\n"
+        "========== Adverts documentation script END ===============================\n"
     )
 
 
@@ -378,6 +303,23 @@ def build_records(row):
     JMW - to check if these map from Stephen / Will we add whole original entry to Work utb?
     """
 
+    title_art = row.brand or ""
+    # JMW Likely to need any title splits for "A" or "The"?
+    title, title_article = split_title(title_art)
+
+    alternative_number = row.film_code or ""
+    alternative_number.type = "Unique advert identifier - TechEdge"
+    title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
+    transmission_start_time = row.start_time or ""
+    utc_timestamp = get_utc(title_date_start, transmission_start_time)
+
+    # Broadcast details
+    channel = row.channel or ""
+    for k, v in CHANNELS.items():
+        if k == channel:
+            broadcast_channel = v[0]
+            broadcast_company = v[1]
+
     record = [
         {"input.name": "datadigipres"},
         {"input.date": str(datetime.datetime.now())[:10]},
@@ -389,67 +331,11 @@ def build_records(row):
         {"record_access.rights": "0"},
         {"record_access.reason": "SENSITIVE_LEGAL"},
         {"grouping.lref": ""}, # JMW New grouping needed
-        {"title": row[6]},
+        {"title": title},
+        {"title.article": title_article},
         {"title.language": "English"},
         {"title.type": "05_MAIN"},
     ]
-
-    work = [
-        {"record_type": "WORK"},
-        {"worklevel_type": "MONOGRAPHIC"},
-        {"work_type": "T"},
-        {"title_date_start": title_date_start},
-        {"title_date.type": "04_T"},
-        {"nfa_category": "D"}, # JMW Is this needed? Non-fiction
-        {"credit.name": row[5]},
-        {"credit.type": "Advertiser"},
-        {"activity_type": "Sponsor"},
-        {"party.class": "ORGANISATION"},
-        {"source": "TechEdge adverts data supply"}
-        {"credit.name": row[7]},
-        {"credit.type": "Advertising Agency"},
-        {"activity_type": "Advertising Agency"},
-        {"party.class": "ORGANISATION"},
-        {"source": "TechEdge adverts data supply"},
-        {"product_category": row[14]},
-        {"utb.fieldname": "Freeview EPG"},
-        {"utb.content": row[19]},
-
-    ]
-
-    work_restricted = [
-        {"application_restriction": "MEDIATHEQUE"},
-        {"application_restriction.date": str(datetime.datetime.now())[:10]},
-        {"application_restriction.reason": "STRATEGIC"},
-        {"application_restriction.duration": "PERM"},
-        {"application_restriction.review_date": "2030-01-01"}, # JMW
-        {"application_restriction.authoriser": "mcconnachies"}, # JMW
-        {
-            "application_restriction.notes": "Automated Advert creation - pending discussion"
-        }, # JMW
-    ]
-
-    people = [
-        {"name": row[8]},
-        {"activity_type": "Sponsor"},
-        {"party.class": "ORGANISATION"},
-        {"source": "TechEdge adverts data supply"}
-    ]
-
-    title_date_start = datetime.strftime(datetime.strptime(row[1], "%d/%m/%Y"), "%Y-%m-%d")
-    transmission_start_time = row[2]
-    utc_timestamp = get_utc(title_date_start, transmission_start_time)
-
-    # Broadcast details
-    for key, val in CHANNELS.items():
-        if key == row[0]:
-            try:
-                channel = val[0]
-                code_type = val[1]
-                broadcast_company = val[2]
-                print(f"Broadcast channel data: {channel} {code_type} {broadcast_company}")
-            except (IndexError, TypeError, KeyError) as err:
-                print(err)
 
     manifestation = [
         {"record_type": "MANIFESTATION"},
@@ -458,23 +344,23 @@ def build_records(row):
         {"colour_manifestation": "C"},
         {"sound_manifestation": "SOUN"},
         {"transmission_date": title_date_start},
-        {"transmission_start_time": row[2]},
+        {"transmission_start_time": transmission_start_time},
         {"UTC_timestamp": utc_timestamp},
-        {"broadcast_channel": channel},
+        {"broadcast_channel": broadcast_channel},
         {"broadcast_company": broadcast_company},
         {"transmission_coverage": "DIT"},
         {"aspect_ratio": "16:9"},
         {"country_manifestation": "United Kingdom"},
         {
-            "notes": "Manifestation representing the UK Freeview television advert of the Work."
+            "notes": "Manifestation representing the UK Freeview television advert of the Work." # JMW - check with Stephen
         },
         {"alternative_number": row[3]},
         {"alternative_number.type": "Unique advert identifier - TechEdge"},
-        {"utb.content": row[[16]]},
+        {"utb.content": row.pib_rel or ""},
         {"utb.fieldname": "PIB position"},
-        {"utb.content": row[9]},
+        {"utb.content": row.barb_before or ""},
         {"utb.fieldname": "BARB Prog Before"},
-        {"utb.content": row[10]},
+        {"utb.content": row.barb_after or ""},
         {"utb.fieldname": "BARB Prog After"},
     ]
 

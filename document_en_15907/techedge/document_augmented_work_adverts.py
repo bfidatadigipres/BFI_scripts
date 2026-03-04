@@ -228,73 +228,14 @@ def main():
     )
 
 
-def split_title(title_article):
-    """
-    An exception needs adding for "Die " as German language content
-    This list is not comprehensive.
-    """
-    if title_article.startswith(
-        (
-            "A ",
-            "An ",
-            "Am ",
-            "Al-",
-            "As ",
-            "Az ",
-            "Bir ",
-            "Das ",
-            "De ",
-            "Dei ",
-            "Den ",
-            "Der ",
-            "Det ",
-            "Di ",
-            "Dos ",
-            "Een ",
-            "Eene",
-            "Ei ",
-            "Ein ",
-            "Eine",
-            "Eit ",
-            "El ",
-            "el-",
-            "En ",
-            "Et ",
-            "Ett ",
-            "Het ",
-            "Il ",
-            "Na ",
-            "A'",
-            "L'",
-            "La ",
-            "Le ",
-            "Les ",
-            "Los ",
-            "The ",
-            "Un ",
-            "Une ",
-            "Uno ",
-            "Y ",
-            "Yr ",
-        )
-    ):
-        title_split = title_article.split()
-        ttl = title_split[1:]
-        title = " ".join(ttl)
-        title_art = title_split[0]
-        return title, title_art
-
-    return title_article, ""
-
-
 def build_rec_details(row, ppriref):
     """
     Extraction of CSV data
     and create record layouts
     """
 
-    title = row.brand or ""
-    title, title_article = split_title(title_art)
+    title_art = row.brand or ""
+    title, title_article = utils.split_title(title_art)
     title_date_start = row.start_time or ""
     alternative_number = row.film_code or ""
     alternative_number.type = "Unique advert identifier - TechEdge"

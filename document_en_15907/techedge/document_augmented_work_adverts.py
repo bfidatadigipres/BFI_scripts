@@ -43,6 +43,8 @@ from parsers import techedge_csv as te
 STORAGE = # Path to CSVs
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
+ADMIN = os.environ.get("ADMIN")
+HOLDING_COMP_DOC = os.path.join(ADMIN, "techedge/holding_company_change.yaml")
 
 # Setup logging
 LOGGER = logging.getLogger("document_augmented_work_adverts")
@@ -118,28 +120,136 @@ def advertiser_exists(name: str) -> Optional[str]:
     return None
 
 
-def genre_match(major: str, mid: str, minor: str) -> Optional[str]:
+def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     """
-    Match major, mid, minor categories to thesaurus terms
-    Unsure where these will sit, assume Work.
+    Search for product_category entry that matches 'minor' entry
+    If found return priref | If not found, fetch priref for product_category entry match
+    If not present - create parent thesaurus entry using PROD_CAT priref
+    If not present - create grandparent thesaurus entry using parent priref
     """
-    dict_matches = {
-        "Entertainment & leisure": "THESAURUS",
-        "Leisure activities": "THESAURUS",
-        "Theatres musicals & plays": "THESAURUS",
-    }
+    search = f"term='{minor}' and source='TechEdge adverts data supply'"
+    hits, rec = adlib.retrieve_record(
+        CID_API, "thesaurus", search, "0"
+    )
+    if hits >= 1:
+        minor_priref = adlib.retrieve_field_name(rec[0], "priref")
+        if mid in str(rec[0].get("broader_term")):
+            LOGGER.info("%s matched to thesaurus priref with broader term %s: %s", minor, mid, minor_priref)
+            return minor_priref
 
-    genres = {}
+    LOGGER.info("Advertiser product_catogory %s not found in thesaurus. Creating heirarchy.", minor)
+    minordct = [
+        {"term": minor},
+        {"term.type": "PROD_CAT"},
+        {"source": "TechEdge adverts data supply"} # Indexed but not open to API
+    ]
 
-    for k, v in dict_matches.items():
-        if k == major:
-            genres["Major"] = v
-        if k == mid:
-            genres["Middle"] = v
-        if k == minor:
-            genres["Minor"] = v
+    minor_xml = adlib.create_record_data(CID_API, "thesaurus", "", minordct)
+    minor_rec = adlib.post(CID_API, minor_xml, "thesaurus", "insertrecord")
+    minor_priref = adlib.retrieve_field_name(minor_rec, "priref")[0]
+    if minor_priref:
+        LOGGER.info("New thesaurus entry created for Product Category %s", minor)
+    else:
+        LOGGER.warning("Failed to create Thesaurus record for %s:\n%s", minor, minor_rec)
+        return None
 
-    return genres
+    search = f"term='{mid}' and source='TechEdge adverts data supply'"
+    hits, rec = adlib.retrieve_record(
+        CID_API, "thesaurus", search, "1"
+    )
+    if hits:
+        mid_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
+        LOGGER.info("Mid catergory found already created, no further record creation required - %s priref %s", mid, mid_priref)
+        return minor_priref
+
+    middct = [
+        {"term": mid},
+        {"term.type": "PROD_CAT"},
+        {"narrower_term.lref": minor_priref},
+        {"source": "TechEdge adverts data supply"} # Indexed but not open to API
+    ]
+    mid_xml = adlib.create_record_data(CID_API, "thesaurus", "", middct)
+    mid_rec = adlib.post(CID_API, mid_xml, "thesaurus", "insertrecord")
+    mid_priref = adlib.retrieve_field_name(mid_rec, "priref")[0]
+    if mid_priref:
+        LOGGER.info("New broader term thesaurus entry created for %s: %s - priref %s", minor_priref, mid, mid_priref)
+    else:
+        LOGGER.warning("Failed to create broader term Thesaurus record: %s - %s", mid, mid_priref)
+
+    search = f"term='{major}' and source='TechEdge adverts data supply'"
+    hits, rec = adlib.retrieve_record(
+        CID_API, "thesaurus", search, "1"
+    )
+    if hits:
+        major_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
+        LOGGER.info("Major catergory found already created, no further record creation required - %s priref %s", major, major_priref)
+        return minor_priref
+
+    majdct = [
+        {"term": major},
+        {"term.type": "PROD_CAT"},
+        {"narrower_term.lref": mid_priref},
+        {"source": "TechEdge adverts data supply"} # Indexed but not open to API
+    ]
+    maj_xml = adlib.create_record_data(CID_API, "thesaurus", "", majdct)
+    maj_rec = adlib.post(CID_API, maj_xml, "thesaurus", "insertrecord")
+    maj_priref = adlib.retrieve_field_name(maj_rec, "priref")[0]
+    if maj_priref:
+        LOGGER.info("New broader term thesaurus entry created for %s: %s - priref %s", mid_priref, major, maj_priref)
+    else:
+        LOGGER.warning("Failed to create broader term Thesaurus record: %s - %s", major, maj_priref)
+
+    LOGGER.info(
+        "All thesaurus categories made for product categories:\n%s - priref %s\n%s - priref %s\n%s - priref %s",
+        minor,
+        minor_priref,
+        mid,
+        mid_priref,
+        major,
+        maj_priref
+    )
+
+    return minor_priref
+
+
+def manage_advertiser_people(advertiser: str, holding_comp: str) -> Optional[str]:
+    """
+    
+    Update warning log where Holding Company data appears to have changed
+    for a TechEdge advertiser
+    """
+    search = f"name='{holding_comp}' and source='TechEdge adverts data supply'"
+    hits, rec = adlib.retrieve_record(
+        CID_API, "people", search, "0"
+    )
+    if hits >= 1:
+        hc_priref = adlib.retrieve_field_name(rec[0], "priref")
+        parts_list = adlib.retrieve_field_name(rec[0], "parts")
+        parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
+        if mid in str(rec[0].get("broader_term")):
+            LOGGER.info("%s matched to thesaurus priref with broader term %s: %s", minor, mid, minor_priref)
+            return minor_priref
+
+    LOGGER.info("Advertiser person %s not found in People record. Creating heirarchy.", advertiser)
+
+    # JMW up to here
+    minordct = [
+        {"term": minor},
+        {"term.type": "PROD_CAT"},
+        {"source": "TechEdge adverts data supply"} # Indexed but not open to API
+    ]
+
+    minor_xml = adlib.create_record_data(CID_API, "thesaurus", "", minordct)
+    minor_rec = adlib.post(CID_API, minor_xml, "thesaurus", "insertrecord")
+    minor_priref = adlib.retrieve_field_name(minor_rec, "priref")[0]
+    if minor_priref:
+        LOGGER.info("New thesaurus entry created for Product Category %s", minor)
+    else:
+        LOGGER.warning("Failed to create Thesaurus record for %s:\n%s", minor, minor_rec)
+        return None
+
+
+    return advert_priref, holding_company_priref
 
 
 def main():
@@ -244,18 +354,12 @@ def build_rec_details(row, ppriref):
     product_category = row.minor_category or ""
     description = row.description = "" # Possible space for LLM description
 
-    # Organise thesaurus terms
-    major = row.major_category or ""
-    mid = row.mid_category or ""
-    minor = row.minor_category or ""
-    genre_dct = genre_match(major, mid, minor)
-
     record = [
         {"input.name": "datadigipres"},
         {"input.date": str(datetime.datetime.now())[:10]},
         {"input.time": str(datetime.datetime.now())[11:19]},
         {
-            "input.notes": "TechEdge Adverts record creation - automated bulk documentation"
+            "input.notes": "Automated bulk record creation using data supplied by TechEdge"
         }, # JMW - check with Stephen
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
@@ -273,7 +377,22 @@ def build_rec_details(row, ppriref):
         {"work_type": "T"},
         {"title_date_start": title_date_start},
         {"title_date.type": "04_T"},
-        {"nfa_category": "D"}, # JMW Is this needed? Non-fiction
+        {"nfa_category": "D"} # JMW Is this needed? Non-fiction
+    ]
+
+    # Organise category terms
+    major = row.major_category or None
+    mid = row.mid_category or None
+    minor = row.minor_category or None
+    if major and mid and minor:
+        product_category = manage_product_category(major, mid, minor)
+        work.append({"product_category": product_category})
+    else:
+        LOGGER.warning("Error obtaining category data: %s - %s - %s", row.major_category, row.mid_category, row.minor_category)
+
+    # Organise credit data
+    """
+        {"content.genre.lref": "110138"}, # JMW Advert content
         {"credit.name": credit_name1},
         {"credit.type": "Advertiser"},
         {"activity_type": "Sponsor"},
@@ -289,8 +408,7 @@ def build_rec_details(row, ppriref):
         {"activity_type": "Advertising Agency"},
         {"party.class": "ORGANISATION"},
         {"source": "TechEdge adverts data supply"},
-        {"product_category": product_category}
-    ]
+    """
 
     work_restricted = [
         {"application_restriction": "MEDIATHEQUE"},

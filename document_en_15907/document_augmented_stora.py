@@ -1496,7 +1496,7 @@ def build_defaults(epg_dict):
         {"input.date": str(datetime.datetime.now())[:10]},
         {"input.time": str(datetime.datetime.now())[11:19]},
         {
-            "input.notes": "STORA off-air television capture - automated bulk documentation"
+            "input.notes": "STORA off-air television capture - automated bulk documentation using data supplied by PA Media"
         },
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
@@ -1516,7 +1516,7 @@ def build_defaults(epg_dict):
         {"input.date": str(datetime.datetime.now())[:10]},
         {"input.time": str(datetime.datetime.now())[11:19]},
         {
-            "input.notes": "STORA off-air television capture - automated bulk documentation"
+            "input.notes": "STORA off-air television capture - automated bulk documentation using data supplied by PA Media"
         },
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},

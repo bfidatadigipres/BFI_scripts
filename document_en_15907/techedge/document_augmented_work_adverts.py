@@ -25,8 +25,8 @@ Parser needs updating when CSV finalised
 # Public packages
 import os
 import sys
-import csv
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import logging
 from time import sleep
 import tenacity
@@ -109,11 +109,11 @@ def get_utc(date_start: str, start_time: str) -> Optional[str]:
     for London, adding +1 hours during BST
     Must receive data formatted %Y-%m-%d %H:%M:%S
     """
-    format = "%Y-%m-%d %H:%M:%S"
+    fmt = "%Y-%m-%d %H:%M:%S"
     try:
         make_time = f"{date_start} {start_time}"
-        dt_time = datetime.strptime(make_time, format).replace(tzinfo=ZoneInfo("Europe/London"))
-        UTC_timestamp = datetime.strftime(dt_time.astimezone(ZoneInfo("UTC")), format)
+        dt_time = datetime.strptime(make_time, fmt).replace(tzinfo=ZoneInfo("Europe/London"))
+        UTC_timestamp = datetime.strftime(dt_time.astimezone(ZoneInfo("UTC")), fmt)
     except Exception as err:
         print(err)
         UTC_timestamp = None
@@ -241,7 +241,7 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
             LOGGER.info("New Agency person record created for %s: %s", agency, agency_priref)
         else:
             LOGGER.warning("Failed to create Agency people record: %s - %s", agency, agency_priref)
-            agency_priref = None
+            agency_priref = ""
 
     make_hc = False
     make_ad = False
@@ -257,6 +257,7 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         LOGGER.info("Advertiser matched to name %s - %s and parent priref found %s.", advertiser, ad_priref, ad_parent_pri)
     else:
         make_ad = True
+        ad_priref = ad_parent_pri = ad_parent = ""
 
     search = f"name='{holding_comp}' and source='TechEdge adverts data supply'"
     hits, rec = adlib.retrieve_record(
@@ -267,6 +268,7 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
     else:
         make_hc = True
+        hc_priref = parts_priref = ""
 
     if make_hc is False and make_ad is False:
         if hc_priref != ad_parent_pri:
@@ -290,7 +292,7 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
 
     if make_hc is False and make_ad is True:
         # Make new Advertiser and link to Holding Company parent
-        LOGGER.info("Advertiser not found but Holding Company found - making new Ad People and linking to parent", advertiser)
+        LOGGER.info("Advertiser not found but Holding Company found - making new Ad People and linking to parent")
         ad_dct = [
             {"name": advertiser},
             {"name.type": "CASTCREDIT"},
@@ -308,12 +310,12 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         else:
             LOGGER.warning("Failed to create Agency people record: %s - %s", advertiser, ad_priref)
             ad_priref = None
-        
+
         return agency_priref, hc_priref, ad_priref
 
     elif make_hc is True and make_ad is False:
         # Make new Holding Company and update Advertiser record with change to Holding company / new part.lref overwrite
-        LOGGER.info("Advertiser %s found but change in Holding Company old %s - to new %s", advertiser, ad_parent, )
+        LOGGER.info("Advertiser %s found but change in Holding Company old %s - to new %s", advertiser, ad_parent, holding_comp)
 
         hc_dct = [
             {"name": holding_comp},
@@ -460,7 +462,7 @@ def main():
         man_values.extend(manifestation)
         print(man_values)
 
-        mpriref = create_manifestation(wpriref, man_values)
+        mpriref = create_manifestation(man_values)
         if not mpriref:
             print(f"Manifesatation creation error data data: {manifestation}")
             LOGGER.warning("Failed to make new manifestation and link to work: %s", wpriref)
@@ -472,6 +474,7 @@ def main():
 
 
 def time_to_secs(timestamp):
+    """ Calculate seconds from string """
     dt = datetime.strptime(timestamp, "%H:%M:%S")
     return dt.hour * 3600 + dt.minute * 60 + dt.second
 
@@ -517,18 +520,19 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
         elif part_unit > part_unit_total:
             # LOGGER.warning("Code broken, part unit total %s is smaller than part unit %s", part_unit_total, part_unit)
             return part_unit, "", "", ""
-        elif part_unit < part_unit_total:
-            # LOGGER.info("Calculating duration using next row in sequence")
-            dur_row = rows[target_index + 1]
-            stop_time = dur_row["start_time"]
-            dur_start_secs = time_to_secs(row["start_time"])
-            duration_stop_secs = time_to_secs(stop_time)
-            duration = duration_stop_secs - dur_start_secs
+
+        # LOGGER.info("Calculating duration using next row in sequence")
+        dur_row = rows[target_index + 1]
+        stop_time = dur_row["start_time"]
+        dur_start_secs = time_to_secs(row["start_time"])
+        duration_stop_secs = time_to_secs(stop_time)
+        duration = duration_stop_secs - dur_start_secs
         rows = []
-    return str(part_unit), str(part_unit_total), str(duration), stop_time
+
+        return str(part_unit), str(part_unit_total), str(duration), stop_time
 
 
-def build_rec_details(row, ppriref):
+def build_rec_details(row):
     """
     Extraction of CSV data
     and create record layouts
@@ -544,6 +548,7 @@ def build_rec_details(row, ppriref):
     utc_timestamp = get_utc(title_date_start, transmission_start_time)
 
     # Broadcast details
+    broadcast_company = broadcast_channel = ""
     channel = row.channel or ""
     for k, v in CHANNELS.items():
         if k == channel:
@@ -551,7 +556,11 @@ def build_rec_details(row, ppriref):
             broadcast_company = v[1]
 
     # Get part unit value total and duration
-    part_unit, part_unit_total, duration, stop_time = get_duration_total_parts(title_date_start, transmission_start_time, alternative_number)
+    part_unit, part_unit_total, duration, stop_time = get_duration_total_parts(
+        title_date_start,
+        transmission_start_time,
+        alternative_number
+    )
 
     record = [
         {"input.name": "datadigipres"},
@@ -663,9 +672,7 @@ def create_work(work_values: dict) -> Optional[str]:
         print(f"create_work(): {work_rec}")
     except Exception as err:
         print(f"* Unable to create Work record for <{title}>\n{err}")
-        LOGGER.warning(
-            "%s\tUnable to create Work record for <%s>", title
-        )
+        LOGGER.warning("Unable to create Work record for <%s>", title)
         LOGGER.warning(err)
 
     # Allow for retry if record priref creation crash:
@@ -735,7 +742,7 @@ def create_manifestation(manifestation_values: dict) -> Optional[str]:
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
         LOGGER.warning(
-            "Unable to write manifestation record <%s> %s", manifestation_id, err
+            "Unable to write manifestation record <%s> %s", title, err
         )
 
     # Allow for retry if record priref creation crash:
@@ -750,7 +757,7 @@ def create_manifestation(manifestation_values: dict) -> Optional[str]:
         except Exception as err:
             print(f"*** Unable to write manifestation record: {err}")
             LOGGER.warning(
-                "Unable to write manifestation record <%s> %s", manifestation_id, err
+                "Unable to write manifestation record <%s> %s", title, err
             )
 
     if man_rec is False:

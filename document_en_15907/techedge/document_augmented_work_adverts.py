@@ -37,8 +37,8 @@ import adlib_v3 as adlib
 import utils
 from parsers import techedge_csv as te
 
-# Global variables
-  
+# Global variable
+STORAGE = os.path.join(os.environ.get("ADMIN"), "datasets")
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 ADMIN = os.environ.get("ADMIN")

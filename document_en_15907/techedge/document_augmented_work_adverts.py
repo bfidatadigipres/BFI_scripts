@@ -38,7 +38,7 @@ import utils
 from parsers import techedge_csv as te
 
 # Global variables
-STORAGE = os.path.join(os.environ.get("ADMIN"), "datasets")
+  
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 ADMIN = os.environ.get("ADMIN")
@@ -331,7 +331,7 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
             hc_priref = None
 
         ad_dct_update = [
-            {"priref": ad_priref}
+            {"priref": ad_priref},
             {"part_of.lref": hc_priref},
             # JMW - FIELD AND NOTIFICATION DATA TO COME FROM LOUISE
             {"TBC": f"Holding company changed from {ad_parent} - {ad_parent_pri}"},
@@ -484,39 +484,28 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
             rw["All PIB pos"] = int(rw["All PIB pos"])
             rows.append(rw)
 
-    # Get part unit total value
-    target_index = next(i for i, r in enumerate(rows) if r["Film Code"] == alternative_number and r["Start time"] == transmission_start_time)
-    row = rows[target_index]
-    part_unit = row["All PIB pos"]
-    for i in range(target_index + 1, len(rows)):
-        if rows[i]["All PIB pos"] <= rows[i-1]["All PIB pos"]:
-            break
-        part_unit_total = rows[i]["All PIB pos"]
+        # Get part unit total value
+        target_index = next(i for i, r in enumerate(rows) if r["Film Code"] == alternative_number and r["Start time"] == transmission_start_time)
+        row = rows[target_index]
+        part_unit = row["All PIB pos"]
+        for i in range(target_index + 1, len(rows)):
+            if rows[i]["All PIB pos"] <= rows[i-1]["All PIB pos"]:
+                break
+            part_unit_total = rows[i]["All PIB pos"]
 
-    if part_unit == part_unit_total:
-        LOGGER.infp("Duration cannot be calculated for end item")
-        return part_unit, part_unit_total, "", ""
-    elif part_unit > part_unit_total:
-        LOGGER.warning("Code broken, part unit total %s is smaller than part unit %s", part_unit_total, part_unit)
-        return part_unit, "", "", ""
-    elif part_unit < part_unit_total:
-        LOGGER.info("Calculating duration using next row in sequence")
-        dur_row = rows[target_index + 1]
-        stop_time = dur_row["Start time"]
-        duration = (datetime.fromisoformat(stop_time) - datetime.fromisoformat(transmission_start_time)).total_seconds()
-    rows = []
+        if part_unit == part_unit_total:
+            # LOGGER.infp("Duration cannot be calculated for end item")
+            return part_unit, part_unit_total, "", ""
+        elif part_unit > part_unit_total:
+            # LOGGER.warning("Code broken, part unit total %s is smaller than part unit %s", part_unit_total, part_unit)
+            return part_unit, "", "", ""
+        elif part_unit < part_unit_total:
+            # LOGGER.info("Calculating duration using next row in sequence")
+            dur_row = rows[target_index + 1]
+            stop_time = dur_row["Start time"]
+            duration = (datetime.fromisoformat(stop_time) - datetime.fromisoformat(transmission_start_time)).total_seconds()
+        rows = []
     return str(part_unit), str(part_unit_total), str(duration), stop_time
-
-
-def yield_csv_rows(csv_path):
-    """
-    Return rows
-    """
-    with open(csv_path, "r", encoding="latin1") as data:
-        rows = csv.reader(data)
-        next(rows)
-        for row in rows:
-            yield row
 
 
 def build_rec_details(row, ppriref):

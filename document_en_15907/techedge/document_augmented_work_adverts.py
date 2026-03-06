@@ -374,7 +374,7 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
             LOGGER.warning("Failed to create Agency people record: %s - %s", holding_comp, hc_priref)
             hc_priref = None
 
-    return agency_priref, hc_priref, ad_priref        
+    return agency_priref, hc_priref, ad_priref
 
 
 def make_credit_data_for_work(ad_priref, agency_priref):
@@ -471,6 +471,11 @@ def main():
     )
 
 
+def time_to_secs(timestamp):
+    dt = datetime.strptime(timestamp, "%H:%M:%S")
+    return dt.hour * 3600 + dt.minute * 60 + dt.second
+
+
 def get_duration_total_parts(title_date_start: str, transmission_start_time: str, alternative_number: str):
     """
     Fetch and read specific CSV row and following rows
@@ -487,7 +492,7 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
                 part_total = parts[-3]
             except (IndexError, ValueError):
                 continue
-            
+
             rows.append({
                 "start_time": start,
                 "alt_num": alt_num,
@@ -497,7 +502,10 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
         # Get part unit total value
         target_index = next(i for i, r in enumerate(rows) if r["alt_num"] == alternative_number and r["start_time"] == transmission_start_time)
         row = rows[target_index]
-        part_unit = row[-3]
+        print(row)
+        part_unit = row["part_total"]
+        part_unit_total = row["part_total"]
+
         for i in range(target_index + 1, len(rows)):
             if rows[i]["part_total"] <= rows[i-1]["part_total"]:
                 break
@@ -513,7 +521,9 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
             # LOGGER.info("Calculating duration using next row in sequence")
             dur_row = rows[target_index + 1]
             stop_time = dur_row["start_time"]
-            duration = (datetime.fromisoformat(stop_time) - datetime.fromisoformat(transmission_start_time)).total_seconds()
+            dur_start_secs = time_to_secs(row["start_time"])
+            duration_stop_secs = time_to_secs(stop_time)
+            duration = duration_stop_secs - dur_start_secs
         rows = []
     return str(part_unit), str(part_unit_total), str(duration), stop_time
 

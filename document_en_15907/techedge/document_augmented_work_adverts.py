@@ -99,7 +99,7 @@ def advert_exists_query(film_code: str) -> Optional[str]:
         priref = adlib.retrieve_field_name(record[0], "priref")[0]
         if "Unique advert identifier - TechEdge" == antype:
             return priref
-        
+
     return None
 
 

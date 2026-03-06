@@ -19,6 +19,7 @@ import logging
 import os
 import sys
 import csv
+from time import sleep
 from datetime import datetime
 from typing import Final, Dict, List, Any
 
@@ -69,9 +70,8 @@ def extract_objects_sort(obj_list):
     for obj in obj_list:
         print(obj)
         version_id = creation_date = None
-        data = obj.get("Blobs").get("ObjectList")
-        latest = data[0].get("Latest")
-        version_id = data[0].get("VersionId")
+        latest = obj.get("Latest")
+        version_id = obj.get("Id")
         creation_date = obj.get("CreationDate")
         print(f"{version_id} - {creation_date} - {latest}")
         if version_id and creation_date:
@@ -99,7 +99,7 @@ def main() -> None:
     """
     if not utils.check_control("power_off_all"):
         sys.exit("Code cannot run at this time.")
-
+    count = 0
     LOGGER.info("=== Access_Rendition_backup bucket clean up START ====================")
     for row in yield_csv_rows(CSV_PTH):
         print(row)
@@ -110,26 +110,33 @@ def main() -> None:
             LOGGER.warning("SKIP: Cannot access filename from row: %s", err)
             continue
 
-        obj_list = bp.get_object_list_items(fname)
+        obj_list = bp.get_object_details(fname, BUCKET)
         if obj_list is None or len(obj_list) == 0:
             LOGGER.info("SKIP: Unable to retrieve data from Black Pearl on file: %s", fname)
             continue
 
         LOGGER.info("Retrieved %s items for file: %s", len(obj_list), fname)
         if len(obj_list) == 1:
-            LOGGER.info("SKIP: File %s has just returned one version", fname)
+            LOGGER.info("SKIP: File %s has just returned one version - checking Latest is true", fname)
+            if obj_list[0].get("Latest") != "true":
+                version_id = obj_list[0].get("Id")
+                confirm = bp.set_latest_flag_true(BUCKET, fname, version_id)
+                if confirm:
+                    LOGGER.info("Set %s - %s latest status to True", fname, version_id)
+                else:
+                    LOGGER.warning("Unable to set %s - %s status to Latest is True", fname, version_id)
             continue
 
-        preserved_items, to_delete = extract_objects_sort(obj_list)
-        print(f"KEEP: {preserved_items}")
+        preserved_item, to_delete = extract_objects_sort(obj_list)
+        print(f"KEEP: {preserved_item}")
         print(f"DELETE:\n{to_delete}")
 
         LOGGER.info(
             "Preserving %s with creation date %s and version Id %s",
-            fname, preserved_items[0], preserved_items[1]
+            fname, preserved_item[0], preserved_item[1]
         )
         LOGGER.info(
-            "Item creation dates and version_ids for deletion:\n%s\n%s\n",
+            "Item creation dates and version_ids for deletion:\n%s\n%s",
             ", ".join(to_delete.keys()),
             ", ".join(to_delete.values()),
         )
@@ -139,6 +146,15 @@ def main() -> None:
             LOGGER.warning("%s - Deletions not fully successful")
             continue
         LOGGER.info("Completed: Clean up of spare files for %s", fname)
+
+        LOGGER.info("Checking preserved items Latest is set to true")
+        obj_list = bp.get_object_details(fname, BUCKET)
+        version_id = obj_list[0].get("Id")
+        if len(obj_list) != 1:
+            LOGGER.warning("More than one item remains after deletion run... %s\n", obj_list)
+        else:
+           if bp.set_latest_flag_true(fname, BUCKET, version_id):
+               LOGGER.info("Set Latest flag to True for %s - %s\n", fname, version_id)
 
     LOGGER.info("=== Access_Rendition_backup bucket clean up END ======================")
 
@@ -161,13 +177,14 @@ def delete_existing_proxy(fname: str, deletions: dict[str, str], total) -> bool:
 
         if confirmed:
             count += 1
-            sleep(100)
+            sleep(3)
             obj_list = bp.get_object_list_items(fname)
             check = int(total) - count
             if len(obj_list) != check:
                 LOGGER.waring("** Potential deletion failure with version %s / %s", val, key)
             LOGGER.info("Successfully deletion of version %s created on %s", val, key)
-    
+
+    print(count, total)
     if count == (total - 1):
         return True
 

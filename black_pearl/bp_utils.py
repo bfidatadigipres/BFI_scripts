@@ -420,7 +420,7 @@ def set_latest_flag_true(fname: str, bucket: str, version_id: str) -> bool:
     - Type (DATA)
     """
 
-    r = ds3.UndeleteObjectSpectraS3Request(bucket, fname, version_id)
+    r = ds3.UndeleteObjectSpectraS3Request(bucket_id=bucket, name=fname, version_id=version_id)
     result = CLIENT.undelete_object_spectra_s3(r)
 
     confirmation = result.result
@@ -445,7 +445,7 @@ def get_object_details(fname: str, bucket: str) -> List[Dict[str, Any]]:
     - Type
     """
 
-    r = ds3.GetObjectsDetailsSpectraS3Request(fname, bucket)
+    r = ds3.GetObjectsDetailsSpectraS3Request(name=fname, bucket_id=bucket)
     result = CLIENT.get_objects_details_spectra_s3(r)
     obj_list = result.result.get("S3ObjectList", [])
     print(f"Length of object list found for {fname} is {len(obj_list)}")

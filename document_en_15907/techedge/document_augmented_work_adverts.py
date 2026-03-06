@@ -479,19 +479,29 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
     csv_path = os.path.join(STORAGE, f"adverts_techedge_no_dupes/{title_date_start}_BFIExport.csv")
     rows = []
     with open(csv_path, "r", encoding="latin1") as file:
-        reader = csv.DictReader(file)
-        for rw in reader:
-            rw["All PIB pos"] = int(rw["All PIB pos"])
-            rows.append(rw)
+        for lines in file:
+            parts = lines.strip().split(",")
+            try:
+                start = parts[2]
+                alt_num = parts[3]
+                part_total = parts[-3]
+            except (IndexError, ValueError):
+                continue
+            
+            rows.append({
+                "start_time": start,
+                "alt_num": alt_num,
+                "part_total": part_total,
+            })
 
         # Get part unit total value
-        target_index = next(i for i, r in enumerate(rows) if r["Film Code"] == alternative_number and r["Start time"] == transmission_start_time)
+        target_index = next(i for i, r in enumerate(rows) if r["alt_num"] == alternative_number and r["start_time"] == transmission_start_time)
         row = rows[target_index]
-        part_unit = row["All PIB pos"]
+        part_unit = row[-3]
         for i in range(target_index + 1, len(rows)):
-            if rows[i]["All PIB pos"] <= rows[i-1]["All PIB pos"]:
+            if rows[i]["part_total"] <= rows[i-1]["part_total"]:
                 break
-            part_unit_total = rows[i]["All PIB pos"]
+            part_unit_total = rows[i]["part_total"]
 
         if part_unit == part_unit_total:
             # LOGGER.infp("Duration cannot be calculated for end item")
@@ -502,7 +512,7 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
         elif part_unit < part_unit_total:
             # LOGGER.info("Calculating duration using next row in sequence")
             dur_row = rows[target_index + 1]
-            stop_time = dur_row["Start time"]
+            stop_time = dur_row["start_time"]
             duration = (datetime.fromisoformat(stop_time) - datetime.fromisoformat(transmission_start_time)).total_seconds()
         rows = []
     return str(part_unit), str(part_unit_total), str(duration), stop_time

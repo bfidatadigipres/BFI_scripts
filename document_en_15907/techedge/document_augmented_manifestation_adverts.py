@@ -56,6 +56,9 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
+CHANNELS = {
+    "5": "Five", etc
+}
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
 def advert_exists_query(film_code: str) -> Optional[str]:

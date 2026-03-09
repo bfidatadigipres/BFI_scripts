@@ -35,10 +35,8 @@ import utils
 from parsers import techedge_csv as te
 
 # Global variable
-STORAGE = os.path.join(
-    os.environ.get("ADMIN"),
-    "datasets/adverts_techedge_unique/Unique_adverts_BFIExport_CLEANED.csv"
-)
+STORAGE = os.path.join(os.environ.get("ADMIN"),"datasets/")
+CSV_PATH = os.path.join(STORAGE, "/adverts_techedge_unique/Unique_adverts_BFIExport_CLEANED.csv")
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 ADMIN = os.environ.get("ADMIN")
@@ -487,7 +485,7 @@ def main():
         "========== Adverts work documentation script STARTED ==============================================="
     )
 
-    for row in te.iter_techedge_rows(STORAGE):
+    for row in te.iter_techedge_rows(CSV_PATH):
         if not utils.check_control("pause_scripts"):
             LOGGER.info(
                 "Script run prevented by downtime_control.json. Script exiting."

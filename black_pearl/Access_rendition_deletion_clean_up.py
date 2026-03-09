@@ -177,7 +177,6 @@ def delete_existing_proxy(fname: str, deletions: dict[str, str], total) -> bool:
 
         if confirmed:
             count += 1
-            sleep(3)
             obj_list = bp.get_object_list_items(fname)
             check = int(total) - count
             if len(obj_list) != check:

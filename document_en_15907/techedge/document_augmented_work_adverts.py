@@ -35,8 +35,8 @@ import utils
 from parsers import techedge_csv as te
 
 # Global variable
-STORAGE = os.path.join(os.environ.get("ADMIN"),"datasets/")
-CSV_PATH = os.path.join(STORAGE, "/adverts_techedge_unique/Unique_adverts_BFIExport_CLEANED.csv")
+STORAGE = os.path.join(os.environ.get("ADMIN"), "datasets")
+CSV_PATH = os.path.join(STORAGE, "adverts_techedge_unique/Unique_adverts_BFIExport_CLEANED.csv")
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 ADMIN = os.environ.get("ADMIN")

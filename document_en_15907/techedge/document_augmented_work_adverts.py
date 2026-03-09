@@ -662,7 +662,7 @@ def build_rec_details(row):
         {"record_type": "WORK"},
         {"worklevel_type": "MONOGRAPHIC"},
         {"work_type": "T"},
-        {"genre.lref": "110138"}, # Adverts
+        {"content.genre.lref": "110138"}, # Adverts
         {"title_date_start": title_date_start},
         {"title_date.type": "04_T"},
         {"nfa_category": "D"},

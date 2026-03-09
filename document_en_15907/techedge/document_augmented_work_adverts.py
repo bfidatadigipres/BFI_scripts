@@ -624,7 +624,6 @@ def build_rec_details(row):
     title, title_article = utils.split_title(title_art)
     title_date_start = row.start_time
     alternative_number = row.film_code
-    alternative_number.type = "Unique advert identifier - TechEdge"
     title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
     transmission_start_time = row.start_time
     utc_timestamp = get_utc(title_date_start, transmission_start_time)
@@ -657,6 +656,8 @@ def build_rec_details(row):
         {"title.article": title_article},
         {"title.language": "English"},
         {"title.type": "05_MAIN"},
+        {"alternative_number.type": "Unique advert identifier - TechEdge"},
+        {"alternative_number": alternative_number},
     ]
 
     work = [
@@ -716,8 +717,6 @@ def build_rec_details(row):
         {"aspect_ratio": "16:9"},
         {"country_manifestation": "United Kingdom"},
         {"notes": "Manifestation representing advert broadcast time and date."},
-        {"alternative_number.type": "Unique advert identifier - TechEdge"},
-        {"alternative_number": alternative_number},
         {"utb.fieldname": "Advert sequence in commercial break block"},
         {"utb.content": f"{part_unit.zfill(2)}of{part_unit_total.zfill(2)}"},
         {"utb.fieldname": "Programme before (BARB via TechEdge)"},

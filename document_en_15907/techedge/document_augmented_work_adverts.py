@@ -128,7 +128,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     If not present - create grandparent thesaurus entry using parent priref
     ASSUMPTION: Mid and Major could exist where Minor does not - check before creation
     """
-    search = f"term='{minor}' and source='TechEdge adverts data supply'"
+    search = f"term='{minor}' and term.type='PROD_CAT'"
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "0"
     )
@@ -150,7 +150,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     minordct = [
         {"term": minor},
         {"term.type": "PROD_CAT"},
-        {"source": "TechEdge adverts data supply"} # Indexed but not open to API
+        {"source": "TechEdge adverts data supply"} # Not indexed / not open to API
     ]
 
     minor_xml = adlib.create_record_data(CID_API, "thesaurus", "", minordct)
@@ -162,7 +162,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         LOGGER.warning("Failed to create Thesaurus record for %s:\n%s", minor, minor_rec)
         return None, None, None
 
-    search = f"term='{mid}' and source='TechEdge adverts data supply'"
+    search = f"term='{mid}' and term.type='PROD_CAT'"
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "1"
     )
@@ -198,7 +198,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             )
             mid_priref = None
 
-    search = f"term='{major}' and source='TechEdge adverts data supply'"
+    search = f"term='{major}' and term.type='PROD_CAT'"
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "1"
     )

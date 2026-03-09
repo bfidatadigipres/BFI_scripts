@@ -137,10 +137,18 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     if hits >= 1:
         minor_priref = adlib.retrieve_field_name(rec[0], "priref")
         if mid in str(rec[0].get("broader_term")):
-            LOGGER.info("%s matched to thesaurus priref with broader term %s: %s", minor, mid, minor_priref)
+            LOGGER.info(
+                "%s matched to thesaurus priref with broader term %s: %s",
+                minor,
+                mid,
+                minor_priref
+            )
             return minor_priref
 
-    LOGGER.info("Advertiser product_category %s not found in thesaurus. Creating hierarchy if needed.", minor)
+    LOGGER.info(
+        "Advertiser product_category %s not found in thesaurus. Creating hierarchy if needed.",
+        minor
+    )
     minordct = [
         {"term": minor},
         {"term.type": "PROD_CAT"},
@@ -162,7 +170,11 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     )
     if hits:
         mid_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        LOGGER.info("Mid category found already created, no further record creation required - %s priref %s", mid, mid_priref)
+        LOGGER.info(
+            "Mid category found already created, no further record creation required - %s priref %s",
+            mid,
+            mid_priref
+        )
     else:
         middct = [
             {"term": mid},
@@ -174,9 +186,18 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         mid_rec = adlib.post(CID_API, mid_xml, "thesaurus", "insertrecord")
         mid_priref = adlib.retrieve_field_name(mid_rec, "priref")[0]
         if mid_priref:
-            LOGGER.info("New broader term thesaurus entry created for %s: %s - priref %s", minor_priref, mid, mid_priref)
+            LOGGER.info(
+                "New broader term thesaurus entry created for %s: %s - priref %s",
+                minor_priref,
+                mid,
+                mid_priref
+            )
         else:
-            LOGGER.warning("Failed to create broader term Thesaurus record: %s - %s", mid, mid_priref)
+            LOGGER.warning(
+                "Failed to create broader term Thesaurus record: %s - %s",
+                mid,
+                mid_priref
+            )
             mid_priref = None
 
     search = f"term='{major}' and source='TechEdge adverts data supply'"
@@ -185,7 +206,11 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     )
     if hits:
         maj_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        LOGGER.info("Major catergory found already created, no further record creation required - %s priref %s", major, maj_priref)
+        LOGGER.info(
+            "Major category found already created, no further record creation required - %s priref %s",
+            major,
+            maj_priref
+        )
     else:
         majdct = [
             {"term": major},
@@ -197,9 +222,15 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         maj_rec = adlib.post(CID_API, maj_xml, "thesaurus", "insertrecord")
         maj_priref = adlib.retrieve_field_name(maj_rec, "priref")[0]
         if maj_priref:
-            LOGGER.info("New broader term thesaurus entry created for %s: %s - priref %s", mid_priref, major, maj_priref)
+            LOGGER.info(
+                "New broader term thesaurus entry created for %s: %s - priref %s",
+                mid_priref, major, maj_priref
+            )
         else:
-            LOGGER.warning("Failed to create broader term Thesaurus record: %s - %s", major, maj_priref)
+            LOGGER.warning(
+                "Failed to create broader term Thesaurus record: %s - %s",
+                major, maj_priref
+            )
             maj_priref = None
 
     LOGGER.info(
@@ -215,7 +246,11 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     return minor_priref, mid_priref, maj_priref
 
 
-def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) -> Optional[tuple[str, str, str]]:
+def manage_advertiser_people(
+    advertiser: str,
+    holding_comp: str,
+    agency: str
+) -> Optional[tuple[str, str, str]]:
     """
     Update Holding Company data when Advertiser child ownership
     appears to have changed for a TechEdge advertiser
@@ -258,7 +293,10 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         ad_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         ad_parent_pri = adlib.retrieve_field_name(rec[0], "part_of.lref")[0]
         ad_parent = adlib.retrieve_field_name(rec[0], "part_of")[0]
-        LOGGER.info("Advertiser matched to name %s - %s and parent priref found %s.", advertiser, ad_priref, ad_parent_pri)
+        LOGGER.info(
+            "Advertiser matched to name %s - %s and parent priref found %s.",
+            advertiser, ad_priref, ad_parent_pri
+        )
     else:
         make_ad = True
         ad_priref = ad_parent_pri = ad_parent = ""
@@ -274,7 +312,7 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         make_hc = True
         hc_priref = parts_priref = ""
 
-    # If both exist but not linked trigger creation of new holding company / update advertiser record
+    # If both exist but not linked create new holding comp/update advertiser
     old_hc_priref = ""
     if make_hc is False and make_ad is False:
         if hc_priref != ad_parent_pri:
@@ -359,9 +397,9 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         # Move connection broken above to relationship field
         if old_hc_priref:
             date_now = str(datetime.now())[:10]
-            old_hc_dct_update = [ 
+            old_hc_dct_update = [
                 {"priref": old_hc_priref},
-                {"relationship.lref": ac_priref},
+                {"relationship.lref": ad_priref},
                 {"relationship.date.end": date_now},
                 {"relationship.notes": f"TechEdge Holding Company changed from {old_hc_priref} - {hc_priref}"},
             ]
@@ -648,7 +686,7 @@ def build_rec_details(row):
     advertiser = row.advertiser
     holding_comp = row.hold_comp
     agency = row.agency
-    agency_priref, hc_priref, ad_priref = manage_advertiser_people(advertiser, holding_comp, agency)
+    agency_priref, _, ad_priref = manage_advertiser_people(advertiser, holding_comp, agency)
     work_cred_dct = make_credit_data_for_work(ad_priref, agency_priref)
 
     work_restricted = [

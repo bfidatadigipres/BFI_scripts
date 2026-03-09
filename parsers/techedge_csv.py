@@ -87,14 +87,11 @@ class Data(BaseModel):
     hold_comp: str | None = Field(default=None, alias="Holding Company")
     barb_before: str | None = Field(default=None, alias="BARB Prog Before")
     barb_after: str | None = Field(default=None, alias="BARB Prog After")
-    sales_house: str | None = Field(default=None, alias="Sales House")
     major_category: str | None = Field(default=None, alias="Major category")
     mid_category: str | None = Field(default=None, alias="Mid category")
     minor_category: str | None = Field(default=None, alias="Minor category")
-    pib_rel: str | None = Field(default=None, alias="All PIB rel")
     pib_pos: ImpactsPosInt = Field(default=None, alias="All PIB pos")
-    log_station: str | None = Field(default=None, alias="Log Station (2010-)")
-    impacts: ImpactsPosInt = Field(default=None, alias="Impacts A4+")
+    original: str | None = Field(default=None, alias="Original values")
 
 
 def iter_techedge_rows(csv_path: str):

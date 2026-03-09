@@ -16,9 +16,6 @@ parsing of TechEdge data through LLM
 for cleaning/amendment to descriptive
 columns.
 
-Notes:
-Parser needs updating when CSV finalised
-
 2026
 """
 
@@ -62,8 +59,8 @@ CHANNELS = {
     "ITV3": "ITV3",
     "ITV4": "ITV4",
     "ITVBe": "ITV Be",
-    "ITVQuiz": "ITV Be", # JMW We record ITVQuiz as `ITVBe` for a few months
-    # "CITV": "CiTV", # May not need this one
+    "ITVQuiz": "ITV Be", # ITVQuiz recorded as `ITVBe` for a few months
+    # "CITV": "CiTV", # TBC
     "CH4": "Channel 4 HD",
     "More4": "More4",
     "E4": "E4",
@@ -116,12 +113,12 @@ def get_utc(date_start: str, start_time: str) -> Optional[str]:
     try:
         make_time = f"{date_start} {start_time}"
         dt_time = datetime.strptime(make_time, fmt).replace(tzinfo=ZoneInfo("Europe/London"))
-        UTC_timestamp = datetime.strftime(dt_time.astimezone(ZoneInfo("UTC")), fmt)
+        utc_timestamp = datetime.strftime(dt_time.astimezone(ZoneInfo("UTC")), fmt)
     except Exception as err:
         print(err)
-        UTC_timestamp = None
+        utc_timestamp = None
 
-    return UTC_timestamp
+    return utc_timestamp
 
 
 def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
@@ -462,10 +459,19 @@ def main():
             LOGGER.warning("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
 
-        LOGGER.info("Processing row: %s", ", ".join(row))
+        LOGGER.info("Processing row: %s, %s, %s, %s, %s, %s, %s, %s,",
+                    row.channel,
+                    row.date,
+                    row.start_time,
+                    row.film_code,
+                    row.advertiser,
+                    row.brand,
+                    row.agency,
+                    row.hold_comp
+        )
 
         # Check if unique film code already exists
-        film_code = row.film_code or ""
+        film_code = row.film_code
         wpriref = advert_exists_query(film_code)
         if wpriref:
             LOGGER.info("Skipping: Work already exists for Advert %s - %s", film_code, wpriref)
@@ -474,7 +480,6 @@ def main():
         # Get defaults as lists of dictionary pairs
         rec_def, work_def, work_cred_dct, work_res_def, manifestation = build_rec_details(row)
 
-        # Create Work JMW - need people priref?
         work_values = []
         work_values.extend(rec_def)
         work_values.extend(work_def)
@@ -501,6 +506,7 @@ def main():
             print(f"Manifesatation creation error data data: {manifestation}")
             LOGGER.warning("Failed to make new manifestation and link to work: %s", wpriref)
         LOGGER.info("New manifestation record created %s - linked to work %s", mpriref, wpriref)
+        break
 
     LOGGER.info(
         "========== Adverts work documentation script END =======================================================\n"
@@ -578,11 +584,11 @@ def build_rec_details(row):
 
     title_art = row.brand or ""
     title, title_article = utils.split_title(title_art)
-    title_date_start = row.start_time or ""
-    alternative_number = row.film_code or ""
+    title_date_start = row.start_time
+    alternative_number = row.film_code
     alternative_number.type = "Unique advert identifier - TechEdge"
     title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
-    transmission_start_time = row.start_time or ""
+    transmission_start_time = row.start_time
     utc_timestamp = get_utc(title_date_start, transmission_start_time)
 
     # Broadcast details
@@ -608,7 +614,7 @@ def build_rec_details(row):
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
         {"record_access.reason": "SENSITIVE_LEGAL"},
-        {"grouping.lref": ""}, # JMW New grouping needed Digital Acquisition: Off-Air TV Recording: Automated - Adverts
+        {"grouping.lref": "398775"}, # JMW Digital Acquisition: Off-Air TV Recording: Automated - Adverts
         {"title": title},
         {"title.article": title_article},
         {"title.language": "English"},
@@ -619,7 +625,7 @@ def build_rec_details(row):
         {"record_type": "WORK"},
         {"worklevel_type": "MONOGRAPHIC"},
         {"work_type": "T"},
-        {"genre.lref": } # JMW get lref - ask Natasha which genre for adverts
+        {"genre.lref": "110138"}, # Adverts
         {"title_date_start": title_date_start},
         {"title_date.type": "04_T"},
         {"nfa_category": "D"},
@@ -639,9 +645,9 @@ def build_rec_details(row):
             work.append({"product_category": maj_pri})
 
     # Organise credit data
-    advertiser = row.advertiser or ""
-    holding_comp = row.hold_comp or ""
-    agency = row.agency or ""
+    advertiser = row.advertiser
+    holding_comp = row.hold_comp
+    agency = row.agency
     agency_priref, hc_priref, ad_priref = manage_advertiser_people(advertiser, holding_comp, agency)
     work_cred_dct = make_credit_data_for_work(ad_priref, agency_priref)
 
@@ -681,6 +687,12 @@ def build_rec_details(row):
         {"utb.fieldname": "Programme after (BARB via TechEdge)"},
         {"utb.content": row.barb_after or ""},
     ]
+
+    original_values = row.original or ""
+    if len(original_values) > 1:
+        orig_list = ", ".join(original_values.split(":")[-1].strip().split("-"))
+        manifestation.append({"utb.fieldname": "Original Advertiser, Brand, Agency and Holding Company values from TechEdge"})
+        manifestation.append({"utb.content": orig_list})
 
     return record, work, work_cred_dct, work_restricted, manifestation
 

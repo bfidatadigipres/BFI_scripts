@@ -151,6 +151,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     minordct = [
         {"term": minor},
         {"term.type": "PROD_CAT"},
+        {"term.status": "1"}, # JMW experiment
         {"source": "TechEdge adverts data supply"} # Not indexed / not open to API
     ]
 
@@ -179,6 +180,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         middct = [
             {"term": mid},
             {"term.type": "PROD_CAT"},
+            {"term.status": "1"}, # JMW experiment
             {"narrower_term.lref": minor_priref},
             {"source": "TechEdge adverts data supply"} # Indexed but not open to API
         ]
@@ -216,6 +218,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         majdct = [
             {"term": major},
             {"term.type": "PROD_CAT"},
+            {"term.status": "1"}, # JMW experiment
             {"narrower_term.lref": mid_priref},
             {"source": "TechEdge adverts data supply"} # Indexed but not open to API
         ]
@@ -511,6 +514,8 @@ def main():
 
         # Check if unique film code already exists
         film_code = row.film_code
+        if film_code == "MUMPGKT276010":
+            continue
         wpriref = advert_exists_query(film_code)
         if wpriref:
             LOGGER.info("Skipping: Work already exists for Advert %s - %s", film_code, wpriref)

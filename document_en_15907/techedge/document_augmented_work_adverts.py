@@ -59,8 +59,8 @@ CHANNELS = {
     "ITV3": "ITV3",
     "ITV4": "ITV4",
     "ITVBe": "ITV Be",
-    "ITVQuiz": "ITV Be", # JMW We record QUIZ for a while as ITVBe do we leave?
-    "CITV": "CiTV", # May not need this one
+    "ITVQuiz": "ITV Be", # JMW We record ITVQuiz as `ITVBe` for a few months
+    # "CITV": "CiTV", # May not need this one
     "CH4": "Channel 4 HD",
     "More4": "More4",
     "E4": "E4",
@@ -124,9 +124,11 @@ def get_utc(date_start: str, start_time: str) -> Optional[str]:
 def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     """
     Search for product_category entry that matches 'minor' entry
+    ASSUMPTION: If 'minor' is presents parents are made/linked
     If found return priref | If not found, fetch priref for product_category entry match
     If not present - create parent thesaurus entry using PROD_CAT priref
     If not present - create grandparent thesaurus entry using parent priref
+    ASSUMPTION: Mid and Major could exist where Minor does not - check before creation
     """
     search = f"term='{minor}' and source='TechEdge adverts data supply'"
     hits, rec = adlib.retrieve_record(
@@ -138,7 +140,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             LOGGER.info("%s matched to thesaurus priref with broader term %s: %s", minor, mid, minor_priref)
             return minor_priref
 
-    LOGGER.info("Advertiser product_catogory %s not found in thesaurus. Creating heirarchy.", minor)
+    LOGGER.info("Advertiser product_category %s not found in thesaurus. Creating hierarchy if needed.", minor)
     minordct = [
         {"term": minor},
         {"term.type": "PROD_CAT"},
@@ -160,7 +162,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     )
     if hits:
         mid_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        LOGGER.info("Mid catergory found already created, no further record creation required - %s priref %s", mid, mid_priref)
+        LOGGER.info("Mid category found already created, no further record creation required - %s priref %s", mid, mid_priref)
     else:
         middct = [
             {"term": mid},
@@ -217,6 +219,8 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
     """
     Update Holding Company data when Advertiser child ownership
     appears to have changed for a TechEdge advertiser
+    People record parts, parts.category (both linked)
+    and parts.date.start/end not linked <- API document change?
     """
 
     search = f"name='{agency}' and source='TechEdge adverts data supply'"
@@ -270,18 +274,22 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         make_hc = True
         hc_priref = parts_priref = ""
 
+    # If both exist but not linked trigger creation of new holding company / update advertiser record
+    old_hc_priref = ""
     if make_hc is False and make_ad is False:
         if hc_priref != ad_parent_pri:
             LOGGER.warning(
                 "Holding Company retrieved priref %s does not match parent of retrieved Advertiser %s - Updating logs",
                 hc_priref, ad_parent
             )
+            old_hc_priref = hc_priref
             make_hc = True
         elif ad_priref not in parts_priref:
             LOGGER.warning(
                 "Advertiser record %s and parent Holding Company parts found %s - No parent/child relations evident - Updating log",
                 ad_priref, parts_priref
             )
+            old_hc_priref = hc_priref
             make_hc = True
         else:
             LOGGER.info(
@@ -319,7 +327,7 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
 
         hc_dct = [
             {"name": holding_comp},
-            {"activity_type": "Agency Holding Company"}, # JMW New enumeration requestd
+            {"activity_type": "Sponsor"},
             {"party.class": "ORGANISATION"},
             {"source": "TechEdge adverts data supply"}
         ]
@@ -327,20 +335,45 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
         if hc_priref:
-            LOGGER.info("New Agency person record created for %s: %s", holding_comp, hc_priref)
+            LOGGER.info("New Holding Company person record created for %s: %s", holding_comp, hc_priref)
         else:
-            LOGGER.warning("Failed to create Agency people record: %s - %s", holding_comp, hc_priref)
+            LOGGER.warning("Failed to create Holding Company people record: %s - %s", holding_comp, hc_priref)
             hc_priref = None
 
-        ad_dct_update = [
-            {"priref": ad_priref},
-            {"part_of.lref": hc_priref},
-            # JMW - FIELD AND NOTIFICATION DATA TO COME FROM LOUISE
-            {"TBC": f"Holding company changed from {ad_parent} - {ad_parent_pri}"},
-            {"TBC_DATE": str(datetime.now())[:19]} # YYYY-MM-DD HH:MM:SS
-        ]
-        ad_xml = adlib.create_record_data(CID_API, "people", "", ad_dct_update)
-        ad_rec = adlib.post(CID_API, ad_xml, "people", "updaterecord")
+        # Overwrite the link to old holding company
+        if hc_priref:
+            ad_update = [
+                {"priref": ad_priref},
+                {"part_of.lref": hc_priref}
+            ]
+            ad_update_xml = adlib.create_record_data(CID_API, "people", "", ad_update)
+            ad_update_rec = adlib.post(CID_API, ad_update_xml, "people", "updaterecord")
+            if hc_priref in str(ad_update_rec):
+                LOGGER.info("New Holding Company priref updated to Advertiser People record")
+            else:
+                LOGGER.warning(
+                    "Failure to update new Holding Company priref to Advertiser record: %s",
+                    ad_update_rec
+                )
+
+        # Move connection broken above to relationship field
+        if old_hc_priref:
+            date_now = str(datetime.now())[:10]
+            old_hc_dct_update = [ 
+                {"priref": old_hc_priref},
+                {"relationship.lref": ac_priref},
+                {"relationship.date.end": date_now},
+                {"relationship.notes": f"TechEdge Holding Company changed from {old_hc_priref} - {hc_priref}"},
+            ]
+            old_hc_xml = adlib.create_record_data(CID_API, "people", "", old_hc_dct_update)
+            hc_rec = adlib.post(CID_API, old_hc_xml, "people", "updaterecord")
+            if date_now in str(hc_rec):
+                LOGGER.info("Old Holding Company relationship updated for Advertiser People record")
+            else:
+                LOGGER.warning(
+                    "Failure to update old Holding Company relationships for Advertiser record: %s",
+                    ad_update_rec
+                )
 
     elif make_hc is True and make_ad is True:
         ad_dct = [
@@ -355,14 +388,14 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         ad_rec = adlib.post(CID_API, ad_xml, "people", "insertrecord")
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
         if ad_priref:
-            LOGGER.info("New Agency person record created for %s: %s", advertiser, ad_priref)
+            LOGGER.info("New Advertiser person record created for %s: %s", advertiser, ad_priref)
         else:
-            LOGGER.warning("Failed to create Agency people record: %s - %s", advertiser, ad_priref)
+            LOGGER.warning("Failed to create Advertiser people record: %s - %s", advertiser, ad_priref)
             ad_priref = None
 
         hc_dct = [
             {"name": holding_comp},
-            {"activity_type": "Agency Holding Company"},
+            {"activity_type": "Sponsor"},
             {"party.class": "ORGANISATION"},
             {"parts.lref": ad_priref},
             {"source": "TechEdge adverts data supply"}
@@ -371,9 +404,9 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
         hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
         if hc_priref:
-            LOGGER.info("New Agency person record created for %s: %s", holding_comp, hc_priref)
+            LOGGER.info("New Holding Company person record created for %s: %s", holding_comp, hc_priref)
         else:
-            LOGGER.warning("Failed to create Agency people record: %s - %s", holding_comp, hc_priref)
+            LOGGER.warning("Failed to create Holding Company people record: %s - %s", holding_comp, hc_priref)
             hc_priref = None
 
     return agency_priref, hc_priref, ad_priref
@@ -382,19 +415,17 @@ def manage_advertiser_people(advertiser: str, holding_comp: str, agency: str) ->
 def make_credit_data_for_work(ad_priref, agency_priref):
     """
     Append data into dict for Work POST
-    JMW following credit.sequence_sort from
-    STORA credit name creation
+    Not using credit.sequence_sort following
+    STORA credit name creation method
     """
     work_creds = [
         {"credit.name.lref": agency_priref},
         {"credit.type": "Advertising Agency"},
         {"credit.sequence": "05"},
-        {"credit.sequence.sort": "20750005"},
         {"credit.section": "[normal credit]"},
         {"credit.name.lref": ad_priref},
         {"credit.type": "Advertiser"},
         {"credit.sequence": "10"},
-        {"credit.sequence.sort": "20900010"},
         {"credit.section": "[normal credit]"}
     ]
     return work_creds
@@ -515,13 +546,17 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
             part_unit_total = rows[i]["part_total"]
 
         if part_unit == part_unit_total:
-            # LOGGER.infp("Duration cannot be calculated for end item")
+            LOGGER.info("Duration cannot be calculated for end item")
             return part_unit, part_unit_total, "", ""
         elif part_unit > part_unit_total:
-            # LOGGER.warning("Code broken, part unit total %s is smaller than part unit %s", part_unit_total, part_unit)
+            LOGGER.warning(
+                "Code broken, part unit total %s is smaller than part unit %s",
+                part_unit_total,
+                part_unit
+            )
             return part_unit, "", "", ""
 
-        # LOGGER.info("Calculating duration using next row in sequence")
+        LOGGER.info("Calculating duration using next row in sequence")
         dur_row = rows[target_index + 1]
         stop_time = dur_row["start_time"]
         dur_start_secs = time_to_secs(row["start_time"])
@@ -570,7 +605,7 @@ def build_rec_details(row):
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
         {"record_access.reason": "SENSITIVE_LEGAL"},
-        {"grouping.lref": ""}, # JMW New grouping needed
+        {"grouping.lref": ""}, # JMW New grouping needed Digital Acquisition: Off-Air TV Recording: Automated - Adverts
         {"title": title},
         {"title.article": title_article},
         {"title.language": "English"},
@@ -581,9 +616,10 @@ def build_rec_details(row):
         {"record_type": "WORK"},
         {"worklevel_type": "MONOGRAPHIC"},
         {"work_type": "T"},
+        {"genre.lref": } # JMW get lref - ask Natasha which genre for adverts
         {"title_date_start": title_date_start},
         {"title_date.type": "04_T"},
-        {"nfa_category": "D"}, # JMW Is this needed? Non-fiction
+        {"nfa_category": "D"},
     ]
 
     # Organise category terms
@@ -611,9 +647,9 @@ def build_rec_details(row):
         {"application_restriction.date": str(datetime.now())[:10]},
         {"application_restriction.reason": "STRATEGIC"},
         {"application_restriction.duration": "PERM"},
-        {"application_restriction.review_date": "2030-01-01"}, # JMW
-        {"application_restriction.authoriser": "mcconnachies"}, # JMW
-        {"application_restriction.notes": "Automated Advert creation - pending discussion"}, # JMW
+        {"application_restriction.review_date": "2030-01-01"},
+        {"application_restriction.authoriser": "mcconnachies"},
+        {"application_restriction.notes": "Automated Advert creation - pending discussion"},
     ]
 
     manifestation = [
@@ -632,14 +668,14 @@ def build_rec_details(row):
         {"transmission_coverage": "DIT"},
         {"aspect_ratio": "16:9"},
         {"country_manifestation": "United Kingdom"},
-        {"notes": "Manifestation representing advert broadcast time and date."}, # JMW check with Stephen
+        {"notes": "Manifestation representing advert broadcast time and date."},
         {"alternative_number.type": "Unique advert identifier - TechEdge"},
         {"alternative_number": alternative_number},
         {"utb.fieldname": "Advert sequence in commercial break block"},
         {"utb.content": f"{part_unit.zfill(2)}of{part_unit_total.zfill(2)}"},
-        {"utb.fieldname": "BARB Prog Before"}, # JMW
+        {"utb.fieldname": "Programme before (BARB via TechEdge)"},
         {"utb.content": row.barb_before or ""},
-        {"utb.fieldname": "BARB Prog After"}, # JMW
+        {"utb.fieldname": "Programme after (BARB via TechEdge)"},
         {"utb.content": row.barb_after or ""},
     ]
 

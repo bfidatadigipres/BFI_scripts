@@ -129,6 +129,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     ASSUMPTION: Mid and Major could exist where Minor does not - check before creation
     """
     search = f"term='{minor}' and term.type='PROD_CAT'"
+    print(search)
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "0"
     )
@@ -163,6 +164,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         return None, None, None
 
     search = f"term='{mid}' and term.type='PROD_CAT'"
+    print(search)
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "1"
     )
@@ -199,6 +201,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             mid_priref = None
 
     search = f"term='{major}' and term.type='PROD_CAT'"
+    print(search)
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "1"
     )

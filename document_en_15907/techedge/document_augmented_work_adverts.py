@@ -128,7 +128,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     If not present - create grandparent thesaurus entry using parent priref
     ASSUMPTION: Mid and Major could exist where Minor does not - check before creation
     """
-    search = f"term='{minor}' and term.type='PROD_CAT'"
+    search = f"(term='{minor}' and term.type='PROD_CAT')"
     print(search)
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "0"
@@ -163,7 +163,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         LOGGER.warning("Failed to create Thesaurus record for %s:\n%s", minor, minor_rec)
         return None, None, None
 
-    search = f"term='{mid}' and term.type='PROD_CAT'"
+    search = f"(term='{mid}' and term.type='PROD_CAT')"
     print(search)
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "1"
@@ -200,7 +200,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             )
             mid_priref = None
 
-    search = f"term='{major}' and term.type='PROD_CAT'"
+    search = f"(term='{major}' and term.type='PROD_CAT')"
     print(search)
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "1"
@@ -652,7 +652,7 @@ def build_rec_details(row):
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
         {"record_access.reason": "SENSITIVE_LEGAL"},
-        {"grouping.lref": "398775"}, # JMW Digital Acquisition: Off-Air TV Recording: Automated - Adverts
+        {"grouping.lref": "402585"}, # Digital Acquisition: Off-Air TV Recording: Automated - Adverts
         {"title": title},
         {"title.article": title_article},
         {"title.language": "English"},

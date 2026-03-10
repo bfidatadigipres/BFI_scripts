@@ -74,7 +74,7 @@ def advert_exists_query(film_code: str) -> Optional[str]:
     Sends request for advert hit
     """
 
-    search = f'alternative_number="{film_code}"'
+    search = f"Df=WORK and alternative_number='{film_code}' and alternative_number.type='Unique advert identifier - TechEdge'"
     try:
         hit_count, record = adlib.retrieve_record(
             CID_API, "works", search, "0"
@@ -103,7 +103,7 @@ def manifestation_exists_query(film_code: str, utc_timestamp: str, parent_priref
     """
     Check if manifestation is a duplicate
     """
-    search = f"(alternative_number='{film_code}' and UTC_timestamp='{utc_timestamp}')"
+    search = f"(Df=MANIFESTATION and alternative_number='{film_code}' and UTC_timestamp='{utc_timestamp}')"
     try:
         hit_count, record = adlib.retrieve_record(
             CID_API, "manifestations", search, "0"

@@ -22,13 +22,12 @@ columns.
 # Public packages
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import logging
 from time import sleep
 from typing import Optional
 import tenacity
-import requests
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
@@ -165,20 +164,6 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     )
     if hits >= 1:
         minor_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        if mid in str(rec[0].get("broader_term")):
-            LOGGER.info(
-                "%s matched to thesaurus priref with broader term %s: %s",
-                minor,
-                mid,
-                minor_priref
-            )
-        if major in str(rec[0].get("broader_term")):
-            LOGGER.info(
-                "%s matched to thesaurus priref with broadest term %s: %s",
-                minor,
-                major,
-                minor_priref
-            )
         search = f"(term='{mid}' and term.type='PROD_CAT')"
         hits, rec = adlib.retrieve_record(
             CID_API, "thesaurus", search, "1"
@@ -187,7 +172,6 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             mid_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         else:
             mid_priref = None
-
         search = f"(term='{major}' and term.type='PROD_CAT')"
         hits, rec = adlib.retrieve_record(
             CID_API, "thesaurus", search, "1"
@@ -203,14 +187,10 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
                 LOGGER.warning("Advertiser record does not contain Mid and Major category matches")
 
     else:
-        LOGGER.info(
-            "Advertiser product_category %s not found in thesaurus. Creating hierarchy if needed.",
-            minor
-        )
         minordct = [
             {"term": minor},
             {"term.type": "PROD_CAT"},
-            {"term.status": "1"}, # Approved preferred term
+            {"term.status": "1"},
             {"source": "TechEdge adverts data supply"},
             {"record_access.user": "BFIiispublic"},
             {"record_access.rights": "0"},
@@ -224,23 +204,18 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         minor_rec = adlib.post(CID_API, minor_xml, "thesaurus", "insertrecord")
         minor_priref = adlib.retrieve_field_name(minor_rec, "priref")[0]
         if minor_priref:
-            LOGGER.info("New thesaurus entry created for Product Category %s", minor)
+            LOGGER.info("* New thesaurus entry created for Product Category '%s'", minor)
         else:
-            LOGGER.warning("Failed to create Thesaurus record for %s:\n%s", minor, minor_rec)
+            LOGGER.warning("Failed to create Thesaurus record for '%s':\n%s", minor, minor_rec)
             return None, None, None
 
     search = f"(term='{mid}' and term.type='PROD_CAT')"
     print(search)
     hits, rec = adlib.retrieve_record(
-        CID_API, "thesaurus", search, "1"
+        CID_API, "thesaurus", search, "0"
     )
-    if hits:
+    if hits >= 1:
         mid_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        LOGGER.info(
-            "Mid category found already created, no further record creation required - %s priref %s",
-            mid,
-            mid_priref
-        )
     else:
         middct = [
             {"term": mid},
@@ -261,16 +236,15 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         mid_priref = adlib.retrieve_field_name(mid_rec, "priref")[0]
         if mid_priref:
             LOGGER.info(
-                "New broader term thesaurus entry created for %s: %s - priref %s",
-                minor_priref,
+                "* New broader term thesaurus entry created for '%s': '%s' - priref %s",
+                minor,
                 mid,
                 mid_priref
             )
         else:
             LOGGER.warning(
-                "Failed to create broader term Thesaurus record: %s - %s",
-                mid,
-                mid_priref
+                "Failed to create broader term Thesaurus record: '%s'",
+                mid
             )
             mid_priref = None
 
@@ -281,11 +255,6 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     )
     if hits:
         maj_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        LOGGER.info(
-            "Major category found already created, no further record creation required - %s priref %s",
-            major,
-            maj_priref
-        )
     else:
         majdct = [
             {"term": major},
@@ -306,25 +275,15 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         maj_priref = adlib.retrieve_field_name(maj_rec, "priref")[0]
         if maj_priref:
             LOGGER.info(
-                "New broader term thesaurus entry created for %s: %s - priref %s",
-                mid_priref, major, maj_priref
+                "* New broader term thesaurus entry created for '%s': '%s' - priref %s",
+                mid, major, maj_priref
             )
         else:
             LOGGER.warning(
-                "Failed to create broader term Thesaurus record: %s - %s",
-                major, maj_priref
+                "Failed to create broader term Thesaurus record: '%s'",
+                major
             )
             maj_priref = None
-
-    LOGGER.info(
-        "All thesaurus categories made for product categories:\n%s - priref %s\n%s - priref %s\n%s - priref %s",
-        minor,
-        minor_priref,
-        mid,
-        mid_priref,
-        major,
-        maj_priref
-    )
 
     return minor_priref, mid_priref, maj_priref
 
@@ -368,7 +327,7 @@ def manage_advertiser_people(
         agency_rec = adlib.post(CID_API, agency_xml, "people", "insertrecord")
         agency_priref = adlib.retrieve_field_name(agency_rec, "priref")[0]
         if agency_priref:
-            LOGGER.info("New Agency person record created for %s: %s", agency, agency_priref)
+            LOGGER.info("* New Agency person record created for '%s': %s", agency, agency_priref)
         else:
             LOGGER.warning("Failed to create Agency people record: %s - %s", agency, agency_priref)
             agency_priref = ""
@@ -378,14 +337,14 @@ def manage_advertiser_people(
 
     search = f"name='{advertiser}' and source='TechEdge adverts data supply'"
     hits, rec = adlib.retrieve_record(
-        CID_API, "people", search, "1"
+        CID_API, "people", search, "0"
     )
-    if hits == 1:
+    if hits >= 1:
         ad_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         ad_parent_pri = adlib.retrieve_field_name(rec[0], "part_of.lref")[0]
         ad_parent = adlib.retrieve_field_name(rec[0], "part_of")[0]
         LOGGER.info(
-            "Advertiser matched to name %s - %s and parent priref found %s.",
+            "Advertiser matched to name '%s' - '%s' and parent priref found '%s'.",
             advertiser, ad_priref, ad_parent_pri
         )
     else:
@@ -408,21 +367,21 @@ def manage_advertiser_people(
     if make_hc is False and make_ad is False:
         if hc_priref != ad_parent_pri:
             LOGGER.warning(
-                "Holding Company retrieved priref %s does not match parent of retrieved Advertiser %s - Updating logs",
+                "Holding Company retrieved priref '%s' does not match parent of retrieved Advertiser '%s'",
                 hc_priref, ad_parent
             )
             old_hc_priref = hc_priref
             make_hc = True
         elif ad_priref not in parts_priref:
             LOGGER.warning(
-                "Advertiser record %s and parent Holding Company parts found %s - No parent/child relations evident - Updating log",
+                "Advertiser record '%s' and parent Holding Company parts found '%s' - No parent/child relations evident",
                 ad_priref, parts_priref
             )
             old_hc_priref = hc_priref
             make_hc = True
         else:
             LOGGER.info(
-                "Found Holding Company and matching Advertiser data already created: %s - %s / %s - %s",
+                "Found Holding Company and matching Advertiser data already created: '%s' - %s / '%s' - %s",
                 advertiser, ad_priref, holding_comp, hc_priref
             )
             return agency_priref, hc_priref, ad_priref
@@ -450,16 +409,16 @@ def manage_advertiser_people(
         ad_rec = adlib.post(CID_API, ad_xml, "people", "insertrecord")
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
         if ad_priref:
-            LOGGER.info("New Agency person record created for %s: %s", advertiser, ad_priref)
+            LOGGER.info("* New Agency person record created for '%s': %s", advertiser, ad_priref)
         else:
-            LOGGER.warning("Failed to create Agency people record: %s - %s", advertiser, ad_priref)
+            LOGGER.warning("Failed to create Agency people record: '%s' - %s", advertiser, ad_priref)
             ad_priref = None
 
         return agency_priref, hc_priref, ad_priref
 
     if make_hc is True and make_ad is False:
         # Make new Holding Company and update Advertiser record with change to Holding company / new part.lref overwrite
-        LOGGER.info("Advertiser %s found but change in Holding Company old %s - to new %s", advertiser, ad_parent, holding_comp)
+        LOGGER.info("Advertiser '%s' found but change in Holding Company old '%s' - to new '%s'", advertiser, ad_parent, holding_comp)
 
         hc_dct = [
             {"name": holding_comp},
@@ -479,9 +438,9 @@ def manage_advertiser_people(
         hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
         if hc_priref:
-            LOGGER.info("New Holding Company person record created for %s: %s", holding_comp, hc_priref)
+            LOGGER.info("* New Holding Company person record created for '%s': %s", holding_comp, hc_priref)
         else:
-            LOGGER.warning("Failed to create Holding Company people record: %s - %s", holding_comp, hc_priref)
+            LOGGER.warning("Failed to create Holding Company people record: '%s' - %s", holding_comp, hc_priref)
             hc_priref = None
 
         # Overwrite the link to old holding company
@@ -494,7 +453,7 @@ def manage_advertiser_people(
             ad_update_xml = adlib.create_record_data(CID_API, "people", "", ad_update)
             ad_update_rec = adlib.post(CID_API, ad_update_xml, "people", "updaterecord")
             if hc_priref in str(ad_update_rec):
-                LOGGER.info("New Holding Company priref updated to Advertiser People record")
+                LOGGER.info("* New Holding Company priref updated to Advertiser People record")
             else:
                 LOGGER.warning(
                     "Failure to update new Holding Company priref to Advertiser record: %s",
@@ -514,7 +473,7 @@ def manage_advertiser_people(
             old_hc_xml = adlib.create_record_data(CID_API, "people", "", old_hc_dct_update)
             hc_rec = adlib.post(CID_API, old_hc_xml, "people", "updaterecord")
             if date_now in str(hc_rec):
-                LOGGER.info("Old Holding Company relationship updated for Advertiser People record")
+                LOGGER.info("* Old Holding Company relationship updated for Advertiser People record")
             else:
                 LOGGER.warning(
                     "Failure to update old Holding Company relationships for Advertiser record: %s",
@@ -542,9 +501,9 @@ def manage_advertiser_people(
         ad_rec = adlib.post(CID_API, ad_xml, "people", "insertrecord")
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
         if ad_priref:
-            LOGGER.info("New Advertiser person record created for %s: %s", advertiser, ad_priref)
+            LOGGER.info("* New Advertiser person record created for '%s': %s", advertiser, ad_priref)
         else:
-            LOGGER.warning("Failed to create Advertiser people record: %s - %s", advertiser, ad_priref)
+            LOGGER.warning("Failed to create Advertiser people record: '%s' - %s", advertiser, ad_priref)
             ad_priref = None
 
         hc_dct = [
@@ -566,9 +525,9 @@ def manage_advertiser_people(
         hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
         if hc_priref:
-            LOGGER.info("New Holding Company person record created for %s: %s", holding_comp, hc_priref)
+            LOGGER.info("* New Holding Company person record created for '%s': %s", holding_comp, hc_priref)
         else:
-            LOGGER.warning("Failed to create Holding Company people record: %s - %s", holding_comp, hc_priref)
+            LOGGER.warning("Failed to create Holding Company people record: '%s' - %s", holding_comp, hc_priref)
             hc_priref = None
 
     return agency_priref, hc_priref, ad_priref
@@ -639,14 +598,27 @@ def make_utb_data_for_man(row, mpriref):
     return utb_xml
 
 
+def date_range(start_date: str, end_date: str) -> Iterator[str]:
+    """
+    Set date range, and yield one
+    at a time back to main.
+    Args received must be:
+    datetime.date(2015, 1, 1)
+    """
+
+    days = int((end_date - start_date).days)
+    for n in range(days):
+        yield str(start_date + timedelta(n))
+
+
 def main():
     """
-    Iterates through LLM cleaned CSV files in TechEdge folders of STORAGE
-    extracts necessary data into variables. Checks if advert is repeat
-    if yes - skip and note priref / film codes
+    Iterates through LLM cleaned CSV supply (single or date dependent)
+    extracts necessary data into variables. Checks if Work advert exists
+    if yes - skip Work creation and create manifestation if needed
     if no - make work record
           - make people record if needed
-          - make first Manifestation only for now
+          - make Manifestation
     """
 
     if not utils.check_storage(STORAGE):
@@ -656,6 +628,13 @@ def main():
     LOGGER.info(
         "========== Adverts work documentation script STARTED ==============================================="
     )
+
+    ## BAU CSV scanning for new content - time for LLM cleanse
+    # end_date = date.today() - timedelta(days=18)
+    # start_date = end_date - timedelta(days=16)
+    # for target_date in date_range(start_date, end_date):
+    #     csv_path = os.path.join(STORAGE, f"{target_date}_BFIExport.csv")
+    #     for row in te.iter_techedge_rows(csv_path):
 
     for row in te.iter_techedge_rows(CSV_PATH):
         if not utils.check_control("pause_scripts"):
@@ -701,18 +680,17 @@ def main():
             if not wpriref:
                 print(f"Work creation error for data: {work_values}")
                 continue
-            LOGGER.info("New work record created for film code %s - %s", film_code, wpriref)
 
         if not wpriref:
             LOGGER.warning("Failure in creation of Work record. Skipping further actions for %s", film_code)
             continue
     
-        LOGGER.info("Checking if manifestation already exists for advert %s - %s %s", row.brand, row.date, row.start_time)
+        LOGGER.info("Checking if manifestation already exists for advert '%s' - %s %s", row.brand, row.date, row.start_time)
         title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
         utc_timestamp = get_utc(title_date_start, row.start_time)
         mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
         if mpriref is False:
-            LOGGER.info("Manifestation match cannot be found - creating advert manifestation")
+            LOGGER.info("Manifestation match cannot be found. Creating advert manifestation...")
             rec_def, _, _, manifestation = build_rec_details(row)
             man_values = []
             man_values.extend(rec_def)
@@ -723,9 +701,9 @@ def main():
             mpriref = create_manifestation(row, man_values)
             if not mpriref:
                 print(f"Manifesatation creation error data data: {manifestation}")
-                LOGGER.warning("Failed to make new manifestation and link to work: %s", wpriref)
-            LOGGER.info("New manifestation record created %s - linked to work %s", mpriref, wpriref)
-        LOGGER.info("SKIPPING: Manifestation exists for this Advert in this time slot.")
+                LOGGER.warning("Failed to make new manifestation and link to work: %s\n", wpriref)
+
+        LOGGER.info("SKIPPING: Manifestation exists for this Advert in this time slot.\n")
         sys.exit("Just one job")
 
     LOGGER.info(
@@ -785,7 +763,6 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
             )
             return part_unit, "", "", ""
 
-        LOGGER.info("Calculating duration using next row in sequence")
         dur_row = rows[target_index + 1]
         stop_time = dur_row["start_time"]
         dur_start_secs = time_to_secs(row["start_time"])
@@ -919,12 +896,12 @@ def create_work(row, work_values: dict) -> Optional[str]:
     print("=================================")
     try:
         sleep(1)
-        LOGGER.info("Attempting to create Work record for item %s", title)
+        LOGGER.info("Attempting to create Work record for item '%s'...", title)
         work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
         print(f"create_work(): {work_rec}")
     except Exception as err:
         print(f"* Unable to create Work record for <{title}>\n{err}")
-        LOGGER.warning("Unable to create Work record for <%s>", title)
+        LOGGER.warning("Unable to create Work record for '%s'", title)
         LOGGER.warning(err)
 
     # Allow for retry if record priref creation crash:
@@ -954,7 +931,7 @@ def create_work(row, work_values: dict) -> Optional[str]:
         print(
             f"* Work record created with Priref {work_id} Object number {object_number}"
         )
-        LOGGER.info("Work record created with priref %s", work_id)
+        LOGGER.info("* Work record created with priref %s", work_id)
     except (IndexError, TypeError, KeyError) as err:
         LOGGER.warning(
             "Failed to retrieve Priref from record created using: 'works', 'insertrecord' for %s",
@@ -981,7 +958,7 @@ def create_work(row, work_values: dict) -> Optional[str]:
     try:
         sleep(1)
         # adlib.write_lock(CID_API, work_id, "works")
-        LOGGER.info("Attempting to create credit data for Work record %s", work_id)
+        LOGGER.info("Attempting to create credit data for Work record '%s'...", work_id)
         work_rec = adlib.post(CID_API, work_cred_xml, "works", "updaterecord")
         print(f"create_work(): {work_rec}")
     except Exception as err:
@@ -1013,28 +990,28 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
         return None
     try:
         sleep(1)
-        LOGGER.info("Attempting to create Manifestation record for item %s", title)
+        LOGGER.info("Attempting to create Manifestation record for item '%s'...", title)
         man_rec = adlib.post(CID_API, man_values_xml, "manifestations", "insertrecord")
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:
-        print(f"*** Unable to write manifestation record: {err}")
+        print(f"Unable to write manifestation record: {err}")
         LOGGER.warning(
-            "Unable to write manifestation record <%s> %s", title, err
+            "Unable to write manifestation record '%s'\n%s", title, err
         )
 
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(man_rec):
         try:
             sleep(1)
-            LOGGER.info("Attempting to create Manifestation record for item %s", title)
+            LOGGER.info("Retry creation of Manifestation record for item '%s'...", title)
             man_rec = adlib.post(
                 CID_API, man_values_xml, "manifestations", "insertrecord"
             )
             print(f"create_manifestation(): {man_rec}")
         except Exception as err:
-            print(f"*** Unable to write manifestation record: {err}")
+            print(f"Unable to write manifestation record: {err}")
             LOGGER.warning(
-                "Unable to write manifestation record <%s> %s", title, err
+                "Unable to write manifestation record '%s'\n%s", title, err
             )
 
     if man_rec is False:
@@ -1046,8 +1023,8 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
             f"* Manifestation record created with Priref {manifestation_id} Object number {object_number}"
         )
         LOGGER.info(
-            "Manifestation record created with priref %s",
-            manifestation_id,
+            "* Manifestation record created with priref '%s' and object_number '%s'",
+            manifestation_id, object_number
         )
     except (IndexError, KeyError, TypeError) as err:
         LOGGER.warning("Failed to retrieve Priref from record created for - %s", title)
@@ -1063,15 +1040,15 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
 
     try:
         sleep(1)
-        LOGGER.info("Attempting to create UTB data for Manifestation record %s", manifestation_id)
+        LOGGER.info("Attempting to append UTB data to record '%s'...", manifestation_id)
         man_rec_update = adlib.post(CID_API, utb_xml, "manifestations", "updaterecord")
         print(f"create_manifestation(): {man_rec_update}")
     except Exception as err:
         print(f"* Unable to update UTB to record <{manifestation_id}>\n{err}")
         LOGGER.warning("Unable to update Manifestation record <%s>", manifestation_id)
-        LOGGER.warning(err)
+        LOGGER.warning(f"{err}\n")
     if row.barb_before in str(man_rec_update):
-        LOGGER.info("Successfully updated Advert credit data to work.")
+        LOGGER.info("* Successfully updated Advert credit data to work.\n")
 
     return manifestation_id
 

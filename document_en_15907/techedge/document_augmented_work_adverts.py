@@ -102,6 +102,37 @@ def advert_exists_query(film_code: str) -> Optional[str]:
     return None
 
 
+def manifestation_exists_query(film_code: str, utc_timestamp: str, parent_priref: str) -> Optional[str]:
+    """
+    Check if manifestation is a duplicate
+    """
+    search = f"(alternative_number='{film_code} and UTC_timestamp='{utc_timestamp}')"
+    try:
+        hit_count, record = adlib.retrieve_record(
+            CID_API, "manifestations", search, "0"
+        )
+    except Exception as err:
+        print(err)
+        raise Exception
+
+    print(f"Hits {hit_count}\n{record}")
+    if hit_count is None:
+        print(
+            f"Unable to match film code and UTC timestamp: {film_code} | {utc_timestamp}"
+        )
+        return None
+
+    if hit_count == 0:
+        print(f"No match found for Film Code {film_code} | UTC timestamp {utc_timestamp}")
+        return False
+
+    if "TechEdge" in str(record) and parent_priref in str(record):
+        priref = adlib.retrieve_field_name(record[0], "priref")[0]
+        return priref
+
+    return None
+
+
 def get_utc(date_start: str, start_time: str) -> Optional[str]:
     """
     Passes datetime through timezone change
@@ -168,7 +199,10 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         else:
             maj_priref = None
         if minor_priref and mid_priref and maj_priref:
-            return minor_priref, mid_priref, maj_priref
+            if mid_priref in str(rec) and maj_priref in str(rec):
+                return minor_priref, mid_priref, maj_priref
+            else:
+                LOGGER.warning("Advertiser record does not contain Mid and Major category matches")
 
     else:
         LOGGER.info(
@@ -179,7 +213,14 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             {"term": minor},
             {"term.type": "PROD_CAT"},
             {"term.status": "1"}, # Approved preferred term
-            {"source": "TechEdge adverts data supply"}
+            {"source": "TechEdge adverts data supply"},
+            {"record_access.user": "BFIiispublic"},
+            {"record_access.rights": "0"},
+            {"record_access.reason": "SENSITIVE_LEGAL"},
+            {"input.name": "datadigipres"},
+            {"input.date": str(datetime.now())[:10]},
+            {"input.time": str(datetime.now())[11:19]},
+            {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
         ]
         sleep(1)
         minor_xml = adlib.create_record_data(CID_API, "thesaurus", "", minordct)
@@ -209,7 +250,14 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             {"term.type": "PROD_CAT"},
             {"term.status": "1"},
             {"narrower_term.lref": minor_priref},
-            {"source": "TechEdge adverts data supply"}
+            {"source": "TechEdge adverts data supply"},
+            {"record_access.user": "BFIiispublic"},
+            {"record_access.rights": "0"},
+            {"record_access.reason": "SENSITIVE_LEGAL"},
+            {"input.name": "datadigipres"},
+            {"input.date": str(datetime.now())[:10]},
+            {"input.time": str(datetime.now())[11:19]},
+            {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
         ]
         sleep(1)
         mid_xml = adlib.create_record_data(CID_API, "thesaurus", "", middct)
@@ -246,9 +294,16 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         majdct = [
             {"term": major},
             {"term.type": "PROD_CAT"},
-            {"term.status": "1"}, # JMW experiment
+            {"term.status": "1"},
             {"narrower_term.lref": mid_priref},
-            {"source": "TechEdge adverts data supply"} # Indexed but not open to API
+            {"source": "TechEdge adverts data supply"},
+            {"record_access.user": "BFIiispublic"},
+            {"record_access.rights": "0"},
+            {"record_access.reason": "SENSITIVE_LEGAL"},
+            {"input.name": "datadigipres"},
+            {"input.date": str(datetime.now())[:10]},
+            {"input.time": str(datetime.now())[11:19]},
+            {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
         ]
         sleep(1)
         maj_xml = adlib.create_record_data(CID_API, "thesaurus", "", majdct)
@@ -304,7 +359,14 @@ def manage_advertiser_people(
             {"name.type": "CASTCREDIT"},
             {"activity_type": "Advertising Agency"},
             {"party.class": "ORGANISATION"},
-            {"source": "TechEdge adverts data supply"}
+            {"source": "TechEdge adverts data supply"},
+            {"record_access.user": "BFIiispublic"},
+            {"record_access.rights": "0"},
+            {"record_access.reason": "SENSITIVE_LEGAL"},
+            {"input.name": "datadigipres"},
+            {"input.date": str(datetime.now())[:10]},
+            {"input.time": str(datetime.now())[11:19]},
+            {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
         ]
         sleep(1)
         agency_xml = adlib.create_record_data(CID_API, "people", "", agency_dct)
@@ -379,7 +441,14 @@ def manage_advertiser_people(
             {"activity_type": "Sponsor"},
             {"part_of.lref": hc_priref},
             {"party.class": "ORGANISATION"},
-            {"source": "TechEdge adverts data supply"}
+            {"source": "TechEdge adverts data supply"},
+            {"record_access.user": "BFIiispublic"},
+            {"record_access.rights": "0"},
+            {"record_access.reason": "SENSITIVE_LEGAL"},
+            {"input.name": "datadigipres"},
+            {"input.date": str(datetime.now())[:10]},
+            {"input.time": str(datetime.now())[11:19]},
+            {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
         ]
         sleep(1)
         ad_xml = adlib.create_record_data(CID_API, "people", "", ad_dct)
@@ -401,7 +470,14 @@ def manage_advertiser_people(
             {"name": holding_comp},
             {"activity_type": "Sponsor"},
             {"party.class": "ORGANISATION"},
-            {"source": "TechEdge adverts data supply"}
+            {"source": "TechEdge adverts data supply"},
+            {"record_access.user": "BFIiispublic"},
+            {"record_access.rights": "0"},
+            {"record_access.reason": "SENSITIVE_LEGAL"},
+            {"input.name": "datadigipres"},
+            {"input.date": str(datetime.now())[:10]},
+            {"input.time": str(datetime.now())[11:19]},
+            {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
         ]
         sleep(1)
         hc_xml = adlib.create_record_data(CID_API, "people", "", hc_dct)
@@ -457,7 +533,14 @@ def manage_advertiser_people(
             {"activity_type": "Sponsor"},
             {"part_of.lref": hc_priref},
             {"party.class": "ORGANISATION"},
-            {"source": "TechEdge adverts data supply"}
+            {"source": "TechEdge adverts data supply"},
+            {"record_access.user": "BFIiispublic"},
+            {"record_access.rights": "0"},
+            {"record_access.reason": "SENSITIVE_LEGAL"},
+            {"input.name": "datadigipres"},
+            {"input.date": str(datetime.now())[:10]},
+            {"input.time": str(datetime.now())[11:19]},
+            {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
         ]
         sleep(1)
         ad_xml = adlib.create_record_data(CID_API, "people", "", ad_dct)
@@ -474,7 +557,14 @@ def manage_advertiser_people(
             {"activity_type": "Sponsor"},
             {"party.class": "ORGANISATION"},
             {"parts.lref": ad_priref},
-            {"source": "TechEdge adverts data supply"}
+            {"source": "TechEdge adverts data supply"},
+            {"record_access.user": "BFIiispublic"},
+            {"record_access.rights": "0"},
+            {"record_access.reason": "SENSITIVE_LEGAL"},
+            {"input.name": "datadigipres"},
+            {"input.date": str(datetime.now())[:10]},
+            {"input.time": str(datetime.now())[11:19]},
+            {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
         ]
         sleep(1)
         hc_xml = adlib.create_record_data(CID_API, "people", "", hc_dct)
@@ -596,37 +686,44 @@ def main():
         # Check if unique film code already exists
         film_code = row.film_code
         wpriref = advert_exists_query(film_code)
-        if wpriref:
-            LOGGER.info("Skipping: Work already exists for Advert %s - %s", film_code, wpriref)
-            continue
+        if wpriref is None:
+            # Get defaults as lists of dictionary pairs
+            rec_def, work_def, work_res_def, manifestation = build_rec_details(row)
 
-        # Get defaults as lists of dictionary pairs
-        rec_def, work_def, work_res_def, manifestation = build_rec_details(row)
+            work_values = []
+            work_values.extend(rec_def)
+            work_values.extend(work_def)
+            work_values.extend(work_res_def)
+            print(work_values)
 
-        work_values = []
-        work_values.extend(rec_def)
-        work_values.extend(work_def)
-        work_values.extend(work_res_def)
-        print(work_values)
+            wpriref = create_work(row, work_values)
+            if not wpriref:
+                print(f"Work creation error for data: {work_values}")
+                continue
+            LOGGER.info("New work record created for film code %s - %s", film_code, wpriref)
 
-        wpriref = create_work(row, work_values)
         if not wpriref:
-            print(f"Work creation error for data: {work_values}")
+            LOGGER.warning("Failure in creation of Work record. Skipping further actions for %s", film_code)
             continue
-        LOGGER.info("New work record created for film code %s - %s", film_code, wpriref)
+    
+        LOGGER.info("Checking if manifestation already exists for advert %s - %s %s", row.brand, row.date, row.start_time)
+        title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
+        utc_timestamp = get_utc(title_date_start, row.start_time)
+        mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
+        if mpriref is None:
+            LOGGER.info("Manifestation match cannot be found - creating advert manifestation")
+            man_values = []
+            man_values.extend(rec_def)
+            man_values.append({"part_of_reference.lref": wpriref})
+            man_values.extend(manifestation)
+            print(man_values)
 
-        man_values = []
-        man_values.extend(rec_def)
-        man_values.append({"part_of_reference.lref": wpriref})
-        man_values.extend(manifestation)
-        print(man_values)
-
-        mpriref = create_manifestation(row, man_values)
-        if not mpriref:
-            print(f"Manifesatation creation error data data: {manifestation}")
-            LOGGER.warning("Failed to make new manifestation and link to work: %s", wpriref)
-        LOGGER.info("New manifestation record created %s - linked to work %s", mpriref, wpriref)
-        break
+            mpriref = create_manifestation(row, man_values)
+            if not mpriref:
+                print(f"Manifesatation creation error data data: {manifestation}")
+                LOGGER.warning("Failed to make new manifestation and link to work: %s", wpriref)
+            LOGGER.info("New manifestation record created %s - linked to work %s", mpriref, wpriref)
+            break
 
     LOGGER.info(
         "========== Adverts work documentation script END =======================================================\n"

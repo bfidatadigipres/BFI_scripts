@@ -104,7 +104,7 @@ def manifestation_exists_query(film_code: str, utc_timestamp: str, parent_priref
     """
     Check if manifestation is a duplicate
     """
-    search = f"(alternative_number='{film_code} and UTC_timestamp='{utc_timestamp}')"
+    search = f"(alternative_number='{film_code}' and UTC_timestamp='{utc_timestamp}')"
     try:
         hit_count, record = adlib.retrieve_record(
             CID_API, "manifestations", search, "0"

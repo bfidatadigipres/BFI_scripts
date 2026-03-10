@@ -25,10 +25,10 @@ import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import logging
-import requests
 from time import sleep
-import tenacity
 from typing import Optional
+import tenacity
+import requests
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
@@ -393,7 +393,7 @@ def manage_advertiser_people(
 
         return agency_priref, hc_priref, ad_priref
 
-    elif make_hc is True and make_ad is False:
+    if make_hc is True and make_ad is False:
         # Make new Holding Company and update Advertiser record with change to Holding company / new part.lref overwrite
         LOGGER.info("Advertiser %s found but change in Holding Company old %s - to new %s", advertiser, ad_parent, holding_comp)
 
@@ -450,7 +450,7 @@ def manage_advertiser_people(
                     ad_update_rec
                 )
 
-    elif make_hc is True and make_ad is True:
+    if make_hc is True and make_ad is True:
         ad_dct = [
             {"name": advertiser},
             {"name.type": "CASTCREDIT"},
@@ -465,7 +465,7 @@ def manage_advertiser_people(
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
         if ad_priref:
             LOGGER.info("New Advertiser person record created for %s: %s", advertiser, ad_priref)
-        else:
+        else:7
             LOGGER.warning("Failed to create Advertiser people record: %s - %s", advertiser, ad_priref)
             ad_priref = None
 
@@ -505,7 +505,7 @@ def make_credit_data_for_work(ad_priref, agency_priref, wpriref):
         {"credit.sequence": "10"},
         {"credit.section": "[normal credit]"}
     ]
-    
+
     cred_xml = adlib.create_grouped_data(wpriref, "credits", work_creds)
     return cred_xml
 

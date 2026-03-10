@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import logging
 from time import sleep
-from typing import Optional
+from typing import Optional, Iterator
 import tenacity
 
 sys.path.append(os.environ.get("CODE"))
@@ -586,9 +586,9 @@ def make_utb_data_for_man(row, mpriref):
         }
     ]
     if len(row.original) > 1:
-        orig_list = ", ".join(str(row.original).split(":")[-1].strip().split("-"))
+        orig_list = ", ".join(str(row.original).rsplit(':', maxsplit=1)[-1].strip().split("-"))
         utb_dct.append(
-            {  
+            {
                 "utb.fieldname": "Original Advertiser, Brand, Agency and Holding Company values from TechEdge",
                 "utb.content": orig_list
             }
@@ -685,7 +685,7 @@ def main():
         if not wpriref:
             LOGGER.warning("Failure in creation of Work record. Skipping further actions for %s", film_code)
             continue
-    
+
         LOGGER.info("Checking if manifestation already exists for advert '%s' - %s %s", row.brand, row.date, row.start_time)
         title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
         utc_timestamp = get_utc(title_date_start, row.start_time)
@@ -756,7 +756,7 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
         if part_unit == part_unit_total:
             LOGGER.info("Duration cannot be calculated for end item")
             return part_unit, part_unit_total, "", ""
-        elif part_unit > part_unit_total:
+        if part_unit > part_unit_total:
             LOGGER.warning(
                 "Code broken, part unit total %s is smaller than part unit %s",
                 part_unit_total,
@@ -1047,7 +1047,7 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
     except Exception as err:
         print(f"* Unable to update UTB to record <{manifestation_id}>\n{err}")
         LOGGER.warning("Unable to update Manifestation record <%s>", manifestation_id)
-        LOGGER.warning(f"{err}\n")
+        LOGGER.warning("%s\n", err)
     if row.barb_before in str(man_rec_update):
         LOGGER.info("* Successfully updated Advert credit data to work.\n")
 

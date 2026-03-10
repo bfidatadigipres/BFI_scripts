@@ -549,7 +549,7 @@ def make_utb_data_for_man(row, mpriref):
                 "utb.content": orig_list
             }
         )
-
+    print(utb_dct)
     utb_xml = adlib.create_grouped_data(mpriref, "utb", utb_dct)
     return utb_xml
 
@@ -804,7 +804,7 @@ def create_work(row, work_values: dict) -> Optional[str]:
     Build the dictionary and pass to CID for XML conversion
     POST to Axiell and return Priref
     """
-    title = work_values[0].get("title")
+    title = work_values[8].get("title")
 
     work_id = work_rec = ""
     # Start creating CID Work record
@@ -880,12 +880,12 @@ def create_work(row, work_values: dict) -> Optional[str]:
 
     try:
         sleep(1)
-        adlib.write_lock(CID_API, work_id, "works")
+        # adlib.write_lock(CID_API, work_id, "works")
         LOGGER.info("Attempting to create credit data for Work record %s", work_id)
         work_rec = adlib.post(CID_API, work_cred_xml, "works", "updaterecord")
         print(f"create_work(): {work_rec}")
     except Exception as err:
-        adlib.unlock_record(CID_API, work_id, "works")
+        # adlib.unlock_record(CID_API, work_id, "works")
         print(f"* Unable to create Work record for <{title}>\n{err}")
         LOGGER.warning("Unable to create Work record for <%s>", title)
         LOGGER.warning(err)
@@ -901,7 +901,7 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
     Create a manifestation record,
     linked to work_priref
     """
-    title = manifestation_values[0].get("title")
+    title = manifestation_values[8].get("title")
     man_values_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values
     )
@@ -963,12 +963,10 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
 
     try:
         sleep(1)
-        adlib.write_lock(CID_API, manifestation_id, "manifestations")
         LOGGER.info("Attempting to create UTB data for Manifestation record %s", manifestation_id)
         man_rec_update = adlib.post(CID_API, utb_xml, "manifestations", "updaterecord")
         print(f"create_manifestation(): {man_rec_update}")
     except Exception as err:
-        adlib.unlock_record(CID_API, manifestation_id, "manifestations")
         print(f"* Unable to update UTB to record <{manifestation_id}>\n{err}")
         LOGGER.warning("Unable to update Manifestation record <%s>", manifestation_id)
         LOGGER.warning(err)

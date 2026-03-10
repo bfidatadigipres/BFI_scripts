@@ -685,6 +685,8 @@ def main():
         film_code = row.film_code
         if film_code == "MUMPGKT276010":
             continue
+        if film_code == "GOCGIOD022030":
+            continue
         wpriref = advert_exists_query(film_code)
         if wpriref is False:
             # Get defaults as lists of dictionary pairs

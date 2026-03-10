@@ -57,7 +57,7 @@ CHANNELS = {
     "ITV3": ["ITV3", "20425"],
     "ITV4": ["ITV4", "20425"],
     "ITVBe": ["ITV Be", "20425"],
-    "ITVQuiz": ["ITV Be", "20425"], # ITVQuiz recorded as `ITVBe` for a few months
+    "ITVQuiz": ["ITV Be", "20425"], # ITVQuiz recorded as `ITVBe`
     # "CITV": ["CiTV", "20425"], # TBC
     "CH4": ["Channel 4 HD", "73319"],
     "More4": ["More4", "73319"],

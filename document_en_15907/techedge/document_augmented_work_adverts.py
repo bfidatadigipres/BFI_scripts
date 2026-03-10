@@ -465,7 +465,7 @@ def manage_advertiser_people(
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
         if ad_priref:
             LOGGER.info("New Advertiser person record created for %s: %s", advertiser, ad_priref)
-        else:7
+        else:
             LOGGER.warning("Failed to create Advertiser people record: %s - %s", advertiser, ad_priref)
             ad_priref = None
 

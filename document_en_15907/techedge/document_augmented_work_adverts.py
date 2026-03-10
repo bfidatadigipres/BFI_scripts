@@ -25,6 +25,7 @@ import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import logging
+import requests
 from time import sleep
 import tenacity
 from typing import Optional
@@ -51,21 +52,21 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 CHANNELS = {
-    "ITV1": "ITV HD",
-    "ITV1 HD": "ITV HD",
-    "ITV2": "ITV2",
-    "ITV3": "ITV3",
-    "ITV4": "ITV4",
-    "ITVBe": "ITV Be",
-    "ITVQuiz": "ITV Be", # ITVQuiz recorded as `ITVBe` for a few months
-    # "CITV": "CiTV", # TBC
-    "CH4": "Channel 4 HD",
-    "More4": "More4",
-    "E4": "E4",
-    "Film4": "Film4",
-    "Channel 5": "Channel 5 HD",
-    "5": "Channel 5 HD",
-    "5STAR": "5STAR",
+    "ITV1": ["ITV HD", "20425"],
+    "ITV1 HD": ["ITV HD", "20425"],
+    "ITV2": ["ITV2", "20425"],
+    "ITV3": ["ITV3", "20425"],
+    "ITV4": ["ITV4", "20425"],
+    "ITVBe": ["ITV Be", "20425"],
+    "ITVQuiz": ["ITV Be", "20425"], # ITVQuiz recorded as `ITVBe` for a few months
+    # "CITV": ["CiTV", "20425"], # TBC
+    "CH4": ["Channel 4 HD", "73319"],
+    "More4": ["More4", "73319"],
+    "E4": ["E4", "73319"],
+    "Film4": ["Film4", "73319"],
+    "Channel 5": ["Channel 5 HD", "24404"],
+    "5": ["Channel 5 HD", "24404"],
+    "5STAR": ["5STAR", "24404"],
 }
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
@@ -134,7 +135,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         CID_API, "thesaurus", search, "0"
     )
     if hits >= 1:
-        minor_priref = adlib.retrieve_field_name(rec[0], "priref")
+        minor_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         if mid in str(rec[0].get("broader_term")):
             LOGGER.info(
                 "%s matched to thesaurus priref with broader term %s: %s",
@@ -142,27 +143,53 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
                 mid,
                 minor_priref
             )
-            return minor_priref
+        if major in str(rec[0].get("broader_term")):
+            LOGGER.info(
+                "%s matched to thesaurus priref with broadest term %s: %s",
+                minor,
+                major,
+                minor_priref
+            )
+        search = f"(term='{mid}' and term.type='PROD_CAT')"
+        hits, rec = adlib.retrieve_record(
+            CID_API, "thesaurus", search, "1"
+        )
+        if hits >= 1:
+            mid_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
+        else:
+            mid_priref = None
 
-    LOGGER.info(
-        "Advertiser product_category %s not found in thesaurus. Creating hierarchy if needed.",
-        minor
-    )
-    minordct = [
-        {"term": minor},
-        {"term.type": "PROD_CAT"},
-        {"term.status": "1"}, # JMW experiment
-        {"source": "TechEdge adverts data supply"} # Not indexed / not open to API
-    ]
+        search = f"(term='{major}' and term.type='PROD_CAT')"
+        hits, rec = adlib.retrieve_record(
+            CID_API, "thesaurus", search, "1"
+        )
+        if hits >= 1:
+            maj_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
+        else:
+            maj_priref = None
+        if minor_priref and mid_priref and maj_priref:
+            return minor_priref, mid_priref, maj_priref
 
-    minor_xml = adlib.create_record_data(CID_API, "thesaurus", "", minordct)
-    minor_rec = adlib.post(CID_API, minor_xml, "thesaurus", "insertrecord")
-    minor_priref = adlib.retrieve_field_name(minor_rec, "priref")[0]
-    if minor_priref:
-        LOGGER.info("New thesaurus entry created for Product Category %s", minor)
     else:
-        LOGGER.warning("Failed to create Thesaurus record for %s:\n%s", minor, minor_rec)
-        return None, None, None
+        LOGGER.info(
+            "Advertiser product_category %s not found in thesaurus. Creating hierarchy if needed.",
+            minor
+        )
+        minordct = [
+            {"term": minor},
+            {"term.type": "PROD_CAT"},
+            {"term.status": "1"}, # Approved preferred term
+            {"source": "TechEdge adverts data supply"}
+        ]
+        sleep(1)
+        minor_xml = adlib.create_record_data(CID_API, "thesaurus", "", minordct)
+        minor_rec = adlib.post(CID_API, minor_xml, "thesaurus", "insertrecord")
+        minor_priref = adlib.retrieve_field_name(minor_rec, "priref")[0]
+        if minor_priref:
+            LOGGER.info("New thesaurus entry created for Product Category %s", minor)
+        else:
+            LOGGER.warning("Failed to create Thesaurus record for %s:\n%s", minor, minor_rec)
+            return None, None, None
 
     search = f"(term='{mid}' and term.type='PROD_CAT')"
     print(search)
@@ -180,10 +207,11 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         middct = [
             {"term": mid},
             {"term.type": "PROD_CAT"},
-            {"term.status": "1"}, # JMW experiment
+            {"term.status": "1"},
             {"narrower_term.lref": minor_priref},
-            {"source": "TechEdge adverts data supply"} # Indexed but not open to API
+            {"source": "TechEdge adverts data supply"}
         ]
+        sleep(1)
         mid_xml = adlib.create_record_data(CID_API, "thesaurus", "", middct)
         mid_rec = adlib.post(CID_API, mid_xml, "thesaurus", "insertrecord")
         mid_priref = adlib.retrieve_field_name(mid_rec, "priref")[0]
@@ -222,6 +250,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             {"narrower_term.lref": mid_priref},
             {"source": "TechEdge adverts data supply"} # Indexed but not open to API
         ]
+        sleep(1)
         maj_xml = adlib.create_record_data(CID_API, "thesaurus", "", majdct)
         maj_rec = adlib.post(CID_API, maj_xml, "thesaurus", "insertrecord")
         maj_priref = adlib.retrieve_field_name(maj_rec, "priref")[0]
@@ -277,6 +306,7 @@ def manage_advertiser_people(
             {"party.class": "ORGANISATION"},
             {"source": "TechEdge adverts data supply"}
         ]
+        sleep(1)
         agency_xml = adlib.create_record_data(CID_API, "people", "", agency_dct)
         agency_rec = adlib.post(CID_API, agency_xml, "people", "insertrecord")
         agency_priref = adlib.retrieve_field_name(agency_rec, "priref")[0]
@@ -351,7 +381,7 @@ def manage_advertiser_people(
             {"party.class": "ORGANISATION"},
             {"source": "TechEdge adverts data supply"}
         ]
-
+        sleep(1)
         ad_xml = adlib.create_record_data(CID_API, "people", "", ad_dct)
         ad_rec = adlib.post(CID_API, ad_xml, "people", "insertrecord")
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
@@ -373,6 +403,7 @@ def manage_advertiser_people(
             {"party.class": "ORGANISATION"},
             {"source": "TechEdge adverts data supply"}
         ]
+        sleep(1)
         hc_xml = adlib.create_record_data(CID_API, "people", "", hc_dct)
         hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
@@ -388,6 +419,7 @@ def manage_advertiser_people(
                 {"priref": ad_priref},
                 {"part_of.lref": hc_priref}
             ]
+            sleep(1)
             ad_update_xml = adlib.create_record_data(CID_API, "people", "", ad_update)
             ad_update_rec = adlib.post(CID_API, ad_update_xml, "people", "updaterecord")
             if hc_priref in str(ad_update_rec):
@@ -407,6 +439,7 @@ def manage_advertiser_people(
                 {"relationship.date.end": date_now},
                 {"relationship.notes": f"TechEdge Holding Company changed from {old_hc_priref} - {hc_priref}"},
             ]
+            sleep(1)
             old_hc_xml = adlib.create_record_data(CID_API, "people", "", old_hc_dct_update)
             hc_rec = adlib.post(CID_API, old_hc_xml, "people", "updaterecord")
             if date_now in str(hc_rec):
@@ -426,6 +459,7 @@ def manage_advertiser_people(
             {"party.class": "ORGANISATION"},
             {"source": "TechEdge adverts data supply"}
         ]
+        sleep(1)
         ad_xml = adlib.create_record_data(CID_API, "people", "", ad_dct)
         ad_rec = adlib.post(CID_API, ad_xml, "people", "insertrecord")
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
@@ -442,6 +476,7 @@ def manage_advertiser_people(
             {"parts.lref": ad_priref},
             {"source": "TechEdge adverts data supply"}
         ]
+        sleep(1)
         hc_xml = adlib.create_record_data(CID_API, "people", "", hc_dct)
         hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
@@ -454,7 +489,7 @@ def manage_advertiser_people(
     return agency_priref, hc_priref, ad_priref
 
 
-def make_credit_data_for_work(ad_priref, agency_priref):
+def make_credit_data_for_work(ad_priref, agency_priref, wpriref):
     """
     Append data into dict for Work POST
     Not using credit.sequence_sort following
@@ -470,7 +505,39 @@ def make_credit_data_for_work(ad_priref, agency_priref):
         {"credit.sequence": "10"},
         {"credit.section": "[normal credit]"}
     ]
-    return work_creds
+    
+    cred_xml = adlib.create_grouped_data(wpriref, "credits", work_creds)
+    return cred_xml
+
+
+def record_append(priref, utb_dct):
+    '''
+    Writes splitting data to CID UTB content field
+    Temporary location, awaiting permanent CID location
+    '''
+    name = 'datadigipres'
+    date = str(datetime.now())[:10]
+    time = str(datetime.now())[11:19]
+    notes = 'Automated UTB update of TechEdge data for Adverts project.'
+    payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    for k, v in utb_dct.items():
+        payload_addition = f"<utb><utb.fieldname>{k}</utb.fieldname><utb.content><![CDATA[{v}]]></utb.content></utb>"
+        payload += payload_addition
+
+    payload_edit = f"<edit.name>{name}</edit.name><edit.date>{date}</edit.date><edit.time>{time}</edit.time><edit.notes>{notes}</edit.notes>"
+    payload_end = "</record></recordList></adlibXML>"
+    payload = payload + payload_edit + payload_end
+
+    lock_success = write_lock(priref, "manifestations")
+    if lock_success:
+        write_success = write_payload(priref, payload, "manifestations")
+        if write_success:
+            return True
+        else:
+            unlock_record(priref, "manifestations")
+            return False
+    else:
+        return False
 
 
 def main():
@@ -514,28 +581,23 @@ def main():
 
         # Check if unique film code already exists
         film_code = row.film_code
-        if film_code == "MUMPGKT276010":
-            continue
         wpriref = advert_exists_query(film_code)
         if wpriref:
             LOGGER.info("Skipping: Work already exists for Advert %s - %s", film_code, wpriref)
             continue
 
         # Get defaults as lists of dictionary pairs
-        rec_def, work_def, work_cred_dct, work_res_def, manifestation = build_rec_details(row)
+        rec_def, work_def, work_res_def, manifestation = build_rec_details(row)
 
         work_values = []
         work_values.extend(rec_def)
         work_values.extend(work_def)
-        work_values.extend(work_cred_dct)
         work_values.extend(work_res_def)
         print(work_values)
 
-        wpriref = create_work(work_values)
+        wpriref = create_work(row, work_values)
         if not wpriref:
-            print(
-                f"Work creation error for data: {work_values}"
-            )
+            print(f"Work creation error for data: {work_values}")
             continue
         LOGGER.info("New work record created for film code %s - %s", film_code, wpriref)
 
@@ -545,7 +607,7 @@ def main():
         man_values.extend(manifestation)
         print(man_values)
 
-        mpriref = create_manifestation(man_values)
+        mpriref = create_manifestation(row, man_values)
         if not mpriref:
             print(f"Manifesatation creation error data data: {manifestation}")
             LOGGER.warning("Failed to make new manifestation and link to work: %s", wpriref)
@@ -643,7 +705,7 @@ def build_rec_details(row):
             broadcast_company = v[1]
 
     # Get part unit value total and duration
-    part_unit, part_unit_total, duration, stop_time = get_duration_total_parts(
+    _, _, duration, stop_time = get_duration_total_parts(
         title_date_start,
         transmission_start_time,
         alternative_number
@@ -689,13 +751,6 @@ def build_rec_details(row):
         if maj_pri:
             work.append({"product_category": maj_pri})
 
-    # Organise credit data
-    advertiser = row.advertiser
-    holding_comp = row.hold_comp
-    agency = row.agency
-    agency_priref, _, ad_priref = manage_advertiser_people(advertiser, holding_comp, agency)
-    work_cred_dct = make_credit_data_for_work(ad_priref, agency_priref)
-
     work_restricted = [
         {"application_restriction": "MEDIATHEQUE"},
         {"application_restriction.date": str(datetime.now())[:10]},
@@ -715,33 +770,22 @@ def build_rec_details(row):
         {"transmission_date": title_date_start},
         {"transmission_start_time": transmission_start_time},
         {"transmission_end_time": stop_time},
-        {"transmission_duration": duration},
+        {"transmission_duration": f"{duration} seconds"},
+        {"runtime_seconds": duration},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": broadcast_channel},
         {"broadcast_company": broadcast_company},
         {"transmission_coverage": "DIT"},
         {"aspect_ratio": "16:9"},
         {"country_manifestation": "United Kingdom"},
-        {"notes": "Manifestation representing advert broadcast time and date."},
-        {"utb.fieldname": "Advert sequence in commercial break block"},
-        {"utb.content": f"{part_unit.zfill(2)}of{part_unit_total.zfill(2)}"},
-        {"utb.fieldname": "Programme before (BARB via TechEdge)"},
-        {"utb.content": row.barb_before or ""},
-        {"utb.fieldname": "Programme after (BARB via TechEdge)"},
-        {"utb.content": row.barb_after or ""},
+        {"notes": "Manifestation representing advert broadcast time and date."}
     ]
 
-    original_values = row.original or ""
-    if len(original_values) > 1:
-        orig_list = ", ".join(original_values.split(":")[-1].strip().split("-"))
-        manifestation.append({"utb.fieldname": "Original Advertiser, Brand, Agency and Holding Company values from TechEdge"})
-        manifestation.append({"utb.content": orig_list})
-
-    return record, work, work_cred_dct, work_restricted, manifestation
+    return record, work, work_restricted, manifestation
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def create_work(work_values: dict) -> Optional[str]:
+def create_work(row, work_values: dict) -> Optional[str]:
     """
     Build the dictionary and pass to CID for XML conversion
     POST to Axiell and return Priref
@@ -759,8 +803,8 @@ def create_work(work_values: dict) -> Optional[str]:
     print(work_values)
     print(work_values_xml)
     print("=================================")
-
     try:
+        sleep(1)
         LOGGER.info("Attempting to create Work record for item %s", title)
         work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
         print(f"create_work(): {work_rec}")
@@ -809,11 +853,34 @@ def create_work(work_values: dict) -> Optional[str]:
     if not work_id:
         return None
 
+    # Append work credits here
+    advertiser = row.advertiser
+    holding_comp = row.hold_comp
+    agency = row.agency
+    agency_priref, _, ad_priref = manage_advertiser_people(advertiser, holding_comp, agency)
+    work_cred_xml = make_credit_data_for_work(ad_priref, agency_priref, work_id)
+
+    print("=================================")
+    print(work_cred_xml)
+    print("=================================")
+
+    try:
+        sleep(1)
+        LOGGER.info("Attempting to create credit data for Work record %s", work_id)
+        work_rec = adlib.post(CID_API, work_cred_xml, "works", "updaterecord")
+        print(f"create_work(): {work_rec}")
+    except Exception as err:
+        print(f"* Unable to create Work record for <{title}>\n{err}")
+        LOGGER.warning("Unable to create Work record for <%s>", title)
+        LOGGER.warning(err)
+    if row.agency in str(work_rec):
+        LOGGER.info("Successfully updated Advert credit data to work.")
+
     return work_id
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def create_manifestation(manifestation_values: dict) -> Optional[str]:
+def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
     """
     Create a manifestation record,
     linked to work_priref
@@ -872,7 +939,73 @@ def create_manifestation(manifestation_values: dict) -> Optional[str]:
             "Failed to retrieve Priref/Object Number from record creation."
         ).with_traceback(err.__traceback__)
 
+    # Append UTB data to record
+    part_unit, part_unit_total, _, _ = get_duration_total_parts(
+        row.date,
+        row.start_time,
+        row.film_code
+    )
+
+    utb_dct = {
+        "Advert sequence in commercial break block": f"{part_unit.zfill(2)}of{part_unit_total.zfill(2)}",
+        "Programme before (BARB via TechEdge)": row.barb_before,
+        "Programme after (BARB via TechEdge)": row.barb_after,
+    }
+    if len(row.original) > 1:
+        orig_list = ", ".join(str(row.original).split(":")[-1].strip().split("-"))
+        utb_dct["Original Advertiser, Brand, Agency and Holding Company values from TechEdge"] = orig_list
+
+    confirm = record_append(manifestation_id, utb_dct)
+    if confirm is True:
+        LOGGER.info("UTB data successfully updated to Manifestation record %s", manifestation_id)
+    else:
+        LOGGER.warning("UTB data was NOT written to manifestation record %s:\n%s", manifestation_id, utb_dct)
+
     return manifestation_id
+
+
+def write_lock(priref, database):
+    '''
+    Apply a writing lock to the record before updating metadata to Headers
+    '''
+    try:
+        post_response = requests.post(
+            CID_API,
+            params={'database': database, 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'jsonv1'})
+        print(post_response.text)
+        return True
+    except Exception as err:
+        LOGGER.warning("write_lock(): Lock record wasn't applied to record %s\n%s", priref, err)
+
+
+def write_payload(priref, payload, database):
+    '''
+    Receive header, parser data and priref and write to CID media record
+    '''
+    post_response = requests.post(
+        CID_API,
+        params={'database': database, 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
+        data={'data': payload})
+    if "<error><info>" in str(post_response.text):
+        LOGGER.warning("write_payload(): Error returned for requests.post to %s\n%s", priref, payload)
+        return False
+    else:
+        LOGGER.info("No error warning in post_response. Payload successfully written")
+        return True
+
+
+def unlock_record(priref, database):
+    '''
+    Only used if write fails and lock was successful, to guard against file remaining locked
+    '''
+    try:
+        post_response = requests.post(
+            CID_API,
+            params={'database': database, 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
+        print(post_response.text)
+        return True
+    except Exception as err:
+        LOGGER.warning("unlock_record(): Post to unlock record failed. Check Media record %s is unlocked manually\n%s", priref, err)
 
 
 if __name__ == "__main__":

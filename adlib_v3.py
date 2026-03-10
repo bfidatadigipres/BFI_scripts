@@ -490,3 +490,43 @@ def recycle_api(api):
     print(f"Search to trigger recycle sent: {req}")
     print("Pausing for 2 minutes")
     sleep(120)
+
+
+def write_lock(api, priref, database):
+    '''
+    Apply a writing lock to the record before updating
+    '''
+    try:
+        post_response = requests.post(
+            api,
+            params={
+                'database': database,
+                'command': 'lockrecord',
+                'priref': f'{priref}',
+                'output': 'jsonv1'
+            }
+        )
+        print(post_response.text)
+        return True
+    except Exception as err:
+        print(f"Lock record wasn't applied to record {priref}\n{err}")
+
+
+def unlock_record(api, priref, database):
+    '''
+    Only used if write fails and lock was successful, to guard against file remaining locked
+    '''
+    try:
+        post_response = requests.post(
+            api,
+            params={
+                'database': database,
+                'command': 'unlockrecord',
+                'priref': f'{priref}',
+                'output': 'jsonv1'
+            }
+        )
+        print(post_response.text)
+        return True
+    except Exception as err:
+        print(f"Post to unlock record failed. Check record {priref} is unlocked manually\n{err}")

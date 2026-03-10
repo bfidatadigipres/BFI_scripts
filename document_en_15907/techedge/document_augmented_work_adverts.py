@@ -496,48 +496,62 @@ def make_credit_data_for_work(ad_priref, agency_priref, wpriref):
     STORA credit name creation method
     """
     work_creds = [
-        {"credit.name.lref": agency_priref},
-        {"credit.type": "Advertising Agency"},
-        {"credit.sequence": "05"},
-        {"credit.section": "[normal credit]"},
-        {"credit.name.lref": ad_priref},
-        {"credit.type": "Advertiser"},
-        {"credit.sequence": "10"},
-        {"credit.section": "[normal credit]"}
+        {
+            "credit.name.lref": agency_priref,
+            "credit.type": "Advertising Agency",
+            "credit.sequence": "05",
+            "credit.section": "[normal credit]"
+        },
+        {
+            "credit.name.lref": ad_priref,
+            "credit.type": "Advertiser",
+            "credit.sequence": "10",
+            "credit.section": "[normal credit]"
+        }
     ]
 
     cred_xml = adlib.create_grouped_data(wpriref, "credits", work_creds)
     return cred_xml
 
 
-def record_append(priref, utb_dct):
-    '''
-    Writes splitting data to CID UTB content field
-    Temporary location, awaiting permanent CID location
-    '''
-    name = 'datadigipres'
-    date = str(datetime.now())[:10]
-    time = str(datetime.now())[11:19]
-    notes = 'Automated UTB update of TechEdge data for Adverts project.'
-    payload = f"<adlibXML><recordList><record priref='{priref}'>"
-    for k, v in utb_dct.items():
-        payload_addition = f"<utb><utb.fieldname>{k}</utb.fieldname><utb.content><![CDATA[{v}]]></utb.content></utb>"
-        payload += payload_addition
+def make_utb_data_for_man(row, mpriref):
+    """
+    Append data into dict for Work POST
+    Not using credit.sequence_sort following
+    STORA credit name creation method
+    """
+    title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
+    part_unit, part_unit_total, _, _ = get_duration_total_parts(
+        title_date_start,
+        row.start_time,
+        row.film_code
+    )
 
-    payload_edit = f"<edit.name>{name}</edit.name><edit.date>{date}</edit.date><edit.time>{time}</edit.time><edit.notes>{notes}</edit.notes>"
-    payload_end = "</record></recordList></adlibXML>"
-    payload = payload + payload_edit + payload_end
+    utb_dct = [
+        {
+            "utb.fieldname": "Advert sequence in commercial break block",
+            "utb.content": f"{part_unit.zfill(2)}of{part_unit_total.zfill(2)}"
+        },
+        {
+            "utb.fieldname": "Programme before (BARB via TechEdge)",
+            "utb.content": row.barb_before
+        },
+        {
+            "utb.fieldname": "Programme after (BARB via TechEdge)",
+            "utb.content": row.barb_after
+        }
+    ]
+    if len(row.original) > 1:
+        orig_list = ", ".join(str(row.original).split(":")[-1].strip().split("-"))
+        utb_dct.append(
+            {  
+                "utb.fieldname": "Original Advertiser, Brand, Agency and Holding Company values from TechEdge",
+                "utb.content": orig_list
+            }
+        )
 
-    lock_success = write_lock(priref, "manifestations")
-    if lock_success:
-        write_success = write_payload(priref, payload, "manifestations")
-        if write_success:
-            return True
-        else:
-            unlock_record(priref, "manifestations")
-            return False
-    else:
-        return False
+    utb_xml = adlib.create_grouped_data(mpriref, "utb", utb_dct)
+    return utb_xml
 
 
 def main():
@@ -774,7 +788,7 @@ def build_rec_details(row):
         {"runtime_seconds": duration},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": broadcast_channel},
-        {"broadcast_company": broadcast_company},
+        {"broadcast_company.lref": broadcast_company},
         {"transmission_coverage": "DIT"},
         {"aspect_ratio": "16:9"},
         {"country_manifestation": "United Kingdom"},
@@ -866,10 +880,12 @@ def create_work(row, work_values: dict) -> Optional[str]:
 
     try:
         sleep(1)
+        adlib.write_lock(CID_API, work_id, "works")
         LOGGER.info("Attempting to create credit data for Work record %s", work_id)
         work_rec = adlib.post(CID_API, work_cred_xml, "works", "updaterecord")
         print(f"create_work(): {work_rec}")
     except Exception as err:
+        adlib.unlock_record(CID_API, work_id, "works")
         print(f"* Unable to create Work record for <{title}>\n{err}")
         LOGGER.warning("Unable to create Work record for <%s>", title)
         LOGGER.warning(err)
@@ -940,73 +956,26 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
         ).with_traceback(err.__traceback__)
 
     # Append UTB data to record
-    title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
-    part_unit, part_unit_total, _, _ = get_duration_total_parts(
-        title_date_start,
-        row.start_time,
-        row.film_code
-    )
+    utb_xml = make_utb_data_for_man(row, manifestation_id)
+    print("=================================")
+    print(utb_xml)
+    print("=================================")
 
-    utb_dct = {
-        "Advert sequence in commercial break block": f"{part_unit.zfill(2)}of{part_unit_total.zfill(2)}",
-        "Programme before (BARB via TechEdge)": row.barb_before,
-        "Programme after (BARB via TechEdge)": row.barb_after,
-    }
-    if len(row.original) > 1:
-        orig_list = ", ".join(str(row.original).split(":")[-1].strip().split("-"))
-        utb_dct["Original Advertiser, Brand, Agency and Holding Company values from TechEdge"] = orig_list
-
-    confirm = record_append(manifestation_id, utb_dct)
-    if confirm is True:
-        LOGGER.info("UTB data successfully updated to Manifestation record %s", manifestation_id)
-    else:
-        LOGGER.warning("UTB data was NOT written to manifestation record %s:\n%s", manifestation_id, utb_dct)
+    try:
+        sleep(1)
+        adlib.write_lock(CID_API, manifestation_id, "manifestations")
+        LOGGER.info("Attempting to create UTB data for Manifestation record %s", manifestation_id)
+        man_rec_update = adlib.post(CID_API, utb_xml, "manifestations", "updaterecord")
+        print(f"create_manifestation(): {man_rec_update}")
+    except Exception as err:
+        adlib.unlock_record(CID_API, manifestation_id, "manifestations")
+        print(f"* Unable to update UTB to record <{manifestation_id}>\n{err}")
+        LOGGER.warning("Unable to update Manifestation record <%s>", manifestation_id)
+        LOGGER.warning(err)
+    if row.barb_before in str(man_rec_update):
+        LOGGER.info("Successfully updated Advert credit data to work.")
 
     return manifestation_id
-
-
-def write_lock(priref, database):
-    '''
-    Apply a writing lock to the record before updating metadata to Headers
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': database, 'command': 'lockrecord', 'priref': f'{priref}', 'output': 'jsonv1'})
-        print(post_response.text)
-        return True
-    except Exception as err:
-        LOGGER.warning("write_lock(): Lock record wasn't applied to record %s\n%s", priref, err)
-
-
-def write_payload(priref, payload, database):
-    '''
-    Receive header, parser data and priref and write to CID media record
-    '''
-    post_response = requests.post(
-        CID_API,
-        params={'database': database, 'command': 'updaterecord', 'xmltype': 'grouped', 'output': 'jsonv1'},
-        data={'data': payload})
-    if "<error><info>" in str(post_response.text):
-        LOGGER.warning("write_payload(): Error returned for requests.post to %s\n%s", priref, payload)
-        return False
-    else:
-        LOGGER.info("No error warning in post_response. Payload successfully written")
-        return True
-
-
-def unlock_record(priref, database):
-    '''
-    Only used if write fails and lock was successful, to guard against file remaining locked
-    '''
-    try:
-        post_response = requests.post(
-            CID_API,
-            params={'database': database, 'command': 'unlockrecord', 'priref': f'{priref}', 'output': 'json'})
-        print(post_response.text)
-        return True
-    except Exception as err:
-        LOGGER.warning("unlock_record(): Post to unlock record failed. Check Media record %s is unlocked manually\n%s", priref, err)
 
 
 if __name__ == "__main__":

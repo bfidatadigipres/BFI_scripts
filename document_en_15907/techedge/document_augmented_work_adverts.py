@@ -686,6 +686,8 @@ def main():
         if film_code == "MUMPGKT276010":
             continue
         wpriref = advert_exists_query(film_code)
+        rec_def = []
+        manifestation = []
         if wpriref is False:
             # Get defaults as lists of dictionary pairs
             rec_def, work_def, work_res_def, manifestation = build_rec_details(row)

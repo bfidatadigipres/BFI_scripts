@@ -686,11 +686,9 @@ def main():
         if film_code == "MUMPGKT276010":
             continue
         wpriref = advert_exists_query(film_code)
-        rec_def = []
-        manifestation = []
         if wpriref is False:
             # Get defaults as lists of dictionary pairs
-            rec_def, work_def, work_res_def, manifestation = build_rec_details(row)
+            rec_def, work_def, work_res_def, _ = build_rec_details(row)
 
             work_values = []
             work_values.extend(rec_def)
@@ -714,6 +712,7 @@ def main():
         mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
         if mpriref is False:
             LOGGER.info("Manifestation match cannot be found - creating advert manifestation")
+            rec_def, _, _, manifestation = build_rec_details(row)
             man_values = []
             man_values.extend(rec_def)
             man_values.append({"part_of_reference.lref": wpriref})

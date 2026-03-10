@@ -710,7 +710,7 @@ def main():
         title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
         utc_timestamp = get_utc(title_date_start, row.start_time)
         mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
-        if mpriref is None:
+        if mpriref is False:
             LOGGER.info("Manifestation match cannot be found - creating advert manifestation")
             man_values = []
             man_values.extend(rec_def)

@@ -745,11 +745,11 @@ def build_rec_details(row):
     if major and mid and minor:
         minor_pri, mid_pri, maj_pri = manage_product_category(major, mid, minor)
         if minor_pri:
-            work.append({"product_category": minor_pri})
+            work.append({"product_category.lref": minor_pri})
         if mid_pri:
-            work.append({"product_category": mid_pri})
+            work.append({"product_category.lref": mid_pri})
         if maj_pri:
-            work.append({"product_category": maj_pri})
+            work.append({"product_category.lref": maj_pri})
 
     work_restricted = [
         {"application_restriction": "MEDIATHEQUE"},
@@ -940,8 +940,9 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
         ).with_traceback(err.__traceback__)
 
     # Append UTB data to record
+    title_date_start = datetime.strftime(datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d")
     part_unit, part_unit_total, _, _ = get_duration_total_parts(
-        row.date,
+        title_date_start,
         row.start_time,
         row.film_code
     )

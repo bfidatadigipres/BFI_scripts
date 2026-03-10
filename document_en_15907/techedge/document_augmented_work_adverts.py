@@ -78,7 +78,7 @@ def advert_exists_query(film_code: str) -> Optional[str]:
     search = f'alternative_number="{film_code}"'
     try:
         hit_count, record = adlib.retrieve_record(
-            CID_API, "works", search, "1", ["alternative_number.type"]
+            CID_API, "works", search, "0"
         )
     except Exception as err:
         print(err)
@@ -93,11 +93,9 @@ def advert_exists_query(film_code: str) -> Optional[str]:
     if hit_count == 0:
         print(f"No match found for Film Code {film_code}")
         return False
-    if "alternative_number.type" in str(record):
-        antype = adlib.retrieve_field_name(record[0], "alternative_number.type")[0]
+    if hit_count >= 1:
         priref = adlib.retrieve_field_name(record[0], "priref")[0]
-        if "Unique advert identifier - TechEdge" == antype:
-            return priref
+        return priref
 
     return None
 

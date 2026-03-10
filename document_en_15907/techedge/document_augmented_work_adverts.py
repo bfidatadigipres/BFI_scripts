@@ -634,6 +634,7 @@ def main():
     # start_date = end_date - timedelta(days=16)
     # for target_date in date_range(start_date, end_date):
     #     csv_path = os.path.join(STORAGE, f"{target_date}_BFIExport.csv")
+    #     LOGGER.info("Iterating CSV: %s", csv_path)
     #     for row in te.iter_techedge_rows(csv_path):
 
     for row in te.iter_techedge_rows(CSV_PATH):

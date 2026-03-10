@@ -721,7 +721,8 @@ def main():
                 print(f"Manifesatation creation error data data: {manifestation}")
                 LOGGER.warning("Failed to make new manifestation and link to work: %s", wpriref)
             LOGGER.info("New manifestation record created %s - linked to work %s", mpriref, wpriref)
-            break
+        LOGGER.info("SKIPPING: Manifestation exists for this Advert in this time slot.")
+        sys.exit("Just one job")
 
     LOGGER.info(
         "========== Adverts work documentation script END =======================================================\n"

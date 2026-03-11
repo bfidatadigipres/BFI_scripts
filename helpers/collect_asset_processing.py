@@ -222,7 +222,7 @@ def main() -> None:
         except Exception as err:
             LOGGER.warning("ERROR MOVING TO %s\n%s", new_fpath, err)
             continue
-        sleep(2)
+        sleep(1)
         if os.path.exists(fpath):
             LOGGER.warning("ERROR! Old file path still exists!\n%s", fpath)
             sys.exit("Aborting, in case of permission issues!")

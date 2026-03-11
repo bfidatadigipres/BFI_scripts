@@ -15,6 +15,7 @@ import re
 import os
 import sys
 import csv
+import shutil
 import logging
 from time import sleep
 from typing import List, Optional
@@ -217,9 +218,9 @@ def main() -> None:
 
         try:
             print(f"os.rename({fpath}, {new_fpath})")
-            os.rename(fpath, new_fpath)
-        except (OSError, FileNotFoundError) as err:
-            LOGGER.warning("ERROR RENAMING TO %s\n%s", new_fpath, err)
+            shutil.move(fpath, new_fpath)
+        except Exception as err:
+            LOGGER.warning("ERROR MOVING TO %s\n%s", new_fpath, err)
             continue
         sleep(2)
         if os.path.exists(fpath):

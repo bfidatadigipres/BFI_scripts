@@ -177,7 +177,7 @@ def main() -> None:
 
         refs = check_item(f"object.object_number='{cid_check}'", "media", ["reference_number", "imagen.media.original_filename"])
         ref_num = refs[0]
-        imagen_name = ref[1]
+        imagen_name = refs[1]
 
         if ref_num == None:
             LOGGER.warning("Error retrieving data from CID with priref: %s", priref)

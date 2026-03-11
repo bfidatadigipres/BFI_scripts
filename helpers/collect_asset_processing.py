@@ -96,6 +96,8 @@ def check_item(search: str, database: str, field: str | list[str]) -> str | list
             return "No hits"
         if record is None:
             return None
+        fetched_field = adlib.retrieve_field_name(record[0], f)[0] or ""
+        return fetched_field
     else:
         if hits == 0:
             return ["No hits", "No hits"]
@@ -148,6 +150,7 @@ def main() -> None:
 
         # JMW CHECK HERE FOR NO HITS - CHANGE PATH FOR INGEST FROM LEGACY
         cid_check = check_item(f"priref='{priref}'", "items", "object_number")
+        print(cid_check)
         if cid_check is None:
             LOGGER.warning("Error retrieving data from CID with priref: %s", priref)
             continue

@@ -97,6 +97,8 @@ def check_item(search: str, database: str, field: str) -> Optional[str]:
         return None
 
     fetched_field = adlib.retrieve_field_name(record[0], [field])[0]
+    print(record)
+    print(fetched_field)
     if not fetched_field:
         return ""
 
@@ -190,7 +192,7 @@ def main() -> None:
         imagen_name = check_item(
             f"object_number='{cid_check}'", "media", "imagen.media.original_filename"
         )
-        if imagen_name is None or imagen_name is "No hits":
+        if imagen_name == None or imagen_name is "No hits":
             LOGGER.warning("Error retrieving data from CID with object_number: %s", cid_check)
             continue
         if len(imagen_name) > 0:

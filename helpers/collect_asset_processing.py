@@ -139,7 +139,7 @@ def main() -> None:
     for folderpath, fname, priref in yield_csv_rows(sys.argv[1]):
         fpath = make_file_path(fname, folderpath)
         if not os.path.exists(fpath):
-            LOGGER.info("Processed / Missing: Filename not found in path {fpath}")
+            LOGGER.info("Processed / Missing: Filename not found in path %s", fpath)
             continue
         LOGGER.info("** New item: %s - %s", fname, fpath)
 

@@ -184,7 +184,7 @@ def main() -> None:
             continue
         if ref_num == "":
             LOGGER.warning(
-                "Object number %s could not be retrieved from priref %s", cid_check, priref
+                "Object number '%s' could not be retrieved from priref %s", cid_check, priref
             )
             continue
         if ref_num == "No hits":
@@ -194,7 +194,7 @@ def main() -> None:
             continue
         if ref_num.strip() != fname:
             LOGGER.warning(
-                "Reference number %s does not match File name %s", ref_num, fname
+                "Reference number '%s' does not match File name %s", ref_num, fname
             )
             continue
         if imagen_name == None or imagen_name == "No hits":
@@ -202,7 +202,7 @@ def main() -> None:
             continue
         if len(imagen_name) > 0:
             LOGGER.warning(
-                "Imagen.media.original_filename present %s - do not ingest this twice!",
+                "Imagen.media.original_filename present '%s' - do not ingest this twice!",
                 imagen_name,
             )
             continue

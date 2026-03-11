@@ -96,7 +96,7 @@ def check_item(search: str, database: str, field: str) -> Optional[str]:
     if record is None:
         return None
 
-    fetched_field = adlib.retrieve_field_name(record[0], [f"{field}"])[0]
+    fetched_field = adlib.retrieve_field_name(record[0], field)[0]
     print(record)
     print(fetched_field)
     if not fetched_field:

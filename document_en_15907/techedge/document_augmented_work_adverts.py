@@ -638,6 +638,7 @@ def main():
     #     for row in te.iter_techedge_rows(csv_path):
 
     for row in te.iter_techedge_rows(CSV_PATH):
+        first_showing = False
         if not utils.check_control("pause_scripts"):
             LOGGER.info(
                 "Script run prevented by downtime_control.json. Script exiting."
@@ -669,6 +670,7 @@ def main():
         wpriref = advert_exists_query(film_code)
         if wpriref is False:
             # Get defaults as lists of dictionary pairs
+            first_showing = True
             rec_def, work_def, work_res_def, _ = build_rec_details(row)
 
             work_values = []
@@ -699,7 +701,7 @@ def main():
             man_values.extend(manifestation)
             print(man_values)
 
-            mpriref = create_manifestation(row, man_values)
+            mpriref = create_manifestation(first_showing, row, man_values)
             if not mpriref:
                 print(f"Manifesatation creation error data data: {manifestation}")
                 LOGGER.warning("Failed to make new manifestation and link to work: %s\n", wpriref)
@@ -817,7 +819,7 @@ def build_rec_details(row):
         {"title.language": "English"},
         {"title.type": "05_MAIN"},
         {"alternative_number.type": "Unique advert identifier - TechEdge"},
-        {"alternative_number": alternative_number},
+        {"alternative_number": alternative_number}
     ]
 
     work = [
@@ -827,7 +829,7 @@ def build_rec_details(row):
         {"content.genre.lref": "110138"}, # Adverts
         {"title_date_start": title_date_start},
         {"title_date.type": "04_T"},
-        {"nfa_category": "D"},
+        {"nfa_category": "D"}
     ]
 
     # Organise category terms
@@ -850,12 +852,14 @@ def build_rec_details(row):
         {"application_restriction.duration": "PERM"},
         {"application_restriction.review_date": "2030-01-01"},
         {"application_restriction.authoriser": "mcconnachies"},
-        {"application_restriction.notes": "Automated Advert creation - pending discussion"},
+        {"application_restriction.notes": "Automated Advert creation - pending discussion"}
     ]
 
     manifestation = [
         {"record_type": "MANIFESTATION"},
         {"manifestationlevel_type": "TRANSMISSION"},
+        {"language.lref": "74129"},
+        {"language.type": "DIALORIG"},
         {"format_high_level": "Video - Digital"},
         {"colour_manifestation": "C"},
         {"sound_manifestation": "SOUN"},
@@ -869,8 +873,7 @@ def build_rec_details(row):
         {"broadcast_company.lref": broadcast_company},
         {"transmission_coverage": "DIT"},
         {"aspect_ratio": "16:9"},
-        {"country_manifestation": "United Kingdom"},
-        {"notes": "Manifestation representing advert broadcast time and date."}
+        {"country_manifestation": "United Kingdom"}
     ]
 
     return record, work, work_restricted, manifestation
@@ -973,13 +976,33 @@ def create_work(row, work_values: dict) -> Optional[str]:
     return work_id
 
 
+def over_three_weeks(first_showing: bool, date_start: str) -> bool:
+    """
+    JMW remove when BAU work starts
+    Temporary function to be removed
+    for notes fixed to 'first showing'
+    """
+    if first_showing is False:
+        return False
+    date_obj = datetime.strptime(date_start, "%d/%m/%Y")
+    start_dt = datetime(2016, 1, 1) + timedelta(weeks=2)
+    return date_obj > start_dt
+
+
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
+def create_manifestation(first_showing, row, manifestation_values: dict) -> Optional[str]:
     """
     Create a manifestation record,
     linked to work_priref
     """
-    title = manifestation_values[8].get("title")
+
+    # JMW BAU just check first_showing is True for "first" addition
+    confirm = over_three_weeks(first_showing, row.date)
+    if confirm is False:
+        manifestation_values.append({"notes": "Manifestation representing advert broadcast time and date."})
+    else:
+        manifestation_values.append({"notes": "Manifestation representing advert first broadcast time and date."})
+
     man_values_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values
     )
@@ -991,20 +1014,20 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
         return None
     try:
         sleep(1)
-        LOGGER.info("Attempting to create Manifestation record for item '%s'...", title)
+        LOGGER.info("Attempting to create Manifestation record for item '%s'...", row.brand)
         man_rec = adlib.post(CID_API, man_values_xml, "manifestations", "insertrecord")
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:
         print(f"Unable to write manifestation record: {err}")
         LOGGER.warning(
-            "Unable to write manifestation record '%s'\n%s", title, err
+            "Unable to write manifestation record '%s'\n%s", row.brand, err
         )
 
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(man_rec):
         try:
             sleep(1)
-            LOGGER.info("Retry creation of Manifestation record for item '%s'...", title)
+            LOGGER.info("Retry creation of Manifestation record for item '%s'...", row.brand)
             man_rec = adlib.post(
                 CID_API, man_values_xml, "manifestations", "insertrecord"
             )
@@ -1012,7 +1035,7 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
         except Exception as err:
             print(f"Unable to write manifestation record: {err}")
             LOGGER.warning(
-                "Unable to write manifestation record '%s'\n%s", title, err
+                "Unable to write manifestation record '%s'\n%s", row.brand, err
             )
 
     if man_rec is False:
@@ -1028,7 +1051,7 @@ def create_manifestation(row, manifestation_values: dict) -> Optional[str]:
             manifestation_id, object_number
         )
     except (IndexError, KeyError, TypeError) as err:
-        LOGGER.warning("Failed to retrieve Priref from record created for - %s", title)
+        LOGGER.warning("Failed to retrieve Priref from record created for - %s", row.brand)
         raise Exception(
             "Failed to retrieve Priref/Object Number from record creation."
         ).with_traceback(err.__traceback__)

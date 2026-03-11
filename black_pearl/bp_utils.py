@@ -292,6 +292,27 @@ def download_bp_object(fname: str, outpath: str, bucket: str) -> str:
         ds3Helpers.HelperGetObject(fname, file_path)
     ]
     try:
+        get_job_id: str = HELPER.get_objects(get_objects, bucket)
+        print(f"BP get job ID: {get_job_id}")
+    except Exception as err:
+        raise Exception(f"Unable to retrieve file {fname} from Black Pearl: {err}")
+
+    return get_job_id
+
+
+def download_blobbed_object(fname: str, outpath: str, bucket: str) -> str:
+    """
+    Download the BP object from SpectraLogic
+    tape library using single thread
+    """
+    if bucket == "":
+        bucket = "imagen"
+
+    file_path: str = os.path.join(outpath, fname)
+    get_objects: list[ds3Helpers.HelperGetObject] = [
+        ds3Helpers.HelperGetObject(fname, file_path)
+    ]
+    try:
         get_job_id: str = HELPER.get_objects(get_objects, bucket, max_threads=1)
         print(f"BP get job ID: {get_job_id}")
     except Exception as err:

@@ -362,7 +362,7 @@ def main():
 
             # Begin retrieval
             delivery_path = os.path.join(download_folder, fname)
-            get_job_id = bp.download_bp_object(fname, download_folder, bucket)
+            get_job_id = bp.download_blobbed_object(fname, download_folder, bucket)
             print(f"File downloaded: {delivery_path}")
             if not os.path.exists(delivery_path):
                 LOGGER.warning(
@@ -598,7 +598,7 @@ def main():
         # Begin retrieval
         toc = time.perf_counter()
         delivery_path = os.path.join(download_folder, fname)
-        get_job_id = bp.download_bp_object(fname, download_folder, bucket)
+        get_job_id = bp.download_blobbed_object(fname, download_folder, bucket)
         print(f"File downloaded: {delivery_path}")
         if not os.path.exists(delivery_path):
             LOGGER.warning(

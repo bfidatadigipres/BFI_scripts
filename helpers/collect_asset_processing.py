@@ -96,7 +96,7 @@ def check_item(search: str, database: str, field: str | list[str]) -> str | list
             return "No hits"
         if record is None:
             return None
-        fetched_field = adlib.retrieve_field_name(record[0], f)[0] or ""
+        fetched_field = adlib.retrieve_field_name(record[0], field)[0] or ""
         return fetched_field
     else:
         if hits == 0:

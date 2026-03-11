@@ -213,9 +213,9 @@ def main() -> None:
             continue
 
         LOGGER.info("Renaming existing file path to new file path: %s", new_fpath)
-        print(f"os.rename({fpath}, {new_fpath})")
-        """
+
         try:
+            print(f"os.rename({fpath}, {new_fpath})")
             os.rename(fpath, new_fpath)
         except (OSError, FileNotFoundError) as err:
             LOGGER.warning("ERROR RENAMING TO %s\n%s", new_fpath, err)
@@ -233,7 +233,9 @@ def main() -> None:
             fpath,
             new_fpath,
         )
-        """
+
+        sys.exit("Test with first item only")
+
     LOGGER.info("==== Collections Asset renaming script COMPLETED ====")
 
 

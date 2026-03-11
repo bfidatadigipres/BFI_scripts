@@ -226,7 +226,7 @@ def main() -> None:
         if os.path.exists(fpath):
             LOGGER.warning("ERROR! Old file path still exists!\n%s", fpath)
             sys.exit("Aborting, in case of permission issues!")
-        else:
+        if not os.path.exists(new_fpath):
             LOGGER.warning(
                 "New file path cannot be found in Autoingest:\n%s", new_fpath
             )

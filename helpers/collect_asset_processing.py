@@ -85,24 +85,27 @@ def transform_name(fname: str) -> Optional[str]:
     return None
 
 
-def check_item(search: str, database: str, field: str) -> Optional[str]:
+def check_item(search: str, database: str, field: str | list[str]) -> str | list[str]:
     """
     Use requests to retrieve priref/RNA data for item object number
     """
 
     hits, record = adlib.retrieve_record(CID_API, database, search, "0")
-    if hits == 0:
-        return "No hits"
-    if record is None:
-        return None
-
-    fetched_field = adlib.retrieve_field_name(record[0], field)[0]
-    print(record)
-    print(fetched_field)
-    if not fetched_field:
-        return ""
-
-    return fetched_field
+    if type(field) == str:
+        if hits == 0:
+            return "No hits"
+        if record is None:
+            return None
+    else:
+        if hits == 0:
+            return ["No hits", "No hits"]
+        if record is None:
+            return [None, None]
+        fetched_fields = []
+        for f in field:
+            fetched_field = adlib.retrieve_field_name(record[0], f)[0] or ""
+            fetched_fields.append(fetched_field)
+        return fetched_fields
 
 
 def main() -> None:
@@ -169,7 +172,10 @@ def main() -> None:
         LOGGER.info("Filename will be converted from %s to %s", fname, new_fname)
         LOGGER.info("CID record matched to priref %s/object number %s", priref, cid_check)
 
-        ref_num = check_item(f"object.object_number='{cid_check}'", "media", "reference_number")
+        refs = check_item(f"object.object_number='{cid_check}'", "media", ["reference_number", "imagen.media.original_filename"])
+        ref_num = refs[0]
+        imagen_name = ref[1]
+
         if ref_num is None:
             LOGGER.warning("Error retrieving data from CID with priref: %s", priref)
             continue
@@ -188,9 +194,6 @@ def main() -> None:
                 "Reference number %s does not match File name %s", ref_num, fname
             )
             continue
-        imagen_name = check_item(
-            f"object_number='{cid_check}'", "media", "imagen.media.original_filename"
-        )
         if imagen_name == None or imagen_name is "No hits":
             LOGGER.warning("Error retrieving data from CID with object_number: %s", cid_check)
             continue

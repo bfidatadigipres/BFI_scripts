@@ -169,8 +169,7 @@ def main() -> None:
         LOGGER.info("Filename will be converted from %s to %s", fname, new_fname)
         LOGGER.info("CID record matched to priref %s/object number %s", priref, cid_check)
 
-        # Ident which autoingest path (with/without dm rcord)
-        ref_num = check_item(f"object_number='{cid_check}'", "media", "reference_number")
+        ref_num = check_item(f"object.object_number='{cid_check}'", "media", "reference_number")
         if ref_num is None:
             LOGGER.warning("Error retrieving data from CID with priref: %s", priref)
             continue

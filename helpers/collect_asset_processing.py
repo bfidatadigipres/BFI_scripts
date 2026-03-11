@@ -16,6 +16,7 @@ import os
 import sys
 import csv
 import logging
+from time import sleep
 from typing import List, Optional
 
 sys.path.append(os.environ.get("CODE"))
@@ -137,7 +138,7 @@ def main() -> None:
     for folderpath, fname, priref in yield_csv_rows(sys.argv[1]):
         fpath = make_file_path(fname, folderpath)
         if not os.path.exists(fpath):
-            LOGGER.info("Skipping: Filename not found in path {fpath}")
+            LOGGER.info("Processed / Missing: Filename not found in path {fpath}")
             continue
         LOGGER.info("** New item: %s - %s", fname, fpath)
 
@@ -220,6 +221,7 @@ def main() -> None:
         except (OSError, FileNotFoundError) as err:
             LOGGER.warning("ERROR RENAMING TO %s\n%s", new_fpath, err)
             continue
+        sleep(2)
         if os.path.exists(fpath):
             LOGGER.warning("ERROR! Old file path still exists!\n%s", fpath)
             sys.exit("Aborting, in case of permission issues!")

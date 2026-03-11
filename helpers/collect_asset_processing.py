@@ -217,7 +217,7 @@ def main() -> None:
         LOGGER.info("Renaming existing file path to new file path: %s", new_fpath)
 
         try:
-            print(f"os.rename({fpath}, {new_fpath})")
+            print(f"shutil.move('{fpath}', '{new_fpath}')")
             shutil.move(fpath, new_fpath)
         except Exception as err:
             LOGGER.warning("ERROR MOVING TO %s\n%s", new_fpath, err)

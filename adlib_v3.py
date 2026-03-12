@@ -334,6 +334,9 @@ def test_create_record_data(api, database, priref, data=None):
             if access_record:  # Only add if there's relevant data
                 new_grouping[group_key].append(access_record)
 
+    for k, v in new_grouping.items():
+        print(f"Adjusted grouping data: {k}: {v}")
+
     # Prepare final structure to hold the XML data
     record_data = {}
     for group_key, records in new_grouping.items():

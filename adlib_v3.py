@@ -343,25 +343,20 @@ def test_create_record_data(api, database, priref, data=None):
 
     # Create an XML-like string manually
     output_list = []
-    output_list.append("<record>")
     output_list.append(f"<priref>{priref or 0}</priref>")
     
     for group_key, records in record_data.items():
         for record_block in records:
             output_list.append(f"<{group_key}>")
             for record_item in record_block:
-                output_list.append(f"<record>")
                 for key, value in record_item.items():
                     output_list.append(f"<{key}>{value}</{key}>")
-                output_list.append(f"</record>")
             output_list.append(f"</{group_key}>")
 
-    output_list.append("</record>")
-
-    # Join all parts to form the final XML output
+     # Join all parts to form the final XML output
     payload = ''.join(output_list)
 
-    return f"<adlibXML><recordList>{payload}</recordList></adlibXML>"
+    return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
 
 # (api: str, database: str, priref: str, data=None) -> str
 def create_record_data(api, database, priref, data=None):

@@ -343,14 +343,18 @@ def create_record_data(api, database, priref, data=None):
     if not frag:
         return False
 
-    parser = etree.XMLParser(resolve_entities=False)
-    record = etree.XML("<record></record>", parser=parser)
+    #parser = etree.XMLParser(resolve_entities=False)
+    #record = etree.XML("<record></record>", parser=parser)
+    record = etree.XML("<record></record>")
     if not priref:
-        record.append(etree.fromstring("<priref>0</priref>", parser=parser))
+        #record.append(etree.fromstring("<priref>0</priref>", parser=parser))
+        record.append(etree.fromstring("<priref>0</priref>"))
     else:
-        record.append(etree.fromstring(f"<priref>{priref}</priref>", parser=parser))
+        #record.append(etree.fromstring(f"<priref>{priref}</priref>", parser=parser))
+        record.append(etree.fromstring(f"<priref>{priref}</priref>"))
     for i in frag:
-        record.append(etree.fromstring(i, parser=parser))
+        #record.append(etree.fromstring(i, parser=parser))
+        record.append(etree.fromstring(i))
 
     # Convert XML object to string
     payload = etree.tostring(record)
@@ -424,9 +428,10 @@ def get_fragments(obj):
                 sub_item, parser=etree.XMLParser(remove_blank_text=True)
             )
             for itm in list_item:
-                xml = etree.fromstring(
-                    etree.tostring(itm), parser=etree.XMLParser(resolve_entities=False)
-                )
+                #xml = etree.fromstring(
+                #    etree.tostring(itm), parser=etree.XMLParser(resolve_entities=False)
+                #)
+                xml = etree.fromstring(etree.tostring(itm))
                 data.append(etree.tostring(xml))
         except Exception as err:
             raise TypeError(f"Invalid XML:\n{sub_item}") from err

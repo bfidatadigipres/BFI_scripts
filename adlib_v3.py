@@ -309,6 +309,60 @@ def get_grouped_items(api, database):
     return grouped
 
 
+def test_create_record_data(api, database, priref, data=None):
+    """
+    Handle groupings and place into
+    blocks with grouping headings breaking
+    up repeat blocks
+    """
+    if data is None:
+        data = []
+    if not isinstance(data, list):
+        data = [data]
+
+    # Take data and group where matched to grouped dict
+    grouped = get_grouped_items(api, database)
+    new_grouping: Dict[str, List[Dict[str, str]]] = {}
+
+    # Organizing data based on groups defined
+    for item in data:
+        for group_key, fields in grouped.items():
+            if group_key not in new_grouping:
+                new_grouping[group_key] = []
+
+            access_record = {k: item[k] for k in item if k in fields}
+            if access_record:  # Only add if there's relevant data
+                new_grouping[group_key].append(access_record)
+
+    # Prepare final structure to hold the XML data
+    record_data = {}
+    for group_key, records in new_grouping.items():
+        record_data[group_key] = []
+        for i in range(0, len(records), 4):
+            record_data[group_key].append(records[i:i + 4])
+
+    # Create an XML-like string manually
+    output_list = []
+    output_list.append("<record>")
+    output_list.append(f"<priref>{priref or 0}</priref>")
+    
+    for group_key, records in record_data.items():
+        for record_block in records:
+            output_list.append(f"<{group_key}>")
+            for record_item in record_block:
+                output_list.append(f"<record>")
+                for key, value in record_item.items():
+                    output_list.append(f"<{key}>{value}</{key}>")
+                output_list.append(f"</record>")
+            output_list.append(f"</{group_key}>")
+
+    output_list.append("</record>")
+
+    # Join all parts to form the final XML output
+    payload = ''.join(output_list)
+
+    return f"<adlibXML><recordList>{payload}</recordList></adlibXML>"
+
 # (api: str, database: str, priref: str, data=None) -> str
 def create_record_data(api, database, priref, data=None):
     """

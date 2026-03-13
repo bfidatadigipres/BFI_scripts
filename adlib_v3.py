@@ -309,7 +309,7 @@ def get_grouped_items(api, database):
     return grouped
 
 
-def test_create_record_data(api, database, priref, data=None):
+def create_record_data(api, database, priref, data=None):
     """
     Handle groupings and place into
     blocks with grouping headings breaking
@@ -320,12 +320,10 @@ def test_create_record_data(api, database, priref, data=None):
     if not isinstance(data, list):
         data = [data]
 
-    # Take data and group where matched to grouped dict
     grouped = get_grouped_items(api, database)
     new_grouping: Dict[str, List[Dict[str, str]]] = {}
     non_grouped_items: List[Dict[str,str]] = []
 
-    # Organizing data based on groups defined
     for item in data:
         print(item)
         group_found = False
@@ -334,7 +332,7 @@ def test_create_record_data(api, database, priref, data=None):
                 new_grouping[group_key] = []
 
             access_record = {k: item[k] for k in item if k in fields}
-            if access_record:  # Only add if there's relevant data
+            if access_record:
                 new_grouping[group_key].append(access_record)
                 group_found = True
                 break
@@ -345,14 +343,13 @@ def test_create_record_data(api, database, priref, data=None):
         if v != []:
             print(f"Adjusted grouping data: {k}: {v}")
 
-    # Prepare final structure to hold the XML data
     record_data = {}
     for group_key, records in new_grouping.items():
         record_data[group_key] = []
         for i in range(0, len(records), 4):
             record_data[group_key].append(records[i:i + 4])
 
-    # Create an XML-like string manually
+    # Create an XML-like string manually escaping where needed
     output_list = []
     output_list.append(f"<priref>{priref or 0}</priref>")
 
@@ -367,10 +364,7 @@ def test_create_record_data(api, database, priref, data=None):
                 for key, value in record_item.items():
                     output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
             output_list.append(f"</{group_key}>")
-
-   # Join all parts to form the final XML output
     payload = ''.join(output_list)
-
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
 
 
@@ -387,7 +381,7 @@ def escape_xml(s: str) -> str:
 
 
 # (api: str, database: str, priref: str, data=None) -> str
-def create_record_data(api, database, priref, data=None):
+def deprecated_create_record_data(api, database, priref, data=None):
     """
     Create a record from supplied dictionary (or list of dictionaries)
     """

@@ -327,7 +327,7 @@ def test_create_record_data(api, database, priref, data=None):
 
     # Organizing data based on groups defined
     for item in data:
-        grouped_found = False
+        group_found = False
         for group_key, fields in grouped.items():
             if group_key not in new_grouping:
                 new_grouping[group_key] = []

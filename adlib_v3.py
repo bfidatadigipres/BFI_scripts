@@ -310,11 +310,6 @@ def get_grouped_items(api, database):
 
 
 def create_record_data(api, database, priref, data=None):
-    """
-    Handle groupings and place into
-    blocks with grouping headings breaking
-    up repeat blocks
-    """
     if data is None:
         data = []
     if not isinstance(data, list):
@@ -322,10 +317,9 @@ def create_record_data(api, database, priref, data=None):
 
     grouped = get_grouped_items(api, database)
     new_grouping: Dict[str, List[Dict[str, str]]] = {}
-    non_grouped_items: List[Dict[str,str]] = []
+    non_grouped_items: List[Dict[str, str]] = []
 
     for item in data:
-        print(item)
         group_found = False
         for group_key, fields in grouped.items():
             if group_key not in new_grouping:
@@ -339,17 +333,31 @@ def create_record_data(api, database, priref, data=None):
         if not group_found:
             non_grouped_items.append(item)
 
-    for k, v in new_grouping.items():
-        if v != []:
-            print(f"Adjusted grouping data: {k}: {v}")
-
-    record_data = {}
+    # Build repeat blocks by detecting when a field name recurs
+    record_data: Dict[str, List[List[Dict[str, str]]]] = {}
     for group_key, records in new_grouping.items():
+        if not records:
+            continue
         record_data[group_key] = []
-        for i in range(0, len(records), 4):
-            record_data[group_key].append(records[i:i + 4])
+        current_block: List[Dict[str, str]] = []
+        seen_keys: set = set()
 
-    # Create an XML-like string manually escaping where needed
+        for record_item in records:
+            item_keys = set(record_item.keys())
+            # If any key in this item was already seen in the current block,
+            # we're starting a new repeat instance
+            if item_keys & seen_keys:
+                record_data[group_key].append(current_block)
+                current_block = []
+                seen_keys = set()
+
+            current_block.append(record_item)
+            seen_keys.update(item_keys)
+
+        if current_block:
+            record_data[group_key].append(current_block)
+
+    # Build XML
     output_list = []
     output_list.append(f"<priref>{priref or 0}</priref>")
 
@@ -357,13 +365,14 @@ def create_record_data(api, database, priref, data=None):
         for key, value in ng_item.items():
             output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
 
-    for group_key, records in record_data.items():
-        for record_block in records:
+    for group_key, blocks in record_data.items():
+        for block in blocks:
             output_list.append(f"<{group_key}>")
-            for record_item in record_block:
+            for record_item in block:
                 for key, value in record_item.items():
                     output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
             output_list.append(f"</{group_key}>")
+
     payload = ''.join(output_list)
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
 

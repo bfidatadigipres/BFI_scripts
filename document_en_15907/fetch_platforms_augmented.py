@@ -95,6 +95,8 @@ def fetch(
             )
             print(url_all)
             req = requests.get(url_all, headers=HEADERS)
+            print("========================")
+            print(req.text)
             dct = json.loads(req.text)
             return dct
         except Exception as err:

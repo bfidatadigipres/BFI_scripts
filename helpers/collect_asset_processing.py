@@ -237,8 +237,6 @@ def main() -> None:
             new_fpath,
         )
 
-        sys.exit("Test with first item only")
-
     LOGGER.info("==== Collections Asset renaming script COMPLETED ====")
 
 

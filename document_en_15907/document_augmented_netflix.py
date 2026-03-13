@@ -104,10 +104,11 @@ def get_folder_title(article: str, title: str) -> str:
         .replace("!", "")
         .replace("’", "")
     )
-    if article != "":
+    if article != "-":
         title = f'{article}_{title.replace(" ", "_")}_'
     else:
         title = f'{title.replace(" ", "_")}_'
+    print(title)
     return title
 
 
@@ -149,8 +150,8 @@ def retrieve_json(json_pth: str) -> dict[str, str]:
     present for supplied episode_num
     """
     with open(json_pth, "r", encoding="latin1") as file:
-        data = json.load(file)
-
+        data = file.read()
+    print(data)
     return data
 
 
@@ -279,10 +280,12 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
     if long_desc:
         j_data.update({"d_long": long_desc.replace("'", "'")})
 
-    val.contributor and j_data.update({"contributors": val.contributor})
-    val.vod.get("netflix-uk").get("start") and j_data.update(
-        {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
-    )
+    if val.contributor:
+        val.contributor and j_data.update({"contributors": val.contributor})
+    if val.vod:
+        val.vod.get("netflix-uk").get("start") and j_data.update(
+            {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+        )
 
     return j_data
 
@@ -292,7 +295,9 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
     Retrieve data from a episode JSONs and parse
     via Pydantic then return as dictionary
     """
+    print(type(data))
     val = sp.parse_payload_strict_json(data)
+    print(val)
     if not val:
         return None
 
@@ -315,10 +320,11 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
     if val.total:
         s_data.update({"episode_total": val.total})
 
-    genres = []
-    for cat in val.category:
-        genres.append(cat.code)
-    genres and s_data.update({"genres": genres})
+    if val.category:
+        genres = []
+        for cat in val.category:
+            genres.append(cat.code)
+        genres and s_data.update({"genres": genres})
 
     if val.meta:
         val.meta.get("episode") and s_data.update(

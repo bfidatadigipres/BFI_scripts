@@ -16,7 +16,7 @@ Steps:
    separate entry with total episodes
 2. Iterate looking for folder matches
    with CSV data {article}_{title}
-3. Check if eposidic/monographic
+3. Check if episodic/monographic
    Check for existing CID records that
    match the ID for programme, skip if found.
 4. Access JSONs data needed for:
@@ -170,6 +170,7 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
         title, article = utils.split_title(val.title)
         c_data.update({"title": title})
         c_data.update({"title_article": article})
+<<<<<<< HEAD
     if val.productionYear:
         val.productionYear and c_data.update({"production_year": str(val.productionYear)})
     if val.runtime:
@@ -195,6 +196,30 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
     if val.attribute:
         val.attribute and c_data.update({"attribute": val.attribute})
     short_desc = val.summary.short or ""
+=======
+    val.productionYear and c_data.update({"production_year": str(val.productionYear)})
+    val.runtime and c_data.update({"runtime": val.runtime})
+    val.certification.get("netflix") and c_data.update(
+        {"cert_netflix": val.certification.get("netflix")}
+    )
+    val.certification.get("bbfc") and c_data.update(
+        {"cert_bbfc": val.certification.get("bbfc")}
+    )
+    val.meta.get("writers") and c_data.update({"writers": val.meta.get("writers")})
+    cast_all = val.meta.get("cast")
+    if cast_all:
+        c_data.update({"cast": cast_all.split(",")})
+    val.meta.get("directors") and c_data.update(
+        {"directors": val.meta.get("directors")}
+    )
+    genres_all = val.meta.get("genres")
+    if genres_all:
+        c_data.update({"genres": genres_all.split(",")})
+    if val.attribute:
+        c_data.update({"attribute": val.attribute})
+
+    short_desc = val.summary.short
+>>>>>>> 5c7180d99050948fcf6a976a4d3328c0005448e5
     if short_desc:
         c_data.update({"d_short": short_desc.replace("'", "'")})
     med_desc = val.summary.medium or ""
@@ -328,6 +353,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
             genres.append(cat.code)
         genres and s_data.update({"genres": genres})
 
+<<<<<<< HEAD
     if val.meta:
         val.meta.get("episode") and s_data.update(
             {"episode_number": val.meta.get("episode")}
@@ -342,6 +368,23 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         val.certification.get("bbfc") and s_data.update(
             {"cert_bbfc": val.certification.get("bbfc")}
         )
+=======
+    val.meta.get("episode") and s_data.update(
+        {"episode_number": val.meta.get("episode")}
+    )
+    val.meta.get("episodeTotal") and s_data.update(
+        {"episode_total": val.meta.get("episodeTotal")}
+    )
+    val.meta.get("imdbId") and s_data.update(
+        {"imdb_id": val.meta.get("imdbId")}
+    )
+    val.certification.get("netflix") and s_data.update(
+        {"cert_netflix": val.certification.get("netflix")}
+    )
+    val.certification.get("bbfc") and s_data.update(
+        {"cert_bbfc": val.certification.get("bbfc")}
+    )
+>>>>>>> 5c7180d99050948fcf6a976a4d3328c0005448e5
 
     short_desc = val.summary.short or ""
     if short_desc:
@@ -403,7 +446,6 @@ def cid_check_works(
             title_art = ""
     except Exception as err:
         title_art = ""
-
     groupings: list[str] = []
     for num in range(0, hits):
         try:
@@ -656,6 +698,10 @@ def main():
     Where an episodic series, create a
     series work. Link all records as needed.
     """
+    csv_path = sys.argv[1]
+    if not os.path.isfile(csv_path):
+        sys.exit(f"Problem with supplied CSV path {csv_path}")
+
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -665,12 +711,6 @@ def main():
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
-
-    if len(sys.argv) < 2:
-        sys.exit("Please try to launch this script again with the path to the CSV...")
-    csv_path = sys.argv[1]
-    if not os.path.isfile(csv_path):
-        sys.exit(f"Problem with supplied CSV path {csv_path}")
 
     prog_dct: dict[str, list[str]] = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
@@ -704,7 +744,6 @@ def main():
 
         if platform != "Netflix":
             continue
-
         LOGGER.info("** Processing item: %s %s", article, title)
 
         # Make season number a list

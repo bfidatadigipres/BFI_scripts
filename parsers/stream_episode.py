@@ -138,6 +138,7 @@ class Episode(APIModel):
     link: Optional[List[Any]] = None
     deeplink: Optional[List[Any]] = None
     vod: Optional[Dict[str, Any]] = None
+    imdbId: Optional[str] = None
     created_date: Optional[datetime] = Field(default=None, alias="createdAt")
     updated_date: Optional[datetime] = Field(default=None, alias="updatedAt")
     deleted_date: Optional[datetime] = Field(default=None, alias="deletedAt")

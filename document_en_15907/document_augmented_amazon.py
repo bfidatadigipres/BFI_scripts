@@ -16,7 +16,7 @@ Steps:
    separate entry with total episodes
 2. Iterate looking for folder matches
    with CSV data {article}_{title}
-3. Check if eposidic/monographic
+3. Check if episodic/monographic
    Check for existing CID records that
    match the ID for programme, skip if found.
 4. Access JSONs data needed for:
@@ -222,7 +222,7 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
     if not val:
         return None
 
-    j_data = {}
+    j_data: dict[Optional[str], Optional[str]] = {}
     val.id and j_data.update({"work_id": val.id})
     val.type and j_data.update({"type": val.type})
     title_full = val.title
@@ -289,6 +289,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         title, article = utils.split_title(title_full)
         s_data.update({"title": title})
         s_data.update({"title_article": article})
+    val.productionYear and s_data.update({"production_year": str(val.productionYear)})
     val.runtime and s_data.update({"runtime": val.runtime})
     val.number and s_data.update({"episode_number": val.number})
     val.total and s_data.update({"episode_total": val.total})
@@ -304,7 +305,9 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
     val.meta.get("episodeTotal") and s_data.update(
         {"episode_total": val.meta.get("episodeTotal")}
     )
-    val.meta.get("imdbId") and s_data.update({"imdb_id": val.meta.get("imdbId")})
+    val.meta.get("imdbId") and s_data.update(
+        {"imdb_id": val.meta.get("imdbId")}
+    )
     val.certification.get("amazon") and s_data.update(
         {"cert_amazon": val.certification.get("amazon")}
     )
@@ -375,8 +378,8 @@ def cid_check_works(
             grouping = adlib.retrieve_field_name(record[num], "grouping.lref")[0]
             print(f"cid_check_works(): Grouping: {grouping}")
             groupings.append(grouping)
-        except Exception as err:
-            print(err)
+        except (IndexError, TypeError, KeyError):
+            pass
 
     alt_type: list[str] = []
     for num in range(0, hits):
@@ -635,9 +638,9 @@ def main():
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
 
-    LOGGER.info("=== Document augmented Amazon start ===============================")
     prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
+    LOGGER.info("=== Document augmented Amazon start ===============================")
     for num in range(0, csv_range):
         # Capture CSV supplied data to vars
         title = prog_dct["title"][num]
@@ -684,7 +687,6 @@ def main():
 
         # Match AMAZON folder to article/title
         foldertitle = get_folder_title(article, title)
-        print(foldertitle)
         matched_folders = get_folder_match(foldertitle)
         if len(matched_folders) > 1:
             print(
@@ -737,6 +739,7 @@ def main():
             if not cat_dct:
                 print("SKIPPING: Missing data from JSON files.")
                 continue
+
             # Make monographic work here
             data_dct = make_work_dictionary("", csv_data, cat_dct, mono_dct)
             print(f"Dictionary for monograph creation: \n{data_dct}")
@@ -852,7 +855,12 @@ def main():
                 record, series_work, work, work_restricted, manifestation, item = (
                     build_defaults(series_data_dct)
                 )
-                work_title, work_title_art = utils.split_title(series_data_dct["title"])
+
+                work_title = series_data_dct["title"]
+                if "title_article" in series_data_dct:
+                    work_title_art = series_data_dct["title_article"]
+                else:
+                    work_title_art = ""
 
                 # Make series work here
                 if not series_data_dct:
@@ -1274,7 +1282,7 @@ def create_series_work(
         series_work_values.append({"title.language": "English"})
         series_work_values.append({"title.type": "05_MAIN"})
     if "title_article" in series_dct:
-        if series_dct["title_article"] != "-":
+        if series_dct["title_article"] not in ("-", ""):
             series_work_values.append({"title.article": series_dct["title_article"]})
     if len("patv_id") > 0:
         series_work_values.append({"alternative_number.type": "PATV Amazon asset ID"})
@@ -1337,7 +1345,11 @@ def create_series_work(
         )
         print(subject_xml)
         update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord")
-        if "Content_subject" in str(update_rec):
+        if update_rec is None:
+            LOGGER.info(
+                "Failed to update subjects to Series Work record: %s", series_work_id
+            )
+        elif "Content_subject" in str(update_rec):
             LOGGER.info(
                 "Label text successfully updated to Series Work %s", series_work_id
             )
@@ -1375,7 +1387,11 @@ def create_series_work(
         label_xml = adlib.create_grouped_data(series_work_id, "Label", label_fields)
         print(label_xml)
         update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord")
-        if "Label" in str(update_rec):
+        if update_rec is None:
+            LOGGER.info(
+                "Failed to update Labels to Series Work record: %s", series_work_id
+            )
+        elif "Label" in str(update_rec):
             LOGGER.info(
                 "Label text successfully updated to Series Work %s", series_work_id
             )
@@ -1410,12 +1426,13 @@ def create_work(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             work_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art != "-":
+            if work_title_art not in ("-", ""):
                 work_values.append({"title.article": work_title_art})
         else:
             work_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(work_values):
             if "title_article" in work_dict:
-                if work_dict["title_article"] != "-":
+                if work_dict["title_article"] not in ("-", ""):
                     work_values.append({"title.article": work_dict["title_article"]})
         work_values.append({"title.language": "English"})
         work_values.append({"title.type": "05_MAIN"})
@@ -1570,12 +1587,13 @@ def create_manifestation(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             manifestation_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art != "-":
+            if work_title_art not in ("-", ""):
                 manifestation_values.append({"title.article": work_title_art})
         else:
             manifestation_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(manifestation_values):
             if "title_article" in work_dict:
-                if work_dict["title_article"] != "-":
+                if work_dict["title_article"] not in ("-", ""):
                     manifestation_values.append(
                         {"title.article": work_dict["title_article"]}
                     )
@@ -1706,12 +1724,13 @@ def create_item(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             item_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art != "-":
+            if work_title_art not in ("-", ""):
                 item_values.append({"title.article": work_title_art})
         else:
             item_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(item_values):
             if "title_article" in work_dict:
-                if work_dict["title_article"] != "-":
+                if work_dict["title_article"] not in ("-", ""):
                     item_values.append({"title.article": work_dict["title_article"]})
         item_values.append({"title.language": "English"})
         item_values.append({"title.type": "05_MAIN"})

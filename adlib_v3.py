@@ -10,7 +10,7 @@ Python interface for Adlib API v3.7.17094.1+
 import datetime
 import json
 from time import sleep
-from typing import Any, Final, Iterable, Mapping, Optional
+from typing import Any, Final, Iterable, Mapping, Optional, List, Dict
 
 import requests
 import xmltodict
@@ -393,60 +393,6 @@ def escape_xml(s: str) -> str:
              .replace(">", "&gt;")
              .replace('"', "&quot;")
              .replace("'", "&apos;"))
-
-
-# (api: str, database: str, priref: str, data=None) -> str
-def deprecated_create_record_data(api, database, priref, data=None):
-    """
-    Create a record from supplied dictionary (or list of dictionaries)
-    """
-    if not isinstance(data, list):
-        data = [data]
-
-    # Take data and group where matched to grouped dict
-    grouped = get_grouped_items(api, database)
-    remove_list = []
-    for key, value in grouped.items():
-        new_grouping: dict[str, list[Any]] = {}
-        for item in data:
-            for k in item.keys():
-                if k in value:
-                    if key in new_grouping.keys():
-                        new_grouping[key].append(item)
-                        remove_list.append(item)
-                    else:
-                        new_grouping[key] = [item]
-                        remove_list.append(item)
-        if new_grouping:
-            print(f"Adjusted grouping data: {new_grouping}")
-            data.append(new_grouping)
-
-    if remove_list:
-        for rm in remove_list:
-            if rm in data:
-                data.remove(rm)
-    frag = get_fragments(data)
-    if not frag:
-        return False
-
-    #parser = etree.XMLParser(resolve_entities=False)
-    #record = etree.XML("<record></record>", parser=parser)
-    record = etree.XML("<record></record>")
-    if not priref:
-        #record.append(etree.fromstring("<priref>0</priref>", parser=parser))
-        record.append(etree.fromstring("<priref>0</priref>"))
-    else:
-        #record.append(etree.fromstring(f"<priref>{priref}</priref>", parser=parser))
-        record.append(etree.fromstring(f"<priref>{priref}</priref>"))
-    for i in frag:
-        #record.append(etree.fromstring(i, parser=parser))
-        record.append(etree.fromstring(i))
-
-    # Convert XML object to string
-    payload = etree.tostring(record)
-    payload = payload.decode("utf-8")
-
-    return f"<adlibXML><recordList>{payload}</recordList></adlibXML>"
 
 
 # (priref: str, grouping: str, field_pairs: list[str]) -> str:

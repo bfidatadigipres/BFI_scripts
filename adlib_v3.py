@@ -354,7 +354,11 @@ def test_create_record_data(api, database, priref, data=None):
     # Create an XML-like string manually
     output_list = []
     output_list.append(f"<priref>{priref or 0}</priref>")
-    
+
+    for ng_item in non_grouped_items:
+        for key, value in ng_item.items():
+            output_list.append(f"<{key}>{value}</{key}>")
+
     for group_key, records in record_data.items():
         for record_block in records:
             output_list.append(f"<{group_key}>")
@@ -362,9 +366,6 @@ def test_create_record_data(api, database, priref, data=None):
                 for key, value in record_item.items():
                     output_list.append(f"<{key}>{value}</{key}>")
             output_list.append(f"</{group_key}>")
-    for ng_item in non_grouped_items:
-        for key, value in ng_item.items():
-            output_list.append(f"<{key}>{value}</{key}>")
 
    # Join all parts to form the final XML output
     payload = ''.join(output_list)

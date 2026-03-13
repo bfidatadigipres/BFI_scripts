@@ -333,6 +333,10 @@ def create_record_data(api, database, priref, data=None):
         if not group_found:
             non_grouped_items.append(item)
 
+    for k, v in new_grouping.items():
+        if v != []:
+            print(f"Adjusted grouping data: {k}: {v}")
+
     # Build repeat blocks by detecting when a field name recurs
     record_data: Dict[str, List[List[Dict[str, str]]]] = {}
     for group_key, records in new_grouping.items():

@@ -983,7 +983,8 @@ def make_episodes(
     Receive number for episode (individual or
     from range count) and build programme records
     """
-
+    print("******************************")
+    print(f"Make Episode title: {work_title_art} {work_title}")
     episode_fpaths = [
         x for x in season_fpaths if f"episode_{num}_" in str(x) and x.endswith(".json")
     ]

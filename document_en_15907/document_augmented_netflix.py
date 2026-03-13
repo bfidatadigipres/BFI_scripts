@@ -169,34 +169,38 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
         title, article = utils.split_title(val.title)
         c_data.update({"title": title})
         c_data.update({"title_article": article})
-    val.productionYear and c_data.update({"production_year": str(val.productionYear)})
-    val.runtime and c_data.update({"runtime": val.runtime})
-    val.certification.get("netflix") and c_data.update(
-        {"cert_netflix": val.certification.get("netflix")}
-    )
-    val.certification.get("bbfc") and c_data.update(
-        {"cert_bbfc": val.certification.get("bbfc")}
-    )
-    val.meta.get("writers") and c_data.update({"writers": val.meta.get("writers")})
-    cast_all = val.meta.get("cast")
-    if cast_all:
-        c_data.update({"cast": cast_all.split(",")})
-    val.meta.get("directors") and c_data.update(
-        {"directors": val.meta.get("directors")}
-    )
-    genres_all = val.meta.get("genres")
-    if genres_all:
-        c_data.update({"genres": genres_all.split(",")})
+    if val.productionYear:
+        c_data.update({"production_year": str(val.productionYear)})
+    if val.runtime:
+        c_data.update({"runtime": val.runtime})
+    if val.certification:
+        val.certification.get("netflix") and c_data.update(
+            {"cert_netflix": val.certification.get("netflix")}
+        )
+        val.certification.get("bbfc") and c_data.update(
+            {"cert_bbfc": val.certification.get("bbfc")}
+        )
+    if val.meta:
+        val.meta.get("writers") and c_data.update({"writers": val.meta.get("writers")})
+        cast_all = val.meta.get("cast")
+        if cast_all:
+            c_data.update({"cast": cast_all.split(",")})
+        val.meta.get("directors") and c_data.update(
+            {"directors": val.meta.get("directors")}
+        )
+        genres_all = val.meta.get("genres")
+        if genres_all:
+            c_data.update({"genres": genres_all.split(",")})
     if val.attribute:
         c_data.update({"attribute": val.attribute})
 
-    short_desc = val.summary.short
+    short_desc = val.summary.short or ""
     if short_desc:
         c_data.update({"d_short": short_desc.replace("'", "'")})
-    med_desc = val.summary.medium
+    med_desc = val.summary.medium or ""
     if med_desc:
         c_data.update({"d_medium": med_desc.replace("'", "'")})
-    long_desc = val.summary.long
+    long_desc = val.summary.long or ""
     if long_desc:
         c_data.update({"d_long": long_desc.replace("'", "'")})
     (
@@ -209,8 +213,10 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
             c_data.update({"browse_url": link["href"]})
         elif link["rel"] == "watch-url":
             c_data.update({"watch_url": link["href"]})
-    val.number and c_data.update({"episode_number": val.number})
-    val.contributor and c_data.update({"contributors": val.contributor})
+    if val.number:
+        c_data.update({"episode_number": val.number})
+    if val.contributor:
+        c_data.update({"contributors": val.contributor})
 
     return c_data
 
@@ -225,44 +231,51 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
         return None
 
     j_data: dict[Optional[str], Optional[str]] = {}
-    val.id and j_data.update({"work_id": val.id})
-    val.type and j_data.update({"type": val.type})
+    if val.id:
+        j_data.update({"work_id": val.id})
+    if val.type:
+        j_data.update({"type": val.type})
     title_full = val.title
     if title_full:
         title, article = utils.split_title(title_full)
         j_data.update({"title": title})
         j_data.update({"title_article": article})
-    val.productionYear and j_data.update({"production_year": str(val.productionYear)})
-    val.runtime and j_data.update({"runtime": val.runtime})
-    val.number and j_data.update({"episode_number": val.number})
-    val.total and j_data.update({"episode_total": val.total})
+    if val.productionYear:
+        j_data.update({"production_year": str(val.productionYear)})
+    if val.runtime:
+        j_data.update({"runtime": val.runtime})
+    if val.number:
+        j_data.update({"episode_number": val.number})
+    if val.total:
+        j_data.update({"episode_total": val.total})
 
     genres = []
     for cat in val.category:
         genres.append(cat.code)
     genres and j_data.update({"genres": genres})
+    if val.meta:
+        val.meta.get("episode") and j_data.update(
+            {"episode_number": val.meta.get("episode")}
+        )
+        val.meta.get("episodeTotal") and j_data.update(
+            {"episode_total": val.meta.get("episodeTotal")}
+        )
+        val.meta.get("imdbId") and j_data.update({"imdb_id": val.meta.get("imdbId")})
+    if val.certification:
+        val.certification.get("netflix") and j_data.update(
+            {"cert_netflix": val.certification.get("netflix")}
+        )
+        val.certification.get("bbfc") and j_data.update(
+            {"cert_bbfc": val.certification.get("bbfc")}
+        )
 
-    val.meta.get("episode") and j_data.update(
-        {"episode_number": val.meta.get("episode")}
-    )
-    val.meta.get("episodeTotal") and j_data.update(
-        {"episode_total": val.meta.get("episodeTotal")}
-    )
-    val.meta.get("imdbId") and j_data.update({"imdb_id": val.meta.get("imdbId")})
-    val.certification.get("netflix") and j_data.update(
-        {"cert_netflix": val.certification.get("netflix")}
-    )
-    val.certification.get("bbfc") and j_data.update(
-        {"cert_bbfc": val.certification.get("bbfc")}
-    )
-
-    short_desc = val.summary.short
+    short_desc = val.summary.short or ""
     if short_desc:
         j_data.update({"d_short": short_desc.replace("'", "'")})
-    med_desc = val.summary.medium
+    med_desc = val.summary.medium or ""
     if med_desc:
         j_data.update({"d_medium": med_desc.replace("'", "'")})
-    long_desc = val.summary.long
+    long_desc = val.summary.long or ""
     if long_desc:
         j_data.update({"d_long": long_desc.replace("'", "'")})
 
@@ -284,53 +297,63 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         return None
 
     s_data = {}
-    val.id and s_data.update({"work_id": val.id})
-    val.type and s_data.update({"type": val.type})
+    if val.id:
+        s_data.update({"work_id": val.id})
+    if val.type:
+        s_data.update({"type": val.type})
     title_full = val.title
     if title_full:
         title, article = utils.split_title(title_full)
         s_data.update({"title": title})
         s_data.update({"title_article": article})
-    val.productionYear and s_data.update({"production_year": str(val.productionYear)})
-    val.runtime and s_data.update({"runtime": val.runtime})
-    val.number and s_data.update({"episode_number": val.number})
-    val.total and s_data.update({"episode_total": val.total})
+    if val.productionYear:
+        s_data.update({"production_year": str(val.productionYear)})
+    if val.runtime:
+        s_data.update({"runtime": val.runtime})
+    if val.number:
+        s_data.update({"episode_number": val.number})
+    if val.total:
+        s_data.update({"episode_total": val.total})
 
     genres = []
     for cat in val.category:
         genres.append(cat.code)
     genres and s_data.update({"genres": genres})
 
-    val.meta.get("episode") and s_data.update(
-        {"episode_number": val.meta.get("episode")}
-    )
-    val.meta.get("episodeTotal") and s_data.update(
-        {"episode_total": val.meta.get("episodeTotal")}
-    )
-    val.meta.get("imdbId") and s_data.update(
-        {"imdb_id": val.meta.get("imdbId")}
-    )
-    val.certification.get("netflix") and s_data.update(
-        {"cert_netflix": val.certification.get("netflix")}
-    )
-    val.certification.get("bbfc") and s_data.update(
-        {"cert_bbfc": val.certification.get("bbfc")}
-    )
+    if val.meta:
+        val.meta.get("episode") and s_data.update(
+            {"episode_number": val.meta.get("episode")}
+        )
+        val.meta.get("episodeTotal") and s_data.update(
+            {"episode_total": val.meta.get("episodeTotal")}
+        )
+        val.meta.get("imdbId") and s_data.update(
+            {"imdb_id": val.meta.get("imdbId")}
+        )
+    if val.certification:
+        val.certification.get("netflix") and s_data.update(
+            {"cert_netflix": val.certification.get("netflix")}
+        )
+        val.certification.get("bbfc") and s_data.update(
+            {"cert_bbfc": val.certification.get("bbfc")}
+        )
 
-    short_desc = val.summary.short
+    short_desc = val.summary.short or ""
     if short_desc:
         s_data.update({"d_short": short_desc.replace("'", "'")})
-    med_desc = val.summary.medium
+    med_desc = val.summary.medium or ""
     if med_desc:
         s_data.update({"d_medium": med_desc.replace("'", "'")})
-    long_desc = val.summary.long
+    long_desc = val.summary.long or ""
     if long_desc:
         s_data.update({"d_long": long_desc.replace("'", "'")})
 
-    val.contributor and s_data.update({"contributors": val.contributor})
-    val.vod.get("netflix-uk").get("start") and s_data.update(
-        {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
-    )
+    if val.contributor:
+        s_data.update({"contributors": val.contributor})
+    if val.vod:
+        val.vod.get("netflix-uk").get("start") and s_data.update(
+            {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+        )
 
     return s_data
 

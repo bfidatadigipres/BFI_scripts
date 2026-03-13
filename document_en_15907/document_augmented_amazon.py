@@ -299,7 +299,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         s_data.update({"work_id": val.id})
     if val.type:
         s_data.update({"type": val.type})
-    title_full = val.title
+    title_full = val.title or ""
     if title_full:
         title, article = utils.split_title(title_full)
         s_data.update({"title": title})
@@ -313,10 +313,11 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
     if val.total:
         s_data.update({"episode_total": val.total})
 
-    genres = []
-    for cat in val.category:
-        genres.append(cat.code)
-    genres and s_data.update({"genres": genres})
+    if val.category:
+        genres = []
+        for cat in val.category:
+            genres.append(cat.code)
+        genres and s_data.update({"genres": genres})
 
     if val.meta:
         val.meta.get("episode") and s_data.update(
@@ -370,6 +371,7 @@ def cid_check_works(
     except Exception as err:
         LOGGER.warning(
             "cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s",
+ 
             patv_id,
             err,
         )

@@ -485,13 +485,6 @@ def make_work_dictionary(
     if not json_dct:
         json_dct: dict[str, str] = {}
 
-    print("**************************************************")
-    print(cat_dct)
-    print("**************************************************")
-    print(json_dct)
-    print("**************************************************")
-    
-
     work_dict: dict[str, str] = {}
     if "title" in cat_dct:
         work_dict["title"] = cat_dct["title"]
@@ -878,8 +871,8 @@ def main():
                 )
 
                 work_title = series_data_dct["title"]
-                if "title_art" in series_data_dct:
-                    work_title_art = series_data_dct["title_art"]
+                if "title_article" in series_data_dct:
+                    work_title_art = series_data_dct["title_article"]
                 else:
                     work_title_art = ""
 
@@ -990,8 +983,7 @@ def make_episodes(
     Receive number for episode (individual or
     from range count) and build programme records
     """
-    print("******************************")
-    print(f"Make Episode title: {work_title_art} {work_title}")
+
     episode_fpaths = [
         x for x in season_fpaths if f"episode_{num}_" in str(x) and x.endswith(".json")
     ]
@@ -1047,8 +1039,6 @@ def make_episodes(
 
     # Make episodic work here
     data_dct = make_work_dictionary(num, csv_data, ep_cat_dct, ep_dct)
-    print(f"Dictionary for Work creation:\n{data_dct}")
-    print("**************")
     record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)
     priref_episode = create_work(
         series_priref,

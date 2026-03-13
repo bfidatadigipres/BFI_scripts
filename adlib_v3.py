@@ -327,12 +327,14 @@ def test_create_record_data(api, database, priref, data=None):
 
     # Organizing data based on groups defined
     for item in data:
+        print(item)
         group_found = False
         for group_key, fields in grouped.items():
             if group_key not in new_grouping:
                 new_grouping[group_key] = []
 
             access_record = {k: item[k] for k in item if k in fields}
+            print(access_record)
             if access_record:  # Only add if there's relevant data
                 new_grouping[group_key].append(access_record)
                 group_found = True

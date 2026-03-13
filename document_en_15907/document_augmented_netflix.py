@@ -1435,6 +1435,7 @@ def create_work(
                 work_values.append({"title.article": work_title_art})
         else:
             work_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(work_values):
             if "title_article" in work_dict:
                 if work_dict["title_article"] != "-":
                     work_values.append({"title.article": work_dict["title_article"]})
@@ -1594,6 +1595,7 @@ def create_manifestation(
                 manifestation_values.append({"title.article": work_title_art})
         else:
             manifestation_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(manifestation_values):
             if "title_article" in work_dict:
                 if work_dict["title_article"] != "-":
                     manifestation_values.append(
@@ -1730,6 +1732,7 @@ def create_item(
                 item_values.append({"title.article": work_title_art})
         else:
             item_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(item_values):
             if "title_article" in work_dict:
                 if work_dict["title_article"] != "-":
                     item_values.append({"title.article": work_dict["title_article"]})

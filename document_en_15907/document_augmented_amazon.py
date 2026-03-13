@@ -277,10 +277,12 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
     if long_desc:
         j_data.update({"d_long": long_desc.replace("'", "'")})
 
-    val.contributor and j_data.update({"contributors": val.contributor})
-    val.vod.get("amazon-prime-uk").get("start") and j_data.update(
-        {"start_date": val.vod.get("amazon-prime-uk").get("start")[:10]}
-    )
+    if val.contributor:
+        j_data.update({"contributors": val.contributor})
+    if val.vod:
+        val.vod.get("amazon-prime-uk").get("start") and j_data.update(
+            {"start_date": val.vod.get("amazon-prime-uk").get("start")[:10]}
+        )
 
     return j_data
 

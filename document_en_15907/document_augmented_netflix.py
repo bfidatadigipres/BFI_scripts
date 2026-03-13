@@ -16,7 +16,7 @@ Steps:
    separate entry with total episodes
 2. Iterate looking for folder matches
    with CSV data {article}_{title}
-3. Check if eposidic/monographic
+3. Check if episodic/monographic
    Check for existing CID records that
    match the ID for programme, skip if found.
 4. Access JSONs data needed for:
@@ -187,7 +187,8 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
     genres_all = val.meta.get("genres")
     if genres_all:
         c_data.update({"genres": genres_all.split(",")})
-    val.attribute and c_data.update({"attribute": val.attribute})
+    if val.attribute:
+        c_data.update({"attribute": val.attribute})
 
     short_desc = val.summary.short
     if short_desc:
@@ -306,6 +307,9 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
     val.meta.get("episodeTotal") and s_data.update(
         {"episode_total": val.meta.get("episodeTotal")}
     )
+    val.meta.get("imdbId") and s_data.update(
+        {"imdb_id": val.meta.get("imdbId")}
+    )
     val.certification.get("netflix") and s_data.update(
         {"cert_netflix": val.certification.get("netflix")}
     )
@@ -371,7 +375,6 @@ def cid_check_works(
             title_art = ""
     except Exception as err:
         title_art = ""
-
     groupings: list[str] = []
     for num in range(0, hits):
         try:
@@ -624,6 +627,10 @@ def main():
     Where an episodic series, create a
     series work. Link all records as needed.
     """
+    csv_path = sys.argv[1]
+    if not os.path.isfile(csv_path):
+        sys.exit(f"Problem with supplied CSV path {csv_path}")
+
     if not utils.check_control("pause_scripts"):
         LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -633,12 +640,6 @@ def main():
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
-
-    if len(sys.argv) < 2:
-        sys.exit("Please try to launch this script again with the path to the CSV...")
-    csv_path = sys.argv[1]
-    if not os.path.isfile(csv_path):
-        sys.exit(f"Problem with supplied CSV path {csv_path}")
 
     prog_dct: dict[str, list[str]] = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
@@ -672,7 +673,6 @@ def main():
 
         if platform != "Netflix":
             continue
-
         LOGGER.info("** Processing item: %s %s", article, title)
 
         # Make season number a list

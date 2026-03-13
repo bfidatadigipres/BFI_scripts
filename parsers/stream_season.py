@@ -129,6 +129,7 @@ class Season(APIModel):
     related: Optional[List[Related]] = None
     link: Optional[List[Any]] = None
     deeplink: Optional[List[Any]] = None
+    imdbId: Optional[str] = None
     created_date: Optional[datetime] = Field(default=None, alias="createdAt")
     updated_date: Optional[datetime] = Field(default=None, alias="updatedAt")
     deleted_date: Optional[datetime] = Field(default=None, alias="deletedAt")

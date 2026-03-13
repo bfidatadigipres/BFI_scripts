@@ -901,7 +901,12 @@ def main():
                 record, series_work, work, work_restricted, manifestation, item = (
                     build_defaults(series_data_dct)
                 )
-                work_title, work_title_art = utils.split_title(series_data_dct["title"])
+
+                work_title = series_data_dct["title"]
+                if "title_art" in series_data_dct:
+                    work_title_art = series_data_dct["title_art"]
+                else:
+                    work_title_art = ""
 
                 # Make series work here
                 if not series_data_dct:
@@ -1316,7 +1321,7 @@ def create_series_work(
         series_work_values.append({"title.language": "English"})
         series_work_values.append({"title.type": "05_MAIN"})
     if "title_article" in series_dct:
-        if series_dct["title_article"] != "-":
+        if series_dct["title_article"] not in ("-", ""):
             series_work_values.append({"title.article": series_dct["title_article"]})
     if len("patv_id") > 0:
         series_work_values.append({"alternative_number.type": "PATV Netflix asset ID"})
@@ -1463,13 +1468,13 @@ def create_work(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             work_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art != "-":
+            if work_title_art not in ("-", ""):
                 work_values.append({"title.article": work_title_art})
         else:
             work_values.append({"title": work_dict["title"]})
         if "title.article" not in str(work_values):
             if "title_article" in work_dict:
-                if work_dict["title_article"] != "-":
+                if work_dict["title_article"] not in ("-", ""):
                     work_values.append({"title.article": work_dict["title_article"]})
         work_values.append({"title.language": "English"})
         work_values.append({"title.type": "05_MAIN"})
@@ -1623,13 +1628,13 @@ def create_manifestation(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             manifestation_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art != "-":
+            if work_title_art not in ("-", ""):
                 manifestation_values.append({"title.article": work_title_art})
         else:
             manifestation_values.append({"title": work_dict["title"]})
         if "title.article" not in str(manifestation_values):
             if "title_article" in work_dict:
-                if work_dict["title_article"] != "-":
+                if work_dict["title_article"] not in ("-", ""):
                     manifestation_values.append(
                         {"title.article": work_dict["title_article"]}
                     )
@@ -1760,13 +1765,13 @@ def create_item(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             item_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art != "-":
+            if work_title_art not in ("-", ""):
                 item_values.append({"title.article": work_title_art})
         else:
             item_values.append({"title": work_dict["title"]})
         if "title.article" not in str(item_values):
             if "title_article" in work_dict:
-                if work_dict["title_article"] != "-":
+                if work_dict["title_article"] not in ("-", ""):
                     item_values.append({"title.article": work_dict["title_article"]})
         item_values.append({"title.language": "English"})
         item_values.append({"title.type": "05_MAIN"})

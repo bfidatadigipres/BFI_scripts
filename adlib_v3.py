@@ -334,7 +334,6 @@ def test_create_record_data(api, database, priref, data=None):
                 new_grouping[group_key] = []
 
             access_record = {k: item[k] for k in item if k in fields}
-            print(access_record)
             if access_record:  # Only add if there's relevant data
                 new_grouping[group_key].append(access_record)
                 group_found = True

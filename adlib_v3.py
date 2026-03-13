@@ -323,9 +323,11 @@ def test_create_record_data(api, database, priref, data=None):
     # Take data and group where matched to grouped dict
     grouped = get_grouped_items(api, database)
     new_grouping: Dict[str, List[Dict[str, str]]] = {}
+    non_grouped_items: List[Dict[str,str]] = []
 
     # Organizing data based on groups defined
     for item in data:
+        grouped_found = False
         for group_key, fields in grouped.items():
             if group_key not in new_grouping:
                 new_grouping[group_key] = []
@@ -333,9 +335,14 @@ def test_create_record_data(api, database, priref, data=None):
             access_record = {k: item[k] for k in item if k in fields}
             if access_record:  # Only add if there's relevant data
                 new_grouping[group_key].append(access_record)
+                group_found = True
+                break
+        if not group_found:
+            non_grouped_items.append(item)
 
     for k, v in new_grouping.items():
-        print(f"Adjusted grouping data: {k}: {v}")
+        if v != []:
+            print(f"Adjusted grouping data: {k}: {v}")
 
     # Prepare final structure to hold the XML data
     record_data = {}
@@ -355,8 +362,11 @@ def test_create_record_data(api, database, priref, data=None):
                 for key, value in record_item.items():
                     output_list.append(f"<{key}>{value}</{key}>")
             output_list.append(f"</{group_key}>")
+    for ng_item in non_grouped_items:
+        for key, value in ng_item.items():
+            output_list.append(f"<{key}>{value}</{key}>")
 
-     # Join all parts to form the final XML output
+   # Join all parts to form the final XML output
     payload = ''.join(output_list)
 
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"

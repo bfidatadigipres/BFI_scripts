@@ -373,6 +373,8 @@ def escape_xml(s: str) -> str:
     Escape characters that break
     XML POST to CID
     """
+    if not isinstance(s, str):
+        return s
     return (s.replace("&", "&amp;")
              .replace("<", "&lt;")
              .replace(">", "&gt;")

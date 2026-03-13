@@ -170,7 +170,6 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
         title, article = utils.split_title(val.title)
         c_data.update({"title": title})
         c_data.update({"title_article": article})
-<<<<<<< HEAD
     if val.productionYear:
         val.productionYear and c_data.update({"production_year": str(val.productionYear)})
     if val.runtime:
@@ -196,30 +195,6 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
     if val.attribute:
         val.attribute and c_data.update({"attribute": val.attribute})
     short_desc = val.summary.short or ""
-=======
-    val.productionYear and c_data.update({"production_year": str(val.productionYear)})
-    val.runtime and c_data.update({"runtime": val.runtime})
-    val.certification.get("netflix") and c_data.update(
-        {"cert_netflix": val.certification.get("netflix")}
-    )
-    val.certification.get("bbfc") and c_data.update(
-        {"cert_bbfc": val.certification.get("bbfc")}
-    )
-    val.meta.get("writers") and c_data.update({"writers": val.meta.get("writers")})
-    cast_all = val.meta.get("cast")
-    if cast_all:
-        c_data.update({"cast": cast_all.split(",")})
-    val.meta.get("directors") and c_data.update(
-        {"directors": val.meta.get("directors")}
-    )
-    genres_all = val.meta.get("genres")
-    if genres_all:
-        c_data.update({"genres": genres_all.split(",")})
-    if val.attribute:
-        c_data.update({"attribute": val.attribute})
-
-    short_desc = val.summary.short
->>>>>>> 5c7180d99050948fcf6a976a4d3328c0005448e5
     if short_desc:
         c_data.update({"d_short": short_desc.replace("'", "'")})
     med_desc = val.summary.medium or ""
@@ -353,7 +328,6 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
             genres.append(cat.code)
         genres and s_data.update({"genres": genres})
 
-<<<<<<< HEAD
     if val.meta:
         val.meta.get("episode") and s_data.update(
             {"episode_number": val.meta.get("episode")}
@@ -368,23 +342,6 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         val.certification.get("bbfc") and s_data.update(
             {"cert_bbfc": val.certification.get("bbfc")}
         )
-=======
-    val.meta.get("episode") and s_data.update(
-        {"episode_number": val.meta.get("episode")}
-    )
-    val.meta.get("episodeTotal") and s_data.update(
-        {"episode_total": val.meta.get("episodeTotal")}
-    )
-    val.meta.get("imdbId") and s_data.update(
-        {"imdb_id": val.meta.get("imdbId")}
-    )
-    val.certification.get("netflix") and s_data.update(
-        {"cert_netflix": val.certification.get("netflix")}
-    )
-    val.certification.get("bbfc") and s_data.update(
-        {"cert_bbfc": val.certification.get("bbfc")}
-    )
->>>>>>> 5c7180d99050948fcf6a976a4d3328c0005448e5
 
     short_desc = val.summary.short or ""
     if short_desc:

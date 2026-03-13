@@ -517,6 +517,13 @@ def make_work_dictionary(
     if not json_dct:
         json_dct: dict[str, str] = {}
 
+    print("**************************************************")
+    print(cat_dct)
+    print("**************************************************")
+    print(json_dct)
+    print("**************************************************")
+    
+
     work_dict: dict[str, str] = {}
     if "title" in cat_dct:
         work_dict["title"] = cat_dct["title"]

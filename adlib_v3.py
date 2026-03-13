@@ -358,20 +358,33 @@ def test_create_record_data(api, database, priref, data=None):
 
     for ng_item in non_grouped_items:
         for key, value in ng_item.items():
-            output_list.append(f"<{key}>{value}</{key}>")
+            output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
 
     for group_key, records in record_data.items():
         for record_block in records:
             output_list.append(f"<{group_key}>")
             for record_item in record_block:
                 for key, value in record_item.items():
-                    output_list.append(f"<{key}>{value}</{key}>")
+                    output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
             output_list.append(f"</{group_key}>")
 
    # Join all parts to form the final XML output
     payload = ''.join(output_list)
 
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
+
+
+def escape_xml(s: str) -> str:
+    """
+    Escape characters that break
+    XML POST to CID
+    """
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;")
+             .replace('"', "&quot;")
+             .replace("'", "&apos;"))
+
 
 # (api: str, database: str, priref: str, data=None) -> str
 def create_record_data(api, database, priref, data=None):

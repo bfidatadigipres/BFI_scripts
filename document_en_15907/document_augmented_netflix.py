@@ -295,9 +295,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
     Retrieve data from a episode JSONs and parse
     via Pydantic then return as dictionary
     """
-    print(type(data))
     val = sp.parse_payload_strict_json(data)
-    print(val)
     if not val:
         return None
 

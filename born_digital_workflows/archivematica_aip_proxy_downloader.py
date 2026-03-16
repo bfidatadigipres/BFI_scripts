@@ -25,6 +25,7 @@ ACCESS_DEST = os.path.join(
     os.environ.get("QNAP_05"), "Archivematica_Access"
 )
 LOG_PATH = os.environ.get("LOG_PATH")
+CID_API = utils.get_current_api()
 
 LOGGER = logging.getLogger("archivematica_aip_proxy_downloader")
 HDLR = logging.FileHandler(os.path.join(
@@ -85,7 +86,12 @@ def main():
 
     sess = adlib.create_session()
     actionable_recs = cid_retrieve(sess)
-    
+    if actionable_recs is None:
+        sys.exit("EXIT: Failure to reach ArchivesCatalogue data")
+    if len(actional_recs) == 0:
+        sys.exit("EXIT: No records found for this processing...")
+
+    LOGGER.info("==== AIP Proxy Download START =================")
     for record in actionable_recs:
         if "alternative_number_type2" in record:
             check_processed = record.get("alternative_number_type2")
@@ -99,9 +105,11 @@ def main():
                     LOGGER.info("Allowing to continue as record updated, but no downloaded file located:\n%s", check_path)
 
         ob_num = record.get("object_number")
+        priref = record.get("priref")
         aip_uuid = record.get("alternative_number1")
         LOGGER.info("Downloading AIP with data: '%s' '%s'", ob_num, aip_uuid)
         download_path = ut.download_aip(aip_uuid, AIP_DEST, ob_num)
+        aip_fname = os.path.basename(download_path)
         if os.path.exists(download_path):
             LOGGER.info("AIP TAR file downloaded successfully to path:\n%s", download_path)
         else:
@@ -117,4 +125,22 @@ def main():
                 LOGGER.warning("Failed to download Access rendition file to supplied path:\n%s", proxy_path)
                 continue
 
-        
+        if not aip_fname:
+            LOGGER.error("Unable to retrieve filename from AIP download path:\n%s", download_path)
+            LOGGER.error("Manual AIP download filename update required for record <%s>", ob_num)
+
+        alt_num = [
+            {"alternative_number.type": record.get("alternative_number_type1")},
+            {"alternative_number": record.get("alternative_number1")},
+            {"alternative_number.type": "AIP download filename"},
+            {"alternative_number": aip_fname}
+        ]
+        xml_update = adlib.create_record_data(CID_API, "archivescatalogue", sess, priref, alt_num)
+        updated_record = adlib.post(CID_API, xml_update, "archivescatalogue", "updaterecord" sess)
+        if aip_fname in str(updated_record):
+            LOGGER.info("CID record <%s> updated with Alternative Number data for AIP", priref)
+        else:
+            LOGGER.warning("CID record <%s> failed to update AIP download filename:\n%s", priref, aip_fname)
+        sys.exit("Just trying one pass first")
+
+    LOGGER.info("==== AIP Proxy Download END ===================")

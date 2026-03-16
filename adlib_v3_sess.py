@@ -313,7 +313,7 @@ def get_grouped_items(api, database, session):
     return grouped
 
 
-def create_record_data(api, database, priref, data=None, sess):
+def create_record_data(api, database, sess, priref, data=None):
     if data is None:
         data = []
     if not isinstance(data, list):

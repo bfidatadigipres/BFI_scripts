@@ -313,13 +313,13 @@ def get_grouped_items(api, database, session):
     return grouped
 
 
-def create_record_data(api, database, priref, data=None):
+def create_record_data(api, database, priref, data=None, sess):
     if data is None:
         data = []
     if not isinstance(data, list):
         data = [data]
 
-    grouped = get_grouped_items(api, database)
+    grouped = get_grouped_items(api, database, sess)
     new_grouping: Dict[str, List[Dict[str, str]]] = {}
     non_grouped_items: List[Dict[str, str]] = []
 

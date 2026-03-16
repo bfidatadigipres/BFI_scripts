@@ -136,7 +136,7 @@ def main():
             {"alternative_number": aip_fname}
         ]
         xml_update = adlib.create_record_data(CID_API, "archivescatalogue", sess, priref, alt_num)
-        updated_record = adlib.post(CID_API, xml_update, "archivescatalogue", "updaterecord, sess)
+        updated_record = adlib.post(CID_API, xml_update, "archivescatalogue", "updaterecord", sess)
         if aip_fname in str(updated_record):
             LOGGER.info("CID record <%s> updated with Alternative Number data for AIP", priref)
         else:

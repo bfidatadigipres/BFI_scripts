@@ -132,7 +132,6 @@ class Season(APIModel):
     subject: Optional[List[Subject]] = None
     link: Optional[List[Any]] = None
     deeplink: Optional[List[Any]] = None
-<<<<<<< HEAD
     productionYear: Optional[int] = None
     runtime: Optional[int] = None
     vod: Optional[Dict[str, Any]] = None
@@ -141,9 +140,7 @@ class Season(APIModel):
     themes: Optional[List[Any]] = None
     soundtrack: Optional[List[Any]] = None
     locations: Optional[List[Any]] = None
-=======
     imdbId: Optional[str] = None
->>>>>>> 5c7180d99050948fcf6a976a4d3328c0005448e5
     created_date: Optional[datetime] = Field(default=None, alias="createdAt")
     updated_date: Optional[datetime] = Field(default=None, alias="updatedAt")
     deleted_date: Optional[datetime] = Field(default=None, alias="deletedAt")

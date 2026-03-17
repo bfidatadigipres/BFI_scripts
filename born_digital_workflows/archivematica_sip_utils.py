@@ -540,7 +540,9 @@ def get_specific_atom_object(ob_num):
     """
 
     endpoint = os.path.join(ATOM_URL, "informationobjects")
+    print(endpoint)
     objects = get_atom_objects(endpoint)
+    print(objects)
     if not objects:
         print("Warning, unable to find any informationobjects")
         return None
@@ -551,6 +553,9 @@ def get_specific_atom_object(ob_num):
         return None
 
     for item in objects["results"]:
+        print(item)
+        if not item.get("reference_code"):
+            continue
         if ob_num in item.get("reference_code"):
             return item
 
@@ -561,6 +566,9 @@ def get_specific_atom_object(ob_num):
         if not new_ob:
             continue
         for item in new_ob["results"]:
+            print(item)
+            if not item.get("reference_code"):
+                continue
             if ob_num in item.get("reference_code"):
                 return item
     return None
@@ -882,9 +890,11 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
     slug = info.get("slug")
     if not slug:
         return None
-    
+
     base = ATOM_URL if ATOM_URL.endswith("/") else ATOM_URL + "/"
     endpoint = urljoin(base, f"informationobjects/{slug}/digitalobject")
+    print(endpoint)
+    print(dpath)
     os.makedirs(dpath, exist_ok=True)
 
     fn_base = ref_code.replace("-", "_")
@@ -923,6 +933,7 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
                 ext = mimetypes.guess_extension(ctype) or ""
 
             final_path = os.path.join(dpath, fn_base + ext)
+            print(final_path)
             with open(tmp_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=1024 * 1024):
                     if chunk:

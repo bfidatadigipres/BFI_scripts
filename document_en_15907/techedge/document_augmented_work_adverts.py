@@ -546,20 +546,25 @@ def make_credit_data_for_work(ad_priref, agency_priref, wpriref):
     Not using credit.sequence_sort following
     STORA credit name creation method
     """
-    work_creds = [
-        {
-            "credit.name.lref": agency_priref,
-            "credit.type": "Advertising Agency",
-            "credit.sequence": "05",
-            "credit.section": "[normal credit]"
-        },
-        {
-            "credit.name.lref": ad_priref,
-            "credit.type": "Advertiser",
-            "credit.sequence": "10",
-            "credit.section": "[normal credit]"
-        }
-    ]
+    work_creds = []
+    if agency_priref != "":
+        work_creds.append(
+            {
+                "credit.name.lref": agency_priref,
+                "credit.type": "Advertising Agency",
+                "credit.sequence": "05",
+                "credit.section": "[normal credit]"
+            }
+        )
+    if ad_priref != "":
+        work_creds.append(
+            {
+                "credit.name.lref": ad_priref,
+                "credit.type": "Advertiser",
+                "credit.sequence": "10",
+                "credit.section": "[normal credit]"
+            }
+        )
 
     cred_xml = adlib.create_grouped_data(wpriref, "credits", work_creds)
     return cred_xml
@@ -578,20 +583,27 @@ def make_utb_data_for_man(row, mpriref):
         row.film_code
     )
 
-    utb_dct = [
-        {
-            "utb.fieldname": "Advert sequence in commercial break block",
-            "utb.content": f"{part_unit.zfill(2)}of{part_unit_total.zfill(2)}"
-        },
+    utb_dct = []
+    if part_unit and part_unit_total:
+        utb_dct.append(
+            {
+	        "utb.fieldname": "Advert sequence in commercial break block",
+                "utb.content": f"{part_unit.zfill(2)}of{part_unit_total.zfill(2)}"
+            }
+        )
+    utb_dct.append(
         {
             "utb.fieldname": "Programme before (BARB via TechEdge)",
             "utb.content": row.barb_before
-        },
+        }
+    )
+    utb_dct.append(
         {
             "utb.fieldname": "Programme after (BARB via TechEdge)",
             "utb.content": row.barb_after
         }
-    ]
+    )
+
     if len(row.original) > 1:
         orig_list = ", ".join(str(row.original).rsplit(':', maxsplit=1)[-1].strip().split("-"))
         utb_dct.append(
@@ -722,12 +734,28 @@ def time_to_secs(timestamp):
     return dt.hour * 3600 + dt.minute * 60 + dt.second
 
 
+def convert_transmission_time(transmission_start_time: str) -> str:
+    """
+    Handle cases where times supplied greater
+    than 23:59:59, eg 27:35:50
+    """
+    hours = int(transmission_start_time.split(":")[0])
+    if hours > 23:
+        start_time_int = (int(transmission_start_time.split(":")[0]) - 24)
+        adjusted_start_time = ":".join([str(start_time_int).zfill(2)] + transmission_start_time.split(":")[1:])
+        return adjusted_start_time
+    else:
+        return transmission_start_time
+
+
 def get_duration_total_parts(title_date_start: str, transmission_start_time: str, alternative_number: str):
     """
     Fetch and read specific CSV row and following rows
     to get the duration and the part total value
     """
     csv_path = os.path.join(STORAGE, f"adverts_techedge_no_dupes/{title_date_start}_BFIExport.csv")
+    print(csv_path)
+    print(title_date_start, transmission_start_time, alternative_number)
     rows = []
     with open(csv_path, "r", encoding="latin1") as file:
         for lines in file:
@@ -746,7 +774,10 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
             })
 
         # Get part unit total value
-        target_index = next(i for i, r in enumerate(rows) if r["alt_num"] == alternative_number and r["start_time"] == transmission_start_time)
+        target_index = next((i for i, r in enumerate(rows) if r["alt_num"] == alternative_number and convert_transmission_time(r["start_time"]) == transmission_start_time), None)
+        print(target_index)
+        if target_index is None:
+            return None, None, None, None
         row = rows[target_index]
         print(row)
         part_unit = row["part_total"]
@@ -770,12 +801,14 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
 
         dur_row = rows[target_index + 1]
         stop_time = dur_row["start_time"]
-        dur_start_secs = time_to_secs(row["start_time"])
-        duration_stop_secs = time_to_secs(stop_time)
+        converted_stop_time = convert_transmission_time(stop_time)
+        converted_start_time = convert_transmission_time(row["start_time"])
+        dur_start_secs = time_to_secs(converted_start_time)
+        duration_stop_secs = time_to_secs(converted_stop_time)
         duration = duration_stop_secs - dur_start_secs
         rows = []
 
-        return str(part_unit), str(part_unit_total), str(duration), stop_time
+        return str(part_unit), str(part_unit_total), str(duration), converted_stop_time
 
 
 def build_rec_details(row):
@@ -867,8 +900,6 @@ def build_rec_details(row):
         {"sound_manifestation": "SOUN"},
         {"transmission_date": title_date_start},
         {"transmission_start_time": transmission_start_time},
-        {"transmission_end_time": stop_time},
-        {"runtime_seconds": duration},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": broadcast_channel},
         {"broadcast_company.lref": broadcast_company},
@@ -876,6 +907,10 @@ def build_rec_details(row):
         {"aspect_ratio": "16:9"},
         {"country_manifestation": "United Kingdom"}
     ]
+    if stop_time:
+        manifestation.append({"transmission_end_time": stop_time})
+    if duration:
+        manifestation.append({"runtime_seconds": duration})
 
     return record, work, work_restricted, manifestation
 

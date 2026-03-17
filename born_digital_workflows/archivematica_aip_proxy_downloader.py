@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Script to remove all AIPs from Archivematica
 using data from Axiell database supplying
@@ -11,7 +12,6 @@ import os
 import sys
 import logging
 import requests
-from typing import Optional, List, Any, Dict
 import archivematica_sip_utils as ut
 
 sys.path.append(os.environ.get("CODE"))
@@ -37,7 +37,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def cid_retrieve(session: requests.Session) -> Optional[List[Dict[Any]]]:
+def cid_retrieve(session: requests.Session) -> list[dict[str, str | None]]:
     """
     retrieve list of object numbers that are set
     to open/closed and have Archivematica AIP UUIDs
@@ -73,7 +73,7 @@ def cid_retrieve(session: requests.Session) -> Optional[List[Dict[Any]]]:
             local_data["alternative_number_type2"] = alt_num_type_lst[1]
             local_data["alternative_number2"] = alt_num_lst[1]
         processing_dct.append(local_data)
-    
+
     return processing_dct
 
 
@@ -88,7 +88,7 @@ def main():
     actionable_recs = cid_retrieve(sess)
     if actionable_recs is None:
         sys.exit("EXIT: Failure to reach ArchivesCatalogue data")
-    if len(actional_recs) == 0:
+    if len(actionable_recs) == 0:
         sys.exit("EXIT: No records found for this processing...")
 
     LOGGER.info("==== AIP Proxy Download START =================")
@@ -103,27 +103,32 @@ def main():
                     continue
                 else:
                     LOGGER.info("Allowing to continue as record updated, but no downloaded file located:\n%s", check_path)
-
+        print(record)
         ob_num = record.get("object_number")
+        if ob_num == "GUR-2-1-2-1":
+            continue
+        if ob_num == "GUR-2-2-1-3":
+            continue
         priref = record.get("priref")
         aip_uuid = record.get("alternative_number1")
-        LOGGER.info("Downloading AIP with data: '%s' '%s'", ob_num, aip_uuid)
+        LOGGER.info("** New record to process: '%s' Priref '%s'", ob_num, priref)
+        LOGGER.info("Downloading AIP with AIP UUID '%s'", aip_uuid)
         download_path = ut.download_aip(aip_uuid, AIP_DEST, ob_num)
+        print(download_path)
         aip_fname = os.path.basename(download_path)
         if os.path.exists(download_path):
             LOGGER.info("AIP TAR file downloaded successfully to path:\n%s", download_path)
         else:
             LOGGER.warning("Downloaded AIP not found in supplied path:\n%s", download_path)
             continue
-        
+
         if record.get("access_status").strip() == "OPEN":
             LOGGER.info("Record has access_status <%s>, downloading access proxy file", record.get("access_status"))
             proxy_path = ut.download_normalised_file(ob_num, ACCESS_DEST)
             if os.path.isfile(proxy_path):
                 LOGGER.info("Access rendition proxy successfully downloaded:\n%s", proxy_path)
             else:
-                LOGGER.warning("Failed to download Access rendition file to supplied path:\n%s", proxy_path)
-                continue
+                LOGGER.info("Unable to download Access rendition file to supplied path:\n%s", proxy_path)
 
         if not aip_fname:
             LOGGER.error("Unable to retrieve filename from AIP download path:\n%s", download_path)
@@ -133,9 +138,10 @@ def main():
             {"alternative_number.type": record.get("alternative_number_type1")},
             {"alternative_number": record.get("alternative_number1")},
             {"alternative_number.type": "AIP download filename"},
-            {"alternative_number": aip_fname}
+            {"alternative_number": aip_fname},
         ]
         xml_update = adlib.create_record_data(CID_API, "archivescatalogue", sess, priref, alt_num)
+        LOGGER.info(xml_update)
         updated_record = adlib.post(CID_API, xml_update, "archivescatalogue", "updaterecord", sess)
         if aip_fname in str(updated_record):
             LOGGER.info("CID record <%s> updated with Alternative Number data for AIP", priref)

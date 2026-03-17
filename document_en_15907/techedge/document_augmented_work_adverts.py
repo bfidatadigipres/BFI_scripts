@@ -699,7 +699,7 @@ def main():
             if not mpriref:
                 print(f"Manifesatation creation error data data: {manifestation}")
                 LOGGER.warning("Failed to make new manifestation and link to work: %s\n", wpriref)
-                sys.exit("Just one job")
+            sys.exit("Just one job")
         else:
             LOGGER.info("SKIPPING: Manifestation exists for this Advert in this time slot.\n")
 

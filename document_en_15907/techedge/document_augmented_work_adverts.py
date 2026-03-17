@@ -300,37 +300,44 @@ def manage_advertiser_people(
     and parts.date.start/end not linked <- API document change?
     """
 
-    search = f"name='{agency}' and source='TechEdge adverts data supply'"
-    hits, rec = adlib.retrieve_record(
-        CID_API, "people", search, "1"
-    )
-    if hits == 1:
-        agency_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        LOGGER.info("Agency matched to name %s - %s.", agency, agency_priref)
+    if agency is None:
+        LOGGER.info("Skipping Agency as 'Missing' found in field")
+        agency_priref = ""
+    elif agency.lower() == "missing":
+        LOGGER.info("Skipping Agency as 'Missing' found in field")
+        agency_priref = ""
     else:
-        agency_dct = [
-            {"name": agency},
-            {"name.type": "CASTCREDIT"},
-            {"activity_type": "Advertising Agency"},
-            {"party.class": "ORGANISATION"},
-            {"source": "TechEdge adverts data supply"},
-            {"record_access.user": "BFIiispublic"},
-            {"record_access.rights": "0"},
-            {"record_access.reason": "SENSITIVE_LEGAL"},
-            {"input.name": "datadigipres"},
-            {"input.date": str(datetime.now())[:10]},
-            {"input.time": str(datetime.now())[11:19]},
-            {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
-        ]
-        sleep(1)
-        agency_xml = adlib.create_record_data(CID_API, "people", "", agency_dct)
-        agency_rec = adlib.post(CID_API, agency_xml, "people", "insertrecord")
-        agency_priref = adlib.retrieve_field_name(agency_rec, "priref")[0]
-        if agency_priref:
-            LOGGER.info("* New Agency person record created for '%s': %s", agency, agency_priref)
+        search = f"name='{agency}' and source='TechEdge adverts data supply'"
+        hits, rec = adlib.retrieve_record(
+            CID_API, "people", search, "1"
+        )
+        if hits == 1:
+            agency_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
+            LOGGER.info("Agency matched to name %s - %s.", agency, agency_priref)
         else:
-            LOGGER.warning("Failed to create Agency people record: %s - %s", agency, agency_priref)
-            agency_priref = ""
+            agency_dct = [
+                {"name": agency},
+                {"name.type": "CASTCREDIT"},
+                {"activity_type": "Advertising Agency"},
+                {"party.class": "ORGANISATION"},
+                {"source": "TechEdge adverts data supply"},
+                {"record_access.user": "BFIiispublic"},
+                {"record_access.rights": "0"},
+                {"record_access.reason": "SENSITIVE_LEGAL"},
+                {"input.name": "datadigipres"},
+                {"input.date": str(datetime.now())[:10]},
+                {"input.time": str(datetime.now())[11:19]},
+                {"input.notes": "Automated bulk record creation using data supplied by TechEdge"}
+            ]
+            sleep(1)
+            agency_xml = adlib.create_record_data(CID_API, "people", "", agency_dct)
+            agency_rec = adlib.post(CID_API, agency_xml, "people", "insertrecord")
+            agency_priref = adlib.retrieve_field_name(agency_rec, "priref")[0]
+            if agency_priref:
+                LOGGER.info("* New Agency person record created for '%s': %s", agency, agency_priref)
+            else:
+                LOGGER.warning("Failed to create Agency people record: %s - %s", agency, agency_priref)
+                agency_priref = ""
 
     make_hc = False
     make_ad = False

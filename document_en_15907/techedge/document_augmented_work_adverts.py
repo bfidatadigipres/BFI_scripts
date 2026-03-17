@@ -661,12 +661,6 @@ def main():
 
         # Check if unique film code already exists
         film_code = row.film_code
-        if film_code == "MUMPGKT276010":
-            continue
-        if film_code == "GOCGIOD022030":
-            continue
-        if film_code == "FMCSKFA165030":
-            continue
         wpriref = advert_exists_query(film_code)
         if wpriref is False:
             # Get defaults as lists of dictionary pairs
@@ -705,9 +699,10 @@ def main():
             if not mpriref:
                 print(f"Manifesatation creation error data data: {manifestation}")
                 LOGGER.warning("Failed to make new manifestation and link to work: %s\n", wpriref)
+                sys.exit("Just one job")
+        else:
+            LOGGER.info("SKIPPING: Manifestation exists for this Advert in this time slot.\n")
 
-        LOGGER.info("SKIPPING: Manifestation exists for this Advert in this time slot.\n")
-        sys.exit("Just one job")
 
     LOGGER.info(
         "========== Adverts work documentation script END =======================================================\n"
@@ -866,7 +861,6 @@ def build_rec_details(row):
         {"transmission_date": title_date_start},
         {"transmission_start_time": transmission_start_time},
         {"transmission_end_time": stop_time},
-        {"transmission_duration": f"{duration} seconds"},
         {"runtime_seconds": duration},
         {"UTC_timestamp": utc_timestamp},
         {"broadcast_channel": broadcast_channel},
@@ -976,7 +970,7 @@ def create_work(row, work_values: dict) -> Optional[str]:
     return work_id
 
 
-def over_three_weeks(first_showing: bool, date_start: str) -> bool:
+def over_two_weeks(first_showing: bool, date_start: str) -> bool:
     """
     JMW remove when BAU work starts
     Temporary function to be removed
@@ -997,7 +991,7 @@ def create_manifestation(first_showing, row, manifestation_values: dict) -> Opti
     """
 
     # JMW BAU just check first_showing is True for "first" addition
-    confirm = over_three_weeks(first_showing, row.date)
+    confirm = over_two_weeks(first_showing, row.date)
     if confirm is False:
         manifestation_values.append({"notes": "Manifestation representing advert broadcast time and date."})
     else:

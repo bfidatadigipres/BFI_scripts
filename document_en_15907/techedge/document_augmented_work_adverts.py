@@ -588,7 +588,7 @@ def make_utb_data_for_man(row, mpriref):
         utb_dct.append(
             {
 	        "utb.fieldname": "Advert sequence in commercial break block",
-                "utb.content": f"{part_unit.zfill(2)}of{part_unit_total.zfill(2)}"
+                "utb.content": f"{part_unit}of{part_unit_total}"
             }
         )
     utb_dct.append(
@@ -778,25 +778,23 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
         if target_index is None:
             return None, None, None, None
         row = rows[target_index]
-        print(row)
-        part_unit = row["part_total"]
-        part_unit_total = row["part_total"]
+        part_unit = int(row["part_total"])
+        part_unit_total = int(row["part_total"])
 
         for i in range(target_index + 1, len(rows)):
-            if rows[i]["part_total"] <= rows[i-1]["part_total"]:
+            if int(rows[i]["part_total"]) <= int(rows[i-1]["part_total"]):
                 break
-            part_unit_total = rows[i]["part_total"]
-
-        if part_unit == part_unit_total:
+            part_unit_total = int(rows[i]["part_total"])
+        if int(part_unit) == int(part_unit_total):
             LOGGER.info("Duration cannot be calculated for end item")
-            return part_unit, part_unit_total, "", ""
-        if part_unit > part_unit_total:
+            return str(part_unit).zfill(2), str(part_unit_total).zfill(2), "", ""
+        if int(part_unit) > int(part_unit_total):
             LOGGER.warning(
                 "Code broken, part unit total %s is smaller than part unit %s",
                 part_unit_total,
                 part_unit
             )
-            return part_unit, "", "", ""
+            return str(part_unit).zfill(2), "", "", ""
 
         dur_row = rows[target_index + 1]
         stop_time = dur_row["start_time"]
@@ -807,7 +805,7 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
         duration = duration_stop_secs - dur_start_secs
         rows = []
 
-        return str(part_unit), str(part_unit_total), str(duration), converted_stop_time
+        return str(part_unit).zfill(2), str(part_unit_total).zfill(2), str(duration), converted_stop_time
 
 
 def build_rec_details(row):

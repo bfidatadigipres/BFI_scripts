@@ -81,6 +81,7 @@ class Data(BaseModel):
     minor_category: str | None = Field(default=None, alias="Minor category")
     pib_pos: ImpactsPosInt = Field(default=None, alias="All PIB pos")
     original: str | None = Field(default=None, alias="Original values")
+    datestamp: str |  None = Field(default=None, alias="datetime")
 
 
 def iter_techedge_rows(csv_path: str):

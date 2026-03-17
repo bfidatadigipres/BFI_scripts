@@ -728,6 +728,7 @@ def get_duration_total_parts(title_date_start: str, transmission_start_time: str
     to get the duration and the part total value
     """
     csv_path = os.path.join(STORAGE, f"adverts_techedge_no_dupes/{title_date_start}_BFIExport.csv")
+    print(f"Targeting path for next data: {csv_path}")
     rows = []
     with open(csv_path, "r", encoding="latin1") as file:
         for lines in file:

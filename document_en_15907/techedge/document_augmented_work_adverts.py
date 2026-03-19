@@ -222,8 +222,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     )
     if hits == 1:
         mid_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        narrower = adlib.retrieve_field_name(rec[0], "narrower_term.lref")
-        if minor_priref in str(narrower):
+        if minor_priref in str(rec):
             LOGGER.info("Minor term %s is linked to Mid term %s already", minor, mid)
         else:
             term_dct = get_existing_terms("narrower_term", mid_priref, minor_priref)
@@ -270,8 +269,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     )
     if hits == 1:
         maj_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        narrower = adlib.retrieve_field_name(rec[0], "narrower_term.lref")
-        if mid_priref in str(narrower):
+        if mid_priref in str(rec):
             LOGGER.info("Mid term %s is linked to Major term %s", mid, major)
         else:
             term_dct = get_existing_terms("narrower_term", maj_priref, mid_priref)

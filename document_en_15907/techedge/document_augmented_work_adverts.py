@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import logging
 from time import sleep
-from typing import Optional, Iterator
+from typing import Optional, Iterator, List, Dict
 import tenacity
 
 sys.path.append(os.environ.get("CODE"))
@@ -148,6 +148,34 @@ def get_utc(date_start: str, start_time: str) -> Optional[str]:
     return utc_timestamp
 
 
+def get_existing_terms(term_type: str, priref: str, new_term: str) -> List[Dict[str, str]]:
+    """
+    Call up thesaurus and retrieve all broader or
+    narrower terms to allow update of new with
+    existing terms. To avoid updaterecord overwrite
+    """
+    search = f"priref='{priref}"
+    rec = adlib.retrieve_record(CID_API, "thesaurus", search, 1)
+    if not rec:
+        return []
+    
+    entries = rec[0].get(term_type)
+    length = len(entries)
+    LOGGER.info("%s %s entries found in thesaurus record <%s>", length, term_type, priref)
+    get_terms = []
+    for term in entries:
+        get_terms.append(term.get("priref")[0].get("spans")[0].get("text"))
+
+    if length != len(get_terms):
+        LOGGER.info("May not have extracted all terms from priref <%s>: %s\n%s", priref, get_terms, entries)
+    terms = []
+    for t in get_terms:
+        terms.append({f"{term_type}.lref": t})
+    terms.append({f"{term_type}.lref": new_term})
+
+    return terms
+
+
 def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     """
     Search for product_category entry that matches 'minor' entry
@@ -160,7 +188,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     search = f"(term='{minor}' and term.type='PROD_CAT')"
     print(search)
     hits, rec = adlib.retrieve_record(
-        CID_API, "thesaurus", search, "1
+        CID_API, "thesaurus", search, "1"
     )
     if hits == 1:
         minor_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
@@ -198,12 +226,10 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         if minor_priref in str(narrower):
             LOGGER.info("Minor term %s is linked to Mid term %s already", minor, mid)
         else:
-            update_min = [
-                {"narrower_term.lref": minor_priref}
-            ]
-            mid_xml = adlib.create_record_data(CID_API, "thesaurus", mid_priref, update_min)
+            term_dct = get_existing_terms("narrower_term", mid_priref, minor_priref)
+            mid_xml = adlib.create_record_data(CID_API, "thesaurus", mid_priref, term_dct)
             print(mid_xml)
-            mid_rec = adlib.post(CID_API, minor_xml, "thesaurus", "updaterecord")
+            mid_rec = adlib.post(CID_API, mid_xml, "thesaurus", "updaterecord")
             print(mid_rec)
     else:
         middct = [
@@ -248,10 +274,8 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         if mid_priref in str(narrower):
             LOGGER.info("Mid term %s is linked to Major term %s", mid, major)
         else:
-            update_mid = [
-                {"narrower_term.lref": mid_priref}
-            ]
-            maj_xml = adlib.create_record_data(CID_API, "thesaurus", maj_priref, update_mid)
+            term_dct = get_existing_terms("narrower_term", maj_priref, mid_priref)
+            maj_xml = adlib.create_record_data(CID_API, "thesaurus", maj_priref, term_dct)
             print(maj_xml)
             maj_rec = adlib.post(CID_API, maj_xml, "thesaurus", "updaterecord")
             print(maj_rec)

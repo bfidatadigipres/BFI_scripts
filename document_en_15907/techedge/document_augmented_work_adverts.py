@@ -155,10 +155,10 @@ def get_existing_terms(term_type: str, priref: str, new_term: str) -> List[Dict[
     existing terms. To avoid updaterecord overwrite
     """
     search = f"priref='{priref}"
-    rec = adlib.retrieve_record(CID_API, "thesaurus", search, 1)
+    rec = adlib.retrieve_record(CID_API, "thesaurus", search, 1)[1]
     if not rec:
         return []
-    
+
     entries = rec[0].get(term_type)
     length = len(entries)
     LOGGER.info("%s %s entries found in thesaurus record <%s>", length, term_type, priref)

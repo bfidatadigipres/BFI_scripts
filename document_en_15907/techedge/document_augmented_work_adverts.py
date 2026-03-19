@@ -160,32 +160,10 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     search = f"(term='{minor}' and term.type='PROD_CAT')"
     print(search)
     hits, rec = adlib.retrieve_record(
-        CID_API, "thesaurus", search, "0"
+        CID_API, "thesaurus", search, "1
     )
-    if hits >= 1:
+    if hits == 1:
         minor_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        search = f"(term='{mid}' and term.type='PROD_CAT')"
-        hits, rec = adlib.retrieve_record(
-            CID_API, "thesaurus", search, "1"
-        )
-        if hits >= 1:
-            mid_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        else:
-            mid_priref = None
-        search = f"(term='{major}' and term.type='PROD_CAT')"
-        hits, rec = adlib.retrieve_record(
-            CID_API, "thesaurus", search, "1"
-        )
-        if hits >= 1:
-            maj_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        else:
-            maj_priref = None
-        if minor_priref and mid_priref and maj_priref:
-            if mid_priref in str(rec) and maj_priref in str(rec):
-                return minor_priref, mid_priref, maj_priref
-            else:
-                LOGGER.warning("Advertiser record does not contain Mid and Major category matches")
-
     else:
         minordct = [
             {"term": minor},
@@ -212,10 +190,21 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     search = f"(term='{mid}' and term.type='PROD_CAT')"
     print(search)
     hits, rec = adlib.retrieve_record(
-        CID_API, "thesaurus", search, "0"
+        CID_API, "thesaurus", search, "1"
     )
-    if hits >= 1:
+    if hits == 1:
         mid_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
+        narrower = adlib.retrieve_field_name(rec[0], "narrower_term.lref")
+        if minor_priref in str(narrower):
+            LOGGER.info("Minor term %s is linked to Mid term %s already", minor, mid)
+        else:
+            update_min = [
+                {"narrower_term.lref": minor_priref}
+            ]
+            mid_xml = adlib.create_record_data(CID_API, "thesaurus", mid_priref, update_min)
+            print(mid_xml)
+            mid_rec = adlib.post(CID_API, minor_xml, "thesaurus", "updaterecord")
+            print(mid_rec)
     else:
         middct = [
             {"term": mid},
@@ -253,8 +242,19 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     hits, rec = adlib.retrieve_record(
         CID_API, "thesaurus", search, "1"
     )
-    if hits:
+    if hits == 1:
         maj_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
+        narrower = adlib.retrieve_field_name(rec[0], "narrower_term.lref")
+        if mid_priref in str(narrower):
+            LOGGER.info("Mid term %s is linked to Major term %s", mid, major)
+        else:
+            update_mid = [
+                {"narrower_term.lref": mid_priref}
+            ]
+            maj_xml = adlib.create_record_data(CID_API, "thesaurus", maj_priref, update_mid)
+            print(maj_xml)
+            maj_rec = adlib.post(CID_API, maj_xml, "thesaurus", "updaterecord")
+            print(maj_rec)
     else:
         majdct = [
             {"term": major},
@@ -872,10 +872,16 @@ def build_rec_details(row):
         minor_pri, mid_pri, maj_pri = manage_product_category(major, mid, minor)
         if minor_pri:
             work.append({"product_category.lref": minor_pri})
+        else:
+            LOGGER.warning("Minor product category priref absent!")
         if mid_pri:
             work.append({"product_category.lref": mid_pri})
+        else:
+            LOGGER.warning("Mid product category priref absent!")
         if maj_pri:
             work.append({"product_category.lref": maj_pri})
+        else:
+            LOGGER.warning("Major product category priref absent!")
 
     work_restricted = [
         {"application_restriction": "MEDIATHEQUE"},

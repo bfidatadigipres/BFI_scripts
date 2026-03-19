@@ -164,10 +164,13 @@ def get_existing_terms(term_type: str, priref: str, new_term: str) -> List[Dict[
     LOGGER.info("%s %s entries found in thesaurus record <%s>", length, term_type, priref)
     get_terms = []
     for term in entries:
-        get_terms.append(term.get("priref")[0].get("spans")[0].get("text"))
+        try:
+            num = term.get("priref")[0].get("spans")[0].get("text")
+            if num:
+                get_terms.append(num)
+        except (IndexError, TypeError):
+            pass
 
-    if length != len(get_terms):
-        LOGGER.info("May not have extracted all terms from priref <%s>: %s\n%s", priref, get_terms, entries)
     terms = []
     for t in get_terms:
         terms.append({f"{term_type}.lref": t})

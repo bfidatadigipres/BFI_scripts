@@ -907,7 +907,7 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
             auth=("bfi", ATOM_AUTH),
             stream=True,
             allow_redirects=True,
-            timeout=(10, 300),
+            timeout=(300),
         ) as r:
             print(r.text)
             try:

@@ -99,10 +99,10 @@ def main():
             check_path = os.path.join(AIP_DEST, check_name)
             if check_processed == "AIP download filename":
                 if os.path.exists(check_path):
-                    LOGGER.info("Skipping record, already processed: %s\n%s", record.get("object_number"), record)
                     continue
                 else:
                     LOGGER.info("Allowing to continue as record updated, but no downloaded file located:\n%s", check_path)
+        LOGGER.info("** Processing new record:\n%s", record)
         print(record)
         ob_num = record.get("object_number")
         if ob_num == "GUR-2-1-2-1":
@@ -116,7 +116,10 @@ def main():
         download_path = ut.download_aip(aip_uuid, AIP_DEST, ob_num)
         print(download_path)
         aip_fname = os.path.basename(download_path)
-        if os.path.exists(download_path):
+        if download_path is None:
+            LOGGER.warning("Downloaded AIP not found in supplied path:\n%s", download_path)
+            continue
+        elif os.path.exists(download_path):
             LOGGER.info("AIP TAR file downloaded successfully to path:\n%s", download_path)
         else:
             LOGGER.warning("Downloaded AIP not found in supplied path:\n%s", download_path)
@@ -125,7 +128,9 @@ def main():
         if record.get("access_status").strip() == "OPEN":
             LOGGER.info("Record has access_status <%s>, downloading access proxy file", record.get("access_status"))
             proxy_path = ut.download_normalised_file(ob_num, ACCESS_DEST)
-            if os.path.isfile(proxy_path):
+            if proxy_path is None:
+                LOGGER.warning("Unable to download Proxy image for record <%s>", ob_num)
+            elif os.path.isfile(proxy_path):
                 LOGGER.info("Access rendition proxy successfully downloaded:\n%s", proxy_path)
             else:
                 LOGGER.info("Unable to download Access rendition file to supplied path:\n%s", proxy_path)
@@ -144,10 +149,9 @@ def main():
         LOGGER.info(xml_update)
         updated_record = adlib.post(CID_API, xml_update, "archivescatalogue", "updaterecord", sess)
         if aip_fname in str(updated_record):
-            LOGGER.info("CID record <%s> updated with Alternative Number data for AIP", priref)
+            LOGGER.info("CID record <%s> updated with Alternative Number data for AIP\n", priref)
         else:
-            LOGGER.warning("CID record <%s> failed to update AIP download filename:\n%s", priref, aip_fname)
-        sys.exit("Just trying one pass first")
+            LOGGER.warning("CID record <%s> failed to update AIP download filename:\n%s\n", priref, aip_fname)
 
     LOGGER.info("==== AIP Proxy Download END ===================")
 

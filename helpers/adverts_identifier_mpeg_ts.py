@@ -1,5 +1,4 @@
 import os
-import re
 import sys
 import subprocess
 from datetime import timedelta
@@ -68,7 +67,7 @@ def format_time(seconds):
 
 
 def is_valid_gap(gap, tolerance=0.5):
-    for base in range(10, 61, 10):  # 10,20,30,40,50, to 60
+    for base in range(10, 61, 10):  # 10,20,30,40,50, upto 60
         if abs(gap - base) <= tolerance:
             return True
     return False
@@ -105,8 +104,7 @@ def find_silence_clusters(data, tolerance=0.5, min_matches=3):
 if __name__ == "__main__":
     input_file = sys.argv[1]
     if not os.path.isfile(input_file):
-      sys.exit(f"Please ensure path to file is correct...\n{input_file}")
+        sys.exit(f"Please ensure path to file is correct...\n{input_file}")
     advert_starts = find_advert_breaks(input_file)
     possible_ads = find_silence_clusters(advert_starts)
     print(possible_ads)
-

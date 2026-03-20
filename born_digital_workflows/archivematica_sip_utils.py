@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import mimetypes
+from tenacity import retry, stop_after_attempt
 from typing import Optional, List, Any, Dict
 from urllib.parse import urlencode, urljoin
 import paramiko
@@ -876,6 +877,7 @@ def _filename_from_content_disposition(cd: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
+@retry(stop=stop_after_attempt(10))
 def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
     """
     Build endpoint from slug (retrieve using ref_code)
@@ -954,5 +956,4 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
                 os.remove(tmp_path)
         except OSError:
             pass
-        print(err)
-        return None
+        raise Exception from err

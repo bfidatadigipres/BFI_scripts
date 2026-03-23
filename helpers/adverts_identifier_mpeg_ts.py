@@ -10,7 +10,7 @@ def get_silence_detection(input_file):
     cmd = [
         "ffmpeg", "-i",
         input_file,
-        "-af", "silencedetect=noise=-31dB:d=0.25",
+        "-af", "silencedetect=noise=-31dB:d=0.4",
         "-f", "null", "/dev/null"
     ]
     try:
@@ -32,10 +32,8 @@ def retrieve_silences(data):
     time_range = []
     for line in data_list:
         if "silence_start" in line:
-            print(line)
             start = line.split(":")[-1].strip()
         if "silence_end" in line:
-            print(line)
             end = line.split(":")[-1].strip()
             if start and end:
                 time_range.append(f"{start} - {end}")
@@ -47,7 +45,6 @@ def retrieve_silences(data):
 def find_advert_breaks(input_file):
     audio_data = get_silence_detection(input_file)
     time_range = retrieve_silences(audio_data)
-    print(time_range)
 
     return time_range
 

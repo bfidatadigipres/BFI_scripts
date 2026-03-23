@@ -10,6 +10,7 @@ def get_silence_detection(input_file):
         "ffmpeg", "-i",
         input_file,
         "-af", "silencedetect=noise=-31dB:d=0.4",
+        "-vf", "freezedetect=noise=-60dB:d=0.4",
         "-f", "null", "/dev/null"
     ]
     try:
@@ -29,6 +30,7 @@ def get_silence_detection(input_file):
 def retrieve_silences(data):
     data_list = data.splitlines()
     time_range = []
+    freezes = []
     for line in data_list:
         if "silence_start" in line:
             start = line.split(":")[-1].strip()
@@ -38,12 +40,19 @@ def retrieve_silences(data):
                 time_range.append(f"{start} - {end}")
             start = None
             end = None
-    return time_range
+        if "freeze" in line:
+            print(line)
+            freezes.append(line)
+
+    return time_range, freezes
 
 
 def find_advert_breaks(input_file):
     audio_data = get_silence_detection(input_file)
-    time_range = retrieve_silences(audio_data)
+    time_range, freezes = retrieve_silences(audio_data)
+    
+    # Work here to find aligned time ranges and freezes,
+    # If no match within 1 second, exclude time in range
 
     return time_range
 

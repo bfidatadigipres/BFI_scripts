@@ -386,3 +386,11 @@ try:
 except Exception as exc:
     print(exc)
     raise Exception("Unable to build map of Workflow databases")
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

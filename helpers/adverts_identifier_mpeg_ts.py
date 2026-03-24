@@ -10,7 +10,6 @@ def get_silence_detection(input_file):
         "ffmpeg", "-i",
         input_file,
         "-af", "silencedetect=noise=-31dB:d=0.4",
-        "-vf", "freezedetect=noise=-60dB:d=0.4",
         "-f", "null", "/dev/null"
     ]
     try:
@@ -30,29 +29,24 @@ def get_silence_detection(input_file):
 def retrieve_silences(data):
     data_list = data.splitlines()
     time_range = []
-    freezes = []
     for line in data_list:
         if "silence_start" in line:
+            print(line)
             start = line.split(":")[-1].strip()
         if "silence_end" in line:
-            end = line.split(":")[-1].strip()
+            print(line)
+            end = line.split(":")[-1].split("|")[0].strip()
             if start and end:
-                time_range.append(f"{start} - {end}")
+                time_range.append((start, end))
             start = None
             end = None
-        if "freeze" in line:
-            print(line)
-            freezes.append(line)
 
-    return time_range, freezes
+    return time_range
 
 
 def find_advert_breaks(input_file):
     audio_data = get_silence_detection(input_file)
-    time_range, freezes = retrieve_silences(audio_data)
-    
-    # Work here to find aligned time ranges and freezes,
-    # If no match within 1 second, exclude time in range
+    time_range = retrieve_silences(audio_data)
 
     return time_range
 
@@ -61,7 +55,7 @@ def parse_start_times(data):
     starts = []
     for item in data:
         try:
-            start_str, _ = item.split("-")
+            start_str, _ = item
             starts.append(float(start_str.strip()))
         except ValueError:
             continue  # skip bad entries
@@ -72,7 +66,7 @@ def format_time(seconds):
     return str(timedelta(seconds=int(round(seconds))))
 
 
-def is_valid_gap(gap, tolerance=0.5):
+def is_valid_gap(gap, tolerance=0.50):
     for base in range(10, 61, 10):  # 10,20,30,40,50, upto 60
         if abs(gap - base) <= tolerance:
             return True

@@ -692,7 +692,7 @@ def main():
                 boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
                 print(f"File successfully deleted: {boole}")
                 continue
-            elif "curatorial/Screenscraft" in fpath and "proxy/image/archive/" in fpath:
+            elif "/Screenscraft/" in fpath and "proxy/image/archive/" in fpath:
                 print("* File is Special Collections/Screencraft archive image")
                 # Simplified name check
                 if not re.search("^[A-Za-z0-9_.]*$", fname):
@@ -879,7 +879,7 @@ def main():
                 )
                 if int(size) > 1099511627776:
                     logger.info(
-                        "%s\tFile is larger than 1TB. Checking file is ProRes or TAR",
+                        "%s\tFile is larger than 1TB. Checking file is ProRes, MKV or TAR",
                         log_paths,
                     )
                     accepted_file_type = check_accepted_file_type(fpath)

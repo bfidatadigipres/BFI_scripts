@@ -70,6 +70,7 @@ FILE_TYPES = {
     "PDF": ["pdf", "D"],
     "PPT": ["ppt", "SL"],
     "PPTX": ["pptx", "SL"],
+    "JPG": ["jpg", "jpeg", "I"],
     "JPEG": ["jpg", "jpeg", "I"],
     "PNG": ["png", "I"],
     "TIFF": ["tiff", "tif", "I"],

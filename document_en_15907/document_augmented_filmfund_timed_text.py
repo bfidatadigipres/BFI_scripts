@@ -96,10 +96,8 @@ def main():
     for each timed text within. Rename and move for ingest.
     """
     if not utils.check_control("power_off_all"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")

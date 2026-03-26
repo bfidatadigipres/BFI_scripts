@@ -83,6 +83,8 @@ def main():
     and work through them, updating records
     as needed to mark completion of downloads
     """
+    if not utils.check_control("pause_scripts"):
+        sys.exit()
 
     sess = adlib.create_session()
     actionable_recs = cid_retrieve(sess)
@@ -93,6 +95,9 @@ def main():
 
     LOGGER.info("==== AIP Proxy Download START =================")
     for record in actionable_recs:
+        if not utils.check_control("pause_scripts"):
+            LOGGER.info("Downtime control requests script exit.")
+            sys.exit()
         if "alternative_number_type2" in record:
             check_processed = record.get("alternative_number_type2")
             check_name = record.get("alternative_number2")

@@ -73,9 +73,6 @@ def check_control() -> None:
     with open(CONTROL) as control:
         j = json.load(control)
         if not j["pause_scripts"]:
-            logger.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
 

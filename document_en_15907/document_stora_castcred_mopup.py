@@ -514,10 +514,8 @@ def main():
     Link new/existing People priref to CID Work
     """
     if not utils.check_storage(COMPLETE):
-        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
@@ -535,7 +533,7 @@ def main():
         file_list = glob.glob(
             f"{archive_path}/**/*.json.documented_castcred", recursive=True
         )
-        LOGGER.info(f"{len(file_list)} JSON files found for processing")
+        LOGGER.info("%s JSON files found for processing", len(file_list))
         file_list.sort()
 
         session = adlib.create_session()

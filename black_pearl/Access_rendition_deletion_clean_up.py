@@ -97,9 +97,9 @@ def main() -> None:
       and where/if found retain this version
     - Log clean up procedures
     """
-    if not utils.check_control("power_off_all"):
-        sys.exit("Code cannot run at this time.")
-    count = 0
+    if not utils.check_control("black_pearl"):
+        sys.exit("Black Pearl facing code cannot run at this time.")
+
     LOGGER.info("=== Access_Rendition_backup bucket clean up START ====================")
     for row in yield_csv_rows(CSV_PTH):
         print(row)
@@ -153,8 +153,8 @@ def main() -> None:
         if len(obj_list) != 1:
             LOGGER.warning("More than one item remains after deletion run... %s\n", obj_list)
         else:
-           if bp.set_latest_flag_true(fname, BUCKET, version_id):
-               LOGGER.info("Set Latest flag to True for %s - %s\n", fname, version_id)
+            if bp.set_latest_flag_true(fname, BUCKET, version_id):
+                LOGGER.info("Set Latest flag to True for %s - %s\n", fname, version_id)
 
     LOGGER.info("=== Access_Rendition_backup bucket clean up END ======================")
 

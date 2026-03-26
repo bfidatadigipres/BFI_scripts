@@ -207,14 +207,9 @@ def main() -> None:
     Iterate list and build asset_dict of TV items, then process
     any new items placing in programme led folder structures
     """
-    if not utils.check_control("stora"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_control("stora") or not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     LOGGER.info(
         "========== Fetch augmented metadata script STARTED ======================"

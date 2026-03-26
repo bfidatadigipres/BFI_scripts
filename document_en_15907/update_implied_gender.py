@@ -75,10 +75,8 @@ def main():
     Check for name match, and updated estimated gender
     """
     if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(LOGS):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         print("* Cannot establish CID session, exiting script")

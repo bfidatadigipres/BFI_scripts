@@ -266,7 +266,7 @@ def main() -> None:
         sys.exit("* Cannot establish CID session, exiting script")
     if not utils.check_storage(STORAGE):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    if not utils.check_control("pause_code"):
+    if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not os.path.exists(STORAGE):
         sys.exit(f"Exiting. Path could not be found: {STORAGE}")
@@ -289,7 +289,7 @@ def main() -> None:
 
         # Start processing at folder level
         for rec in recs:
-            if not utils.check_control("pause_code"):
+            if not utils.check_control("pause_scripts"):
                 LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
                 sys.exit("Script run prevented by downtime_control.json. Script exiting.")
             mdata_dct = {}

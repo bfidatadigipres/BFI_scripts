@@ -104,14 +104,11 @@ def main():
     hardcode 01of01 filename. If hits > 1 use models.Carrier
     to generate part whole and print to log for test period
     """
-    logger.info("======================== SPLIT MOPUP START ==========================")
     if not utils.check_control("split_control_delete") or not utils.check_control(
         "split_control_h22"
     ):
-        logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_control("pause_scripts"):
-        logger.info("Script run prevented by Storage Control document. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     if not utils.cid_check(CID_API):
@@ -119,6 +116,7 @@ def main():
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
+    logger.info("======================== SPLIT MOPUP START ==========================")
     # Iterate targets
     for media_target in TARGETS:
 

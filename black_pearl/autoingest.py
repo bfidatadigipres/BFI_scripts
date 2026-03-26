@@ -629,9 +629,6 @@ def main():
         print(files)
         for pth in files:
             if not utils.check_control("autoingest"):
-                logger.info(
-                    "Script run prevented by downtime_control.json. Script exiting."
-                )
                 sys.exit(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )

@@ -101,6 +101,8 @@ def main():
     Check for contents and create new CID item record
     for each audio file within. Rename and move for ingest.
     """
+    if not utils.check_control("pause_scripts"):
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     LOGGER.info(
         "== Document augmented streaming platform separate audio start ==================="

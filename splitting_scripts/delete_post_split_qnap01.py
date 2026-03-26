@@ -92,22 +92,12 @@ def main():
         # Path to source media
         root = os.path.join(media_target, "source")
         if not utils.check_storage(root):
-            logger.info(
-                "Skipping path %s - prevented by Storage Control document.", root
-            )
             continue
         if not utils.check_control("split_control_delete") or not utils.check_control(
             "black_pearl"
         ):
-            logger.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-
         if not utils.check_control("pause_scripts"):
-            logger.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         if not utils.cid_check(CID_API):
             print("* Cannot establish CID session, exiting script")

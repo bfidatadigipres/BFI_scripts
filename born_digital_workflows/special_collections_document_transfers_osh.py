@@ -265,8 +265,9 @@ def main() -> None:
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
     if not utils.check_storage(STORAGE):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.check_control("pause_code"):
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not os.path.exists(STORAGE):
         sys.exit(f"Exiting. Path could not be found: {STORAGE}")
 
@@ -288,6 +289,9 @@ def main() -> None:
 
         # Start processing at folder level
         for rec in recs:
+            if not utils.check_control("pause_code"):
+                LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+                sys.exit("Script run prevented by downtime_control.json. Script exiting.")
             mdata_dct = {}
             mdata_dct = iterate_record(rec, status)
             print(f"Metadata dictionary extracted from CID/record:\n{mdata_dct}")

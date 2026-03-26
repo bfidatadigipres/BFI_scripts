@@ -177,7 +177,6 @@ def main():
     """
 
     if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     LOGGER.info(

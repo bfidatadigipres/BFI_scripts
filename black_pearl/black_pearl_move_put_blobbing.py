@@ -572,10 +572,7 @@ def main():
     ]
     efiles.sort()
     if not efiles:
-        LOGGER.info(
-            f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========"
-        )
-        sys.exit()
+        sys.exit("No files found processed.")
     LOGGER.info(
         "Files found in 'error/' path that need attention: %s", ", ".join(files)
     )

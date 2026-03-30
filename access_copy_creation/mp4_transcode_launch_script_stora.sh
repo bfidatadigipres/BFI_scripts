@@ -33,25 +33,26 @@ function pauseScript {
     fi
 }
 
-# Control check inserted into code
+# Control checks
 control
-
-# pause scripts check inserted into code
 pauseScript
 
-# replace list to ensure clean data
+# replace list and build new content
 echo "" > "${dump_to}"
-
-echo " ========================= SHELL LAUNCH - QNAP04 STORA ========================== $date_FULL" >> "${log_path}"
-echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_path}"
-echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
-
-# Command to build file list to supply to Python
 for entry in "${transcode_path1}"*; do
   echo -e "${entry}" >> "${dump_to}"
 done
 
-echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
-grep -a '/mnt/' "${dump_to}" | shuf -n 100 | parallel --jobs "$job_num" --timeout 86400 "$PYENV311 $python_script {}"
+if [ -s "${dump_to}" ]
+  then
+    echo " ========================= SHELL LAUNCH - QNAP04 STORA ========================== $date_FULL" >> "${log_path}"
+    echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_path}"
+    echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
 
-echo " ========================= SHELL END - QNAP04 STORA ========================== $date_FULL" >> "${log_path}"
+    echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
+    grep -a '/mnt/' "${dump_to}" | shuf -n 100 | parallel --jobs "$job_num" --timeout 86400 "$PYENV311 $python_script {}"
+
+    echo " ========================= SHELL END - QNAP04 STORA ========================== $date_FULL" >> "${log_path}"
+  else
+    exit 0
+fi

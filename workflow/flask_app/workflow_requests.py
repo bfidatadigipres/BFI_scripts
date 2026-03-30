@@ -237,9 +237,9 @@ class Task:
             d[i] = a[i]
 
         d["parent"] = str(self.last_activity_priref)
-        # Hard coding assigned to Vaults
-        d["assigned_to"] = "Vaults: Conservation Centre"
-        d["assigned_to.lref"] = "717"
+        # Only single assigned_to possible - deprecated by CS team
+        # d["assigned_to"] = "Vaults: Conservation Centre"
+        # d["assigned_to.lref"] = "717"
         wf = self.write_record(record=self.build_record(username, d))
         wf_priref = int(adlib.retrieve_field_name(wf, "priref")[0])
         self.last_activity_priref = wf_priref
@@ -386,3 +386,11 @@ try:
 except Exception as exc:
     print(exc)
     raise Exception("Unable to build map of Workflow databases")
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

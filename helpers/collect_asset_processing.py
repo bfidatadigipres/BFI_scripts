@@ -11,10 +11,13 @@ RECORDS. REFACTORING NEEDED IF THIS HAPPENS
 2026
 """
 
+import re
 import os
 import sys
 import csv
+import shutil
 import logging
+from time import sleep
 from typing import List, Optional
 
 sys.path.append(os.environ.get("CODE"))
@@ -24,7 +27,7 @@ import utils
 # Global vars
 STORAGE = os.environ.get("QNAP_05")
 AUTOINGEST = os.path.join(
-    os.environ.get("AUTOINGEST_QNAP05"), "ingest/autodetect/legacy"
+    os.environ.get("AUTOINGEST_QNAP05"), "ingest/autodetect/"
 )
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
@@ -46,19 +49,18 @@ def yield_csv_rows(cpath: str) -> List[str]:
     """
     with open(cpath, "r", encoding="latin1") as data:
         rows = csv.reader(data)
+        next(rows)
         for row in rows:
-            yield row.split(",")
+            print(row)
+            yield row
 
 
 def make_file_path(fname: str, pth: str) -> str:
     """
     Builds file path and returns
-    Args:
-        fname (str): File name
-        pth (str): Supplied field path
     """
     if "cid_server_files" in pth:
-        return os.path.join(STORAGE, fname)
+        return os.path.join(STORAGE, f"cid_server_files/{fname}")
 
 
 def transform_name(fname: str) -> Optional[str]:
@@ -72,9 +74,12 @@ def transform_name(fname: str) -> Optional[str]:
     """
     if "-" in fname:
         fname = fname.replace("-", "_")
-    if "01of01" not in fname:
-        num, ext = fname.split(".")
-        fname = f"{num}_01of01.{ext}"
+    if not re.search(r"(?:_)(\d{2}of\d{2})(?:\.)", fname):
+        if re.search(r"(?:-)(\d{2}of\d{2})(?:\.)", fname):
+            return None
+        else:
+            num, ext = fname.split(".")
+            fname = f"{num}_01of01.{ext}"
 
     check = utils.check_filename(fname)
     if check is True:
@@ -82,22 +87,29 @@ def transform_name(fname: str) -> Optional[str]:
     return None
 
 
-def check_item(search: str, database: str, field: str) -> Optional[str]:
+def check_item(search: str, database: str, field: str | list[str]) -> str | list[str]:
     """
     Use requests to retrieve priref/RNA data for item object number
     """
 
     hits, record = adlib.retrieve_record(CID_API, database, search, "0")
-    if hits == 0:
-        "No hits"
-    if record is None:
-        return None
-
-    fetched_field = adlib.retrieve_field_name(record[0], [field])[0]
-    if not fetched_field:
-        return ""
-
-    return fetched_field
+    if type(field) == str:
+        if hits == 0:
+            return "No hits"
+        if record is None:
+            return None
+        fetched_field = adlib.retrieve_field_name(record[0], field)[0] or ""
+        return fetched_field
+    else:
+        if hits == 0:
+            return ["No hits", "No hits"]
+        if record is None:
+            return [None, None]
+        fetched_fields = []
+        for f in field:
+            fetched_field = adlib.retrieve_field_name(record[0], f)[0] or ""
+            fetched_fields.append(fetched_field)
+        return fetched_fields
 
 
 def main() -> None:
@@ -120,14 +132,14 @@ def main() -> None:
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
-    if not sys.argv[1]:
+    if not os.path.exists(sys.argv[1]):
         sys.exit("No CSV path supplied, exiting.")
 
     LOGGER.info("==== Collections Asset renaming script START ========")
-    for fname, folderpath, priref in yield_csv_rows(sys.argv[1]):
+    for folderpath, fname, priref in yield_csv_rows(sys.argv[1]):
         fpath = make_file_path(fname, folderpath)
         if not os.path.exists(fpath):
-            LOGGER.info("Skipping: Filename not found in path {fpath}")
+            LOGGER.info("Processed / Missing: Filename not found in path %s", fpath)
             continue
         LOGGER.info("** New item: %s - %s", fname, fpath)
 
@@ -139,7 +151,8 @@ def main() -> None:
         object_number = utils.get_object_number(new_fname)
 
         # JMW CHECK HERE FOR NO HITS - CHANGE PATH FOR INGEST FROM LEGACY
-        obj = check_item(f"priref='{priref}'", "items", "object_number")
+        cid_check = check_item(f"priref='{priref}'", "items", "object_number")
+        print(cid_check)
         if cid_check is None:
             LOGGER.warning("Error retrieving data from CID with priref: %s", priref)
             continue
@@ -153,46 +166,45 @@ def main() -> None:
                 priref,
             )
             continue
-        if obj != object_number:
+        if cid_check != object_number:
             LOGGER.warning(
                 "Object number %s does not match that from priref %s",
                 object_number,
-                obj,
+                cid_check,
             )
             continue
 
         LOGGER.info("Filename will be converted from %s to %s", fname, new_fname)
-        LOGGER.info("CID record matched to priref %s/object number %s", priref, obj)
+        LOGGER.info("CID record matched to priref %s/object number %s", priref, cid_check)
 
-        # Ident which autoingest path (with/without dm rcord)
-        ref_num = check_item(f"object_number='{obj}'", "media", "reference_number")
-        if ref_num is None:
+        refs = check_item(f"object.object_number='{cid_check}'", "media", ["reference_number", "imagen.media.original_filename"])
+        ref_num = refs[0]
+        imagen_name = refs[1]
+
+        if ref_num == None:
             LOGGER.warning("Error retrieving data from CID with priref: %s", priref)
             continue
-        if ref_num is "":
+        if ref_num == "":
             LOGGER.warning(
-                "Object number %s could not be retrieved from priref %s", obj, priref
+                "Object number '%s' could not be retrieved from priref %s", cid_check, priref
             )
             continue
         if ref_num == "No hits":
             LOGGER.warning(
-                "No matching Digital Media record found for object number %s", obj
+                "No matching Digital Media record found for object number %s", cid_check
             )
             continue
         if ref_num.strip() != fname:
             LOGGER.warning(
-                "Reference number %s does not match File name %s", ref_num, fname
+                "Reference number '%s' does not match File name %s", ref_num, fname
             )
             continue
-        imagen_name = check_item(
-            f"object_number='{obj}'", "media", "imagen.media.original_filename"
-        )
-        if imagen_name is None or imagen_name is "No hits":
-            LOGGER.warning("Error retrieving data from CID with object_number: %s", obj)
+        if imagen_name == None or imagen_name == "No hits":
+            LOGGER.warning("Error retrieving data from CID with object_number: %s", cid_check)
             continue
         if len(imagen_name) > 0:
             LOGGER.warning(
-                "Imagen.media.original_filename present %s - do not ingest this twice!",
+                "Imagen.media.original_filename present '%s' - do not ingest this twice!",
                 imagen_name,
             )
             continue
@@ -201,13 +213,16 @@ def main() -> None:
         if os.path.exists(new_fpath):
             LOGGER.warning("SKIPPING: New file path already exists:\n%s", new_fpath)
             continue
+
         LOGGER.info("Renaming existing file path to new file path: %s", new_fpath)
 
         try:
-            os.rename(fpath, new_fpath)
-        except (OSError, FileNotFoundError) as err:
-            LOGGER.warning("ERROR RENAMING TO %s\n%s", new_fpath, err)
+            print(f"shutil.move('{fpath}', '{new_fpath}')")
+            shutil.move(fpath, new_fpath)
+        except Exception as err:
+            LOGGER.warning("ERROR MOVING TO %s\n%s", new_fpath, err)
             continue
+        sleep(1)
         if os.path.exists(fpath):
             LOGGER.warning("ERROR! Old file path still exists!\n%s", fpath)
             sys.exit("Aborting, in case of permission issues!")

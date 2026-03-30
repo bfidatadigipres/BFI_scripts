@@ -82,9 +82,6 @@ def check_control():
     with open(STORA_CONTROL) as control:
         j = json.load(control)
         if not j["stora_qnap04"]:
-            logger.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
 

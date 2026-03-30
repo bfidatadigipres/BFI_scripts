@@ -162,65 +162,6 @@ CHANNELS = {
 }
 
 
-def split_title(title_article):
-    """
-    An exception needs adding for "Die " as German language content
-    This list is not comprehensive.
-    """
-    if title_article.startswith(
-        (
-            "A ",
-            "An ",
-            "Am ",
-            "Al-",
-            "As ",
-            "Az ",
-            "Bir ",
-            "Das ",
-            "De ",
-            "Dei ",
-            "Den ",
-            "Der ",
-            "Det ",
-            "Di ",
-            "Dos ",
-            "Een ",
-            "Eene",
-            "Ei ",
-            "Ein ",
-            "Eine",
-            "Eit ",
-            "El ",
-            "el-",
-            "En ",
-            "Et ",
-            "Ett ",
-            "Het ",
-            "Il ",
-            "Na ",
-            "A'",
-            "L'",
-            "La ",
-            "Le ",
-            "Les ",
-            "Los ",
-            "The ",
-            "Un ",
-            "Une ",
-            "Uno ",
-            "Y ",
-            "Yr ",
-        )
-    ):
-        title_split = title_article.split()
-        ttl = title_split[1:]
-        title = " ".join(ttl)
-        title_art = title_split[0]
-        return title, title_art
-
-    return title_article, ""
-
-
 def look_up_series_list(alternative_num):
     """
     Check if series requires annual series creation
@@ -243,7 +184,7 @@ def cid_series_query(series_id):
 
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
-    sleep(1)
+    sleep(0.5)
     try:
         hit_count, series_query_result = adlib.retrieve_record(
             CID_API, "works", search, "1"
@@ -281,7 +222,7 @@ def find_repeats(asset_id):
     search = (
         f'alternative_number="{asset_id}" AND alternative_number.type="PATV asset id"'
     )
-    sleep(1)
+    sleep(0.5)
     hits, result = adlib.retrieve_record(CID_API, "manifestations", search, "1")
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
@@ -293,7 +234,7 @@ def find_repeats(asset_id):
         man_priref = adlib.retrieve_field_name(result[0], "priref")[0]
     except (IndexError, TypeError, KeyError):
         return None
-    sleep(1)
+    sleep(0.5)
     full_result = adlib.retrieve_record(
         CID_API,
         "manifestations",
@@ -546,7 +487,7 @@ def fetch_lines(fullpath, json_dct):
             title_for_split = title_whole
 
     # Form title and return all but ASCII [ THIS NEEDS REPLACING ]
-    title, title_article = split_title(title_for_split)
+    title, title_article = utils.split_title(title_for_split)
 
     description = []
     d_short = val.item[0].summary.short or ""
@@ -838,8 +779,9 @@ def main():
     if no - make series/work/manifestation and item record
     """
     if not utils.check_storage(STORAGE):
-        logger.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     logger.info(
         "========== STORA documentation script STARTED ==============================================="
@@ -1233,8 +1175,8 @@ def create_series(
         )
         return None
     try:
-        series_title = split_title(series_title_full)[0]
-        series_title_article = split_title(series_title_full)[1]
+        series_title = utils.split_title(series_title_full)[0]
+        series_title_article = utils.split_title(series_title_full)[1]
         print(f"***** Series title: {series_title}, and article {series_title_article}")
     except (IndexError, TypeError, KeyError):
         series_title = series_title_full
@@ -1373,7 +1315,7 @@ def create_series(
     )
     if series_values_xml is None:
         return None
-    sleep(1)
+    sleep(0.5)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, "works", "insertrecord")
@@ -1555,7 +1497,7 @@ def build_defaults(epg_dict):
         {"input.date": str(datetime.datetime.now())[:10]},
         {"input.time": str(datetime.datetime.now())[11:19]},
         {
-            "input.notes": "STORA off-air television capture - automated bulk documentation"
+            "input.notes": "STORA off-air television capture - automated bulk documentation using data supplied by PA Media"
         },
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
@@ -1575,7 +1517,7 @@ def build_defaults(epg_dict):
         {"input.date": str(datetime.datetime.now())[:10]},
         {"input.time": str(datetime.datetime.now())[11:19]},
         {
-            "input.notes": "STORA off-air television capture - automated bulk documentation"
+            "input.notes": "STORA off-air television capture - automated bulk documentation using data supplied by PA Media"
         },
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
@@ -1730,12 +1672,12 @@ def create_work(
 
     work_id = work_rec = ""
     # Start creating CID Work record
-    sleep(1)
+    sleep(0.5)
     work_values_xml = adlib.create_record_data(CID_API, "works", "", work_values)
     if work_values_xml is None:
         return None
     try:
-        sleep(1)
+        sleep(0.5)
         logger.info("Attempting to create Work record for item %s", epg_dict["title"])
         work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
         print(f"create_work(): {work_rec}")
@@ -1752,7 +1694,7 @@ def create_work(
 
     if "Duplicate key in unique index 'invno':" in str(work_rec):
         try:
-            sleep(1)
+            sleep(0.5)
             logger.info(
                 "Attempting to create Work record for item %s", epg_dict["title"]
             )
@@ -1934,7 +1876,7 @@ def create_manifestation(
     if man_values_xml is None:
         return None
     try:
-        sleep(1)
+        sleep(0.5)
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, "manifestations", "insertrecord")
         print(f"create_manifestation(): {man_rec}")
@@ -1947,7 +1889,7 @@ def create_manifestation(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(man_rec):
         try:
-            sleep(1)
+            sleep(0.5)
             logger.info("Attempting to create Manifestation record for item %s", title)
             man_rec = adlib.post(
                 CID_API, man_values_xml, "manifestations", "insertrecord"
@@ -2012,7 +1954,7 @@ def create_cid_item_record(
         return None
 
     try:
-        sleep(1)
+        sleep(0.5)
         logger.info(
             "Attempting to create CID item record for item %s", epg_dict["title"]
         )
@@ -2029,7 +1971,7 @@ def create_cid_item_record(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(item_rec):
         try:
-            sleep(1)
+            sleep(0.5)
             logger.info(
                 "Attempting to create CID item record for item %s", epg_dict["title"]
             )
@@ -2084,7 +2026,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_start + payload_mid + payload_end
     try:
-        sleep(1)
+        sleep(0.5)
         response = adlib.post(CID_API, payload, "manifestations", "updaterecord")
         if response:
             logger.info(
@@ -2115,7 +2057,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         payload_end = "</record></recordList></adlibXML>"
         payload = payload_start + payload_mid + payload_end
         try:
-            sleep(1)
+            sleep(0.5)
             response = adlib.post(CID_API, payload, "works", "updaterecord")
             if "priref" in str(response):
                 logger.info(

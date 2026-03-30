@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import mimetypes
+from tenacity import retry, stop_after_attempt
 from typing import Optional, List, Any, Dict
 from urllib.parse import urlencode, urljoin
 import paramiko
@@ -540,7 +541,9 @@ def get_specific_atom_object(ob_num):
     """
 
     endpoint = os.path.join(ATOM_URL, "informationobjects")
+    print(endpoint)
     objects = get_atom_objects(endpoint)
+    print(objects)
     if not objects:
         print("Warning, unable to find any informationobjects")
         return None
@@ -551,6 +554,9 @@ def get_specific_atom_object(ob_num):
         return None
 
     for item in objects["results"]:
+        print(item)
+        if not item.get("reference_code"):
+            continue
         if ob_num in item.get("reference_code"):
             return item
 
@@ -561,6 +567,9 @@ def get_specific_atom_object(ob_num):
         if not new_ob:
             continue
         for item in new_ob["results"]:
+            print(item)
+            if not item.get("reference_code"):
+                continue
             if ob_num in item.get("reference_code"):
                 return item
     return None
@@ -868,6 +877,7 @@ def _filename_from_content_disposition(cd: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
+@retry(stop=stop_after_attempt(10))
 def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
     """
     Build endpoint from slug (retrieve using ref_code)
@@ -882,9 +892,11 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
     slug = info.get("slug")
     if not slug:
         return None
-    
+
     base = ATOM_URL if ATOM_URL.endswith("/") else ATOM_URL + "/"
     endpoint = urljoin(base, f"informationobjects/{slug}/digitalobject")
+    print(endpoint)
+    print(dpath)
     os.makedirs(dpath, exist_ok=True)
 
     fn_base = ref_code.replace("-", "_")
@@ -897,7 +909,7 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
             auth=("bfi", ATOM_AUTH),
             stream=True,
             allow_redirects=True,
-            timeout=(10, 300),
+            timeout=(300),
         ) as r:
             print(r.text)
             try:
@@ -923,6 +935,7 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
                 ext = mimetypes.guess_extension(ctype) or ""
 
             final_path = os.path.join(dpath, fn_base + ext)
+            print(final_path)
             with open(tmp_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=1024 * 1024):
                     if chunk:
@@ -943,5 +956,4 @@ def download_normalised_file(ref_code: str, dpath: str) -> Optional[str]:
                 os.remove(tmp_path)
         except OSError:
             pass
-        print(err)
-        return None
+        raise Exception from err

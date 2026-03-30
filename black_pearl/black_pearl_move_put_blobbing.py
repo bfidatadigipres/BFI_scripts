@@ -256,11 +256,9 @@ def main():
         sys.exit("Missing launch path, script exiting")
 
     if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     if not utils.check_storage(sys.argv[1]):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     if "netflix" in str(sys.argv[1]):
@@ -320,9 +318,6 @@ def main():
             if not utils.check_control("black_pearl") or not utils.check_control(
                 "pause_scripts"
             ):
-                LOGGER.info(
-                    "Script run prevented by downtime_control.json. Script exiting."
-                )
                 sys.exit(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )
@@ -362,7 +357,7 @@ def main():
 
             # Begin retrieval
             delivery_path = os.path.join(download_folder, fname)
-            get_job_id = bp.download_bp_object(fname, download_folder, bucket)
+            get_job_id = bp.download_blobbed_object(fname, download_folder, bucket)
             print(f"File downloaded: {delivery_path}")
             if not os.path.exists(delivery_path):
                 LOGGER.warning(
@@ -572,10 +567,7 @@ def main():
     ]
     efiles.sort()
     if not efiles:
-        LOGGER.info(
-            f"======== END Black Pearl blob ingest & validation {sys.argv[1]} END ========"
-        )
-        sys.exit()
+        sys.exit("No files found processed.")
     LOGGER.info(
         "Files found in 'error/' path that need attention: %s", ", ".join(files)
     )
@@ -598,7 +590,7 @@ def main():
         # Begin retrieval
         toc = time.perf_counter()
         delivery_path = os.path.join(download_folder, fname)
-        get_job_id = bp.download_bp_object(fname, download_folder, bucket)
+        get_job_id = bp.download_blobbed_object(fname, download_folder, bucket)
         print(f"File downloaded: {delivery_path}")
         if not os.path.exists(delivery_path):
             LOGGER.warning(

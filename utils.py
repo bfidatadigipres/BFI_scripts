@@ -127,6 +127,65 @@ def accepted_file_type(ext):
     return None
 
 
+def split_title(title_article):
+    """
+    An exception needs adding for "Die " as German language content
+    This list is not comprehensive.
+    """
+    if title_article.startswith(
+        (
+            "A ",
+            "An ",
+            "Am ",
+            "Al-",
+            "As ",
+            "Az ",
+            "Bir ",
+            "Das ",
+            "De ",
+            "Dei ",
+            "Den ",
+            "Der ",
+            "Det ",
+            "Di ",
+            "Dos ",
+            "Een ",
+            "Eene",
+            "Ei ",
+            "Ein ",
+            "Eine",
+            "Eit ",
+            "El ",
+            "el-",
+            "En ",
+            "Et ",
+            "Ett ",
+            "Het ",
+            "Il ",
+            "Na ",
+            "A'",
+            "L'",
+            "La ",
+            "Le ",
+            "Les ",
+            "Los ",
+            "The ",
+            "Un ",
+            "Une ",
+            "Uno ",
+            "Y ",
+            "Yr ",
+        )
+    ):
+        title_split = title_article.split()
+        ttl = title_split[1:]
+        title = " ".join(ttl)
+        title_art = title_split[0]
+        return title, title_art
+
+    return title_article, ""
+
+
 # (arg: str) -> bool:
 def check_control(arg):
     """

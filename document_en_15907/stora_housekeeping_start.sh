@@ -27,15 +27,9 @@ function pauseScript {
     fi
 }
 
-# Check control
+# Check controls
 control
-
-# pause scripts check inserted into code
 pauseScript
-
-# Log entries ahead of python launch
-echo " ========================= Start stora_housekeeping in year folders == $date_FULL" >> "$log"
-echo " == Shell script creating dump_text.txt for date path(s) == $date_FULL" >> "$log"
 
 if [ "$year" = "$last_year" ]; then
     # Generate txt file containing all folders 5 directories deep only:
@@ -47,8 +41,16 @@ else
     find "${STORA_PATH}${last_year}" -maxdepth 4 -mindepth 4 -type d >> "${code_pth}dump_text.txt"
 fi
 
-echo " == Launching python3 script to clean up and delete empty folders from date paths == $date_FULL" >> "$log"
-# Launch python3 script
-"$PYENV_DDP" "${CODE_BFI}document_en_15907/stora_housekeeping.py"
+if [ -s "${code_pth}dump_text.txt" ]
+  then
+    # Log entries ahead of python launch
+    echo " ========================= Start stora_housekeeping in year folders == $date_FULL" >> "$log"
+    echo " == Shell script creating dump_text.txt for date path(s) == $date_FULL" >> "$log"
+    echo " == Launching python3 script to clean up and delete empty folders from date paths == $date_FULL" >> "$log"
+    # Launch python3 script
+    "$PYENV_DDP" "${CODE_BFI}document_en_15907/stora_housekeeping.py"
 
-echo " ========================= Shell script finished == $date_FULL" >> "$log"
+    echo " ========================= Shell script finished == $date_FULL" >> "$log"
+  else
+    exit 0
+fi

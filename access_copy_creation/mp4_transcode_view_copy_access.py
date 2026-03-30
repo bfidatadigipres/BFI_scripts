@@ -66,8 +66,10 @@ def main():
 
     file_list = []
     transform_path = os.path.join(STORAGE_PATH, "processing")
+    print(f"Targeting path: {transform_path}")
     for root, _, files in os.walk(transform_path):
         for file in files:
+            print(file)
             if file.startswith("done_"):
                 continue
             file_list.append(os.path.join(root, file))

@@ -22,7 +22,7 @@ import re
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Final, Optional, Union
 import pytz
 
@@ -33,7 +33,7 @@ import utils
 # Global paths from environment vars
 MP4_POLICY: Final = os.environ["MP4_POLICY"]
 LOG_PATH: Final = os.environ["LOG_PATH"]
-LOG_FILE: Final = os.path.join(LOG_PATH, f"mp4_viewing_copy_access.log")
+LOG_FILE: Final = os.path.join(LOG_PATH, "mp4_viewing_copy_access.log")
 STORAGE_PATH: Final = os.path.join(os.environ.get("QNAP_11"), "bbc_access/")
 
 # Setup logging
@@ -72,7 +72,7 @@ def main():
                 continue
             file_list.append(os.path.join(root, file))
 
-    if file_list == []:
+    if not file_list:
         sys.exit("No files found at this time")
 
     LOGGER.info("================== START Transcode MP4 Access Copy Creation - BBC ==================")
@@ -157,9 +157,8 @@ def main():
                 ).stderr
             except subprocess.CalledProcessError as e:
                 LOGGER.error("FFmpeg command failed: %s\n%s", ffmpeg_call_neat, e)
-                LOGGER.error(data)
                 continue
-
+            toc = time.perf_counter()
             transcode_mins = (toc - tic) // 60
             LOGGER.info("** Transcode took %s minutes to complete for file: %s", transcode_mins, fullpath)
 

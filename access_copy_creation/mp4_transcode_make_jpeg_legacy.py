@@ -329,7 +329,7 @@ def main():
             ).stderr
         except subprocess.CalledProcessError as e:
             log_build.append(
-                f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}"
+                f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}\n{e}"
             )
             log_build.append(
                 f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
@@ -1342,7 +1342,7 @@ def make_jpg(
             filepath,
             err,
         )
-
+    os.chmod(outfile, 0o777)
     if os.path.exists(outfile):
         return outfile
 

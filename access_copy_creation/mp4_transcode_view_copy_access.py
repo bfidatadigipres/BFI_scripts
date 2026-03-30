@@ -82,13 +82,9 @@ def main():
 
         job_id = os.path.basename(root.rstrip("/source"))
         complete_path = os.path.join(STORAGE_PATH, job_id, f"{file.split(".")[0]}.mp4")
+        cp_trimmed = os.path.join(STORAGE_PATH, job_id, f"{file.split(".")[0]}")
         if os.path.exists(complete_path):
-            policy_check = conformance_check(complete_path)
-            if "PASS!" in policy_check:
-                LOGGER.info("File already exists - and passes Mediaconch test. Will add 'done_' to file: %s", file)
-                new_file = f"done_{file}"
-                os.rename(fullpath, os.path.join(root, new_file))
-                continue
+            os.remove(complete_path)
 
         # Get file type, video or audio etc.
         ext = file.split(".")[-1]
@@ -168,7 +164,8 @@ def main():
             if "PASS!" in policy_check:
                 LOGGER.info("Mediaconch pass! MP4 transcode complete. Renaming source 'done_%s.", file)
                 new_file = f"done_{file}"
-                os.rename(fullpath, os.path.join(transform_path, new_file))
+                os.rename(fullpath, os.path.join(root, new_file))
+                os.rename(complete_path, cp_trimmed)
             else:
                 LOGGER.warning("MP4 failed policy check: %s", policy_check)
                 os.remove(complete_path)

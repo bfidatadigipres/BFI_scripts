@@ -65,22 +65,20 @@ def main():
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     file_list = []
-    transform_path = os.path.join(STORAGE_PATH, "processing")
+    transform_path = os.path.join(STORAGE_PATH)
     print(f"Targeting path: {transform_path}")
-    for root, _, files in os.walk(transform_path):
-        for file in files:
-            print(file)
-            if file.startswith("done_"):
-                continue
-            file_list.append(os.path.join(root, file))
-
+    file_list = glob.glob(f"{STORAGE_PATH}*/source/*", recursive=True)
     if not file_list:
         sys.exit("No files found at this time")
 
     LOGGER.info("================== START Transcode MP4 Access Copy Creation - BBC ==================")
     for fullpath in file_list:
+        if not os.path.isfile(fullpath):
+            continue
         root, file = os.path.split(fullpath)
-        job_id = os.path.basename(root)
+        if file.startswith("done_"):
+            continue
+        job_id = os.path.basename(root.rstrip("/source"))
 
         complete_path = os.path.join(STORAGE_PATH, f"{job_id}_{file.split(".")[0]}.mp4")
         if os.path.exists(complete_path):

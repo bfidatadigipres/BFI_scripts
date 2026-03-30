@@ -82,7 +82,7 @@ def main():
         root, file = os.path.split(fullpath)
         job_id = os.path.basename(root)
 
-        complete_path = os.path.join(STORAGE_PATH, f"{job_id}_{file}")
+        complete_path = os.path.join(STORAGE_PATH, f"{job_id}_{file.split(".")[0]}.mp4")
         if os.path.exists(complete_path):
             policy_check = conformance_check(complete_path)
             if "PASS!" in policy_check:

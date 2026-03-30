@@ -19,6 +19,7 @@ Script to be launched from watch folder entry.
 import logging
 import os
 import re
+import glob
 import subprocess
 import sys
 import time

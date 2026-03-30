@@ -8,7 +8,7 @@ date_FULL=$(date +'%Y-%m-%d - %T')
 
 # Local variables from environmental vars
 path="$1"
-transcode_path1="${path}${LEGACY_PROXY}"
+transcode_path1="${path}${TRANS}"
 job_num="$2"
 path_insert="${1//['/']/_}"
 dump_to="${LOG_PATH}mp4_transcode${path_insert}files.txt"

@@ -19,15 +19,12 @@ Script to be launched from watch folder entry.
 import logging
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
 from datetime import datetime, timezone
 from typing import Final, Optional, Union
-
 import pytz
-import tenacity
 
 # Local packages
 sys.path.append(os.environ["CODE"])

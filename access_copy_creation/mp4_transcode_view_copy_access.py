@@ -80,7 +80,9 @@ def main():
         if file.startswith("done_"):
             continue
 
-        job_id = os.path.basename(root.rstrip("/source"))
+        job_id = os.path.basename(root.split("/source")[0])
+        LOGGER.info("** File for processing: %s Workflow job number: %s", file, job_id)
+        print(job_id)
         complete_path = os.path.join(STORAGE_PATH, job_id, f"{file.split(".")[0]}.mp4")
         cp_trimmed = os.path.join(STORAGE_PATH, job_id, f"{file.split(".")[0]}")
         if os.path.exists(complete_path):
@@ -104,7 +106,7 @@ def main():
             width = get_width(fullpath)
             duration, vs = get_duration(fullpath)
             LOGGER.info("Audio data retrieved: %s - %s - %s", audio, stream_default, stream_count)
-            LOGGER.info("Video data retrieved: %s - %s - %s - %s - %s - %s", dar, par, height, width, duration, vs)
+            LOGGER.info("Video data retrieved DAR %s - PAR %s - Height %s - Width %s - Duration %s", dar, par, height, width, duration)
 
             # Check stream count and see if DL/DR or FL/FR or 12 channels
             mixed_dict = check_for_mixed_audio(fullpath)

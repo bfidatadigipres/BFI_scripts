@@ -69,10 +69,11 @@ def main():
     transform_path = os.path.join(STORAGE_PATH)
     print(f"Targeting path: {transform_path}")
     file_list = glob.glob(f"{STORAGE_PATH}*/source/*", recursive=True)
-    if not file_list:
-        sys.exit("No files found at this time")
+    for file in file_list:
+        if "/done_" not in file:
+            LOGGER.info("================== START Transcode MP4 Access Copy Creation - BBC ==================")
+            break
 
-    LOGGER.info("================== START Transcode MP4 Access Copy Creation - BBC ==================")
     for fullpath in file_list:
         if not os.path.isfile(fullpath):
             continue
@@ -173,7 +174,10 @@ def main():
                 os.remove(complete_path)
                 continue
 
-    LOGGER.info("==================== END Transcode MP4 Access Copy Creation - BBC ==================")
+    for file in file_list:
+        if "/done_" not in file:
+            LOGGER.info("==================== END Transcode MP4 Access Copy Creation - BBC ==================")
+            break
 
 
 def get_dar(fullpath: str) -> str:
@@ -529,87 +533,87 @@ def create_transcode(
 
     crop_sd_608 = [
         "-vf",
-        "yadif,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     no_stretch_4x3 = [
         "-vf",
-        "yadif,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100"
+        "yadif,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50"
     ]
 
     crop_sd_4x3 = [
         "-vf",
-        "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,crop=672:572:24:2,scale=734:576:flags=lanczos,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     upscale_sd_width = [
         "-vf",
-        "yadif,scale=1024:-1:flags=lanczos,pad=1024:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,scale=1024:-1:flags=lanczos,pad=1024:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     upscale_sd_height = [
         "-vf",
-        "yadif,scale=-1:576:flags=lanczos,pad=1024:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,scale=-1:576:flags=lanczos,pad=1024:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     scale_sd_4x3 = [
         "-vf",
-        "yadif,scale=768:576:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,scale=768:576:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     scale_sd_16x9 = [
         "-vf",
-        "yadif,scale=1024:576:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,scale=1024:576:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     crop_sd_15x11 = [
         "-vf",
-        "yadif,crop=704:572,scale=768:576:flags=lanczos,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,crop=704:572,scale=768:576:flags=lanczos,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     crop_ntsc_486 = [
         "-vf",
-        "yadif,crop=672:480,scale=734:486:flags=lanczos,pad=768:486:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,crop=672:480,scale=734:486:flags=lanczos,pad=768:486:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     crop_ntsc_486_16x9 = [
         "-vf",
-        "yadif,crop=672:480,scale=1024:486:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,crop=672:480,scale=1024:486:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     crop_ntsc_640x480 = [
         "-vf",
-        "yadif,pad=768:480:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,pad=768:480:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     crop_sd_16x9 = [
         "-vf",
-        "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     sd_downscale_4x3 = [
         "-vf",
-        "yadif,scale=768:576:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,scale=768:576:flags=lanczos,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     hd_16x9 = [
         "-vf",
-        "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=60:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,scale=-1:720:flags=lanczos,pad=1280:720:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=45:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     hd_16x9_letterbox = [
         "-vf",
-        "yadif,scale=1280:-1:flags=lanczos,pad=1280:720:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=80:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,scale=1280:-1:flags=lanczos,pad=1280:720:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=60:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     fhd_all = [
         "-vf",
-        "yadif,scale=-1:1080:flags=lanczos,pad=1920:1080:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=80:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,scale=-1:1080:flags=lanczos,pad=1920:1080:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=60:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     fhd_letters = [
         "-vf",
-        "yadif,scale=1920:-1:flags=lanczos,pad=1920:1080:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=80:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=100",
+        "yadif,scale=1920:-1:flags=lanczos,pad=1920:1080:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=60:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     output = ["-nostdin", "-y", output_path, "-f", "null", "-"]

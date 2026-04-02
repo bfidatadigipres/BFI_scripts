@@ -104,7 +104,6 @@ def main():
     hardcode 01of01 filename. If hits > 1 use models.Carrier
     to generate part whole and print to log for test period
     """
-    logger.info("======================== SPLIT MOPUP START ==========================")
 
     if not utils.check_control("split_control_delete") or not utils.check_control(
         "split_control_h22"
@@ -121,6 +120,7 @@ def main():
         sys.exit()
 
     # Iterate targets
+    logger.info("======================== SPLIT MOPUP START ==========================")
     for media_target in TARGETS:
 
         # Path to source media

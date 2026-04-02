@@ -160,6 +160,8 @@ def get_existing_terms(term_type: str, priref: str, new_term: str) -> List[Dict[
         return []
 
     entries = rec[0].get(term_type)
+    if not entries:
+        return []
     length = len(entries)
     LOGGER.info("%s %s entries found in thesaurus record <%s>", length, term_type, priref)
     get_terms = []
@@ -612,7 +614,7 @@ def make_utb_data_for_man(row, mpriref):
     if part_unit and part_unit_total:
         utb_dct.append(
             {
-	        "utb.fieldname": "Advert sequence in commercial break block",
+	            "utb.fieldname": "Advert sequence in commercial break block",
                 "utb.content": f"{part_unit}of{part_unit_total}"
             }
         )

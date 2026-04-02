@@ -74,7 +74,7 @@ ACCEPTED_EXT: Final = [
     "pdf",
     "txt",
     "vtt",
-    "ttml"
+    "ttml",
 ]
 
 
@@ -116,7 +116,7 @@ def accepted_file_type(ext):
         "csv": "csv",
         "pdf": "pdf",
         "txt": "txt",
-        "ttml": "ttml"
+        "ttml": "ttml",
     }
 
     ext = ext.lower()
@@ -125,6 +125,65 @@ def accepted_file_type(ext):
             return val
 
     return None
+
+
+def split_title(title_article):
+    """
+    An exception needs adding for "Die " as German language content
+    This list is not comprehensive.
+    """
+    if title_article.startswith(
+        (
+            "A ",
+            "An ",
+            "Am ",
+            "Al-",
+            "As ",
+            "Az ",
+            "Bir ",
+            "Das ",
+            "De ",
+            "Dei ",
+            "Den ",
+            "Der ",
+            "Det ",
+            "Di ",
+            "Dos ",
+            "Een ",
+            "Eene",
+            "Ei ",
+            "Ein ",
+            "Eine",
+            "Eit ",
+            "El ",
+            "el-",
+            "En ",
+            "Et ",
+            "Ett ",
+            "Het ",
+            "Il ",
+            "Na ",
+            "A'",
+            "L'",
+            "La ",
+            "Le ",
+            "Les ",
+            "Los ",
+            "The ",
+            "Un ",
+            "Une ",
+            "Uno ",
+            "Y ",
+            "Yr ",
+        )
+    ):
+        title_split = title_article.split()
+        ttl = title_split[1:]
+        title = " ".join(ttl)
+        title_art = title_split[0]
+        return title, title_art
+
+    return title_article, ""
 
 
 # (arg: str) -> bool:
@@ -302,7 +361,7 @@ def sort_ext(ext):
             "rtf",
             "csv",
             "txt",
-            "ttml"
+            "ttml",
         ],
     }
 
@@ -344,7 +403,6 @@ def probe_metadata(arg, stream, fpath):
         new_args = arg
     try:
         probe = ffmpeg.probe(fpath)
-        #        print(probe['streams'])
         for i in probe["streams"]:
             if i["codec_type"] == stream and new_args == "DURATION":
                 return i["tags"][new_args]
@@ -371,7 +429,7 @@ def get_metadata(stream, arg, dpath):
     ]
 
     meta = subprocess.check_output(cmd)
-    return meta.decode("utf-8").rstrip("\n")
+    return meta.decode("utf-8").strip()
 
 
 # (dpath: str, policy: str) -> tuple[bool, str]:
@@ -646,6 +704,7 @@ def send_email(
     automate the process of sending out simple emails
     """
     success = False
+    storage = "right size"
     try:
         msg = MIMEMultipart()
         msg["From"] = "digitalpreservationsystems@bfi.org.uk"
@@ -653,17 +712,18 @@ def send_email(
         msg["Subject"] = subject
 
         if files != "" and files is not None:
-            if os.path.getsize(files) < 500000:
+            if os.path.getsize(files) <= 274878100:
                 with open(files, "rb") as file:
                     attachment_package = MIMEBase("application", "octet-stream")
                     attachment_package.set_payload((file).read())
                     encoders.encode_base64(attachment_package)
                     attachment_package.add_header(
-                        "Content-Disposition", f"attachment; filename={files}"
+                        "Content-Disposition", f"attachment; filename={files.split('/')[-1]}"
                     )
                     msg.attach(attachment_package)
             else:
                 body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"
+                storage = "file is too big"
 
         msg.attach(MIMEText(body, "plain"))
 
@@ -675,6 +735,9 @@ def send_email(
 
         print(f"Email notification sent to {email}")
         success = True
+        if storage == "file is too big":
+            return success, "file too big"
+
         return success, ""
 
     except Exception as e:

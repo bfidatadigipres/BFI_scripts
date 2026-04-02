@@ -63,7 +63,7 @@ BPINGEST_AMAZON = os.environ["BP_INGEST_AMAZON"]
 LOG_PATH = os.environ["LOG_PATH"]
 JSON_PATH = os.path.join(LOG_PATH, "black_pearl")
 CID_API = utils.get_current_api()
-INGEST_CONFIG = os.path.join(CODE_PATH, "black_pearl/dpi_ingests.yaml")
+INGEST_CONFIG = os.path.join(os.environ.get("CODE_DEPENDS"), "black_pearl/dpi_ingests.yaml")
 MEDIA_REC_CSV = os.path.join(LOG_PATH, "duration_size_media_records.csv")
 PERSISTENCE_LOG = os.path.join(LOG_PATH, "autoingest", "persistence_queue.csv")
 
@@ -78,9 +78,9 @@ logger.addHandler(HDLR)
 logger.setLevel(logging.INFO)
 
 LOG_PATHS = {
+    os.environ["QNAP_05"]: os.environ["L_QNAP05"],
     os.environ["QNAP_VID"]: os.environ["L_QNAP01"],
     os.environ["QNAP_08"]: os.environ["L_QNAP08"],
-    os.environ["QNAP08_OSH"]: os.environ["L_QNAP08_OSH"],
     os.environ["QNAP_10"]: os.environ["L_QNAP10"],
     os.environ["QNAP_H22"]: os.environ["L_QNAP02"],
     os.environ["GRACK_H22"]: os.environ["L_GRACK02"],
@@ -102,7 +102,6 @@ LOG_PATHS = {
     os.environ["BP_FILM4"]: os.environ["L_BP_FILM4"],
     os.environ["BP_FILM5"]: os.environ["L_BP_FILM5"],
     os.environ["BP_FILM6"]: os.environ["L_BP_FILM6"],
-    os.environ["QNAP_05"]: os.environ["L_QNAP05"],
 }
 
 
@@ -205,7 +204,6 @@ def main():
     if not utils.check_control("black_pearl") or not utils.check_control(
         "pause_scripts"
     ):
-        logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         logger.critical("* Cannot establish CID session, exiting script")
@@ -465,6 +463,7 @@ def process_files(
     Receive ingest fpath then JSON has confirmed files ingested to tape
     and this function handles CID media record check/creation and move
     """
+    wpath = ""
     for key, val in LOG_PATHS.items():
         if key in autoingest:
             wpath = val
@@ -632,7 +631,7 @@ def process_files(
                     check_list.append(file)
                 except Exception as err:
                     logger.warning("Unable to delete asset: %s", fpath)
-                    logger.warning("Manual inspection of asset required")
+                    logger.warning("Manual inspection of asset required:\n%s", err)
             elif reingest_confirm and md5_match:
                 logger.info(
                     "File is being reingested following failed attempt. MD5 checks have passed. Moving to transcode folder and updating global.log for deletion."
@@ -698,10 +697,18 @@ def process_files(
         logger.info(
             "Creating media record and linking via object_number: %s", object_number
         )
+        logger.info(
+            "** Attempting creation of media record for %s, %s, %s, %s, %s",
+            file,
+            object_number,
+            duration,
+            byte_size,
+            bucket,
+        )
         media_priref = create_media_record(
             object_number, duration, byte_size, file, bucket, session
         )
-        print(media_priref)
+        logger.info("Media priref created: %s", media_priref)
 
         if media_priref:
             check_list.append(file)
@@ -787,6 +794,7 @@ def create_media_record(
     """
     record_data = []
     part, whole = utils.check_part_whole(filename)
+    logger.info("Part: %s Whole: %s", part, whole)
     if not part:
         return None
     record_data = [
@@ -804,16 +812,16 @@ def create_media_record(
     ]
 
     media_priref = ""
-    print(record_data)
+    logger.info(record_data)
     record_data_xml = adlib.create_record_data(
         CID_API, "media", session, "", record_data
     )
-    print(record_data_xml)
+    logger.info("Record data XML: %s", record_data_xml)
     try:
         item_rec = adlib.post(
             CID_API, record_data_xml, "media", "insertrecord", session
         )
-        print(item_rec)
+        logger.info("Item record: %s", item_rec)
         if item_rec:
             try:
                 media_priref = adlib.retrieve_field_name(item_rec, "priref")[0]

@@ -75,7 +75,6 @@ CHANNEL = {
     "itv2": os.environ["PA_ITV2"],
     "itv3": os.environ["PA_ITV3"],
     "itv4": os.environ["PA_ITV4"],
-    "itvbe": os.environ["PA_ITVBE"],
     "channel4": os.environ["PA_CHANNEL4"],
     "more4": os.environ["PA_MORE4"],
     "e4": os.environ["PA_E4"],
@@ -92,9 +91,6 @@ def check_control() -> None:
     with open(STORA_CONTROL) as control:
         j = json.load(control)
         if not j["stora_qnap04"]:
-            logger.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
 
@@ -202,6 +198,7 @@ def main() -> None:
     for item in CHANNEL.keys():
         item_path = os.path.join(PATH, item)
         print(item_path)
+        os.chmod(item_path, mode=0o777)
         if not os.path.exists(item_path):
             fails += 1
             make_path(CHANNEL, item)

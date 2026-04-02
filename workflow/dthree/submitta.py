@@ -29,7 +29,10 @@ import utils
 
 # Global variables
 LOGS = os.environ["LOG_PATH"]
-DTHREE = os.path.join(os.environ["WORKFLOW"], "dthree/")
+SUB_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/dthree/submissions.csv")
+SEL_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/dthree/selections.csv")
+ERR_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/dthree/errors.csv")
+CONFIG = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/dthree/config.yaml")
 NOW = datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 
@@ -55,14 +58,10 @@ def main():
     """
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_storage(DTHREE):
-        print("Script run prevented by Storage Control document. Script exiting.")
-        sys.exit("Script run prevented by storage_control.json. Script exiting.")
-
     write_to_log(f"=== Processing Items in D3 selections.csv === {DT_STR}\n")
 
     # Load configuration variables
-    configuration = yaml.safe_load(open(os.path.join(DTHREE, "config.yaml"), "r"))
+    configuration = yaml.safe_load(open(CONFIG, "r"))
     batch_size = configuration["Batches"]["TapesPerBatch"]
     batches_per_iteration = configuration["Batches"]["BatchesPerIteration"]
 
@@ -70,13 +69,13 @@ def main():
     for _ in range(0, batches_per_iteration):
 
         # Load submissions
-        print("* Opening dthree/submissions csv...")
+        print("* Opening dthree/submissions.csv...")
         submissions = {}
-        submissions = get_csv(os.path.join(DTHREE, "submissions.csv"))
+        submissions = get_csv(SUB_CSV)
 
         # Load selections
-        print("* Opening dthree/selections csv...")
-        df = pd.read_csv(os.path.join(DTHREE, "selections.csv"))
+        print("* Opening dthree/selections.csv...")
+        df = pd.read_csv(SEL_CSV)
 
         # Remove submissions from selections data frame
         print("* Removing d3 submissions from d3 selections...")
@@ -121,7 +120,7 @@ def main():
 
             # Track submission
             print("* Writing d3 submissions to dthree/submissions.csv...")
-            with open(os.path.join(DTHREE, "submissions.csv"), "a") as of:
+            with open(SUB_CSV, "a") as of:
                 writer = csv.writer(of)
                 writer.writerow(submission)
 
@@ -154,7 +153,7 @@ def main():
                 ",".join(batch_items),
             ]
 
-            with open(os.path.join(DTHREE, "errors.csv"), "a") as of:
+            with open(ERR_CSV, "a") as of:
                 writer = csv.writer(of)
                 writer.writerow(error_row)
 

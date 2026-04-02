@@ -365,6 +365,8 @@ def main():
     Retrieve 'Requested' rows from database.db as list of
     tuples and process one at a time.
     """
+    if not utils.check_control("pause_scripts") or not utils.check_control("black_pearl"):
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     data = retrieve_requested()
     print(data)
     print(type(data))

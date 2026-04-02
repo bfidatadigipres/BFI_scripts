@@ -8,7 +8,7 @@ date_FULL=$(date +'%Y-%m-%d - %T')
 
 # Local variables from environmental vars
 path="$1"
-transcode_path1="${path}${LEGACY_PROXY}"
+transcode_path1="${path}${TRANS}"
 job_num="$2"
 path_insert="${1//['/']/_}"
 dump_to="${LOG_PATH}mp4_transcode${path_insert}files.txt"
@@ -33,23 +33,24 @@ function pauseScript {
     fi
 }
 
-# Control check inserted into code
+# Control checks
 control
-
-# pause scripts check inserted into code
 pauseScript
 
-# replace list to ensure clean data
+# replace list to ensure clean data then build list
 echo "" > "${dump_to}"
-
-echo " ========================= SHELL LAUNCH - $path_insert ========================== $date_FULL" >> "${log_path}"
-echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_path}"
-echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
-
-# Command to build file list to supply to Python
 find "${transcode_path1}" -maxdepth 1 -mindepth 1 -type f -mmin +30 >> "${dump_to}"
 
-echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
-grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" "$PYENV $python_script {}"
+if [ -s "${dump_to}" ]
+  then
+    echo " ========================= SHELL LAUNCH - $path_insert ========================== $date_FULL" >> "${log_path}"
+    echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_path}"
+    echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
 
-echo " ========================= SHELL END - $path_insert ========================== $date_FULL" >> "${log_path}"
+    echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
+    grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" "$PYENV312 $python_script {}"
+
+    echo " ========================= SHELL END - $path_insert ========================== $date_FULL" >> "${log_path}"
+  else
+    exit 0
+fi

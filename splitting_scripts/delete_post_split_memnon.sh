@@ -23,7 +23,6 @@ function pauseScript {
 
 # Control check inserted into code
 control
-
 pauseScript
 
 # Log script start

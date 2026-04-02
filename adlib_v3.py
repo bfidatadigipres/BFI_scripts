@@ -10,12 +10,10 @@ Python interface for Adlib API v3.7.17094.1+
 import datetime
 import json
 from time import sleep
-from typing import Any, Final, Iterable, Mapping, Optional
+from typing import Any, Final, Iterable, Mapping, Optional, List, Dict
 
 import requests
 import xmltodict
-from dicttoxml import dicttoxml
-from lxml import etree, html
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
@@ -309,53 +307,90 @@ def get_grouped_items(api, database):
     return grouped
 
 
-# (api: str, database: str, priref: str, data=None) -> str
 def create_record_data(api, database, priref, data=None):
-    """
-    Create a record from supplied dictionary (or list of dictionaries)
-    """
+    if data is None:
+        data = []
     if not isinstance(data, list):
         data = [data]
 
-    # Take data and group where matched to grouped dict
     grouped = get_grouped_items(api, database)
-    remove_list = []
-    for key, value in grouped.items():
-        new_grouping: dict[str, list[Any]] = {}
-        for item in data:
-            for k in item.keys():
-                if k in value:
-                    if key in new_grouping.keys():
-                        new_grouping[key].append(item)
-                        remove_list.append(item)
-                    else:
-                        new_grouping[key] = [item]
-                        remove_list.append(item)
-        if new_grouping:
-            print(f"Adjusted grouping data: {new_grouping}")
-            data.append(new_grouping)
+    new_grouping: Dict[str, List[Dict[str, str]]] = {}
+    non_grouped_items: List[Dict[str, str]] = []
 
-    if remove_list:
-        for rm in remove_list:
-            if rm in data:
-                data.remove(rm)
-    frag = get_fragments(data)
-    if not frag:
-        return False
+    for item in data:
+        group_found = False
+        for group_key, fields in grouped.items():
+            if group_key not in new_grouping:
+                new_grouping[group_key] = []
 
-    record = etree.XML("<record></record>")
-    if not priref:
-        record.append(etree.fromstring("<priref>0</priref>"))
-    else:
-        record.append(etree.fromstring(f"<priref>{priref}</priref>"))
-    for i in frag:
-        record.append(etree.fromstring(i))
+            access_record = {k: item[k] for k in item if k in fields}
+            if access_record:
+                new_grouping[group_key].append(access_record)
+                group_found = True
+                break
+        if not group_found:
+            non_grouped_items.append(item)
 
-    # Convert XML object to string
-    payload = etree.tostring(record)
-    payload = payload.decode("utf-8")
+    for k, v in new_grouping.items():
+        if v != []:
+            print(f"Adjusted grouping data: {k}: {v}")
 
-    return f"<adlibXML><recordList>{payload}</recordList></adlibXML>"
+    # Build repeat blocks by detecting when a field name recurs
+    record_data: Dict[str, List[List[Dict[str, str]]]] = {}
+    for group_key, records in new_grouping.items():
+        if not records:
+            continue
+        record_data[group_key] = []
+        current_block: List[Dict[str, str]] = []
+        seen_keys: set = set()
+
+        for record_item in records:
+            item_keys = set(record_item.keys())
+            # If any key in this item was already seen in the current block,
+            # we're starting a new repeat instance
+            if item_keys & seen_keys:
+                record_data[group_key].append(current_block)
+                current_block = []
+                seen_keys = set()
+
+            current_block.append(record_item)
+            seen_keys.update(item_keys)
+
+        if current_block:
+            record_data[group_key].append(current_block)
+
+    # Build XML
+    output_list = []
+    output_list.append(f"<priref>{priref or 0}</priref>")
+
+    for ng_item in non_grouped_items:
+        for key, value in ng_item.items():
+            output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
+
+    for group_key, blocks in record_data.items():
+        for block in blocks:
+            output_list.append(f"<{group_key}>")
+            for record_item in block:
+                for key, value in record_item.items():
+                    output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
+            output_list.append(f"</{group_key}>")
+
+    payload = ''.join(output_list)
+    return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
+
+
+def escape_xml(s: str) -> str:
+    """
+    Escape characters that break
+    XML POST to CID
+    """
+    if not isinstance(s, str):
+        return s
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;")
+             .replace('"', "&quot;")
+             .replace("'", "&apos;"))
 
 
 # (priref: str, grouping: str, field_pairs: list[str]) -> str:
@@ -389,46 +424,6 @@ def create_grouped_data(priref, grouping, field_pairs):
         return payload + payload_mid + payload_end
     else:
         return payload_mid
-
-
-# (obj) -> list[str]:
-def get_fragments(obj):
-    """
-    Validate given XML string(s), or create valid XML
-    fragment from dictionary / list of dictionaries
-    Attribution @ Edward Anderson
-    """
-
-    if not isinstance(obj, list):
-        obj: list = [obj]
-
-    data = []
-    for item in obj:
-        if isinstance(item, str):
-            sub_item: str = item
-        else:
-            sub_item: str = dicttoxml(item, root=False, attr_type=False)
-            if "<item>" in str(sub_item):
-                ss = (
-                    str(sub_item)
-                    .lstrip("b'")
-                    .rstrip("'")
-                    .replace("<item>", "")
-                    .replace("</item>", "")
-                )
-                sub_item = ss.encode()
-        # Append valid XML fragments to `data`
-        try:
-            list_item = html.fragments_fromstring(
-                sub_item, parser=etree.XMLParser(remove_blank_text=True)
-            )
-            for itm in list_item:
-                xml = etree.fromstring(etree.tostring(itm))
-                data.append(etree.tostring(xml))
-        except Exception as err:
-            raise TypeError(f"Invalid XML:\n{sub_item}") from err
-
-    return data
 
 
 # (api: str, priref: str, comments: str) -> bool:
@@ -487,3 +482,43 @@ def recycle_api(api):
     print(f"Search to trigger recycle sent: {req}")
     print("Pausing for 2 minutes")
     sleep(120)
+
+
+def write_lock(api, priref, database):
+    '''
+    Apply a writing lock to the record before updating
+    '''
+    try:
+        post_response = requests.post(
+            api,
+            params={
+                'database': database,
+                'command': 'lockrecord',
+                'priref': f'{priref}',
+                'output': 'jsonv1'
+            }
+        )
+        print(post_response.text)
+        return True
+    except Exception as err:
+        print(f"Lock record wasn't applied to record {priref}\n{err}")
+
+
+def unlock_record(api, priref, database):
+    '''
+    Only used if write fails and lock was successful, to guard against file remaining locked
+    '''
+    try:
+        post_response = requests.post(
+            api,
+            params={
+                'database': database,
+                'command': 'unlockrecord',
+                'priref': f'{priref}',
+                'output': 'jsonv1'
+            }
+        )
+        print(post_response.text)
+        return True
+    except Exception as err:
+        print(f"Post to unlock record failed. Check record {priref} is unlocked manually\n{err}")

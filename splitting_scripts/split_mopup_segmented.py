@@ -105,6 +105,7 @@ def main():
     to generate part whole and print to log for test period
     """
     logger.info("======================== SPLIT MOPUP START ==========================")
+
     if not utils.check_control("split_control_delete") or not utils.check_control(
         "split_control_h22"
     ):
@@ -124,11 +125,13 @@ def main():
 
         # Path to source media
         root = os.path.join(media_target, "segmented")
+
         if not utils.check_storage(root):
             logger.info(
                 "Skipping path %s - prevented by Storage Control document.", root
             )
             continue
+
         processing = os.path.split(media_target)[0]
         autoingest = os.path.join(os.path.split(processing)[0], "autoingest")
         print(f"** Targeting: {root}")

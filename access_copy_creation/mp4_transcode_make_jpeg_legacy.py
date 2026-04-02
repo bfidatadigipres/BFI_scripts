@@ -121,10 +121,8 @@ def main():
     if not utils.check_control("mp4_transcode") or not utils.check_control(
         "pause_scripts"
     ):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(fullpath) or not utils.check_storage(TRANSCODE):
-        LOGGER.info("Script run prevented by Storage Control document. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
@@ -176,7 +174,7 @@ def main():
     date_pth = input_date.replace("-", "")[:6]
     if len(date_pth) <= 5:
         sys.exit(f"Error with date path: {date_pth}. Script exiting.")
-    
+
     if "H22: Video Digitisation: Item Outcomes" in str(groupings) and source:
         log_build.append(
             f"{local_time()}\tINFO\t** Source for H22 video: {source} ****"
@@ -329,7 +327,7 @@ def main():
             ).stderr
         except subprocess.CalledProcessError as e:
             log_build.append(
-                f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}"
+                f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}\n{e}"
             )
             log_build.append(
                 f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
@@ -1028,7 +1026,7 @@ def create_transcode(
         "-c:v",
         "libx264",
         "-crf",
-        "17",
+        "16",
     ]
 
     pix = ["-pix_fmt", "yuv420p"]
@@ -1342,7 +1340,7 @@ def make_jpg(
             filepath,
             err,
         )
-
+    os.chmod(outfile, 0o777)
     if os.path.exists(outfile):
         return outfile
 

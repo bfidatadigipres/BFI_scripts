@@ -70,6 +70,7 @@ FILE_TYPES = {
     "PDF": ["pdf", "D"],
     "PPT": ["ppt", "SL"],
     "PPTX": ["pptx", "SL"],
+    "JPG": ["jpg", "jpeg", "I"],
     "JPEG": ["jpg", "jpeg", "I"],
     "PNG": ["png", "I"],
     "TIFF": ["tiff", "tif", "I"],
@@ -264,8 +265,9 @@ def main() -> None:
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
     if not utils.check_storage(STORAGE):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not os.path.exists(STORAGE):
         sys.exit(f"Exiting. Path could not be found: {STORAGE}")
 
@@ -274,7 +276,7 @@ def main() -> None:
     )
 
     sess = adlib.create_session()
-    statuses = ["OPEN"]
+    statuses = ["OPEN", "CLOSED"]
     for status in statuses:
         print(f"***** Processing: {status}")
         LOGGER.info("Processing status: %s", status)
@@ -287,6 +289,9 @@ def main() -> None:
 
         # Start processing at folder level
         for rec in recs:
+            if not utils.check_control("pause_scripts"):
+                LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+                sys.exit("Script run prevented by downtime_control.json. Script exiting.")
             mdata_dct = {}
             mdata_dct = iterate_record(rec, status)
             print(f"Metadata dictionary extracted from CID/record:\n{mdata_dct}")

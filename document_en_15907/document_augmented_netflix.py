@@ -16,7 +16,7 @@ Steps:
    separate entry with total episodes
 2. Iterate looking for folder matches
    with CSV data {article}_{title}
-3. Check if eposidic/monographic
+3. Check if episodic/monographic
    Check for existing CID records that
    match the ID for programme, skip if found.
 4. Access JSONs data needed for:
@@ -56,7 +56,7 @@ NETFLIX: Final = os.path.join(STORAGE, "NETFLIX")
 CAT_ID: Final = os.environ.get("PA_NETFLIX")
 ADMIN: Final = os.environ.get("ADMIN")
 LOGS: Final = os.path.join(ADMIN, "Logs")
-CODE: Final = os.environ.get("CODE")
+CODE: Final = os.environ.get("CODE_DEPENDS")
 GENRE_MAP: Final = os.path.join(CODE, "document_en_15907/EPG_genre_mapping.yaml")
 CONTROL_JSON: Final = os.path.join(LOGS, "downtime_control.json")
 CID_API: Final = utils.get_current_api()
@@ -108,66 +108,8 @@ def get_folder_title(article: str, title: str) -> str:
         title = f'{article}_{title.replace(" ", "_")}_'
     else:
         title = f'{title.replace(" ", "_")}_'
+    print(title)
     return title
-
-
-def split_title(title_article: str) -> tuple[str, str]:
-    """
-    An exception needs adding for "Die " as German language content
-    This list is not comprehensive.
-    """
-    if title_article.startswith(
-        (
-            "A ",
-            "An ",
-            "Am ",
-            "Al-",
-            "As ",
-            "Az ",
-            "Bir ",
-            "Das ",
-            "De ",
-            "Dei ",
-            "Den ",
-            "Der ",
-            "Det ",
-            "Di ",
-            "Dos ",
-            "Een ",
-            "Eene",
-            "Ei ",
-            "Ein ",
-            "Eine",
-            "Eit ",
-            "El ",
-            "el-",
-            "En ",
-            "Et ",
-            "Ett ",
-            "Het ",
-            "Il ",
-            "Na ",
-            "A'",
-            "L'",
-            "La ",
-            "Le ",
-            "Les ",
-            "Los ",
-            "The ",
-            "Un ",
-            "Une ",
-            "Uno ",
-            "Y ",
-            "Yr ",
-        )
-    ):
-        title_split: list[str] = title_article.split()
-        ttl = title_split[1:]
-        title = " ".join(ttl)
-        title_art = title_split[0]
-        return title, title_art
-
-    return title_article, "-"
 
 
 def get_folder_match(foldername: str) -> list[str]:
@@ -208,8 +150,8 @@ def retrieve_json(json_pth: str) -> dict[str, str]:
     present for supplied episode_num
     """
     with open(json_pth, "r", encoding="latin1") as file:
-        data = json.load(file)
-
+        data = file.read()
+    print(data)
     return data
 
 
@@ -225,40 +167,57 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
     c_data: dict[Optional[str], Optional[str]] = {}
     val.id and c_data.update({"cat_id": val.id})
     if val.title:
-        title, article = split_title(val.title)
+        title, article = utils.split_title(val.title)
         c_data.update({"title": title})
         c_data.update({"title_article": article})
-    val.productionYear and c_data.update({"production_year": str(val.productionYear)})
-    val.runtime and c_data.update({"runtime": val.runtime})
-    val.certification.get("netflix") and c_data.update({"cert_netflix": val.certification.get("netflix")})
-    val.certification.get("bbfc") and c_data.update({"cert_bbfc": val.certification.get("bbfc")})
-    val.meta.get("writers") and c_data.update({"writers": val.meta.get("writers")})
-    cast_all = val.meta.get("cast")
-    if cast_all:
-        c_data.update({"cast": cast_all.split(",")})
-    val.meta.get("directors") and c_data.update({"directors": val.meta.get("directors")})
-    genres_all = val.meta.get("genres")
-    if genres_all:
-        c_data.update({"genres": genres_all.split(",")})
-    val.attribute and c_data.update({"attribute": val.attribute})
+    if val.productionYear:
+        c_data.update({"production_year": str(val.productionYear)})
+    if val.runtime:
+        c_data.update({"runtime": val.runtime})
+    if val.certification:
+        val.certification.get("netflix") and c_data.update(
+            {"cert_netflix": val.certification.get("netflix")}
+        )
+        val.certification.get("bbfc") and c_data.update(
+            {"cert_bbfc": val.certification.get("bbfc")}
+        )
+    if val.meta:
+        val.meta.get("writers") and c_data.update({"writers": val.meta.get("writers")})
+        cast_all = val.meta.get("cast")
+        if cast_all:
+            c_data.update({"cast": cast_all.split(",")})
+        val.meta.get("directors") and c_data.update(
+            {"directors": val.meta.get("directors")}
+        )
+        genres_all = val.meta.get("genres")
+        if genres_all:
+            c_data.update({"genres": genres_all.split(",")})
+    if val.attribute:
+        c_data.update({"attribute": val.attribute})
 
-    short_desc = val.summary.short
+    short_desc = val.summary.short or ""
     if short_desc:
         c_data.update({"d_short": short_desc.replace("'", "'")})
-    med_desc = val.summary.medium
+    med_desc = val.summary.medium or ""
     if med_desc:
         c_data.update({"d_medium": med_desc.replace("'", "'")})
-    long_desc = val.summary.long
+    long_desc = val.summary.long or ""
     if long_desc:
         c_data.update({"d_long": long_desc.replace("'", "'")})
-    c_data.update({"start_date": val.availability.get("start")[:10]}) if val.availability.get("start") else c_data.update({"start_date": ""})
+    (
+        c_data.update({"start_date": val.availability.get("start")[:10]})
+        if val.availability.get("start")
+        else c_data.update({"start_date": ""})
+    )
     for link in val.deeplink:
         if link.get("rel") == "url":
             c_data.update({"browse_url": link["href"]})
         elif link["rel"] == "watch-url":
             c_data.update({"watch_url": link["href"]})
-    val.number and c_data.update({"episode_number": val.number})
-    val.contributor and c_data.update({"contributors": val.contributor})
+    if val.number:
+        c_data.update({"episode_number": val.number})
+    if val.contributor:
+        c_data.update({"contributors": val.contributor})
 
     return c_data
 
@@ -273,41 +232,60 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
         return None
 
     j_data: dict[Optional[str], Optional[str]] = {}
-    val.id and j_data.update({"work_id": val.id})
-    val.type and j_data.update({"type": val.type})
+    if val.id:
+        j_data.update({"work_id": val.id})
+    if val.type:
+        j_data.update({"type": val.type})
     title_full = val.title
     if title_full:
-        title, article = split_title(title_full)
+        title, article = utils.split_title(title_full)
         j_data.update({"title": title})
         j_data.update({"title_article": article})
-    val.productionYear and j_data.update({"production_year": str(val.productionYear)})
-    val.runtime and j_data.update({"runtime": val.runtime})
-    val.number and j_data.update({"episode_number": val.number})
-    val.total and j_data.update({"episode_total": val.total})
+    if val.productionYear:
+        j_data.update({"production_year": str(val.productionYear)})
+    if val.runtime:
+        j_data.update({"runtime": val.runtime})
+    if val.number:
+        j_data.update({"episode_number": val.number})
+    if val.total:
+        j_data.update({"episode_total": val.total})
 
     genres = []
     for cat in val.category:
         genres.append(cat.code)
     genres and j_data.update({"genres": genres})
+    if val.meta:
+        val.meta.get("episode") and j_data.update(
+            {"episode_number": val.meta.get("episode")}
+        )
+        val.meta.get("episodeTotal") and j_data.update(
+            {"episode_total": val.meta.get("episodeTotal")}
+        )
+        val.meta.get("imdbId") and j_data.update({"imdb_id": val.meta.get("imdbId")})
+    if val.certification:
+        val.certification.get("netflix") and j_data.update(
+            {"cert_netflix": val.certification.get("netflix")}
+        )
+        val.certification.get("bbfc") and j_data.update(
+            {"cert_bbfc": val.certification.get("bbfc")}
+        )
 
-    val.meta.get('episode') and j_data.update({"episode_number": val.meta.get('episode')})
-    val.meta.get('episodeTotal') and j_data.update({"episode_total": val.meta.get('episodeTotal')})
-    val.meta.get('imdbId') and j_data.update({'imdb_id': val.meta.get('imdbId')})
-    val.certification.get("netflix") and j_data.update({"cert_netflix": val.certification.get("netflix")})
-    val.certification.get("bbfc") and j_data.update({"cert_bbfc": val.certification.get("bbfc")})
-
-    short_desc = val.summary.short
+    short_desc = val.summary.short or ""
     if short_desc:
         j_data.update({"d_short": short_desc.replace("'", "'")})
-    med_desc = val.summary.medium
+    med_desc = val.summary.medium or ""
     if med_desc:
         j_data.update({"d_medium": med_desc.replace("'", "'")})
-    long_desc = val.summary.long
+    long_desc = val.summary.long or ""
     if long_desc:
         j_data.update({"d_long": long_desc.replace("'", "'")})
 
-    val.contributor and j_data.update({"contributors": val.contributor})
-    val.vod.get("netflix-uk").get("start") and j_data.update({"start_date": val.vod.get("netflix-uk").get("start")[:10]})
+    if val.contributor:
+        val.contributor and j_data.update({"contributors": val.contributor})
+    if val.vod:
+        val.vod.get("netflix-uk").get("start") and j_data.update(
+            {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+        )
 
     return j_data
 
@@ -322,40 +300,64 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         return None
 
     s_data = {}
-    val.id and s_data.update({"work_id": val.id})
-    val.type and s_data.update({"type": val.type})
+    if val.id:
+        s_data.update({"work_id": val.id})
+    if val.type:
+        s_data.update({"type": val.type})
     title_full = val.title
     if title_full:
-        title, article = split_title(title_full)
+        title, article = utils.split_title(title_full)
         s_data.update({"title": title})
         s_data.update({"title_article": article})
-    val.productionYear and s_data.update({"production_year": str(val.productionYear)})
-    val.runtime and s_data.update({"runtime": val.runtime})
-    val.number and s_data.update({"episode_number": val.number})
-    val.total and s_data.update({"episode_total": val.total})
+    if val.productionYear:
+        s_data.update({"production_year": str(val.productionYear)})
+    if val.runtime:
+        s_data.update({"runtime": val.runtime})
+    if val.number:
+        s_data.update({"episode_number": val.number})
+    if val.total:
+        s_data.update({"episode_total": val.total})
 
-    genres = []
-    for cat in val.category:
-        genres.append(cat.code)
-    genres and s_data.update({"genres": genres})
+    if val.category:
+        genres = []
+        for cat in val.category:
+            genres.append(cat.code)
+        genres and s_data.update({"genres": genres})
 
-    val.meta.get('episode') and s_data.update({"episode_number": val.meta.get('episode')})
-    val.meta.get('episodeTotal') and s_data.update({"episode_total": val.meta.get('episodeTotal')})
-    val.certification.get("netflix") and s_data.update({"cert_netflix": val.certification.get("netflix")})
-    val.certification.get("bbfc") and s_data.update({"cert_bbfc": val.certification.get("bbfc")})
+    if val.meta:
+        val.meta.get("episode") and s_data.update(
+            {"episode_number": val.meta.get("episode")}
+        )
+        val.meta.get("episodeTotal") and s_data.update(
+            {"episode_total": val.meta.get("episodeTotal")}
+        )
+        val.meta.get("imdbId") and s_data.update(
+            {"imdb_id": val.meta.get("imdbId")}
+        )
+    if val.certification:
+        val.certification.get("netflix") and s_data.update(
+            {"cert_netflix": val.certification.get("netflix")}
+        )
+        val.certification.get("bbfc") and s_data.update(
+            {"cert_bbfc": val.certification.get("bbfc")}
+        )
 
-    short_desc = val.summary.short
+    short_desc = val.summary.short or ""
     if short_desc:
         s_data.update({"d_short": short_desc.replace("'", "'")})
-    med_desc = val.summary.medium
+    med_desc = val.summary.medium or ""
     if med_desc:
         s_data.update({"d_medium": med_desc.replace("'", "'")})
-    long_desc = val.summary.long
+    long_desc = val.summary.long or ""
     if long_desc:
         s_data.update({"d_long": long_desc.replace("'", "'")})
 
-    val.contributor and s_data.update({"contributors": val.contributor})
-    val.vod.get("netflix-uk").get("start") and s_data.update({"start_date": val.vod.get("netflix-uk").get("start")[:10]})
+    if val.contributor:
+        s_data.update({"contributors": val.contributor})
+    if val.vod:
+        val.vod.get("netflix-uk").get("start") and s_data.update(
+            {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+        )
 
     return s_data
 
@@ -400,7 +402,6 @@ def cid_check_works(
             title_art = ""
     except Exception as err:
         title_art = ""
-
     groupings: list[str] = []
     for num in range(0, hits):
         try:
@@ -653,21 +654,17 @@ def main():
     Where an episodic series, create a
     series work. Link all records as needed.
     """
+    csv_path = sys.argv[1]
+    if not os.path.isfile(csv_path):
+        sys.exit(f"Problem with supplied CSV path {csv_path}")
+
     if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
-
-    if len(sys.argv) < 2:
-        sys.exit("Please try to launch this script again with the path to the CSV...")
-    csv_path = sys.argv[1]
-    if not os.path.isfile(csv_path):
-        sys.exit(f"Problem with supplied CSV path {csv_path}")
 
     prog_dct: dict[str, list[str]] = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
@@ -701,7 +698,6 @@ def main():
 
         if platform != "Netflix":
             continue
-
         LOGGER.info("** Processing item: %s %s", article, title)
 
         # Make season number a list
@@ -898,7 +894,12 @@ def main():
                 record, series_work, work, work_restricted, manifestation, item = (
                     build_defaults(series_data_dct)
                 )
-                work_title, work_title_art = split_title(series_data_dct["title"])
+
+                work_title = series_data_dct["title"]
+                if "title_article" in series_data_dct:
+                    work_title_art = series_data_dct["title_article"]
+                else:
+                    work_title_art = ""
 
                 # Make series work here
                 if not series_data_dct:
@@ -1063,8 +1064,6 @@ def make_episodes(
 
     # Make episodic work here
     data_dct = make_work_dictionary(num, csv_data, ep_cat_dct, ep_dct)
-    print(f"Dictionary for Work creation:\n{data_dct}")
-    print("**************")
     record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)
     priref_episode = create_work(
         series_priref,
@@ -1313,7 +1312,7 @@ def create_series_work(
         series_work_values.append({"title.language": "English"})
         series_work_values.append({"title.type": "05_MAIN"})
     if "title_article" in series_dct:
-        if series_dct["title_article"] != "-" and series_dct["title_article"] != "":
+        if series_dct["title_article"] not in ("-", ""):
             series_work_values.append({"title.article": series_dct["title_article"]})
     if len("patv_id") > 0:
         series_work_values.append({"alternative_number.type": "PATV Netflix asset ID"})
@@ -1460,15 +1459,13 @@ def create_work(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             work_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art != "-" and work_title_art != "":
+            if work_title_art not in ("-", ""):
                 work_values.append({"title.article": work_title_art})
         else:
             work_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(work_values):
             if "title_article" in work_dict:
-                if (
-                    work_dict["title_article"] != "-"
-                    and work_dict["title_article"] != ""
-                ):
+                if work_dict["title_article"] not in ("-", ""):
                     work_values.append({"title.article": work_dict["title_article"]})
         work_values.append({"title.language": "English"})
         work_values.append({"title.type": "05_MAIN"})
@@ -1622,15 +1619,13 @@ def create_manifestation(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             manifestation_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if len(work_title_art) > 1:
+            if work_title_art not in ("-", ""):
                 manifestation_values.append({"title.article": work_title_art})
         else:
             manifestation_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(manifestation_values):
             if "title_article" in work_dict:
-                if (
-                    work_dict["title_article"] != "-"
-                    and work_dict["title_article"] != ""
-                ):
+                if work_dict["title_article"] not in ("-", ""):
                     manifestation_values.append(
                         {"title.article": work_dict["title_article"]}
                     )
@@ -1761,15 +1756,13 @@ def create_item(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             item_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if len(work_title_art) > 1:
+            if work_title_art not in ("-", ""):
                 item_values.append({"title.article": work_title_art})
         else:
             item_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(item_values):
             if "title_article" in work_dict:
-                if (
-                    work_dict["title_article"] != "-"
-                    and work_dict["title_article"] != ""
-                ):
+                if work_dict["title_article"] not in ("-", ""):
                     item_values.append({"title.article": work_dict["title_article"]})
         item_values.append({"title.language": "English"})
         item_values.append({"title.type": "05_MAIN"})

@@ -39,6 +39,13 @@
             text-align: center;
         }
 
+        .header-bar img {
+            height: 80px;
+            width: auto;
+            display: block;
+            margin: 0 auto 8px;
+         }
+
         /* Status Bar */
         .user-status-container {
             background-color: #888888;
@@ -156,9 +163,9 @@
 </head>
 <body>
     <div class="container">
-
         <!-- Title Bar -->
         <div class="header-bar">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Company logo">
             Workflow Request Form
         </div>
 
@@ -215,7 +222,7 @@
 
                     <div class="form-group">
                         <label for="items_list">Saved Search number (Required)</label>
-                        <textarea id="items_list" name="items_list" rows="1" required></textarea>
+                        <input type=text id="items_list" name="items_list" required>
                     </div>
 
                     <div class="form-group">
@@ -275,8 +282,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="description">Job Title (Required)</label>
-                        <textarea id="description" name="description" rows="1" required></textarea>
+                        <label for="description">Job Name (Required)</label>
+                        <input type="text" id="description" name="description" required>
                     </div>
 
                     <div class="form-group">
@@ -291,7 +298,7 @@
 
                     <div class="form-group">
                         <label for="instructions">Special Instructions (Optional)</label>
-                        <textarea id="instructions" name="instructions" rows="3"></textarea>
+                        <input type="text" id="instructions" name="instructions">
                     </div>
 
                     <div class="form-group">

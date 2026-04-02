@@ -160,10 +160,8 @@ def main():
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
     if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(QNAP_PATH):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not os.geteuid() == 0:
         sys.exit("\nOnly root can run this script\n")

@@ -225,9 +225,6 @@ def main():
             if not utils.check_control("black_pearl") or not utils.check_control(
                 "pause_scripts"
             ):
-                logger.info(
-                    "Script run prevented by downtime_control.json. Script exiting."
-                )
                 sys.exit(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )
@@ -273,9 +270,6 @@ def main():
 
     while files:
         if not utils.check_control("black_pearl"):
-            logger.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         folderpth = ""
         # Autoingest check for ingest_ path under 2TB

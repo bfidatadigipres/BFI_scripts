@@ -7,7 +7,7 @@ to one utility module
 
 import json
 import os
-from typing import Optional, Union
+from typing import Optional, Union, List, Dict, Any
 
 from ds3 import ds3, ds3Helpers
 
@@ -217,6 +217,31 @@ def get_object_list(
     return confirmed, md5, length
 
 
+
+def get_object_list_items(fname: str) -> Optional[List[Dict[str, Any]]]:
+    """
+    Get all details to check file persisted
+    """
+
+    request = ds3.GetObjectsWithFullDetailsSpectraS3Request(
+        name=f"{fname}", include_physical_placement=True
+    )
+    try:
+        result = CLIENT.get_objects_with_full_details_spectra_s3(request)
+        data = result.result
+    except Exception as err:
+        print(err)
+        return None
+
+    try:
+        obj_list = data.get("ObjectList")
+    except KeyError as err:
+        print(err)
+        obj_list = []
+    
+    return obj_list
+    
+
 def put_directory(directory_pth: str, bucket: str) -> Optional[list[str]]:
     """
     Add the directory to black pearl using helper (no MD5)
@@ -258,6 +283,27 @@ def download_bp_object(fname: str, outpath: str, bucket: str) -> str:
     """
     Download the BP object from SpectraLogic
     tape library and save to outpath
+    """
+    if bucket == "":
+        bucket = "imagen"
+
+    file_path: str = os.path.join(outpath, fname)
+    get_objects: list[ds3Helpers.HelperGetObject] = [
+        ds3Helpers.HelperGetObject(fname, file_path)
+    ]
+    try:
+        get_job_id: str = HELPER.get_objects(get_objects, bucket)
+        print(f"BP get job ID: {get_job_id}")
+    except Exception as err:
+        raise Exception(f"Unable to retrieve file {fname} from Black Pearl: {err}")
+
+    return get_job_id
+
+
+def download_blobbed_object(fname: str, outpath: str, bucket: str) -> str:
+    """
+    Download the BP object from SpectraLogic
+    tape library using single thread
     """
     if bucket == "":
         bucket = "imagen"
@@ -317,7 +363,7 @@ def put_single_file(fpath: str, ref_num, bucket_name, check=False) -> Optional[s
             put_objects=put_obj,
             bucket=bucket_name,
             max_threads=1,
-            calculate_checksum=bool(check)
+            calculate_checksum=bool(check),
         )
         print(f"PUT COMPLETE - JOB ID retrieved: {put_job_id}")
         return put_job_id
@@ -327,7 +373,7 @@ def put_single_file(fpath: str, ref_num, bucket_name, check=False) -> Optional[s
 
 
 def delete_black_pearl_object(
-    ref_num: str, version: Optional[str], bucket: str
+    ref_num: str, version: str, bucket: str
 ) -> Optional[ds3.DeleteObjectResponse]:
     """
     Receive reference number and initiate
@@ -380,3 +426,52 @@ def get_version_id(ref_num: str) -> Optional[str]:
     except (IndexError, TypeError, KeyError):
         version_id = None
     return version_id
+
+
+def set_latest_flag_true(fname: str, bucket: str, version_id: str) -> bool:
+    """
+    Confirm version_id for fname
+    is the one wanted for 'latest'
+    Returns key,value pairs:
+    - BucketId (UUID)
+    - CreationDate (2024-09-25T22:08:51.802Z)
+    - Id (version ID)
+    - Latest (true or false)
+    - Name (filepath and name)
+    - Type (DATA)
+    """
+
+    r = ds3.UndeleteObjectSpectraS3Request(bucket_id=bucket, name=fname, version_id=version_id)
+    result = CLIENT.undelete_object_spectra_s3(r)
+
+    confirmation = result.result
+    if not confirmation:
+        return False
+    if confirmation.get("Latest") == "true":
+        return True
+
+    return False
+
+
+def get_object_details(fname: str, bucket: str) -> List[Dict[str, Any]]:
+    """
+    Less taxing way to check for multiple
+    objects with one fname, bucket needed
+    Returns list of dicts containing keys:
+    - BucketId
+    - CreationDate
+    - Id (version ID)
+    - Latest
+    - Name
+    - Type
+    """
+
+    r = ds3.GetObjectsDetailsSpectraS3Request(name=fname, bucket_id=bucket)
+    result = CLIENT.get_objects_details_spectra_s3(r)
+    obj_list = result.result.get("S3ObjectList", [])
+    print(f"Length of object list found for {fname} is {len(obj_list)}")
+
+    if not obj_list:
+        return None
+
+    return obj_list

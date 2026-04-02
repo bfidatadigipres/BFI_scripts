@@ -127,6 +127,65 @@ def accepted_file_type(ext):
     return None
 
 
+def split_title(title_article):
+    """
+    An exception needs adding for "Die " as German language content
+    This list is not comprehensive.
+    """
+    if title_article.startswith(
+        (
+            "A ",
+            "An ",
+            "Am ",
+            "Al-",
+            "As ",
+            "Az ",
+            "Bir ",
+            "Das ",
+            "De ",
+            "Dei ",
+            "Den ",
+            "Der ",
+            "Det ",
+            "Di ",
+            "Dos ",
+            "Een ",
+            "Eene",
+            "Ei ",
+            "Ein ",
+            "Eine",
+            "Eit ",
+            "El ",
+            "el-",
+            "En ",
+            "Et ",
+            "Ett ",
+            "Het ",
+            "Il ",
+            "Na ",
+            "A'",
+            "L'",
+            "La ",
+            "Le ",
+            "Les ",
+            "Los ",
+            "The ",
+            "Un ",
+            "Une ",
+            "Uno ",
+            "Y ",
+            "Yr ",
+        )
+    ):
+        title_split = title_article.split()
+        ttl = title_split[1:]
+        title = " ".join(ttl)
+        title_art = title_split[0]
+        return title, title_art
+
+    return title_article, ""
+
+
 # (arg: str) -> bool:
 def check_control(arg):
     """
@@ -645,6 +704,7 @@ def send_email(
     automate the process of sending out simple emails
     """
     success = False
+    storage = "right size"
     try:
         msg = MIMEMultipart()
         msg["From"] = "digitalpreservationsystems@bfi.org.uk"
@@ -658,11 +718,12 @@ def send_email(
                     attachment_package.set_payload((file).read())
                     encoders.encode_base64(attachment_package)
                     attachment_package.add_header(
-                        "Content-Disposition", f"attachment; filename={files}"
+                        "Content-Disposition", f"attachment; filename={files.split('/')[-1]}"
                     )
                     msg.attach(attachment_package)
             else:
                 body += f"\n \n User has added an attachment: {files} which is above the recommended size, find a different method to send the file.\n"
+                storage = "file is too big"
 
         msg.attach(MIMEText(body, "plain"))
 
@@ -674,6 +735,9 @@ def send_email(
 
         print(f"Email notification sent to {email}")
         success = True
+        if storage == "file is too big":
+            return success, "file too big"
+
         return success, ""
 
     except Exception as e:

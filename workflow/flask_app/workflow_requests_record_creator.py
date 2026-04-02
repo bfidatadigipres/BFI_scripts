@@ -10,30 +10,7 @@ Dependencies:
 3. workflow_requests.py - remodelling from ../workflow.py
 4. ../records.py
 
-Web app form to supply list:
-0   username TEXT NOT NULL,
-1   email TEXT NOT NULL,
-2   first_name TEXT NOT NULL,
-3   last_name TEXT NOT NULL,
-4   client_category TEXT NOT NULL,
-5   jobid INTEGER PRIMARY KEY AUTOINCREMENT,
-6   items_list TEXT NOT NULL,
-7   activity_code TEXT NOT NULL,
-8   request_type TEXT NOT NULL,
-9   request_outcome TEXT NOT NULL,
-10  description TEXT NOT NULL,
-11  delivery_date TEXT NOT NULL,
-12  destination TEXT NOT NULL,
-13  instructions TEXT,
-14  client_name TEXT,
-15  contact_details TEXT,
-16  department TEXT NOT NULL,
-17  status TEXT NOT NULL,
-18  date TEXT NOT NULL
-
-Written up, but needs testing of data supply
-into workflow_requests, and that records are
-created and have correct data.
+2026
 """
 
 # Public imports
@@ -42,21 +19,18 @@ import os
 import sys
 import logging
 import itertools
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Final, Optional
 
 # Local imports
 import workflow_requests as workflow
-
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
 
 # Global variables
 LOG_PATH = os.environ["LOG_PATH"]
-DATABASE = os.path.join(
-    os.environ["WORKFLOW"], "flask_app/workflow_requests.db"
-)  # Table to be called REQUESTS
+DATABASE = os.environ.get("WF_DATABASE")
 NOW = datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 
@@ -204,8 +178,8 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
 
     item_list = []
     for priref in prirefs:
-        bool = check_priref_is_item(priref)
-        if bool is True:
+        boolean = check_priref_is_item(priref)
+        if boolean is True:
             item_list.append(priref)
         else:
             LOGGER.warning(
@@ -221,7 +195,7 @@ def check_priref_is_item(priref):
     check here they confirm to Items
     """
     search = f"priref='{priref}' and Df=item"
-    hits, rec = adlib.retrieve_record(CID_API, "items", search, 0)
+    hits = adlib.retrieve_record(CID_API, "items", search, 0)[0]
 
     if hits is None:
         return "Failure to reach API"
@@ -238,19 +212,12 @@ def main():
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
-    LOGGER.info(
-        "=== Workflow requests record creation start %s ===", str(datetime.now())[:18]
-    )
-
     requested_jobs = retrieve_requested()
     print(requested_jobs)
     if len(requested_jobs) == 0:
         sys.exit("No jobs found, script exiting")
 
-    LOGGER.info(
-        "=== Workflow requests record creation start %s ===", str(datetime.now())[:18]
-    )
-
+    LOGGER.info("=== Workflow requests record creation start ===")
     LOGGER.info("Requested jobs found: %s", len(requested_jobs))
 
     # Iterate jobs
@@ -295,7 +262,6 @@ def main():
 
         # Make job metadata for Batch creation
         job_metadata = {}
-        # deadline = (datetime.today() + timedelta(days=10)).strftime("%Y-%m-%d")
         request_date = job[18].strip()[:10]
         job_metadata["activity.code"] = job[7].strip()
         job_metadata["client.name"] = job[14].strip()
@@ -308,11 +274,9 @@ def main():
         job_metadata["completion.date"] = job[11].strip()
         job_metadata["final_destination"] = job[12].strip()
         job_metadata["request.details"] = job[13].strip()
-        # job_metadata["request.from.department"] = job[16].strip()
         job_metadata["request.from.email"] = email
         job_metadata["request.from.name"] = f"{firstname} {lastname}"
         job_metadata["request.date.received"] = request_date
-        # job_metadata["negotiatedDeadline"] = deadline
         job_metadata["input.name"] = uname
         LOGGER.info("Job metadata build: %s", job_metadata)
 
@@ -323,7 +287,9 @@ def main():
                 job_metadata["client.name"],
             )
             p_priref = create_people_record(job_metadata["client.name"])
-            LOGGER.info("Priref for client.name: %s - %s", p_priref, job_metadata["client.name"])
+            LOGGER.info(
+                "Priref for client.name: %s - %s", p_priref, job_metadata["client.name"]
+            )
             if not p_priref:
                 LOGGER.warning(
                     "Person record failed to create: %s", job_metadata["client.name"]
@@ -358,10 +324,7 @@ def main():
         update_table(job_id, "Completed")
         send_email_update(email, firstname, "Workflow request completed", job)
 
-    LOGGER.info(
-        "=== Workflow requests record creation completed %s ===",
-        str(datetime.now())[:18],
-    )
+    LOGGER.info("=== Workflow requests record creation completed ===")
 
 
 def update_table(job_id: str, new_status: str) -> None:
@@ -387,7 +350,10 @@ def update_table(job_id: str, new_status: str) -> None:
 
 
 def send_email_update(
-    client_email: str, firstname: str, status: str, job: list
+    client_email: str,
+    firstname: str,
+    status: str,
+    job: list,
 ) -> None:
     """
     Update user that their item has been
@@ -399,24 +365,27 @@ def send_email_update(
         message = (
             f"You workflow request completed successfully at {str(datetime.now())}."
         )
+        subject = "CID Workflow request notification: SUCCESSFUL"
     else:
-        message = f"I'm sorry but some / all of your workflow job request failed at {str(datetime.now())}.\nReport: {status}."
+        message = f"Your workflow job request failed at {str(datetime.now())[:16]}.\nReport: [ERROR] {status}."
+        subject = "CID Workflow request notification: FAILED"
 
-    subject = "CID Workflow request notification"
     body = f"""
 Hello {firstname.title()},
 
 {message}
 
 Your original request details:
+    Job number: {job[5]} Job name: {job[10]}
+
     Saved search: {job[6]}
+    Specific instructions: {job[13]}
+
     Activity code: {job[7]}
     Request type: {REQUEST_TYPE.get(job[8], job[8])}
     Request outcome: {job[9]}
-    Job description: {job[10]}
     Delivery date: {job[11]}
     Final destination: {job[12]}
-    Specific instructions: {job[13]}
     Client category: {CLIENTS.get(job[4], job[4])}
     Client name: {job[14]}
     Contact details: {job[15]}

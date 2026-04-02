@@ -18,6 +18,7 @@ import json
 class UnexpectedFieldError(ValueError):
     """Raised if a JSON contains unanticipated field"""
 
+
 def _extract_extra_field_errors(e: ValidationError) -> List[Tuple[str, str]]:
     """
     Returns list of (json_path, message) for extra-field errors.
@@ -42,6 +43,7 @@ class APIModel(BaseModel):
     Base model: does not tolerate unexpected fields initally to find
     all variables in sample of JSON data.
     """
+
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
@@ -115,6 +117,8 @@ class Season(APIModel):
     type: Optional[str] = None
     title: str = None
     number: int = None
+    total: Optional[int] = None
+    releaseDate: Optional[str] = None
     name: Optional[str] = None
     message: Optional[str] = None
     attribute: Optional[List[str]] = None
@@ -125,8 +129,18 @@ class Season(APIModel):
     summary: Optional[Summary] = None
     media: Optional[List[Media]] = None
     related: Optional[List[Related]] = None
+    subject: Optional[List[Subject]] = None
     link: Optional[List[Any]] = None
     deeplink: Optional[List[Any]] = None
+    productionYear: Optional[int] = None
+    runtime: Optional[int] = None
+    vod: Optional[Dict[str, Any]] = None
+    keywords: Optional[List[Any]] = None
+    mood: Optional[List[Any]] = None
+    themes: Optional[List[Any]] = None
+    soundtrack: Optional[List[Any]] = None
+    locations: Optional[List[Any]] = None
+    imdbId: Optional[str] = None
     created_date: Optional[datetime] = Field(default=None, alias="createdAt")
     updated_date: Optional[datetime] = Field(default=None, alias="updatedAt")
     deleted_date: Optional[datetime] = Field(default=None, alias="deletedAt")

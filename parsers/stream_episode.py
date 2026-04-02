@@ -18,6 +18,7 @@ import json
 class UnexpectedFieldError(ValueError):
     """Raised if a JSON contains unanticipated field"""
 
+
 def _extract_extra_field_errors(e: ValidationError) -> List[Tuple[str, str]]:
     """
     Returns list of (json_path, message) for extra-field errors.
@@ -42,6 +43,7 @@ class APIModel(BaseModel):
     Base model: does not tolerate unexpected fields initally to find
     all variables in sample of JSON data.
     """
+
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
@@ -136,6 +138,7 @@ class Episode(APIModel):
     link: Optional[List[Any]] = None
     deeplink: Optional[List[Any]] = None
     vod: Optional[Dict[str, Any]] = None
+    imdbId: Optional[str] = None
     created_date: Optional[datetime] = Field(default=None, alias="createdAt")
     updated_date: Optional[datetime] = Field(default=None, alias="updatedAt")
     deleted_date: Optional[datetime] = Field(default=None, alias="deletedAt")

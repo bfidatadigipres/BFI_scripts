@@ -29,7 +29,16 @@ find "$CHECKSUM_PATH" -maxdepth 1 -name '*.md5' | sort -R |  sort -n -k10.12 > "
 echo "List of MD5 files to be processed:" >> "$LOG"
 cat "$CHECKSUM_LIST" >> "$LOG"
 
-# Pass list to Python3 multiple jobs
-grep '/mnt/' "${CHECKSUM_LIST}" | parallel --jobs 10 "$PY3_LAUNCH ${CODE_LEAD}hashes/checksum_clean_up.py {}"
+if [ -s "${CHECKSUM_LIST}" ]
+  then
+    echo " ===================== SHELL SCRIPT LAUNCH CHECKSUM_CLEAN_UP =========================== " >> "${LOG}"
+    echo "List of MD5 files to be processed:" >> "$LOG"
+    cat "$CHECKSUM_LIST" >> "$LOG"
 
-echo " =============================== SHELL SCRIPT END ====================================== " >> "${LOG}"
+    # Pass list to Python3 multiple jobs
+    grep '/mnt/' "${CHECKSUM_LIST}" | parallel --jobs 10 "$PY3_LAUNCH ${CODE_LEAD}hashes/checksum_clean_up.py {}"
+
+    echo " =============================== SHELL SCRIPT END ====================================== " >> "${LOG}"
+  else
+    exit 0
+fi

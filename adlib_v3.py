@@ -14,8 +14,6 @@ from typing import Any, Final, Iterable, Mapping, Optional, List, Dict
 
 import requests
 import xmltodict
-from dicttoxml import dicttoxml
-from lxml import etree, html
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
@@ -426,49 +424,6 @@ def create_grouped_data(priref, grouping, field_pairs):
         return payload + payload_mid + payload_end
     else:
         return payload_mid
-
-
-# (obj) -> list[str]:
-def get_fragments(obj):
-    """
-    Validate given XML string(s), or create valid XML
-    fragment from dictionary / list of dictionaries
-    Attribution @ Edward Anderson
-    """
-
-    if not isinstance(obj, list):
-        obj: list = [obj]
-
-    data = []
-    for item in obj:
-        if isinstance(item, str):
-            sub_item: str = item
-        else:
-            sub_item: str = dicttoxml(item, root=False, attr_type=False)
-            if "<item>" in str(sub_item):
-                ss = (
-                    str(sub_item)
-                    .lstrip("b'")
-                    .rstrip("'")
-                    .replace("<item>", "")
-                    .replace("</item>", "")
-                )
-                sub_item = ss.encode()
-        # Append valid XML fragments to `data`
-        try:
-            list_item = html.fragments_fromstring(
-                sub_item, parser=etree.XMLParser(remove_blank_text=True)
-            )
-            for itm in list_item:
-                #xml = etree.fromstring(
-                #    etree.tostring(itm), parser=etree.XMLParser(resolve_entities=False)
-                #)
-                xml = etree.fromstring(etree.tostring(itm))
-                data.append(etree.tostring(xml))
-        except Exception as err:
-            raise TypeError(f"Invalid XML:\n{sub_item}") from err
-
-    return data
 
 
 # (api: str, priref: str, comments: str) -> bool:

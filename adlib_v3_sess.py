@@ -13,8 +13,6 @@ from time import sleep
 from typing import Any, Dict, Final, Iterable, Optional, List, Dict
 
 import xmltodict
-from dicttoxml import dicttoxml
-from lxml import etree, html
 from requests import Session, exceptions, request
 from tenacity import retry, stop_after_attempt
 
@@ -430,42 +428,6 @@ def create_grouped_data(priref, grouping, field_pairs):
         return payload + payload_mid + payload_end
     else:
         return payload_mid
-
-
-# (obj: list[Any]):
-def get_fragments(obj):
-    """
-    Validate given XML string(s), or create valid XML
-    fragment from dictionary / list of dictionaries
-    Attribution @ Edward Anderson
-    """
-
-    if not isinstance(obj, list):
-        obj = [obj]
-
-    data = []
-    for item in obj:
-
-        if isinstance(item, str):
-            sub_item = item
-        else:
-            sub_item = dicttoxml(item, root=False, attr_type=False)
-
-        # Append valid XML fragments to `data`
-        try:
-            list_item = html.fragments_fromstring(
-                sub_item, parser=etree.XMLParser(remove_blank_text=True)
-            )
-            for itm in list_item:
-                #xml = etree.fromstring(
-                #    etree.tostring(itm), parser=etree.XMLParser(resolve_entities=False)
-                #)
-                xml = etree.fromstring(etree.tostring(itm))
-                data.append(etree.tostring(xml))
-        except Exception as err:
-            raise TypeError(f"Invalid XML:\n{sub_item}") from err
-
-    return data
 
 
 # (api: str, priref: str, comments: str, session: Optional[Session]=None) -> bool:

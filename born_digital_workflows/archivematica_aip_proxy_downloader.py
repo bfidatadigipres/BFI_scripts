@@ -48,7 +48,7 @@ def cid_retrieve(session: requests.Session) -> list[dict[str, str | None]]:
     hits, recs = adlib.retrieve_record(
         CID_API, "archivescatalogue", search, "0", session
     )
-    LOGGER.info("cid_retrieve(): Records found to process: %s", hits)
+    LOGGER.info("cid_retrieve(): Records found with AIPs: %s", hits)
     if hits is None:
         return None
     if hits == 0:
@@ -73,6 +73,8 @@ def cid_retrieve(session: requests.Session) -> list[dict[str, str | None]]:
             local_data["alternative_number_type2"] = alt_num_type_lst[1]
             local_data["alternative_number2"] = alt_num_lst[1]
         processing_dct.append(local_data)
+
+    LOGGER.info("cid_retrieve(): Records found that still need AIP downloads: %s", len(processing_dct))
 
     return processing_dct
 

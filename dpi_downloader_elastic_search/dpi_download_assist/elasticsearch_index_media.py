@@ -23,7 +23,7 @@ import utils
 API = os.environ.get("CID_API4")
 ES_PATH = os.environ.get("ES_SEARCH_PATH")
 LOG_PATH = os.environ.get("LOG_PATH")
-LOG = os.path.join(LOG_PATH, "elastic_search_media_indexing.log")
+LOG = os.path.join(LOG_PATH, "elasticsearch_index_media.log")
 CODE = os.environ.get("CODE")
 TXT_DUMP = os.path.join(CODE, "dpi_downloader_elastic_search/dpi_download_assist/media_prirefs.txt")
 logging.basicConfig(filename=LOG, level=logging.INFO, format="%(asctime)s %(message)s", filemode="w")
@@ -34,9 +34,8 @@ def call_cid_for_data():
     CID calls to get data and build txt lists
     """
     search = "(object.object_number->Df=item) and (imagen.media.original_filename=* and modification>today-2)"
-
     try:
-        response = requests.get(f"{API}?database=prirefmediaraw&search={search}&limit=0", timeout=30)
+        response = requests.get(f"{API}?database=prirefmediaraw&search={search}&limit=0", timeout=300)
     except requests.exceptions.Timeout as err:
         print("Timed out at 30 seconds!")
         raise SystemExit(err) from err
@@ -54,12 +53,12 @@ def main():
     Launch media priref CID call
     then push priref list through to
     DPI browser
-    """
     if not utils.check_control("pause_scripts"):
         logging.info(
             "Script run prevented by downtime_control.json. Script exiting."
         )
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    """
     if not utils.cid_check(API):
         logging.warning("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
@@ -67,6 +66,7 @@ def main():
     call_cid_for_data()
     es = Elasticsearch(ES_PATH)
 
+    logging.info("Starting iteration of document: %s", TXT_DUMP)
     with open(TXT_DUMP) as txt_file:
         for count, line in enumerate(txt_file, 1):
             xml_text = ""
@@ -75,6 +75,7 @@ def main():
             print(priref)
             if count % 100 == 0:
                 print(f"{count} media prirefs processed!")
+                logging.info("%s media prirefs processed")
 
             search = f"priref={priref}"
             try:

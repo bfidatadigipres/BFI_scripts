@@ -314,12 +314,14 @@ def series_check(series_id):
 
         # series category codes, unsure if there's always two parts to category, selects longest
         series_category_codes = []
+        series_category_code = ""
         if len(val.category) >= 1:
             for num in range(0, len(val.category)):
                 series_category_codes.append(val.category[num].code or "")
         series_category_codes.sort(key=len, reverse=True)
-        series_category_code = series_category_codes[0]
-        print(f"series_check(): Series category code, longest: {series_category_code}")
+        if len(series_category_codes) > 0:
+            series_category_code = series_category_codes[0]
+            print(f"series_check(): Series category code, longest: {series_category_code}")
 
         return (
             series_description,
@@ -1950,6 +1952,7 @@ def create_cid_item_record(
         print("Title article is not present")
 
     item_values_xml = adlib.create_record_data(CID_API, "items", "", item_values)
+    print(item_values_xml)
     if item_values_xml is None:
         return None
 

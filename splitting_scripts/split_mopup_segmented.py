@@ -104,6 +104,7 @@ def main():
     hardcode 01of01 filename. If hits > 1 use models.Carrier
     to generate part whole and print to log for test period
     """
+
     if not utils.check_control("split_control_delete") or not utils.check_control(
         "split_control_h22"
     ):
@@ -116,17 +117,19 @@ def main():
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit()
 
-    logger.info("======================== SPLIT MOPUP START ==========================")
     # Iterate targets
+    logger.info("======================== SPLIT MOPUP START ==========================")
     for media_target in TARGETS:
 
         # Path to source media
         root = os.path.join(media_target, "segmented")
+
         if not utils.check_storage(root):
             logger.info(
                 "Skipping path %s - prevented by Storage Control document.", root
             )
             continue
+
         processing = os.path.split(media_target)[0]
         autoingest = os.path.join(os.path.split(processing)[0], "autoingest")
         print(f"** Targeting: {root}")

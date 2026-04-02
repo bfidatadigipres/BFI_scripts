@@ -21,7 +21,6 @@ LOG_PATH = os.environ.get("LOG_PATH")
 ADMIN = os.environ.get("ADMIN")
 CSV_PATH = os.path.join(ADMIN, "code/elasticsearch/elasticsearch_deletion.csv")
 
-
 # Setup logging
 logger = logging.getLogger("elasticsearch_delete_items")
 hdlr = logging.FileHandler(os.path.join(LOG_PATH, "elasticsearch_delete_items.log"))

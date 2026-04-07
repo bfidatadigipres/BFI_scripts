@@ -62,7 +62,7 @@ def find_repeating_characters(file_list):
         for file in file_list:
             if file.startswith(uniq):
                 uniq_group.append(file)
-        if uniq_group:
+        if len(uniq_group) > 1:
             groups[uniq] = uniq_group
 
     return groups
@@ -121,16 +121,17 @@ def main():
             moves = splitter(files_to_move, 4)
         elif folders_total < 8:
             moves = splitter(files_to_move, 6)
-        elif folders_total =< 10:
+        elif folders_total <= 10:
             moves = splitter(files_to_move, 7)
         else:
             moves = splitter(files_to_move, 15)
 
         if len(moves) == 1:
-            new_path = move_folders[0][4:]
-            move(pth, lines, new_path)
+            for lines in moves[0]:
+                new_path = move_folders[0][4:]
+                move(pth, lines, new_path)
         else:
-            for num in range(0, len(moves)):                    
+            for num in range(0, len(moves)):
                 for lines in moves[num]:
                     new_path = move_folders[num][4:]
                     move(pth, lines, new_path)

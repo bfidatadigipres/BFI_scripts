@@ -7,10 +7,14 @@ from datetime import timedelta
 def get_silence_detection(input_file):
 
     cmd = [
-        "ffmpeg", "-i",
+        "ffmpeg",
+        "-i",
         input_file,
-        "-af", "silencedetect=noise=-31dB:d=0.4",
-        "-f", "null", "/dev/null"
+        "-af",
+        "silencedetect=noise=-31dB:d=0.4",
+        "-f",
+        "null",
+        "/dev/null",
     ]
     try:
         data = subprocess.run(

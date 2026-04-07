@@ -26,9 +26,7 @@ import utils
 
 # Global vars
 STORAGE = os.environ.get("QNAP_05")
-AUTOINGEST = os.path.join(
-    os.environ.get("AUTOINGEST_QNAP05"), "ingest/autodetect/"
-)
+AUTOINGEST = os.path.join(os.environ.get("AUTOINGEST_QNAP05"), "ingest/autodetect/")
 LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 
@@ -175,9 +173,15 @@ def main() -> None:
             continue
 
         LOGGER.info("Filename will be converted from %s to %s", fname, new_fname)
-        LOGGER.info("CID record matched to priref %s/object number %s", priref, cid_check)
+        LOGGER.info(
+            "CID record matched to priref %s/object number %s", priref, cid_check
+        )
 
-        refs = check_item(f"object.object_number='{cid_check}'", "media", ["reference_number", "imagen.media.original_filename"])
+        refs = check_item(
+            f"object.object_number='{cid_check}'",
+            "media",
+            ["reference_number", "imagen.media.original_filename"],
+        )
         ref_num = refs[0]
         imagen_name = refs[1]
 
@@ -186,7 +190,9 @@ def main() -> None:
             continue
         if ref_num == "":
             LOGGER.warning(
-                "Object number '%s' could not be retrieved from priref %s", cid_check, priref
+                "Object number '%s' could not be retrieved from priref %s",
+                cid_check,
+                priref,
             )
             continue
         if ref_num == "No hits":
@@ -200,7 +206,9 @@ def main() -> None:
             )
             continue
         if imagen_name == None or imagen_name == "No hits":
-            LOGGER.warning("Error retrieving data from CID with object_number: %s", cid_check)
+            LOGGER.warning(
+                "Error retrieving data from CID with object_number: %s", cid_check
+            )
             continue
         if len(imagen_name) > 0:
             LOGGER.warning(

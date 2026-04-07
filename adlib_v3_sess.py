@@ -379,7 +379,7 @@ def create_record_data(api, database, sess, priref, data=None):
                     output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
             output_list.append(f"</{group_key}>")
 
-    payload = ''.join(output_list)
+    payload = "".join(output_list)
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
 
 
@@ -390,11 +390,13 @@ def escape_xml(s: str) -> str:
     """
     if not isinstance(s, str):
         return s
-    return (s.replace("&", "&amp;")
-             .replace("<", "&lt;")
-             .replace(">", "&gt;")
-             .replace('"', "&quot;")
-             .replace("'", "&apos;"))
+    return (
+        s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
 
 
 # (priref: str, grouping: str, field_pairs: list[list[dict[Any, Any]]]) -> Optional[str]:

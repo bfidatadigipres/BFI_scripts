@@ -342,8 +342,7 @@ class BatchBuild:
                 "purpose": purpose,
             },
             "payload": {
-                "Pick items": {
-                },
+                "Pick items": {},
             },
         }
 

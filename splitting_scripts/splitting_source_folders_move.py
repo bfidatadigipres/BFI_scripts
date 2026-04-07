@@ -165,7 +165,7 @@ def splitter(arr: list[str], count: int) -> list[list[str]]:
                 priorities = priorities + v
 
     if priorities:
-        filtered = [ x for x in arr if x not in priorities ]
+        filtered = [x for x in arr if x not in priorities]
         count = count - 1
     else:
         filtered = arr

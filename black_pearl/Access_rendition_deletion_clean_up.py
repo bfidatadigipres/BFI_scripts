@@ -25,6 +25,7 @@ from typing import Final, Dict, List, Any
 
 # Local imports
 import bp_utils as bp
+
 sys.path.append(os.environ["CODE"])
 import utils
 
@@ -100,7 +101,9 @@ def main() -> None:
     if not utils.check_control("black_pearl"):
         sys.exit("Black Pearl facing code cannot run at this time.")
 
-    LOGGER.info("=== Access_Rendition_backup bucket clean up START ====================")
+    LOGGER.info(
+        "=== Access_Rendition_backup bucket clean up START ===================="
+    )
     for row in yield_csv_rows(CSV_PTH):
         print(row)
         LOGGER.info("Row entry: %s", row[1])
@@ -112,19 +115,28 @@ def main() -> None:
 
         obj_list = bp.get_object_details(fname, BUCKET)
         if obj_list is None or len(obj_list) == 0:
-            LOGGER.info("SKIP: Unable to retrieve data from Black Pearl on file: %s", fname)
+            LOGGER.info(
+                "SKIP: Unable to retrieve data from Black Pearl on file: %s", fname
+            )
             continue
 
         LOGGER.info("Retrieved %s items for file: %s", len(obj_list), fname)
         if len(obj_list) == 1:
-            LOGGER.info("SKIP: File %s has just returned one version - checking Latest is true", fname)
+            LOGGER.info(
+                "SKIP: File %s has just returned one version - checking Latest is true",
+                fname,
+            )
             if obj_list[0].get("Latest") != "true":
                 version_id = obj_list[0].get("Id")
                 confirm = bp.set_latest_flag_true(BUCKET, fname, version_id)
                 if confirm:
                     LOGGER.info("Set %s - %s latest status to True", fname, version_id)
                 else:
-                    LOGGER.warning("Unable to set %s - %s status to Latest is True", fname, version_id)
+                    LOGGER.warning(
+                        "Unable to set %s - %s status to Latest is True",
+                        fname,
+                        version_id,
+                    )
             continue
 
         preserved_item, to_delete = extract_objects_sort(obj_list)
@@ -133,7 +145,9 @@ def main() -> None:
 
         LOGGER.info(
             "Preserving %s with creation date %s and version Id %s",
-            fname, preserved_item[0], preserved_item[1]
+            fname,
+            preserved_item[0],
+            preserved_item[1],
         )
         LOGGER.info(
             "Item creation dates and version_ids for deletion:\n%s\n%s",
@@ -151,12 +165,16 @@ def main() -> None:
         obj_list = bp.get_object_details(fname, BUCKET)
         version_id = obj_list[0].get("Id")
         if len(obj_list) != 1:
-            LOGGER.warning("More than one item remains after deletion run... %s\n", obj_list)
+            LOGGER.warning(
+                "More than one item remains after deletion run... %s\n", obj_list
+            )
         else:
             if bp.set_latest_flag_true(fname, BUCKET, version_id):
                 LOGGER.info("Set Latest flag to True for %s - %s\n", fname, version_id)
 
-    LOGGER.info("=== Access_Rendition_backup bucket clean up END ======================")
+    LOGGER.info(
+        "=== Access_Rendition_backup bucket clean up END ======================"
+    )
 
 
 def delete_existing_proxy(fname: str, deletions: dict[str, str], total) -> bool:
@@ -180,7 +198,9 @@ def delete_existing_proxy(fname: str, deletions: dict[str, str], total) -> bool:
             obj_list = bp.get_object_list_items(fname)
             check = int(total) - count
             if len(obj_list) != check:
-                LOGGER.waring("** Potential deletion failure with version %s / %s", val, key)
+                LOGGER.waring(
+                    "** Potential deletion failure with version %s / %s", val, key
+                )
             LOGGER.info("Successfully deletion of version %s created on %s", val, key)
 
     print(count, total)

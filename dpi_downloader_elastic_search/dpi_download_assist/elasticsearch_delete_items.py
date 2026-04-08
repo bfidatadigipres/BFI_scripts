@@ -49,13 +49,17 @@ def main():
 
     try:
         client_count = client.count(index=index_name)
-        logger.info("Index %s contains %s documents initially.", index_name, client_count.get("count"))
+        logger.info(
+            "Index %s contains %s documents initially.",
+            index_name,
+            client_count.get("count"),
+        )
     except es.TransportError as err:
         logger.error("TransportError before deletion: %s", err.info)
 
     logger.info("Comparing Clients to CSV contents...")
     try:
-        with open(CSV_PATH, 'r', encoding='utf-8') as file:
+        with open(CSV_PATH, "r", encoding="utf-8") as file:
             reader = csv.reader(file)
             success = 0
             skip = 0
@@ -69,7 +73,7 @@ def main():
                 doc_id = row[0].strip()
                 try:
                     res = client.delete(index=index_name, id=doc_id, ignore=[404])
-                    if res.get('result') == 'deleted':
+                    if res.get("result") == "deleted":
                         success += 1
                         logger.info("Successfully deleted %s", doc_id)
                     else:
@@ -78,8 +82,10 @@ def main():
                     logger.error("Error deleting %s: %s", doc_id, e.info)
 
         final_count = client.count(index=index_name)
-        logger.info("Documents deleted: %s, Skipped (already deleted/empty): %s", success, skip)
-        logger.info("Documents remaining in index: %s", final_count.get('count'))
+        logger.info(
+            "Documents deleted: %s, Skipped (already deleted/empty): %s", success, skip
+        )
+        logger.info("Documents remaining in index: %s", final_count.get("count"))
 
     except FileNotFoundError:
         logger.error("CSV file not found.")

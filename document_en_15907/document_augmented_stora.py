@@ -321,7 +321,9 @@ def series_check(series_id):
         series_category_codes.sort(key=len, reverse=True)
         if len(series_category_codes) > 0:
             series_category_code = series_category_codes[0]
-            print(f"series_check(): Series category code, longest: {series_category_code}")
+            print(
+                f"series_check(): Series category code, longest: {series_category_code}"
+            )
 
         return (
             series_description,

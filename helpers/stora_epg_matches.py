@@ -7,15 +7,14 @@ from pathlib import Path
 from tenacity import retry, wait_fixed
 import logging
 
-#LOGGING
-LOG = sys.argv[1].split('/')[-1] + '_matches.log'
+# LOGGING
+LOG = sys.argv[1].split("/")[-1] + "_matches.log"
 logger = logging.getLogger("flask_logger")
 hdlr = logging.FileHandler(LOG)
 formatter = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
-
 
 
 sys.path.append(os.environ["CODE"])
@@ -127,7 +126,7 @@ CHANNELS = {
 
 def get_stora_data(fullpath: str):
     # get channel name + broadcast_channel
-    channel_data = fullpath.split('/')[-2]
+    channel_data = fullpath.split("/")[-2]
     print(channel_data)
     for key, val in CHANNELS.items():
         if f"/{key}/" in fullpath:
@@ -138,32 +137,32 @@ def get_stora_data(fullpath: str):
             except (IndexError, TypeError, KeyError) as err:
                 print(err)
 
-    with open(fullpath, 'r') as file:
+    with open(fullpath, "r") as file:
         info_json = json.load(file)
-        date_time = info_json.get('item')[0]['dateTime']
+        date_time = info_json.get("item")[0]["dateTime"]
         print(f"date_time: {date_time}")
-        dates = datetime.fromisoformat(date_time[:-1]).strftime('%Y-%m-%d %H:%M:%S')
+        dates = datetime.fromisoformat(date_time[:-1]).strftime("%Y-%m-%d %H:%M:%S")
         print(f"Dates: {dates}")
         date, time_str = utils.check_bst_adjustment(dates)
-        title = info_json.get('item')[0].get('title')
-        duration =  info_json.get('item')[0].get('duration')
+        title = info_json.get("item")[0].get("title")
+        duration = info_json.get("item")[0].get("duration")
         if duration is None:
             duration = 0
-        asset_title = info_json.get('item')[0].get('asset').get('title')
+        asset_title = info_json.get("item")[0].get("asset").get("title")
         if asset_title is None:
-             asset_title = ''
-        asset_id = info_json.get('item')[0].get('asset').get('id')
+            asset_title = ""
+        asset_id = info_json.get("item")[0].get("asset").get("id")
         certification = info_json["item"][0].get("certification").get("bbfc")
         if certification is None:
-          certification = ''
+            certification = ""
         group = info_json["item"][0].get("meta").get("group")
         if group is None:
-           group = ''
+            group = ""
         group = str(group)
         attribute = info_json["item"][0].get("attribute")
         asset_attribute = info_json["item"][0].get("asset").get("attribute")
         if asset_attribute is None:
-           asset_attribute = []
+            asset_attribute = []
         list_attributes = attribute + asset_attribute + [group] + [certification]
 
         if "bbc" in fullpath or "cbeebies" in fullpath or "cbbc" in fullpath:
@@ -232,13 +231,34 @@ def get_stora_data(fullpath: str):
             print(f"Broadcast company set to Together TV in {fullpath}")
         else:
             broadcast_company = None
-    return date, time_str, title, asset_title, channel, asset_id, duration, certification, list_attributes, broadcast_company
+    return (
+        date,
+        time_str,
+        title,
+        asset_title,
+        channel,
+        asset_id,
+        duration,
+        certification,
+        list_attributes,
+        broadcast_company,
+    )
 
-@retry(wait = wait_fixed(10))
-def adlib_search(channel: str, date: str, time: str, search: str, database: str = "manifestations", limit: str = "1"):
-    search =  f'grouping.lref="398775" and broadcast_channel = "{channel}" and transmission_date = "{date}" and transmission_start_time = "{time}"'
-    #print(search)
-    hit, record = adlib.retrieve_record(os.environ.get("CID_API4"), database, search, limit)
+
+@retry(wait=wait_fixed(10))
+def adlib_search(
+    channel: str,
+    date: str,
+    time: str,
+    search: str,
+    database: str = "manifestations",
+    limit: str = "1",
+):
+    search = f'grouping.lref="398775" and broadcast_channel = "{channel}" and transmission_date = "{date}" and transmission_start_time = "{time}"'
+    # print(search)
+    hit, record = adlib.retrieve_record(
+        os.environ.get("CID_API4"), database, search, limit
+    )
     return hit, record
 
 
@@ -247,19 +267,32 @@ if __name__ == "__main__":
     count = 0
     for batch_start in range(1, 13, BATCH_SIZE):
         batch_end = min(batch_start + BATCH_SIZE - 1, 12)
-        output_files = OUTPUT_DIR / f"results_2021_{batch_start:02d}_{batch_end:02d}.csv"
+        output_files = (
+            OUTPUT_DIR / f"results_2021_{batch_start:02d}_{batch_end:02d}.csv"
+        )
 
         row_written = 0
         writer = None
 
-        with open(output_files, 'a+', newline="") as csvfile:
+        with open(output_files, "a+", newline="") as csvfile:
             for month in range(batch_start, batch_end + 1):
                 month_dir = BASE_DIR / f"{month:02d}"
                 list_of_files = glob.glob(str(month_dir / "*/*/*.json"))
                 for path in list_of_files:
                     print(f"Processing row {path}")
                     logger.info(f"Processing row {path}")
-                    date, time, json_title, asset_title, channel, asset_id, duration, certification, list_attributes, broadcast_company = get_stora_data(path)
+                    (
+                        date,
+                        time,
+                        json_title,
+                        asset_title,
+                        channel,
+                        asset_id,
+                        duration,
+                        certification,
+                        list_attributes,
+                        broadcast_company,
+                    ) = get_stora_data(path)
                     print(f"Date: {date}")
                     print(f"time: {time}")
                     print(f"certs :  {certification}")
@@ -270,32 +303,53 @@ if __name__ == "__main__":
                     elif asset_title is None:
                         title_for_split = json_title
                     else:
-                        title_bare = "".join(str for str in asset_title if str.isalnum())
+                        title_bare = "".join(
+                            str for str in asset_title if str.isalnum()
+                        )
                         print(title_bare)
                         title_for_split = json_title
 
-                    title_split, title_article_split = title_article.splitter(title_for_split, 'en')
+                    title_split, title_article_split = title_article.splitter(
+                        title_for_split, "en"
+                    )
                     title_split = title_split.replace("\xe2\x80\x99", "'")
-                    search =  f'grouping.lref="398775" and broadcast_channel = "{channel}" and transmission_date = "{date}" and transmission_start_time = "{time}"'
+                    search = f'grouping.lref="398775" and broadcast_channel = "{channel}" and transmission_date = "{date}" and transmission_start_time = "{time}"'
                     logger.info(f"Adlib search: {search}")
-                    #print(search)
-                    hit, record = adlib_search(channel, date, time, search, database= "manifestations", limit = "1")
+                    # print(search)
+                    hit, record = adlib_search(
+                        channel,
+                        date,
+                        time,
+                        search,
+                        database="manifestations",
+                        limit="1",
+                    )
                     logger.info(f"Adlib hits: {hit}")
                     logger.info(f"Adlib record: {record}")
                     if record is None:
-                        print("orginal search failed, trying new search with different title")
-                        logger.info("orginal search failed, trying new search with different title")
+                        print(
+                            "orginal search failed, trying new search with different title"
+                        )
+                        logger.info(
+                            "orginal search failed, trying new search with different title"
+                        )
                         continue
                     priref = adlib.retrieve_field_name(record[0], "priref")
                     title_record = adlib.retrieve_field_name(record[0], "title")
                     logger.info(f"Adlib title record: {title_record}")
-                    cid_title_split, cid_title_article_split = title_article.splitter(title_record[0], 'en')
-                    alternative_number = adlib.retrieve_field_name(record[0], "alternative_number")
+                    cid_title_split, cid_title_article_split = title_article.splitter(
+                        title_record[0], "en"
+                    )
+                    alternative_number = adlib.retrieve_field_name(
+                        record[0], "alternative_number"
+                    )
                     print(record[0])
                     arts_title = adlib.retrieve_field_name(record[0], "title.article")
-                    utb_content = f"{','.join(str(x) for x in list_attributes if len(x) > 0)}"
+                    utb_content = (
+                        f"{','.join(str(x) for x in list_attributes if len(x) > 0)}"
+                    )
                     if hit >= 1:
-                        count+=1
+                        count += 1
                         row = {
                             "filepath": path,
                             "priref": priref[0],
@@ -311,8 +365,8 @@ if __name__ == "__main__":
                             "alternative_number.type": "PATV asset id",
                             "alternative_number": asset_id,
                             "utb.fieldname": "EPG attributes",
-                            "utb.content": utb_content
-                            }
+                            "utb.content": utb_content,
+                        }
                         logger.info(f"Matched row: {row}")
 
                         print(count)

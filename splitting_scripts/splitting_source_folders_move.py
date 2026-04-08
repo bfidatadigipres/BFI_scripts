@@ -37,11 +37,13 @@ def look_for_matches(fname, pth):
     source folders, and return source/<num>
     """
     match = fname[:7]
-    for root, _, files in os.walk(pth):
-        for file in files:
-            if file.startswith(match):
-                if file != fname:
-                    return root
+    for root, dirs, _ in os.walk(pth):
+        for dir in dirs:
+            files = [x for x in os.listdir(os.path.join(root, dir))]
+            for file in files:
+                if file.startswith(match):
+                    if file != fname:
+                        return os.path.join(root, dir)
 
     return None
 

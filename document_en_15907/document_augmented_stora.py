@@ -589,7 +589,7 @@ def fetch_lines(fullpath, json_dct):
     nested_id = check_id(fullpath)
     if nested_id is not None:
         if len(nested_id) == 36 and nested_id != series_id:
-            logger.warning(
+            logger.info(
                 "Retrieved Series ID %s likely not 'series' - exchanged for %s",
                 series_id,
                 nested_id,

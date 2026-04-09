@@ -184,7 +184,7 @@ def cid_series_query(series_id):
 
     print(f"CID SERIES QUERY: {series_id}")
     search = f'alternative_number="{series_id}"'
-    sleep(0.5)
+    # sleep(0.5)
     try:
         hit_count, series_query_result = adlib.retrieve_record(
             CID_API, "works", search, "1"
@@ -222,7 +222,7 @@ def find_repeats(asset_id):
     search = (
         f'alternative_number="{asset_id}" AND alternative_number.type="PATV asset id"'
     )
-    sleep(0.5)
+    # sleep(0.5)
     hits, result = adlib.retrieve_record(CID_API, "manifestations", search, "1")
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
@@ -234,7 +234,7 @@ def find_repeats(asset_id):
         man_priref = adlib.retrieve_field_name(result[0], "priref")[0]
     except (IndexError, TypeError, KeyError):
         return None
-    sleep(0.5)
+    # sleep(0.5)
     full_result = adlib.retrieve_record(
         CID_API,
         "manifestations",
@@ -1317,7 +1317,7 @@ def create_series(
     )
     if series_values_xml is None:
         return None
-    sleep(0.5)
+    # sleep(0.5)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
         work_rec = adlib.post(CID_API, series_values_xml, "works", "insertrecord")
@@ -1674,12 +1674,12 @@ def create_work(
 
     work_id = work_rec = ""
     # Start creating CID Work record
-    sleep(0.5)
+    # sleep(0.5)
     work_values_xml = adlib.create_record_data(CID_API, "works", "", work_values)
     if work_values_xml is None:
         return None
     try:
-        sleep(0.5)
+        # sleep(0.5)
         logger.info("Attempting to create Work record for item %s", epg_dict["title"])
         work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
         print(f"create_work(): {work_rec}")
@@ -1696,7 +1696,7 @@ def create_work(
 
     if "Duplicate key in unique index 'invno':" in str(work_rec):
         try:
-            sleep(0.5)
+            # sleep(0.5)
             logger.info(
                 "Attempting to create Work record for item %s", epg_dict["title"]
             )
@@ -1878,7 +1878,7 @@ def create_manifestation(
     if man_values_xml is None:
         return None
     try:
-        sleep(0.5)
+        # sleep(0.5)
         logger.info("Attempting to create Manifestation record for item %s", title)
         man_rec = adlib.post(CID_API, man_values_xml, "manifestations", "insertrecord")
         print(f"create_manifestation(): {man_rec}")
@@ -1891,7 +1891,7 @@ def create_manifestation(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(man_rec):
         try:
-            sleep(0.5)
+            # sleep(0.5)
             logger.info("Attempting to create Manifestation record for item %s", title)
             man_rec = adlib.post(
                 CID_API, man_values_xml, "manifestations", "insertrecord"
@@ -1957,7 +1957,7 @@ def create_cid_item_record(
         return None
 
     try:
-        sleep(0.5)
+        # sleep(0.5)
         logger.info(
             "Attempting to create CID item record for item %s", epg_dict["title"]
         )
@@ -1974,7 +1974,7 @@ def create_cid_item_record(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(item_rec):
         try:
-            sleep(0.5)
+            # sleep(0.5)
             logger.info(
                 "Attempting to create CID item record for item %s", epg_dict["title"]
             )
@@ -2029,7 +2029,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_start + payload_mid + payload_end
     try:
-        sleep(0.5)
+        # sleep(0.5)
         response = adlib.post(CID_API, payload, "manifestations", "updaterecord")
         if response:
             logger.info(
@@ -2060,7 +2060,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         payload_end = "</record></recordList></adlibXML>"
         payload = payload_start + payload_mid + payload_end
         try:
-            sleep(0.5)
+            # sleep(0.5)
             response = adlib.post(CID_API, payload, "works", "updaterecord")
             if "priref" in str(response):
                 logger.info(

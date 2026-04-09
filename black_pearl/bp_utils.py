@@ -217,7 +217,6 @@ def get_object_list(
     return confirmed, md5, length
 
 
-
 def get_object_list_items(fname: str) -> Optional[List[Dict[str, Any]]]:
     """
     Get all details to check file persisted
@@ -238,9 +237,9 @@ def get_object_list_items(fname: str) -> Optional[List[Dict[str, Any]]]:
     except KeyError as err:
         print(err)
         obj_list = []
-    
+
     return obj_list
-    
+
 
 def put_directory(directory_pth: str, bucket: str) -> Optional[list[str]]:
     """
@@ -441,7 +440,9 @@ def set_latest_flag_true(fname: str, bucket: str, version_id: str) -> bool:
     - Type (DATA)
     """
 
-    r = ds3.UndeleteObjectSpectraS3Request(bucket_id=bucket, name=fname, version_id=version_id)
+    r = ds3.UndeleteObjectSpectraS3Request(
+        bucket_id=bucket, name=fname, version_id=version_id
+    )
     result = CLIENT.undelete_object_spectra_s3(r)
 
     confirmation = result.result

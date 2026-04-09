@@ -331,9 +331,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         val.meta.get("episodeTotal") and s_data.update(
             {"episode_total": val.meta.get("episodeTotal")}
         )
-        val.meta.get("imdbId") and s_data.update(
-            {"imdb_id": val.meta.get("imdbId")}
-        )
+        val.meta.get("imdbId") and s_data.update({"imdb_id": val.meta.get("imdbId")})
     if val.certification:
         val.certification.get("netflix") and s_data.update(
             {"cert_netflix": val.certification.get("netflix")}

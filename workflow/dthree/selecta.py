@@ -32,7 +32,9 @@ LOGS = os.environ["LOG_PATH"]
 CID_API = utils.get_current_api()
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
-SELECTIONS = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/dthree/selections.csv")
+SELECTIONS = os.path.join(
+    os.environ.get("CODE_DEPENDS"), "workflow/dthree/selections.csv"
+)
 
 
 def get_candidates():

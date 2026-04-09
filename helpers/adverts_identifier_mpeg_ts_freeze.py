@@ -18,11 +18,16 @@ def get_silence_detection(fpath):
     silence and frozen image - no output
     """
     cmd = [
-        "ffmpeg", "-i",
+        "ffmpeg",
+        "-i",
         fpath,
-        "-af", "silencedetect=noise=-31dB:d=0.4",
-        "-vf", "freezedetect=noise=-60dB:d=0.2",
-        "-f", "null", "/dev/null"
+        "-af",
+        "silencedetect=noise=-31dB:d=0.4",
+        "-vf",
+        "freezedetect=noise=-60dB:d=0.2",
+        "-f",
+        "null",
+        "/dev/null",
     ]
     try:
         data = subprocess.run(

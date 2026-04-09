@@ -328,9 +328,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         val.meta.get("episodeTotal") and s_data.update(
             {"episode_total": val.meta.get("episodeTotal")}
         )
-        val.meta.get("imdbId") and s_data.update(
-            {"imdb_id": val.meta.get("imdbId")}
-        )
+        val.meta.get("imdbId") and s_data.update({"imdb_id": val.meta.get("imdbId")})
     if val.certification:
         val.certification.get("amazon") and s_data.update(
             {"cert_amazon": val.certification.get("amazon")}
@@ -373,7 +371,6 @@ def cid_check_works(
     except Exception as err:
         LOGGER.warning(
             "cid_check_works(): Unable to access series data from CID using Series ID: %s\n%s",
- 
             patv_id,
             err,
         )

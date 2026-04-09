@@ -1,6 +1,7 @@
 """
 email_sender_dpi/app.py
 """
+
 import logging
 import os
 import sys
@@ -17,7 +18,19 @@ HOST = os.environ["HOST"]
 PORT = os.environ["PORT"]
 LOG = os.environ["EMAIL_LOG"]
 ALLOWED_BASE_PATH = os.environ.get("ALLOWED_BASE_PATH", "/mnt/bp_nas/admin/email_docs/")
-ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.csv', '.doc', 'docx', '.ods', ''}
+ALLOWED_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".pdf",
+    ".zip",
+    ".csv",
+    ".doc",
+    "docx",
+    ".ods",
+    "",
+}
 
 
 # Configure logging
@@ -34,6 +47,7 @@ app.secret_key = os.environ["flask_key"]
 
 if not app.secret_key:
     raise ValueError("flask_key environment variable must be set")
+
 
 def is_safe_path(filepath):
     try:
@@ -56,7 +70,10 @@ def is_safe_path(filepath):
         max_size = 6600 * 1024 * 1024
         file_size = requested_path.stat().st_size
         if file_size > max_size:
-            return False, f"File size ({file_size / (1024*1024):.2f}MB) exceeds maximum allowed size (660MB)"
+            return (
+                False,
+                f"File size ({file_size / (1024*1024):.2f}MB) exceeds maximum allowed size (660MB)",
+            )
 
         return True, None
 
@@ -64,10 +81,12 @@ def is_safe_path(filepath):
         logger.error(f"Path validation error: {str(e)}")
         return False, "Invalid file path"
 
+
 def is_valid_email(email):
     """Validate email format and domain."""
-    pattern = r'^[a-zA-Z0-9._%+-]+@bfi\.org\.uk$'
+    pattern = r"^[a-zA-Z0-9._%+-]+@bfi\.org\.uk$"
     return re.match(pattern, email) is not None
+
 
 def validate_input(email, subject, body, image_path):
     """
@@ -103,6 +122,7 @@ def validate_input(email, subject, body, image_path):
         return False, error
 
     return True, None
+
 
 @app.route("/", methods=["GET"])
 def index():
@@ -167,6 +187,7 @@ def send_email_with_image():
         flash("An unexpected error occurred. Please contact support.", "error")
         return render_template("error_page.html")
 
+
 @app.errorhandler(413)
 def request_entity_too_large(error):
     """Handle file size too large errors."""
@@ -186,6 +207,6 @@ def internal_error(error):
     logger.error(f"Internal server error: {str(error)}")
     return render_template("error_page.html"), 500
 
+
 if __name__ == "__main__":
     app.run(host=HOST, debug=False, port=PORT, use_reloader=False)
-

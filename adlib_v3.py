@@ -105,6 +105,7 @@ def get(api, query):
 
 
 # (api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
+@retry(stop=stop_after_attempt(3))
 def post(api, payload, database, method):
     """
     Send a POST request

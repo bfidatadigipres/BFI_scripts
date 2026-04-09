@@ -240,6 +240,7 @@ def find_repeats(asset_id, sess):
         "manifestations",
         f'priref="{man_priref}"',
         "1",
+        sess,
         ["alternative_number.type", "part_of_reference.lref"],
     )[1]
     if not full_result:

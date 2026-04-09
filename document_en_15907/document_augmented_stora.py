@@ -1340,6 +1340,7 @@ def create_series(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(work_rec):
         try:
+            sleep(1)
             logger.info(
                 "Attempting to create CID series record for %s", series_title_full
             )
@@ -1704,7 +1705,7 @@ def create_work(
 
     if "Duplicate key in unique index 'invno':" in str(work_rec):
         try:
-            sleep(0.5)
+            sleep(1)
             logger.info(
                 "Attempting to create Work record for item %s", epg_dict["title"]
             )
@@ -1899,7 +1900,7 @@ def create_manifestation(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(man_rec):
         try:
-            sleep(0.5)
+            sleep(1)
             logger.info("Attempting to create Manifestation record for item %s", title)
             man_rec = adlib.post(
                 CID_API, man_values_xml, "manifestations", "insertrecord", sess
@@ -1983,7 +1984,7 @@ def create_cid_item_record(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(item_rec):
         try:
-            sleep(0.5)
+            sleep(1)
             logger.info(
                 "Attempting to create CID item record for item %s", epg_dict["title"]
             )

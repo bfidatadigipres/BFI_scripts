@@ -272,7 +272,7 @@ def main():
                 f"{local_time()}\tINFO\tFile has already been processed. Exiting"
             )
             log_output(log_build)
-            sys.exist("File has already completed processing. Skipping")
+            sys.exit("File has already completed processing. Skipping")
         if os.path.exists(f"{check_name}.mp4"):
             delete_confirm = check_mod_time(f"{check_name}.mp4")
             if delete_confirm is True:

@@ -29,7 +29,9 @@ import utils
 
 # Global variables
 LOGS = os.environ["LOG_PATH"]
-SUB_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/dthree/submissions.csv")
+SUB_CSV = os.path.join(
+    os.environ.get("CODE_DEPENDS"), "workflow/dthree/submissions.csv"
+)
 SEL_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/dthree/selections.csv")
 ERR_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/dthree/errors.csv")
 CONFIG = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/dthree/config.yaml")

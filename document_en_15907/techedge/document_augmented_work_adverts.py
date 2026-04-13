@@ -221,7 +221,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
                 "input.notes": "Automated bulk record creation using data supplied by TechEdge"
             },
         ]
-        sleep(1)
+        sleep(0.25)
         minor_xml = adlib.create_record_data(CID_API, "thesaurus", "", minordct)
         minor_rec = adlib.post(CID_API, minor_xml, "thesaurus", "insertrecord")
         minor_priref = adlib.retrieve_field_name(minor_rec, "priref")[0]
@@ -266,7 +266,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
                 "input.notes": "Automated bulk record creation using data supplied by TechEdge"
             },
         ]
-        sleep(1)
+        sleep(0.25)
         mid_xml = adlib.create_record_data(CID_API, "thesaurus", "", middct)
         mid_rec = adlib.post(CID_API, mid_xml, "thesaurus", "insertrecord")
         mid_priref = adlib.retrieve_field_name(mid_rec, "priref")[0]
@@ -312,7 +312,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
                 "input.notes": "Automated bulk record creation using data supplied by TechEdge"
             },
         ]
-        sleep(1)
+        sleep(0.25)
         maj_xml = adlib.create_record_data(CID_API, "thesaurus", "", majdct)
         maj_rec = adlib.post(CID_API, maj_xml, "thesaurus", "insertrecord")
         maj_priref = adlib.retrieve_field_name(maj_rec, "priref")[0]
@@ -371,7 +371,7 @@ def manage_advertiser_people(
                     "input.notes": "Automated bulk record creation using data supplied by TechEdge"
                 },
             ]
-            sleep(1)
+            sleep(0.25)
             agency_xml = adlib.create_record_data(CID_API, "people", "", agency_dct)
             agency_rec = adlib.post(CID_API, agency_xml, "people", "insertrecord")
             agency_priref = adlib.retrieve_field_name(agency_rec, "priref")[0]
@@ -468,7 +468,7 @@ def manage_advertiser_people(
                 "input.notes": "Automated bulk record creation using data supplied by TechEdge"
             },
         ]
-        sleep(1)
+        sleep(0.25)
         ad_xml = adlib.create_record_data(CID_API, "people", "", ad_dct)
         ad_rec = adlib.post(CID_API, ad_xml, "people", "insertrecord")
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
@@ -510,7 +510,7 @@ def manage_advertiser_people(
                 "input.notes": "Automated bulk record creation using data supplied by TechEdge"
             },
         ]
-        sleep(1)
+        sleep(0.25)
         hc_xml = adlib.create_record_data(CID_API, "people", "", hc_dct)
         hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
@@ -531,7 +531,7 @@ def manage_advertiser_people(
         # Overwrite the link to old holding company
         if hc_priref:
             ad_update = [{"priref": ad_priref}, {"part_of.lref": hc_priref}]
-            sleep(1)
+            sleep(0.25)
             ad_update_xml = adlib.create_record_data(CID_API, "people", "", ad_update)
             ad_update_rec = adlib.post(CID_API, ad_update_xml, "people", "updaterecord")
             if hc_priref in str(ad_update_rec):
@@ -555,7 +555,7 @@ def manage_advertiser_people(
                     "relationship.notes": f"TechEdge Holding Company changed from {old_hc_priref} - {hc_priref}"
                 },
             ]
-            sleep(1)
+            sleep(0.25)
             old_hc_xml = adlib.create_record_data(
                 CID_API, "people", "", old_hc_dct_update
             )
@@ -588,7 +588,7 @@ def manage_advertiser_people(
                 "input.notes": "Automated bulk record creation using data supplied by TechEdge"
             },
         ]
-        sleep(1)
+        sleep(0.25)
         ad_xml = adlib.create_record_data(CID_API, "people", "", ad_dct)
         ad_rec = adlib.post(CID_API, ad_xml, "people", "insertrecord")
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
@@ -622,7 +622,7 @@ def manage_advertiser_people(
                 "input.notes": "Automated bulk record creation using data supplied by TechEdge"
             },
         ]
-        sleep(1)
+        sleep(0.25)
         hc_xml = adlib.create_record_data(CID_API, "people", "", hc_dct)
         hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
@@ -1076,7 +1076,7 @@ def create_work(row, work_values: dict) -> Optional[str]:
 
     work_id = work_rec = ""
     # Start creating CID Work record
-    sleep(1)
+    sleep(0.25)
     work_values_xml = adlib.create_record_data(CID_API, "works", "", work_values)
     if work_values_xml is None:
         return None
@@ -1086,7 +1086,7 @@ def create_work(row, work_values: dict) -> Optional[str]:
     print(work_values_xml)
     print("=================================")
     try:
-        sleep(1)
+        sleep(0.25)
         LOGGER.info("Attempting to create Work record for item '%s'...", title)
         work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
         print(f"create_work(): {work_rec}")
@@ -1097,12 +1097,12 @@ def create_work(row, work_values: dict) -> Optional[str]:
 
     # Allow for retry if record priref creation crash:
     if len(work_rec) == 0:
-        sleep(1)
+        sleep(0.25)
         raise Exception("Recycle of API exception raised.")
 
     if "Duplicate key in unique index 'invno':" in str(work_rec):
         try:
-            sleep(1)
+            sleep(0.25)
             LOGGER.info("Attempting to create Work record for item %s", title)
             work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
             print(f"create_work(): {work_rec}")
@@ -1145,7 +1145,7 @@ def create_work(row, work_values: dict) -> Optional[str]:
     print("=================================")
 
     try:
-        sleep(1)
+        sleep(0.25)
         # adlib.write_lock(CID_API, work_id, "works")
         LOGGER.info("Attempting to create credit data for Work record '%s'...", work_id)
         work_rec = adlib.post(CID_API, work_cred_xml, "works", "updaterecord")
@@ -1206,7 +1206,7 @@ def create_manifestation(
     if man_values_xml is None:
         return None
     try:
-        sleep(1)
+        sleep(0.25)
         LOGGER.info(
             "Attempting to create Manifestation record for item '%s'...", row.brand
         )
@@ -1219,7 +1219,7 @@ def create_manifestation(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(man_rec):
         try:
-            sleep(1)
+            sleep(0.25)
             LOGGER.info(
                 "Retry creation of Manifestation record for item '%s'...", row.brand
             )
@@ -1261,7 +1261,7 @@ def create_manifestation(
     print("=================================")
 
     try:
-        sleep(1)
+        sleep(0.25)
         LOGGER.info("Attempting to append UTB data to record '%s'...", manifestation_id)
         man_rec_update = adlib.post(CID_API, utb_xml, "manifestations", "updaterecord")
         print(f"create_manifestation(): {man_rec_update}")

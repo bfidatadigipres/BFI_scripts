@@ -423,15 +423,16 @@ def manage_advertiser_people(
         search = f"(name='{holding_comp.strip()}' and activity_type='Sponsor' and source='TechEdge adverts data supply')"
         hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
         if hits >= 1:
-            hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]               
+            hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         else:
             make_hc = True
             hc_priref = ""
 
     if ad_parent_pri and hc_priref:
+        print(f"******* Advert parent priref {ad_parent_pri} / Holding Company priref {hc_priref} *********")
         if ad_parent_pri != hc_priref:
             # Overwrite the link to old holding company
-            LOGGER.info("*** Holding Company update for existing Advertiser pair ***")
+            LOGGER.info("*** Holding Company %s update for existing Advertiser %s ***", hc_priref, ad_priref)
             ad_update = [{"part_of.lref": hc_priref}]
             sleep(0.25)
             ad_update_xml = adlib.create_record_data(CID_API, "people", ad_priref, ad_update)
@@ -443,7 +444,7 @@ def manage_advertiser_people(
             else:
                 LOGGER.warning(
                     "Failure to update new Holding Company priref to Advertiser record: %s",
-                    ad_update_rec,
+                    ad_update_xml,
                 )
 
             # Move connection broken above to relationship field
@@ -452,14 +453,14 @@ def manage_advertiser_people(
                 {"relationship.lref": ad_priref},
                 {"relationship.date.end": date_now},
                 {
-                    "relationship.notes": f"TechEdge Holding Company changed from <{ad_parent_pri}> to <{hc_priref}>"
+                    "relationship.notes": f"TechEdge Holding Company changed from <{ad_parent_pri}> - <{hc_priref}>"
                 },
             ]
             sleep(0.25)
             old_hc_xml = adlib.create_record_data(
                 CID_API, "people", ad_parent_pri, old_hc_dct_update
             )
-            LOGGER.info(old_hx_xml)
+            LOGGER.info(old_hc_xml)
             hc_rec = adlib.post(CID_API, old_hc_xml, "people", "updaterecord")
             if date_now in str(hc_rec):
                 LOGGER.info(
@@ -468,7 +469,7 @@ def manage_advertiser_people(
             else:
                 LOGGER.warning(
                     "Failure to update old Holding Company relationships for Advertiser record: %s",
-                    ad_update_rec,
+                    ad_update_xml,
                 )
 
     elif make_hc is False and make_ad is False:

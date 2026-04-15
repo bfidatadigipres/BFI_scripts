@@ -459,6 +459,7 @@ def manage_advertiser_people(
             old_hc_xml = adlib.create_record_data(
                 CID_API, "people", ad_parent_pri, old_hc_dct_update
             )
+            LOGGER.info(old_hx_xml)
             hc_rec = adlib.post(CID_API, old_hc_xml, "people", "updaterecord")
             if date_now in str(hc_rec):
                 LOGGER.info(

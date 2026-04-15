@@ -349,7 +349,7 @@ def manage_advertiser_people(
         LOGGER.info("Skipping Agency as 'Missing' found in field")
         agency_priref = ""
     else:
-        search = f"(name='{agency.strip()}' and source='TechEdge adverts data supply')"
+        search = f"(name='{agency.strip()}' and activity_type='Advertising Agency' and source='TechEdge adverts data supply')"
         hits, rec = adlib.retrieve_record(CID_API, "people", search, "1")
         if hits >= 1:
             agency_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
@@ -392,7 +392,7 @@ def manage_advertiser_people(
     make_hc = False
     make_ad = False
 
-    search = f"(name='{advertiser.strip()}' and source='TechEdge adverts data supply')"
+    search = f"(name='{advertiser.strip()}' and activity_type='Sponsor' and source='TechEdge adverts data supply' and part_of='*')"
     hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
     if hits >= 1:
         ad_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
@@ -408,51 +408,76 @@ def manage_advertiser_people(
         make_ad = True
         ad_priref = ad_parent_pri = ad_parent = ""
 
-    search = f"priref='{ad_parent_pri}"
-    hits, rec = adlib.retrieve_record(CID_API, "people", search, "1")
-    if hits == 1:
-        hc_name = adlib.retrieve_field_name(rec[0], "name")[0]
-        if hc_name == holding_comp.strip():
-            hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-            parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
-        else:
-            search = f"(name='{holding_comp.strip()}' and source='TechEdge adverts data supply')"
-            hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
-            if hits >= 1:
+    hc_priref = ""
+    if ad_parent_pri:
+        search = f"priref='{ad_parent_pri}"
+        hits, rec = adlib.retrieve_record(CID_API, "people", search, "1")
+        if hits == 1:
+            hc_name = adlib.retrieve_field_name(rec[0], "name")[0]
+            if hc_name.startswith(holding_comp) or holding_comp.startswith(hc_name):
                 hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-                parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
-    else:
-        make_hc = True
-        hc_priref = parts_priref = ""
+            else:
+                hc_priref = ""
 
-    # If both exist but not linked create new holding comp/update advertiser
-    old_hc_priref = ""
-    if make_hc is False and make_ad is False:
-        if hc_priref != ad_parent_pri:
-            LOGGER.warning(
-                "Holding Company retrieved priref '%s' does not match parent of retrieved Advertiser '%s'",
-                hc_priref,
-                ad_parent,
-            )
-            old_hc_priref = hc_priref
-            make_hc = True
-        elif ad_priref not in parts_priref:
-            LOGGER.warning(
-                "Advertiser record '%s' and parent Holding Company parts found '%s' - No parent/child relations evident",
-                ad_priref,
-                parts_priref,
-            )
-            old_hc_priref = hc_priref
-            make_hc = True
+    if not hc_priref:
+        search = f"(name='{holding_comp.strip()}' and activity_type='Sponsor' and source='TechEdge adverts data supply')"
+        hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
+        if hits >= 1:
+            hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]               
         else:
-            LOGGER.info(
-                "Found Holding Company and matching Advertiser data already created: '%s' - %s / '%s' - %s",
-                advertiser,
-                ad_priref,
-                holding_comp,
-                hc_priref,
+            make_hc = True
+            hc_priref = ""
+
+    if ad_parent_pri and hc_priref:
+        if ad_parent_pri != hc_priref:
+            # Overwrite the link to old holding company
+            ad_update = [{"part_of.lref": hc_priref}]
+            sleep(0.25)
+            ad_update_xml = adlib.create_record_data(CID_API, "people", ad_priref, ad_update)
+            ad_update_rec = adlib.post(CID_API, ad_update_xml, "people", "updaterecord")
+            if hc_priref in str(ad_update_rec):
+                LOGGER.info(
+                    "* New Holding Company priref updated to Advertiser People record"
+                )
+            else:
+                LOGGER.warning(
+                    "Failure to update new Holding Company priref to Advertiser record: %s",
+                    ad_update_rec,
+                )
+
+            # Move connection broken above to relationship field
+            date_now = str(datetime.now())[:10]
+            old_hc_dct_update = [
+                {"relationship.lref": ad_priref},
+                {"relationship.date.end": date_now},
+                {
+                    "relationship.notes": f"TechEdge Holding Company changed from <{ad_parent_pri}> to <{hc_priref}>"
+                },
+            ]
+            sleep(0.25)
+            old_hc_xml = adlib.create_record_data(
+                CID_API, "people", ad_parent_pri, old_hc_dct_update
             )
-            return agency_priref, hc_priref, ad_priref
+            hc_rec = adlib.post(CID_API, old_hc_xml, "people", "updaterecord")
+            if date_now in str(hc_rec):
+                LOGGER.info(
+                    "* Old Holding Company relationship updated for Advertiser People record"
+                )
+            else:
+                LOGGER.warning(
+                    "Failure to update old Holding Company relationships for Advertiser record: %s",
+                    ad_update_rec,
+                )
+
+    elif make_hc is False and make_ad is False:
+        LOGGER.info(
+            "Found Holding Company and matching Advertiser data already created: '%s' - %s / '%s' - %s",
+            advertiser,
+            ad_priref,
+            holding_comp,
+            hc_priref,
+        )
+        return agency_priref, hc_priref, ad_priref
 
     if make_hc is False and make_ad is True:
         # Make new Advertiser and link to Holding Company parent
@@ -536,54 +561,11 @@ def manage_advertiser_people(
             )
             hc_priref = None
 
-        # Overwrite the link to old holding company
-        if hc_priref:
-            ad_update = [{"priref": ad_priref}, {"part_of.lref": hc_priref}]
-            sleep(0.25)
-            ad_update_xml = adlib.create_record_data(CID_API, "people", "", ad_update)
-            ad_update_rec = adlib.post(CID_API, ad_update_xml, "people", "updaterecord")
-            if hc_priref in str(ad_update_rec):
-                LOGGER.info(
-                    "* New Holding Company priref updated to Advertiser People record"
-                )
-            else:
-                LOGGER.warning(
-                    "Failure to update new Holding Company priref to Advertiser record: %s",
-                    ad_update_rec,
-                )
-
-        # Move connection broken above to relationship field
-        if old_hc_priref:
-            date_now = str(datetime.now())[:10]
-            old_hc_dct_update = [
-                {"priref": old_hc_priref},
-                {"relationship.lref": ad_priref},
-                {"relationship.date.end": date_now},
-                {
-                    "relationship.notes": f"TechEdge Holding Company changed from {old_hc_priref} - {hc_priref}"
-                },
-            ]
-            sleep(0.25)
-            old_hc_xml = adlib.create_record_data(
-                CID_API, "people", "", old_hc_dct_update
-            )
-            hc_rec = adlib.post(CID_API, old_hc_xml, "people", "updaterecord")
-            if date_now in str(hc_rec):
-                LOGGER.info(
-                    "* Old Holding Company relationship updated for Advertiser People record"
-                )
-            else:
-                LOGGER.warning(
-                    "Failure to update old Holding Company relationships for Advertiser record: %s",
-                    ad_update_rec,
-                )
-
     if make_hc is True and make_ad is True:
         ad_dct = [
             {"name": advertiser},
             {"name.type": "CASTCREDIT"},
             {"activity_type": "Sponsor"},
-            {"part_of.lref": hc_priref},
             {"party.class": "ORGANISATION"},
             {"source": "TechEdge adverts data supply"},
             {"record_access.user": "BFIiispublic"},
@@ -850,7 +832,7 @@ def main():
             LOGGER.info(
                 "SKIPPING: Manifestation exists for this Advert in this time slot.\n"
             )
-
+        sys.exit("Just one during test")
     LOGGER.info(
         "========== Adverts work documentation script END =======================================================\n"
     )

@@ -89,5 +89,5 @@ def iter_techedge_rows(csv_path: str):
     Iterate rows and validate
     with BaseModel above
     """
-    with open(csv_path, "r", encoding="latin1", newline="") as f:
+    with open(csv_path, 'r', encoding='utf-8', newline='') as f:
         yield from BasemodelCSVReader(f, Data)

@@ -882,7 +882,7 @@ def get_duration_total_parts(
     )
     print(f"Targeting path for next data: {csv_path}")
     rows = []
-    with open(csv_path, "r", encoding="latin1") as file:
+    with open(csv_path, 'r', encoding='utf-8') as file:
         for lines in file:
             parts = lines.strip().split(",")
             try:
@@ -1155,7 +1155,7 @@ def create_work(row, work_values: dict) -> Optional[str]:
         print(f"* Unable to create Work record for <{title}>\n{err}")
         LOGGER.warning("Unable to create Work record for <%s>", title)
         LOGGER.warning(err)
-    if row.agency in str(work_rec):
+    if advertiser in str(work_rec):
         LOGGER.info("Successfully updated Advert credit data to work.")
 
     return work_id

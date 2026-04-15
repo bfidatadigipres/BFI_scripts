@@ -79,7 +79,7 @@ def advert_exists_query(film_code: str) -> Optional[str]:
     Sends request for advert hit
     """
 
-    search = f"Df=WORK and alternative_number='{film_code}' and alternative_number.type='Unique advert identifier - TechEdge'"
+    search = f"(Df=WORK and alternative_number='{film_code}' and alternative_number.type='Unique advert identifier - TechEdge')"
     try:
         hit_count, record = adlib.retrieve_record(CID_API, "works", search, "0")
     except Exception as err:
@@ -349,9 +349,9 @@ def manage_advertiser_people(
         LOGGER.info("Skipping Agency as 'Missing' found in field")
         agency_priref = ""
     else:
-        search = f"name='{agency}' and source='TechEdge adverts data supply'"
+        search = f"(name='{agency.strip()}' and source='TechEdge adverts data supply')"
         hits, rec = adlib.retrieve_record(CID_API, "people", search, "1")
-        if hits == 1:
+        if hits >= 1:
             agency_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
             LOGGER.info("Agency matched to name %s - %s.", agency, agency_priref)
         else:
@@ -392,7 +392,7 @@ def manage_advertiser_people(
     make_hc = False
     make_ad = False
 
-    search = f"name='{advertiser}' and source='TechEdge adverts data supply'"
+    search = f"(name='{advertiser.strip()}' and source='TechEdge adverts data supply')"
     hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
     if hits >= 1:
         ad_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
@@ -408,9 +408,9 @@ def manage_advertiser_people(
         make_ad = True
         ad_priref = ad_parent_pri = ad_parent = ""
 
-    search = f"name='{holding_comp}' and source='TechEdge adverts data supply'"
+    search = f"(name='{holding_comp.strip()}' and source='TechEdge adverts data supply')"
     hits, rec = adlib.retrieve_record(CID_API, "people", search, "1")
-    if hits == 1:
+    if hits >= 1:
         hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
     else:

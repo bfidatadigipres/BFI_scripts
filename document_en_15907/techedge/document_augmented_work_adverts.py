@@ -392,41 +392,36 @@ def manage_advertiser_people(
     make_hc = False
     make_ad = False
 
-    search = f"(name='{advertiser.strip()}' and activity_type='Sponsor' and source='TechEdge adverts data supply' and part_of='*')"
+    search = f"(name='{advertiser}' and activity_type='Sponsor' and source='TechEdge adverts data supply' and part_of='*')"
     hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
     if hits >= 1:
         ad_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         ad_parent_pri = adlib.retrieve_field_name(rec[0], "part_of.lref")[0]
-        ad_parent = adlib.retrieve_field_name(rec[0], "part_of")[0]
+        ad_parent = adlib.retrieve_field_name(rec[0], "part_of")[0] # Name field
         LOGGER.info(
-            "Advertiser matched to name '%s' - '%s' and parent priref found '%s'.",
+            "Advertiser matched to name '%s' - '%s' and parent %s priref found '%s'.",
             advertiser,
             ad_priref,
-            ad_parent_pri,
+            ad_parent,
+            ad_parent_pri, #Correct
         )
     else:
         make_ad = True
         ad_priref = ad_parent_pri = ad_parent = ""
 
     hc_priref = ""
-    if ad_parent_pri:
-        search = f"priref='{ad_parent_pri}"
-        hits, rec = adlib.retrieve_record(CID_API, "people", search, "1")
-        if hits == 1:
-            hc_name = adlib.retrieve_field_name(rec[0], "name")[0]
-            if hc_name.startswith(holding_comp) or holding_comp.startswith(hc_name):
-                hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-            else:
-                hc_priref = ""
+    # Check ad_parent_pri has name same as holding_comp
+    if ad_parent_pri and ad_parent:
+        if ad_parent.startswith(holding_comp) or holding_comp.startswith(ad_parent):
+            hc_priref = ad_parent_pri
 
     if not hc_priref:
-        search = f"(name='{holding_comp.strip()}' and activity_type='Sponsor' and source='TechEdge adverts data supply')"
+        search = f"(name='{holding_comp}' and activity_type='Sponsor' and source='TechEdge adverts data supply' and parts='*')"
         hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
         if hits >= 1:
             hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         else:
             make_hc = True
-            hc_priref = ""
 
     if ad_parent_pri and hc_priref:
         print(f"******* Advert parent priref {ad_parent_pri} / Holding Company priref {hc_priref} *********")
@@ -835,7 +830,7 @@ def main():
             LOGGER.info(
                 "SKIPPING: Manifestation exists for this Advert in this time slot.\n"
             )
-        sys.exit("Just one during test")
+
     LOGGER.info(
         "========== Adverts work documentation script END =======================================================\n"
     )

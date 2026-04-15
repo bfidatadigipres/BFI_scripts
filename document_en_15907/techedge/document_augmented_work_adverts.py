@@ -408,11 +408,19 @@ def manage_advertiser_people(
         make_ad = True
         ad_priref = ad_parent_pri = ad_parent = ""
 
-    search = f"(name='{holding_comp.strip()}' and source='TechEdge adverts data supply')"
+    search = f"priref='{ad_parent_pri}"
     hits, rec = adlib.retrieve_record(CID_API, "people", search, "1")
-    if hits >= 1:
-        hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-        parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
+    if hits == 1:
+        hc_name = adlib.retrieve_field_name(rec[0], "name")[0]
+        if hc_name == holding_comp.strip():
+            hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
+            parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
+        else:
+            search = f"(name='{holding_comp.strip()}' and source='TechEdge adverts data supply')"
+            hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
+            if hits >= 1:
+                hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
+                parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
     else:
         make_hc = True
         hc_priref = parts_priref = ""

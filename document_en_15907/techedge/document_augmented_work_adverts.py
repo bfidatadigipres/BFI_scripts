@@ -431,6 +431,7 @@ def manage_advertiser_people(
     if ad_parent_pri and hc_priref:
         if ad_parent_pri != hc_priref:
             # Overwrite the link to old holding company
+            LOGGER.info("*** Holding Company update for existing Advertiser pair ***")
             ad_update = [{"part_of.lref": hc_priref}]
             sleep(0.25)
             ad_update_xml = adlib.create_record_data(CID_API, "people", ad_priref, ad_update)

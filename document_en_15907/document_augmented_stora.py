@@ -976,7 +976,7 @@ def main():
                         series_id,
                         month,
                         bbc_split,
-                        sess
+                        sess,
                     )
                     if not series_work_id:
                         logger.warning(
@@ -997,7 +997,7 @@ def main():
                 csv_description,
                 csv_dump,
                 epg_dict,
-                sess
+                sess,
             )
 
         if not work_priref:
@@ -1016,7 +1016,12 @@ def main():
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
         manifestation_priref = create_manifestation(
-            fullpath, work_priref, csv_actual_duration, manifestation_values, epg_dict, sess
+            fullpath,
+            work_priref,
+            csv_actual_duration,
+            manifestation_values,
+            epg_dict,
+            sess,
         )
 
         if not manifestation_priref:
@@ -1044,7 +1049,7 @@ def main():
             new_work,
             item_values,
             epg_dict,
-            sess
+            sess,
         )
         print(f"item_object_number: {item_data}")
 
@@ -1147,7 +1152,7 @@ def create_series(
     series_id,
     month,
     bbc_flag,
-    sess
+    sess,
 ):
     """
     Call function series_check(series_id) and build all data needed
@@ -1344,7 +1349,9 @@ def create_series(
             logger.info(
                 "Attempting to create CID series record for %s", series_title_full
             )
-            work_rec = adlib.post(CID_API, series_values_xml, "works", "insertrecord", sess)
+            work_rec = adlib.post(
+                CID_API, series_values_xml, "works", "insertrecord", sess
+            )
         except Exception as err:
             print(
                 f"* Unable to create Series Work record for <{series_title_full}> {err}"
@@ -1709,7 +1716,9 @@ def create_work(
             logger.info(
                 "Attempting to create Work record for item %s", epg_dict["title"]
             )
-            work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord", sess)
+            work_rec = adlib.post(
+                CID_API, work_values_xml, "works", "insertrecord", sess
+            )
             print(f"create_work(): {work_rec}")
         except Exception as err:
             print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
@@ -1889,7 +1898,9 @@ def create_manifestation(
     try:
         sleep(0.5)
         logger.info("Attempting to create Manifestation record for item %s", title)
-        man_rec = adlib.post(CID_API, man_values_xml, "manifestations", "insertrecord", sess)
+        man_rec = adlib.post(
+            CID_API, man_values_xml, "manifestations", "insertrecord", sess
+        )
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
@@ -1944,7 +1955,7 @@ def create_cid_item_record(
     new_work,
     item_values,
     epg_dict,
-    sess
+    sess,
 ):
     """
     Create CID Item record
@@ -1988,7 +1999,9 @@ def create_cid_item_record(
             logger.info(
                 "Attempting to create CID item record for item %s", epg_dict["title"]
             )
-            item_rec = adlib.post(CID_API, item_values_xml, "items", "insertrecord", sess)
+            item_rec = adlib.post(
+                CID_API, item_values_xml, "items", "insertrecord", sess
+            )
             print(f"create_cid_item_record(): {item_rec}")
         except Exception as err:
             logger.warning(

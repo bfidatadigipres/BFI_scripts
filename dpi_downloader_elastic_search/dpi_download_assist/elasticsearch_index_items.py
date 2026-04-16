@@ -56,9 +56,9 @@ def cid_call_txt_dump():
     logging.info("Ingest prirefs written to %s", TXT_DUMP)
 
     # Fetch Item records based on edits in the grandparent Work record for ingested Items
-    # search2 = "(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->edit.date>today-2)"
+    search2 = "(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->edit.date>today-2)"
     # Alternative search for clean up work:
-    search2 = "(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->(modification>='2026-03-16' and modification<='2026-03-18'))"
+    # search2 = "(Df=item and reproduction.reference->imagen.media.original_filename=*) and (part_of_reference->part_of_reference->(modification>='2026-03-16' and modification<='2026-03-18'))"
 
     logging.info("Downloading second batch of prirefs with search: %s", search)
     try:

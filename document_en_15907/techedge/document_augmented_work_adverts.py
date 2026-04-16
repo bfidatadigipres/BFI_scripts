@@ -22,7 +22,7 @@ columns.
 # Public packages
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from zoneinfo import ZoneInfo
 import logging
 from time import sleep
@@ -71,6 +71,18 @@ CHANNELS = {
     "5": ["Channel 5 HD", "24404"],
     "5STAR": ["5STAR", "24404"],
 }
+
+
+def working_day_check(dt: datetime) -> bool:
+    """ Check for clash with working week """
+    work_days = {0, 1, 2, 3, 4}
+    start = time(8, 0, 0)
+    end = time(20, 0, 0)
+    
+    if dt.weekday() not in work_days:
+        return False
+    current_time = dt.time()
+    return start <= current_time <= end
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
@@ -741,15 +753,10 @@ def main():
         "========== Adverts work documentation script STARTED ==============================================="
     )
 
-    ## BAU CSV scanning for new content - time for LLM cleanse
-    # end_date = date.today() - timedelta(days=18)
-    # start_date = end_date - timedelta(days=16)
-    # for target_date in date_range(start_date, end_date):
-    #     csv_path = os.path.join(STORAGE, f"{target_date}_BFIExport.csv")
-    #     LOGGER.info("Iterating CSV: %s", csv_path)
-    #     for row in te.iter_techedge_rows(csv_path):
-
     for row in te.iter_techedge_rows(CSV_PATH):
+        # if working_day_check(datetime.now()):
+        #    print("Exiting: Cannot operate in working hours")
+        #    sys.exit()
         first_showing = False
         if not utils.check_control("pause_scripts"):
             LOGGER.info(
@@ -760,22 +767,22 @@ def main():
             LOGGER.warning("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
 
-        LOGGER.info(
-            "Processing row: %s, %s, %s, %s, %s, %s, %s, %s,",
-            row.channel,
-            row.date,
-            row.start_time,
-            row.film_code,
-            row.advertiser,
-            row.brand,
-            row.agency,
-            row.hold_comp,
-        )
-
         # Check if unique film code already exists
         film_code = row.film_code
         wpriref = advert_exists_query(film_code)
         if wpriref is False:
+            LOGGER.info(
+                "Processing row: %s, %s, %s, %s, %s, %s, %s, %s,",
+                row.channel,
+                row.date,
+                row.start_time,
+                row.film_code,
+                row.advertiser,
+                row.brand,
+                row.agency,
+                row.hold_comp,
+            )
+
             # Get defaults as lists of dictionary pairs
             first_showing = True
             rec_def, work_def, work_res_def, _ = build_rec_details(row)
@@ -791,19 +798,6 @@ def main():
                 print(f"Work creation error for data: {work_values}")
                 continue
 
-        if not wpriref:
-            LOGGER.warning(
-                "Failure in creation of Work record. Skipping further actions for %s",
-                film_code,
-            )
-            continue
-
-        LOGGER.info(
-            "Checking if manifestation already exists for advert '%s' - %s %s",
-            row.brand,
-            row.date,
-            row.start_time,
-        )
         title_date_start = datetime.strftime(
             datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d"
         )
@@ -811,8 +805,12 @@ def main():
         mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
         if mpriref is False:
             LOGGER.info(
-                "Manifestation match cannot be found. Creating advert manifestation..."
+                "Manifestation match not found '%s' - %s %s",
+                row.brand,
+                row.date,
+                row.start_time,
             )
+
             rec_def, _, _, manifestation = build_rec_details(row)
             man_values = []
             man_values.extend(rec_def)

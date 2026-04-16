@@ -571,3 +571,51 @@ def test_invalid_add_quality_comments(mocker):
 def test_add_quality_comments_exceptions(exceptions):
     with pytest.raises(exceptions):
         adlib.add_quality_comments("https://fake-api", "12345", "moooooo")
+
+
+
+def test_invalid_unlock_record(mocker):
+    mock_response = mocker.Mock()
+    mock_response.status_code = 405
+    mocker.patch("adlib.requests.post", return_value=mock_response)
+    mocker.return_value = mock_response
+
+    result = adlib.unlock_record("http://api", "12334", "db")
+
+    assert result is False
+
+
+def test_unlock_record(mocker):
+    mock_response=mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text="""
+            {"adJSON":{"diagnostic":{"hits":0,"message":"Record '12334' in database 'collect' unlocked","first_item":1,"forward":0,"backward":0,"limit":0,"xml_creation_time":{"value":"0","unit":"mS","culture":"en-US"}}}
+    """
+    mocker.patch("adlib.requests.post", return_value=mock_response)
+
+    result = adlib.unlock_record("http://api", "1234", "db")
+    assert result is True
+
+
+def test_invalid_write_lock(mocker):
+    mock_response = mocker.Mock()
+    mock_response.status_code = 405
+    mocker.patch("adlib.requests.post", return_value=mock_response)
+    mocker.return_value = mock_response
+
+    result = adlib.write_lock("http://api", "12334", "db")
+
+    assert result is False
+
+def test_write_lock(mocker):
+    mock_response=mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text="""
+
+        {"adJSON":{"diagnostic":{"hits":1,"xmltype":"Unstructured","hits_on_display":0,"search":null,"sort":null,"message":"Record '1234' has  been set for user 'BFIiisRestricted'","first_item":1,"forward":0,"backward":0,"limit":0,"xml_creation_time":{"value":"0","unit":"mS","culture":"en-US"}}}
+
+    """
+    mocker.patch("adlib.requests.post", return_value=mock_response)
+
+    result = adlib.write_lock("http://api", "1234", "db")
+    assert result is True

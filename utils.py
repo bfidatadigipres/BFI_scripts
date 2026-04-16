@@ -718,7 +718,8 @@ def send_email(
                     attachment_package.set_payload((file).read())
                     encoders.encode_base64(attachment_package)
                     attachment_package.add_header(
-                        "Content-Disposition", f"attachment; filename={files.split('/')[-1]}"
+                        "Content-Disposition",
+                        f"attachment; filename={files.split('/')[-1]}",
                     )
                     msg.attach(attachment_package)
             else:

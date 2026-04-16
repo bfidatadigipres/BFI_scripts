@@ -237,7 +237,9 @@ def send_metadata_to_sftp(fpath: str, top_folder: str) -> Optional[List[Any]]:
     return files
 
 
-def sftp_put(sftp_object: paramiko.sftp_client.SFTPClient, fpath: str, relpath: str) -> bool:
+def sftp_put(
+    sftp_object: paramiko.sftp_client.SFTPClient, fpath: str, relpath: str
+) -> bool:
     """
     Handle PUT to sftp using
     open SFTP connection
@@ -257,7 +259,9 @@ def sftp_put(sftp_object: paramiko.sftp_client.SFTPClient, fpath: str, relpath: 
         return False
 
 
-def sftp_mkdir(sftp_object: paramiko.sftp_client.SFTPClient, relpath: str) -> Optional[List[str]]:
+def sftp_mkdir(
+    sftp_object: paramiko.sftp_client.SFTPClient, relpath: str
+) -> Optional[List[str]]:
     """
     Handle making directory
     using open sftp connection
@@ -305,7 +309,7 @@ def send_as_package(
     atom_slug: str,
     item_priref: str,
     process_config: str,
-    auto_approve_arg: bool
+    auto_approve_arg: bool,
 ) -> Optional[Dict[str, Any]]:
     """
     Send a package using v2 beta package, subject to change!
@@ -497,7 +501,7 @@ def get_atom_objects(skip_path: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def get_all_atom_objects()-> Optional[List[Any]]:
+def get_all_atom_objects() -> Optional[List[Any]]:
     """
     Handle skip iteration through all available
     information objects, call get_atom_objects
@@ -630,7 +634,9 @@ def delete_sip(sip_uuid: str) -> Optional[str]:
     return None
 
 
-def reingest_v2_aip(aip_uuid: str, re_type: str, process_config: str) -> Optional[Dict[str, Any]]:
+def reingest_v2_aip(
+    aip_uuid: str, re_type: str, process_config: str
+) -> Optional[Dict[str, Any]]:
     """
     Function for reingesting an AIP to create
     an open DIP for AtoM revision
@@ -672,7 +678,9 @@ def reingest_v2_aip(aip_uuid: str, re_type: str, process_config: str) -> Optiona
     return None
 
 
-def reingest_aip(aip_uuid_name: str, aip_uuid: str, ingest_type: str) -> Optional[Dict[str, Any]]:
+def reingest_aip(
+    aip_uuid_name: str, aip_uuid: str, ingest_type: str
+) -> Optional[Dict[str, Any]]:
     """
     Alternative endpoint for reingesting an AIP.
     Reingest type can be:
@@ -712,7 +720,9 @@ def reingest_aip(aip_uuid_name: str, aip_uuid: str, ingest_type: str) -> Optiona
     return None
 
 
-def metadata_copy_reingest(sip_uuid: str, source_mdata_path: str) -> Optional[Dict[str, Any]]:
+def metadata_copy_reingest(
+    sip_uuid: str, source_mdata_path: str
+) -> Optional[Dict[str, Any]]:
     """
     Arg source_mdata_path should be from top level folder
     to metadata only, not absolute path. Top level folder
@@ -842,7 +852,7 @@ def approve_transfer(dir_name: str) -> Optional[Dict[str, Any]]:
 
 def download_aip(aip_uuid: str, dpath: str, fn: str) -> Optional[str]:
     """
-    Fetch an AIP stream and 
+    Fetch an AIP stream and
     write to download path as TAR file
     """
     endpoint = f"{ARCH_URL}:8000/api/v2/file/{aip_uuid}/download/"
@@ -851,7 +861,7 @@ def download_aip(aip_uuid: str, dpath: str, fn: str) -> Optional[str]:
         with requests.get(endpoint, headers=SS_HEADER, stream=True) as response:
             content = response.headers.get("Content-Disposition")
             if content:
-                fname = content.split('filename=')[-1].strip('"')
+                fname = content.split("filename=")[-1].strip('"')
             else:
                 fname = f"{fn}.tar"
             download_path = os.path.join(dpath, fname)

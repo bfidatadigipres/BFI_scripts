@@ -25,8 +25,12 @@ ES_PATH = os.environ.get("ES_SEARCH_PATH")
 LOG_PATH = os.environ.get("LOG_PATH")
 LOG = os.path.join(LOG_PATH, "elasticsearch_item_index.log")
 ADMIN = os.environ.get("CODE")
-TXT_DUMP = os.path.join(ADMIN, "dpi_downloader_elastic_search/dpi_download_assist/item_prirefs.txt")
-logging.basicConfig(filename=LOG, level=logging.INFO, format="%(asctime)s %(message)s", filemode="w")
+TXT_DUMP = os.path.join(
+    ADMIN, "dpi_downloader_elastic_search/dpi_download_assist/item_prirefs.txt"
+)
+logging.basicConfig(
+    filename=LOG, level=logging.INFO, format="%(asctime)s %(message)s", filemode="w"
+)
 
 
 def cid_call_txt_dump():
@@ -39,11 +43,13 @@ def cid_call_txt_dump():
     # search = "(Df=item and reproduction.reference->imagen.media.original_filename=* and (modification>='2026-01-01' and modification<='2026-03-16'))"
     logging.info("Downloading prirefs with search: %s", search)
     try:
-        url_ingests = requests.get(f"{API}?database=prirefcollectraw&search={search}&limit=0", timeout=3000)
+        url_ingests = requests.get(
+            f"{API}?database=prirefcollectraw&search={search}&limit=0", timeout=3000
+        )
         print(url_ingests.text)
     except requests.exceptions.Timeout:
         print("Timed out at 30 seconds")
-    except (requests.exceptions.RequestException) as err:
+    except requests.exceptions.RequestException as err:
         raise SystemExit(err) from err
 
     if not url_ingests.text:
@@ -51,8 +57,8 @@ def cid_call_txt_dump():
         sys.exit("No URLs found for ingest")
 
     logging.info("Retrieve prirefs:\n%s", ", ".join(url_ingests.text.split("\r\n")))
-    with open(TXT_DUMP, 'w') as txtfile:
-        txtfile.write(url_ingests.text + '\n')
+    with open(TXT_DUMP, "w") as txtfile:
+        txtfile.write(url_ingests.text + "\n")
     logging.info("Ingest prirefs written to %s", TXT_DUMP)
 
     # Fetch Item records based on edits in the grandparent Work record for ingested Items
@@ -62,7 +68,9 @@ def cid_call_txt_dump():
 
     logging.info("Downloading second batch of prirefs with search: %s", search)
     try:
-        response = requests.get(f"{API}?database=prirefcollectraw&search={search2}&limit=0", timeout=300)
+        response = requests.get(
+            f"{API}?database=prirefcollectraw&search={search2}&limit=0", timeout=300
+        )
         print(response.text)
     except requests.exceptions.Timeout as err:
         print("Timed out at 30 seconds")
@@ -70,7 +78,7 @@ def cid_call_txt_dump():
     except requests.exceptions.RequestException as err:
         raise SystemExit(err) from err
 
-    with open(TXT_DUMP, 'a') as txtfile:
+    with open(TXT_DUMP, "a") as txtfile:
         txtfile.write(response.text)
     logging.info("Work change prirefs written to %s", TXT_DUMP)
 
@@ -81,9 +89,7 @@ def main():
     and push into elastic search index
     """
     if not utils.check_control("pause_scripts"):
-        logging.info(
-            "Script run prevented by downtime_control.json. Script exiting."
-        )
+        logging.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     logging.info("Elasticsearch Index Items start ================================")
@@ -102,7 +108,9 @@ def main():
 
             search = f"priref={priref}"
             try:
-                xml = requests.get(f"{API}?database=elasticsearchitems&search={search}", timeout=30)
+                xml = requests.get(
+                    f"{API}?database=elasticsearchitems&search={search}", timeout=30
+                )
                 xml_text = xml.text
             except requests.exceptions.Timeout:
                 logging.warning("Timed out at 30 seconds")
@@ -112,17 +120,21 @@ def main():
                 continue
 
             # Check for errors
-            if '<item>' in xml_text:
-                status = 'error-free'
+            if "<item>" in xml_text:
+                status = "error-free"
             else:
-                status = 'error'
-                logging.error("%s - invalid xml (no <item> element) returned from CID API", priref)
+                status = "error"
+                logging.error(
+                    "%s - invalid xml (no <item> element) returned from CID API", priref
+                )
 
-            if status == 'error-free':
+            if status == "error-free":
                 try:
                     xmltree = ET.fromstring(xml_text)
                 except Exception as err:
-                    logging.error("%s - could not convert to xml using xmltree:\n%s", priref, err)
+                    logging.error(
+                        "%s - could not convert to xml using xmltree:\n%s", priref, err
+                    )
                     continue
 
                 # Convert XML to json for elasticsearch
@@ -131,9 +143,13 @@ def main():
                 # Create document in items index, passing the item priref and json
                 try:
                     index = es.index(index="dpi_items", id=priref, document=json_out)
-                    print(index['result'])
+                    print(index["result"])
                 except Exception as err:
-                    logging.error("%s - could not update or create document in elasticsearch index:\n%s", priref, err)
+                    logging.error(
+                        "%s - could not update or create document in elasticsearch index:\n%s",
+                        priref,
+                        err,
+                    )
                     continue
             else:
                 logging.error("%s - could not fetch xml from CID API", priref)

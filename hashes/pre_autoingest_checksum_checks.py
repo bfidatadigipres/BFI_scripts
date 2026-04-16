@@ -367,7 +367,9 @@ def main():
     if not utils.check_storage(sys.argv[1]):
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    if not utils.check_control("pause_scripts") or not utils.check_control("power_off_all"):
+    if not utils.check_control("pause_scripts") or not utils.check_control(
+        "power_off_all"
+    ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     # the file path should refer to the ingest_check folder found in any qnap folders

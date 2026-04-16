@@ -689,7 +689,7 @@ def main():
                 boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
                 print(f"File successfully deleted: {boole}")
                 continue
-            elif "/Screenscraft/" in fpath and "proxy/image/archive/" in fpath:
+            elif "/Screencraft/" in fpath and "proxy/image/archive/" in fpath:
                 print("* File is Special Collections/Screencraft archive image")
                 # Simplified name check
                 if not re.search("^[A-Za-z0-9_.]*$", fname):

@@ -87,7 +87,7 @@ def accepted_file_type(ext):
     ftype = {
         "avi": "avi",
         "imp": "mxf, xml",
-        "tar": "dpx, dcp, dcdm, wav",
+        "tar": "dpx, dcp, dcdm, wav, doc, docx, eml, eps, fdr, fdx, jpeg, jpg, msg, numbers, pages, pdf, png, ppt, pptx, psb, psd, rtf, tif, tiff, txt, xls, xlsx",
         "mxf": "mxf, 50i, imp",
         "mpg": "mpeg-1, mpeg-ps",
         "mpeg": "mpeg-1, mpeg-ps",

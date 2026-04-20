@@ -76,9 +76,9 @@ CHANNELS = {
 def working_day_check(dt: datetime) -> bool:
     """ Check for clash with working week """
     work_days = {0, 1, 2, 3, 4}
-    start = time(8, 0, 0)
-    end = time(20, 0, 0)
-    
+    start = time(8, 00, 0)
+    end = time(19, 55, 0)
+
     if dt.weekday() not in work_days:
         return False
     current_time = dt.time()
@@ -752,11 +752,11 @@ def main():
     LOGGER.info(
         "========== Adverts work documentation script STARTED ==============================================="
     )
-
     for row in te.iter_techedge_rows(CSV_PATH):
-        # if working_day_check(datetime.now()):
-        #    print("Exiting: Cannot operate in working hours")
-        #    sys.exit()
+        if working_day_check(datetime.now()):
+            print(f"Paused for daytime / week operations... Check again in 30 mins: {str(datetime.now())}")
+            sleep(1800)
+            continue
         first_showing = False
         if not utils.check_control("pause_scripts"):
             LOGGER.info(
@@ -797,6 +797,8 @@ def main():
             if not wpriref:
                 print(f"Work creation error for data: {work_values}")
                 continue
+        else:
+            print("SKIPPING: Work exists for this Ad")
 
         title_date_start = datetime.strftime(
             datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d"
@@ -825,9 +827,7 @@ def main():
                     "Failed to make new manifestation and link to work: %s\n", wpriref
                 )
         else:
-            LOGGER.info(
-                "SKIPPING: Manifestation exists for this Advert in this time slot.\n"
-            )
+            print("SKIPPING: Manifestation exists for this Ad.")
 
     LOGGER.info(
         "========== Adverts work documentation script END =======================================================\n"

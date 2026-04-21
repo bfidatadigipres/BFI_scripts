@@ -749,14 +749,16 @@ def main():
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if working_day_check(datetime.now()):
+        sys.exit("Exiting: Cannot operate in working hours")
     LOGGER.info(
         "========== Adverts work documentation script STARTED ==============================================="
     )
 
     for row in te.iter_techedge_rows(CSV_PATH):
-        # if working_day_check(datetime.now()):
-        #    print("Exiting: Cannot operate in working hours")
-        #    sys.exit()
+        if working_day_check(datetime.now()):
+            LOGGER.info("Exiting: Cannot operate in working hours")
+            sys.exit("Exiting: Cannot operate in working hours")
         first_showing = False
         if not utils.check_control("pause_scripts"):
             LOGGER.info(
@@ -825,9 +827,7 @@ def main():
                     "Failed to make new manifestation and link to work: %s\n", wpriref
                 )
         else:
-            LOGGER.info(
-                "SKIPPING: Manifestation exists for this Advert in this time slot.\n"
-            )
+            print("SKIPPING: Manifestation exists for this Ad.")
 
     LOGGER.info(
         "========== Adverts work documentation script END =======================================================\n"

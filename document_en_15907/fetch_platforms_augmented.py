@@ -92,7 +92,7 @@ def get_folder_title(article: str, title: str) -> str:
         .replace("!", "")
         .replace("’", "")
     )
-    if article != "-":
+    if article != "-" or article != "":
         title = f'{article}_{title.replace(" ", "_")}_'
     else:
         title = f'{title.replace(" ", "_")}_'
@@ -106,8 +106,9 @@ def fetch(
     """
     Fetch data from PATV URL
     """
-    url_title = title.replace(" ", "%20")
+    url_title = title.replace(" ", "%20").replace("&", "and")
     url_title = f"%27{url_title}%27"
+    print(url_title)
     if search_type == "title":
         try:
             url_all = os.path.join(
@@ -228,8 +229,8 @@ def main() -> None:
     Iterate list and build asset_dict of TV items, then process
     any new items placing in programme led folder structures
     """
-    if not utils.check_control("stora") or not utils.check_control("pause_scripts"):
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    #if not utils.check_control("stora") or not utils.check_control("pause_scripts"):
+    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     LOGGER.info(
@@ -458,7 +459,8 @@ def main() -> None:
                 if not title:
                     title = episode_dct["title"]
                 cut_title, title_article = utils.split_title(title)
-                episode_folder = get_folder_title(title_article, cut_title)
+                folder_prefix = get_folder_title(title_article, cut_title)
+                episode_folder = f"{folder_prefix.lstrip('_')}_{ep_asset_id}"
 
                 # Create path to new episode
                 mono_path = os.path.join(storage_path, episode_folder)

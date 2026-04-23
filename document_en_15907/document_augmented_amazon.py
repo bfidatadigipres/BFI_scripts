@@ -102,7 +102,7 @@ def get_folder_title(article: str, title: str) -> str:
         .replace("!", "")
         .replace("’", "")
     )
-    if article != "":
+    if article != "-":
         title = f'{article}_{title.replace(" ", "_")}_'
     else:
         title = f'{title.replace(" ", "_")}_'
@@ -652,8 +652,8 @@ def main():
     if not os.path.isfile(csv_path):
         sys.exit(f"Problem with supplied CSV path {csv_path}")
 
-    if not utils.check_control("pause_scripts"):
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    #if not utils.check_control("pause_scripts"):
+    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE) or not utils.check_storage(csv_path):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
@@ -709,6 +709,7 @@ def main():
 
         # Match AMAZON folder to article/title
         foldertitle = get_folder_title(article, title)
+        print(foldertitle)
         matched_folders = get_folder_match(foldertitle)
         if len(matched_folders) > 1:
             print(

@@ -78,6 +78,27 @@ def read_csv_to_dict(csv_path: str) -> dict[str, list[str]]:
     return data_dct
 
 
+def get_folder_title(article: str, title: str) -> str:
+    """
+    Match title to folder naming
+    """
+
+    title = (
+        title.replace("/", "")
+        .replace("'", "")
+        .replace("&", "and")
+        .replace("(", "")
+        .replace(")", "")
+        .replace("!", "")
+        .replace("’", "")
+    )
+    if article != "-":
+        title = f'{article}_{title.replace(" ", "_")}_'
+    else:
+        title = f'{title.replace(" ", "_")}_'
+    return title
+
+
 @tenacity.retry(stop=tenacity.stop_after_attempt(3))
 def fetch(
     cat_id: str, search_type: str, search_id: str, title: str
@@ -436,7 +457,8 @@ def main() -> None:
 
                 if not title:
                     title = episode_dct["title"]
-                episode_folder = f"{title.strip().replace(' ', '_')}_{ep_asset_id}"
+                cut_title, title_article = utils.split_title(title)
+                episode_folder = get_folder_title(title_article, cut_title)
 
                 # Create path to new episode
                 mono_path = os.path.join(storage_path, episode_folder)

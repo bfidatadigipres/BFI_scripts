@@ -61,6 +61,7 @@ HEADERS = {"accept": "application/json", "apikey": os.environ.get("PATV_KEY")}
 STREAM_KEYS = {
     "Netflix": os.environ.get("PA_NETFLIX"),
     "Amazon": os.environ.get("PA_AMAZON"),
+    "Disney": os.environ.get("PA_DISNEY"),
 }
 
 

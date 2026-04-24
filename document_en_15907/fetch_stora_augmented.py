@@ -45,13 +45,8 @@ YESTERDAY_CLEAN: Final = YESTERDAY.strftime("%Y-%m-%d")
 START: Final = f"{YESTERDAY_CLEAN}T00:00:00"
 END: Final = f"{YESTERDAY_CLEAN}T23:59:00"
 # If a different date period needs targeting use:
-<<<<<<< HEAD
-#START = '2025-05-01T00:00:00'
-#END = '2025-05-01T23:59:00'
-=======
 # START = '2025-01-24T00:00:00'
 # END = '2025-01-24T23:59:00'
->>>>>>> 4e17d65195b5ba2e2f8dda1d3bcb62c745500470
 DATE_PATH: Final = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH: Final = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}

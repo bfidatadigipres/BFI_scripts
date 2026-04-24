@@ -280,8 +280,9 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
     if val.contributor:
         j_data.update({"contributors": val.contributor})
     if val.vod:
-        val.vod.get("disney").get("start") and j_data.update(
-            {"start_date": val.vod.get("disney").get("start")[:10]}
+        print(val.vod)
+        val.vod.get("disney-plus-uk").get("start") and j_data.update(
+            {"start_date": val.vod.get("disney-plus-uk").get("start")[:10]}
         )
 
     return j_data
@@ -350,10 +351,9 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
 
     if val.contributor:
         s_data.update({"contributors": val.contributor})
-    # JMW NEED TO CHECK THE VOD RESPONSE
     if val.vod:
-        val.vod.get("disney").get("start") and s_data.update(
-            {"start_date": val.vod.get("disney").get("start")[:10]}
+        val.vod.get("disney-plus-uk").get("start") and s_data.update(
+            {"start_date": val.vod.get("disney-plus-uk").get("start")[:10]}
         )
 
     return s_data
@@ -734,7 +734,7 @@ def main():
                 cid_check_works(patv_id)
             )
             if int(hits) > 0:
-                if "401361" in str(groupings):
+                if "403765" in str(groupings):
                     print(f"SKIPPING PRIREF FOUND: {priref_work}")
                     LOGGER.info(
                         "Skipping this item, likely already has CID record: %s",
@@ -776,7 +776,7 @@ def main():
 
             print(f"Found priref is for monographic work: {priref_work}")
             if priref_work.isnumeric():
-                if "401361" in str(groupings):
+                if "403765" in str(groupings):
                     print(f"SKIPPING: Monograph work already exists for {title}.")
                     continue
                 if "PATV asset id" in str(alt_type):
@@ -787,6 +787,11 @@ def main():
                 if "PATV Netflix asset id" in str(alt_type):
                     LOGGER.warning(
                         "Matched Work Asset ID is for Netflix created Work record: %s",
+                        priref_work,
+                    )
+                if "PATV Amazon asset id" in str(alt_type):
+                    LOGGER.warning(
+                        "Matched Work Asset ID is for Amazon created Work record: %s",
                         priref_work,
                     )
             else:
@@ -852,7 +857,7 @@ def main():
                 cid_check_works(patv_id)
             )
             if series_priref.isnumeric():
-                if "401361" in str(groupings):
+                if "403765" in str(groupings):
                     print(f"Series work already exists for {title}.")
                 if "PATV asset id" in str(alt_type):
                     LOGGER.warning(
@@ -862,6 +867,11 @@ def main():
                 if "PATV Netflix asset ID" in str(alt_type):
                     LOGGER.warning(
                         "Series found was created for Netflix streaming series: %s",
+                        series_priref,
+                    )
+                if "PATV Amazon asset ID" in str(alt_type):
+                    LOGGER.warning(
+                        "Series found was created for Amazon streaming series: %s",
                         series_priref,
                     )
             else:
@@ -907,7 +917,6 @@ def main():
                 x for x in json_fpaths if f"season_{season_num}_" in str(x)
             ]
 
-            # Fetch just single episodes - NEW SECTION BORROWED FROM NETFLIX, NEEDS TEST
             if episode != "all":
                 if "," in str(episode):
                     episodes = episode.split(", ")
@@ -1017,7 +1026,7 @@ def make_episodes(
     # Check CID work exists / Make work if needed
     hits, priref_episode, _, _, groupings, alt_type = cid_check_works(episode_id)
     if int(hits) > 0:
-        if "401361" in str(groupings):
+        if "403765" in str(groupings):
             print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
             LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
             return None
@@ -1028,6 +1037,10 @@ def make_episodes(
         if "PATV Netflix asset id" in str(alt_type):
             LOGGER.warning(
                 "Episode work exists for Netflix streaming platform: %s", priref_episode
+            )
+        if "PATV Amazon asset id" in str(alt_type):
+            LOGGER.warning(
+                "Episode work exists for Amazon streaming platform: %s", priref_episode
             )
     print("New episode_id found for Work. Linking to series work")
 
@@ -1208,7 +1221,7 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
         # {'record_access.user': '$REST'},
         # {'record_access.rights': '1'},
         # {'record_access.reason': 'SENSITIVE_LEGAL'},
-        {"grouping.lref": "401361"},  # Disney
+        {"grouping.lref": "403765"},  # Disney
         {"language.lref": "74129"},
         {"language.type": "DIALORIG"},
     ]

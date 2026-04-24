@@ -242,3 +242,11 @@ class Record:
         Save changes to record with updaterecord
         """
         pass
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

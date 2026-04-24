@@ -161,14 +161,9 @@ def main():
     if len(data) == 0:
         sys.exit("No data found in DOWNLOADS database")
 
-    if not utils.check_control("stora"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_control("stora") or not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORA):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     LOGGER.info(
         "================ DPI NEWS PRESERVATION REQUESTS RETRIEVED: %s. Date: %s =================",

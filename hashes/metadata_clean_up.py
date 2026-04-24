@@ -210,7 +210,6 @@ def main():
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit()
     if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(sys.argv[1]):
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
@@ -614,6 +613,11 @@ def manipulate_data(key: str, selection: Optional[str]) -> Optional[str]:
     """
     if selection is None:
         selection = ""
+
+    if ".format_settings_endianness" in key and "big" in selection.lower():
+        return "BIG"
+    if ".format_settings_endianness" in key and "little" in selection.lower():
+        return "LITTLE"
     if ".format" in key and " / " in selection:
         return selection.split(" / ")[0].strip()
     if ".audio_codecs" in key and " / " in selection:
@@ -634,6 +638,18 @@ def manipulate_data(key: str, selection: Optional[str]) -> Optional[str]:
         return "VBR"
     if selection == "Constant":
         return "CBR"
+    if selection == "Lossless":
+        return "LOSSLESS"
+    if selection == "Lossy":
+        return "LOSSY"
+    if selection == "Interlaced":
+        return "INTER"
+    if selection == "Progressive":
+        return "PROG"
+    if selection.lower() == "bottom_field_first":
+        return "BFF"
+    if selection.lower() == "top field first":
+        return "TFF"
     if ".total_gigabytes" in key and "GiB" in selection:
         return selection.split(" GiB")[0]
     elif ".total_gigabytes" in key and "MiB" in selection:

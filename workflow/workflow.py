@@ -481,10 +481,10 @@ class TVAMBatch:
         d = {
             "activities": ["Pick items", "Video Encoding", "Return items"],
             "topNode": {
-                # "activity.code.lref": "108964", TBC
+                "activity.code.lref": "402479",
                 "purpose": "Preservation",
                 "request_type": "VIDEOCOPY",
-                "final_destination": "F47",
+                "final_destination": "VTR-10 - Video Copying",
                 "request.details": "Transfer to preservation and proxy formats",
                 "assigned_to": "Television Operations",
             },
@@ -585,3 +585,11 @@ try:
 except Exception as exc:
     print(exc)
     raise Exception("Unable to build map of Workflow databases")
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

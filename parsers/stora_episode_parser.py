@@ -9,7 +9,7 @@ Notes
 """
 
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, date
 from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 import json
@@ -17,6 +17,7 @@ import json
 
 class UnexpectedFieldError(ValueError):
     """Raised if a JSON contains unanticipated field"""
+
 
 def _extract_extra_field_errors(e: ValidationError) -> List[Tuple[str, str]]:
     """
@@ -42,6 +43,7 @@ class APIModel(BaseModel):
     Base model: does not tolerate unexpected fields initally to find
     all variables in sample of JSON data.
     """
+
     # model_config = ConfigDict(extra="allow", populate_by_name=True)
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -51,6 +53,7 @@ class Summary(APIModel):
     medium: Optional[str] = None
     long: Optional[str] = None
     welsh: Optional[str] = None
+    supplemental: Optional[str] = None
 
 
 class Category(APIModel):
@@ -158,6 +161,8 @@ class Item(APIModel):
 
 
 class RootPayload(APIModel):
+    hasNext: Optional[bool] = None
+    total: Optional[int] = None
     item: Optional[List[Item]] = None
 
 
@@ -173,6 +178,18 @@ def parse_payload_strict_json(raw_json: str) -> RootPayload:
     - Type/schema issues -> ValidationError
     - Unexpected fields -> UnexpectedFieldError (with paths)
     """
+
+    if not raw_json.strip():
+        return None
+
+    data = json.loads(raw_json)
+    if "message" in data and data["message"] == "Service error":
+        return None
+    elif "message" in data and "does not exist." in data["message"]:
+        return None
+    elif "name" in data and "NotFound" in data["name"]:
+        return None
+
     try:
         return RootPayload.model_validate_json(raw_json)
     except ValidationError as err:

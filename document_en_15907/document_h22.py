@@ -162,13 +162,11 @@ def main(filepath: str, frame_work: str, destination=None) -> None:
     Create a new item record and rename source file
     """
     if not utils.check_control("pause_scripts"):
-        logger.info("Script run prevented by downtime_control.json. Script exiting.")
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         logger.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
     if not utils.check_storage(filepath):
-        logger.info("Script run prevented by Storage Control document. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     # Parse filename string
     in_file = os.path.basename(filepath)

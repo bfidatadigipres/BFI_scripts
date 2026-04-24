@@ -154,6 +154,7 @@ class Task:
     def write_record(self, database="workflow", record=None):
         data = record.to_xml(to_string=True)
         payload = f"<adlibXML><recordList>{data}</recordList></adlibXML>"
+        print(payload)
         response = adlib.post(CID_API, payload, database, "insertrecord")
 
         return response
@@ -220,9 +221,9 @@ class Task:
                 f"Unknown activity label: {activity} or activity is not supported"
             )
 
-        # Payload record
+        # Payload record (add job number in this first build_record)
         db = self.database_map[a["payloadDatabase"]]
-        p = self.build_record(username, payload_kwargs)
+        p = self.build_record(username, {"jobnumber": str(self.job_number)})
         response = self.write_record(database=db, record=p)
         payload_priref = int(adlib.retrieve_field_name(response, "priref")[0])
 
@@ -236,6 +237,9 @@ class Task:
             d[i] = a[i]
 
         d["parent"] = str(self.last_activity_priref)
+        # Only single assigned_to possible - deprecated by CS team
+        # d["assigned_to"] = "Vaults: Conservation Centre"
+        # d["assigned_to.lref"] = "717"
         wf = self.write_record(record=self.build_record(username, d))
         wf_priref = int(adlib.retrieve_field_name(wf, "priref")[0])
         self.last_activity_priref = wf_priref
@@ -331,14 +335,14 @@ class BatchBuild:
     """
 
     def __init__(self, destination, purpose, username, items=None, **kwargs):
-        # Default metadata
+        # Default metadata - Destination removed from Pick items:
         d = {
             "activities": ["Pick items"],
             "topNode": {
                 "purpose": purpose,
             },
             "payload": {
-                "Pick items": {"destination": destination},
+                "Pick items": {},
             },
         }
 
@@ -381,3 +385,11 @@ try:
 except Exception as exc:
     print(exc)
     raise Exception("Unable to build map of Workflow databases")
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()

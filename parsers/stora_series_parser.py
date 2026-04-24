@@ -18,6 +18,7 @@ import json
 class UnexpectedFieldError(ValueError):
     """Raised if a JSON contains unanticipated field"""
 
+
 def _extract_extra_field_errors(e: ValidationError) -> List[Tuple[str, str]]:
     """
     Returns list of (json_path, message) for extra-field errors.
@@ -42,6 +43,7 @@ class APIModel(BaseModel):
     Base model: does not tolerate unexpected fields initally to find
     all variables in sample of JSON data.
     """
+
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
@@ -155,7 +157,9 @@ def parse_payload_strict_json(raw_json: str) -> Series:
     data = json.loads(raw_json)
     if "message" in data and data["message"] == "Service error":
         return None
-    if "name" in data and data["name"] == "ResourceNotFoundError":
+    elif "message" in data and "does not exist." in data["message"]:
+        return None
+    elif "name" in data and "NotFound" in data["name"]:
         return None
 
     try:

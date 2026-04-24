@@ -14,7 +14,6 @@ days that matches script run frequency.
 """
 
 # Public imports
-import json
 import logging
 import os
 import shutil
@@ -209,9 +208,6 @@ def main():
             if not utils.check_control("black_pearl") or not utils.check_control(
                 "pause_scripts"
             ):
-                LOGGER.info(
-                    "Script run prevented by downtime_control.json. Script exiting."
-                )
                 sys.exit(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )
@@ -298,9 +294,6 @@ def main():
             LOGGER.info("Created new ingest path: %s", new_path)
             while file_list:
                 if not utils.check_control("black_pearl"):
-                    LOGGER.info(
-                        "Script run prevented by downtime_control.json. Script exiting."
-                    )
                     sys.exit(
                         "Script run prevented by downtime_control.json. Script exiting."
                     )

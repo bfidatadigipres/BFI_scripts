@@ -16,7 +16,7 @@ Steps:
    separate entry with total episodes
 2. Iterate looking for folder matches
    with CSV data {article}_{title}
-3. Check if eposidic/monographic
+3. Check if episodic/monographic
    Check for existing CID records that
    match the ID for programme, skip if found.
 4. Access JSONs data needed for:
@@ -33,19 +33,20 @@ NOTES: Configured for adlib_v3, API will need
 """
 
 import datetime
-import json
 import logging
 import os
 import sys
-from typing import Any, Final, Optional, Sequence
-
+from typing import Any, Final, Optional
 import pandas
 import yaml
-from document_augmented_streaming_cast import create_contributors
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
+from parsers import stream_catalogue as ct
+from parsers import stream_episode as ep
+from parsers import stream_season as sp
+from document_augmented_streaming_cast import create_contributors
 
 # Global variables
 STORAGE: Final = os.environ.get("QNAP_IMAGEN")
@@ -53,7 +54,7 @@ AMAZON: Final = os.path.join(STORAGE, "AMAZON")
 CAT_ID: Final = os.environ.get("PA_AMAZON")
 ADMIN: Final = os.environ.get("ADMIN")
 LOGS: Final = os.path.join(ADMIN, "Logs")
-CODE: Final = os.environ.get("CODE")
+CODE: Final = os.environ.get("CODE_DEPENDS")
 GENRE_MAP: Final = os.path.join(CODE, "document_en_15907/EPG_genre_mapping.yaml")
 CONTROL_JSON: Final = os.path.join(LOGS, "downtime_control.json")
 CID_API: Final = utils.get_current_api()
@@ -108,65 +109,6 @@ def get_folder_title(article: str, title: str) -> str:
     return title
 
 
-def split_title(title_article: str) -> tuple[str, str]:
-    """
-    An exception needs adding for "Die " as German language content
-    This list is not comprehensive.
-    """
-    if title_article.startswith(
-        (
-            "A ",
-            "An ",
-            "Am ",
-            "Al-",
-            "As ",
-            "Az ",
-            "Bir ",
-            "Das ",
-            "De ",
-            "Dei ",
-            "Den ",
-            "Der ",
-            "Det ",
-            "Di ",
-            "Dos ",
-            "Een ",
-            "Eene",
-            "Ei ",
-            "Ein ",
-            "Eine",
-            "Eit ",
-            "El ",
-            "el-",
-            "En ",
-            "Et ",
-            "Ett ",
-            "Het ",
-            "Il ",
-            "Na ",
-            "A'",
-            "L'",
-            "La ",
-            "Le ",
-            "Les ",
-            "Los ",
-            "The ",
-            "Un ",
-            "Une ",
-            "Uno ",
-            "Y ",
-            "Yr ",
-        )
-    ):
-        title_split = title_article.split()
-        ttl = title_split[1:]
-        title = " ".join(ttl)
-        title_art = title_split[0]
-        return title, title_art
-    else:
-        return title_article, "-"
-
-
 def get_folder_match(foldername: str) -> list[str]:
     """
     Get full folder path
@@ -204,183 +146,215 @@ def retrieve_json(json_pth: str) -> dict[str, str]:
     series number match and enough episodes
     present for supplied episode_num
     """
-    with open(json_pth, "r") as file:
-        data = json.load(file)
+    with open(json_pth, "r", encoding="latin1") as file:
+        data = file.read()
 
     return data
 
 
 def get_cat_data(data=None) -> Optional[dict[str, str]]:
     """
-    Get catalogue data and return as dct
+    Get catalogue data via Pydantic
+    parser and return as dct
     """
-    if data is None:
-        data = {}
+    val = ct.parse_payload_strict_json(data)
+    if not val:
+        return None
 
     c_data = {}
-    if "id" in data:
-        c_data["cat_id"] = data["id"]
-    if "title" in data:
-        title_full = data["title"]
-        title, article = split_title(title_full)
-        c_data["title"] = title
-        c_data["title_article"] = article
-    if "runtime" in data:
-        c_data["runtime"] = data["runtime"]
-    try:
-        c_data["production_year"] = data["productionYear"]
-    except:
-        pass
-    try:
-        c_data["cert_amazon"] = data["certification"]["amazon"]
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        c_data["cert_bbfc"] = data["certification"]["bbfc"]
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        c_data["writers"] = data["meta"]["writers"]
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        cast_all = data["meta"]["cast"]
-        c_data["cast"] = cast_all.split(",")
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        c_data["directors"] = data["meta"]["directors"]
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        genres_all = data["meta"]["genres"]
-        c_data["genres"] = genres_all.split(",")
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        c_data["attribute"] = data["attribute"]
-    except (IndexError, TypeError, KeyError):
-        c_data["attribute"] = ""
-    try:
-        short_desc = data["summary"]["short"].replace("'", "'")
-        c_data["d_short"] = short_desc
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        med_desc = data["summary"]["medium"].replace("'", "'")
-        c_data["d_medium"] = med_desc
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        long_desc = data["summary"]["long"].replace("'", "'")
-        c_data["d_long"] = long_desc
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        c_data["start_date"] = data["availability"]["start"]
-    except (IndexError, TypeError, KeyError):
-        pass
-    if "deeplink" in data:
-        for link in data["deeplink"]:
-            if link["rel"] == "url":
-                c_data["browse_url"] = link["href"]
-            if link["rel"] == "watch-url":
-                c_data["watch_url"] = link["href"]
-    try:
-        c_data["episode_number"] = data["number"]
-    except (IndexError, TypeError, KeyError):
-        pass
-    try:
-        c_data["contributors"] = data["contributor"]
-    except (IndexError, TypeError, KeyError):
-        pass
+    val.id and c_data.update({"cat_id": val.id})
+    if val.title:
+        title, article = utils.split_title(val.title)
+        c_data.update({"title": title})
+        c_data.update({"title_article": article})
+    if val.productionYear:
+        c_data.update({"production_year": str(val.productionYear)})
+    if val.runtime:
+        c_data.update({"runtime": val.runtime})
+    if val.certification:
+        val.certification.get("amazon") and c_data.update(
+            {"cert_amazon": val.certification.get("amazon")}
+        )
+        val.certification.get("bbfc") and c_data.update(
+            {"cert_bbfc": val.certification.get("bbfc")}
+        )
+    if val.meta:
+        val.meta.get("writers") and c_data.update({"writers": val.meta.get("writers")})
+        cast_all = val.meta.get("cast")
+        if cast_all:
+            c_data.update({"cast": cast_all.split(",")})
+        val.meta.get("directors") and c_data.update(
+            {"directors": val.meta.get("directors")}
+        )
+        genres_all = val.meta.get("genres")
+        if genres_all:
+            c_data.update({"genres": genres_all.split(",")})
+    if val.attribute:
+        c_data.update({"attribute": val.attribute})
+
+    short_desc = val.summary.short or ""
+    if short_desc:
+        c_data.update({"d_short": short_desc.replace("'", "'")})
+    med_desc = val.summary.medium or ""
+    if med_desc:
+        c_data.update({"d_medium": med_desc.replace("'", "'")})
+    long_desc = val.summary.long or ""
+    if long_desc:
+        c_data.update({"d_long": long_desc.replace("'", "'")})
+    (
+        c_data.update({"start_date": val.availability.get("start")[:10]})
+        if val.availability.get("start")
+        else c_data.update({"start_date": ""})
+    )
+    for link in val.deeplink:
+        if link.get("rel") == "url":
+            c_data.update({"browse_url": link["href"]})
+        elif link["rel"] == "watch-url":
+            c_data.update({"watch_url": link["href"]})
+    if val.number:
+        c_data.update({"episode_number": val.number})
+    if val.contributor:
+        c_data.update({"contributors": val.contributor})
 
     return c_data
 
 
 def get_json_data(data=None) -> Optional[dict[str, str]]:
     """
-    Retrieve data from a PATV JSONs
-    and return as dictionary
+    Retrieve data from a episode JSONs and parse
+    via Pydantic then return as dictionary
     """
-    if data is None:
-        data = {}
+    val = ep.parse_payload_strict_json(data)
+    if not val:
+        return None
 
-    j_data = {}
-    if "id" in data:
-        j_data["work_id"] = data["id"]
-    if "type" in data:
-        j_data["type"] = data["type"]
-    if "title" in data:
-        title_full = data["title"]
-        title, article = split_title(title_full)
-        j_data["title"] = title
-        j_data["title_article"] = article
-    if "productionYear" in data:
-        j_data["production_year"] = data["productionYear"]
-    try:
-        j_data["runtime"] = data["runtime"]
-    except (IndexError, KeyError, TypeError):
-        pass
-    try:
-        j_data["episode_number"] = data["number"]
-    except (IndexError, KeyError, TypeError):
-        pass
-    try:
-        j_data["episode_total"] = data["total"]
-    except (IndexError, KeyError, TypeError):
-        pass
-    if "category" in data:
-        genres = []
-        for item in data["category"]:
-            genres.append(item["code"])
-        if genres:
-            j_data["genres"] = genres
-    if "meta" in data:
-        try:
-            j_data["episode_number"] = data["meta"]["episode"]
-        except (IndexError, TypeError, KeyError):
-            pass
-        try:
-            j_data["episode_total"] = data["meta"]["episodeTotal"]
-        except (IndexError, TypeError, KeyError):
-            pass
-    if "certification" in data:
-        try:
-            j_data["cert_amazon"] = data["certification"]["amazon"]
-        except (IndexError, TypeError, KeyError):
-            pass
-        try:
-            j_data["cert_bbfc"] = data["certification"]["bbfc"]
-        except (IndexError, TypeError, KeyError):
-            pass
-    if "summary" in data:
-        try:
-            short_desc = data["summary"]["short"].replace("'", "'")
-            j_data["d_short"] = short_desc
-        except (IndexError, TypeError, KeyError):
-            pass
-        try:
-            med_desc = data["summary"]["medium"].replace("'", "'")
-            j_data["d_medium"] = med_desc
-        except (IndexError, TypeError, KeyError):
-            pass
-        try:
-            long_desc = data["summary"]["long"].replace("'", "'")
-            j_data["d_long"] = long_desc
-        except (IndexError, TypeError, KeyError):
-            pass
-    if "contributor" in data:
-        try:
-            j_data["contributors"] = data["contributor"]
-        except (IndexError, TypeError, KeyError):
-            pass
-    if "vod" in data:
-        try:
-            j_data["start_date"] = data["vod"]["amazon-uk"]["start"]
-        except (IndexError, TypeError, KeyError):
-            pass
+    j_data: dict[Optional[str], Optional[str]] = {}
+    if val.id:
+        j_data.update({"work_id": val.id})
+    if val.type:
+        j_data.update({"type": val.type})
+    title_full = val.title
+    if title_full:
+        title, article = utils.split_title(title_full)
+        j_data.update({"title": title})
+        j_data.update({"title_article": article})
+    if val.productionYear:
+        j_data.update({"production_year": str(val.productionYear)})
+    if val.runtime:
+        j_data.update({"runtime": val.runtime})
+    if val.number:
+        j_data.update({"episode_number": val.number})
+    if val.total:
+        j_data.update({"episode_total": val.total})
+
+    genres = []
+    for cat in val.category:
+        genres.append(cat.code)
+    genres and j_data.update({"genres": genres})
+    if val.meta:
+        val.meta.get("episode") and j_data.update(
+            {"episode_number": val.meta.get("episode")}
+        )
+        val.meta.get("episodeTotal") and j_data.update(
+            {"episode_total": val.meta.get("episodeTotal")}
+        )
+        val.meta.get("imdbId") and j_data.update({"imdb_id": val.meta.get("imdbId")})
+    if val.certification:
+        val.certification.get("amazon") and j_data.update(
+            {"cert_amazon": val.certification.get("amazon")}
+        )
+        val.certification.get("bbfc") and j_data.update(
+            {"cert_bbfc": val.certification.get("bbfc")}
+        )
+
+    short_desc = val.summary.short or ""
+    if short_desc:
+        j_data.update({"d_short": short_desc.replace("'", "'")})
+    med_desc = val.summary.medium or ""
+    if med_desc:
+        j_data.update({"d_medium": med_desc.replace("'", "'")})
+    long_desc = val.summary.long or ""
+    if long_desc:
+        j_data.update({"d_long": long_desc.replace("'", "'")})
+
+    if val.contributor:
+        j_data.update({"contributors": val.contributor})
+    if val.vod:
+        val.vod.get("amazon-prime-uk").get("start") and j_data.update(
+            {"start_date": val.vod.get("amazon-prime-uk").get("start")[:10]}
+        )
+
     return j_data
+
+
+def get_season_data(data=None) -> Optional[dict[str, str]]:
+    """
+    Retrieve data from a episode JSONs and parse
+    via Pydantic then return as dictionary
+    """
+    val = sp.parse_payload_strict_json(data)
+    if not val:
+        return None
+
+    s_data = {}
+    if val.id:
+        s_data.update({"work_id": val.id})
+    if val.type:
+        s_data.update({"type": val.type})
+    title_full = val.title or ""
+    if title_full:
+        title, article = utils.split_title(title_full)
+        s_data.update({"title": title})
+        s_data.update({"title_article": article})
+    if val.productionYear:
+        s_data.update({"production_year": str(val.productionYear)})
+    if val.runtime:
+        s_data.update({"runtime": val.runtime})
+    if val.number:
+        s_data.update({"episode_number": val.number})
+    if val.total:
+        s_data.update({"episode_total": val.total})
+
+    if val.category:
+        genres = []
+        for cat in val.category:
+            genres.append(cat.code)
+        genres and s_data.update({"genres": genres})
+
+    if val.meta:
+        val.meta.get("episode") and s_data.update(
+            {"episode_number": val.meta.get("episode")}
+        )
+        val.meta.get("episodeTotal") and s_data.update(
+            {"episode_total": val.meta.get("episodeTotal")}
+        )
+        val.meta.get("imdbId") and s_data.update({"imdb_id": val.meta.get("imdbId")})
+    if val.certification:
+        val.certification.get("amazon") and s_data.update(
+            {"cert_amazon": val.certification.get("amazon")}
+        )
+        val.certification.get("bbfc") and s_data.update(
+            {"cert_bbfc": val.certification.get("bbfc")}
+        )
+
+    short_desc = val.summary.short or ""
+    if short_desc:
+        s_data.update({"d_short": short_desc.replace("'", "'")})
+    med_desc = val.summary.medium or ""
+    if med_desc:
+        s_data.update({"d_medium": med_desc.replace("'", "'")})
+    long_desc = val.summary.long or ""
+    if long_desc:
+        s_data.update({"d_long": long_desc.replace("'", "'")})
+
+    if val.contributor:
+        s_data.update({"contributors": val.contributor})
+    if val.vod:
+        val.vod.get("amazon-prime-uk").get("start") and s_data.update(
+            {"start_date": val.vod.get("amazon-prime-uk").get("start")[:10]}
+        )
+
+    return s_data
 
 
 def cid_check_works(
@@ -388,6 +362,8 @@ def cid_check_works(
 ) -> Optional[tuple[int, str, str, str, list[str], list[str]]]:
     """
     Sends CID request for series_id data
+    Wont match to UK TV which stores this PA media
+    data in the manifestation alternative_number
     """
     query: str = f'alternative_number="{patv_id}"'
     try:
@@ -426,8 +402,8 @@ def cid_check_works(
             grouping = adlib.retrieve_field_name(record[num], "grouping.lref")[0]
             print(f"cid_check_works(): Grouping: {grouping}")
             groupings.append(grouping)
-        except Exception as err:
-            print(err)
+        except (IndexError, TypeError, KeyError):
+            pass
 
     alt_type: list[str] = []
     for num in range(0, hits):
@@ -459,75 +435,68 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
     """
     Retrieve genre data, return as list
     """
-    with open(GENRE_MAP, "r") as files:
+    with open(GENRE_MAP, "r", encoding="utf-8") as files:
         data = yaml.load(files, Loader=yaml.FullLoader)
         print(
             f"genre_retrieval(): The genre data is being retrieved for: {category_code}"
         )
-        for _ in data:
-            if category_code in data["genres"]:
-                genre_one: list[str] = []
-                genre_two: list[str] = []
-                try:
-                    genre_one = data["genres"][category_code.strip("u")]["Genre"]
-                    print(f"genre_retrieval(): Genre one: {genre_one}")
-                    if "Undefined" in genre_one:
-                        print(
-                            f"genre_retrieval(): Undefined category_code discovered: {category_code}"
-                        )
-                        with open(
-                            os.path.join(
-                                ADMIN, "off_air_tv/redux_undefined_genres.txt"
-                            ),
-                            "a",
-                        ) as genre_log:
-                            print(
-                                "genre_retrieval(): Writing Undefined category details to genre log"
-                            )
-                            genre_log.write("\n")
-                            genre_log.write(
-                                f"Category: {category_code}     Title: {title}     Description: {description}"
-                            )
-                        genre_one_priref: str = ""
-                    else:
-                        for key, val in genre_one.items():
-                            genre_one_priref: str = val
-                        print(
-                            f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
-                        )
-                except Exception:
-                    genre_one_priref = ""
-                try:
-                    genre_two = data["genres"][category_code.strip("u")]["Genre2"]
-                    for key, val in genre_two.items():
-                        genre_two_priref = val
+    gpath = os.path.join(ADMIN, "off_air_tv/redux_undefined_genres.txt")
+    for _ in data:
+        if category_code in data["genres"]:
+            genre_one: list[str] = []
+            genre_two: list[str] = []
+            try:
+                genre_one = data["genres"][category_code.strip("u")]["Genre"]
+                print(f"genre_retrieval(): Genre one: {genre_one}")
+                if "Undefined" in genre_one:
                     print(
-                        f"genre_retrieval(): Key value for genre_two_priref: {genre_two_priref}"
+                        f"genre_retrieval(): Undefined category_code discovered: {category_code}"
                     )
-                except Exception:
-                    genre_two_priref: str = ""
-                return [genre_one_priref, genre_two_priref]
-            else:
-                LOGGER.warning(
-                    "%s -- New category not in EPG_genre_map.yaml: %s",
-                    category_code,
-                    title,
+                    with open(gpath, "a", encoding="utf-8") as genre_log:
+                        print(
+                            "genre_retrieval(): Writing Undefined category details to genre log"
+                        )
+                        genre_log.write("\n")
+                        genre_log.write(
+                            f"Category: {category_code}     Title: {title}     Description: {description}"
+                        )
+                    genre_one_priref: str = ""
+                else:
+                    for _, val in genre_one.items():
+                        genre_one_priref: str = val
+                    print(
+                        f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
+                    )
+            except (IndexError, KeyError, TypeError):
+                genre_one_priref = ""
+            try:
+                genre_two = data["genres"][category_code.strip("u")]["Genre2"]
+                for _, val in genre_two.items():
+                    genre_two_priref = val
+                print(
+                    f"genre_retrieval(): Key value for genre_two_priref: {genre_two_priref}"
                 )
-                with open(
-                    os.path.join(ADMIN, "off_air_tv/redux_undefined_genres.txt"), "a"
-                ) as genre_log:
-                    print(
-                        "genre_retrieval(): Writing Undefined category details to genre log"
-                    )
-                    genre_log.write("\n")
-                    genre_log.write(
-                        f"Category: {category_code}     Title: {title}     Description: {description}"
-                    )
+            except (IndexError, KeyError, TypeError):
+                genre_two_priref: str = ""
+            return [genre_one_priref, genre_two_priref]
+        else:
+            LOGGER.warning(
+                "%s -- New category not in EPG_genre_map.yaml: %s",
+                category_code,
+                title,
+            )
+            with open(gpath, "a", encoding="utf-8") as genre_log:
+                print(
+                    "genre_retrieval(): Writing Undefined category details to genre log"
+                )
+                genre_log.write("\n")
+                genre_log.write(
+                    f"Category: {category_code}     Title: {title}     Description: {description}"
+                )
 
 
 def make_work_dictionary(
     episode_no: str,
-    episode_id: str,
     csv_data: dict[str, str],
     cat_dct: Optional[dict[str, str]],
     json_dct: dict[str, str],
@@ -601,14 +570,16 @@ def make_work_dictionary(
 
     try:
         work_dict["patv_id"] = json_dct["work_id"]
-    except:
+    except KeyError:
         work_dict["patv_id"] = ""
 
     try:
         work_dict["cat_id"] = cat_dct["cat_id"]
-    except:
+    except KeyError:
         work_dict["cat_id"] = ""
 
+    if "imdb_id" in json_dct:
+        work_dict["imdb_id"] = json_dct["imdb_id"]
     if "production_year" in json_dct:
         work_dict["production_year"] = json_dct["production_year"]
     elif "production_year" in cat_dct:
@@ -681,19 +652,17 @@ def main():
     if not os.path.isfile(csv_path):
         sys.exit(f"Problem with supplied CSV path {csv_path}")
 
-    if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    #if not utils.check_control("pause_scripts"):
+    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE) or not utils.check_storage(csv_path):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
 
-    LOGGER.info("=== Document augmented Amazon start ===============================")
     prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
+    LOGGER.info("=== Document augmented Amazon start ===============================")
     for num in range(0, csv_range):
         # Capture CSV supplied data to vars
         title = prog_dct["title"][num]
@@ -793,8 +762,9 @@ def main():
             if not cat_dct:
                 print("SKIPPING: Missing data from JSON files.")
                 continue
+
             # Make monographic work here
-            data_dct = make_work_dictionary("", "", csv_data, cat_dct, mono_dct)
+            data_dct = make_work_dictionary("", csv_data, cat_dct, mono_dct)
             print(f"Dictionary for monograph creation: \n{data_dct}")
             print("*************")
             record, series_work, work, work_restricted, manifestation, item = (
@@ -903,14 +873,17 @@ def main():
 
                 # Get series ID title and genre
                 series_data = retrieve_json(os.path.join(prog_path, series_json[0]))
-                series_dct = get_json_data(series_data)
-                series_data_dct = make_work_dictionary(
-                    "", "", csv_data, None, series_dct
-                )
+                series_dct = get_season_data(series_data)
+                series_data_dct = make_work_dictionary("", csv_data, None, series_dct)
                 record, series_work, work, work_restricted, manifestation, item = (
                     build_defaults(series_data_dct)
                 )
-                work_title, work_title_art = split_title(series_data_dct["title"])
+
+                work_title = series_data_dct["title"]
+                if "title_article" in series_data_dct:
+                    work_title_art = series_data_dct["title_article"]
+                else:
+                    work_title_art = ""
 
                 # Make series work here
                 if not series_data_dct:
@@ -918,7 +891,6 @@ def main():
                 series_priref = create_series_work(
                     patv_id,
                     series_data_dct,
-                    csv_data,
                     series_work,
                     work_restricted,
                     record,
@@ -941,17 +913,17 @@ def main():
                     episodes = [episode]
                     total_eps = 1
                 count = 0
-                for ep in episodes:
+                for eps in episodes:
                     LOGGER.info(
                         "Creating one-off episode record for %s episode number %s",
                         title,
-                        ep,
+                        eps,
                     )
                     success = make_episodes(
                         series_priref,
                         work_title,
                         work_title_art,
-                        int(ep),
+                        int(eps),
                         season_fpaths,
                         title,
                         csv_data,
@@ -1082,7 +1054,7 @@ def make_episodes(
     # Make episodic work here
     episode_id = episode_folder.split("_")[-1]
     print(f"** Episode ID: {episode_id} {title}")
-    data_dct = make_work_dictionary(num, episode_id, csv_data, ep_cat_dct, ep_dct)
+    data_dct = make_work_dictionary(num, csv_data, ep_cat_dct, ep_dct)
     print(f"Dictionary for Work creation:\n{data_dct}")
     print("**************")
     record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)
@@ -1311,7 +1283,6 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
 def create_series_work(
     patv_id: str,
     series_dct: dict[str, str],
-    csv_data,
     series_work: list[dict[str, str]],
     work_restricted: list[dict[str, str]],
     record: list[dict[str, str]],
@@ -1334,7 +1305,7 @@ def create_series_work(
         series_work_values.append({"title.language": "English"})
         series_work_values.append({"title.type": "05_MAIN"})
     if "title_article" in series_dct:
-        if series_dct["title_article"] != "-" and series_dct["title_article"] != "":
+        if series_dct["title_article"] not in ("-", ""):
             series_work_values.append({"title.article": series_dct["title_article"]})
     if len("patv_id") > 0:
         series_work_values.append({"alternative_number.type": "PATV Amazon asset ID"})
@@ -1397,7 +1368,11 @@ def create_series_work(
         )
         print(subject_xml)
         update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord")
-        if "Content_subject" in str(update_rec):
+        if update_rec is None:
+            LOGGER.info(
+                "Failed to update subjects to Series Work record: %s", series_work_id
+            )
+        elif "Content_subject" in str(update_rec):
             LOGGER.info(
                 "Label text successfully updated to Series Work %s", series_work_id
             )
@@ -1435,7 +1410,11 @@ def create_series_work(
         label_xml = adlib.create_grouped_data(series_work_id, "Label", label_fields)
         print(label_xml)
         update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord")
-        if "Label" in str(update_rec):
+        if update_rec is None:
+            LOGGER.info(
+                "Failed to update Labels to Series Work record: %s", series_work_id
+            )
+        elif "Label" in str(update_rec):
             LOGGER.info(
                 "Label text successfully updated to Series Work %s", series_work_id
             )
@@ -1470,15 +1449,13 @@ def create_work(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             work_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art != "-" and work_title_art != "":
+            if work_title_art not in ("-", ""):
                 work_values.append({"title.article": work_title_art})
         else:
             work_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(work_values):
             if "title_article" in work_dict:
-                if (
-                    work_dict["title_article"] != "-"
-                    and work_dict["title_article"] != ""
-                ):
+                if work_dict["title_article"] not in ("-", ""):
                     work_values.append({"title.article": work_dict["title_article"]})
         work_values.append({"title.language": "English"})
         work_values.append({"title.type": "05_MAIN"})
@@ -1501,6 +1478,9 @@ def create_work(
         work_values.append({"part_unit": "EPISODE"})
         work_values.append({"part_unit.value": work_dict["episode_num"]})
         work_values.append({"part_unit.valuetotal": work_dict["episode_total"]})
+    # if "imdb_id" in work_dict:
+    #     work_values.append({"alternative_number.type": "IMDB ID"})
+    #     work_values.append({"alternative_number": work_dict["imdb_id"]})
     if "series_num" in work_dict:
         work_values.append({"part_unit": "SERIES"})
         work_values.append({"part_unit.value": work_dict["series_num"]})
@@ -1630,15 +1610,13 @@ def create_manifestation(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             manifestation_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if len(work_title_art) > 1:
+            if work_title_art not in ("-", ""):
                 manifestation_values.append({"title.article": work_title_art})
         else:
             manifestation_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(manifestation_values):
             if "title_article" in work_dict:
-                if (
-                    work_dict["title_article"] != "-"
-                    and work_dict["title_article"] != ""
-                ):
+                if work_dict["title_article"] not in ("-", ""):
                     manifestation_values.append(
                         {"title.article": work_dict["title_article"]}
                     )
@@ -1769,15 +1747,13 @@ def create_item(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             item_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if len(work_title_art) > 1:
+            if work_title_art not in ("-", ""):
                 item_values.append({"title.article": work_title_art})
         else:
             item_values.append({"title": work_dict["title"]})
+        if "title.article" not in str(item_values):
             if "title_article" in work_dict:
-                if (
-                    work_dict["title_article"] != "-"
-                    and work_dict["title_article"] != ""
-                ):
+                if work_dict["title_article"] not in ("-", ""):
                     item_values.append({"title.article": work_dict["title_article"]})
         item_values.append({"title.language": "English"})
         item_values.append({"title.type": "05_MAIN"})

@@ -25,15 +25,20 @@ control
 rm "${CODE_PTH}metadata_clean_up_list.txt"
 touch "${CODE_PTH}metadata_clean_up_list.txt"
 
-echo " ========================= SHELL SCRIPT LAUNCH ========================== $DATE_FULL" >> "${LOG}"
-echo " == Start list extraction for metadata folder CID_mediainfo == " >> "${LOG}"
-echo " == Shell script creating metadata_clean_up_list.txt output for parallel launch of Python scripts == " >> "${LOG}"
-
 # Command to build unique sorted list from cid_mediainfo path
 find "${CID_MEDIAINFO}" -name "*_TEXT.txt" > "${CODE_PTH}metadata_clean_up_list.txt"
 find "${CID_MEDIAINFO}" -name "*_EXIF.txt" >> "${CODE_PTH}metadata_clean_up_list.txt"
 
-echo " == Launching GNU parallel to run muliple Python3 scripts for metadata_clean_up == " >> "${LOG}"
-grep '/mnt/' "${CODE_PTH}metadata_clean_up_list.txt" | parallel --jobs 20 "${PYENV313} ${CODE_PTH}metadata_clean_up.py {}"
+if [ -s "${CODE_PTH}metadata_clean_up_list.txt" ]
+  then
+    echo " ========================= SHELL SCRIPT LAUNCH ========================== $DATE_FULL" >> "${LOG}"
+    echo " == Start list extraction for metadata folder CID_mediainfo == " >> "${LOG}"
+    echo " == Shell script creating metadata_clean_up_list.txt output for parallel launch of Python scripts == " >> "${LOG}"
 
-echo " ========================= SHELL SCRIPT END ========================== $DATE_FULL" >> "${LOG}"
+    echo " == Launching GNU parallel to run muliple Python3 scripts for metadata_clean_up == " >> "${LOG}"
+    grep '/mnt/' "${CODE_PTH}metadata_clean_up_list.txt" | parallel --jobs 20 "${PYENV313} ${CODE_PTH}metadata_clean_up.py {}"
+
+    echo " ========================= SHELL SCRIPT END ========================== $DATE_FULL" >> "${LOG}"
+  else
+    exit 0
+fi

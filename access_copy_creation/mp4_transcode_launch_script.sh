@@ -33,23 +33,26 @@ function pauseScript {
     fi
 }
 
-# Control check inserted into code
+# Control checks
 control
-
-# pause scripts check inserted into code
 pauseScript
 
-# replace list to ensure clean data
+# replace list and build new data
 echo "" > "${dump_to}"
 
-echo " ========================= SHELL LAUNCH - $path_insert ========================== $date_FULL" >> "${log_path}"
-echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_path}"
-echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
-
 # Command to build file list to supply to Python
-find "${transcode_path1}" -maxdepth 1 -mindepth 1 -type f -mmin +1 >> "${dump_to}"
+find "${transcode_path1}" -maxdepth 1 -mindepth 1 -type f -mmin +10 >> "${dump_to}"
+if [ -s "${dump_to}" ]
+  then
+    echo " ========================= SHELL LAUNCH - $path_insert ========================== $date_FULL" >> "${log_path}"
+    echo " == Start MP4 transcode/JPEG creation in $transcode_path1 == " >> "${log_path}"
+    echo " == Shell script creating dump_text.txt output for parallel launch of Python scripts == " >> "${log_path}"
 
-echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
-grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" --timeout 86400 "$PYENV311 $python_script {}"
+    echo " == Launching GNU parallel to run muliple Python3 scripts for encoding == " >> "${log_path}"
+    source /home/datadigipres/code/ENV312/bin/activate
+    grep '/mnt/' "${dump_to}" | parallel --jobs "$job_num" --timeout 86400 "$PYENV312 $python_script {}"
 
-echo " ========================= SHELL END - $path_insert ========================== $date_FULL" >> "${log_path}"
+    echo " ========================= SHELL END - $path_insert ========================== $date_FULL" >> "${log_path}"
+  else
+    exit 0
+fi

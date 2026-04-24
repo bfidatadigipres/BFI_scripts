@@ -61,6 +61,7 @@ HEADERS = {"accept": "application/json", "apikey": os.environ.get("PATV_KEY")}
 STREAM_KEYS = {
     "Netflix": os.environ.get("PA_NETFLIX"),
     "Amazon": os.environ.get("PA_AMAZON"),
+    "Disney": os.environ.get("PA_DISNEY"),
 }
 
 
@@ -78,6 +79,27 @@ def read_csv_to_dict(csv_path: str) -> dict[str, list[str]]:
     return data_dct
 
 
+def get_folder_title(article: str, title: str) -> str:
+    """
+    Match title to folder naming
+    """
+
+    title = (
+        title.replace("/", "")
+        .replace("'", "")
+        .replace("&", "and")
+        .replace("(", "")
+        .replace(")", "")
+        .replace("!", "")
+        .replace("’", "")
+    )
+    if article != "-" or article != "":
+        title = f'{article}_{title.replace(" ", "_")}_'
+    else:
+        title = f'{title.replace(" ", "_")}_'
+    return title
+
+
 @tenacity.retry(stop=tenacity.stop_after_attempt(3))
 def fetch(
     cat_id: str, search_type: str, search_id: str, title: str
@@ -85,8 +107,9 @@ def fetch(
     """
     Fetch data from PATV URL
     """
-    url_title = title.replace(" ", "%20")
+    url_title = title.replace(" ", "%20").replace("&", "and")
     url_title = f"%27{url_title}%27"
+    print(url_title)
     if search_type == "title":
         try:
             url_all = os.path.join(
@@ -95,6 +118,8 @@ def fetch(
             )
             print(url_all)
             req = requests.get(url_all, headers=HEADERS)
+            print("========================")
+            print(req.text)
             dct = json.loads(req.text)
             return dct
         except Exception as err:
@@ -205,14 +230,9 @@ def main() -> None:
     Iterate list and build asset_dict of TV items, then process
     any new items placing in programme led folder structures
     """
-    if not utils.check_control("stora"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    #if not utils.check_control("stora") or not utils.check_control("pause_scripts"):
+    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     LOGGER.info(
         "========== Fetch augmented metadata script STARTED ======================"
@@ -439,7 +459,9 @@ def main() -> None:
 
                 if not title:
                     title = episode_dct["title"]
-                episode_folder = f"{title.strip().replace(' ', '_')}_{ep_asset_id}"
+                cut_title, title_article = utils.split_title(title)
+                folder_prefix = get_folder_title(title_article, cut_title)
+                episode_folder = f"{folder_prefix.lstrip('_')}_{ep_asset_id}"
 
                 # Create path to new episode
                 mono_path = os.path.join(storage_path, episode_folder)

@@ -282,7 +282,6 @@ def cid_work_check(search, platform, session):
         )
         return "", ""
 
-    print(records)
     for record in records:
         try:
             priref = adlib.retrieve_field_name(record, "priref")[0]
@@ -334,9 +333,8 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
     Create new People rec where needed and capture priref,
     return link new/existing People priref to CID Work
     """
-    if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    #if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
+    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
@@ -351,8 +349,6 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
 
     # Get people data
     cast_dct, cred_dct = retrieve_person(credit_list, nfa_cat)
-    print(cast_dct)
-    print(cred_dct)
 
     cast_list = []
     cred_list = []
@@ -374,7 +370,7 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
 
                 # Check person record exists
                 pdata = cid_person_check(cast_id, session)
-                if pdata is None:
+                if pdata == (None, None, None):
                     # Create data for Person record creation
                     cast_dct_data = make_person_dct(val)
                     cast_dct_formatted = cast_dct_data[0]
@@ -475,6 +471,7 @@ def create_contributors(priref, nfa_cat, credit_list, platform):
 
         cast_list.sort()
         cast_dct_sorted = sort_cast_dct(cast_list)
+        print(cast_dct_sorted)
         # Append cast/credit and edit name blocks to work_append_dct
         LOGGER.info("** Appending cast data to work record now...")
         cast_xml = adlib.create_grouped_data(priref, "cast", cast_dct_sorted)

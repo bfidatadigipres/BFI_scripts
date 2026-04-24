@@ -100,14 +100,11 @@ def main():
     Only move/clean up folders in target date range, protecting
     empty folders created ahead of today for future recordings
     """
-    if not utils.check_control("power_off_all"):
-        logger.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_control("pause_scripts"):
-        logger.info("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts") or not utils.check_control(
+        "power_off_all"
+    ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE_PATH):
-        logger.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     logger.info("=========== stora2_housekeeping.py START ===========")

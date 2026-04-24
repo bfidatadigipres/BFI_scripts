@@ -5,7 +5,7 @@ Take feed from nominated pointer file and process into Workflow jobs
 for next Multi Machine Environment in F47 (first was DigiBeta)
 
 Dependencies:
-1. Pointer file number ??? where Items are added for processing
+1. Pointer file number 1751043742, where Items are added for processing
 2. LOGS/tvam_selecta.log
 3. tvam/selections.csv
 4. tvam/submitta.py
@@ -32,7 +32,9 @@ LOGS = os.environ["LOG_PATH"]
 CID_API = utils.get_current_api()
 NOW = datetime.datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
-SELECTIONS = os.path.join(os.environ["WORKFLOW"], "tvam/selections.csv")
+SELECTIONS = os.path.join(
+    os.environ.get("CODE_DEPENDS"), "workflow/tvam/selections.csv"
+)
 
 
 def get_candidates():
@@ -42,7 +44,7 @@ def get_candidates():
     q = {
         "command": "getpointerfile",
         "database": "items",
-        "number": 454,  ???
+        "number": 1751043742,
         "output": "jsonv1",
     }
 
@@ -79,16 +81,12 @@ def main():
     if not utils.cid_check(CID_API):
         print("* Cannot establish CID session, exiting script")
         sys.exit()
-    if not utils.check_storage(SELECTIONS):
-        print("Script run prevented by Storage Control document. Script exiting.")
-        sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     write_to_log(f"=== Processing Items in TVAM 1inch Pointer File === {DT_STR}\n")
     write_to_log(
         "Fetching csv data, building selected items list and fetching candidates.\n"
     )
-    tvam_select_csv = os.path.join(os.environ["WORKFLOW"], "tvam/selections.csv")
-    selects = selections.Selections(input_file=tvam_select_csv)
+    selects = selections.Selections(input_file=SELECTIONS)
     selected_items = selects.list_items()
     candidates = get_candidates()
 
@@ -112,13 +110,17 @@ def main():
 
         # Model tape carrier
         write_to_log(f"Modelling tape carrier for item {priref} {obj}\n")
+        t = None
         try:
             t = tape_model.Tape(obj)
-        except Exception:
-            write_to_log(f"Could not model tape from object: {obj}")
+        except Exception as err:
+            write_to_log(f"Could not model tape from object: {obj}\n{err}")
             continue
 
         # Get data
+        if not t.package_number:
+            write_to_log(f"Skipping: Tape model did not find package number: {obj}")
+            continue
         fmt = t.format()
         d = t.identifiers
         d["format"] = fmt
@@ -126,7 +128,11 @@ def main():
         dates = t.content_dates()
         if dates:
             d["content_dates"] = ",".join([str(i) for i in dates])
-
+        if not t.get_identifiers():
+            write_to_log(
+                f"Skipping write to CSV, get_identifiers() returned None: {t.get_identifiers()}"
+            )
+            continue
         item_ids = [i["object_number"] for i in t.get_identifiers()]
         d["items"] = ",".join(item_ids)
         d["item_count"] = len(item_ids)

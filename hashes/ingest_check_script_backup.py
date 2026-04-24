@@ -128,11 +128,9 @@ def main() -> None:
     if len(sys.argv) < 2:
         LOGGER.error("Shell script failed to pass argument path via GNU parallel")
         sys.exit("Shell script failed to pass argument to Python script")
-    if not utils.check_control("power_off_all"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts") or not utils.check_control(
+        "power_off_all"
+    ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(sys.argv[1]):
         LOGGER.info("Script run prevented by storage_control.json. Script exiting.")

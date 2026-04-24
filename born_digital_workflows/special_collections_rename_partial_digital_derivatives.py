@@ -160,16 +160,13 @@ def main():
     Iterate folders in STORAGE, find image files in folders
     named after analogue record
     """
-    if not utils.check_control("power_off_all"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_control("pause_scripts"):
-        LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_control("power_off_all") or not utils.check_control(
+        "pause_scripts"
+    ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         sys.exit("* Cannot establish CID session, exiting script")
     if not utils.check_storage(STORAGE):
-        LOGGER.info("Script run prevented by storage_control.json. Script exiting.")
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
 
     LOGGER.info(
@@ -181,6 +178,9 @@ def main():
     session = adlib.create_session()
     for rec in rec_directories:
         if not utils.check_control("pause_scripts"):
+            LOGGER.info(
+                "Script run prevented by downtime_control.json. Script exiting."
+            )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         rpath = os.path.join(STORAGE, rec)
         LOGGER.info("Analogue record folder found: %s", rec)

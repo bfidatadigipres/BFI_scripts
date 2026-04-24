@@ -629,9 +629,6 @@ def main():
         print(files)
         for pth in files:
             if not utils.check_control("autoingest"):
-                logger.info(
-                    "Script run prevented by downtime_control.json. Script exiting."
-                )
                 sys.exit(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )
@@ -692,8 +689,9 @@ def main():
                 boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
                 print(f"File successfully deleted: {boole}")
                 continue
-            elif "special_collections" in fpath and "proxy/image/archive/" in fpath:
-                print("* File is Special Collections archive image")
+            # Check archive/ and archives_catalogue/ path
+            elif "/Screencraft/" in fpath and "proxy/image/archive" in fpath:
+                print("* File is Special Collections/Screencraft archive image")
                 # Simplified name check
                 if not re.search("^[A-Za-z0-9_.]*$", fname):
                     print(f"* Filename formatted incorrectly {fname}")
@@ -704,6 +702,7 @@ def main():
                 )
                 if not object_number or not part:
                     continue
+
 
             elif not "/ingest/" in fpath:
                 print("* Filepath is not an ingest path")
@@ -879,7 +878,7 @@ def main():
                 )
                 if int(size) > 1099511627776:
                     logger.info(
-                        "%s\tFile is larger than 1TB. Checking file is ProRes or TAR",
+                        "%s\tFile is larger than 1TB. Checking file is ProRes, MKV or TAR",
                         log_paths,
                     )
                     accepted_file_type = check_accepted_file_type(fpath)

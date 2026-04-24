@@ -786,6 +786,11 @@ def main():
                         "Matched Work Asset ID is for Netflix created Work record: %s",
                         priref_work,
                     )
+                if "PATV Disney asset id" in str(alt_type):
+                    LOGGER.warning(
+                        "Matched Work Asset ID is for Disney created Work record: %s",
+                        priref_work,
+                    )
             else:
                 priref_work = create_work(
                     "", "", "", data_dct, record, work, work_restricted
@@ -859,6 +864,11 @@ def main():
                 if "PATV Netflix asset ID" in str(alt_type):
                     LOGGER.warning(
                         "Series found was created for Netflix streaming series: %s",
+                        series_priref,
+                    )
+                if "PATV Disney asset ID" in str(alt_type):
+                    LOGGER.warning(
+                        "Series found was created for Disney streaming series: %s",
                         series_priref,
                     )
             else:
@@ -1025,6 +1035,10 @@ def make_episodes(
         if "PATV Netflix asset id" in str(alt_type):
             LOGGER.warning(
                 "Episode work exists for Netflix streaming platform: %s", priref_episode
+            )
+        if "PATV Disney asset id" in str(alt_type):
+            LOGGER.warning(
+                "Episode work exists for Disney streaming platform: %s", priref_episode
             )
     print("New episode_id found for Work. Linking to series work")
 

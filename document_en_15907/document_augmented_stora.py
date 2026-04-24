@@ -266,6 +266,10 @@ def find_repeats(asset_id, sess):
         logger.warning(
             "Matching episode work found to be a Netflix work record: %s", man_priref
         )
+    if "Disney" in alt_num_type:
+        logger.warning(
+            "Matching episode work found to be a Disney work record: %s", man_priref
+        )
     if ppriref is None:
         return None
     print(
@@ -785,8 +789,8 @@ def main():
     """
     if not utils.check_storage(STORAGE):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    #if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
+    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
 
     logger.info(
         "========== STORA documentation script STARTED ==============================================="
@@ -805,10 +809,10 @@ def main():
             sys.exit(
                 "Multiple CID item record creation failures detected. Script exiting."
             )
-        if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
-            logger.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
+        #if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
+        #    logger.info(
+        #        "Script run prevented by downtime_control.json. Script exiting."
+        #    )
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         if not utils.cid_check(CID_API):
             logger.warning("* Cannot establish CID session, exiting script")

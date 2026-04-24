@@ -60,6 +60,7 @@ import utils
 BPINGEST = os.environ["BP_INGEST"]
 BPINGEST_NETFLIX = os.environ["BP_INGEST_NETFLIX"]
 BPINGEST_AMAZON = os.environ["BP_INGEST_AMAZON"]
+BPINGEST_DISNEY = os.environ["BP_INGEST_DISNEY"]
 LOG_PATH = os.environ["LOG_PATH"]
 JSON_PATH = os.path.join(LOG_PATH, "black_pearl")
 CID_API = utils.get_current_api()
@@ -225,6 +226,7 @@ def main():
             if "/mnt/qnap_09" in pth:
                 autoingest_list.append(os.path.join(pth, BPINGEST_NETFLIX))
                 autoingest_list.append(os.path.join(pth, BPINGEST_AMAZON))
+                autoingest_list.append(os.path.join(pth, BPINGEST_DISNEY))
 
     print(autoingest_list)
     for autoingest in autoingest_list:
@@ -241,6 +243,8 @@ def main():
             bucket, bucket_list = bp.get_buckets("netflix")
         elif "black_pearl_amazon_ingest" in autoingest:
             bucket, bucket_list = bp.get_buckets("amazon")
+        elif "black_pearl_disney_ingest" in autoingest:
+            bucket, bucket_list = bp.get_buckets("disney")
         else:
             bucket, bucket_list = bp.get_buckets("bfi")
 
@@ -606,6 +610,8 @@ def process_files(
         if "black_pearl_netflix_ingest" in autoingest:
             move_path = os.path.join(root_path, "completed", file)
         elif "black_pearl_amazon_ingest" in autoingest:
+            move_path = os.path.join(root_path, "completed", file)
+        elif "black_pearl_disney_ingest" in autoingest:
             move_path = os.path.join(root_path, "completed", file)
         else:
             move_path = os.path.join(root_path, "transcode", file)

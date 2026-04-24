@@ -176,6 +176,11 @@ def main():
         upload_size = 559511627776
         autoingest = os.path.join(fullpath, os.environ["BP_INGEST_AMAZON"])
         bucket_collection = "amazon"
+    elif "disney" in str(sys.argv[1]):
+        fullpath = os.environ["PLATFORM_INGEST_PTH"]
+        upload_size = 559511627776
+        autoingest = os.path.join(fullpath, os.environ["BP_INGEST_DISNEY"])
+        bucket_collection = "disney"
     else:
         # Retrieve an upload size limit in bytes
         data_sizes = utils.read_yaml(INGEST_CONFIG)

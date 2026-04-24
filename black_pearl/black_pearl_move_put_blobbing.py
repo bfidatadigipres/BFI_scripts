@@ -122,6 +122,11 @@ def get_buckets(bucket_collection: str) -> str:
             if "amazonblobbing" in key.lower():
                 if value is True:
                     key_bucket = key
+    elif bucket_collection == "disney":
+        for key, value in bucket_data.items():
+            if "disneyblobbing" in key.lower():
+                if value is True:
+                    key_bucket = key
     elif bucket_collection == "bfi":
         for key, value in bucket_data.items():
             if "preservationblobbing" in key.lower():
@@ -273,6 +278,12 @@ def main():
             fullpath, f"{os.environ['BP_INGEST_AMAZON']}/blobbing/"
         )
         bucket_collection = "amazon"
+    elif "disney" in str(sys.argv[1]):
+        fullpath = os.environ["PLATFORM_INGEST_PTH"]
+        autoingest = os.path.join(
+            fullpath, f"{os.environ['BP_INGEST_DISNEY']}/blobbing/"
+        )
+        bucket_collection = "disney"
     else:
         # Just configuring for BFI ingests >1TB at this time
         data_sizes = utils.read_yaml(INGEST_CONFIG)
@@ -465,6 +476,10 @@ def main():
             ):
                 move_path = os.path.join(root_path, "completed", fname)
             elif "black_pearl_amazon_ingest" in autoingest and fname.endswith(
+                (".mov", ".MOV")
+            ):
+                move_path = os.path.join(root_path, "completed", fname)
+            if "black_pearl_disney_ingest" in autoingest and fname.endswith(
                 (".mov", ".MOV")
             ):
                 move_path = os.path.join(root_path, "completed", fname)
@@ -676,6 +691,10 @@ def main():
         ):
             move_path = os.path.join(root_path, "completed", fname)
         elif "black_pearl_amazon_ingest" in autoingest and fname.endswith(
+            (".mov", ".MOV")
+        ):
+            move_path = os.path.join(root_path, "completed", fname)
+        elif "black_pearl_disney_ingest" in autoingest and fname.endswith(
             (".mov", ".MOV")
         ):
             move_path = os.path.join(root_path, "completed", fname)

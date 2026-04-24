@@ -658,6 +658,14 @@ def main():
                     linux_host, f"{os.environ['BP_INGEST_AMAZON']}"
                 )
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+            elif "ingest/disney" in str(fpath):
+                logger.info(
+                    "%s\tIngest-ready file is from Disney ingest path, setting Black Pearl Disney ingest folder"
+                )
+                black_pearl_folder = os.path.join(
+                    linux_host, f"{os.environ['BP_INGEST_DISNEY']}"
+                )
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             else:
                 black_pearl_folder = os.path.join(
                     linux_host, f"{os.environ['BP_INGEST']}"
@@ -787,6 +795,8 @@ def main():
                 bucket_list = get_buckets("netflix")
             elif "ingest/amazon" in fpath:
                 bucket_list = get_buckets("amazon")
+            elif "ingest/disney" in fpath:
+                bucket_list = get_buckets("disney")
             else:
                 bucket_list = get_buckets("bfi")
 

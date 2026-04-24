@@ -41,7 +41,7 @@ import yaml
 from series_retrieve import check_id, retrieve
 
 sys.path.append(os.environ["CODE"])
-import adlib_v3 as adlib
+import adlib_v3_sess as adlib
 import utils
 from helpers import stora_helper
 from parsers import stora_episode_parser as jp
@@ -177,7 +177,7 @@ def look_up_series_list(alternative_num):
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def cid_series_query(series_id):
+def cid_series_query(series_id, sess):
     """
     Sends CID request for series_id data
     """
@@ -187,7 +187,7 @@ def cid_series_query(series_id):
     sleep(0.5)
     try:
         hit_count, series_query_result = adlib.retrieve_record(
-            CID_API, "works", search, "1"
+            CID_API, "works", search, "1", sess
         )
     except Exception as err:
         print(err)
@@ -213,7 +213,7 @@ def cid_series_query(series_id):
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
-def find_repeats(asset_id):
+def find_repeats(asset_id, sess):
     """
     Use asset_id to check in CID for duplicate
     PATV showings of a manifestation
@@ -223,7 +223,7 @@ def find_repeats(asset_id):
         f'alternative_number="{asset_id}" AND alternative_number.type="PATV asset id"'
     )
     sleep(0.5)
-    hits, result = adlib.retrieve_record(CID_API, "manifestations", search, "1")
+    hits, result = adlib.retrieve_record(CID_API, "manifestations", search, "1", sess)
     print(f"*** find_repeats(): {hits}\n{result}")
     if hits is None:
         print(f"CID API could not be reached for Manifestations search: {search}")
@@ -240,6 +240,7 @@ def find_repeats(asset_id):
         "manifestations",
         f'priref="{man_priref}"',
         "1",
+        sess,
         ["alternative_number.type", "part_of_reference.lref"],
     )[1]
     if not full_result:
@@ -314,12 +315,16 @@ def series_check(series_id):
 
         # series category codes, unsure if there's always two parts to category, selects longest
         series_category_codes = []
+        series_category_code = ""
         if len(val.category) >= 1:
             for num in range(0, len(val.category)):
                 series_category_codes.append(val.category[num].code or "")
         series_category_codes.sort(key=len, reverse=True)
-        series_category_code = series_category_codes[0]
-        print(f"series_check(): Series category code, longest: {series_category_code}")
+        if len(series_category_codes) > 0:
+            series_category_code = series_category_codes[0]
+            print(
+                f"series_check(): Series category code, longest: {series_category_code}"
+            )
 
         return (
             series_description,
@@ -584,7 +589,7 @@ def fetch_lines(fullpath, json_dct):
     nested_id = check_id(fullpath)
     if nested_id is not None:
         if len(nested_id) == 36 and nested_id != series_id:
-            logger.warning(
+            logger.info(
                 "Retrieved Series ID %s likely not 'series' - exchanged for %s",
                 series_id,
                 nested_id,
@@ -790,6 +795,7 @@ def main():
     file_list = glob.glob(f"{STORAGE_PATH}/**/*.json", recursive=True)
     file_list.sort()
     print(f"Found JSON file total: {len(file_list)}")
+    sess = adlib.create_session()
 
     for fullpath in file_list:
         if FAILURE_COUNTER > 2:
@@ -873,7 +879,7 @@ def main():
         work_priref = ""
         if "asset_id" in epg_dict:
             print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
-            work_priref = find_repeats(epg_dict["asset_id"])
+            work_priref = find_repeats(epg_dict["asset_id"], sess)
             print(work_priref)
         if work_priref is None:
             print(
@@ -946,7 +952,7 @@ def main():
                     logger.info("Series found for annual refresh: %s", series_chck)
                     bbc_split = False
 
-                series_return = cid_series_query(series_id)
+                series_return = cid_series_query(series_id, sess)
                 if series_return[0] is None:
                     print(f"CID Series data not retrieved: {epg_dict['series_id']}")
                     logger.warning(
@@ -970,6 +976,7 @@ def main():
                         series_id,
                         month,
                         bbc_split,
+                        sess,
                     )
                     if not series_work_id:
                         logger.warning(
@@ -990,6 +997,7 @@ def main():
                 csv_description,
                 csv_dump,
                 epg_dict,
+                sess,
             )
 
         if not work_priref:
@@ -1008,7 +1016,12 @@ def main():
         manifestation_values.extend(rec_def)
         manifestation_values.extend(man_def)
         manifestation_priref = create_manifestation(
-            fullpath, work_priref, csv_actual_duration, manifestation_values, epg_dict
+            fullpath,
+            work_priref,
+            csv_actual_duration,
+            manifestation_values,
+            epg_dict,
+            sess,
         )
 
         if not manifestation_priref:
@@ -1036,6 +1049,7 @@ def main():
             new_work,
             item_values,
             epg_dict,
+            sess,
         )
         print(f"item_object_number: {item_data}")
 
@@ -1071,7 +1085,7 @@ def main():
         """
         # Build webvtt payload [deprecated]
         if webvtt_payload:
-            success = push_payload(item_data[1], webvtt_payload)
+            success = push_payload(item_data[1], webvtt_payload, sess)
             if not success:
                 logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
         """
@@ -1138,6 +1152,7 @@ def create_series(
     series_id,
     month,
     bbc_flag,
+    sess,
 ):
     """
     Call function series_check(series_id) and build all data needed
@@ -1311,14 +1326,14 @@ def create_series(
 
     # Start creating CID Work Series record with no nested groups
     series_values_xml = adlib.create_record_data(
-        CID_API, "works", "", series_work_values
+        CID_API, "works", sess, "", series_work_values
     )
     if series_values_xml is None:
         return None
     sleep(0.5)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
-        work_rec = adlib.post(CID_API, series_values_xml, "works", "insertrecord")
+        work_rec = adlib.post(CID_API, series_values_xml, "works", "insertrecord", sess)
     except Exception as err:
         print(f"* Unable to create Series Work record for <{series_title_full}> {err}")
         logger.warning(
@@ -1330,10 +1345,13 @@ def create_series(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(work_rec):
         try:
+            sleep(1)
             logger.info(
                 "Attempting to create CID series record for %s", series_title_full
             )
-            work_rec = adlib.post(CID_API, series_values_xml, "works", "insertrecord")
+            work_rec = adlib.post(
+                CID_API, series_values_xml, "works", "insertrecord", sess
+            )
         except Exception as err:
             print(
                 f"* Unable to create Series Work record for <{series_title_full}> {err}"
@@ -1381,7 +1399,7 @@ def create_series(
             series_work_id, "Content_genre", series_content_genres
         )
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord")
+        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord", sess)
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_genre" in str(update_rec):
@@ -1403,7 +1421,7 @@ def create_series(
             series_work_id, "Content_subject", series_content_subject
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord")
+        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord", sess)
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_subject" in str(update_rec):
@@ -1450,7 +1468,7 @@ def create_series(
     if labels is True:
         label_xml = adlib.create_grouped_data(series_work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord")
+        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord", sess)
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Label" in str(update_rec):
@@ -1613,7 +1631,7 @@ def build_webvtt_dct(old_webvtt):
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_work(
-    fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict
+    fullpath, series_work_id, work_values, csv_description, csv_dump, epg_dict, sess
 ):
     """
     Create work records
@@ -1673,13 +1691,13 @@ def create_work(
     work_id = work_rec = ""
     # Start creating CID Work record
     sleep(0.5)
-    work_values_xml = adlib.create_record_data(CID_API, "works", "", work_values)
+    work_values_xml = adlib.create_record_data(CID_API, "works", sess, "", work_values)
     if work_values_xml is None:
         return None
     try:
         sleep(0.5)
         logger.info("Attempting to create Work record for item %s", epg_dict["title"])
-        work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
+        work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord", sess)
         print(f"create_work(): {work_rec}")
     except Exception as err:
         print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
@@ -1694,11 +1712,13 @@ def create_work(
 
     if "Duplicate key in unique index 'invno':" in str(work_rec):
         try:
-            sleep(0.5)
+            sleep(1)
             logger.info(
                 "Attempting to create Work record for item %s", epg_dict["title"]
             )
-            work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
+            work_rec = adlib.post(
+                CID_API, work_values_xml, "works", "insertrecord", sess
+            )
             print(f"create_work(): {work_rec}")
         except Exception as err:
             print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
@@ -1739,7 +1759,7 @@ def create_work(
     if genre is True:
         genre_xml = adlib.create_grouped_data(work_id, "Content_genre", content_genres)
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord")
+        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord", sess)
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_genre" in str(update_rec):
@@ -1759,7 +1779,7 @@ def create_work(
             work_id, "Content_subject", content_subject
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord")
+        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord", sess)
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_subject" in str(update_rec):
@@ -1804,7 +1824,7 @@ def create_work(
     if labels is True:
         label_xml = adlib.create_grouped_data(work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord")
+        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord", sess)
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Label" in str(update_rec):
@@ -1815,7 +1835,7 @@ def create_work(
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_manifestation(
-    fullpath, work_priref, actual_duration, manifestation_defaults, epg_dict
+    fullpath, work_priref, actual_duration, manifestation_defaults, epg_dict, sess
 ):
     """
     Create a manifestation record,
@@ -1867,7 +1887,7 @@ def create_manifestation(
             manifestation_values.append({"runtime_seconds": duration_secs})
 
     man_values_xml = adlib.create_record_data(
-        CID_API, "manifestations", "", manifestation_values
+        CID_API, "manifestations", sess, "", manifestation_values
     )
     print("=================================")
     print(manifestation_values)
@@ -1878,7 +1898,9 @@ def create_manifestation(
     try:
         sleep(0.5)
         logger.info("Attempting to create Manifestation record for item %s", title)
-        man_rec = adlib.post(CID_API, man_values_xml, "manifestations", "insertrecord")
+        man_rec = adlib.post(
+            CID_API, man_values_xml, "manifestations", "insertrecord", sess
+        )
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:
         print(f"*** Unable to write manifestation record: {err}")
@@ -1889,10 +1911,10 @@ def create_manifestation(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(man_rec):
         try:
-            sleep(0.5)
+            sleep(1)
             logger.info("Attempting to create Manifestation record for item %s", title)
             man_rec = adlib.post(
-                CID_API, man_values_xml, "manifestations", "insertrecord"
+                CID_API, man_values_xml, "manifestations", "insertrecord", sess
             )
             print(f"create_manifestation(): {man_rec}")
         except Exception as err:
@@ -1933,6 +1955,7 @@ def create_cid_item_record(
     new_work,
     item_values,
     epg_dict,
+    sess,
 ):
     """
     Create CID Item record
@@ -1949,7 +1972,8 @@ def create_cid_item_record(
     except (KeyError, IndexError, TypeError):
         print("Title article is not present")
 
-    item_values_xml = adlib.create_record_data(CID_API, "items", "", item_values)
+    item_values_xml = adlib.create_record_data(CID_API, "items", sess, "", item_values)
+    print(item_values_xml)
     if item_values_xml is None:
         return None
 
@@ -1958,7 +1982,7 @@ def create_cid_item_record(
         logger.info(
             "Attempting to create CID item record for item %s", epg_dict["title"]
         )
-        item_rec = adlib.post(CID_API, item_values_xml, "items", "insertrecord")
+        item_rec = adlib.post(CID_API, item_values_xml, "items", "insertrecord", sess)
         print(f"create_cid_item_record(): {item_rec}")
     except Exception as err:
         logger.warning(
@@ -1971,11 +1995,13 @@ def create_cid_item_record(
     # Allow for retry if record priref creation crash:
     if "Duplicate key in unique index 'invno':" in str(item_rec):
         try:
-            sleep(0.5)
+            sleep(1)
             logger.info(
                 "Attempting to create CID item record for item %s", epg_dict["title"]
             )
-            item_rec = adlib.post(CID_API, item_values_xml, "items", "insertrecord")
+            item_rec = adlib.post(
+                CID_API, item_values_xml, "items", "insertrecord", sess
+            )
             print(f"create_cid_item_record(): {item_rec}")
         except Exception as err:
             logger.warning(
@@ -2006,7 +2032,7 @@ def create_cid_item_record(
             file,
         )
         print(f"** PROBLEM: Unable to create Item record for {fullpath}")
-        success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id)
+        success = clean_up_work_man(fullpath, manifestation_id, new_work, work_id, sess)
         logger.warning(
             "Data cleaned following failure of Item record creation: %s", success
         )
@@ -2016,7 +2042,7 @@ def create_cid_item_record(
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
+def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, sess):
     """
     Item record creation failed
     Update manifestation records with deletion prompt in title
@@ -2027,7 +2053,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
     payload = payload_start + payload_mid + payload_end
     try:
         sleep(0.5)
-        response = adlib.post(CID_API, payload, "manifestations", "updaterecord")
+        response = adlib.post(CID_API, payload, "manifestations", "updaterecord", sess)
         if response:
             logger.info(
                 "%s\tRenamed Manifestation %s with deletion prompt in title",
@@ -2058,7 +2084,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id):
         payload = payload_start + payload_mid + payload_end
         try:
             sleep(0.5)
-            response = adlib.post(CID_API, payload, "works", "updaterecord")
+            response = adlib.post(CID_API, payload, "works", "updaterecord", sess)
             if "priref" in str(response):
                 logger.info(
                     "%s\tRenamed Work %s with deletion prompt in title, for bulk deletion",
@@ -2166,7 +2192,7 @@ def update_broken_ts(vpath, work_priref, response, epg_dict=None):
 
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def push_payload(item_id, webvtt_payload):
+def push_payload(item_id, webvtt_payload, sess):
     """
     DEPRECATED
     Push webvtt payload separately to Item record
@@ -2182,7 +2208,7 @@ def push_payload(item_id, webvtt_payload):
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     try:
-        post_resp = adlib.post(CID_API, payload, "items", "updaterecord")
+        post_resp = adlib.post(CID_API, payload, "items", "updaterecord", sess)
     except Exception as err:
         logger.warning(
             "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err

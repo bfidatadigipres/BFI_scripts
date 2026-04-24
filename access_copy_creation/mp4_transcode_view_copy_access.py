@@ -71,7 +71,9 @@ def main():
     file_list = glob.glob(f"{STORAGE_PATH}*/source/*", recursive=True)
     for file in file_list:
         if "/done_" not in file:
-            LOGGER.info("================== START Transcode MP4 Access Copy Creation - BBC ==================")
+            LOGGER.info(
+                "================== START Transcode MP4 Access Copy Creation - BBC =================="
+            )
             break
 
     for fullpath in file_list:
@@ -99,15 +101,29 @@ def main():
             LOGGER.info("Incorrect file type supplied to transcode: %s", file)
             continue
         elif ftype == "video":
-            LOGGER.info("Item is video. Checking for DAR, height and duration of video.")
+            LOGGER.info(
+                "Item is video. Checking for DAR, height and duration of video."
+            )
             audio, stream_default, stream_count = check_audio(fullpath)
             dar = get_dar(fullpath)
             par = get_par(fullpath)
             height = get_height(fullpath)
             width = get_width(fullpath)
             duration, vs = get_duration(fullpath)
-            LOGGER.info("Audio data retrieved: %s - %s - %s", audio, stream_default, stream_count)
-            LOGGER.info("Video data retrieved DAR %s - PAR %s - Height %s - Width %s - Duration %s", dar, par, height, width, duration)
+            LOGGER.info(
+                "Audio data retrieved: %s - %s - %s",
+                audio,
+                stream_default,
+                stream_count,
+            )
+            LOGGER.info(
+                "Video data retrieved DAR %s - PAR %s - Height %s - Width %s - Duration %s",
+                dar,
+                par,
+                height,
+                width,
+                duration,
+            )
 
             # Check stream count and see if DL/DR or FL/FR or 12 channels
             mixed_dict = check_for_mixed_audio(fullpath)
@@ -117,7 +133,9 @@ def main():
             if "Discrete" in discretes:
                 if discretes.count("Discrete") >= 12:
                     twelve_chnl = True
-            audio_channels = utils.get_metadata("General", "Audio_Channels_Total", fullpath)
+            audio_channels = utils.get_metadata(
+                "General", "Audio_Channels_Total", fullpath
+            )
             audio_count = utils.get_metadata("General", "AudioCount", fullpath)
             if audio_count.strip() == "1" and audio_channels.strip() == "12":
                 twelve_chnl = True
@@ -138,7 +156,13 @@ def main():
                 twelve_chnl,
             )
             if not ffmpeg_cmd:
-                LOGGER.warning("Failed to build FFmpeg command with data: %s Height %s Width %s DAR %s", file, height, width, dar)
+                LOGGER.warning(
+                    "Failed to build FFmpeg command with data: %s Height %s Width %s DAR %s",
+                    file,
+                    height,
+                    width,
+                    dar,
+                )
                 continue
 
             ffmpeg_call_neat = " ".join(ffmpeg_cmd)
@@ -160,12 +184,19 @@ def main():
                 continue
             toc = time.perf_counter()
             transcode_mins = (toc - tic) // 60
-            LOGGER.info("** Transcode took %s minutes to complete for file: %s", transcode_mins, fullpath)
+            LOGGER.info(
+                "** Transcode took %s minutes to complete for file: %s",
+                transcode_mins,
+                fullpath,
+            )
 
             # Mediaconch conformance check file
             policy_check = conformance_check(complete_path)
             if "PASS!" in policy_check:
-                LOGGER.info("Mediaconch pass! MP4 transcode complete. Renaming source 'done_%s.", file)
+                LOGGER.info(
+                    "Mediaconch pass! MP4 transcode complete. Renaming source 'done_%s.",
+                    file,
+                )
                 new_file = f"done_{file}"
                 os.rename(fullpath, os.path.join(root, new_file))
                 os.rename(complete_path, cp_trimmed)
@@ -176,7 +207,9 @@ def main():
 
     for file in file_list:
         if "/done_" not in file:
-            LOGGER.info("==================== END Transcode MP4 Access Copy Creation - BBC ==================")
+            LOGGER.info(
+                "==================== END Transcode MP4 Access Copy Creation - BBC =================="
+            )
             break
 
 
@@ -538,7 +571,7 @@ def create_transcode(
 
     no_stretch_4x3 = [
         "-vf",
-        "yadif,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50"
+        "yadif,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
     ]
 
     crop_sd_4x3 = [

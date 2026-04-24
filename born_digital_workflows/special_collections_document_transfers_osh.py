@@ -290,8 +290,12 @@ def main() -> None:
         # Start processing at folder level
         for rec in recs:
             if not utils.check_control("pause_scripts"):
-                LOGGER.info("Script run prevented by downtime_control.json. Script exiting.")
-                sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+                LOGGER.info(
+                    "Script run prevented by downtime_control.json. Script exiting."
+                )
+                sys.exit(
+                    "Script run prevented by downtime_control.json. Script exiting."
+                )
             mdata_dct = {}
             mdata_dct = iterate_record(rec, status)
             print(f"Metadata dictionary extracted from CID/record:\n{mdata_dct}")

@@ -87,7 +87,7 @@ def accepted_file_type(ext):
     ftype = {
         "avi": "avi",
         "imp": "mxf, xml",
-        "tar": "dpx, dcp, dcdm, wav",
+        "tar": "dpx, dcp, dcdm, wav, doc, docx, eml, eps, fdr, fdx, jpeg, jpg, msg, numbers, pages, pdf, png, ppt, pptx, psb, psd, rtf, tif, tiff, txt, xls, xlsx",
         "mxf": "mxf, 50i, imp",
         "mpg": "mpeg-1, mpeg-ps",
         "mpeg": "mpeg-1, mpeg-ps",
@@ -718,7 +718,8 @@ def send_email(
                     attachment_package.set_payload((file).read())
                     encoders.encode_base64(attachment_package)
                     attachment_package.add_header(
-                        "Content-Disposition", f"attachment; filename={files.split('/')[-1]}"
+                        "Content-Disposition",
+                        f"attachment; filename={files.split('/')[-1]}",
                     )
                     msg.attach(attachment_package)
             else:

@@ -33,11 +33,7 @@ HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
-OMIT = [
-    "SKYADSMART000",
-    "C4ADDRESSABLE",
-    "ITVADDRESSABLE"
-]
+OMIT = ["SKYADSMART000", "C4ADDRESSABLE", "ITVADDRESSABLE"]
 
 HEADER = [
     "Channel",
@@ -58,8 +54,9 @@ HEADER = [
     "All PIB rel",
     "All PIB pos",
     "Log Station (2010-)",
-    "Impacts A4+"
+    "Impacts A4+",
 ]
+
 
 def yield_csv_rows(cpath: str) -> List[str]:
     """
@@ -140,7 +137,6 @@ def main():
                 if match:
                     continue
                 writer.writerow(row)
-
 
 
 if __name__ == "__main__":

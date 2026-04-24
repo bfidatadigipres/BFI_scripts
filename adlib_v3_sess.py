@@ -17,7 +17,7 @@ from requests import Session, exceptions, request
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
-TIMEOUT = 60
+TIMEOUT = 100
 
 
 # (api: str) -> Dict[Any, Any]:
@@ -98,14 +98,17 @@ def get(api, query, session):
             raise Exception
         dct = json.loads(req.text)
         return dct
-    except exceptions.Timeout as err:
-        print(err)
+    except exceptions.HTTPError as err:
+        print(f"HTTP error: {err}")
         raise Exception from err
     except exceptions.ConnectionError as err:
-        print(err)
+        print(f"Connection error: {err}")
         raise Exception from err
-    except exceptions.HTTPError as err:
-        print(err)
+    except exceptions.Timeout as err:
+        print(f"Timeout error: {err}")
+        raise Exception from err
+    except exceptions.RequestException as err:
+        print(f"Request exception: {err}")
         raise Exception from err
     except Exception as err:
         print(err)
@@ -113,6 +116,7 @@ def get(api, query, session):
 
 
 # (api: str, payload: Optional[str | bytes], database: str, method: str, session: Optional[Session]=None) -> Optional[dict[Any, Iterable[Any]]] | bool:
+@retry(stop=stop_after_attempt(3))
 def post(api, payload, database, method, session):
     """
     Send a POST request
@@ -379,7 +383,7 @@ def create_record_data(api, database, sess, priref, data=None):
                     output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
             output_list.append(f"</{group_key}>")
 
-    payload = ''.join(output_list)
+    payload = "".join(output_list)
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
 
 
@@ -390,11 +394,13 @@ def escape_xml(s: str) -> str:
     """
     if not isinstance(s, str):
         return s
-    return (s.replace("&", "&amp;")
-             .replace("<", "&lt;")
-             .replace(">", "&gt;")
-             .replace('"', "&quot;")
-             .replace("'", "&apos;"))
+    return (
+        s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
 
 
 # (priref: str, grouping: str, field_pairs: list[list[dict[Any, Any]]]) -> Optional[str]:

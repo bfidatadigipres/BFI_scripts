@@ -2,7 +2,7 @@
 
 """
 Script to ingest
-Netflix EPG metadata
+Disney EPG metadata
 based on CSV list of
 required programmes
 
@@ -26,23 +26,21 @@ Steps:
 6. Create CID records
 7. Append contributors where available
 
-NOTES: Dependency for cast create_contributors()
-       will need review when API updates complete
-       Updated for adlib_v3 and new API
+NOTES: Configured for adlib_v3, API will need
+       updating when available.
 
-2023
+2024
 """
 
 import datetime
-import json
 import logging
 import os
 import sys
-from typing import Final, Optional
+from typing import Any, Final, Optional
 import pandas
 import yaml
 
-sys.path.append(os.environ["CODE"])
+sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
 from parsers import stream_catalogue as ct
@@ -52,8 +50,8 @@ from document_augmented_streaming_cast import create_contributors
 
 # Global variables
 STORAGE: Final = os.environ.get("QNAP_IMAGEN")
-NETFLIX: Final = os.path.join(STORAGE, "NETFLIX")
-CAT_ID: Final = os.environ.get("PA_NETFLIX")
+DISNEY: Final = os.path.join(STORAGE, "DISNEY")
+CAT_ID: Final = os.environ.get("PA_DISNEY")
 ADMIN: Final = os.environ.get("ADMIN")
 LOGS: Final = os.path.join(ADMIN, "Logs")
 CODE: Final = os.environ.get("CODE_DEPENDS")
@@ -62,21 +60,21 @@ CONTROL_JSON: Final = os.path.join(LOGS, "downtime_control.json")
 CID_API: Final = utils.get_current_api()
 FORMAT: Final = "%Y-%m-%d"
 
-# PATV API details including unique identifiers for Netflix catalogue
+# PATV API details including unique identifiers for Disney catalogue
 URL: Final = os.path.join(os.environ["PATV_STREAM_URL"], f"catalogue/{CAT_ID}/")
 URL2: Final = os.path.join(os.environ["PATV_STREAM_URL"], "asset/")
-HEADERS: Final = {"accept": "application/json", "apikey": os.environ["PATV_KEY"]}
+HEADERS = {"accept": "application/json", "apikey": os.environ["PATV_KEY"]}
 
 # Setup logging
-LOGGER = logging.getLogger("document_augmented_netflix")
-HDLR = logging.FileHandler(os.path.join(LOGS, "document_augmented_netflix.log"))
+LOGGER = logging.getLogger("document_augmented_disney")
+HDLR = logging.FileHandler(os.path.join(LOGS, "document_augmented_disney.log"))
 FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 
 
-def read_csv_to_dict(csv_path: str) -> dict[str, list[str]]:
+def read_csv_to_dict(csv_path: str) -> dict[str, Any]:
     """
     Make set of all entries
     with title as key, and value
@@ -108,18 +106,17 @@ def get_folder_title(article: str, title: str) -> str:
         title = f'{article}_{title.replace(" ", "_")}_'
     else:
         title = f'{title.replace(" ", "_")}_'
-    print(title)
     return title
 
 
 def get_folder_match(foldername: str) -> list[str]:
     """
     Get full folder path
-    from Netflix folder excluding
+    from Disney folder excluding
     any folders that have additional
     title data, eg 'Enola_Holmes_2_'
     """
-    folder_list = [x for x in os.listdir(NETFLIX) if x.startswith(foldername)]
+    folder_list: list[str] = [x for x in os.listdir(DISNEY) if x.startswith(foldername)]
     for fr in folder_list:
         id_ = fr.split(foldername)[-1]
         if "_" in id_:
@@ -132,7 +129,7 @@ def get_json_files(fpath: str) -> list[str]:
     """
     Fetch JSON files in folder
     """
-    json_files: list[str] = []
+    json_files = []
 
     for root, _, files in os.walk(fpath):
         for file in files:
@@ -151,7 +148,7 @@ def retrieve_json(json_pth: str) -> dict[str, str]:
     """
     with open(json_pth, "r", encoding="latin1") as file:
         data = file.read()
-    print(data)
+
     return data
 
 
@@ -164,7 +161,7 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
     if not val:
         return None
 
-    c_data: dict[Optional[str], Optional[str]] = {}
+    c_data = {}
     val.id and c_data.update({"cat_id": val.id})
     if val.title:
         title, article = utils.split_title(val.title)
@@ -175,8 +172,8 @@ def get_cat_data(data=None) -> Optional[dict[str, str]]:
     if val.runtime:
         c_data.update({"runtime": val.runtime})
     if val.certification:
-        val.certification.get("netflix") and c_data.update(
-            {"cert_netflix": val.certification.get("netflix")}
+        val.certification.get("disney") and c_data.update(
+            {"cert_disney": val.certification.get("disney")}
         )
         val.certification.get("bbfc") and c_data.update(
             {"cert_bbfc": val.certification.get("bbfc")}
@@ -263,8 +260,8 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
         )
         val.meta.get("imdbId") and j_data.update({"imdb_id": val.meta.get("imdbId")})
     if val.certification:
-        val.certification.get("netflix") and j_data.update(
-            {"cert_netflix": val.certification.get("netflix")}
+        val.certification.get("disney") and j_data.update(
+            {"cert_disney": val.certification.get("disney")}
         )
         val.certification.get("bbfc") and j_data.update(
             {"cert_bbfc": val.certification.get("bbfc")}
@@ -281,10 +278,11 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
         j_data.update({"d_long": long_desc.replace("'", "'")})
 
     if val.contributor:
-        val.contributor and j_data.update({"contributors": val.contributor})
+        j_data.update({"contributors": val.contributor})
     if val.vod:
-        val.vod.get("netflix-uk").get("start") and j_data.update(
-            {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+        print(val.vod)
+        val.vod.get("disney-plus-uk").get("start") and j_data.update(
+            {"start_date": val.vod.get("disney-plus-uk").get("start")[:10]}
         )
 
     return j_data
@@ -304,7 +302,7 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
         s_data.update({"work_id": val.id})
     if val.type:
         s_data.update({"type": val.type})
-    title_full = val.title
+    title_full = val.title or ""
     if title_full:
         title, article = utils.split_title(title_full)
         s_data.update({"title": title})
@@ -332,9 +330,10 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
             {"episode_total": val.meta.get("episodeTotal")}
         )
         val.meta.get("imdbId") and s_data.update({"imdb_id": val.meta.get("imdbId")})
+    # JMW THIS NEEDS VERIFYING IN PA MEDIA DATA
     if val.certification:
-        val.certification.get("netflix") and s_data.update(
-            {"cert_netflix": val.certification.get("netflix")}
+        val.certification.get("disney") and s_data.update(
+            {"cert_disney": val.certification.get("disney")}
         )
         val.certification.get("bbfc") and s_data.update(
             {"cert_bbfc": val.certification.get("bbfc")}
@@ -353,8 +352,8 @@ def get_season_data(data=None) -> Optional[dict[str, str]]:
     if val.contributor:
         s_data.update({"contributors": val.contributor})
     if val.vod:
-        val.vod.get("netflix-uk").get("start") and s_data.update(
-            {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+        val.vod.get("disney-plus-uk").get("start") and s_data.update(
+            {"start_date": val.vod.get("disney-plus-uk").get("start")[:10]}
         )
 
     return s_data
@@ -365,8 +364,9 @@ def cid_check_works(
 ) -> Optional[tuple[int, str, str, str, list[str], list[str]]]:
     """
     Sends CID request for series_id data
+    Wont match to UK TV which stores this PA media
+    data in the manifestation alternative_number
     """
-
     query: str = f'alternative_number="{patv_id}"'
     try:
         hits, record = adlib.retrieve_record(CID_API, "works", query, 0)
@@ -396,8 +396,6 @@ def cid_check_works(
     try:
         title_art: str = adlib.retrieve_field_name(record[0], "title_article")[0]
         print(f"cid_check_works(): Series title: {title_art}")
-        if title_art is None:
-            title_art = ""
     except Exception as err:
         title_art = ""
     groupings: list[str] = []
@@ -574,12 +572,12 @@ def make_work_dictionary(
 
     try:
         work_dict["patv_id"] = json_dct["work_id"]
-    except (IndexError, TypeError, KeyError):
+    except KeyError:
         work_dict["patv_id"] = ""
 
     try:
         work_dict["cat_id"] = cat_dct["cat_id"]
-    except (IndexError, TypeError, KeyError):
+    except KeyError:
         work_dict["cat_id"] = ""
 
     if "imdb_id" in json_dct:
@@ -588,10 +586,11 @@ def make_work_dictionary(
         work_dict["production_year"] = json_dct["production_year"]
     elif "production_year" in cat_dct:
         work_dict["production_year"] = cat_dct["production_year"]
-    if "cert_netflix" in json_dct:
-        work_dict["certification_netflix"] = json_dct["cert_netflix"]
-    elif "cert_netflix" in cat_dct:
-        work_dict["certification_netflix"] = cat_dct["cert_netflix"]
+    # JMW THIS NEEDS VERIFYING IN PA MEDIA DATA
+    if "cert_disney" in json_dct:
+        work_dict["certification_disney"] = json_dct["cert_disney"]
+    elif "cert_disney" in cat_dct:
+        work_dict["certification_disney"] = cat_dct["cert_disney"]
     if "cert_bbfc" in json_dct:
         work_dict["certification_bbfc"] = json_dct["cert_bbfc"]
     elif "cert_bbfc" in cat_dct:
@@ -648,7 +647,7 @@ def main():
     matches to episodes, in case of
     repeat runs of CSV and skip.
     Retrieve metadata by title matching
-    to NETFLIX programme folders
+    to Disney programme folders
     Where an episodic series, create a
     series work. Link all records as needed.
     """
@@ -656,17 +655,17 @@ def main():
     if not os.path.isfile(csv_path):
         sys.exit(f"Problem with supplied CSV path {csv_path}")
 
-    if not utils.check_control("pause_scripts"):
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if not utils.check_storage(STORAGE):
+    #if not utils.check_control("pause_scripts"):
+    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_storage(STORAGE) or not utils.check_storage(csv_path):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
         LOGGER.critical("* Cannot establish CID session, exiting script")
         sys.exit("* Cannot establish CID session, exiting script")
 
-    prog_dct: dict[str, list[str]] = read_csv_to_dict(csv_path)
+    prog_dct = read_csv_to_dict(csv_path)
     csv_range = len(prog_dct["title"])
-    LOGGER.info("=== Document augmented Netflix start ===============================")
+    LOGGER.info("=== Document augmented Disney start ===============================")
     for num in range(0, csv_range):
         # Capture CSV supplied data to vars
         title = prog_dct["title"][num]
@@ -694,12 +693,12 @@ def main():
         )
         print(f"Episode only wanted: {episode}")
 
-        if platform != "Netflix":
+        if platform != "Disney":
             continue
         LOGGER.info("** Processing item: %s %s", article, title)
 
         # Make season number a list
-        csv_data: list[str] = [
+        csv_data = [
             year_release,
             title,
             article,
@@ -711,74 +710,55 @@ def main():
             acquisition_date,
         ]
 
-        # Match NETFLIX folder to article/title
-        foldertitle: str = get_folder_title(article, title)
-        matched_folders: list[str] = get_folder_match(foldertitle)
+        # Match Disney folder to article/title
+        foldertitle = get_folder_title(article, title)
+        print(foldertitle)
+        matched_folders = get_folder_match(foldertitle)
         if len(matched_folders) > 1:
-            title_count = len(title.split(" ")) + 1
-            if len(article) > 0:
-                title_count = title_count + 1
-            for fold in matched_folders:
-                folder_length = len(fold.split("_"))
-                if title_count == folder_length:
-                    matched_folders = [fold]
-            if len(matched_folders) != 1:
-                print(
-                    f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}"
-                )
-                continue
-        if len(matched_folders) == 0:
+            print(
+                f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}"
+            )
+            continue
+        elif len(matched_folders) == 0:
             print(f"No match found: {article} {title}")
             # At some point initiate 'title' search in PATV data
             continue
 
         print(f"TITLE MATCH: {article} {title} -- {matched_folders[0]}")
-        patv_id: str = matched_folders[0].split("_")[-1]
+        patv_id = matched_folders[0].split("_")[-1]
 
         # Create Work/Manifestation if film/programme
         if "film" in level.lower() or "programme" in level.lower():
-            prog_path = os.path.join(NETFLIX, matched_folders[0])
-
             # Check CID work exists / Make work if needed
             hits, priref_work, work_title, work_title_art, groupings, alt_type = (
                 cid_check_works(patv_id)
             )
             if int(hits) > 0:
-                if "400947" in str(groupings):
+                if "403765" in str(groupings):
                     print(f"SKIPPING PRIREF FOUND: {priref_work}")
                     LOGGER.info(
                         "Skipping this item, likely already has CID record: %s",
                         priref_work,
                     )
                     continue
-                if "PATV asset id" in str(alt_type):
-                    LOGGER.warning(
-                        "STORA PATV id found to match work priref for this title: %s",
-                        priref_work,
-                    )
-                if "PATV Amazon asset id" in str(alt_type):
-                    LOGGER.warning(
-                        "Amazon PATV id found to match work priref for this title: %s",
-                        priref_work,
-                    )
+
+            prog_path = os.path.join(DISNEY, matched_folders[0])
 
             # Retrieve all available
-            mono_cat: list[str] = [
+            mono_cat = [
                 x for x in os.listdir(prog_path) if x.startswith("mono_catalogue_")
             ]
-            mono: list[str] = [
-                x for x in os.listdir(prog_path) if x.startswith("monographic_")
-            ]
+            mono = [x for x in os.listdir(prog_path) if x.startswith("monographic_")]
             try:
                 cat_data = retrieve_json(os.path.join(prog_path, mono_cat[0]))
                 cat_dct = get_cat_data(cat_data)
-            except (IndexError, TypeError, KeyError) as exc:
+            except Exception as exc:
                 print(exc)
                 cat_dct = {}
             try:
                 mono_data = retrieve_json(os.path.join(prog_path, mono[0]))
                 mono_dct = get_json_data(mono_data)
-            except (IndexError, TypeError, KeyError) as exc:
+            except Exception as exc:
                 print(exc)
                 mono_dct = {}
 
@@ -794,12 +774,26 @@ def main():
                 build_defaults(data_dct)
             )
 
+            print(f"Found priref is for monographic work: {priref_work}")
             if priref_work.isnumeric():
-                print(f"Found priref is for monographic work: {priref_work}")
-                print(f"Monograph work already exists for {title}.")
-                LOGGER.info(
-                    "Monograph work exists that is not Netflix origin. Linking repeat to existing work"
-                )
+                if "403765" in str(groupings):
+                    print(f"SKIPPING: Monograph work already exists for {title}.")
+                    continue
+                if "PATV asset id" in str(alt_type):
+                    LOGGER.warning(
+                        "Matched Work Asset ID is for STORA created Work record: %s",
+                        priref_work,
+                    )
+                if "PATV Netflix asset id" in str(alt_type):
+                    LOGGER.warning(
+                        "Matched Work Asset ID is for Netflix created Work record: %s",
+                        priref_work,
+                    )
+                if "PATV Amazon asset id" in str(alt_type):
+                    LOGGER.warning(
+                        "Matched Work Asset ID is for Amazon created Work record: %s",
+                        priref_work,
+                    )
             else:
                 priref_work = create_work(
                     "", "", "", data_dct, record, work, work_restricted
@@ -809,8 +803,8 @@ def main():
                         "Monograph work record creation failed, skipping all further record creations"
                     )
                     continue
-                print(f"PRIREF MONOGRAPH WORK: {priref_work}")
 
+            print(f"PRIREF MONOGRAPH WORK CREATED: {priref_work}")
             # Create contributors if supplied / or in addition to solo contributors
             if "contributors" in data_dct and len(data_dct["contributors"]) >= 1:
                 print("** Contributor data found")
@@ -818,7 +812,7 @@ def main():
                     priref_work,
                     data_dct["nfa_category"],
                     data_dct["contributors"],
-                    "Netflix",
+                    "Disney",
                 )
                 if success:
                     LOGGER.info(
@@ -855,24 +849,29 @@ def main():
             print(f"PRIREF FOR ITEM: {priref_item}")
 
         elif "series" in level.lower():
-            prog_path = os.path.join(NETFLIX, matched_folders[0])
+            prog_path = os.path.join(DISNEY, matched_folders[0])
             json_fpaths = get_json_files(prog_path)
             series_priref = ""
             # Check CID work exists / Make work if needed
-            hits, series_priref, work_title, work_title_art, _, alt_type = (
+            hits, series_priref, work_title, work_title_art, groupings, alt_type = (
                 cid_check_works(patv_id)
             )
-            print(f"Work title found: {work_title}")
             if series_priref.isnumeric():
-                print(f"Series work already exists for {title}.")
+                if "403765" in str(groupings):
+                    print(f"Series work already exists for {title}.")
                 if "PATV asset id" in str(alt_type):
                     LOGGER.warning(
-                        "Series work found is from STORA off-air recording: %s",
+                        "Series found was created for STORA off-air broadcast series: %s",
                         series_priref,
                     )
-                if "PATV Amazon asset id" in str(alt_type):
+                if "PATV Netflix asset ID" in str(alt_type):
                     LOGGER.warning(
-                        "Series work found is from Amazon streaming recording: %s",
+                        "Series found was created for Netflix streaming series: %s",
+                        series_priref,
+                    )
+                if "PATV Amazon asset ID" in str(alt_type):
+                    LOGGER.warning(
+                        "Series found was created for Amazon streaming series: %s",
                         series_priref,
                     )
             else:
@@ -903,20 +902,24 @@ def main():
                 if not series_data_dct:
                     continue
                 series_priref = create_series_work(
-                    patv_id, series_data_dct, series_work, work_restricted, record
+                    patv_id,
+                    series_data_dct,
+                    series_work,
+                    work_restricted,
+                    record,
                 )
                 if not series_priref:
                     print("Series work creation failure. Skipping episodes...")
                     continue
 
+            # Fetch target season data
             season_fpaths = [
                 x for x in json_fpaths if f"season_{season_num}_" in str(x)
             ]
 
-            # Fetch just single episodes
             if episode != "all":
                 if "," in str(episode):
-                    episodes = episode.split(",")
+                    episodes = episode.split(", ")
                     total_eps = len(episodes)
                 else:
                     episodes = [episode]
@@ -987,10 +990,10 @@ def main():
                         episode_num,
                     )
                     print(
-                        "============ Episodes found in NETFLIX folder do not match total episodes supplied ============="
+                        "============ Episodes found in DISNEY folder do not match total episodes supplied ============="
                     )
 
-    LOGGER.info("=== Document augmented Netflix end =================================")
+    LOGGER.info("=== Document augmented Disney end =================================")
 
 
 def make_episodes(
@@ -1023,7 +1026,7 @@ def make_episodes(
     # Check CID work exists / Make work if needed
     hits, priref_episode, _, _, groupings, alt_type = cid_check_works(episode_id)
     if int(hits) > 0:
-        if "400947" in str(groupings):
+        if "403765" in str(groupings):
             print(f"SKIPPING. EPISODE EXISTS IN CID: {priref_episode}")
             LOGGER.info("Skipping episode, already exists in CID: %s", priref_episode)
             return None
@@ -1031,9 +1034,13 @@ def make_episodes(
             LOGGER.warning(
                 "Episode work exists from STORA off-air recordings: %s", priref_episode
             )
+        if "PATV Netflix asset id" in str(alt_type):
+            LOGGER.warning(
+                "Episode work exists for Netflix streaming platform: %s", priref_episode
+            )
         if "PATV Amazon asset id" in str(alt_type):
             LOGGER.warning(
-                "Episode work exists from Amazon streaming platform: %s", priref_episode
+                "Episode work exists for Amazon streaming platform: %s", priref_episode
             )
     print("New episode_id found for Work. Linking to series work")
 
@@ -1061,7 +1068,11 @@ def make_episodes(
         ep_dct = {}
 
     # Make episodic work here
+    episode_id = episode_folder.split("_")[-1]
+    print(f"** Episode ID: {episode_id} {title}")
     data_dct = make_work_dictionary(num, csv_data, ep_cat_dct, ep_dct)
+    print(f"Dictionary for Work creation:\n{data_dct}")
+    print("**************")
     record, _, work, work_restricted, manifestation, item = build_defaults(data_dct)
     priref_episode = create_work(
         series_priref,
@@ -1086,7 +1097,7 @@ def make_episodes(
             priref_episode,
             data_dct["nfa_category"],
             data_dct["contributors"],
-            "Netflix",
+            "Disney",
         )
         if success:
             LOGGER.info("Contributor data written to Work record: %s", priref_episode)
@@ -1147,19 +1158,19 @@ def genre_retrieval_term(
     category_data: list[str, str] = genre_retrieval(category_code, description, title)
     try:
         genre1 = category_data[0]
-    except (IndexError, TypeError, KeyError):
+    except Exception:
         genre1 = ""
     try:
         genre2 = category_data[1]
-    except (IndexError, TypeError, KeyError):
+    except Exception:
         genre2 = ""
     try:
         subject1 = category_data[2]
-    except (IndexError, TypeError, KeyError):
+    except Exception:
         subject1 = ""
     try:
         subject2 = category_data[3]
-    except (IndexError, TypeError, KeyError):
+    except Exception:
         subject2 = ""
 
     return (genre1, genre2, subject1, subject2)
@@ -1182,7 +1193,7 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
         {"input.name": "datadigipres"},
         {"input.date": str(datetime.datetime.now())[:10]},
         {"input.time": str(datetime.datetime.now())[11:19]},
-        {"input.notes": "Netflix metadata integration - automated bulk documentation"},
+        {"input.notes": "Disney metadata integration - automated bulk documentation"},
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
         {"record_access.reason": "SENSITIVE_LEGAL"},
@@ -1210,7 +1221,7 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
         # {'record_access.user': '$REST'},
         # {'record_access.rights': '1'},
         # {'record_access.reason': 'SENSITIVE_LEGAL'},
-        {"grouping.lref": "400947"},  # Netflix
+        {"grouping.lref": "403765"},  # Disney
         {"language.lref": "74129"},
         {"language.type": "DIALORIG"},
     ]
@@ -1241,7 +1252,7 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
         {"application_restriction.review_date": date_restriction},
         {"application_restriction.authoriser": "kerriganl"},
         {
-            "application_restriction.notes": "Netflix UK streaming content - pending discussion"
+            "application_restriction.notes": "Disney UK streaming content - pending discussion"
         },
     ]
 
@@ -1249,11 +1260,11 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
         {"record_type": "MANIFESTATION"},
         {"manifestationlevel_type": "INTERNET"},
         {"format_high_level": "Video - Digital"},
-        {"format_low_level.lref": "400949"},  # IMF
+        {"format_low_level.lref": "395150"},  # Apple ProRes 422 HQ
         {"colour_manifestation": data["colour_manifestation"]},
         {"sound_manifestation": "SOUN"},
         {"transmission_date": data["title_date_start"]},
-        {"availability.name.lref": "143463"},  # Netflix
+        {"availability.name.lref": "999823516"},
         {"transmission_coverage": "STR"},
         {"vod_service_type.lref": "398712"},
         {"aspect_ratio": "16:9"},
@@ -1268,12 +1279,12 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
         {"item_type": "DIGITAL"},
         {"copy_status": "M"},
         {"copy_usage.lref": "131560"},
-        {"file_type.lref": "401103"},  # IMP
-        {"code_type.lref": "400945"},  # Mixed Netflix
+        {"file_type.lref": "114307"},  # MOV
+        {"code_type.lref": "114308"},  # ProRes 422 (HQ)
         {"accession_date": str(datetime.datetime.now())[:10]},
         {"acquisition.date": data["acquisition_date"]},
         {"acquisition.method.lref": "132853"},
-        {"acquisition.source.lref": "143463"},  # Netflix
+        {"acquisition.source.lref": "999923912"},
         {"acquisition.source.type": "DONOR"},
         {
             "access_conditions": "Access requests for this collection are subject to an approval process. "
@@ -1313,7 +1324,7 @@ def create_series_work(
         if series_dct["title_article"] not in ("-", ""):
             series_work_values.append({"title.article": series_dct["title_article"]})
     if len("patv_id") > 0:
-        series_work_values.append({"alternative_number.type": "PATV Netflix asset ID"})
+        series_work_values.append({"alternative_number.type": "PATV Disney asset ID"})
         series_work_values.append({"alternative_number": patv_id})
     if "description" in series_dct:
         series_work_values.append({"description": series_dct["description"]})
@@ -1356,11 +1367,7 @@ def create_series_work(
         )
         print(genre_xml)
         update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord")
-        if update_rec is None:
-            LOGGER.info(
-                "Failed to update genres to Series Work record: %s", series_work_id
-            )
-        elif "Content_genre" in str(update_rec):
+        if "Content_genre" in str(update_rec):
             LOGGER.info(
                 "Label text successfully updated to Series Work %s", series_work_id
             )
@@ -1447,6 +1454,7 @@ def create_work(
     populated as needed.
     """
     work_id: str = ""
+    work_genres: list[dict[str, str]] = []
     work_values: list[dict[str, str]] = []
     work_values.extend(record_def)
     work_values.extend(work_def)
@@ -1472,13 +1480,13 @@ def create_work(
         work_values.append({"title_date_start": work_dict["title_date_start"]})
         work_values.append({"title_date.type": "03_R"})
     if "patv_id" in work_dict:
-        work_values.append({"alternative_number.type": "PATV Netflix asset ID"})
+        work_values.append({"alternative_number.type": "PATV Disney asset ID"})
         work_values.append({"alternative_number": work_dict["patv_id"]})
     if "cat_id" in work_dict:
-        work_values.append({"alternative_number.type": "PATV Netflix catalogue ID"})
+        work_values.append({"alternative_number.type": "PATV Disney catalogue ID"})
         work_values.append({"alternative_number": work_dict["cat_id"]})
     if "episode_id" in work_dict:
-        work_values.append({"alternative_number.type": "PATV Netflix asset ID"})
+        work_values.append({"alternative_number.type": "PATV Disney asset ID"})
         work_values.append({"alternative_number": work_dict["episode_id"]})
     if part_of_priref:
         work_values.append({"part_of_reference.lref": part_of_priref})
@@ -1599,7 +1607,7 @@ def create_manifestation(
     work_priref: str,
     work_title: str,
     work_title_art: str,
-    work_dict: dict[str, list[str]],
+    work_dict,
     record_defaults: list[dict[str, str]],
     manifestation_defaults: list[dict[str, str]],
 ) -> str:
@@ -1607,9 +1615,10 @@ def create_manifestation(
     Create a manifestation record,
     linked to work_priref
     """
-    manifestation_id = ""
+    manifestation_id: str = ""
     print(work_dict)
-    manifestation_values = []
+    title: str = work_dict["title"]
+    manifestation_values: list[dict[str, str]] = []
     manifestation_values.extend(record_defaults)
     manifestation_values.extend(manifestation_defaults)
 
@@ -1633,24 +1642,22 @@ def create_manifestation(
     if "runtime" in work_dict:
         manifestation_values.append({"runtime": int(work_dict["runtime"])})
     if "episode_id" in work_dict:
-        manifestation_values.append(
-            {"alternative_number.type": "PATV Netflix asset ID"}
-        )
+        manifestation_values.append({"alternative_number.type": "PATV Disney asset ID"})
         manifestation_values.append({"alternative_number": work_dict["episode_id"]})
     if "attribute" in work_dict:
         if work_dict["attribute"]:
             atts = ", ".join(work_dict["attribute"])
-            manifestation_values.append({"utb.fieldname": "PATV Netflix attributes"})
+            manifestation_values.append({"utb.fieldname": "PATV Disney attributes"})
             manifestation_values.append({"utb.content": atts})
-    if "certification_netflix" in work_dict:
-        manifestation_values.append({"utb.fieldname": "Netflix certification"})
-        manifestation_values.append({"utb.content": work_dict["certification_netflix"]})
+    if "certification_disney" in work_dict:
+        manifestation_values.append({"utb.fieldname": "Disney certification"})
+        manifestation_values.append({"utb.content": work_dict["certification_disney"]})
     if "certification_bbfc" in work_dict:
         manifestation_values.append({"utb.fieldname": "BBFC certification"})
         manifestation_values.append({"utb.content": work_dict["certification_bbfc"]})
     print(f"Manifestation values:\n{manifestation_values}")
 
-    broadcast_addition = []
+    broadcast_addition: list[dict[str, str]] = []
     manifestation_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values
     )
@@ -1669,7 +1676,9 @@ def create_manifestation(
                     f"* Manifestation record created with Object number {object_number}"
                 )
                 LOGGER.info(
-                    "Manifestation record created with priref %s", manifestation_id
+                    "Manifestation record created with priref %s %s",
+                    manifestation_id,
+                    title,
                 )
             except Exception as err:
                 print("Unable to create Manifestation record", err)
@@ -1683,7 +1692,7 @@ def create_manifestation(
         )
         return None
 
-    broadcast_addition = [{"broadcast_company.lref": "143463"}]
+    broadcast_addition = [{"broadcast_company.lref": "999823516"}]  # Disney Prime Video
     broadcast_xml = adlib.create_record_data(
         CID_API, "manifestations", manifestation_id, broadcast_addition
     )
@@ -1700,12 +1709,17 @@ def create_manifestation(
     return manifestation_id
 
 
-def append_url_data(work_priref: str, man_priref: str, data=None) -> None:
+def append_url_data(work_priref: str, man_priref: str, data=None):
     """
-    Receive Netflix URLs and priref and append to records
+    Receive Disney URLs and priref and append to CID manifestation
     """
-    url = data["watch_url"]
-    payload_mid = f"<URL><![CDATA[{url}]]></URL><URL.description>Netflix viewing URL</URL.description>"
+
+    # Write to manifest
+    if "/?autoplay" in data["watch_url"]:
+        url_trim = data["watch_url"].split("/?autoplay")[0]
+    else:
+        url_trim = data["watch_url"]
+    payload_mid = f"<URL><![CDATA[{url_trim}]]></URL><URL.description>Disney viewing URL</URL.description>"
     payload_head = f"<adlibXML><recordList><record priref='{man_priref}'><URL>"
     payload_end = "</URL></record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
@@ -1733,20 +1747,15 @@ def append_url_data(work_priref: str, man_priref: str, data=None) -> None:
 
 
 def create_item(
-    man_priref: str,
-    work_title: str,
-    work_title_art: str,
-    work_dict: dict[str, list[str]],
-    record_defaults: list[dict[str, str]],
-    item_default: list[dict[str, str]],
-) -> tuple[str, str]:
+    man_priref, work_title, work_title_art, work_dict, record_defaults, item_default
+):
     """
     Create item record,
     link to manifestation
     """
-    item_id: str = ""
-    item_object_number: str = ""
-    item_values: list[dict[str, str]] = []
+    item_id = ""
+    item_object_number = ""
+    item_values = []
     item_values.extend(record_defaults)
     item_values.extend(item_default)
     item_values.append({"part_of_reference.lref": man_priref})

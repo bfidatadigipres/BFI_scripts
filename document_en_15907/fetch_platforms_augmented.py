@@ -61,6 +61,7 @@ HEADERS = {"accept": "application/json", "apikey": os.environ.get("PATV_KEY")}
 STREAM_KEYS = {
     "Netflix": os.environ.get("PA_NETFLIX"),
     "Amazon": os.environ.get("PA_AMAZON"),
+    "Disney": os.environ.get("PA_DISNEY"),
 }
 
 
@@ -78,6 +79,27 @@ def read_csv_to_dict(csv_path: str) -> dict[str, list[str]]:
     return data_dct
 
 
+def get_folder_title(article: str, title: str) -> str:
+    """
+    Match title to folder naming
+    """
+
+    title = (
+        title.replace("/", "")
+        .replace("'", "")
+        .replace("&", "and")
+        .replace("(", "")
+        .replace(")", "")
+        .replace("!", "")
+        .replace("’", "")
+    )
+    if article != "-" or article != "":
+        title = f'{article}_{title.replace(" ", "_")}_'
+    else:
+        title = f'{title.replace(" ", "_")}_'
+    return title
+
+
 @tenacity.retry(stop=tenacity.stop_after_attempt(3))
 def fetch(
     cat_id: str, search_type: str, search_id: str, title: str
@@ -85,14 +107,12 @@ def fetch(
     """
     Fetch data from PATV URL
     """
-    url_title = title.replace(" ", "%20")
+    url_title = title.replace(" ", "%20").replace("&", "and")
     url_title = f"%27{url_title}%27"
+    print(search_type, url_title)
     if search_type == "title":
         try:
-            url_all = os.path.join(
-                URL,
-                f"catalogue/{cat_id}/asset?title={url_title}&apikey={os.environ['PATV_KEY']}",
-            )
+            url_all = f"{URL}catalogue/{cat_id}/asset?title={url_title}&apikey={os.environ['PATV_KEY']}"
             print(url_all)
             req = requests.get(url_all, headers=HEADERS)
             print("========================")
@@ -105,19 +125,24 @@ def fetch(
             raise tenacity.TryAgain
     elif search_type == "cat_asset":
         try:
-            req = requests.get(
-                os.path.join(URL, f"catalogue/{cat_id}/asset/{search_id}"),
+            req = requests.get(f"{URL}catalogue/{cat_id}/asset/{search_id}",
                 headers=HEADERS,
             )
             dct = json.loads(req.text)
             return dct
+        except json.decoder.JSONDecodeError as err:
+            print(f"fetch(): **** PROBLEM: JSON cannot decode text:\n{req.text}.")
+            LOGGER.critical("**** PROBLEM: JSON cannot decode text: \n%s\n%s", req.text, err)
+            raise tenacity.TryAgain
         except Exception as err:
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
             LOGGER.critical("**** PROBLEM: Cannot fetch EPG metadata. **** \n%s", err)
             raise tenacity.TryAgain
     elif search_type == "asset":
         try:
-            req = requests.get(os.path.join(URL, f"asset/{search_id}"), headers=HEADERS)
+            print(f"{URL}asset/{search_id}")
+            req = requests.get(f"{URL}asset/{search_id}".strip(), headers=HEADERS)
+            print(req.text)
             dct = json.loads(req.text)
             return dct
         except Exception as err:
@@ -127,7 +152,7 @@ def fetch(
     elif search_type == "contributors":
         try:
             req = requests.get(
-                os.path.join(URL, f"asset/{search_id}/contributor"), headers=HEADERS
+                f"{URL}asset/{search_id}/contributor", headers=HEADERS
             )
             dct = json.loads(req.text)
             return dct
@@ -146,7 +171,7 @@ def json_dump(json_path: str, dct=None) -> None:
     if dct is None:
         dct = {}
 
-    with open(json_path, "w") as file:
+    with open(json_path, "w+") as file:
         json.dump(dct, file, indent=4)
         file.close()
 
@@ -207,8 +232,8 @@ def main() -> None:
     Iterate list and build asset_dict of TV items, then process
     any new items placing in programme led folder structures
     """
-    if not utils.check_control("stora") or not utils.check_control("pause_scripts"):
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    #if not utils.check_control("stora") or not utils.check_control("pause_scripts"):
+    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     LOGGER.info(
@@ -272,6 +297,7 @@ def main() -> None:
 
         if level == "Series":
             for asset in items:
+                print(asset)
                 episode_title, catalogue_id, num, episode_asset_id = get_cat_assets(
                     asset
                 )
@@ -288,7 +314,7 @@ def main() -> None:
                     continue
                 asset_dict[episode_asset_id.strip()] = f"{catalogue_id.strip()}, {num}"
                 print(f"Added {episode_asset_id} and {catalogue_id} to dict")
-
+            print(asset_dict)
             # Clean up and check for valid entries
             json_dct = None
             if len(asset_dict) == 0:
@@ -436,7 +462,9 @@ def main() -> None:
 
                 if not title:
                     title = episode_dct["title"]
-                episode_folder = f"{title.strip().replace(' ', '_')}_{ep_asset_id}"
+                cut_title, title_article = utils.split_title(title)
+                folder_prefix = get_folder_title(title_article, cut_title)
+                episode_folder = f"{folder_prefix.lstrip('_')}_{ep_asset_id}"
 
                 # Create path to new episode
                 mono_path = os.path.join(storage_path, episode_folder)

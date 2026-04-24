@@ -17,7 +17,7 @@ import xmltodict
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
-TIMEOUT = 60
+TIMEOUT = 100
 
 
 # (api: str) -> dict[Any, Any]:
@@ -105,6 +105,7 @@ def get(api, query):
 
 
 # (api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
+@retry(stop=stop_after_attempt(3))
 def post(api, payload, database, method):
     """
     Send a POST request
@@ -375,7 +376,7 @@ def create_record_data(api, database, priref, data=None):
                     output_list.append(f"<{key}>{escape_xml(value)}</{key}>")
             output_list.append(f"</{group_key}>")
 
-    payload = ''.join(output_list)
+    payload = "".join(output_list)
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
 
 
@@ -386,11 +387,13 @@ def escape_xml(s: str) -> str:
     """
     if not isinstance(s, str):
         return s
-    return (s.replace("&", "&amp;")
-             .replace("<", "&lt;")
-             .replace(">", "&gt;")
-             .replace('"', "&quot;")
-             .replace("'", "&apos;"))
+    return (
+        s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
 
 
 # (priref: str, grouping: str, field_pairs: list[str]) -> str:
@@ -485,18 +488,18 @@ def recycle_api(api):
 
 
 def write_lock(api, priref, database):
-    '''
+    """
     Apply a writing lock to the record before updating
-    '''
+    """
     try:
         post_response = requests.post(
             api,
             params={
-                'database': database,
-                'command': 'lockrecord',
-                'priref': f'{priref}',
-                'output': 'jsonv1'
-            }
+                "database": database,
+                "command": "lockrecord",
+                "priref": f"{priref}",
+                "output": "jsonv1",
+            },
         )
         print(post_response.text)
         return True
@@ -505,20 +508,22 @@ def write_lock(api, priref, database):
 
 
 def unlock_record(api, priref, database):
-    '''
+    """
     Only used if write fails and lock was successful, to guard against file remaining locked
-    '''
+    """
     try:
         post_response = requests.post(
             api,
             params={
-                'database': database,
-                'command': 'unlockrecord',
-                'priref': f'{priref}',
-                'output': 'jsonv1'
-            }
+                "database": database,
+                "command": "unlockrecord",
+                "priref": f"{priref}",
+                "output": "jsonv1",
+            },
         )
         print(post_response.text)
         return True
     except Exception as err:
-        print(f"Post to unlock record failed. Check record {priref} is unlocked manually\n{err}")
+        print(
+            f"Post to unlock record failed. Check record {priref} is unlocked manually\n{err}"
+        )

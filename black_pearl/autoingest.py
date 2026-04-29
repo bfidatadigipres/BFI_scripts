@@ -699,7 +699,7 @@ def main():
                 continue
             # Check archive/ and archives_catalogue/ path
             elif "/Screencraft/" in fpath and "proxy/image/archive" in fpath:
-                print("* File is Special Collections/Screencraft archive image")
+                print("* File is Screenscraft Archive Image")
                 # Simplified name check
                 if not re.search("^[A-Za-z0-9_.]*$", fname):
                     print(f"* Filename formatted incorrectly {fname}")
@@ -711,7 +711,7 @@ def main():
                 if not object_number or not part:
                     continue
             elif "qnap_05/Public" in fpath and "ingest/aip_ingest" in fpath:
-                print("* File is Special Collections/Archivematica AIP ingest")
+                print("* File is Screencraft Archivematica AIP ingest")
                 # Simplified name check
                 if not fname.startswith("GUR_"):
                     print(f"* Incorrect file placed into folder: {fname}")

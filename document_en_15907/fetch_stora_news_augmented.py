@@ -3,7 +3,8 @@ Fetch JSON from augmented EPG metadata API, for use by document_augmented_stora.
 
 main():
 1. Check if any dictionary paths are absent from STORA path, if not prepeneds NO_RECORDING_{channel}
-2. Once a day after shows have completed (2:10am), call the API for yesterdays metadata, using fetch()
+2. Once a day after shows have completed (2:10am), call the API for day before yesterday's metadata,
+   using fetch()
 3. If first fetch fails, fetch(): will retry three times pausing up to ten minutes between each.
 4. When downloaded calls json_split(): to split the JSON for each channel into it's time slots
 move():
@@ -30,20 +31,21 @@ import requests
 import tenacity
 
 # Global variables
-# STORAGE_PATH = os.environ.get('STORAGE_BACKUP')
 STORAGE_PATH = os.environ.get("STORA_BACKUP")
+# STORAGE_PATH = os.environ.get('STORAGE_BACKUP') # server local storage
+# STORAGE_PATH = os.environ.get("STORA_PATH") # QNAP STORA/ path
 LOG_PATH = os.environ.get("LOG_PATH")
 CODE_PATH = os.environ.get("CODE")
 STORA_CONTROL = os.path.join(CODE_PATH, "stora_control.json")
 UNMATCHED_JSON = os.path.join(STORAGE_PATH, "unmatched_jsons/")
 TODAY = datetime.date.today()
-YESTERDAY = TODAY - datetime.timedelta(days=1)
+YESTERDAY = TODAY - datetime.timedelta(days=2)
 YESTERDAY_CLEAN = YESTERDAY.strftime("%Y-%m-%d")
 START = f"{YESTERDAY_CLEAN}T00:00:00"
 END = f"{YESTERDAY_CLEAN}T23:59:00"
 # If a different date period needs targeting use:
-# START = '2025-12-19T00:00:00'
-# END = '2025-12-19T23:59:00'
+# START = '2026-03-05T00:00:00'
+# END = '2026-03-05T23:59:00'
 DATE_PATH = START[0:4] + "/" + START[5:7] + "/" + START[8:10]
 PATH = os.path.join(STORAGE_PATH, DATE_PATH)
 dct = {}
@@ -58,7 +60,7 @@ logger.setLevel(logging.INFO)
 
 # Setup Rest API
 URL = os.environ["PATV_URL"]
-HEADERS = {"accept": "application/json", "apikey": os.environ["PATV_KEY"]}
+HEADERS = {"accept": "application/json", "apikey": os.environ["PATV_KEY_HISTORICAL"]}
 
 # Dictionary of STORA channel names and unique EPG retrieval paths
 CHANNEL = {

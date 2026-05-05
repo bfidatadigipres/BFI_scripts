@@ -658,6 +658,14 @@ def main():
                     linux_host, f"{os.environ['BP_INGEST_AMAZON']}"
                 )
                 black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+            elif "ingest/disney" in str(fpath):
+                logger.info(
+                    "%s\tIngest-ready file is from Disney ingest path, setting Black Pearl Disney ingest folder"
+                )
+                black_pearl_folder = os.path.join(
+                    linux_host, f"{os.environ['BP_INGEST_DISNEY']}"
+                )
+                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
             else:
                 black_pearl_folder = os.path.join(
                     linux_host, f"{os.environ['BP_INGEST']}"
@@ -689,9 +697,26 @@ def main():
                 boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
                 print(f"File successfully deleted: {boole}")
                 continue
-            elif "/Screencraft/" in fpath and "proxy/image/archive/" in fpath:
-                print("* File is Special Collections/Screencraft archive image")
+            # Check archive/ and archives_catalogue/ path
+            elif "/Screencraft/" in fpath and "proxy/image/archive" in fpath:
+                print("* File is Screenscraft Archive Image")
                 # Simplified name check
+                if not re.search("^[A-Za-z0-9_.]*$", fname):
+                    print(f"* Filename formatted incorrectly {fname}")
+                    logger.warning("%s\tFilename formatted incorrectly", log_paths)
+                    continue
+                object_number, part, whole, ext = process_image_archive(
+                    fname, log_paths
+                )
+                if not object_number or not part:
+                    continue
+            elif "qnap_05/Public" in fpath and "ingest/aip_ingest" in fpath:
+                print("* File is Screencraft Archivematica AIP ingest")
+                # Simplified name check
+                if not fname.startswith("GUR_"):
+                    print(f"* Incorrect file placed into folder: {fname}")
+                    logger.warning("%s\tIncorrect file found in aip_ingest path", log_paths)
+                    continue
                 if not re.search("^[A-Za-z0-9_.]*$", fname):
                     print(f"* Filename formatted incorrectly {fname}")
                     logger.warning("%s\tFilename formatted incorrectly", log_paths)
@@ -785,6 +810,8 @@ def main():
                 bucket_list = get_buckets("netflix")
             elif "ingest/amazon" in fpath:
                 bucket_list = get_buckets("amazon")
+            elif "ingest/disney" in fpath:
+                bucket_list = get_buckets("disney")
             else:
                 bucket_list = get_buckets("bfi")
 

@@ -761,7 +761,11 @@ def main():
                         "Amazon PATV id found to match work priref for this title: %s",
                         priref_work,
                     )
-
+                if "PATV Disney asset id" in str(alt_type):
+                    LOGGER.warning(
+                        "Disney PATV id found to match work priref for this title: %s",
+                        priref_work,
+                    )
             # Retrieve all available
             mono_cat: list[str] = [
                 x for x in os.listdir(prog_path) if x.startswith("mono_catalogue_")
@@ -873,6 +877,11 @@ def main():
                 if "PATV Amazon asset id" in str(alt_type):
                     LOGGER.warning(
                         "Series work found is from Amazon streaming recording: %s",
+                        series_priref,
+                    )
+                if "PATV Disney asset id" in str(alt_type):
+                    LOGGER.warning(
+                        "Series work found is from Disney streaming recording: %s",
                         series_priref,
                     )
             else:
@@ -1034,6 +1043,10 @@ def make_episodes(
         if "PATV Amazon asset id" in str(alt_type):
             LOGGER.warning(
                 "Episode work exists from Amazon streaming platform: %s", priref_episode
+            )
+        if "PATV Disney asset id" in str(alt_type):
+            LOGGER.warning(
+                "Episode work exists from Disney streaming platform: %s", priref_episode
             )
     print("New episode_id found for Work. Linking to series work")
 

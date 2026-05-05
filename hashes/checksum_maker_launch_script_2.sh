@@ -19,6 +19,7 @@ LOG="${LOG_LEAD}checksum_maker${PATH_INSERT}launch.log"
 AUTOINGEST="${PTH}autoingest/black_pearl_ingest/"
 AUTOINGEST2="${PTH}autoingest/black_pearl_netflix_ingest/"
 AUTOINGEST3="${PTH}autoingest/black_pearl_amazon_ingest/"
+AUTOINEGST4="${PTH}autoingest/black_pearl_disney_ingest/"
 HASHES="$HASH_PATH"
 DUMP_TO="${HASHES}${PATH_INSERT}autoingest_file_list.txt"
 
@@ -51,6 +52,7 @@ cd "${CODE_LEAD}hashes/"
 find "${AUTOINGEST}" -type f -mmin +10 >> "${DUMP_TO}"
 find "${AUTOINGEST2}" -type f -mmin +10 >> "${DUMP_TO}"
 find "${AUTOINGEST3}" -type f -mmin +10 >> "${DUMP_TO}"
+find "${AUTOINGEST4}" -type f -mmin +10 >> "${DUMP_TO}"
 
 if [ -s "${DUMP_TO}" ]
   then

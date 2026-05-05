@@ -22,7 +22,7 @@ columns.
 # Public packages
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from zoneinfo import ZoneInfo
 import logging
 from time import sleep
@@ -71,6 +71,18 @@ CHANNELS = {
     "5": ["Channel 5 HD", "24404"],
     "5STAR": ["5STAR", "24404"],
 }
+
+
+def working_day_check(dt: datetime) -> bool:
+    """ Check for clash with working week """
+    work_days = {0, 1, 2, 3, 4}
+    start = time(8, 00, 0)
+    end = time(19, 55, 0)
+
+    if dt.weekday() not in work_days:
+        return False
+    current_time = dt.time()
+    return start <= current_time <= end
 
 
 @tenacity.retry(wait=tenacity.wait_fixed(5), stop=tenacity.stop_after_attempt(10))
@@ -349,7 +361,7 @@ def manage_advertiser_people(
         LOGGER.info("Skipping Agency as 'Missing' found in field")
         agency_priref = ""
     else:
-        search = f"(name='{agency.strip()}' and source='TechEdge adverts data supply')"
+        search = f"(name='{agency.strip()}' and activity_type='Advertising Agency' and source='TechEdge adverts data supply')"
         hits, rec = adlib.retrieve_record(CID_API, "people", search, "1")
         if hits >= 1:
             agency_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
@@ -392,67 +404,90 @@ def manage_advertiser_people(
     make_hc = False
     make_ad = False
 
-    search = f"(name='{advertiser.strip()}' and source='TechEdge adverts data supply')"
+    search = f"(name='{advertiser}' and activity_type='Sponsor' and source='TechEdge adverts data supply' and part_of='*')"
     hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
     if hits >= 1:
         ad_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         ad_parent_pri = adlib.retrieve_field_name(rec[0], "part_of.lref")[0]
-        ad_parent = adlib.retrieve_field_name(rec[0], "part_of")[0]
+        ad_parent = adlib.retrieve_field_name(rec[0], "part_of")[0] # Name field
         LOGGER.info(
-            "Advertiser matched to name '%s' - '%s' and parent priref found '%s'.",
+            "Advertiser matched to name '%s' - '%s' and parent %s priref found '%s'.",
             advertiser,
             ad_priref,
-            ad_parent_pri,
+            ad_parent,
+            ad_parent_pri, #Correct
         )
     else:
         make_ad = True
         ad_priref = ad_parent_pri = ad_parent = ""
 
-    search = f"priref='{ad_parent_pri}"
-    hits, rec = adlib.retrieve_record(CID_API, "people", search, "1")
-    if hits == 1:
-        hc_name = adlib.retrieve_field_name(rec[0], "name")[0]
-        if hc_name == holding_comp.strip():
-            hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-            parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
-        else:
-            search = f"(name='{holding_comp.strip()}' and source='TechEdge adverts data supply')"
-            hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
-            if hits >= 1:
-                hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
-                parts_priref = adlib.retrieve_field_name(rec[0], "parts.lref")
-    else:
-        make_hc = True
-        hc_priref = parts_priref = ""
+    hc_priref = ""
+    # Check ad_parent_pri has name same as holding_comp
+    if ad_parent_pri and ad_parent:
+        if ad_parent.startswith(holding_comp) or holding_comp.startswith(ad_parent):
+            hc_priref = ad_parent_pri
 
-    # If both exist but not linked create new holding comp/update advertiser
-    old_hc_priref = ""
-    if make_hc is False and make_ad is False:
-        if hc_priref != ad_parent_pri:
-            LOGGER.warning(
-                "Holding Company retrieved priref '%s' does not match parent of retrieved Advertiser '%s'",
-                hc_priref,
-                ad_parent,
-            )
-            old_hc_priref = hc_priref
-            make_hc = True
-        elif ad_priref not in parts_priref:
-            LOGGER.warning(
-                "Advertiser record '%s' and parent Holding Company parts found '%s' - No parent/child relations evident",
-                ad_priref,
-                parts_priref,
-            )
-            old_hc_priref = hc_priref
-            make_hc = True
+    if not hc_priref:
+        search = f"(name='{holding_comp}' and activity_type='Sponsor' and source='TechEdge adverts data supply' and parts='*')"
+        hits, rec = adlib.retrieve_record(CID_API, "people", search, "0")
+        if hits >= 1:
+            hc_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         else:
-            LOGGER.info(
-                "Found Holding Company and matching Advertiser data already created: '%s' - %s / '%s' - %s",
-                advertiser,
-                ad_priref,
-                holding_comp,
-                hc_priref,
+            make_hc = True
+
+    if ad_parent_pri and hc_priref:
+        print(f"******* Advert parent priref {ad_parent_pri} / Holding Company priref {hc_priref} *********")
+        if ad_parent_pri != hc_priref:
+            # Overwrite the link to old holding company
+            LOGGER.info("*** Holding Company %s update for existing Advertiser %s ***", hc_priref, ad_priref)
+            ad_update = [{"part_of.lref": hc_priref}]
+            sleep(0.25)
+            ad_update_xml = adlib.create_record_data(CID_API, "people", ad_priref, ad_update)
+            ad_update_rec = adlib.post(CID_API, ad_update_xml, "people", "updaterecord")
+            if hc_priref in str(ad_update_rec):
+                LOGGER.info(
+                    "* New Holding Company priref updated to Advertiser People record"
+                )
+            else:
+                LOGGER.warning(
+                    "Failure to update new Holding Company priref to Advertiser record: %s",
+                    ad_update_xml,
+                )
+
+            # Move connection broken above to relationship field
+            date_now = str(datetime.now())[:10]
+            old_hc_dct_update = [
+                {"relationship.lref": ad_priref},
+                {"relationship.date.end": date_now},
+                {
+                    "relationship.notes": f"TechEdge Holding Company changed from <{ad_parent_pri}> - <{hc_priref}>"
+                },
+            ]
+            sleep(0.25)
+            old_hc_xml = adlib.create_record_data(
+                CID_API, "people", ad_parent_pri, old_hc_dct_update
             )
-            return agency_priref, hc_priref, ad_priref
+            LOGGER.info(old_hc_xml)
+            hc_rec = adlib.post(CID_API, old_hc_xml, "people", "updaterecord")
+            if date_now in str(hc_rec):
+                LOGGER.info(
+                    "* Old Holding Company relationship updated for Advertiser People record"
+                )
+            else:
+                LOGGER.warning(
+                    "Failure to update old Holding Company relationships for Advertiser record: %s",
+                    ad_update_xml,
+                )
+
+    elif make_hc is False and make_ad is False:
+        LOGGER.info(
+            "Found Holding Company and matching Advertiser data already created: '%s' - %s / '%s' - %s",
+            advertiser,
+            ad_priref,
+            holding_comp,
+            hc_priref,
+        )
+        return agency_priref, hc_priref, ad_priref
 
     if make_hc is False and make_ad is True:
         # Make new Advertiser and link to Holding Company parent
@@ -536,54 +571,11 @@ def manage_advertiser_people(
             )
             hc_priref = None
 
-        # Overwrite the link to old holding company
-        if hc_priref:
-            ad_update = [{"priref": ad_priref}, {"part_of.lref": hc_priref}]
-            sleep(0.25)
-            ad_update_xml = adlib.create_record_data(CID_API, "people", "", ad_update)
-            ad_update_rec = adlib.post(CID_API, ad_update_xml, "people", "updaterecord")
-            if hc_priref in str(ad_update_rec):
-                LOGGER.info(
-                    "* New Holding Company priref updated to Advertiser People record"
-                )
-            else:
-                LOGGER.warning(
-                    "Failure to update new Holding Company priref to Advertiser record: %s",
-                    ad_update_rec,
-                )
-
-        # Move connection broken above to relationship field
-        if old_hc_priref:
-            date_now = str(datetime.now())[:10]
-            old_hc_dct_update = [
-                {"priref": old_hc_priref},
-                {"relationship.lref": ad_priref},
-                {"relationship.date.end": date_now},
-                {
-                    "relationship.notes": f"TechEdge Holding Company changed from {old_hc_priref} - {hc_priref}"
-                },
-            ]
-            sleep(0.25)
-            old_hc_xml = adlib.create_record_data(
-                CID_API, "people", "", old_hc_dct_update
-            )
-            hc_rec = adlib.post(CID_API, old_hc_xml, "people", "updaterecord")
-            if date_now in str(hc_rec):
-                LOGGER.info(
-                    "* Old Holding Company relationship updated for Advertiser People record"
-                )
-            else:
-                LOGGER.warning(
-                    "Failure to update old Holding Company relationships for Advertiser record: %s",
-                    ad_update_rec,
-                )
-
     if make_hc is True and make_ad is True:
         ad_dct = [
             {"name": advertiser},
             {"name.type": "CASTCREDIT"},
             {"activity_type": "Sponsor"},
-            {"part_of.lref": hc_priref},
             {"party.class": "ORGANISATION"},
             {"source": "TechEdge adverts data supply"},
             {"record_access.user": "BFIiispublic"},
@@ -757,19 +749,16 @@ def main():
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if working_day_check(datetime.now()):
+        sys.exit("Exiting: Cannot operate in working hours")
     LOGGER.info(
         "========== Adverts work documentation script STARTED ==============================================="
     )
-
-    ## BAU CSV scanning for new content - time for LLM cleanse
-    # end_date = date.today() - timedelta(days=18)
-    # start_date = end_date - timedelta(days=16)
-    # for target_date in date_range(start_date, end_date):
-    #     csv_path = os.path.join(STORAGE, f"{target_date}_BFIExport.csv")
-    #     LOGGER.info("Iterating CSV: %s", csv_path)
-    #     for row in te.iter_techedge_rows(csv_path):
-
     for row in te.iter_techedge_rows(CSV_PATH):
+        if working_day_check(datetime.now()):
+            LOGGER.info("Exiting: Cannot operate in working hours")
+            sys.exit("Exiting: Cannot operate in working hours")
+
         first_showing = False
         if not utils.check_control("pause_scripts"):
             LOGGER.info(
@@ -780,22 +769,22 @@ def main():
             LOGGER.warning("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
 
-        LOGGER.info(
-            "Processing row: %s, %s, %s, %s, %s, %s, %s, %s,",
-            row.channel,
-            row.date,
-            row.start_time,
-            row.film_code,
-            row.advertiser,
-            row.brand,
-            row.agency,
-            row.hold_comp,
-        )
-
         # Check if unique film code already exists
         film_code = row.film_code
         wpriref = advert_exists_query(film_code)
         if wpriref is False:
+            LOGGER.info(
+                "Processing row: %s, %s, %s, %s, %s, %s, %s, %s,",
+                row.channel,
+                row.date,
+                row.start_time,
+                row.film_code,
+                row.advertiser,
+                row.brand,
+                row.agency,
+                row.hold_comp,
+            )
+
             # Get defaults as lists of dictionary pairs
             first_showing = True
             rec_def, work_def, work_res_def, _ = build_rec_details(row)
@@ -810,20 +799,9 @@ def main():
             if not wpriref:
                 print(f"Work creation error for data: {work_values}")
                 continue
+        else:
+            print("SKIPPING: Work exists for this Ad")
 
-        if not wpriref:
-            LOGGER.warning(
-                "Failure in creation of Work record. Skipping further actions for %s",
-                film_code,
-            )
-            continue
-
-        LOGGER.info(
-            "Checking if manifestation already exists for advert '%s' - %s %s",
-            row.brand,
-            row.date,
-            row.start_time,
-        )
         title_date_start = datetime.strftime(
             datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d"
         )
@@ -831,8 +809,12 @@ def main():
         mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
         if mpriref is False:
             LOGGER.info(
-                "Manifestation match cannot be found. Creating advert manifestation..."
+                "Manifestation match not found '%s' - %s %s",
+                row.brand,
+                row.date,
+                row.start_time,
             )
+
             rec_def, _, _, manifestation = build_rec_details(row)
             man_values = []
             man_values.extend(rec_def)
@@ -847,9 +829,7 @@ def main():
                     "Failed to make new manifestation and link to work: %s\n", wpriref
                 )
         else:
-            LOGGER.info(
-                "SKIPPING: Manifestation exists for this Advert in this time slot.\n"
-            )
+            print("SKIPPING: Manifestation exists for this Ad.")
 
     LOGGER.info(
         "========== Adverts work documentation script END =======================================================\n"

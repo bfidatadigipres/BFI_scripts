@@ -61,6 +61,7 @@ logger.setLevel(logging.INFO)
 
 # Setup Rest API
 URL = os.environ["PATV_URL"]
+# HEADERS = {"accept": "application/json", "apikey": os.environ["PATV_KEY_HISTORICAL"]}
 HEADERS = {"accept": "application/json", "apikey": os.environ["PATV_KEY"]}
 
 CHANNEL = {

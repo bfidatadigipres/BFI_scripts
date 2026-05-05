@@ -137,26 +137,10 @@ def test_retrieve_record(mocker):
                             }
                         ],
                         "Title": [{"title": [{"spans": [{"text": "Vanessa"}]}]}],
-                        "grouping": [
-                            {
-                                "spans": [
-                                    {
-                                        "text": "test"
-                                    }
-                                ]
-                            }
-                        ],
+                        "grouping": [{"spans": [{"text": "test"}]}],
                         "input.date": [{"spans": [{"text": "2025-10-01"}]}],
                         "input.name": [{"spans": [{"text": "user"}]}],
-                        "input.notes": [
-                            {
-                                "spans": [
-                                    {
-                                        "text": "test"
-                                    }
-                                ]
-                            }
-                        ],
+                        "input.notes": [{"spans": [{"text": "test"}]}],
                         "item_type": [
                             {
                                 "@lang": "neutral",
@@ -311,8 +295,6 @@ def test_get_grouped_item_exce(mocker):
         adlib.get_grouped_items("http://fake-api", "test_db")
 
 
-
-
 def test_check_response_call(mocker):
     api = "https://test_api"
     rec = "A severe error occurred on the current command."
@@ -407,6 +389,7 @@ def test_invalid_group_check(exceptions):
     with pytest.raises(exceptions):
         adlib.group_check()
 
+
 def test_create_record_data(monkeypatch):
     api = "https://test_api"
     database = "db_test"
@@ -430,6 +413,7 @@ def test_create_record_data(monkeypatch):
         record_data_xml
         == "<adlibXML><recordList><record><priref>0</priref><user>uesr1</user><input.date>1999-01-01</input.date></record></recordList></adlibXML>"
     )
+
 
 @pytest.mark.parametrize(
     "priref, grouping, field_pairs, outcome",
@@ -534,10 +518,7 @@ def test_add_quality_comments_exceptions(exceptions):
         adlib.add_quality_comments("https://fake-api", "12345", "moooooo")
 
 
-
-@pytest.mark.parametrize("error_status_code", [
-    405, 403, 500
-])
+@pytest.mark.parametrize("error_status_code", [405, 403, 500])
 def test_invalid_unlock_record(mocker, error_status_code):
     mock_response = mocker.Mock()
     mock_response.status_code = error_status_code
@@ -547,44 +528,49 @@ def test_invalid_unlock_record(mocker, error_status_code):
 
     assert result is False
 
+
 def test_connection_error_unlock_record(mocker):
 
-    mocker.patch("adlib_v3.requests.post", side_effect=requests.exceptions.ConnectionError())
+    mocker.patch(
+        "adlib_v3.requests.post", side_effect=requests.exceptions.ConnectionError()
+    )
     result = adlib.unlock_record("http://invalid_api", "1234", "db")
 
     assert result is None
 
+
 def test_connection_error_log_unlock(mocker):
-    mocker.patch("adlib_v3.requests.post", side_effect=requests.exceptions.ConnectionError())
-    mock_print=mocker.patch("builtins.print")
+    mocker.patch(
+        "adlib_v3.requests.post", side_effect=requests.exceptions.ConnectionError()
+    )
+    mock_print = mocker.patch("builtins.print")
 
     adlib.unlock_record("http://invalid_api", "1234", "db")
 
     assert "1234" in mock_print.call_args.args[0]
     assert "failed" in mock_print.call_args.args[0]
 
+
 def test_unlock_record(mocker):
-    mock_response=mocker.Mock()
+    mock_response = mocker.Mock()
     mock_response.status_code = 200
-    mock_response.text="""
+    mock_response.text = """
             {"adlibJSON":{"diagnostic":{"hits":0,"xmltype":"Unstructured","hits_on_display":0,"search":null,"sort":null,"message":"Record '1234' in database 'db' unlocked","first_item":1,"forward":0,"backward":0,"limit":0,"xml_creation_time":{"value":"0","unit":"mS","culture":"en-US"}}}}
     """
-    mock_post=mocker.patch("adlib_v3.requests.post", return_value=mock_response)
-    mock_print=mocker.patch("builtins.print")
+    mock_post = mocker.patch("adlib_v3.requests.post", return_value=mock_response)
+    mock_print = mocker.patch("builtins.print")
 
     result = adlib.unlock_record("http://valid_api", "1234", "db")
 
     assert result is True
-    assert  '"Record \'1234\' in database \'db\' unlocked"' in mock_print.call_args.args[0]
+    assert "\"Record '1234' in database 'db' unlocked\"" in mock_print.call_args.args[0]
     assert mock_post.call_args.args[0] == "http://valid_api"
     assert mock_post.call_args.kwargs["params"]["command"] == "unlockrecord"
     assert mock_post.call_args.kwargs["params"]["priref"] == "1234"
-    assert "db" in mock_post.call_args.kwargs["params"]['database']
+    assert "db" in mock_post.call_args.kwargs["params"]["database"]
 
 
-@pytest.mark.parametrize("status_error_code", [
-    402, 405, 500
-])
+@pytest.mark.parametrize("status_error_code", [402, 405, 500])
 def test_invalid_write_lock(mocker, status_error_code):
     mock_response = mocker.Mock()
     mock_response.status_code = status_error_code
@@ -593,46 +579,63 @@ def test_invalid_write_lock(mocker, status_error_code):
     result = adlib.write_lock("http://api", "1234", "db")
     assert result is False
 
+
 def test_connection_error_write_record(mocker):
 
-    mocker.patch("adlib_v3.requests.post", side_effect=requests.exceptions.ConnectionError())
+    mocker.patch(
+        "adlib_v3.requests.post", side_effect=requests.exceptions.ConnectionError()
+    )
     result = adlib.write_lock("http://invalid_api", "1234", "db")
 
     assert result is None
 
+
 def test_connection_error_log_lock(mocker):
-    mocker.patch("adlib_v3.requests.post", side_effect=requests.exceptions.ConnectionError())
-    mock_print=mocker.patch("builtins.print")
+    mocker.patch(
+        "adlib_v3.requests.post", side_effect=requests.exceptions.ConnectionError()
+    )
+    mock_print = mocker.patch("builtins.print")
 
     adlib.write_lock("http://invalid_api", "1234", "db")
 
     assert "1234" in mock_print.call_args.args[0]
     assert "Lock record wasn't applied to record 1234" in mock_print.call_args.args[0]
-    
 
-@pytest.mark.parametrize("type_api, results, error_message", [
-    ("""
+
+@pytest.mark.parametrize(
+    "type_api, results, error_message",
+    [
+        (
+            """
 
        {"adlibJSON":{"diagnostic":{"hits":1,search":null,"sort":null,"message":"Record '1234' has  been set for user 'user'","first_item":1,"forward":0,"backward":0,"limit":0,"xml_creation_time":{"value":"0","unit":"mS","culture":"en-US"}}}}
 
-    """, "Record '1234' has  been set for user 'user'", False), 
-    ("""
+    """,
+            "Record '1234' has  been set for user 'user'",
+            False,
+        ),
+        (
+            """
 {"adlibJSON":{"recordList":{"record":[]},"diagnostic":{"hits":1,"search":null,"sort":null,"error":{"message":"User 'user' attempts to lock record, with priref '1234' in database 'collect' but the record is already locked by 'user'"},"first_item":1,"forward":0,"backward":0,"limit":0,"xml_creation_time":{"value":"0","unit":"mS","culture":"en-US"}}}}
-""", "User 'user' attempts to lock record, with priref '1234' in database 'collect' but the record is already locked by 'user'", True)
-])
+""",
+            "User 'user' attempts to lock record, with priref '1234' in database 'collect' but the record is already locked by 'user'",
+            True,
+        ),
+    ],
+)
 def test_write_lock(mocker, type_api, results, error_message):
-    mock_response=mocker.Mock()
+    mock_response = mocker.Mock()
     mock_response.status_code = 200
-    mock_response.text=type_api
+    mock_response.text = type_api
     mock_post = mocker.patch("adlib_v3.requests.post", return_value=mock_response)
     mock_print = mocker.patch("builtins.print")
 
     result = adlib.write_lock("http://valid_api", "1234", "db")
     assert result is True
     assert mock_post.call_args.args[0] == "http://valid_api"
-    assert "lockrecord" in mock_post.call_args.kwargs["params"]['command']
-    assert "1234" in mock_post.call_args.kwargs["params"]['priref']
-    assert "db" in mock_post.call_args.kwargs["params"]['database']
+    assert "lockrecord" in mock_post.call_args.kwargs["params"]["command"]
+    assert "1234" in mock_post.call_args.kwargs["params"]["priref"]
+    assert "db" in mock_post.call_args.kwargs["params"]["database"]
 
     if error_message:
         assert "error" in mock_print.call_args.args[0]

@@ -379,6 +379,7 @@ def create_record_data(api, database, priref, data=None):
     payload = "".join(output_list)
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
 
+
 ####
 def escape_xml(s: str) -> str:
     """
@@ -505,7 +506,7 @@ def write_lock(api, priref, database):
 
         if post_response.status_code != 200:
             return False
-        
+
         return True
     except Exception as err:
         print(f"Lock record wasn't applied to record {priref}\n{err}")
@@ -525,7 +526,7 @@ def unlock_record(api, priref, database):
                 "output": "jsonv1",
             },
         )
-   
+
         print(post_response.text)
         if post_response.status_code != 200:
             return False

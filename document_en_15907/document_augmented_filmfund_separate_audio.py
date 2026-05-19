@@ -152,7 +152,7 @@ def main():
             continue
         print(f"Priref matched with retrieved folder name: {source_priref}")
         LOGGER.info(
-            "Priref matched with %s folder name: %s", platform, source_priref
+            "Priref %s matched with folder name: %s", source_priref, folder
         )
 
         # Create CID item record for mono/stereo audio files in folder

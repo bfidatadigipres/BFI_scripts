@@ -655,7 +655,7 @@ def main():
     if not os.path.isfile(csv_path):
         sys.exit(f"Problem with supplied CSV path {csv_path}")
 
-    #if not utils.check_control("pause_scripts"):
+    # if not utils.check_control("pause_scripts"):
     #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE) or not utils.check_storage(csv_path):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")

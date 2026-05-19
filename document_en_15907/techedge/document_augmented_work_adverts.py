@@ -74,7 +74,7 @@ CHANNELS = {
 
 
 def working_day_check(dt: datetime) -> bool:
-    """ Check for clash with working week """
+    """Check for clash with working week"""
     work_days = {0, 1, 2, 3, 4}
     start = time(8, 00, 0)
     end = time(19, 55, 0)
@@ -409,13 +409,13 @@ def manage_advertiser_people(
     if hits >= 1:
         ad_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         ad_parent_pri = adlib.retrieve_field_name(rec[0], "part_of.lref")[0]
-        ad_parent = adlib.retrieve_field_name(rec[0], "part_of")[0] # Name field
+        ad_parent = adlib.retrieve_field_name(rec[0], "part_of")[0]  # Name field
         LOGGER.info(
             "Advertiser matched to name '%s' - '%s' and parent %s priref found '%s'.",
             advertiser,
             ad_priref,
             ad_parent,
-            ad_parent_pri, #Correct
+            ad_parent_pri,  # Correct
         )
     else:
         make_ad = True
@@ -436,13 +436,21 @@ def manage_advertiser_people(
             make_hc = True
 
     if ad_parent_pri and hc_priref:
-        print(f"******* Advert parent priref {ad_parent_pri} / Holding Company priref {hc_priref} *********")
+        print(
+            f"******* Advert parent priref {ad_parent_pri} / Holding Company priref {hc_priref} *********"
+        )
         if ad_parent_pri != hc_priref:
             # Overwrite the link to old holding company
-            LOGGER.info("*** Holding Company %s update for existing Advertiser %s ***", hc_priref, ad_priref)
+            LOGGER.info(
+                "*** Holding Company %s update for existing Advertiser %s ***",
+                hc_priref,
+                ad_priref,
+            )
             ad_update = [{"part_of.lref": hc_priref}]
             sleep(0.25)
-            ad_update_xml = adlib.create_record_data(CID_API, "people", ad_priref, ad_update)
+            ad_update_xml = adlib.create_record_data(
+                CID_API, "people", ad_priref, ad_update
+            )
             ad_update_rec = adlib.post(CID_API, ad_update_xml, "people", "updaterecord")
             if hc_priref in str(ad_update_rec):
                 LOGGER.info(
@@ -870,7 +878,7 @@ def get_duration_total_parts(
     )
     print(f"Targeting path for next data: {csv_path}")
     rows = []
-    with open(csv_path, 'r', encoding='utf-8') as file:
+    with open(csv_path, "r", encoding="utf-8") as file:
         for lines in file:
             parts = lines.strip().split(",")
             try:

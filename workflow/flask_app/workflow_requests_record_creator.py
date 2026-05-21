@@ -46,7 +46,7 @@ LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
 EMAIL_SENDER: Final = os.environ["EMAIL_SEND"]
 EMAIL_PSWD: Final = os.environ["EMAIL_PASS"]
-CID_API = os.environ.get("CID_API3")
+CID_API = utils.get_current_api()
 REQUEST_TYPE = {
     "AUDIOSUITETRANSFER": "Audio suite transfer",
     "BOOKING": "Booking",
@@ -209,10 +209,10 @@ def check_priref_is_item(priref):
 def main():
     """
     Process all items found returned from Flask app
-    """
+
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-
+    """
     requested_jobs = retrieve_requested()
     print(requested_jobs)
     if len(requested_jobs) == 0:

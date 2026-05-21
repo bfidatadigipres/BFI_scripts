@@ -29,17 +29,17 @@ import yaml
 import adlib_v3 as adlib
 
 # Global imports
-LOG_PATH: Final = os.environ["LOG_PATH"]
-CONTROL_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "downtime_control.json")
-STORAGE_JSON: str = os.path.join(os.environ.get("LOG_PATH"), "storage_control.json")
+LOG_PATH: Final = os.environ.get("LOG_PATH", "/mnt/qnap_04/Admin/Logs")
+CONTROL_JSON: str = os.path.join(LOG_PATH, "downtime_control.json")
+STORAGE_JSON: str = os.path.join(LOG_PATH, "storage_control.json")
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, "autoingest", "global.log")
-SMTP_SERVER = os.environ["SMTP_SERVER"]
-SMTP_PORT = os.environ["SMTP_PORT"]
+SMTP_SERVER = os.environ.get("SMTP_SERVER")
+SMTP_PORT = os.environ.get("SMTP_PORT")
 EMAIL = os.environ.get("EMAIL_ADDRESS")
 PASSWORD = os.environ.get("EMAIL_PASSWORD")
 CONTEXT = ssl.create_default_context()
 
-PREFIX: Final = ["N", "C", "PD", "SPD", "PBS", "PBM", "PBL", "SCR", "CA"]
+PREFIX: Final = ["N", "C", "PD", "SPD", "PBS", "PBM", "PBL", "SCR", "CA", "GUR"]
 
 ACCEPTED_EXT: Final = [
     "avi",
@@ -312,8 +312,10 @@ def get_object_number(fname):
     Extract object number from name formatted
     with partWhole, eg N_123456_01of03.ext
     """
+
     if not any(fname.startswith(px) for px in PREFIX):
         return False
+
     try:
         splits: list[str] = fname.split("_")
         object_number: Optional[str] = "-".join(splits[:-1])

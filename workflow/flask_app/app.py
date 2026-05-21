@@ -30,7 +30,7 @@ from flask import (
     flash,
 )
 
-sys.path.append(os.environ.get("CODE"))
+sys.path.append("/home/datadigipres/code/git/BFI_scripts")
 import adlib_v3 as adlib
 import utils
 
@@ -39,7 +39,7 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 
 DBASE = os.environ.get("WF_DATABASE")
 FLASK_HOST = os.environ.get("FLASK_HOST")
-LOG_PATH = os.environ["LOG_PATH"]
+LOG_PATH = os.environ.get("LOG_PATH")
 CID_API = utils.get_current_api()
 
 # Ensure DB and table exist

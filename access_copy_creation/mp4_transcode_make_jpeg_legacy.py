@@ -64,7 +64,7 @@ FLLPTH: Final = sys.argv[1].split("/")[:4]
 LOG_PREFIX: Final = "_".join(FLLPTH)
 LOG_FILE: Final = os.path.join(LOG_PATH, f"mp4_transcode{LOG_PREFIX}.log")
 CID_API: Final = utils.get_current_api()
-TRANSCODE: Final = os.environ["TRANSCODING"]
+TRANSCODE: Final = os.environ["BP_TRANSCODING"]
 if not os.path.ismount(TRANSCODE):
     sys.exit(f"{TRANSCODE} path is not mounted. Script exiting.")
 HOST: Final = os.uname()[1]
@@ -133,7 +133,7 @@ def main():
     completed_pth = os.path.join(os.path.split(filepath)[0], "completed/", file)
 
     log_build.append(
-        f"{local_time()}\tINFO\t================== START Transcode MP4 make JPEG {file} {HOST} =================="
+        f"{local_time()}\tINFO\t================== START Transcode MP4 Legacy make JPEG {file} {HOST} =================="
     )
     print(f"File to be processed: {file}. Completed path: {completed_pth}")
 
@@ -145,7 +145,7 @@ def main():
     object_number = utils.get_object_number(fname)
     if object_number is None or object_number is False:
         object_number = ""
-    if object_number.startswith("CA-"):
+    if object_number.startswith(("CA-", "GUR-")):
         priref, source, groupings = check_item(object_number, "collectionsassets")
     else:
         priref, source, groupings = check_item(object_number, "items")
@@ -156,7 +156,7 @@ def main():
             f"{local_time()}\tCRITICAL\tDigital media record priref missing: {file}"
         )
         log_build.append(
-            f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
+            f"{local_time()}\tINFO\t==================== END Transcode MP4 Legacy and make JPEG {file} ==================="
         )
         log_output(log_build)
         sys.exit("EXITING: Digital media record missing. See logs.")
@@ -166,7 +166,7 @@ def main():
             f"{local_time()}\tWARNING\tProblems accessing CID to retrieve Item record data: {object_number}"
         )
         log_build.append(
-            f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
+            f"{local_time()}\tINFO\t==================== END Transcode MP4 Legacy  and make JPEG {file} ==================="
         )
         log_output(log_build)
         sys.exit(f"EXITING: Unable to retrieve item details from CID: {object_number}")
@@ -227,7 +227,7 @@ def main():
         )
         shutil.move(fullpath, completed_pth)
         log_build.append(
-            f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
+            f"{local_time()}\tINFO\t==================== END Transcode MP4 Legacy and make JPEG {file} ==================="
         )
         log_output(log_build)
         sys.exit()
@@ -241,7 +241,7 @@ def main():
         )
         shutil.move(fullpath, completed_pth)
         log_build.append(
-            f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
+            f"{local_time()}\tINFO\t==================== END Transcode MP4 Legacy and make JPEG {file} ==================="
         )
         log_output(log_build)
         sys.exit()
@@ -330,7 +330,7 @@ def main():
                 f"{local_time()}\tCRITICAL\tFFmpeg command failed: {ffmpeg_call_neat}\n{e}"
             )
             log_build.append(
-                f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
+                f"{local_time()}\tINFO\t==================== END Transcode MP4 Legacy and make JPEG {file} ==================="
             )
             print(e)
             log_output(log_build)
@@ -353,11 +353,11 @@ def main():
                 f"{local_time()}\tINFO\tWARNING: MP4 failed policy check: {policy_check}"
             )
             log_build.append(
-                f"{local_time()}\tINFO\tDeleting transcoded MP4 and leaving file for repeated transcode attempt"
+                f"{local_time()}\tINFO\tDeleting transcoded MP4 Legacy and leaving file for repeated transcode attempt"
             )
             os.remove(outpath)
             log_build.append(
-                f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
+                f"{local_time()}\tINFO\t==================== END Transcode MP4 Legacy  and make JPEG {file} ==================="
             )
             log_output(log_build)
             sys.exit("EXIT: Transcode failure. Please see logs")
@@ -375,7 +375,7 @@ def main():
                 f"{local_time()}\tWARNING\tFailed to create JPEG from MP4 file"
             )
             log_build.append(
-                f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
+                f"{local_time()}\tINFO\t==================== END Transcode MP4 Legacy  and make JPEG {file} ==================="
             )
             log_output(log_build)
             sys.exit("Exiting: JPEG not created from MP4 file")
@@ -461,7 +461,7 @@ def main():
             f"{local_time()}\tCRITICAL\tFile extension type not recognised: {fullpath}"
         )
         log_build.append(
-            f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ==================="
+            f"{local_time()}\tINFO\t==================== END Transcode MP4 Legacy and make JPEG {file} ==================="
         )
         log_output(log_build)
         sys.exit("Exiting as script does not recognised file type")
@@ -511,7 +511,7 @@ def main():
         # Any further clean up needed here?
 
     log_build.append(
-        f"{local_time()}\tINFO\t==================== END Transcode MP4 and make JPEG {file} ===================="
+        f"{local_time()}\tINFO\t==================== END Transcode MP4 Legacy and make JPEG {file} ===================="
     )
     log_output(log_build)
 

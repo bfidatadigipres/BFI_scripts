@@ -56,7 +56,7 @@ LOG_PATH: Final = os.environ["LOG_PATH"]
 FLLPTH: Final = sys.argv[1].split("/")[:4]
 LOG_PREFIX: Final = "_".join(FLLPTH)
 LOG_FILE: Final = os.path.join(LOG_PATH, f"mp4_transcode{LOG_PREFIX}.log")
-TRANSCODE: Final = os.environ["TRANSCODING"]
+TRANSCODE: Final = os.environ["BP_TRANSCODING"]
 if not os.path.ismount(TRANSCODE):
     sys.exit(f"{TRANSCODE} path is not mounted. Script exiting.")
 CID_API: Final = utils.get_current_api()

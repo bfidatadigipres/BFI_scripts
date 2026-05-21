@@ -380,6 +380,7 @@ def create_record_data(api, database, priref, data=None):
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
 
 
+####
 def escape_xml(s: str) -> str:
     """
     Escape characters that break
@@ -502,6 +503,10 @@ def write_lock(api, priref, database):
             },
         )
         print(post_response.text)
+
+        if post_response.status_code != 200:
+            return False
+
         return True
     except Exception as err:
         print(f"Lock record wasn't applied to record {priref}\n{err}")
@@ -521,7 +526,10 @@ def unlock_record(api, priref, database):
                 "output": "jsonv1",
             },
         )
+
         print(post_response.text)
+        if post_response.status_code != 200:
+            return False
         return True
     except Exception as err:
         print(

@@ -715,7 +715,9 @@ def main():
                 # Simplified name check
                 if not fname.startswith("GUR_"):
                     print(f"* Incorrect file placed into folder: {fname}")
-                    logger.warning("%s\tIncorrect file found in aip_ingest path", log_paths)
+                    logger.warning(
+                        "%s\tIncorrect file found in aip_ingest path", log_paths
+                    )
                     continue
                 if not re.search("^[A-Za-z0-9_.]*$", fname):
                     print(f"* Filename formatted incorrectly {fname}")

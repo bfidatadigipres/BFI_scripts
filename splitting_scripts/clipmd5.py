@@ -38,7 +38,7 @@ def framemd5_manifest(cmd: list[str]) -> bytes:
 def segment(cmd: list[str]):
     """Trim a new file from the given source"""
 
-    status = subprocess.call(cmd, shell=False, check=True)
+    status = subprocess.call(cmd, shell=False)
     if status == 0:
         return True
 

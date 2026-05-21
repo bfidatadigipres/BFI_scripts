@@ -125,14 +125,17 @@ def fetch(
             raise tenacity.TryAgain
     elif search_type == "cat_asset":
         try:
-            req = requests.get(f"{URL}catalogue/{cat_id}/asset/{search_id}",
+            req = requests.get(
+                f"{URL}catalogue/{cat_id}/asset/{search_id}",
                 headers=HEADERS,
             )
             dct = json.loads(req.text)
             return dct
         except json.decoder.JSONDecodeError as err:
             print(f"fetch(): **** PROBLEM: JSON cannot decode text:\n{req.text}.")
-            LOGGER.critical("**** PROBLEM: JSON cannot decode text: \n%s\n%s", req.text, err)
+            LOGGER.critical(
+                "**** PROBLEM: JSON cannot decode text: \n%s\n%s", req.text, err
+            )
             raise tenacity.TryAgain
         except Exception as err:
             print("fetch(): **** PROBLEM: Cannot fetch EPG metadata.")
@@ -151,9 +154,7 @@ def fetch(
             raise tenacity.TryAgain
     elif search_type == "contributors":
         try:
-            req = requests.get(
-                f"{URL}asset/{search_id}/contributor", headers=HEADERS
-            )
+            req = requests.get(f"{URL}asset/{search_id}/contributor", headers=HEADERS)
             dct = json.loads(req.text)
             return dct
         except Exception as err:

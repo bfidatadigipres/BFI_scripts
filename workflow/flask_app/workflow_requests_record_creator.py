@@ -209,10 +209,10 @@ def check_priref_is_item(priref):
 def main():
     """
     Process all items found returned from Flask app
-
+    """
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    """
+
     requested_jobs = retrieve_requested()
     print(requested_jobs)
     if len(requested_jobs) == 0:
@@ -377,8 +377,6 @@ Hello {firstname.title()},
 {message}
 
 Your original request details:
-    Job number: {job[5]} Job name: {job[10]}
-
     Saved search: {job[6]}
     Specific instructions: {job[13]}
 
@@ -391,13 +389,16 @@ Your original request details:
     Client name: {job[14]}
     Contact details: {job[15]}
 
-If there are problems with the request(s), please raise an issue in the BFI Collections Systems Service Desk:
+If you experience any technical issue while making your request, please raise a ticket on the CID and DPI Systems Service Desk:
 https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1
+
+For futher guidance on the request form, go to the User Knowlege Base:
+https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/article/4585553921
 
 This is an automated notification, please do not reply to this email.
 
 Thank you,
-Collections Systems team"""
+Collections Systems"""
 
     success, error = utils.send_email(client_email, subject, body, "")
     if success:

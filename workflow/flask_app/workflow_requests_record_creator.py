@@ -400,7 +400,7 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Collections Systems"""
 
-    success, error = utils.send_email(client_email, subject, body, "")
+    success, error = utils.send_email(client_email, "collectionssystems@bfi.org.uk", subject, body, "")
     if success:
         LOGGER.info("Email notification sent to %s", client_email)
     else:

@@ -881,7 +881,7 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Digital Preservation team"""
 
-    success, error = utils.send_email(email, subject, body, "")
+    success, error = utils.send_email(email, "digitalpreservationsystems@bfi.org.uk", subject, body, "")
     if success:
         LOGGER.info(f"Email notification sent to {email}")
     else:
@@ -969,7 +969,7 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Digital Preservation team"""
 
-    success, error = utils.send_email(email, subject, body, "")
+    success, error = utils.send_email(email, "digitalpreservationsystems@bfi.org.uk", subject, body, "")
     if success:
         LOGGER.info(f"Email notification sent to {email}")
     else:
@@ -1009,7 +1009,7 @@ This is an automated notification, please do not reply to this email.
 Thank you,
 Digital Preservation team"""
 
-    success, error = utils.send_email(email, subject, body, "")
+    success, error = utils.send_email(email, "digitalpreservationsystems@bfi.org.uk", subject, body, "")
     if success:
         LOGGER.info(f"Email notification sent to {email}")
     else:

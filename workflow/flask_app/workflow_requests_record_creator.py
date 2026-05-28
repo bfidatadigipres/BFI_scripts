@@ -44,8 +44,6 @@ FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-EMAIL_SENDER: Final = os.environ["EMAIL_SEND"]
-EMAIL_PSWD: Final = os.environ["EMAIL_PASS"]
 CID_API = utils.get_current_api()
 REQUEST_TYPE = {
     "AUDIOSUITETRANSFER": "Audio suite transfer",
@@ -377,6 +375,8 @@ Hello {firstname.title()},
 {message}
 
 Your original request details:
+    Job name: {job[10]}
+
     Saved search: {job[6]}
     Specific instructions: {job[13]}
 
@@ -392,7 +392,7 @@ Your original request details:
 If you experience any technical issue while making your request, please raise a ticket on the CID and DPI Systems Service Desk:
 https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1
 
-For futher guidance on the request form, go to the User Knowlege Base:
+For further guidance on the request form, go to the User Knowlege Base:
 https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/article/4585553921
 
 This is an automated notification, please do not reply to this email.

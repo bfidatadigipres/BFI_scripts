@@ -58,7 +58,7 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Any, Final, Optional, Union
+from typing import Final, Optional
 
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import (
@@ -85,8 +85,6 @@ LOG_PATH: Final = os.environ["LOG_PATH"]
 CONTROL_JSON: Final = os.environ["CONTROL_JSON"]
 CODEPTH: Final = os.environ["CODE"]
 ES_SEARCH: Final = os.environ["ES_SEARCH_PATH"]
-EMAIL_SENDER: Final = os.environ["EMAIL_SEND"]
-EMAIL_PSWD: Final = os.environ["EMAIL_PASS"]
 FMT: Final = "%Y-%m-%d %H:%M:%s"
 
 # CONNECT TO ES
@@ -835,9 +833,6 @@ def send_email_update(
     downloaded, with path, folder and
     filename of downloaded file
     """
-    import smtplib
-    import ssl
-    from email.message import EmailMessage
 
     if tran_status == "prores":
         mssg = "Your transcode to ProRes has completed and replaces your DPI downloaded file above, appended '_prores.mov'."
@@ -900,9 +895,6 @@ def send_email_update_bulk(
     downloaded, with path, folder and
     filename of downloaded file
     """
-    import smtplib
-    import ssl
-    from email.message import EmailMessage
 
     file_list = []
     for key, value in files_processed.items():
@@ -985,9 +977,6 @@ def send_email_failures_bulk(
     to download, with path, folder and
     filenames of failed items
     """
-    import smtplib
-    import ssl
-    from email.message import EmailMessage
 
     name_extracted = email.split(".")[0]
     subject = "FAILED: DPI bulk file download request"

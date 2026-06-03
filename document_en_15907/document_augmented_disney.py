@@ -465,12 +465,16 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
                             f"Category: {category_code}     Title: {title}     Description: {description}"
                         )
                     genre_one_priref: str = ""
-                else:
+                elif isinstance(genre_one, dict):
                     for _, val in genre_one.items():
                         genre_one_priref: str = val
                     print(
                         f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
                     )
+                elif isinstance(genre_one, str):
+                    genre_one_priref = genre_one.split(":")[-1]
+                else:
+                    genre_one_priref = ""
             except (IndexError, KeyError, TypeError):
                 genre_one_priref = ""
             try:
@@ -993,7 +997,7 @@ def main():
                     print(
                         "============ Episodes found in DISNEY folder do not match total episodes supplied ============="
                     )
-            sys.exit("One pass")
+
     LOGGER.info("=== Document augmented Disney end =================================")
 
 

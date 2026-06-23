@@ -17,6 +17,8 @@
     <rule name="Packing is populated" value="Generic section header/Image information/image element/Packing" occurrence="*" operator="exists" scope="mmt"/>
     <rule name="Encoding is populated" value="Generic section header/Image information/image element/Encoding" occurrence="*" operator="exists" scope="mmt"/>
     <rule name="Offset to data populated" value="Generic section header/Image information/image element/Offset to data" occurrence="*" operator="exists" scope="mmt"/>
+    <rule name="User identification is populated" value="User defined header/User identification" occurrence="*" operator="exists" scope="mmt"/>
+    <rule name="User defined is populated" value="User defined header/User defined" occurrence="*" operator="exists" scope="mmt"/>
     <rule name="Input device name present" value="Generic section header/Image source information/Input device name" occurrence="*" operator="exists" scope="mmt"/>
     <rule name="Input device serial number" value="Generic section header/Image source information/Input device serial number" occurrence="*" operator="exists" scope="mmt"/>
     <rule name="Total image element file size" value="StreamSize" tracktype="Image" occurrence="*" operator="exists"/>
@@ -25,16 +27,6 @@
     <rule name="Pixels per line" value="Generic section header/Image information/Pixels per line" occurrence="*" operator="&gt;" scope="mmt">0</rule>
     <rule name="Lines per image element" value="Generic section header/Image information/Lines per image element" occurrence="*" operator="&gt;" scope="mmt">0</rule>
     <rule name="Description of Image element" value="Generic section header/Image information/image element/Description of image element" occurrence="*" operator="exists" scope="mmt"/>
-    <rule name="User identification is populated" value="User defined header/User identification" occurrence="*" operator="exists" scope="mmt"/>
-    <rule name="User defined is populated" value="User defined header/User defined" occurrence="*" operator="exists" scope="mmt"/>
-    <policy type="or" name="Colorspace has no Alphas">
-      <rule name="ColorSpace is NOT ABGR" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">AGBR</rule>
-      <rule name="ColorSpace is NOT ABGR" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">AGBR</rule>
-      <rule name="ColorSpace is NOT RGB / A" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGB / A</rule>
-      <rule name="ColorSpace is NOT RGB / A" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">RGB / A</rule>
-      <rule name="ColorSpace is NOT RGB/A" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGB/A</rule>
-      <rule name="ColorSpace is NOT RGB/A" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">RGB/A</rule>
-    </policy>
     <policy type="or" name="DPX version is 1.0 or 2.0">
       <rule name="DPX format is V1.0" value="Generic section header/File information/Version number of header format" occurrence="*" operator="=" scope="mmt">V1.0</rule>
       <rule name="DPX format is V2.0" value="Generic section header/File information/Version number of header format" occurrence="*" operator="=" scope="mmt">V2.0</rule>
@@ -87,7 +79,7 @@
         <rule name="Descriptor (6)" value="Generic section header/Image information/image element/Descriptor" occurrence="*" operator="=" scope="mmt">6</rule>
         <rule name="Magic number is SDPX (Big Endian)" value="Generic section header/File information/Magic number" occurrence="*" operator="=" scope="mmt">SDPX</rule>
       </policy>
-      <policy type="and" name="16-bit RGBA Big endian">
+      <policy type="and" name="16-bit RGBA (descriptor 51) Big endian">
         <rule name="BitDepth is 16" value="Generic section header/Image information/image element/Bit depth" occurrence="*" operator="=" scope="mmt">16</rule>
         <rule name="Descriptor (51)" value="Generic section header/Image information/image element/Descriptor" occurrence="*" operator="=" scope="mmt">51</rule>
         <rule name="Magic number is SDPX (Big Endian)" value="Generic section header/File information/Magic number" occurrence="*" operator="=" scope="mmt">SDPX</rule>
@@ -97,23 +89,25 @@
       <rule name="File creation time is present" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists"/>
       <rule name="File encoded date is present" value="Encoded_Date" tracktype="General" occurrence="*" operator="exists"/>
     </policy>
-    <policy type="or" name="Format Version 1.0 or 2.0">
-      <rule name="Format_Version is 1.0" value="Format_Version" tracktype="General" occurrence="*" operator="=">1.0</rule>
-      <rule name="Format_Version is 2.0" value="Format_Version" tracktype="General" occurrence="*" operator="starts with">2</rule>
-    </policy>
+    <policy type="or" name="Colorspace has unsupported Alphas">
+      <rule name="ColorSpace is NOT ABGR" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">AGBR</rule>
+      <rule name="ColorSpace is NOT ABGR" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">AGBR</rule>
+      <rule name="ColorSpace is NOT RGB / A" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGB / A</rule>
+      <rule name="ColorSpace is NOT RGB / A" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">RGB / A</rule>
+      <rule name="ColorSpace is NOT RGB/A" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGB/A</rule>
+      <rule name="ColorSpace is NOT RGB/A" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">RGB/A</rule>
+    </policy>
+    <policy type="or" name="Format Version 1.0 or 2.0">
+      <rule name="Format_Version is 1.0" value="Format_Version" tracktype="General" occurrence="*" operator="=">1.0</rule>
+      <rule name="Format_Version is 2.0" value="Format_Version" tracktype="General" occurrence="*" operator="starts with">2</rule>
+    </policy>
     <policy type="or" name="DPX width gt/et 2048">
       <rule name="Width is gt/et 2048" value="Width" tracktype="Image" occurrence="*" operator="&gt;=">2048</rule>
       <rule name="Width is gt/et 2048" value="Width" tracktype="Video" occurrence="*" operator="&gt;=">2048</rule>
     </policy>
-    <policy type="or" name="DPX height gt/et 1280 OR 1536">
-      <policy type="or" name="DPX height gt/et 1280">
-        <rule name="Height is gt/et 1280" value="Height" tracktype="Image" occurrence="*" operator="&gt;=">1280</rule>
-        <rule name="Height is gt/et 1280" value="Height" tracktype="Video" occurrence="*" operator="&gt;=">1280</rule>
-      </policy>
-      <policy type="or" name="DPX height gt/et 1536">
-        <rule name="Height is gt/et 1536" value="Height" tracktype="Image" occurrence="*" operator="&gt;=">1536</rule>
-        <rule name="Height is gt/et 1536" value="Height" tracktype="Video" occurrence="*" operator="&gt;=">1536</rule>
-      </policy>
+    <policy type="or" name="DPX height gt/et 1280">
+      <rule name="Height is gt/et 1280" value="Height" tracktype="Image" occurrence="*" operator="&gt;=">1280</rule>
+      <rule name="Height is gt/et 1280" value="Height" tracktype="Video" occurrence="*" operator="&gt;=">1280</rule>
     </policy>
     <policy type="or" name="Format Compression is Raw">
       <rule name="Format_Compression is Raw" value="Format_Compression" tracktype="Image" occurrence="*" operator="=">Raw</rule>

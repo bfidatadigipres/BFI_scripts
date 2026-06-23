@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <policy type="and" name="BFI DPX metadata conformance checker" license="MIT">
-  <description>Test if DPX file in a sequence conforms to RAWcooked and BFI mandatory metadata requirements.
+  <description>Updated June 2026. Test if DPX conforms to RAWcooked and BFI mandatory metadata requirements.
 - Checks DPX file has correct formatting, correct extension and metadata fields populated. Checks for and
 - fails two image elements, and any colorspace not RGB (Descriptor 50) or Y (Descriptor 6). Checks 10 or
 - 16-bit, minimum 2K width, image is Raw and lossless, square pixel etc. Handles variation DPX image
@@ -28,8 +28,6 @@
     <rule name="User identification is populated" value="User defined header/User identification" occurrence="*" operator="exists" scope="mmt"/>
     <rule name="User defined is populated" value="User defined header/User defined" occurrence="*" operator="exists" scope="mmt"/>
     <policy type="or" name="Colorspace has no Alphas">
-      <rule name="ColorSpace is NOT RGBA" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGBA</rule>
-      <rule name="ColorSpace is NOT RGBA" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">RGBA</rule>
       <rule name="ColorSpace is NOT ABGR" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">AGBR</rule>
       <rule name="ColorSpace is NOT ABGR" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">AGBR</rule>
       <rule name="ColorSpace is NOT RGB / A" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGB / A</rule>
@@ -87,6 +85,11 @@
       <policy type="and" name="16-bit Y Big endian">
         <rule name="BitDepth is 16" value="Generic section header/Image information/image element/Bit depth" occurrence="*" operator="=" scope="mmt">16</rule>
         <rule name="Descriptor (6)" value="Generic section header/Image information/image element/Descriptor" occurrence="*" operator="=" scope="mmt">6</rule>
+        <rule name="Magic number is SDPX (Big Endian)" value="Generic section header/File information/Magic number" occurrence="*" operator="=" scope="mmt">SDPX</rule>
+      </policy>
+      <policy type="and" name="16-bit RGBA Big endian">
+        <rule name="BitDepth is 16" value="Generic section header/Image information/image element/Bit depth" occurrence="*" operator="=" scope="mmt">16</rule>
+        <rule name="Descriptor (51)" value="Generic section header/Image information/image element/Descriptor" occurrence="*" operator="=" scope="mmt">51</rule>
         <rule name="Magic number is SDPX (Big Endian)" value="Generic section header/File information/Magic number" occurrence="*" operator="=" scope="mmt">SDPX</rule>
       </policy>
     </policy>

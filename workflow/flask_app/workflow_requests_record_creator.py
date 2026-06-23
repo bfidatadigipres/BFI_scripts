@@ -23,8 +23,6 @@ from datetime import datetime
 from typing import Final, Optional
 
 # Local imports
-import workflow_requests as workflow
-
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
@@ -298,6 +296,7 @@ def main():
                 job_metadata["client.name.lref"] = p_priref
 
         # Create Workflow records
+        import workflow_requests as workflow
         print("* Creating Workflow records in CID...")
         print(job_metadata)
         LOGGER.info("* Creating Workflow records in CID...")

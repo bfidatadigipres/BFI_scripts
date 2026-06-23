@@ -2,9 +2,9 @@
 <policy type="and" name="BFI DPX metadata conformance checker" license="MIT">
   <description>Updated June 2026. Test if DPX conforms to RAWcooked and BFI mandatory metadata requirements.
 - Checks DPX file has correct formatting, correct extension and metadata fields populated. Checks for and
-- fails two image elements, and any colorspace not RGB (Descriptor 50) or Y (Descriptor 6). Checks 10 or
-- 16-bit, minimum 2K width, image is Raw and lossless, square pixel etc. Handles variation DPX image
-- metadata displaying as either Image or Video tracktype.</description>
+- fails two image elements, and any colorspace not RGB, RGBA or Y. Checks 10, 12 or 16-bit, minimum 2K width
+- image is Raw and lossless, square pixel etc. Handles variation DPX image metadata displaying as either
+- Image or Video tracktype.</description>
   <policy type="and" name="DPX conformance check">
     <rule name="General/ImageCount is 1" value="ImageCount" tracktype="General" occurrence="*" operator="=">1</rule>
     <rule name="Format is DPX" value="Format" tracktype="General" occurrence="*" operator="=">DPX</rule>
@@ -89,17 +89,17 @@
       <rule name="File creation time is present" value="File_Created_Date" tracktype="General" occurrence="*" operator="exists"/>
       <rule name="File encoded date is present" value="Encoded_Date" tracktype="General" occurrence="*" operator="exists"/>
     </policy>
-    <policy type="or" name="Colorspace has unsupported Alphas">
-      <rule name="ColorSpace is NOT ABGR" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">AGBR</rule>
-      <rule name="ColorSpace is NOT ABGR" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">AGBR</rule>
-      <rule name="ColorSpace is NOT RGB / A" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGB / A</rule>
-      <rule name="ColorSpace is NOT RGB / A" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">RGB / A</rule>
-      <rule name="ColorSpace is NOT RGB/A" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGB/A</rule>
-      <rule name="ColorSpace is NOT RGB/A" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">RGB/A</rule>
+    <policy type="or" name="Unsupported Alphas in colorspace">
+      <rule name="ColorSpace is not AGBA" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">AGBR</rule>
+      <rule name="ColorSpace is not AGBA" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">AGBR</rule>
+      <rule name="ColorSpace is not RGB / A" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGB / A</rule>
+      <rule name="ColorSpace is not RGB / A" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">RGB / A</rule>
+      <rule name="ColorSpace is not RGB/A" value="ColorSpace" tracktype="Image" occurrence="*" operator="!=">RGB/A</rule>
+      <rule name="ColorSpace is not RGB/A" value="ColorSpace" tracktype="Video" occurrence="*" operator="!=">RGB/A</rule>
     </policy>
-    <policy type="or" name="Format Version 1.0 or 2.0">
-      <rule name="Format_Version is 1.0" value="Format_Version" tracktype="General" occurrence="*" operator="=">1.0</rule>
-      <rule name="Format_Version is 2.0" value="Format_Version" tracktype="General" occurrence="*" operator="starts with">2</rule>
+    <policy type="or" name="Format Version 1.0 or 2.0">
+      <rule name="Format_Version is 1.0" value="Format_Version" tracktype="General" occurrence="*" operator="=">1.0</rule>
+      <rule name="Format_Version is 2.0" value="Format_Version" tracktype="General" occurrence="*" operator="starts with">2</rule>
     </policy>
     <policy type="or" name="DPX width gt/et 2048">
       <rule name="Width is gt/et 2048" value="Width" tracktype="Image" occurrence="*" operator="&gt;=">2048</rule>

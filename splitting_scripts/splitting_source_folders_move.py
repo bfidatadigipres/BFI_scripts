@@ -56,7 +56,7 @@ def find_repeating_characters(file_list):
     """
     trimmed = []
     for file in file_list:
-        trimmed.append(file[:7])
+        trimmed.append(file[:6])
 
     groups = {}
     for uniq in set(trimmed):

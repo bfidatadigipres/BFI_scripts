@@ -882,7 +882,7 @@ Cordially,
 Yourselves, in binary."""
 
     success, error = utils.send_email(
-        EMAIL, "WARNING: Failed blobbed PUT validation", message, ""
+        EMAIL, "digitalpreservationsystems@bfi.org.uk", "WARNING: Failed blobbed PUT validation", message, ""
     )
     if success:
         LOGGER.info("Email notification sent to %s", EMAIL)

@@ -32,7 +32,7 @@ import utils
 # Global vars
 LOG_PATH: Final = os.environ["LOG_PATH"]
 STORAGE: Final = os.environ["ADMIN"]
-CSV_PTH: Final = os.path.join(STORAGE, "false_latest_flag.csv")
+CSV_PTH: Final = os.path.join(STORAGE, "new_false_latest_flag.csv")
 BUCKET: Final = "Access_Renditions_backup"
 
 # Setup logging
@@ -98,17 +98,18 @@ def main() -> None:
       and where/if found retain this version
     - Log clean up procedures
     """
-    if not utils.check_control("black_pearl"):
-        sys.exit("Black Pearl facing code cannot run at this time.")
 
     LOGGER.info(
         "=== Access_Rendition_backup bucket clean up START ===================="
     )
     for row in yield_csv_rows(CSV_PTH):
         print(row)
-        LOGGER.info("Row entry: %s", row[1])
+        if not utils.check_control("black_pearl"):
+            sys.exit("Black Pearl facing code cannot run at this time.")
+
+        #LOGGER.info("Row entry: %s", row[1])
         try:
-            fname = row[1]
+            fname = row[1].strip()
         except IndexError as err:
             LOGGER.warning("SKIP: Cannot access filename from row: %s", err)
             continue

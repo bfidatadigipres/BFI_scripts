@@ -166,7 +166,7 @@ def send_email_with_image():
             flash(error_message, "error")
             return render_template("error_page.html"), 400
         # Send email
-        success, outcome = utils.send_email(email, subject, body, image_path)
+        success, outcome = utils.send_email(email, "archivedevelopers@bfi.org.uk", subject, body, image_path)
 
         if outcome:
             logger.error(f"File size exceeded for {email}")

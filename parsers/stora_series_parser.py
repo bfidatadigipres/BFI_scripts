@@ -133,6 +133,7 @@ class Series(APIModel):
     subject: Optional[List[Subject]] = None
     link: Optional[List[Any]] = None
     deeplink: Optional[List[Any]] = None
+    vod: Optional[Dict[str, Any]] = None
     created_date: Optional[datetime] = Field(default=None, alias="createdAt")
     updated_date: Optional[datetime] = Field(default=None, alias="updatedAt")
     deleted_date: Optional[datetime] = Field(default=None, alias="deletedAt")

@@ -98,16 +98,16 @@ def get_folder_title(article: str, title: str) -> str:
     title = (
         title.replace("/", "")
         .replace("'", "")
-        .replace("&", "and")
+        #.replace("&", "and")
         .replace("(", "")
         .replace(")", "")
         .replace("!", "")
         .replace("’", "")
     )
     if article != "-":
-        title = f'{article}_{title.replace(" ", "_")}_'
+        title = f'{article.strip()}_{title.strip().replace(" ", "_")}_'
     else:
-        title = f'{title.replace(" ", "_")}_'
+        title = f'{title.strip().replace(" ", "_")}_'
     print(title)
     return title
 
@@ -283,10 +283,12 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
     if val.contributor:
         val.contributor and j_data.update({"contributors": val.contributor})
     if val.vod:
-        val.vod.get("netflix-uk").get("start") and j_data.update(
-            {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
-        )
-
+        try:
+            val.vod.get("netflix-uk").get("start") and j_data.update(
+                {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+            )
+        except Exception:
+            pass
     return j_data
 
 
@@ -450,6 +452,7 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
             genre_one: list[str] = []
             genre_two: list[str] = []
             try:
+                print(data["genres"])
                 genre_one = data["genres"][category_code.strip("u")]["Genre"]
                 print(f"genre_retrieval(): Genre one: {genre_one}")
                 if "Undefined" in genre_one:
@@ -465,12 +468,16 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
                             f"Category: {category_code}     Title: {title}     Description: {description}"
                         )
                     genre_one_priref: str = ""
-                else:
+                elif isinstance(genre_one, dict):
                     for _, val in genre_one.items():
                         genre_one_priref: str = val
                     print(
                         f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
                     )
+                elif isinstance(genre_one, str):
+                    genre_one_priref = genre_one.split(":")[-1]
+                else:
+                    genre_one_priref = ""
             except (IndexError, KeyError, TypeError):
                 genre_one_priref = ""
             try:
@@ -695,6 +702,7 @@ def main():
         print(f"Episode only wanted: {episode}")
 
         if platform != "Netflix":
+            LOGGER.warning("Platform is not Netflix, exiting!")
             continue
         LOGGER.info("** Processing item: %s %s", article, title)
 
@@ -723,12 +731,18 @@ def main():
                 if title_count == folder_length:
                     matched_folders = [fold]
             if len(matched_folders) != 1:
-                print(
-                    f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}"
+                LOGGER.warning(
+                    "More than one entry found for %s %s. Manual assistance needed.\n%s",
+                    article,
+                    title,
+                    matched_folders
                 )
                 continue
         if len(matched_folders) == 0:
-            print(f"No match found: {article} {title}")
+            LOGGER.warning("No match found: %s %s",
+            article,
+            title
+            )
             # At some point initiate 'title' search in PATV data
             continue
 
@@ -787,7 +801,7 @@ def main():
                 mono_dct = {}
 
             if not cat_dct:
-                print("SKIPPING: Missing data from JSON files.")
+                LOGGER.warning("SKIPPING: Missing data from JSON files.")
                 continue
 
             # Make monographic work here
@@ -892,6 +906,7 @@ def main():
                     if x.startswith("series_") and x.endswith(".json")
                 ]
                 if not len(series_json) == 1:
+                    LOGGER.warning("Length of Series JSON does not equal 1 %s", len(series_json))
                     continue
 
                 # Get series ID title and genre
@@ -910,12 +925,13 @@ def main():
 
                 # Make series work here
                 if not series_data_dct:
+                    LOGGER.warning("No series data dictionary found")
                     continue
                 series_priref = create_series_work(
                     patv_id, series_data_dct, series_work, work_restricted, record
                 )
                 if not series_priref:
-                    print("Series work creation failure. Skipping episodes...")
+                    LOGGER.warning("Series work creation failure. Skipping episodes...")
                     continue
 
             season_fpaths = [

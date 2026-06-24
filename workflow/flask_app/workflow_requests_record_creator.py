@@ -23,8 +23,6 @@ from datetime import datetime
 from typing import Final, Optional
 
 # Local imports
-import workflow_requests as workflow
-
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
 import utils
@@ -44,9 +42,7 @@ FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
 LOGGER.setLevel(logging.INFO)
-EMAIL_SENDER: Final = os.environ["EMAIL_SEND"]
-EMAIL_PSWD: Final = os.environ["EMAIL_PASS"]
-CID_API = os.environ.get("CID_API3")
+CID_API = utils.get_current_api()
 REQUEST_TYPE = {
     "AUDIOSUITETRANSFER": "Audio suite transfer",
     "BOOKING": "Booking",
@@ -300,6 +296,7 @@ def main():
                 job_metadata["client.name.lref"] = p_priref
 
         # Create Workflow records
+        import workflow_requests as workflow
         print("* Creating Workflow records in CID...")
         print(job_metadata)
         LOGGER.info("* Creating Workflow records in CID...")
@@ -377,7 +374,7 @@ Hello {firstname.title()},
 {message}
 
 Your original request details:
-    Job number: {job[5]} Job name: {job[10]}
+    Job name: {job[10]}
 
     Saved search: {job[6]}
     Specific instructions: {job[13]}
@@ -391,15 +388,18 @@ Your original request details:
     Client name: {job[14]}
     Contact details: {job[15]}
 
-If there are problems with the request(s), please raise an issue in the BFI Collections Systems Service Desk:
+If you experience any technical issue while making your request, please raise a ticket on the CID and DPI Systems Service Desk:
 https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1
+
+For further guidance on the request form, go to the User Knowlege Base:
+https://bficollectionssystems.atlassian.net/servicedesk/customer/portal/1/article/4585553921
 
 This is an automated notification, please do not reply to this email.
 
 Thank you,
-Collections Systems team"""
+Collections Systems"""
 
-    success, error = utils.send_email(client_email, subject, body, "")
+    success, error = utils.send_email(client_email, "collectionssystems@bfi.org.uk", subject, body, "")
     if success:
         LOGGER.info("Email notification sent to %s", client_email)
     else:

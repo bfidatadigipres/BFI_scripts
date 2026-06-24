@@ -395,6 +395,8 @@ def cid_check_works(
         title = ""
     try:
         title_art: str = adlib.retrieve_field_name(record[0], "title_article")[0]
+        if title_art == None or title_art == "None":
+            title_art = ""
         print(f"cid_check_works(): Series title: {title_art}")
     except Exception as err:
         title_art = ""
@@ -463,12 +465,16 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
                             f"Category: {category_code}     Title: {title}     Description: {description}"
                         )
                     genre_one_priref: str = ""
-                else:
+                elif isinstance(genre_one, dict):
                     for _, val in genre_one.items():
                         genre_one_priref: str = val
                     print(
                         f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
                     )
+                elif isinstance(genre_one, str):
+                    genre_one_priref = genre_one.split(":")[-1]
+                else:
+                    genre_one_priref = ""
             except (IndexError, KeyError, TypeError):
                 genre_one_priref = ""
             try:
@@ -654,9 +660,8 @@ def main():
     csv_path = sys.argv[1]
     if not os.path.isfile(csv_path):
         sys.exit(f"Problem with supplied CSV path {csv_path}")
-
-    # if not utils.check_control("pause_scripts"):
-    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     if not utils.check_storage(STORAGE) or not utils.check_storage(csv_path):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.cid_check(CID_API):
@@ -1260,11 +1265,11 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
         {"record_type": "MANIFESTATION"},
         {"manifestationlevel_type": "INTERNET"},
         {"format_high_level": "Video - Digital"},
-        {"format_low_level.lref": "395150"},  # Apple ProRes 422 HQ
+        {"format_low_level.lref": "399231"},  # ProRes QuickTime
         {"colour_manifestation": data["colour_manifestation"]},
         {"sound_manifestation": "SOUN"},
         {"transmission_date": data["title_date_start"]},
-        {"availability.name.lref": "999823516"},
+        {"availability.name.lref": "999823967"}, # Disney+
         {"transmission_coverage": "STR"},
         {"vod_service_type.lref": "398712"},
         {"aspect_ratio": "16:9"},
@@ -1280,11 +1285,11 @@ def build_defaults(data: dict[str, str]) -> list[dict[str, str]]:
         {"copy_status": "M"},
         {"copy_usage.lref": "131560"},
         {"file_type.lref": "114307"},  # MOV
-        {"code_type.lref": "114308"},  # ProRes 422 (HQ)
+        {"code_type.lref": "397679"},  # ProRes 4444 XQ
         {"accession_date": str(datetime.datetime.now())[:10]},
         {"acquisition.date": data["acquisition_date"]},
         {"acquisition.method.lref": "132853"},
-        {"acquisition.source.lref": "999923912"},
+        {"acquisition.source.lref": "1145185"},
         {"acquisition.source.type": "DONOR"},
         {
             "access_conditions": "Access requests for this collection are subject to an approval process. "
@@ -1321,7 +1326,7 @@ def create_series_work(
         series_work_values.append({"title.language": "English"})
         series_work_values.append({"title.type": "05_MAIN"})
     if "title_article" in series_dct:
-        if series_dct["title_article"] not in ("-", ""):
+        if series_dct["title_article"] not in ("-", "", "None", None):
             series_work_values.append({"title.article": series_dct["title_article"]})
     if len("patv_id") > 0:
         series_work_values.append({"alternative_number.type": "PATV Disney asset ID"})
@@ -1465,13 +1470,13 @@ def create_work(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             work_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art not in ("-", ""):
+            if work_title_art not in ("-", "", "None", None):
                 work_values.append({"title.article": work_title_art})
         else:
             work_values.append({"title": work_dict["title"]})
         if "title.article" not in str(work_values):
             if "title_article" in work_dict:
-                if work_dict["title_article"] not in ("-", ""):
+                if work_dict["title_article"] not in ("-", "", "None", None):
                     work_values.append({"title.article": work_dict["title_article"]})
         work_values.append({"title.language": "English"})
         work_values.append({"title.type": "05_MAIN"})
@@ -1626,13 +1631,13 @@ def create_manifestation(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             manifestation_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art not in ("-", ""):
+            if work_title_art not in ("-", "", "None", None):
                 manifestation_values.append({"title.article": work_title_art})
         else:
             manifestation_values.append({"title": work_dict["title"]})
         if "title.article" not in str(manifestation_values):
             if "title_article" in work_dict:
-                if work_dict["title_article"] not in ("-", ""):
+                if work_dict["title_article"] not in ("-", "", "None", None):
                     manifestation_values.append(
                         {"title.article": work_dict["title_article"]}
                     )
@@ -1692,7 +1697,7 @@ def create_manifestation(
         )
         return None
 
-    broadcast_addition = [{"broadcast_company.lref": "999823516"}]  # Disney Prime Video
+    broadcast_addition = [{"broadcast_company.lref": "999823967"}]  # Disney+
     broadcast_xml = adlib.create_record_data(
         CID_API, "manifestations", manifestation_id, broadcast_addition
     )
@@ -1763,13 +1768,13 @@ def create_item(
         title_check = work_dict["title"]
         if title_check.startswith("Episode ") and len(title_check) < 11:
             item_values.append({"title": f"{work_title} {work_dict['title']}"})
-            if work_title_art not in ("-", ""):
+            if work_title_art not in ("-", "", "None", None):
                 item_values.append({"title.article": work_title_art})
         else:
             item_values.append({"title": work_dict["title"]})
         if "title.article" not in str(item_values):
             if "title_article" in work_dict:
-                if work_dict["title_article"] not in ("-", ""):
+                if work_dict["title_article"] not in ("-", "", "None", None):
                     item_values.append({"title.article": work_dict["title_article"]})
         item_values.append({"title.language": "English"})
         item_values.append({"title.type": "05_MAIN"})

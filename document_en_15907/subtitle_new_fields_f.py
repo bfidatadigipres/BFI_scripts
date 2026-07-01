@@ -18,7 +18,7 @@ LOG_PATH = os.environ["LOG_PATH"]
 SUBTITLE_FOLDER = os.path.join(os.environ.get("ADMIN"), "off_air_tv/subtitles_not_in_cid")
 
 PROCESSED_FOLDER = Path(
-    os.getenv("PROCESSED_FOLDER", "/mnt/qnap_04/Admin/off_air_tv/subtitles")
+    os.getenv("PROCESSED_FOLDER", os.path.join(os.environ.get("ADMIN"), "off_air_tv/subtitles"))
 )
 
 EDITOR_NAME = "datadigipres"

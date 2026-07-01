@@ -84,8 +84,8 @@ def main():
                 print(f"Underlying exception: {err.last_attempt.exception()}")
             print(err)
 
-        # move file to /mnt/qnap_04/Admin/off_air_tv/subtitles
-        #shutil.move(file_vtt, '/mnt/qnap_04/Admin/off_air_tv/subtitles')
+        #move file to subtitles/ folder
+        #shutil.move(file_vtt, #Use os.environ.get())
 
     print(object_number_list)
 

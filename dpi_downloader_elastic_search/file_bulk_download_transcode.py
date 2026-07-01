@@ -434,6 +434,7 @@ def main():
         # Single download
         if dtype == "single":
             # Try to locate CID media record for file
+            blob = False
             media_priref, orig_fname, bucket = get_media_original_filename(fname)
             if not media_priref:
                 LOGGER.warning(
@@ -454,6 +455,8 @@ def main():
                 orig_fname,
                 media_priref,
             )
+            if 'blobbing' in str(bucket):
+                blob = True
 
             # Check if download already exists
             new_fpath, skip_download = check_download_exists(
@@ -476,24 +479,25 @@ def main():
             if not skip_download:
                 # Download from BP
                 LOGGER.info("Beginning download of file %s to download path", fname)
-                update_table(user_id, "Downloading")
-                try:
-                    download_job_id = bp.download_bp_object(
-                        fname, download_fpath, bucket
-                    )
-                except Exception as err:
-                    print(err)
-                    if "GetBlobException" in str(download_job_id):
-                        LOGGER.info("File is blobbed. Changing retrieval method")
-                        try:
-                            download_job_id = bp.download_blobbed_object(fname, download_fpath, bucket)
-                        except Exception as err:
-                            print(err)
-                            update_table(user_id, "Download error")
-                            continue
-                    else:
+                if blob is False:
+                    update_table(user_id, "Downloading")
+                    try:
+                        download_job_id = bp.download_bp_object(
+                            fname, download_fpath, bucket
+                        )
+                    except Exception as err:
+                        print(err)
                         update_table(user_id, "Download error")
                         continue
+                elif blob is True:
+                    LOGGER.info("File is blobbed. Changing retrieval method")
+                    try:
+                        download_job_id = bp.download_blobbed_object(fname, download_fpath, bucket)
+                    except Exception as error:
+                        print(error)
+                        update_table(user_id, "Blob download error")
+                        continue
+
                 if not download_job_id:
                     LOGGER.warning(
                         "Download of file %s failed. Resetting download status and script exiting.",
@@ -514,7 +518,11 @@ def main():
                     os.rename(umid_fpath, new_fpath)
 
                 # Apply CHMOD to download
-                os.chmod(new_fpath, 0o777)
+                if os.path.exists(new_fpath):
+                    os.chmod(new_fpath, 0o777)
+                else:
+                    LOGGER.warning("Download file not found in destination!")
+                    update_table(user_id, "File failed to download")
 
                 # MD5 Verification
                 local_md5, bp_md5 = make_check_md5(new_fpath, fname, bucket)
@@ -622,6 +630,7 @@ def main():
             print(value)
             for file in download_dct:
                 for k, v in file.items():
+                    blob = False
                     filename = k
                     orig_fname = v[0]
                     bucket = v[1]
@@ -644,6 +653,8 @@ def main():
                         orig_fname,
                         media_priref,
                     )
+                    if 'blobbing' in bucket:
+                        blob = True
 
                     # Check if download already exists
                     new_fpath, skip_download = check_download_exists(
@@ -660,9 +671,14 @@ def main():
                             "Beginning download of file %s to download path", filename
                         )
                         update_table(user_id, f"Downloading {orig_fname}")
-                        download_job_id = bp.download_bp_object(
-                            filename, download_fpath, bucket
-                        )
+                        if blob is False:
+                            download_job_id = bp.download_bp_object(
+                                filename, download_fpath, bucket
+                            )
+                        elif blob is True:
+                            LOGGER.info("File is blobbed. Changing retrieval method")
+                            download_job_id = bp.download_blobbed_object(filename, download_fpath, bucket)
+
                         if not download_job_id:
                             LOGGER.warning(
                                 "Download of file %s failed. Attempting to download next item in queue",
@@ -688,8 +704,17 @@ def main():
                             os.rename(umid_fpath, new_fpath)
 
                         # Apply CHMOD to download
-                        os.chmod(new_fpath, 0o777)
-
+                        if os.path.exists(new_fpath):
+                            os.chmod(new_fpath, 0o777)
+                        else:
+                            LOGGER.warning("No download file found in destination!")
+                            update_table(
+                                user_id, f"Unable to download {filename} in batch"
+                            )
+                            download_failures.append(
+                                f"CID media priref: {media_priref} - Filename: {filename}"
+                            )
+                            continue
                         # MD5 Verification
                         local_md5, bp_md5 = make_check_md5(new_fpath, filename, bucket)
                         LOGGER.info(

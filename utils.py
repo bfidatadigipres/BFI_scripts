@@ -29,7 +29,7 @@ import yaml
 import adlib_v3 as adlib
 
 # Global imports
-LOG_PATH: Final = os.environ.get("LOG_PATH", "/mnt/qnap_04/Admin/Logs")
+LOG_PATH: Final = os.environ.get("LOG_PATH", "")
 CONTROL_JSON: str = os.path.join(LOG_PATH, "downtime_control.json")
 STORAGE_JSON: str = os.path.join(LOG_PATH, "storage_control.json")
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, "autoingest", "global.log")

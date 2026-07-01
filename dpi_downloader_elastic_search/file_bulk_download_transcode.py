@@ -483,8 +483,17 @@ def main():
                     )
                 except Exception as err:
                     print(err)
-                    update_table(user_id, "Download error")
-                    continue
+                    if "GetBlobException" in str(err):
+                        LOGGER.info("File is blobbed. Changing retrieval method")
+                        try:
+                            download_job_id = bp.download_blobbed_object(fname, download_fpath, bucket)
+                        except Exception as err:
+                            print(err)
+                            update_table(user_id, "Download error")
+                            continue
+                    else:
+                        update_table(user_id, "Download error")
+                        continue
                 if not download_job_id:
                     LOGGER.warning(
                         "Download of file %s failed. Resetting download status and script exiting.",

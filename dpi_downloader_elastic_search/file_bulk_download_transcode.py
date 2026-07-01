@@ -912,10 +912,10 @@ Digital Preservation team"""
 
     success, error = utils.send_email(email, "digitalpreservationsystems@bfi.org.uk", subject, body, "")
     if success:
-        LOGGER.info(f"Email notification sent to {email}")
+        LOGGER.info("Email notification sent to %s", email)
     else:
-        LOGGER.warning(f"Email notification failed in sending: {email}")
-        LOGGER.warning(f"Error: {error}")
+        LOGGER.warning("Email notification failed in sending: %s", email)
+        LOGGER.warning(f"Error: %s", error)
 
 
 def send_email_update_bulk(
@@ -997,10 +997,10 @@ Digital Preservation team"""
 
     success, error = utils.send_email(email, "digitalpreservationsystems@bfi.org.uk", subject, body, "")
     if success:
-        LOGGER.info(f"Email notification sent to {email}")
+        LOGGER.info("Email notification sent to %s", email)
     else:
-        LOGGER.warning(f"Email notification failed in sending: {email}")
-        LOGGER.warning(f"Error: {error}")
+        LOGGER.warning("Email notification failed in sending: %s", email)
+        LOGGER.warning("Error: %s", error)
 
 
 def send_email_failures_bulk(
@@ -1034,10 +1034,10 @@ Digital Preservation team"""
 
     success, error = utils.send_email(email, "digitalpreservationsystems@bfi.org.uk", subject, body, "")
     if success:
-        LOGGER.info(f"Email notification sent to {email}")
+        LOGGER.info("Email notification sent to %s", email)
     else:
-        LOGGER.warning(f"Email notification failed in sending: {email}")
-        LOGGER.warning(f"Error: {error}")
+        LOGGER.warning("Email notification failed in sending: %s", email)
+        LOGGER.warning("Error: %s", error)
 
 
 if __name__ == "__main__":

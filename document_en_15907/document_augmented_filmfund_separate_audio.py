@@ -45,7 +45,6 @@ FF_STORAGE: Final = os.path.join(os.environ.get("QNAP_11"))
 AUTOINGEST: Final = os.path.join(
     os.environ.get("AUTOINGEST_QNAP11"), "ingest/autodetect/"
 )
-
 STORAGE: Final = os.path.join(FF_STORAGE, 'automation/audio_description')
 CID_API = utils.get_current_api()
 

@@ -436,6 +436,7 @@ def main():
             # Try to locate CID media record for file
             blob = False
             media_priref, orig_fname, bucket = get_media_original_filename(fname)
+            LOGGER.info("Bucket: %s", bucket)
             if not media_priref:
                 LOGGER.warning(
                     "Filename is not recognised, no matching CID Media record"
@@ -479,7 +480,7 @@ def main():
             if not skip_download:
                 # Download from BP
                 LOGGER.info("Beginning download of file %s to download path", fname)
-                if blob is False:
+                if not blob:
                     update_table(user_id, "Downloading")
                     try:
                         download_job_id = bp.download_bp_object(
@@ -523,9 +524,10 @@ def main():
                 else:
                     LOGGER.warning("Download file not found in destination!")
                     update_table(user_id, "File failed to download")
+                    continue
 
                 # MD5 Verification - skip for blobbed items
-                if blob is False:
+                if not blob:
                     local_md5, bp_md5 = make_check_md5(new_fpath, fname, bucket)
                     LOGGER.info(
                         "MD5 checksum validation check:\n\t%s - Downloaded file MD5\n\t%s - Black Pearl retrieved MD5",

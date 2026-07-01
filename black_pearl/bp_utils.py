@@ -294,7 +294,8 @@ def download_bp_object(fname: str, outpath: str, bucket: str) -> str:
         get_job_id: str = HELPER.get_objects(get_objects, bucket)
         print(f"BP get job ID: {get_job_id}")
     except Exception as err:
-        raise Exception(f"Unable to retrieve file {fname} from Black Pearl: {err}")
+        print(f"Unable to retrieve file {fname} from Black Pearl: {err}")
+        return err
 
     return get_job_id
 

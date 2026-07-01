@@ -483,7 +483,7 @@ def main():
                     )
                 except Exception as err:
                     print(err)
-                    if "GetBlobException" in str(err):
+                    if "GetBlobException" in str(download_job_id):
                         LOGGER.info("File is blobbed. Changing retrieval method")
                         try:
                             download_job_id = bp.download_blobbed_object(fname, download_fpath, bucket)

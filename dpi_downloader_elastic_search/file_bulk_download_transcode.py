@@ -524,21 +524,22 @@ def main():
                     LOGGER.warning("Download file not found in destination!")
                     update_table(user_id, "File failed to download")
 
-                # MD5 Verification
-                local_md5, bp_md5 = make_check_md5(new_fpath, fname, bucket)
-                LOGGER.info(
-                    "MD5 checksum validation check:\n\t%s - Downloaded file MD5\n\t%s - Black Pearl retrieved MD5",
-                    local_md5,
-                    bp_md5,
-                )
-                if local_md5 == bp_md5:
+                # MD5 Verification - skip for blobbed items
+                if blob is False:
+                    local_md5, bp_md5 = make_check_md5(new_fpath, fname, bucket)
                     LOGGER.info(
-                        "MD5 checksums match. Updating Download status to Download database"
+                        "MD5 checksum validation check:\n\t%s - Downloaded file MD5\n\t%s - Black Pearl retrieved MD5",
+                        local_md5,
+                        bp_md5,
                     )
-                else:
-                    LOGGER.warning(
-                        "MD5 checksums DO NOT match. Updating Download status to Download database"
-                    )
+                    if local_md5 == bp_md5:
+                        LOGGER.info(
+                            "MD5 checksums match. Updating Download status to Download database"
+                        )
+                    else:
+                        LOGGER.warning(
+                            "MD5 checksums DO NOT match. Updating Download status to Download database"
+                        )
                 update_table(user_id, "Download complete")
 
             # Transcode
@@ -715,21 +716,22 @@ def main():
                                 f"CID media priref: {media_priref} - Filename: {filename}"
                             )
                             continue
-                        # MD5 Verification
-                        local_md5, bp_md5 = make_check_md5(new_fpath, filename, bucket)
-                        LOGGER.info(
-                            "MD5 checksum validation check:\n\t%s - Downloaded file MD5\n\t%s - Black Pearl retrieved MD5",
-                            local_md5,
-                            bp_md5,
-                        )
-                        if local_md5 == bp_md5:
+                        # MD5 Verification - skip blobbed items
+                        if blob is False:
+                            local_md5, bp_md5 = make_check_md5(new_fpath, filename, bucket)
                             LOGGER.info(
-                                "MD5 checksums match. Updating Download status to Download database"
+                                "MD5 checksum validation check:\n\t%s - Downloaded file MD5\n\t%s - Black Pearl retrieved MD5",
+                                local_md5,
+                                bp_md5,
                             )
-                        else:
-                            LOGGER.warning(
-                                "MD5 checksums DO NOT match. Updating Download status to Download database"
-                            )
+                            if local_md5 == bp_md5:
+                                LOGGER.info(
+                                    "MD5 checksums match. Updating Download status to Download database"
+                                )
+                            else:
+                                LOGGER.warning(
+                                    "MD5 checksums DO NOT match. Updating Download status to Download database"
+                                )
 
                     # Transcode
                     trans, failed_trans = create_transcode(

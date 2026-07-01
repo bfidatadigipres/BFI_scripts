@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <policy type="and" name="BFI TIFF metadata conformance checker" license="MIT">
-  <description>Tests if a TIFF sequence conforms to BFI RAWcooked license: RAW/RGB/16bit/U/LE</description>
+  <description>Checks if a TIFF sequence conforms to BFI RAWcooked license: RAW/RGB/16bit/U/LE</description>
   <policy type="and" name="TIFF conformance check">
     <rule name="General/Format is TIFF" value="Format" tracktype="General" occurrence="*" operator="=">TIFF</rule>
     <policy type="or" name="Extension is tiff or tif">

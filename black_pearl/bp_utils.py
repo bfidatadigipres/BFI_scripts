@@ -440,16 +440,18 @@ def set_latest_flag_true(fname: str, bucket: str, version_id: str) -> bool:
     - Type (DATA)
     """
 
-    r = ds3.UndeleteObjectSpectraS3Request(
-        bucket_id=bucket, name=fname, version_id=version_id
-    )
-    result = CLIENT.undelete_object_spectra_s3(r)
-
-    confirmation = result.result
-    if not confirmation:
-        return False
-    if confirmation.get("Latest") == "true":
-        return True
+    try:
+        r = ds3.UndeleteObjectSpectraS3Request(
+            bucket_id=bucket, name=fname, version_id=version_id
+        )
+        result = CLIENT.undelete_object_spectra_s3(r)
+        confirmation = result.result
+        if not confirmation:
+            return False
+        if confirmation.get("Latest") == "true":
+            return True
+    except Exception as err:
+        print(err)
 
     return False
 

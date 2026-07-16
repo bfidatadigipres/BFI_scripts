@@ -26,8 +26,7 @@ sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib_sess
 import utils
 
-
-CID_API = os.environ['CID_API3']
+CID_API = utils.get_current_api()
 LOG_PATH = os.environ["LOG_PATH"]
 SUBTITLE_FOLDER = os.path.join(
     os.environ.get("ADMIN"), "off_air_tv/subtitles_not_in_cid"
@@ -257,7 +256,7 @@ def main():
     if args.limit:
         list_files = list_files[: args.limit]
 
-    total = len(list_files)
+    total = len(list_files) * 2
     successes = 0
     errors = 0
 

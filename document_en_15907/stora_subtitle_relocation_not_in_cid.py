@@ -18,16 +18,16 @@ import sys
 import time as ti
 from dataclasses import dataclass
 from datetime import datetime, timedelta, time
-from requests import Session
 from pathlib import Path
 from typing import Optional
+from requests import Session
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib_sess
 import utils
 
-CID_API = utils.get_current_api()
 
+CID_API = os.environ['CID_API3']
 LOG_PATH = os.environ["LOG_PATH"]
 SUBTITLE_FOLDER = os.path.join(
     os.environ.get("ADMIN"), "off_air_tv/subtitles_not_in_cid"
@@ -52,8 +52,7 @@ hdlr = logging.FileHandler(os.path.join(LOG_PATH, "subtitle_relocation.log"))
 formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
-logger.setLevel(logging.DEBUG)
-logger.info("Logger initialised")
+logger.setLevel(logging.INFO)
 
 _SAFE_VALUE_RE = re.compile(r"^[a-zA-Z0-9_.\- ]+$")
 
@@ -81,7 +80,7 @@ def retrieve_single_record(
     database: str,
     search_field: str,
     search_value: str,
-    session: Session, 
+    session: Session,
     fields: Optional[list[str]] = None,
 ) -> Optional[list[dict]]:
     """Query adlib for a single record matching search_field=search_value."""
@@ -93,7 +92,7 @@ def retrieve_single_record(
 
 
 def get_field(record: dict, field_name: str) -> Optional[str]:
-    """Return the first value of a field from a record, or None if absent."""
+    """Return the first value of a field from an  record, or None if absent."""
     values = adlib_sess.retrieve_field_name(record, field_name)
     return values[0] if values else None
 
@@ -118,7 +117,7 @@ def get_manifestation_priref(item_priref: str, session: Session) -> Optional[str
 
 def get_transmission_info(
     manifestation_priref: str,
-    session: Session,
+    session: Session
 ) -> Optional[TransmissionInfo]:
     """Retrieve transmission date, start, and end time for a manifestation."""
     records = retrieve_single_record(
@@ -150,7 +149,9 @@ def get_transmission_info(
         )
         return None
 
-    return TransmissionInfo(date=trans_date, start_time=start_time, end_time=end_time)
+    return TransmissionInfo(
+        date=trans_date, start_time=start_time, end_time=end_time
+    )
 
 
 def working_day_check(dt: datetime) -> bool:
@@ -241,19 +242,22 @@ def main():
     )
     args = parser.parse_args()
 
-    if working_day_check(datetime.now()):
-        sys.exit("Exiting: Cannot operate in working hours")
+    # if working_day_check(datetime.now()):
+    #    sys.exit("Exiting: Cannot operate in working hours")
     if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+       sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     logger.info(
         "========== subtitle creation script STARTED "
         "==============================================="
     )
-    list_files = [f for f in os.listdir(SUBTITLE_FOLDER) if f.endswith(".vtt")]
+    list_files = [
+        f for f in os.listdir(SUBTITLE_FOLDER)
+        if f.endswith(".vtt")
+    ]
     if args.limit:
         list_files = list_files[: args.limit]
 
-    total = len(list_files) * 2
+    total = len(list_files)
     successes = 0
     errors = 0
 
@@ -319,7 +323,9 @@ def main():
             subtitle_date = adjust_date_for_midnight(trans_info)
             logger.info("subtitle_date: %s", subtitle_date)
         except ValueError as exc:
-            logger.error("Date adjustment failed for %s: %s", file, exc)
+            logger.error(
+                "Date adjustment failed for %s: %s", file, exc
+            )
             errors += 1
             continue
 
@@ -345,11 +351,22 @@ def main():
         if success:
             successes += 1
             logger.info("SUCCESS | Post Successful")
-            shutil.move(file_path, str(PROCESSED_FOLDER / file))
-            logger.info("Moved %s -> %s", file, PROCESSED_FOLDER / file)
         else:
             logger.error("FAIL | reason=%s", reason)
             errors += 1
+
+        manifestation_success, manifestation_reason = post_xml_to_cid(manifestation_xml, "manifestations", session)
+        if manifestation_success:
+            successes += 1
+            logger.info("SUCCESS | Manifestation Post Successful")
+        else:
+            logger.error("FAIL | reason=%s", manifestation_reason)
+            errors += 1
+
+        if manifestation_success and success:
+            shutil.move(file_path, str(PROCESSED_FOLDER / file))
+            logger.info("Moved %s -> %s", file, PROCESSED_FOLDER / file)
+
 
         logger.info(
             "PROCESSED ok | file=%s | object_number=%s",

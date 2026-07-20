@@ -677,12 +677,10 @@ def main():
             if fname.endswith((".txt", ".md5", ".log", ".mhl", ".ini", ".json")):
                 continue
             ext = fname.split(".")[-1]
-            if ext.lower() == "avi":
-                if "qnap08_osh" in str(fpath):
-                    pass
-                else:
-                    print("** AVI FILE - Not in QNAP-08 OSH path. Skipping")
-                    continue
+
+            if "qnap_04/autoingest/ingest/" in fpath:
+                print("Skipping QNAP-04 for autoingest V3 trials")
+                continue
 
             print(f"\n====== CURRENT FILE: {fpath} ===========================")
 

@@ -566,7 +566,7 @@ def create_transcode(
 
     crop_sd_608 = [
         "-vf",
-        "yadif,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=(w-text_w)/2:y=50",
+        "yadif,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1,drawtext=fontfile='/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf':fontsize=35:text='BFI Research Viewings':fontcolor=white:alpha=0.6:x=\(w-text_w\)/2:y=50",
     ]
 
     no_stretch_4x3 = [

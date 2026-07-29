@@ -54,6 +54,7 @@ LOGGER.setLevel(logging.INFO)
 STORAGE = {
     "Netflix": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/timed_text/')}",
     "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/timed_text/')}",
+    "Disney": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('DISNEY_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/disney/timed_text/')}",
 }
 
 
@@ -360,6 +361,9 @@ def make_item_record_dict(priref: str, file: str, record: dict[Any, Any]):
         elif "Amazon" in adlib.retrieve_field_name(record[0], "acquisition.source")[0]:
             item.append({"acquisition.source.lref": "999923912"})
             item.append({"acquisition.source.type": "DONOR"})
+        elif "Disney" in adlib.retrieve_field_name(record[0], "acquisition.source")[0]:
+            item.append({"acquisition.source.lref": "1145185"})
+            item.append({"acquisition.source.type": "DONOR"})
     item.append(
         {
             "access_conditions": "Access requests for this collection are subject to an approval process. "
@@ -398,3 +402,4 @@ def create_new_item_record(
 
 if __name__ == "__main__":
     main()
+

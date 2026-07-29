@@ -33,7 +33,7 @@ sys.path.append(os.environ["WORKFLOW"])
 import records
 
 # Global var
-CID_API = os.environ.get("CID_API3")
+CID_API = utils.get_current_api()
 LOG_PATH = os.environ["LOG_PATH"]
 
 

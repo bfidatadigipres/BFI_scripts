@@ -294,7 +294,8 @@ def download_bp_object(fname: str, outpath: str, bucket: str) -> str:
         get_job_id: str = HELPER.get_objects(get_objects, bucket)
         print(f"BP get job ID: {get_job_id}")
     except Exception as err:
-        raise Exception(f"Unable to retrieve file {fname} from Black Pearl: {err}")
+        print(f"Unable to retrieve file {fname} from Black Pearl: {err}")
+        return err
 
     return get_job_id
 
@@ -440,16 +441,18 @@ def set_latest_flag_true(fname: str, bucket: str, version_id: str) -> bool:
     - Type (DATA)
     """
 
-    r = ds3.UndeleteObjectSpectraS3Request(
-        bucket_id=bucket, name=fname, version_id=version_id
-    )
-    result = CLIENT.undelete_object_spectra_s3(r)
-
-    confirmation = result.result
-    if not confirmation:
-        return False
-    if confirmation.get("Latest") == "true":
-        return True
+    try:
+        r = ds3.UndeleteObjectSpectraS3Request(
+            bucket_id=bucket, name=fname, version_id=version_id
+        )
+        result = CLIENT.undelete_object_spectra_s3(r)
+        confirmation = result.result
+        if not confirmation:
+            return False
+        if confirmation.get("Latest") == "true":
+            return True
+    except Exception as err:
+        print(err)
 
     return False
 

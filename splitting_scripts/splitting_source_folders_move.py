@@ -36,7 +36,7 @@ def look_for_matches(fname, pth):
     Look for matching file reels in
     source folders, and return source/<num>
     """
-    match = fname[:7]
+    match = fname.split(".")[0][:-2]
     for root, dirs, _ in os.walk(pth):
         for dir in dirs:
             files = [x for x in os.listdir(os.path.join(root, dir))]
@@ -56,7 +56,8 @@ def find_repeating_characters(file_list):
     """
     trimmed = []
     for file in file_list:
-        trimmed.append(file[:7])
+        trim_file = file.split(".")[0][:-2]
+        trimmed.append(time_file)
 
     groups = {}
     for uniq in set(trimmed):

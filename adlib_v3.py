@@ -466,7 +466,7 @@ def check_response(rec, api):
     """
     failures = [
         "A severe error occurred on the current command.",
-        "Execution Timout Expired. The timeout period elapsed",
+        "Execution Timeout Expired. The timeout period elapsed",
     ]
 
     for warning in failures:

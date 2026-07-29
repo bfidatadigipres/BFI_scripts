@@ -38,7 +38,7 @@ import utils
 # Global vars
 LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.environ["CONTROL_JSON"]
-STORAGE = os.environ["TRANSCODING"]
+STORAGE = os.environ["BP_TRANSCODING"]
 INGEST_POINT = os.path.join(STORAGE, "mp4_proxy_backup_ingest_bfi/")
 MOD_MAX = 15
 UPLOAD_MAX = 1099511627776

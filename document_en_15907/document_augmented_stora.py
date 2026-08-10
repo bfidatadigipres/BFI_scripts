@@ -39,6 +39,7 @@ from time import sleep
 import tenacity
 import yaml
 from series_retrieve import check_id, retrieve
+from dataclasses import dataclass
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib
@@ -62,6 +63,14 @@ SUBS_PTH = os.environ["SUBS_PATH2"]
 GENRE_PTH = SUBS_PTH.split("subtitles_not_in_cid/")[0]
 CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
+TIME_FORMAT = "%H:%M:%S"
+DATE_FORMAT = "%Y-%m-%d"
+
+@dataclass
+class TransmissionInfo:
+    date: str
+    start_time: str
+    end_time: str
 
 # Setup logging
 logger = logging.getLogger("document_augmented_stora")
@@ -1089,7 +1098,9 @@ def main():
         """
         # Build webvtt payload [deprecated]
         if webvtt_payload:
-            success = push_payload(item_data[1], webvtt_payload, sess)
+            transmission_info = create_subtitle_date(manifestation_priref, sess)
+            subtitle_date = adjust_date_for_midnight(transmission_info)
+            success = push_payload(item_data[1], webvtt_payload, sess, subtitle_date)
             if not success:
                 logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
         """
@@ -2194,22 +2205,71 @@ def update_broken_ts(vpath, work_priref, response, epg_dict=None):
         writer = csv.writer(failures)
         writer.writerow(data)
 
+def get_field(record: dict, field_name: str):
+    """Return the first value of a field from an  record, or None if absent."""
+    values = adlib.retrieve_field_name(record, field_name)
+    return values[0] if values else None
+
+def create_subtitle_date(manifestation_priref, session):
+    fields = [
+        "transmission_date",
+        "transmission_end_time",
+        "transmission_start_time",
+    ]
+    query = f'priref={manifestation_priref}'
+
+    _, records = adlib.retrieve_record(CID_API, "manifestations", query, "1", session, fields=fields)
+    trans_date = adlib.retrieve_field_name(records[0], "transmission_date")[0]
+    end_time = adlib.retrieve_field_name(records[0],"transmission_end_time")
+    start_time = adlib.retrieve_field_name(records[0], "transmission_start_time")
+
+    if not all([trans_date, end_time, start_time]):
+            logger.error(
+                "Incomplete transmission data for priref=%s " "(date=%s, end=%s, start=%s)",
+                manifestation_priref,
+                trans_date,
+                end_time,
+                start_time,
+            )
+            return None
+    
+    return TransmissionInfo(
+            date=trans_date, start_time=start_time, end_time=end_time
+        )
+
+
+def adjust_date_for_midnight(info: TransmissionInfo) -> str:
+    """Check if a show ran past midnight and adjust the date accordingly."""
+    try:
+        end = datetime.datetime.strptime(info.end_time, TIME_FORMAT)
+        start = datetime.datetime.strptime(info.start_time, TIME_FORMAT)
+    except ValueError as exc:
+        raise ValueError(f"Invalid time format in {info}") from exc
+
+    date = datetime.datetime.strptime(info.date, DATE_FORMAT)
+    if end < start:
+        date += datetime.timedelta(days=1)
+        logger.info(
+            "Show ran past midnight - date adjusted to %s",
+            date.strftime(DATE_FORMAT),
+        )
+    return date.strftime(DATE_FORMAT)
+
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def push_payload(item_id, webvtt_payload, sess):
+def push_payload(item_id, webvtt_payload, sess, subtitle_date):
     """
     DEPRECATED
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     """
-    label_type = "SUBWEBVTT"
-    label_source = "Extracted from MPEG-TS created by STORA recording"
-    # Make payload
+    SUBTITLE_TYPE= "WEBVTT_C"
+    EDITOR_NOTES = "Extracted from MPEG-TS created by STORA recording"
     pay_head = f'<adlibXML><recordList><record priref="{item_id}">'
-    label_type_addition = f"<label.type>{label_type}</label.type>"
-    label_addition = f"<label.source>{label_source}</label.source><label.text><![CDATA[{webvtt_payload}]]></label.text>"
+    subtitle_type_addition = f"<subtitle.type>{SUBTITLE_TYPE}</subtitle.type>"
+    subtitle_source_addition = f"<subtitle.source>{EDITOR_NOTES}</subtitle.source><subtitle.text><![CDATA[{webvtt_payload}]]></subtitle.text><subtitle.date>{subtitle_date}</subtitle.date>"
     pay_end = "</record></recordList></adlibXML>"
-    payload = pay_head + label_type_addition + label_addition + pay_end
+    payload = pay_head + subtitle_type_addition + subtitle_source_addition + pay_end
 
     try:
         post_resp = adlib.post(CID_API, payload, "items", "updaterecord", sess)

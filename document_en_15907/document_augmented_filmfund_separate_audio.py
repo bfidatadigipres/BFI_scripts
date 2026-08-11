@@ -209,9 +209,9 @@ def main():
 
         # Write quality comments to new CID item record
         if wav_type == "mono":
-            qual_comm = "Mono audio supplied separately as WAV PCM file."
+            qual_comm = "Mono unmixed audio description supplied separately as WAV PCM file."
         elif wav_type == "stereo":
-            qual_comm = "Stereo audio supplied separately as WAV PCM file."
+            qual_comm = "Stereo unmixed audio description supplied separately as WAV PCM file."
         else:
             qual_comm = ""
         success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
@@ -301,11 +301,7 @@ def make_item_record_dict(
 
     if "Title" in str(record):
         title = adlib.retrieve_field_name(record[0], "title")[0]
-        if source == "mono":
-            item.append({"title": f"{title} (mono audio)"})
-        elif source == "stereo":
-            item.append({"title": f"{title} (stereo audio)"})
-
+        item.append({"title": f"{title} (Audio Description)"})
         if adlib.retrieve_field_name(record[0], "title_article")[0]:
             item.append(
                 {
@@ -344,16 +340,8 @@ def make_item_record_dict(
                 )[0]
             }
         )
-    if "acquisition.method" in str(record):
-        item.append(
-            {
-                "acquisition.method": adlib.retrieve_field_name(
-                    record[0], "acquisition.method"
-                )[0]
-            }
-        )
-    item.append({"acquisition.source.lref": "143463"})
-    item.append({"acquisition.source.type": "DONOR"})
+    item.append({"acquisition.method": "Acquired"})
+    item.append({"acquisition.source.lref": "999692024"}) # BFI Film Fund
     item.append(
         {
             "access_conditions": "Access requests for this collection are subject to an approval process. "
@@ -361,13 +349,9 @@ def make_item_record_dict(
         }
     )
     item.append({"access_conditions.date": str(datetime.datetime.now())[:10]})
-    if "grouping" in str(record):
-        item.append({"grouping": adlib.retrieve_field_name(record[0], "grouping")[0]})
-    if "language" in str(record):
-        item.append({"language": adlib.retrieve_field_name(record[0], "language")[0]})
-        item.append(
-            {"language.type": adlib.retrieve_field_name(record[0], "language.type")[0]}
-        )
+    item.append({"grouping.lref": "394433"}) # BFI Film Fund
+    item.append({"language": "English"})
+    item.append({"language.type": "AUDDES"})
 
     return item
 
@@ -375,13 +359,15 @@ def make_item_record_dict(
 def create_digital_original_filenames(priref: str, file, new_file) -> bool:
     """
     Create entries for digital.acquired_filename
-    and append to the CID item record.
+    and append to the CID item record. Also add extra
+    grouping requested for Lottery Funding
     """
     payload = f"<adlibXML><recordList><record priref='{priref}'>"
     filename = f"{file} - Renamed to: {new_file}"
     LOGGER.info("Writing to digital.acquired_filename: %s", filename)
     pay_mid = f"<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
-    payload = payload + pay_mid
+    pay_mid2 = "<grouping.lref>400745</grouping.lref>" # Lottery grouping
+    payload = payload + pay_mid + pay_mid2
 
     pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Film Fund digital acquired filename update</edit.notes></Edit>"
     payload_end = "</record></recordList></adlibXML>"

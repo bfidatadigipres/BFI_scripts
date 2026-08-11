@@ -1,4 +1,4 @@
-#!/usr/bin/ spython3
+#!/usr/bin/ python3
 
 """
 Script to receive MOV
@@ -393,6 +393,7 @@ def make_item_record_dict(
                 )[0]
             }
         )
+    """
     if "acquisition.method" in str(record):
         item.append(
             {
@@ -401,6 +402,7 @@ def make_item_record_dict(
                 )[0]
             }
         )
+    """
     if "Acquisition_source" in str(record):
         item.append(
             {

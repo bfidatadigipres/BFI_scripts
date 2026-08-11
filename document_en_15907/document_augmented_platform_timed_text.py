@@ -389,6 +389,15 @@ def create_new_item_record(
     item_xml = adlib.create_record_data(CID_API, "items", "", item_dct)
     LOGGER.info(item_xml)
     new_record = adlib.post(CID_API, item_xml, "items", "insertrecord")
+    new_record = adlib.post_with_verify(
+        CID_API,
+        item_xml,
+        "items",
+        "insertrecord",
+        f"Df=ITEM and related_object.reference.lref='{priref}' and digital.acquired_filename='{fname}'",
+        3,
+        10
+    )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

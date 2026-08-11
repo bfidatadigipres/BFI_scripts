@@ -7,21 +7,19 @@ Python interface for Adlib API v3.7.17094.1+
 2024
 """
 
-import datetime
+from datetime import datetime, timedelta
 import json
 from time import sleep
-from typing import Any, Dict, Final, Iterable, Optional, List, Dict
-
+from typing import Any, Optional, List, Dict, Tuple, Union
+from tenacity import retry, stop_after_attempt
 import xmltodict
 from requests import Session, exceptions, request
-from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
 TIMEOUT = 100
 
 
-# (api: str) -> Dict[Any, Any]:
-def check(api):
+def check(api: str) -> dict[str, Any]:
     """
     Check API responds
     """
@@ -30,8 +28,7 @@ def check(api):
     return get(api, query)
 
 
-# () -> Session:
-def create_session():
+def create_session() -> Session:
     """
     Start a requests session and return
     """
@@ -39,8 +36,7 @@ def create_session():
     return session
 
 
-# (api: str, database: str, search: str, limit: str, session: Session=None, fields=None)-> tuple[Optional[int], Optional[list[Any]]]:
-def retrieve_record(api, database, search, limit, session, fields=None):
+def retrieve_record(api: str, database: str, search: str, limit: Union[int, str], session: Optional[Session] = None, fields: Optional[list[str]] = None) -> tuple[Optional[int], Union[list[dict[str, Any]], dict[str, Any], None]]:
     """
     Retrieve data from CID using new API
     """
@@ -85,8 +81,7 @@ def retrieve_record(api, database, search, limit, session, fields=None):
 
 
 @retry(stop=stop_after_attempt(10))
-# (api: str, query: dict[str, object | str], session: Optional[Session]=None):
-def get(api, query, session):
+def get(api: str, query: dict[str, str], session: Optional[Session] = None) -> dict[str, Any]:
     """
     Send a GET request
     """
@@ -115,9 +110,68 @@ def get(api, query, session):
         raise Exception from err
 
 
-# (api: str, payload: Optional[str | bytes], database: str, method: str, session: Optional[Session]=None) -> Optional[dict[Any, Iterable[Any]]] | bool:
-@retry(stop=stop_after_attempt(3))
-def post(api, payload, database, method, session):
+def _time_window_last_15min(type: str) -> str:
+    """
+    Return a search string for records created in the last 15 minutes.
+    Type determines search against 'creation' or 'modification'
+    """
+    now = datetime.now()
+    window_start = now - timedelta(minutes=15)
+    return f"{type} > '{window_start.strftime('%Y-%m-%d %H:%M:%S')}'"
+
+
+def post_with_verify(
+    api: str,
+    payload: str,
+    database: str,
+    method: str,
+    session: Optional[Session] = None,
+    search_value: str = "",
+    max_retries: int = 3,
+    retry_delay: int = 10,
+) -> Optional[dict[str, Any]]:
+    """
+    POST a record, then verify with a GET if the POST appears to fail.
+    Handles both network failures (no response) and false SQL failures
+    search_value is the unique field to search for in the
+    GET verification query. Returns the parsed record dict on success,
+    None after all retries exhausted.
+    """
+    if not session:
+        session = create_session()
+
+    for attempt in range(1, max_retries + 1):
+        result = post(api, payload, database, method, session)
+
+        if result and '{"@attributes":{"priref":' in str(result):
+            return result
+
+        print(f"post_with_verify(): POST attempt {attempt} returned no priref, "
+              f"waiting {retry_delay}s then checking via GET...")
+        sleep(retry_delay)
+
+        if method == 'updaterecord':
+            search = f"{_time_window_last_15min('modification')} and {search_value}"
+        else:
+            search = f"{_time_window_last_15min('creation')} and {search_value}"
+        try:
+            hits, record = retrieve_record(api, database, search, 1, session)
+            if hits and hits > 0:
+                print(f"post_with_verify(): Record found on GET after POST failure "
+                      f"(attempt {attempt}) — returning existing record")
+                return record
+        except Exception as err:
+            print(f"post_with_verify(): GET verification failed: {err}")
+
+        print(f"post_with_verify(): Record not found on GET, retrying POST "
+              f"(attempt {attempt}/{max_retries})")
+
+    print(f"post_with_verify(): All {max_retries} attempts exhausted for "
+          f"{database}/{search_value}")
+    return None
+
+
+def post(api: str, payload: str, database: str, method: str, session: Optional[Session] = None) -> Union[dict[str, Any], bool, None]:
     """
     Send a POST request
     """
@@ -132,49 +186,30 @@ def post(api, payload, database, method, session):
     if not session:
         session = create_session()
 
-    if method == "insertrecord":
-        try:
-            response = session.post(
-                api, headers=HEADERS, params=params, data=payload, timeout=TIMEOUT
-            )
-            if response.status_code != 200:
-                raise Exception
-        except exceptions.Timeout as err:
-            print(err)
-            raise Exception from err
-        except exceptions.ConnectionError as err:
-            print(err)
-            raise Exception from err
-        except exceptions.HTTPError as err:
-            print(err)
-            raise Exception from err
-        except Exception as err:
-            print(err)
-            raise Exception from err
-
-    if method == "updaterecord":
-        try:
-            response = session.post(
-                api, headers=HEADERS, params=params, data=payload, timeout=TIMEOUT
-            )
-            if response.status_code != 200:
-                raise Exception
-        except exceptions.Timeout as err:
-            print(err)
-            raise Exception from err
-        except exceptions.ConnectionError as err:
-            print(err)
-            raise Exception from err
-        except exceptions.HTTPError as err:
-            print(err)
-            raise Exception from err
-        except Exception as err:
-            print(err)
-            raise Exception from err
+    try:
+        response = session.post(
+            api, headers=HEADERS, params=params, data=payload, timeout=TIMEOUT
+        )
+    except exceptions.Timeout as err:
+        print(f"POST timeout: {err}")
+        return None
+    except exceptions.ConnectionError as err:
+        print(f"POST connection error: {err}")
+        return None
+    except exceptions.HTTPError as err:
+        print(f"POST HTTP error: {err}")
+        return None
+    except exceptions.RequestException as err:
+        print(f"POST request exception: {err}")
+        return None
+    except Exception as err:
+        print(f"POST unexpected error: {err}")
+        return None
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
+
     boolean = check_response(response.text, api)
     if boolean is True:
         return False
@@ -183,8 +218,7 @@ def post(api, payload, database, method, session):
         try:
             if isinstance(record["adlibJSON"]["recordList"]["record"], list):
                 return record["adlibJSON"]["recordList"]["record"][0]
-            else:
-                return record["adlibJSON"]["recordList"]["record"]
+            return record["adlibJSON"]["recordList"]["record"]
         except (KeyError, IndexError, TypeError):
             return record
     elif "@attributes" in response.text:
@@ -196,8 +230,7 @@ def post(api, payload, database, method, session):
     return None
 
 
-# (record: dict[str, str], fieldname: str) -> list[str]:
-def retrieve_field_name(record, fieldname):
+def retrieve_field_name(record: dict[str, Any], fieldname: str) -> list[Any]:
     """
     Retrieve record, check for language data
     Alter retrieval method. record ==
@@ -221,8 +254,7 @@ def retrieve_field_name(record, fieldname):
     return field_list
 
 
-# (record: list[dict[Any, Any]], fname: str) -> list[str]:
-def retrieve_facet_list(record, fname):
+def retrieve_facet_list(record: dict[str, Any], fname: str) -> list[str]:
     """
     Retrieve list of facets
     """
@@ -233,8 +265,7 @@ def retrieve_facet_list(record, fname):
     return facets
 
 
-# (record: Any, fname: str) -> Optional[list[str]]:
-def group_check(record, fname):
+def group_check(record: dict[str, Any], fname: str) -> Union[list[str], list[dict[str, Any]], None]:
     """
     Get group that contains field key
     """
@@ -285,8 +316,7 @@ def group_check(record, fname):
         return None
 
 
-# (api: str, database: str, session: Session) -> dict[str, list[str]] | tuple[None, None]:
-def get_grouped_items(api, database, session):
+def get_grouped_items(api: str, database: str, session: Optional[Session] = None) -> Union[dict[str, list[str]], tuple[None, None]]:
     """
     Check dB for groupings and ensure
     these are added to XML configuration
@@ -315,7 +345,7 @@ def get_grouped_items(api, database, session):
     return grouped
 
 
-def create_record_data(api, database, sess, priref, data=None):
+def create_record_data(api: str, database: str, sess: Session, priref: Union[str, int], data: Optional[list[dict[str, str]]] = None) -> str:
     if data is None:
         data = []
     if not isinstance(data, list):
@@ -403,8 +433,7 @@ def escape_xml(s: str) -> str:
     )
 
 
-# (priref: str, grouping: str, field_pairs: list[list[dict[Any, Any]]]) -> Optional[str]:
-def create_grouped_data(priref, grouping, field_pairs):
+def create_grouped_data(priref: Optional[str], grouping: str, field_pairs: list[Union[list[dict[str, str]], dict[str, str]]]) -> Optional[str]:
     """
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append
@@ -436,8 +465,7 @@ def create_grouped_data(priref, grouping, field_pairs):
         return payload_mid
 
 
-# (api: str, priref: str, comments: str, session: Optional[Session]=None) -> bool:
-def add_quality_comments(api, priref, comments, session):
+def add_quality_comments(api: str, priref: str, comments: str, session: Optional[Session] = None) -> bool:
     """
     Receive comments string
     convert to XML quality comments
@@ -445,7 +473,7 @@ def add_quality_comments(api, priref, comments, session):
     """
 
     p_start = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
-    date_now = str(datetime.datetime.now())[:10]
+    date_now = str(datetime.now())[:10]
     p_comm = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"
     p_date = f"<quality_comments.date>{date_now}</quality_comments.date>"
     p_writer = "<quality_comments.writer>datadigipres</quality_comments.writer>"
@@ -473,8 +501,7 @@ def add_quality_comments(api, priref, comments, session):
         return True
 
 
-# (rec: str, api: str) -> Optional[bool]:
-def check_response(rec, api):
+def check_response(rec: str, api: str) -> Optional[bool]:
     """
     Collate list of received API failures
     and check for these reponses from post
@@ -491,8 +518,7 @@ def check_response(rec, api):
             return True
 
 
-# (api: str) -> None:
-def recycle_api(api):
+def recycle_api(api: str) -> None:
     """
     Adds a search call to API which
     triggers Powershell recycle

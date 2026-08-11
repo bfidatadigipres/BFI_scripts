@@ -485,6 +485,7 @@ def create_digital_original_filenames(
     and append to the CID item record.
     """
     payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    filename = ""
     for key, val in asset_list_dct.items():
         filename = f"{key} - Renamed to: {val}"
         LOGGER.info("Writing to digital.acquired_filename: %s", filename)
@@ -499,7 +500,15 @@ def create_digital_original_filenames(
     LOGGER.info(payload)
 
     try:
-        result = adlib.post(CID_API, payload, "items", "updaterecord")
+        result = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "items",
+            "updaterecord"
+            f"Df=ITEM and priref={priref} and digital.acquired_filename='{filename}'",
+            3,
+            10
+        )
         print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info(
             "Successfully appended digital.acquired_filenames to Item record %s", priref
@@ -524,7 +533,15 @@ def create_new_item_record(
     item_dct = make_item_record_dict(priref, platform, record)
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data(CID_API, "items", "", item_dct)
-    new_record = adlib.post(CID_API, item_xml, "items", "insertrecord")
+    new_record = adlib.post_with_verify(
+        CID_API,
+        item_xml,
+        "items",
+        "insertrecord",
+        f"Df=ITEM and related_object.reference.lref='{priref}'",
+        3,
+        10
+    )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

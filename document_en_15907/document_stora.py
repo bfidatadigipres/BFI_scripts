@@ -559,7 +559,7 @@ def create_work(
             "works",
             "insertrecord",
             session,
-            f"Df=WORK and grouping.lref='398775' and title='{title}'"
+            f"Df=WORK and grouping.lref='398775' and title='{title}'",
             3,
             10,
         )
@@ -625,7 +625,7 @@ def create_manifestation(
             "manifestations",
             "insertrecord",
             session,
-            f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_id}'"
+            f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_id}'",
             3,
             10,
         )
@@ -733,7 +733,7 @@ def create_item(
             "items",
             "insertrecord",
             session,
-            f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'"
+            f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'",
             3,
             10,
         )
@@ -790,7 +790,7 @@ def mark_for_deletion(
             "works",
             "updaterecord",
             session,
-            f"Df=WORK and grouping.lref='398775' and priref='{work_id}'"
+            f"Df=WORK and grouping.lref='398775' and priref='{work_id}'",
             3,
             10,
         )
@@ -828,7 +828,7 @@ def mark_for_deletion(
             "manifestations",
             "updaterecord",
             session,
-            f"Df=MANIFESTATION and grouping.lref='398775' and priref='{manifestation_id}'"
+            f"Df=MANIFESTATION and grouping.lref='398775' and priref='{manifestation_id}'",
             3,
             10,
         )
@@ -877,7 +877,7 @@ def push_payload(
             "items",
             "updaterecord",
             session,
-            f"Df=ITEM and priref='{item_id}' and label.source='Extracted from MPEG-TS created by STORA recording'"
+            f"Df=ITEM and priref='{item_id}' and label.source='Extracted from MPEG-TS created by STORA recording'",
             3,
             10,
         )

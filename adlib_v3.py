@@ -129,7 +129,7 @@ def post_with_verify(
     for attempt in range(1, max_retries + 1):
         result = post(api, payload, database, method)
 
-        if result and '{"@attributes":{"priref":' in str(result):
+        if result and "{'@attributes': {'priref':" in str(result):
             return result
 
         # POST returned None/False
@@ -147,7 +147,7 @@ def post_with_verify(
             if hits and hits > 0:
                 print(f"post_with_verify(): Record found on GET after POST failure "
                       f"(attempt {attempt}) — returning existing record, no orphan created")
-                return record
+                return record[0]
         except Exception as err:
             print(f"post_with_verify(): GET verification failed: {err}")
 

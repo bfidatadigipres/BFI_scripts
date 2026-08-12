@@ -1343,7 +1343,7 @@ def create_series(
             "works",
             "insertrecord",
             sess,
-            f"Df=WORK and grouping.lref='398775' and alternative_number='{series_id}'"
+            f"Df=WORK and grouping.lref='398775' and alternative_number='{series_id}'",
             3,
             10,
         )
@@ -1368,7 +1368,7 @@ def create_series(
                 "works",
                 "insertrecord",
                 sess,
-                f"Df=WORK and grouping.lref='398775' and alternative_number='{series_id}'"
+                f"Df=WORK and grouping.lref='398775' and alternative_number='{series_id}'",
                 3,
                 10,
             )
@@ -1425,7 +1425,7 @@ def create_series(
             "works",
             "updaterecord",
             sess,
-            f"Df=WORK and priref='{series_work_id}' and content.genre.lref='{series_genre_one}'"
+            f"Df=WORK and priref='{series_work_id}' and content.genre.lref='{series_genre_one}'",
             3,
             10,
         )
@@ -1457,7 +1457,7 @@ def create_series(
             "works",
             "updaterecord",
             sess,
-            f"Df=WORK and priref='{series_work_id}' and content.subject.lref='{series_subject_one}'"
+            f"Df=WORK and priref='{series_work_id}' and content.subject.lref='{series_subject_one}'",
             3,
             10,
         )
@@ -1513,7 +1513,7 @@ def create_series(
             "works",
             "updaterecord",
             sess,
-            f"Df=WORK and priref='{series_work_id}' and label.source='EBS augmented EPG supply'"
+            f"Df=WORK and priref='{series_work_id}' and label.source='EBS augmented EPG supply'",
             3,
             10,
         )
@@ -1751,7 +1751,7 @@ def create_work(
             "works",
             "insertrecord",
             sess,
-            f"Df=WORK and grouping.lref='398775' and title={epg_dict["title"]}"
+            f"Df=WORK and grouping.lref='398775' and title={epg_dict["title"]}",
             3,
             10,
         )
@@ -1779,7 +1779,7 @@ def create_work(
                 "works",
                 "insertrecord",
                 sess,
-                f"Df=WORK and grouping.lref='398775' and title={epg_dict["title"]}"
+                f"Df=WORK and grouping.lref='398775' and title={epg_dict["title"]}",
                 3,
                 10,
             )
@@ -1829,7 +1829,7 @@ def create_work(
             "works",
             "updaterecord",
             sess,
-            f"Df=WORK and priref='{work_id}' and content.genre.lref='{epg_dict["work_genre_one"]}'"
+            f"Df=WORK and priref='{work_id}' and content.genre.lref='{epg_dict["work_genre_one"]}'",
             3,
             10,
         )
@@ -1858,7 +1858,7 @@ def create_work(
             "works",
             "updaterecord",
             sess,
-            f"Df=WORK and priref='{work_id}' and content.subject.lref='{epg_dict["work_subject_one"]}'"
+            f"Df=WORK and priref='{work_id}' and content.subject.lref='{epg_dict["work_subject_one"]}'",
             3,
             10,
         )
@@ -1912,7 +1912,7 @@ def create_work(
             "works",
             "updaterecord",
             sess,
-            f"Df=WORK and priref='{work_id}' and label.source='EBS augmented EPG supply'"
+            f"Df=WORK and priref='{work_id}' and label.source='EBS augmented EPG supply'",
             3,
             10,
         )
@@ -1995,7 +1995,7 @@ def create_manifestation(
             "manifestations",
             "insertrecord",
             sess,
-            f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_priref}'"
+            f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_priref}'",
             3,
             10,
         )
@@ -2017,7 +2017,7 @@ def create_manifestation(
                 "manifestations",
                 "insertrecord",
                 sess,
-                f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_priref}'"
+                f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_priref}'",
                 3,
                 10,
             )
@@ -2093,7 +2093,7 @@ def create_cid_item_record(
             "items",
             "insertrecord",
             sess,
-            f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'"
+            f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'",
             3,
             10,
         )
@@ -2119,7 +2119,7 @@ def create_cid_item_record(
                 "items",
                 "insertrecord",
                 sess,
-                f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'"
+                f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'",
                 3,
                 10,
             )
@@ -2180,7 +2180,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, sess):
             "manifestations",
             "updaterecord",
             sess,
-            f"Df=MANIFESTATION and grouping.lref='398775' and priref='{manifestation_id}'"
+            f"Df=MANIFESTATION and grouping.lref='398775' and priref='{manifestation_id}'",
             3,
             10,
         )
@@ -2220,7 +2220,7 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, sess):
                 "works",
                 "updaterecord",
                 sess,
-                f"Df=WORK and grouping.lref='398775' and priref='{work_id}'"
+                f"Df=WORK and grouping.lref='398775' and priref='{work_id}'",
                 3,
                 10,
             )
@@ -2353,7 +2353,7 @@ def push_payload(item_id, webvtt_payload, sess):
             "items",
             "updaterecord",
             sess,
-            f"Df=ITEM and priref='{item_id}' and label.source='Extracted from MPEG-TS created by STORA recording'"
+            f"Df=ITEM and priref='{item_id}' and label.source='Extracted from MPEG-TS created by STORA recording'",
             3,
             10,
         )

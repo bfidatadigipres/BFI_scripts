@@ -1,5 +1,6 @@
 #!/bin/bash
 
+shopt -s nullglob
 # Launcher for delete_post_split.py script which moves F47 and H22 whole-tape
 # digitisations where all parts have been persisted to
 # a backup folder on the server for deletion by a second script
@@ -36,15 +37,22 @@ echo "Finish delete_post_split.py: $(date)" >> "${LOG_PATH}delete_post_split.log
 
 # Action deletion of F47 Ofcom files in QNAP Video processing/delete folder
 echo "Actioning deletion of F47 Ofcom files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-sudo rm "${QNAP_08}/processing/delete/*"
+
+if [ -d "${QNAP_08}/processing/delete" ]; then
+	sudo rm "${QNAP_08}"/processing/delete/* >> "${LOG_PATH}delete_post_split.log" 2>&1
+fi
 
 # Action deletion of F47 Ofcom files in QNAP Video processing/delete folder
 echo "Actioning deletion of Memnon files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-sudo rm "${QNAP_08}/memnon_processing/delete/*"
+if [ -d "${QNAP_08}/memnon_processing/delete" ]; then
+	sudo rm "${QNAP_08}"/memnon_processing/delete/*  >> "${LOG_PATH}delete_post_split.log" 2>&1
+fi
 
 # Action deletion of H22 files in QNAP-10 processing/delete folder
 echo "Actioning deletion of H22 files in QNAP-10 identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
-sudo rm "${QNAP_10}/processing/delete/*"
+if [ -d "${QNAP_10}/processing/delete" ]; then
+	sudo rm "${QNAP_10}"/processing/delete/* >> "${LOG_PATH}delete_post_split.log" 2>&1
+fi
 
 echo "Completed deletion of F47 Ofcom files (QNAP-08) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"
 echo "Completed deletion of F47 Ofcom files (QNAP-08 Memnon) identified for deletion: $(date)" >> "${LOG_PATH}delete_post_split.log"

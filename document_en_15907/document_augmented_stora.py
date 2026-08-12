@@ -1337,7 +1337,16 @@ def create_series(
     sleep(0.5)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
-        work_rec = adlib.post(CID_API, series_values_xml, "works", "insertrecord", sess)
+        work_rec = adlib.post_with_verify(
+            CID_API,
+            series_values_xml,
+            "works",
+            "insertrecord",
+            sess,
+            f"Df=WORK and grouping.lref='398775' and alternative_number='{series_id}'"
+            3,
+            10,
+        )
     except Exception as err:
         print(f"* Unable to create Series Work record for <{series_title_full}> {err}")
         logger.warning(
@@ -1353,8 +1362,15 @@ def create_series(
             logger.info(
                 "Attempting to create CID series record for %s", series_title_full
             )
-            work_rec = adlib.post(
-                CID_API, series_values_xml, "works", "insertrecord", sess
+            work_rec = adlib.post_with_verify(
+                CID_API,
+                series_values_xml,
+                "works",
+                "insertrecord",
+                sess,
+                f"Df=WORK and grouping.lref='398775' and alternative_number='{series_id}'"
+                3,
+                10,
             )
         except Exception as err:
             print(
@@ -1403,7 +1419,17 @@ def create_series(
             series_work_id, "Content_genre", series_content_genres
         )
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            genre_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{series_work_id}' and content.genre.lref='{series_genre_one}'"
+            3,
+            10,
+        )
+
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_genre" in str(update_rec):
@@ -1425,7 +1451,16 @@ def create_series(
             series_work_id, "Content_subject", series_content_subject
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            subject_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{series_work_id}' and content.subject.lref='{series_subject_one}'"
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_subject" in str(update_rec):
@@ -1472,7 +1507,16 @@ def create_series(
     if labels is True:
         label_xml = adlib.create_grouped_data(series_work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            label_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{series_work_id}' and label.source='EBS augmented EPG supply'"
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Label" in str(update_rec):
@@ -1701,7 +1745,16 @@ def create_work(
     try:
         sleep(0.5)
         logger.info("Attempting to create Work record for item %s", epg_dict["title"])
-        work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord", sess)
+        work_rec = adlib.post_with_verify(
+            CID_API,
+            work_values_xml,
+            "works",
+            "insertrecord",
+            sess,
+            f"Df=WORK and grouping.lref='398775' and title={epg_dict["title"]}"
+            3,
+            10,
+        )
         print(f"create_work(): {work_rec}")
     except Exception as err:
         print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
@@ -1720,8 +1773,15 @@ def create_work(
             logger.info(
                 "Attempting to create Work record for item %s", epg_dict["title"]
             )
-            work_rec = adlib.post(
-                CID_API, work_values_xml, "works", "insertrecord", sess
+            work_rec = adlib.post_with_verify(
+                CID_API,
+                work_values_xml,
+                "works",
+                "insertrecord",
+                sess,
+                f"Df=WORK and grouping.lref='398775' and title={epg_dict["title"]}"
+                3,
+                10,
             )
             print(f"create_work(): {work_rec}")
         except Exception as err:
@@ -1763,7 +1823,16 @@ def create_work(
     if genre is True:
         genre_xml = adlib.create_grouped_data(work_id, "Content_genre", content_genres)
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            genre_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{work_id}' and content.genre.lref='{epg_dict["work_genre_one"]}'"
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_genre" in str(update_rec):
@@ -1783,7 +1852,16 @@ def create_work(
             work_id, "Content_subject", content_subject
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            subject_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{work_id}' and content.subject.lref='{epg_dict["work_subject_one"]}'"
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_subject" in str(update_rec):
@@ -1828,7 +1906,16 @@ def create_work(
     if labels is True:
         label_xml = adlib.create_grouped_data(work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            label_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{work_id}' and label.source='EBS augmented EPG supply'"
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Label" in str(update_rec):
@@ -1902,8 +1989,15 @@ def create_manifestation(
     try:
         sleep(0.5)
         logger.info("Attempting to create Manifestation record for item %s", title)
-        man_rec = adlib.post(
-            CID_API, man_values_xml, "manifestations", "insertrecord", sess
+        man_rec = adlib.post_with_verify(
+            CID_API,
+            man_values_xml,
+            "manifestations",
+            "insertrecord",
+            sess,
+            f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_priref}'"
+            3,
+            10,
         )
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:
@@ -1917,8 +2011,15 @@ def create_manifestation(
         try:
             sleep(1)
             logger.info("Attempting to create Manifestation record for item %s", title)
-            man_rec = adlib.post(
-                CID_API, man_values_xml, "manifestations", "insertrecord", sess
+            man_rec = adlib.post_with_verify(
+                CID_API,
+                man_values_xml,
+                "manifestations",
+                "insertrecord",
+                sess,
+                f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_priref}'"
+                3,
+                10,
             )
             print(f"create_manifestation(): {man_rec}")
         except Exception as err:
@@ -1986,7 +2087,16 @@ def create_cid_item_record(
         logger.info(
             "Attempting to create CID item record for item %s", epg_dict["title"]
         )
-        item_rec = adlib.post(CID_API, item_values_xml, "items", "insertrecord", sess)
+        item_rec = adlib.post_with_verify(
+            CID_API,
+            item_values_xml,
+            "items",
+            "insertrecord",
+            sess,
+            f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'"
+            3,
+            10,
+        )
         print(f"create_cid_item_record(): {item_rec}")
     except Exception as err:
         logger.warning(
@@ -2003,8 +2113,15 @@ def create_cid_item_record(
             logger.info(
                 "Attempting to create CID item record for item %s", epg_dict["title"]
             )
-            item_rec = adlib.post(
-                CID_API, item_values_xml, "items", "insertrecord", sess
+            item_rec = adlib.post_with_verify(
+                CID_API,
+                item_values_xml,
+                "items",
+                "insertrecord",
+                sess,
+                f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'"
+                3,
+                10,
             )
             print(f"create_cid_item_record(): {item_rec}")
         except Exception as err:
@@ -2057,7 +2174,16 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, sess):
     payload = payload_start + payload_mid + payload_end
     try:
         sleep(0.5)
-        response = adlib.post(CID_API, payload, "manifestations", "updaterecord", sess)
+        response = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "manifestations",
+            "updaterecord",
+            sess,
+            f"Df=MANIFESTATION and grouping.lref='398775' and priref='{manifestation_id}'"
+            3,
+            10,
+        )
         if response:
             logger.info(
                 "%s\tRenamed Manifestation %s with deletion prompt in title",
@@ -2088,7 +2214,16 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, sess):
         payload = payload_start + payload_mid + payload_end
         try:
             sleep(0.5)
-            response = adlib.post(CID_API, payload, "works", "updaterecord", sess)
+            response = adlib.post_with_verify(
+                CID_API,
+                payload,
+                "works",
+                "updaterecord",
+                sess,
+                f"Df=WORK and grouping.lref='398775' and priref='{work_id}'"
+                3,
+                10,
+            )
             if "priref" in str(response):
                 logger.info(
                     "%s\tRenamed Work %s with deletion prompt in title, for bulk deletion",
@@ -2212,7 +2347,16 @@ def push_payload(item_id, webvtt_payload, sess):
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     try:
-        post_resp = adlib.post(CID_API, payload, "items", "updaterecord", sess)
+        post_resp = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "items",
+            "updaterecord",
+            sess,
+            f"Df=ITEM and priref='{item_id}' and label.source='Extracted from MPEG-TS created by STORA recording'"
+            3,
+            10,
+        )
     except Exception as err:
         logger.warning(
             "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err

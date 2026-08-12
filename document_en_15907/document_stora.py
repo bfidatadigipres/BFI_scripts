@@ -877,7 +877,7 @@ def push_payload(
             "items",
             "updaterecord",
             session,
-            f"Df=ITEM and grouping.lref='398775' and priref='{item_id}'"
+            f"Df=ITEM and priref='{item_id}' and label.source='Extracted from MPEG-TS created by STORA recording'"
             3,
             10,
         )

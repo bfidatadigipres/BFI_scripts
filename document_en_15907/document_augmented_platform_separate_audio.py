@@ -59,6 +59,7 @@ LOGGER.setLevel(logging.INFO)
 STORAGE = {
     "Netflix": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/separate5_1/')}",
     "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate_atmos/')}",
+    "Disney": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('DISNEY_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/disney/audio_description/')}",
 }
 
 ORDER = {"L": "01", "R": "02", "C": "03", "LFE": "04", "Ls": "05", "Rs": "06"}
@@ -138,6 +139,12 @@ def main():
             if platform == "Amazon" and len(file_list) != 1:
                 LOGGER.warning(
                     "Skipping. Incorrect amount of files found in Amazon path: %s",
+                    fpath,
+                )
+                continue
+            if platform == "Disney" and len(file_list) != 1: 
+                LOGGER.warning(
+                    "Skipping. Incorrect amount of files found in Disney+ path: %s",
                     fpath,
                 )
                 continue
@@ -238,6 +245,8 @@ def main():
                 )
             elif platform == "Amazon":
                 qual_comm = "Dolby Atmos supplied separately as 5.1 audio contained within supplied ProRes."
+            elif platform == "Disney":
+                qual_comm = "Stereo or multichannel audio description contained within supplied ProRes."
             success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
             if not success:
                 LOGGER.warning(
@@ -287,7 +296,7 @@ def build_fname_dct(file_list: list[str], ob_num: str, platform: str) -> dict[st
             new_fname = f"{ob_num.replace('-', '_')}_{part}of06.{ext}"
             file_names[new_fname] = file
 
-    if platform == "Amazon":
+    if platform == "Amazon" or platform == "Disney":
         for file in file_list:
             ext = file.split(".")[-1]
             new_fname = f"{ob_num.replace('-', '_')}_01of01.{ext}"
@@ -408,6 +417,9 @@ def make_item_record_dict(
             item.append({"title": f"{title} (5.1 audio)"})
         elif platform == "Amazon":
             item.append({"title": f"{title} (Dolby Atmos)"})
+        elif platform == "Disney":
+            item.append({"title": f"{title} (Audio Description)"})
+
         if adlib.retrieve_field_name(record[0], "title_article")[0]:
             item.append(
                 {
@@ -432,10 +444,16 @@ def make_item_record_dict(
     item.append({"related_object.reference.lref": priref})
     if platform == "Netflix":
         item.append({"related_object.notes": "5.1 audio for"})
+        item.append({"file_type": "WAV"})
+        item.append({"code_type": "WAV"})
     elif platform == "Amazon":
         item.append({"related_object.notes": "Dolby Atmos for"})
-    item.append({"file_type": "WAV"})
-    item.append({"code_type": "WAV"})
+        item.append({"file_type": "MOV"})
+        item.append({"code_type": "MOV"})
+    elif platform == "Disney":
+        item.append({"related_object.notes": "Audio description for"})
+        item.append({"file_type": "MOV"})
+        item.append({"code_type": "MOV"})
     if "acquisition.date" in str(record):
         item.append(
             {
@@ -458,6 +476,9 @@ def make_item_record_dict(
             item.append({"acquisition.source.type": "DONOR"})
         elif platform == "Amazon":
             item.append({"acquisition.source.lref": "999923912"})
+            item.append({"acquisition.source.type": "DONOR"})
+        elif platform == "Disney":
+            item.append({"acquisition.source.lref": "1145185"})
             item.append({"acquisition.source.type": "DONOR"})
     item.append(
         {

@@ -553,7 +553,16 @@ def create_work(
     try:
         sleep(2)
         logger.info("Attempting to create Work record for item %s", title)
-        data = adlib.post(CID_API, work_values_xml, "works", "insertrecord", session)
+        data = adlib.post_with_verify(
+            CID_API,
+            work_values_xml,
+            "works",
+            "insertrecord",
+            session,
+            f"Df=WORK and grouping.lref='398775' and title='{title}'"
+            3,
+            10,
+        )
         try:
             work_id = adlib.retrieve_field_name(data, "priref")[0]
             object_number = adlib.retrieve_field_name(data, "object_number")[0]
@@ -610,8 +619,15 @@ def create_manifestation(
     try:
         sleep(2)
         logger.info("Attempting to create Manifestation record for item %s", title)
-        data = adlib.post(
-            CID_API, man_values_xml, "manifestations", "insertrecord", session
+        data = adlib.post_with_verify(
+            CID_API,
+            man_values_xml,
+            "manifestations",
+            "insertrecord",
+            session,
+            f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_id}'"
+            3,
+            10,
         )
         try:
             manifestation_id = adlib.retrieve_field_name(data, "priref")[0]
@@ -711,7 +727,16 @@ def create_item(
     try:
         sleep(2)
         logger.info("Attempting to create CID item record for item %s", title)
-        data = adlib.post(CID_API, item_values_xml, "items", "insertrecord", session)
+        data = adlib.post_with_verify(
+            CID_API,
+            item_values_xml,
+            "items",
+            "insertrecord",
+            session,
+            f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'"
+            3,
+            10,
+        )
         try:
             item_id = adlib.retrieve_field_name(data, "priref")[0]
             item_object_number = adlib.retrieve_field_name(data, "object_number")[0]
@@ -759,7 +784,17 @@ def mark_for_deletion(
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_start + payload_mid + payload_end
     try:
-        response = adlib.post(CID_API, payload, "works", "updaterecord", session)
+        response = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "works",
+            "updaterecord",
+            session,
+            f"Df=WORK and grouping.lref='398775' and priref='{work_id}'"
+            3,
+            10,
+        )
+
         if response:
             logger.info(
                 "%s\tRenamed Work %s with deletion prompt in title, for bulk deletion",
@@ -787,8 +822,15 @@ def mark_for_deletion(
     payload_end = "</record></recordList></adlibXML>"
     payload = payload_start + payload_mid + payload_end
     try:
-        response = adlib.post(
-            CID_API, payload, "manifestations", "updaterecord", session
+        response = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "manifestations",
+            "updaterecord",
+            session,
+            f"Df=MANIFESTATION and grouping.lref='398775' and priref='{manifestation_id}'"
+            3,
+            10,
         )
         if response:
             logger.info(
@@ -829,7 +871,16 @@ def push_payload(
     payload = pay_head + label_type_addition + label_addition + pay_end
 
     try:
-        post_resp = adlib.post(CID_API, payload, "items", "updaterecord", session)
+        post_resp = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "items",
+            "updaterecord",
+            session,
+            f"Df=ITEM and priref='{item_id}' and label.source='Extracted from MPEG-TS created by STORA recording'"
+            3,
+            10,
+        )
         if post_resp:
             return True
     except Exception as err:

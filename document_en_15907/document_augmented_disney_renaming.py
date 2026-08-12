@@ -263,7 +263,15 @@ def main():
                 continue
 
             # Make new item record
-            new_record = adlib.post(CID_API, item_xml, "items", "insertrecord")
+            new_record = adlib.post_with_verify(
+                CID_API,
+                item_xml,
+                "items",
+                "insertrecord",
+                f"Df=ITEM and related_object.reference.lref={priref}",
+                3,
+                10
+            )
             if new_record is None:
                 LOGGER.warning(
                     "Creation of new CID item record failed with XML: \n%s", item_xml
@@ -447,7 +455,15 @@ def create_digital_original_filenames(
     LOGGER.info(payload)
 
     try:
-        result = adlib.post(CID_API, payload, "items", "updaterecord")
+        result = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "items",
+            "updaterecord",
+            f"Df=ITEM and digital.acquired_filename={digital_note}",
+            3,
+            10
+        )
         print(f"Item appended successful! {priref}\n{result}")
         print(f"Item appended successful! {priref}")
         LOGGER.info(

@@ -58,8 +58,7 @@ LOGGER.setLevel(logging.INFO)
 
 STORAGE = {
     "Netflix": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/separate5_1/')}",
-    "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate_atmos/')}",
-    "Disney": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('DISNEY_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/disney/audio_description/')}",
+    "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate_atmos/')}"
 }
 
 ORDER = {"L": "01", "R": "02", "C": "03", "LFE": "04", "Ls": "05", "Rs": "06"}
@@ -142,12 +141,7 @@ def main():
                     fpath,
                 )
                 continue
-            if platform == "Disney" and len(file_list) != 1: 
-                LOGGER.warning(
-                    "Skipping. Incorrect amount of files found in Disney+ path: %s",
-                    fpath,
-                )
-                continue
+
             LOGGER.info(
                 "File(s) found in target %s folder %s: %s",
                 platform,
@@ -189,7 +183,7 @@ def main():
                 old_fname = value
                 filename_dct[old_fname] = new_fname
 
-                if not old_fname.endswith((".WAV", ".wav")):
+                if not old_fname.lower().endswith((".mov", ".wav")):
                     LOGGER.warning(
                         "File contained in separate audio folder that is not WAV/MOV: %s",
                         old_fname,
@@ -245,8 +239,7 @@ def main():
                 )
             elif platform == "Amazon":
                 qual_comm = "Dolby Atmos supplied separately as 5.1 audio contained within supplied ProRes."
-            elif platform == "Disney":
-                qual_comm = "Stereo or multichannel audio description contained within supplied ProRes."
+
             success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
             if not success:
                 LOGGER.warning(
@@ -296,7 +289,7 @@ def build_fname_dct(file_list: list[str], ob_num: str, platform: str) -> dict[st
             new_fname = f"{ob_num.replace('-', '_')}_{part}of06.{ext}"
             file_names[new_fname] = file
 
-    if platform == "Amazon" or platform == "Disney":
+    if platform == "Amazon":
         for file in file_list:
             ext = file.split(".")[-1]
             new_fname = f"{ob_num.replace('-', '_')}_01of01.{ext}"
@@ -417,8 +410,6 @@ def make_item_record_dict(
             item.append({"title": f"{title} (5.1 audio)"})
         elif platform == "Amazon":
             item.append({"title": f"{title} (Dolby Atmos)"})
-        elif platform == "Disney":
-            item.append({"title": f"{title} (Audio Description)"})
 
         if adlib.retrieve_field_name(record[0], "title_article")[0]:
             item.append(
@@ -448,12 +439,9 @@ def make_item_record_dict(
         item.append({"code_type": "WAV"})
     elif platform == "Amazon":
         item.append({"related_object.notes": "Dolby Atmos for"})
-        item.append({"file_type": "MOV"})
-        item.append({"code_type": "MOV"})
-    elif platform == "Disney":
-        item.append({"related_object.notes": "Audio description for"})
-        item.append({"file_type": "MOV"})
-        item.append({"code_type": "MOV"})
+        item.append({"file_type": "WAV"})
+        item.append({"code_type": "WAV"})
+
     if "acquisition.date" in str(record):
         item.append(
             {
@@ -477,9 +465,7 @@ def make_item_record_dict(
         elif platform == "Amazon":
             item.append({"acquisition.source.lref": "999923912"})
             item.append({"acquisition.source.type": "DONOR"})
-        elif platform == "Disney":
-            item.append({"acquisition.source.lref": "1145185"})
-            item.append({"acquisition.source.type": "DONOR"})
+
     item.append(
         {
             "access_conditions": "Access requests for this collection are subject to an approval process. "

@@ -136,13 +136,28 @@ def retrieve_metadata(fpath: str, mfile: str) -> str:
         os.path.join(fpath, mfile),
     ]
 
+    cmd2: list[str] = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "a",
+        "-show_entries",
+        "stream=index:stream_tags=language",
+        "-of",
+        "compact=p=0:nk=1",
+        os.path.join(fpath, mfile),
+    ]
+
     colour_prim = subprocess.check_output(cmd).decode("utf-8")
+    audio_spec = subprocess.check_output(cmd2).decode("utf-8")
 
     if "BT.2020" in str(colour_prim):
         return "HDR"
     if "BT.709" in str(colour_prim):
         return "SDR"
-
+    if "eng" in str(audio_spec):
+        return "Audio Description"
     return None
 
 
@@ -256,6 +271,20 @@ def main():
                     continue
                 item_xml = adlib.create_record_data(CID_API, "items", "", item_data)
                 qcomm = "UHD SDR version"
+            elif "Audio Description" in metadata:
+                LOGGER.info("Audio Description file found: %s", mov_file)
+                # Build dictionary from CID item record
+                item_data = make_item_record_dict(
+                    priref, mov_file, record, "Audio Description"
+                )
+                if item_data is None:
+                    LOGGER.info(
+                        "Skipping: Creation of Item record dictionary failed for file %s",
+                        mov_file,
+                    )
+                    continue
+                item_xml = adlib.create_record_data(CID_API, "items", "", item_data)
+                qcomm = "Stereo or multichannel audio description contained within supplied ProRes."
             else:
                 LOGGER.warning(
                     "File found with metadata not recognised. Skipping this item."
@@ -383,7 +412,10 @@ def make_item_record_dict(
     item.append({"related_object.notes": f"{arg} for"})
     item.append({"file_type.lref": "114307"})
     item.append({"language.lref": "74129"})
-    item.append({"language.type": "DIALORIG"})
+    if "SDR" in arg:
+        item.append({"language.type": "DIALORIG"})
+    elif "Audio Description" in arg:
+        item.append({"language.type": "AUDDES"})
 
     if "acquisition.date" in str(record):
         item.append(
@@ -393,7 +425,6 @@ def make_item_record_dict(
                 )[0]
             }
         )
-    """
     if "acquisition.method" in str(record):
         item.append(
             {
@@ -402,7 +433,6 @@ def make_item_record_dict(
                 )[0]
             }
         )
-    """
     if "Acquisition_source" in str(record):
         item.append(
             {

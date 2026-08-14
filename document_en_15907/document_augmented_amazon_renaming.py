@@ -408,7 +408,7 @@ def make_item_record_dict(
     elif "Audio Description" in arg:
         item.append({"file_type.lref": "114307"})
         item.append({"language.lref": "74129"})
-        item.append({"language.type": "AUDDES"})
+            
     if "acquisition.date" in str(record):
         item.append(
             {

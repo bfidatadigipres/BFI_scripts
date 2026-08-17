@@ -38,8 +38,8 @@ from time import sleep
 
 import tenacity
 import yaml
-from series_retrieve import check_id, retrieve
 from dataclasses import dataclass
+from series_retrieve import check_id, retrieve
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3_sess as adlib
@@ -63,14 +63,6 @@ SUBS_PTH = os.environ["SUBS_PATH2"]
 GENRE_PTH = SUBS_PTH.split("subtitles_not_in_cid/")[0]
 CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
-TIME_FORMAT = "%H:%M:%S"
-DATE_FORMAT = "%Y-%m-%d"
-
-@dataclass
-class TransmissionInfo:
-    date: str
-    start_time: str
-    end_time: str
 
 # Setup logging
 logger = logging.getLogger("document_augmented_stora")
@@ -87,6 +79,14 @@ YESTERDAY_CLEAN = YESTERDAY.strftime("%Y-%m-%d")
 YEAR_PATH = YESTERDAY_CLEAN[:4]
 # YEAR_PATH = '2025'
 STORAGE_PATH = STORAGE + YEAR_PATH
+TIME_FORMAT = "%H:%M:%S"
+DATE_FORMAT = "%Y-%m-%d"
+
+@dataclass
+class TransmissionInfo:
+    date: str
+    start_time: str
+    end_time: str
 
 NEWS_CHANNELS = ["Al Jazeera", "BBC NEWS HD", "Sky News", "GB News", "QVC"]
 
@@ -1048,7 +1048,7 @@ def main():
         # Check if subtitles are populated
         old_webvtt = os.path.join(root, "subtitles.vtt")
         webvtt_payload = build_webvtt_dct(old_webvtt)
-
+        
         # Create CID item record
         item_values = []
         item_values.extend(rec_def)
@@ -1095,15 +1095,18 @@ def main():
                 )
                 continue
 
-        """
+        
         # Build webvtt payload [deprecated]
         if webvtt_payload:
             transmission_info = create_subtitle_date(manifestation_priref, sess)
             subtitle_date = adjust_date_for_midnight(transmission_info)
             success = push_payload(item_data[1], webvtt_payload, sess, subtitle_date)
+            manifesation_payload_success = post_accessibility_resource(manifestation_priref, sess)
             if not success:
                 logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
-        """
+            if not manifesation_payload_success:
+                logger.warning("Unable to push webvtt_payload to CID manifestation %s", manifestation_priref)
+        
         # Rename JSON with .documented
         documented = f"{fullpath}.documented"
         print(f"* Renaming {fullpath} to {documented}")
@@ -1153,7 +1156,8 @@ def main():
                     old_webvtt,
                     new_vtt,
                     err,
-                )
+                 )
+        
     logger.info(
         "========== STORA documentation script END ===================================================\n"
     )
@@ -2340,11 +2344,6 @@ def update_broken_ts(vpath, work_priref, response, epg_dict=None):
         writer = csv.writer(failures)
         writer.writerow(data)
 
-def get_field(record: dict, field_name: str):
-    """Return the first value of a field from an  record, or None if absent."""
-    values = adlib.retrieve_field_name(record, field_name)
-    return values[0] if values else None
-
 def create_subtitle_date(manifestation_priref, session):
     fields = [
         "transmission_date",
@@ -2355,8 +2354,8 @@ def create_subtitle_date(manifestation_priref, session):
 
     _, records = adlib.retrieve_record(CID_API, "manifestations", query, "1", session, fields=fields)
     trans_date = adlib.retrieve_field_name(records[0], "transmission_date")[0]
-    end_time = adlib.retrieve_field_name(records[0],"transmission_end_time")
-    start_time = adlib.retrieve_field_name(records[0], "transmission_start_time")
+    end_time = adlib.retrieve_field_name(records[0],"transmission_end_time")[0]
+    start_time = adlib.retrieve_field_name(records[0], "transmission_start_time")[0]
 
     if not all([trans_date, end_time, start_time]):
             logger.error(
@@ -2390,6 +2389,30 @@ def adjust_date_for_midnight(info: TransmissionInfo) -> str:
         )
     return date.strftime(DATE_FORMAT)
 
+def post_accessibility_resource(manifestation_priref, sess):
+    edit_entries = [{"accessibility_resource": "SUBTITLES"}]
+    manifestation_xml = adlib.create_grouped_data(manifestation_priref, "Edit", [edit_entries])
+    try:
+            post_resp = adlib.post_with_verify(
+                CID_API,
+                manifestation_xml,
+                "manifestations",
+                "updaterecord",
+                sess,
+                f"Df=MANIFESTATION and priref='{manifestation_priref}'",
+                3,
+                10,
+            )
+    except Exception as err:
+            logger.warning(
+                "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err
+            )
+            if post_resp is False:
+                raise Exception("Recycle of API exception raised.")
+            if post_resp:
+                return True
+            else:
+                return False
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def push_payload(item_id, webvtt_payload, sess, subtitle_date):

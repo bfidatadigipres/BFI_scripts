@@ -23,7 +23,7 @@ import shutil
 import sys
 from time import sleep
 from typing import Any, Final, Optional
-
+from dataclasses import dataclass
 import requests
 
 # Private packages
@@ -38,9 +38,10 @@ AUTOINGEST_PATH = os.environ["STORA_AUTOINGEST"]
 CODE_PATH = os.environ["CODE_DDP"]
 LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
-SUBS_PTH = os.environ["SUBS_PATH2"]
+SUBS_PTH = os.environ["SUBS_PATH"]
 CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
+
 
 # Setup logging
 logger = logging.getLogger("document_stora")
@@ -57,7 +58,14 @@ YEST_CLEAN = YEST.strftime("%Y-%m-%d")
 YEAR = YEST_CLEAN[0:4]
 # YEAR = '2024'
 STORAGE_PATH = os.path.join(STORAGE, YEAR)
+TIME_FORMAT = "%H:%M:%S"
+DATE_FORMAT = "%Y-%m-%d"
 
+@dataclass
+class TransmissionInfo:
+    date: str
+    start_time: str
+    end_time: str
 
 def csv_retrieve(fullpath: str) -> Optional[dict[str, str]]:
     """
@@ -455,13 +463,18 @@ def main() -> None:
                 )
                 mark_for_deletion(work_id, man_id, fullpath, session)
                 continue
-            """
-            # Build webvtt payload [Deprecated]
+
+            # Build webvtt payload
             if webvtt_payload:
-                success = push_payload(item_id, session, webvtt_payload)
+                transmission_info = create_subtitle_date(man_id, session)
+                subtitle_date = adjust_date_for_midnight(transmission_info)
+                success = push_payload(item_id, webvtt_payload, sess, subtitle_date)
+                manifesation_payload_success = post_accessibility_resource(man_id, session)
                 if not success:
                     logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
-            """
+                if not manifesation_payload_success:
+                    logger.warning("Unable to push webvtt_payload to CID manifestation %s", man_id)
+
             # Rename csv with .documented
             documented = f"{fullpath}.documented"
             print(f"* Renaming {fullpath} to {documented}")
@@ -853,22 +866,92 @@ def mark_for_deletion(
         )
 
 
-def push_payload(
-    item_id: str, session: requests.Session, webvtt_payload: str
-) -> Optional[bool]:
+def create_subtitle_date(manifestation_priref, session):
+    """ Retrieve manifestation transmission info """
+    fields = [
+        "transmission_date",
+        "transmission_end_time",
+        "transmission_start_time",
+    ]
+    query = f'priref={manifestation_priref}'
+
+    _, records = adlib.retrieve_record(CID_API, "manifestations", query, "1", session, fields=fields)
+    trans_date = adlib.retrieve_field_name(records[0], "transmission_date")[0]
+    end_time = adlib.retrieve_field_name(records[0],"transmission_end_time")[0]
+    start_time = adlib.retrieve_field_name(records[0], "transmission_start_time")[0]
+
+    if not all([trans_date, end_time, start_time]):
+            logger.error(
+                "Incomplete transmission data for priref=%s " "(date=%s, end=%s, start=%s)",
+                manifestation_priref,
+                trans_date,
+                end_time,
+                start_time,
+            )
+            return None
+
+    return TransmissionInfo(
+            date=trans_date, start_time=start_time, end_time=end_time
+        )
+
+
+def adjust_date_for_midnight(info: TransmissionInfo) -> str:
+    """Check if a show ran past midnight and adjust the date accordingly."""
+    try:
+        end = datetime.datetime.strptime(info.end_time, TIME_FORMAT)
+        start = datetime.datetime.strptime(info.start_time, TIME_FORMAT)
+    except ValueError as exc:
+        raise ValueError(f"Invalid time format in {info}") from exc
+
+    date = datetime.datetime.strptime(info.date, DATE_FORMAT)
+    if end < start:
+        date += datetime.timedelta(days=1)
+        logger.info(
+            "Show ran past midnight - date adjusted to %s",
+            date.strftime(DATE_FORMAT),
+        )
+    return date.strftime(DATE_FORMAT)
+
+
+def post_accessibility_resource(manifestation_priref, sess):
+    """ Post subtitles data to manifestation parent """
+    edit_entries = [{"accessibility_resource": "SUBTITLES"}]
+    manifestation_xml = adlib.create_record_data(CID_API, "manifestations", sess, manifestation_priref, edit_entries)
+    try:
+            post_resp = adlib.post_with_verify(
+                CID_API,
+                manifestation_xml,
+                "manifestations",
+                "updaterecord",
+                sess,
+                f"Df=MANIFESTATION and priref='{manifestation_priref}' and accessibility_resource='SUBTITLES'",
+                3,
+                10,
+            )
+    except Exception as err:
+            logger.warning(
+                "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err
+            )
+            if post_resp is False:
+                raise Exception("Recycle of API exception raised.")
+            if post_resp:
+                return True
+            else:
+                return False
+
+
+def push_payload(item_id, webvtt_payload, sess, subtitle_date):
     """
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     """
-
-    label_type = "SUBWEBVTT"
-    label_source = "Extracted from MPEG-TS created by STORA recording"
-    # Make payload
+    SUBTITLE_TYPE= "WEBVTT_C"
+    EDITOR_NOTES = "Extracted from MPEG-TS created by STORA recording"
     pay_head = f'<adlibXML><recordList><record priref="{item_id}">'
-    label_type_addition = f"<label.type>{label_type}</label.type>"
-    label_addition = f"<label.source>{label_source}</label.source><label.text><![CDATA[{webvtt_payload}]]></label.text>"
+    subtitle_type_addition = f"<subtitle.type>{SUBTITLE_TYPE}</subtitle.type>"
+    subtitle_source_addition = f"<subtitle.source>{EDITOR_NOTES}</subtitle.source><subtitle.text><![CDATA[{webvtt_payload}]]></subtitle.text><subtitle.date>{subtitle_date}</subtitle.date>"
     pay_end = "</record></recordList></adlibXML>"
-    payload = pay_head + label_type_addition + label_addition + pay_end
+    payload = pay_head + subtitle_type_addition + subtitle_source_addition + pay_end
 
     try:
         post_resp = adlib.post_with_verify(
@@ -876,20 +959,20 @@ def push_payload(
             payload,
             "items",
             "updaterecord",
-            session,
-            f"Df=ITEM and priref='{item_id}' and label.source='Extracted from MPEG-TS created by STORA recording'",
+            sess,
+            f"Df=ITEM and priref='{item_id}' and subtitle.type='WEBVTT_C'",
             3,
             10,
         )
-        if post_resp:
-            return True
     except Exception as err:
         logger.warning(
-            "push_payload(): Error returned from requests post: %s %s %s",
-            item_id,
-            payload,
-            err,
+            "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err
         )
+    if post_resp is False:
+        raise Exception("Recycle of API exception raised.")
+    if post_resp:
+        return True
+    else:
         return False
 
 

@@ -425,14 +425,14 @@ def make_item_record_dict(
                 )[0]
             }
         )
-    if "acquisition.method" in str(record):
-        item.append(
-            {
-                "acquisition.method.lref": adlib.retrieve_field_name(
-                    record[0], "acquisition.method.lref"
-                )[0]
-            }
-        )
+#    if "acquisition.method" in str(record):
+#        item.append(
+#            {
+#                "acquisition.method.lref": adlib.retrieve_field_name(
+#                    record[0], "acquisition.method.lref"
+#                )[0]
+#            }
+#        )
     if "Acquisition_source" in str(record):
         item.append(
             {

@@ -1164,7 +1164,6 @@ def main():
                     new_vtt,
                     err,
                 )
-                 )
 
     logger.info(
         "========== STORA documentation script END ===================================================\n"

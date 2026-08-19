@@ -7,15 +7,17 @@ new MP4 proxy copies to move through to the
 video viewer.
 """
 
+import logging
+
 # Imports
 import os
 import sys
-import logging
-from json import dumps
-from xmljson import parker
 import xml.etree.ElementTree as ET
-from elasticsearch import Elasticsearch
+from json import dumps
+
 import requests
+from elasticsearch import Elasticsearch
+from xmljson import parker
 
 sys.path.append(os.environ.get("CODE"))
 import utils

@@ -1,19 +1,20 @@
+import json
 import os
 import sys
+from pathlib import Path
+
 import pytest
 import requests
-import json
-from pathlib import Path
 
 sys.path.append(os.environ["CODE"])
-import adlib_v3 as adlib
-
-
-import adlib_v3_sess as adlib_sess
-import pytest
-import requests
 import json
 from pathlib import Path
+
+import pytest
+import requests
+
+import adlib_v3 as adlib
+import adlib_v3_sess as adlib_sess
 
 CASES = json.loads((Path(__file__).parent / "data" / "test_data.json").read_text())
 
@@ -289,9 +290,7 @@ def test_get_invalid_query(mocker):
 def test_post(mocker, expected_method_input):
     mock_response = mocker.Mock()
     mock_response.status_code = 200
-    mock_response.text = (
-        json_response
-    ) = """
+    mock_response.text = json_response = """
     {
         "adlibJSON": {
             "recordList": {

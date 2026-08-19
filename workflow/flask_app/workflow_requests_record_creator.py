@@ -13,12 +13,13 @@ Dependencies:
 2026
 """
 
+import itertools
+import logging
+import os
+
 # Public imports
 import sqlite3
-import os
 import sys
-import logging
-import itertools
 from datetime import datetime
 from typing import Final, Optional
 

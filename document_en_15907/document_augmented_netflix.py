@@ -39,16 +39,18 @@ import logging
 import os
 import sys
 from typing import Final, Optional
+
 import pandas
 import yaml
 
 sys.path.append(os.environ["CODE"])
+from document_augmented_streaming_cast import create_contributors
+
 import adlib_v3 as adlib
 import utils
 from parsers import stream_catalogue as ct
 from parsers import stream_episode as ep
 from parsers import stream_season as sp
-from document_augmented_streaming_cast import create_contributors
 
 # Global variables
 STORAGE: Final = os.environ.get("QNAP_IMAGEN")
@@ -1362,7 +1364,7 @@ def create_series_work(
             "insertrecord",
             f"Df=WORK and grouping.lref='400947' and alternative_number={patv_id}",
             3,
-            10
+            10,
         )
         if work_rec:
             try:
@@ -1398,7 +1400,7 @@ def create_series_work(
             "updaterecord",
             f"Df=WORK and priref={series_work_id} and content.genre.lref={extracted[-1]}",
             3,
-            10
+            10,
         )
         if update_rec is None:
             LOGGER.info(
@@ -1427,7 +1429,7 @@ def create_series_work(
             "updaterecord",
             f"Df=WORK and priref={series_work_id} and content.subject.lref={subs[-1]}",
             3,
-            10
+            10,
         )
         if update_rec is None:
             LOGGER.info(
@@ -1477,7 +1479,7 @@ def create_series_work(
             "updaterecord",
             f"Df=WORK and priref={series_work_id} and label.source='EBS augmented EPG supply'",
             3,
-            10
+            10,
         )
         if update_rec is None:
             LOGGER.info(
@@ -1572,7 +1574,7 @@ def create_work(
             "insertrecord",
             f"Df=WORK and grouping.lref='400947' and alternative_number={work_dict["episode_id"]}",
             3,
-            10
+            10,
         )
         if work_rec:
             try:
@@ -1606,7 +1608,7 @@ def create_work(
             "updaterecord",
             f"Df=WORK and priref={work_id} and content.genre.lref={extracted[-1]}",
             3,
-            10
+            10,
         )
         if update_rec is None:
             LOGGER.info("Failed to update genres to Work record: %s", work_id)
@@ -1631,7 +1633,7 @@ def create_work(
             "updaterecord",
             f"Df=WORK and priref={work_id} and content.subject.lref={subs[-1]}",
             3,
-            10
+            10,
         )
         if update_rec is None:
             LOGGER.info("Failed to update subjects to Work record: %s", work_id)
@@ -1677,7 +1679,7 @@ def create_work(
             "updaterecord",
             f"Df=WORK and priref={work_id} and label.source='EBS augmented EPG supply'",
             3,
-            10
+            10,
         )
         if update_rec is None:
             LOGGER.info("Failed to update Labels to Work record: %s", work_id)
@@ -1755,7 +1757,7 @@ def create_manifestation(
             "insertrecord",
             f"Df=MANIFESTATION and grouping.lref='400947' and alternative_number={work_dict["episode_id"]}",
             3,
-            10
+            10,
         )
         if man_rec:
             try:
@@ -1794,7 +1796,7 @@ def create_manifestation(
         "updaterecord",
         f"Df=MANIFESTATION and priref={manifestation_id} and broadcast_company.lref='143463'",
         3,
-        10
+        10,
     )
     if success is None:
         LOGGER.info(
@@ -1823,7 +1825,7 @@ def append_url_data(work_priref: str, man_priref: str, data=None) -> None:
         "updaterecord",
         f"Df=MANIFESTATION and priref={man_priref} and URL.description='Netflix viewing URL'",
         3,
-        10
+        10,
     )
     if success is None:
         LOGGER.info(
@@ -1844,7 +1846,7 @@ def append_url_data(work_priref: str, man_priref: str, data=None) -> None:
         "updaterecord"
         f"Df=WORK and priref={work_priref} and URL.description='Netflix viewing URL'",
         3,
-        10
+        10,
     )
     if success is None:
         LOGGER.info(
@@ -1898,7 +1900,7 @@ def create_item(
             "insertrecord",
             f"Df=ITEM and grouping.lref='400947' and part_of_reference.lref='{man_priref}'",
             3,
-            10
+            10,
         )
         if item_rec:
             try:

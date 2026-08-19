@@ -16,10 +16,10 @@ DPI autoingest on that qnap.
 2025
 """
 
+import csv
 import logging
 import os
 import sys
-import csv
 from datetime import datetime
 
 sys.path.append(os.environ.get("CODE"))

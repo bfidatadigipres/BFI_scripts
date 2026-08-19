@@ -11,16 +11,16 @@ special_collections_document_transfers_osh.py
 
 import base64
 import json
+import mimetypes
 import os
 import re
 import sys
-import mimetypes
-from tenacity import retry, stop_after_attempt
-from typing import Optional, List, Any, Dict
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode, urljoin
+
 import paramiko
 import requests
-
+from tenacity import retry, stop_after_attempt
 
 TS_UUID = os.environ.get("AM_TS_UUID")  # Archivematica Transfer Storage address uuid
 SFTP_USR = os.environ.get("AM_SFTP_US")  # Transfer Storage user

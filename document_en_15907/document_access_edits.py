@@ -185,7 +185,7 @@ def create_new_item_record(
         "insertrecord",
         f"Df=ITEM and digital.acquired_filename={file}",
         3,
-        10
+        10,
     )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)

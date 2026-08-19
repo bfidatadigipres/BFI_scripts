@@ -3,12 +3,13 @@ import sys
 from datetime import datetime
 
 sys.path.append(os.environ["CODE"])
-import utils
+import logging
+import shutil
+import time
+
 import adlib_v3 as adlib
 import adlib_v3_sess as adlib_sess
-import shutil
-import logging
-import time
+import utils
 
 CID_API = os.environ["CID_API3"]
 LOG_PATH = os.environ["LOG_PATH"]

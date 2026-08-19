@@ -6,6 +6,7 @@ WARNING alerts issued for the given day.
 
 2022
 """
+
 # Python library imports
 import csv
 import datetime
@@ -124,7 +125,7 @@ def create_current_errors_logs() -> None:
         # This section removes duplicates entries, writing just last entry to csv
         latest_timedate = sorted(data[file_[0]].keys())[-1]
         latest_message = data[file_[0]][latest_timedate]
-        (status, message, local_p, remote_p) = latest_message
+        status, message, local_p, remote_p = latest_message
 
         # Remove non-files, like .tmp, .ini and .DS_Store
         if ".tmp" in file_ or ".ini" in file_ or ".DS_Store" in file_:

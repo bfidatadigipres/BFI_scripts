@@ -299,7 +299,7 @@ def main():
                 "insertrecord",
                 f"Df=ITEM and related_object.reference.lref={priref}",
                 3,
-                10
+                10,
             )
             if new_record is None:
                 LOGGER.warning(
@@ -492,7 +492,7 @@ def create_digital_original_filenames(
             "updaterecord",
             f"Df=ITEM and digital.acquired_filename={digital_note}",
             3,
-            10
+            10,
         )
         print(f"Item appended successful! {priref}\n{result}")
         print(f"Item appended successful! {priref}")

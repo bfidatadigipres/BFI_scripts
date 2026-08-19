@@ -207,12 +207,8 @@ class Task:
     def add_activity(self, activity, items=None, **payload_kwargs):
         a = activity_map.get(activity)
         if not a:
-            raise Exception(
-                """Unknown activity label: "{}"
-                               or activity is not supported""".format(
-                    activity
-                )
-            )
+            raise Exception("""Unknown activity label: "{}"
+                               or activity is not supported""".format(activity))
 
         # Payload record
         db = self.database_map[a["payloadDatabase"]]

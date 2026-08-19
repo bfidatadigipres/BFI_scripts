@@ -54,7 +54,7 @@ import adlib_v3 as adlib
 import utils
 
 # Global links / set up ds3 and adlib
-MP4_ACCESS = os.environ["MP4_ACCESS2"]
+MP4_ACCESS = os.path.join(os.environ["BP_TRANSCODING"], "bfi/")
 LOGS = os.environ["LOG_PATH"]
 CID_API = utils.get_current_api()
 

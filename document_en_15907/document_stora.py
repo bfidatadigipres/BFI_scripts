@@ -25,7 +25,7 @@ import sys
 from dataclasses import dataclass
 from time import sleep
 from typing import Any, Final, Optional
-
+from dataclasses import dataclass
 import requests
 import tenacity
 
@@ -41,9 +41,10 @@ AUTOINGEST_PATH = os.environ["STORA_AUTOINGEST"]
 CODE_PATH = os.environ["CODE_DDP"]
 LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
-SUBS_PTH = os.environ["SUBS_PATH2"]
+SUBS_PTH = os.environ["SUBS_PATH"]
 CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
+
 
 # Setup logging
 logger = logging.getLogger("document_stora")
@@ -63,13 +64,17 @@ STORAGE_PATH = os.path.join(STORAGE, YEAR)
 TIME_FORMAT = "%H:%M:%S"
 DATE_FORMAT = "%Y-%m-%d"
 
-
 @dataclass
 class TransmissionInfo:
     date: str
     start_time: str
     end_time: str
 
+@dataclass
+class TransmissionInfo:
+    date: str
+    start_time: str
+    end_time: str
 
 def csv_retrieve(fullpath: str) -> Optional[dict[str, str]]:
     """
@@ -467,6 +472,7 @@ def main() -> None:
                 )
                 mark_for_deletion(work_id, man_id, fullpath, session)
                 continue
+                
             if webvtt_payload:
                 transmission_info = create_subtitle_date(man_id, session)
                 subtitle_date = adjust_date_for_midnight(transmission_info)
@@ -483,6 +489,7 @@ def main() -> None:
                         "Unable to push webvtt_payload to CID manifestation %s",
                         manifestation_priref,
                     )
+
             # Rename csv with .documented
             documented = f"{fullpath}.documented"
             print(f"* Renaming {fullpath} to {documented}")
@@ -875,6 +882,7 @@ def mark_for_deletion(
 
 
 def create_subtitle_date(manifestation_priref, session):
+    """ Retrieve manifestation transmission info """
     fields = [
         "transmission_date",
         "transmission_end_time",

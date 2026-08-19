@@ -40,7 +40,7 @@ LOG_FILE: Final = os.path.join(
     LOG_PATH, "scheduled_elasticsearch_downloader_transcode.log"
 )
 CID_API: Final = utils.get_current_api()
-TRANSCODE: Final = os.environ["TRANSCODING"]
+TRANSCODE: Final = os.environ["BP_TRANSCODING"]
 if not os.path.ismount(TRANSCODE):
     sys.exit(f"{TRANSCODE} path is not mounted. Script exiting.")
 # TRANSCODE = os.path.join(os.environ['QNAP_REND1'], 'mp4_transcoding_backup/')

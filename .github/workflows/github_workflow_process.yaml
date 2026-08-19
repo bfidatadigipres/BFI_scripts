@@ -164,18 +164,23 @@ jobs:
             Formatting and linting completed. No duplicate PR was created.
 
       - name: Create PR
-        if: steps.check-pr.outputs.create_pr == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
-          TARGET_HEAD: ${{ steps.pr-head.outputs.head }}
+        if: steps.check-pr.outputs.create_pr == 'true' && github.event_name == 'push' && github.ref != 'refs/heads/main'
         run: |
-          echo "Creating PR for head $TARGET_HEAD"
+          echo "Creating PR for branch $REF_NAME"
           gh pr create \
-            --repo bfidatadigipres/BFI_scripts \
+            --repo "bfidatadigipres/BFI_scripts" \
             --base main \
-            --head "$TARGET_HEAD" \
-            --title "Automated PR for branch: ${{ github.ref_name }}" \
-            --body "This PR was automatically created from branch: ${{ github.ref_name }}"
+            --head "$REPO_OWNER:$REF_NAME" \
+            --title "Automated PR for branch: $REF_NAME" \
+            --body "This PR was automatically created from branch: $REF_NAME" || \
+          if [ $? -eq 1 ]; then
+            echo "PR already exists or creation failed — this is acceptable"
+            exit 0
+          fi
+        env:
+          GH_TOKEN: ${{secrets.BFI_BOT_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REF_NAME: ${{ github.ref_name }}
 
   lint:
     runs-on: ubuntu-latest

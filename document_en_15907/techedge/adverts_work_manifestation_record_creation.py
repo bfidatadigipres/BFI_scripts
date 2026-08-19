@@ -310,7 +310,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     if hits == 1:
         maj_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         if mid_priref in str(rec):
-            LOGGER.info("Mid term %s is linked to Major term %s", mid, major)s
+            LOGGER.info("Mid term %s is linked to Major term %s", mid, major)
         else:
             term_dct = get_existing_terms("narrower_term", maj_priref, mid_priref)
             maj_xml = adlib.create_record_data(

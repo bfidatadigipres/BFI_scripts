@@ -2407,12 +2407,12 @@ def post_accessibility_resource(manifestation_priref, sess):
             logger.warning(
                 "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err
             )
-            if post_resp is False:
-                raise Exception("Recycle of API exception raised.")
-            if post_resp:
-                return True
-            else:
-                return False
+    if post_resp is False:
+        raise Exception("Recycle of API exception raised.")
+    if post_resp:
+        return True
+    else:
+        return False
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def push_payload(item_id, webvtt_payload, sess, subtitle_date):
@@ -2421,7 +2421,7 @@ def push_payload(item_id, webvtt_payload, sess, subtitle_date):
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     """
-    SUBTITLE_TYPE= "WEBVTT_C"
+    SUBTITLE_TYPE = "WEBVTT_C"
     EDITOR_NOTES = "Extracted from MPEG-TS created by STORA recording"
     pay_head = f'<adlibXML><recordList><record priref="{item_id}">'
     subtitle_type_addition = f"<subtitle.type>{SUBTITLE_TYPE}</subtitle.type>"

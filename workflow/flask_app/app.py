@@ -45,7 +45,8 @@ CID_API = utils.get_current_api()
 
 # Ensure DB and table exist
 with sqlite3.connect(DBASE) as conn:
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS REQUESTS (
             username TEXT NOT NULL,
             email TEXT NOT NULL,
@@ -67,7 +68,8 @@ with sqlite3.connect(DBASE) as conn:
             status TEXT NOT NULL,
             date TEXT NOT NULL
         )
-    """)
+    """
+    )
 
 
 def get_user_data(username, password):

@@ -8,6 +8,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   format-and-create-pr:
     runs-on: ubuntu-latest
@@ -33,9 +37,6 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Pull latest changes
-        run: git pull --ff-only
-
       - name: Verify bot token
         run: |
           if [ -z "${{ secrets.BFI_BOT_TOKEN }}" ]; then
@@ -45,6 +46,9 @@ jobs:
 
       - name: Authenticate GitHub CLI
         run: echo "${{ secrets.BFI_BOT_TOKEN }}" | gh auth login --with-token
+
+      - name: Pull latest changes
+        run: git pull --ff-only
 
       - name: Run Black (format instead of check)
         uses: psf/black@6305bf1ae645ab7541be4f5028a86239316178eb
@@ -71,10 +75,41 @@ jobs:
 
       - name: Commit and push formatting changes
         if: steps.check-changes.outputs.changes == 'true' && github.event_name == 'push'
+        env:
+          BRANCH: ${{ github.ref_name }}
         run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add .
-          git commit -m "Apply automatic formatting with Black and isort"
-          git push
+          git commit -m "Apply automatic formatting with Black and isort" || exit 1
+
+          for attempt in 1 2 3 4 5; do
+            echo "----- Push attempt $attempt -----"
+            git fetch origin "$BRANCH" || true
+
+            if git rebase "origin/$BRANCH"; then
+              :
+            else
+              echo "Rebase conflict — pulling latest and re-formatting"
+              git rebase --abort 2>/dev/null || true
+              git pull --ff-only origin "$BRANCH" || git reset --hard "origin/$BRANCH"
+              pip install --quiet black isort || true
+              python -m black . || true
+              isort --profile black . || true
+              git add .
+              git commit -m "Apply automatic formatting with Black and isort" || exit 1
+            fi
+
+            if git push origin "HEAD:$BRANCH"; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Push rejected (remote moved) — retrying"
+          done
+
+          echo "::error::Could not push formatting changes after 5 attempts; remote branch kept moving."
+          exit 1
 
       - name: Compute PR head
         id: pr-head

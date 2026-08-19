@@ -56,7 +56,7 @@ import utils
 
 # Global paths
 QNAP: Final = os.environ["QNAP_REND1"]
-PROXY_QNAP: Final = os.environ["MP4_ACCESS2"]
+PROXY_QNAP: Final = os.path.join(os.environ.get("BP_TRANSCODING"), "bfi/")
 FILE_PATH: Final = os.path.join(QNAP, "filename_updater/")
 COMPLETED: Final = os.path.join(FILE_PATH, "completed/")
 INGEST: Final = os.path.join(FILE_PATH, "for_ingest/")

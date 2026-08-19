@@ -59,7 +59,7 @@ LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
 CSV_FAILURES = os.path.join(LOG_PATH, "failed_mpeg_ts_files.csv")
 MPEG_TS_POLICY = os.path.join(os.environ["MEDIACONCH"], "mpeg_ts_policy.xml")
-SUBS_PTH = os.environ["SUBS_PATH2"]
+SUBS_PTH = os.environ["SUBS_PATH"]
 GENRE_PTH = SUBS_PTH.split("subtitles_not_in_cid/")[0]
 CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
@@ -1148,7 +1148,7 @@ def main():
                 err,
             )
 
-        # Rename .vtt subtitle file with Item object number and move to Isilon for use later in MTQ workflow
+        # Rename .vtt subtitle file with Item object number / move
         if webvtt_payload is not None:
             new_vtt_name = f"{item_object_number_underscore}_01of01.vtt"
             new_vtt = f"{SUBS_PTH}{new_vtt_name}"
@@ -2354,6 +2354,7 @@ def update_broken_ts(vpath, work_priref, response, epg_dict=None):
 
 
 def create_subtitle_date(manifestation_priref, session):
+    """Fetch transmission dates from parent manifestation"""
     fields = [
         "transmission_date",
         "transmission_end_time",
@@ -2430,7 +2431,6 @@ def post_accessibility_resource(manifestation_priref, sess):
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def push_payload(item_id, webvtt_payload, sess, subtitle_date):
     """
-    DEPRECATED
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     """
@@ -2449,7 +2449,7 @@ def push_payload(item_id, webvtt_payload, sess, subtitle_date):
             "items",
             "updaterecord",
             sess,
-            f"Df=ITEM and priref='{item_id}' and label.source='Extracted from MPEG-TS created by STORA recording'",
+            f"Df=ITEM and priref='{item_id}' and subtitle.type='WEBVTT_C'",
             3,
             10,
         )

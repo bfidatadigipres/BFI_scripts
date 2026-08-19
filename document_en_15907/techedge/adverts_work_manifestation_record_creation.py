@@ -31,14 +31,16 @@ being worked on - no repeats.
 2026
 """
 
+import logging
+
 # Public packages
 import os
 import sys
-from datetime import datetime, timedelta, time
-from zoneinfo import ZoneInfo
-import logging
+from datetime import datetime, time, timedelta
 from time import sleep
-from typing import Optional, Iterator, List, Dict
+from typing import Dict, Iterator, List, Optional
+from zoneinfo import ZoneInfo
+
 import tenacity
 
 sys.path.append(os.environ.get("CODE"))
@@ -746,7 +748,7 @@ def get_csv_path() -> Optional[str]:
     Keep track of CSVs that have been
     been read and had all records completed
     """
-    with open(CSV_LIST, 'r') as completed:
+    with open(CSV_LIST, "r") as completed:
         completed_csvs = completed.readlines()
 
     for csv in os.listdir(CSV_PATH):
@@ -860,8 +862,8 @@ def main():
                 )
         else:
             print("SKIPPING: Manifestation exists for this Ad.")
-        
-    with open(CSV_LIST, 'a') as file:
+
+    with open(CSV_LIST, "a") as file:
         file.write(f"{csv_pth}\n")
 
     LOGGER.info(

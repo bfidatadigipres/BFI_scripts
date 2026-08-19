@@ -39,7 +39,6 @@ from time import sleep
 
 import tenacity
 import yaml
-from dataclasses import dataclass
 from series_retrieve import check_id, retrieve
 
 sys.path.append(os.environ["CODE"])
@@ -83,11 +82,13 @@ STORAGE_PATH = STORAGE + YEAR_PATH
 TIME_FORMAT = "%H:%M:%S"
 DATE_FORMAT = "%Y-%m-%d"
 
+
 @dataclass
 class TransmissionInfo:
     date: str
     start_time: str
     end_time: str
+
 
 NEWS_CHANNELS = ["Al Jazeera", "BBC NEWS HD", "Sky News", "GB News", "QVC"]
 

@@ -25,7 +25,7 @@ import sys
 from dataclasses import dataclass
 from time import sleep
 from typing import Any, Final, Optional
-from dataclasses import dataclass
+
 import requests
 import tenacity
 
@@ -64,17 +64,20 @@ STORAGE_PATH = os.path.join(STORAGE, YEAR)
 TIME_FORMAT = "%H:%M:%S"
 DATE_FORMAT = "%Y-%m-%d"
 
-@dataclass
-class TransmissionInfo:
-    date: str
-    start_time: str
-    end_time: str
 
 @dataclass
 class TransmissionInfo:
     date: str
     start_time: str
     end_time: str
+
+
+@dataclass
+class TransmissionInfo:
+    date: str
+    start_time: str
+    end_time: str
+
 
 def csv_retrieve(fullpath: str) -> Optional[dict[str, str]]:
     """
@@ -472,7 +475,7 @@ def main() -> None:
                 )
                 mark_for_deletion(work_id, man_id, fullpath, session)
                 continue
-                
+
             if webvtt_payload:
                 transmission_info = create_subtitle_date(man_id, session)
                 subtitle_date = adjust_date_for_midnight(transmission_info)
@@ -882,7 +885,7 @@ def mark_for_deletion(
 
 
 def create_subtitle_date(manifestation_priref, session):
-    """ Retrieve manifestation transmission info """
+    """Retrieve manifestation transmission info"""
     fields = [
         "transmission_date",
         "transmission_end_time",

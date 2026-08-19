@@ -95,24 +95,38 @@ jobs:
           GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
           TARGET_HEAD: ${{ steps.pr-head.outputs.head }}
         run: |
-          PR_EXISTS=$(gh pr list \
+          PR_NUMBER=$(gh pr list \
             --repo bfidatadigipres/BFI_scripts \
             --head "$TARGET_HEAD" \
             --base main \
             --state open \
             --json number \
-            --jq 'length' 2>/dev/null || echo "error")
-          echo "PR_EXISTS raw value: $PR_EXISTS"
-          if [ "$PR_EXISTS" = "error" ]; then
+            --jq '.[0].number // ""' 2>/dev/null || echo "error")
+          echo "Existing PR number: $PR_NUMBER"
+          if [ "$PR_NUMBER" = "error" ]; then
             echo "Error querying GitHub API — assuming no PR exists"
             echo "create_pr=true" >> "$GITHUB_OUTPUT"
-          elif [ "$PR_EXISTS" -gt 0 ]; then
-            echo "PR for branch already exists"
+          elif [ -n "$PR_NUMBER" ]; then
+            echo "PR $PR_NUMBER already exists for branch"
             echo "create_pr=false" >> "$GITHUB_OUTPUT"
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           else
             echo "No PR exists for branch"
             echo "create_pr=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Comment on existing PR
+        if: steps.check-pr.outputs.create_pr == 'false'
+        uses: peter-evans/create-or-update-comment@f5b41f6a455733f2c5f73ca67a62631e75861578
+        with:
+          token: ${{ secrets.BFI_BOT_TOKEN }}
+          issue-number: ${{ steps.check-pr.outputs.number }}
+          edit-mode: replace
+          repository: bfidatadigipres/BFI_scripts
+          body: |
+            **🤖 Automated Workflow Status**
+            Branch `${{ github.ref_name }}` already has PR #${{ steps.check-pr.outputs.number }}.
+            Formatting and linting completed. No duplicate PR was created.
 
       - name: Create PR
         if: steps.check-pr.outputs.create_pr == 'true'

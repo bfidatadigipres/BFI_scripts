@@ -7,7 +7,7 @@ to one utility module
 
 import json
 import os
-from typing import Optional, Union, List, Dict, Any
+from typing import Any, Dict, List, Optional, Union
 
 from ds3 import ds3, ds3Helpers
 

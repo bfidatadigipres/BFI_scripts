@@ -14,6 +14,7 @@ using STORA created csv metadata source and traversing filesystem paths to files
 
 Refactored 2023
 """
+
 # Public packages
 import csv
 import datetime
@@ -21,12 +22,12 @@ import logging
 import os
 import shutil
 import sys
-import tenacity
+from dataclasses import dataclass
 from time import sleep
 from typing import Any, Final, Optional
-from dataclasses import dataclass
 
 import requests
+import tenacity
 
 # Private packages
 sys.path.append(os.environ["CODE"])
@@ -61,6 +62,7 @@ YEAR = YEST_CLEAN[0:4]
 STORAGE_PATH = os.path.join(STORAGE, YEAR)
 TIME_FORMAT = "%H:%M:%S"
 DATE_FORMAT = "%Y-%m-%d"
+
 
 @dataclass
 class TransmissionInfo:
@@ -469,11 +471,18 @@ def main() -> None:
                 transmission_info = create_subtitle_date(man_id, session)
                 subtitle_date = adjust_date_for_midnight(transmission_info)
                 success = push_payload(item_id, webvtt_payload, session, subtitle_date)
-                manifesation_payload_success = post_accessibility_resource(man_id, session)
+                manifesation_payload_success = post_accessibility_resource(
+                    man_id, session
+                )
                 if not success:
-                    logger.warning("Unable to push webvtt_payload to CID Item %s", item_id)
+                    logger.warning(
+                        "Unable to push webvtt_payload to CID Item %s", item_id
+                    )
                 if not manifesation_payload_success:
-                    logger.warning("Unable to push webvtt_payload to CID manifestation %s", manifestation_priref)
+                    logger.warning(
+                        "Unable to push webvtt_payload to CID manifestation %s",
+                        manifestation_priref,
+                    )
             # Rename csv with .documented
             documented = f"{fullpath}.documented"
             print(f"* Renaming {fullpath} to {documented}")
@@ -871,26 +880,26 @@ def create_subtitle_date(manifestation_priref, session):
         "transmission_end_time",
         "transmission_start_time",
     ]
-    query = f'priref={manifestation_priref}'
+    query = f"priref={manifestation_priref}"
 
-    _, records = adlib.retrieve_record(CID_API, "manifestations", query, "1", session, fields=fields)
+    _, records = adlib.retrieve_record(
+        CID_API, "manifestations", query, "1", session, fields=fields
+    )
     trans_date = adlib.retrieve_field_name(records[0], "transmission_date")[0]
-    end_time = adlib.retrieve_field_name(records[0],"transmission_end_time")[0]
+    end_time = adlib.retrieve_field_name(records[0], "transmission_end_time")[0]
     start_time = adlib.retrieve_field_name(records[0], "transmission_start_time")[0]
 
     if not all([trans_date, end_time, start_time]):
-            logger.error(
-                "Incomplete transmission data for priref=%s " "(date=%s, end=%s, start=%s)",
-                manifestation_priref,
-                trans_date,
-                end_time,
-                start_time,
-            )
-            return None
-    
-    return TransmissionInfo(
-            date=trans_date, start_time=start_time, end_time=end_time
+        logger.error(
+            "Incomplete transmission data for priref=%s " "(date=%s, end=%s, start=%s)",
+            manifestation_priref,
+            trans_date,
+            end_time,
+            start_time,
         )
+        return None
+
+    return TransmissionInfo(date=trans_date, start_time=start_time, end_time=end_time)
 
 
 def adjust_date_for_midnight(info: TransmissionInfo) -> str:
@@ -910,30 +919,34 @@ def adjust_date_for_midnight(info: TransmissionInfo) -> str:
         )
     return date.strftime(DATE_FORMAT)
 
+
 def post_accessibility_resource(manifestation_priref, sess):
     edit_entries = [{"accessibility_resource": "SUBTITLES"}]
-    manifestation_xml = adlib.create_grouped_data(manifestation_priref, "Edit", [edit_entries])
+    manifestation_xml = adlib.create_grouped_data(
+        manifestation_priref, "Edit", [edit_entries]
+    )
     try:
-            post_resp = adlib.post_with_verify(
-                CID_API,
-                manifestation_xml,
-                "manifestations",
-                "updaterecord",
-                sess,
-                f"Df=MANIFESTATION and priref='{manifestation_priref}'",
-                3,
-                10,
-            )
+        post_resp = adlib.post_with_verify(
+            CID_API,
+            manifestation_xml,
+            "manifestations",
+            "updaterecord",
+            sess,
+            f"Df=MANIFESTATION and priref='{manifestation_priref}'",
+            3,
+            10,
+        )
     except Exception as err:
-            logger.warning(
-                "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err
-            )
+        logger.warning(
+            "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err
+        )
     if post_resp is False:
         raise Exception("Recycle of API exception raised.")
     if post_resp:
         return True
     else:
         return False
+
 
 @tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def push_payload(item_id, webvtt_payload, sess, subtitle_date):
@@ -942,7 +955,7 @@ def push_payload(item_id, webvtt_payload, sess, subtitle_date):
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     """
-    SUBTITLE_TYPE= "WEBVTT_C"
+    SUBTITLE_TYPE = "WEBVTT_C"
     EDITOR_NOTES = "Extracted from MPEG-TS created by STORA recording"
     pay_head = f'<adlibXML><recordList><record priref="{item_id}">'
     subtitle_type_addition = f"<subtitle.type>{SUBTITLE_TYPE}</subtitle.type>"
@@ -971,7 +984,6 @@ def push_payload(item_id, webvtt_payload, sess, subtitle_date):
         return True
     else:
         return False
-
 
 
 if __name__ == "__main__":

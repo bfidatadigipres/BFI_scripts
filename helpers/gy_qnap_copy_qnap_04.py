@@ -28,13 +28,13 @@ main():
 2025
 """
 
+import logging
 import os
+import subprocess
 import sys
 import time
-import logging
-from pathlib import Path
 from multiprocessing import Pool
-import subprocess
+from pathlib import Path
 
 sys.path.append(os.environ.get("CODE"))
 import utils

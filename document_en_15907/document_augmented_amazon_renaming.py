@@ -36,6 +36,7 @@ video and audio desc also MOV wrapped.
 
 2024
 """
+
 # Public packages
 import datetime
 import logging
@@ -288,7 +289,7 @@ def main():
                 "insertrecord",
                 f"Df=ITEM and related_object.reference.lref={priref}",
                 3,
-                10
+                10,
             )
             if new_record is None:
                 LOGGER.warning(
@@ -408,7 +409,7 @@ def make_item_record_dict(
     elif "Audio Description" in arg:
         item.append({"file_type.lref": "114307"})
         item.append({"language.lref": "74129"})
-            
+
     if "acquisition.date" in str(record):
         item.append(
             {
@@ -484,7 +485,7 @@ def create_digital_original_filenames(
             "updaterecord",
             f"Df=ITEM and digital.acquired_filename={digital_note}",
             3,
-            10
+            10,
         )
         print(f"Item appended successful! {priref}\n{result}")
         print(f"Item appended successful! {priref}")

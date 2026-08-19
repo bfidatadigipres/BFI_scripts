@@ -4,8 +4,8 @@ email_sender_dpi/app.py
 
 import logging
 import os
-import sys
 import re
+import sys
 from pathlib import Path
 
 from flask import Flask, flash, render_template, request

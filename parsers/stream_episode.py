@@ -9,10 +9,12 @@ Notes
 """
 
 from __future__ import annotations
-from datetime import datetime, date
-from typing import Any, Dict, List, Optional, Tuple
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
 import json
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional, Tuple
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
 class UnexpectedFieldError(ValueError):

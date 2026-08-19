@@ -3,10 +3,11 @@ import sys
 from datetime import datetime, timedelta
 
 sys.path.append(os.environ["CODE"])
-import utils
+import shutil
+
 import adlib_v3 as adlib
 import adlib_v3_sess as adlib_sess
-import shutil
+import utils
 
 CID_API = os.environ["CID_API3"]
 SUBTITLE_FOLDER = os.path.join(

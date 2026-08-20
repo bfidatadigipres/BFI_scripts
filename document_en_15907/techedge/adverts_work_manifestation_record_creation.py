@@ -733,7 +733,7 @@ def make_utb_data_for_man(row, mpriref):
         utb_dct.append(
             {
                 "utb.fieldname": "Original Advertiser, Brand, Agency and Holding Company values from TechEdge",
-                "utb.content": orig_list,
+                "utb.content": orig_list, #  JMW this needs row extraction to populate
             }
         )
     print(utb_dct)

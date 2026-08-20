@@ -724,16 +724,18 @@ def make_utb_data_for_man(row, mpriref):
         }
     )
 
-    if len(row.original) > 1:
-        orig_list = ", ".join(
-            str(row.original).rsplit(":", maxsplit=1)[-1].strip().split("-")
-        )
-        utb_dct.append(
-            {
-                "utb.fieldname": "Original Advertiser, Brand, Agency and Holding Company values from TechEdge",
-                "utb.content": orig_list, #  JMW this needs row extraction to populate
-            }
-        )
+    original = []
+    original.append(row.advertiser)
+    original.append(row.brand)
+    original.append(row.agency)
+    original.append(row.hold_comp)
+    orig_list = ", ".join(original)
+    utb_dct.append(
+        {
+            "utb.fieldname": "Original Advertiser, Brand, Agency and Holding Company values from TechEdge",
+            "utb.content": orig_list,
+        }
+    )
     print(utb_dct)
     utb_xml = adlib.create_grouped_data(mpriref, "utb", utb_dct)
     return utb_xml
@@ -903,8 +905,12 @@ def get_duration_total_parts(
         STORAGE, f"adverts_techedge_no_dupes/{title_date_start}_BFIExport.csv"
     )
     print(f"Targeting path for next data: {csv_path}")
+    base_real = os.path.realpath(os.path.join(STORAGE, "adverts_techedge_no_dupes"))
+    target_real = os.path.realpath(csv_path)
+    if os.path.commonpath([base_real, target_real]) != base_real:
+        raise Exception("Invalid file path")
     rows = []
-    with open(csv_path, "r", encoding="utf-8") as file:
+    with open(target_real, "r", encoding="utf-8") as file:
         for lines in file:
             parts = lines.strip().split(",")
             try:

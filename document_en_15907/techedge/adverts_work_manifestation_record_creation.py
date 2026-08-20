@@ -44,7 +44,7 @@ import tenacity
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
-from parsers import techedge_csv as te
+from parsers import techedge_csv_bau as te
 
 # Global variable
 STORAGE = os.path.join(os.environ.get("ADMIN"), "datasets")

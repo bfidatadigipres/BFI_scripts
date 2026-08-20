@@ -306,6 +306,7 @@ def main():
                 shell=False,
                 check=True,
                 universal_newlines=True,
+                errors="replace",
                 stderr=subprocess.PIPE,
             ).stderr
         except Exception as err:

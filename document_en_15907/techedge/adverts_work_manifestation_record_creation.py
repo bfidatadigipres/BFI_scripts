@@ -13,6 +13,9 @@ BAU Adverts record creation:
 - Attach to Work repeated Manifestation
   where film_code match but not UTC timestamp
 
+Must handle weird time/date carry over, eg
+08/08/2026, 29:58:51 → 09/08/2026, 05:58:51
+
 Long-term dependencies:
 2 week delay for TechEdge full
 metadata enrichment and additional
@@ -769,7 +772,7 @@ def main():
           - make thesaurus entries if needed
           - make Manifestation
     """
-
+    count = 0
     if not utils.check_storage(STORAGE):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts"):
@@ -855,7 +858,10 @@ def main():
                 )
         else:
             print("SKIPPING: Manifestation exists for this Ad.")
-        sys.exit("First test, one entry only!")
+        count += 1
+        if count == 4:
+            sys.exit("Tests, four entries only!")
+
     with open(CSV_LIST, 'a') as file:
         file.write(f"{csv_pth}\n")
 

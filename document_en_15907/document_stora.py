@@ -245,7 +245,7 @@ def build_defaults(
     if len(utc_timestamp) > 10:
         bst_data = utils.check_bst_adjustment(utc_timestamp)
         if len(bst_data) != 2:
-            LOGGER.warning(
+            logger.warning(
                 "BST date time conversion failed. Resorting to UTC time stamps"
             )
             bst_date = title_date_start
@@ -468,7 +468,7 @@ def main() -> None:
             if webvtt_payload:
                 transmission_info = create_subtitle_date(man_id, session)
                 subtitle_date = adjust_date_for_midnight(transmission_info)
-                success = push_payload(item_id, webvtt_payload, sess, subtitle_date)
+                success = push_payload(item_id, webvtt_payload, session, subtitle_date)
                 manifesation_payload_success = post_accessibility_resource(man_id, session)
                 if not success:
                     logger.warning("Unable to push webvtt_payload to CID Item %s: %s", item_id, webvtt_payload)
@@ -531,6 +531,7 @@ def main() -> None:
                 print(
                     "Subtitle data is absent. Subtitle.vtt file will not be renamed or moved"
                 )
+
 
     logger.info(
         "========== STORA documentation script END ===================================================\n"
@@ -881,14 +882,14 @@ def create_subtitle_date(manifestation_priref, session):
     start_time = adlib.retrieve_field_name(records[0], "transmission_start_time")[0]
 
     if not all([trans_date, end_time, start_time]):
-            logger.error(
-                "Incomplete transmission data for priref=%s " "(date=%s, end=%s, start=%s)",
-                manifestation_priref,
-                trans_date,
-                end_time,
-                start_time,
-            )
-            return None
+        logger.error(
+            "Incomplete transmission data for priref=%s " "(date=%s, end=%s, start=%s)",
+            manifestation_priref,
+            trans_date,
+            end_time,
+            start_time,
+        )
+        return None
 
     return TransmissionInfo(
             date=trans_date, start_time=start_time, end_time=end_time
@@ -918,26 +919,26 @@ def post_accessibility_resource(manifestation_priref, sess):
     edit_entries = [{"accessibility_resource": "SUBTITLES"}]
     manifestation_xml = adlib.create_record_data(CID_API, "manifestations", sess, manifestation_priref, edit_entries)
     try:
-            post_resp = adlib.post_with_verify(
-                CID_API,
-                manifestation_xml,
-                "manifestations",
-                "updaterecord",
-                sess,
-                f"Df=MANIFESTATION and priref='{manifestation_priref}' and accessibility_resource='SUBTITLES'",
-                3,
-                10,
-            )
+        post_resp = adlib.post_with_verify(
+            CID_API,
+            manifestation_xml,
+            "manifestations",
+            "updaterecord",
+            sess,
+            f"Df=MANIFESTATION and priref='{manifestation_priref}' and accessibility_resource='SUBTITLES'",
+            3,
+            10,
+        )
     except Exception as err:
-            logger.warning(
-                "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err
-            )
-            if post_resp is False:
-                raise Exception("Recycle of API exception raised.")
-            if post_resp:
-                return True
-            else:
-                return False
+        logger.warning(
+            "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err
+        )
+    if post_resp is False:
+        raise Exception("Recycle of API exception raised.")
+    if post_resp:
+        return True
+    else:
+        return False
 
 
 def push_payload(item_id, webvtt_payload, sess, subtitle_date):

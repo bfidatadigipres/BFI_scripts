@@ -829,11 +829,8 @@ def main():
         else:
             print(f"SKIPPING: Work exists for this Ad {row.brand} {film_code}")
 
-        title_date_start = datetime.strftime(
-            datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d"
-        )
-        title_date_start = convert_transmission_time(title_date_start)
-        utc_timestamp = get_utc(title_date_start, row.start_time)
+        title_date_start, transmission_start_time = convert_transmission_time(row.date, row.start_time)
+        utc_timestamp = get_utc(title_date_start, transmission_start_time)
         mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
         if mpriref is False:
             LOGGER.info(
@@ -873,25 +870,20 @@ def time_to_secs(timestamp):
     return dt.hour * 3600 + dt.minute * 60 + dt.second
 
 
-def convert_transmission_time(transmission_start_time: str) -> str:
+def convert_transmission_time(date: str, start_time: str) -> str:
     """
     Handle cases where times supplied greater
     than 23:59:59, eg 27:35:50
     """
-    if ":" in transmission_start_time:
-        tsr = transmission_start_time.replace(":", "-")
-    else:
-        tsr = transmission_start_time
+    if ":" not in start_time:
+        return None, None
 
-    hours = int(tsr.split("-")[0])
-    if hours > 23:
-        start_time_int = int(tsr.split("-")[0]) - 24
-        adjusted_start_time = ":".join(
-            [str(start_time_int).zfill(2)] + tsr.split("-")[1:]
-        )
-        return adjusted_start_time
-    else:
-        return transmission_start_time
+    dt = datetime.strptime(date, "%d/%m/%Y")
+    parts = start_time.split(":")
+    hours, minutes, seconds = int(parts[0]), int(parts[1]), int(parts[2])
+    dt = dt + timedelta(hours=hours, minutes=minutes, seconds=seconds)
+    
+    return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M:%S")
 
 
 def get_duration_total_parts(
@@ -914,6 +906,7 @@ def get_duration_total_parts(
         for lines in file:
             parts = lines.strip().split(",")
             try:
+                date = parts[1]
                 start = parts[2]
                 alt_num = parts[3]
                 part_total = parts[-3]
@@ -922,6 +915,7 @@ def get_duration_total_parts(
 
             rows.append(
                 {
+                    "date": date,
                     "start_time": start,
                     "alt_num": alt_num,
                     "part_total": part_total,
@@ -934,7 +928,7 @@ def get_duration_total_parts(
                 i
                 for i, r in enumerate(rows)
                 if r["alt_num"] == alternative_number
-                and convert_transmission_time(r["start_time"])
+                and convert_transmission_time(r["date"], r["start_time"])[-1]
                 == transmission_start_time
             ),
             None,
@@ -963,8 +957,8 @@ def get_duration_total_parts(
 
         dur_row = rows[target_index + 1]
         stop_time = dur_row["start_time"]
-        converted_stop_time = convert_transmission_time(stop_time)
-        converted_start_time = convert_transmission_time(row["start_time"])
+        converted_stop_time = convert_transmission_time(date, stop_time)[-1]
+        converted_start_time = convert_transmission_time(date, row["start_time"])[-1]
         dur_start_secs = time_to_secs(converted_start_time)
         duration_stop_secs = time_to_secs(converted_stop_time)
         duration = duration_stop_secs - dur_start_secs
@@ -986,12 +980,8 @@ def build_rec_details(row):
 
     title_art = row.brand or ""
     title, title_article = utils.split_title(title_art)
-    title_date_start = row.start_time
+    title_date_start, transmission_start_time = convert_transmission_time(row.date, row.start_time)
     alternative_number = row.film_code
-    title_date_start = datetime.strftime(
-        datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d"
-    )
-    transmission_start_time = row.start_time
     utc_timestamp = get_utc(title_date_start, transmission_start_time)
 
     # Broadcast details

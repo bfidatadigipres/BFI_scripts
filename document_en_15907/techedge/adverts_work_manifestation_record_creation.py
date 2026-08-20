@@ -2,18 +2,16 @@
 
 """
 BAU Adverts record creation:
-- Work through CSV of adverts without dupes
+- Work through daily CSVs of adverts
   prior to LLM enhanced descriptive metadata.
-  Note to be added to input.notes:
+  Note to be prepended to input.notes:
     "LLM data cleaning to follow"
 - Validate CSV row data with Pydantic
-- Inform creation of Work, People and
-  single manifestation for the first advert
+- Inform creation of Work, People, Thesaurus
+  and Manifestation for the first advert
   with a given film_code.
-- Attach creation of repeat manifestation
-  where repeated showing of film_code
-
-NOTES: Must handle weird times 24:00:00+
+- Attach to Work repeated Manifestation
+  where film_code match but not UTC timestamp
 
 Long-term dependencies:
 2 week delay for TechEdge full
@@ -38,7 +36,7 @@ from datetime import datetime, timedelta, time
 from zoneinfo import ZoneInfo
 import logging
 from time import sleep
-from typing import Optional, Iterator, List, Dict
+from typing import Optional, List, Dict
 import tenacity
 
 sys.path.append(os.environ.get("CODE"))
@@ -760,12 +758,12 @@ def get_csv_path() -> Optional[str]:
 
 def main():
     """
-    Iterates through LLM cleaned CSV supply (single or date dependent)
-    extracts necessary data into variables. Checks if Work advert exists
+    Iterates through raw supply with dupe data removed
+    extracts necessary row data into variables. Checks if Work advert exists
     if yes - skip Work creation and create manifestation if needed
-             borrowing LLM cleansed data where appropriate
     if no - make work record
           - make people record if needed
+          - make thesaurus entries if needed
           - make Manifestation
     """
 
@@ -773,16 +771,17 @@ def main():
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if working_day_check(datetime.now()):
-        sys.exit("Exiting: Cannot operate in working hours")
-    LOGGER.info(
-        "========== Adverts work documentation script STARTED ==============================================="
-    )
-
+    #if working_day_check(datetime.now()):
+    #    sys.exit("Exiting: Cannot operate in working hours")
     csv_pth = get_csv_path()
     if not csv_pth:
         sys.exit("No unique CSV file available at this time")
 
+    LOGGER.info(
+        "========== Adverts work documentation script STARTED ==============================================="
+    )
+
+    LOGGER.info("Targetting CSV path: %s", csv_pth)
     for row in te.iter_techedge_rows(csv_pth):
         if working_day_check(datetime.now()):
             LOGGER.info("Exiting: Cannot operate in working hours")
@@ -829,7 +828,7 @@ def main():
                 print(f"Work creation error for data: {work_values}")
                 continue
         else:
-            print("SKIPPING: Work exists for this Ad")
+            print(f"SKIPPING: Work exists for this Ad {row.brand} {film_code}")
 
         title_date_start = datetime.strftime(
             datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d"
@@ -842,7 +841,7 @@ def main():
                 "Manifestation match not found '%s' - %s %s",
                 row.brand,
                 row.date,
-                row.start_time,
+                utc_timestamp
             )
 
             rec_def, _, _, manifestation = build_rec_details(row)
@@ -860,7 +859,7 @@ def main():
                 )
         else:
             print("SKIPPING: Manifestation exists for this Ad.")
-        
+        sys.exit("First test, one entry only!")
     with open(CSV_LIST, 'a') as file:
         file.write(f"{csv_pth}\n")
 

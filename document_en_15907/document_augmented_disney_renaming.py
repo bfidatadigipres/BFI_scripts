@@ -1,16 +1,16 @@
-#!/usr/bin/ spython3
+#!/usr/bin/ python3
 
 """
 Script to receive MOV
-Amazon files named with UID.
+Disney+ files named with UID.
 UID placed into Item record
 digital.acquired_filename field
 of CID item record.
 
 Receives folder of MOVs complete with
-video and audio desc also MOV wrapped.
+HDR and SDR video MOV wrapped.
 
-1. Searches STORAGE for 'rename_amazon'
+1. Searches STORAGE for 'rename_disney'
    folders and extracts CID item record
    number from enclosed folders.
 2. Iterates folders, finds match for folder name
@@ -22,20 +22,21 @@ video and audio desc also MOV wrapped.
    the AV MOV file with UHD HDR content (colour
    primaries denote HDR with BT.2020)
 5. New CID item records are made for the remaining
-   files (anticipated a UHD SDR colourspace BT.709,
-   and mov with audio description only, no video stream)
+   files (anticipated a UHD SDR colourspace BT.709 only)
 6. These files are renamed with the CID item record
    object_number, likely all with 01of01.
-7. Adds original filename and to existing and new
+7. Adds original filename and new and new filename
    CID item records in 'digital.acquired_filename'
    field. Formatting for this:
    "<Original Filename> - Renamed to: N_123456_01of06.mxf"
-8. Renamed files are moved to autoingest new
-   black_pearl_amazon_ingest path where new put
-   scripts ensure file is moved to amazon01 bucket.
+8. Updates quality comments to HDR
+9. Renamed files are moved to autoingest new
+   black_pearl_disney_ingest path where new put
+   scripts ensure file is moved to disney01 bucket.
 
-2024
+2026
 """
+
 # Public packages
 import datetime
 import logging
@@ -52,18 +53,18 @@ import utils
 
 # Global variables
 STORAGE_PTH: Final = os.environ.get("PLATFORM_INGEST_PTH")
-AMZ_PTH: Final = os.environ.get("AMAZON_PATH")
-AMZ_INGEST: Final = os.environ.get("AMAZON_INGEST")
-AUTOINGEST: Final = os.path.join(STORAGE_PTH, AMZ_INGEST)
-STORAGE: Final = os.path.join(STORAGE_PTH, AMZ_PTH)
+DISNEY_PTH: Final = os.environ.get("DISNEY_PATH")
+DISNEY_INGEST: Final = os.environ.get("DISNEY_INGEST")
+AUTOINGEST: Final = os.path.join(STORAGE_PTH, DISNEY_INGEST)
+STORAGE: Final = os.path.join(STORAGE_PTH, DISNEY_PTH)
 LOGS: Final = os.environ.get("LOG_PATH")
 CODE: Final = os.environ.get("CODE_PATH")
 CONTROL_JSON: Final = os.path.join(LOGS, "downtime_control.json")
 CID_API: Final = utils.get_current_api()
 
 # Setup logging
-LOGGER = logging.getLogger("document_augmented_amazon_renaming")
-HDLR = logging.FileHandler(os.path.join(LOGS, "document_augmented_amazon_renaming.log"))
+LOGGER = logging.getLogger("document_augmented_disney_renaming")
+HDLR = logging.FileHandler(os.path.join(LOGS, "document_augmented_disney_renaming.log"))
 FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)
 LOGGER.addHandler(HDLR)
@@ -90,14 +91,14 @@ def cid_check_fname(object_number: str) -> Optional[str]:
 def walk_folders() -> list[str]:
     """
     Collect list of folderpaths
-    for files named rename_amazon
+    for files named rename_disney
     """
 
     rename_folders: list[str] = []
     for root, dirs, _ in os.walk(STORAGE):
-        for dir in dirs:
-            if "rename_amazon" == dir:
-                rename_folders.append(os.path.join(root, dir))
+        for directory in dirs:
+            if "rename_disney" == directory:
+                rename_folders.append(os.path.join(root, directory))
     print(f"{len(rename_folders)} rename folder(s) found")
     folder_list = []
     for rename_folder in rename_folders:
@@ -105,7 +106,7 @@ def walk_folders() -> list[str]:
         folders: list[str] = os.listdir(rename_folder)
         if not folders:
             LOGGER.info(
-                "Amazon file renaming script. Skipping as rename folder empty: %s",
+                "Disney+ file renaming script. Skipping as rename folder empty: %s",
                 rename_folder,
             )
             continue
@@ -116,7 +117,7 @@ def walk_folders() -> list[str]:
                 folder_list.append(os.path.join(rename_folder, folder))
             else:
                 LOGGER.warning(
-                    "Amazon file renaming script. Non-folder item found in rename_amazon path: %s",
+                    "Disney+ file renaming script. Non-folder item found in rename_disney path: %s",
                     fpath,
                 )
 
@@ -180,10 +181,10 @@ def main():
 
     folder_list: list[str] = walk_folders()
     if len(folder_list) == 0:
-        LOGGER.info("Amazon file renaming script. No folders found.")
+        LOGGER.info("Disney+ file renaming script. No folders found.")
         sys.exit()
 
-    LOGGER.info("== Document augmented Amazon renaming start =================")
+    LOGGER.info("== Document augmented Disney+ renaming start =================")
     for fpath in folder_list:
         folder = os.path.split(fpath)[1].strip()
         LOGGER.info("Folder path found: <%s>", fpath)
@@ -221,7 +222,6 @@ def main():
                 new_filename = f"{ob_num.replace('-', '_')}_01of01.{ext}"
                 new_fpath = os.path.join(fpath, new_filename)
                 digital_note = f"{mov_file} - Renamed to: {new_filename}"
-
                 success: bool = create_digital_original_filenames(
                     priref, folder.strip(), digital_note
                 )
@@ -235,19 +235,30 @@ def main():
                     "CID item record <%s> filenames appended to digital.acquired_filenamed field",
                     priref,
                 )
+                LOGGER.info(
+                    'Appending quality comments "%s" to CID item record: %s',
+                    qcomm,
+                    priref,
+                )
+                if not adlib.add_quality_comments(CID_API, priref, "HDR version"):
+                    LOGGER.warning(
+                        "Quality Comment 'HDR version' failed to CID item record: %s",
+                        priref,
+                    )
+
                 LOGGER.info("Renaming file %s to %s", mov_file, new_filename)
                 os.rename(os.path.join(fpath, mov_file), new_fpath)
+
                 if os.path.exists(new_fpath):
                     LOGGER.info(
-                        "File renamed successfully. Moving to autoingest/ingest/amazon"
+                        "File renamed successfully. Moving to autoingest/ingest/disney"
                     )
                     shutil.move(new_fpath, os.path.join(AUTOINGEST, new_filename))
                     continue
-                else:
-                    LOGGER.warning(
-                        "Failed to rename file. Leaving in folder for manual intervention."
-                    )
-                    continue
+                LOGGER.warning(
+                    "Failed to rename file. Leaving in folder for manual intervention."
+                )
+                continue
             elif "SDR" in metadata:
                 LOGGER.info("UHD SDR file found: %s", mov_file)
                 # Build dictionary from CID item record
@@ -273,7 +284,7 @@ def main():
                     )
                     continue
                 item_xml = adlib.create_record_data(CID_API, "items", "", item_data)
-                qcomm = "Audio Description"
+                qcomm = "Stereo or multichannel audio description contained within supplied ProRes."
             else:
                 LOGGER.warning(
                     "File found with metadata not recognised. Skipping this item."
@@ -321,8 +332,7 @@ def main():
                 qcomm,
                 new_priref,
             )
-            qc_success = adlib.add_quality_comments(CID_API, new_priref, qcomm)
-            if not qc_success:
+            if not adlib.add_quality_comments(CID_API, new_priref, qcomm):
                 LOGGER.warning(
                     "Quality Comment 'UHD SDR' write failed to CID item record: %s",
                     new_priref,
@@ -330,27 +340,26 @@ def main():
             os.rename(os.path.join(fpath, mov_file), new_fpath)
             if os.path.exists(new_fpath):
                 LOGGER.info(
-                    "File renamed successfully. Moving to autoingest/ingest/amazon"
+                    "File renamed successfully. Moving to autoingest/ingest/disney"
                 )
                 shutil.move(new_fpath, os.path.join(AUTOINGEST, new_filename))
                 continue
-            else:
-                LOGGER.warning(
-                    "Failed to rename file. Leaving in folder for manual intervention."
-                )
-                continue
+            LOGGER.warning(
+                "Failed to rename file. Leaving in folder for manual intervention."
+            )
+            continue
 
         # Check folder is empty and delete
         contents = list(os.listdir(fpath))
         if len(contents) == 0:
             os.rmdir(fpath)
-            LOGGER.info("Amazon folder empty, deleting %s", fpath)
+            LOGGER.info("Disney+ folder empty, deleting %s", fpath)
         else:
             LOGGER.warning(
-                "Amazon folder not empty, leaving in place for checks: %s", fpath
+                "Disney+ folder not empty, leaving in place for checks: %s", fpath
             )
 
-    LOGGER.info("== Document augmented Amazon renaming end ===================\n")
+    LOGGER.info("== Document augmented Disney+ renaming end ===================\n")
 
 
 def make_item_record_dict(
@@ -401,14 +410,13 @@ def make_item_record_dict(
         return None
     item.append({"related_object.reference.lref": priref})
     item.append({"related_object.notes": f"{arg} for"})
+    item.append({"file_type.lref": "114307"})
+    item.append({"language.lref": "74129"})
     if "SDR" in arg:
-        item.append({"file_type.lref": "114307"})
-        item.append({"language.lref": "74129"})
         item.append({"language.type": "DIALORIG"})
     elif "Audio Description" in arg:
-        item.append({"file_type.lref": "114307"})
-        item.append({"language.lref": "74129"})
-            
+        item.append({"language.type": "AUDDES"})
+
     if "acquisition.date" in str(record):
         item.append(
             {
@@ -417,14 +425,14 @@ def make_item_record_dict(
                 )[0]
             }
         )
-    if "acquisition.method" in str(record):
-        item.append(
-            {
-                "acquisition.method.lref": adlib.retrieve_field_name(
-                    record[0], "acquisition.method.lref"
-                )[0]
-            }
-        )
+#    if "acquisition.method" in str(record):
+#        item.append(
+#            {
+#                "acquisition.method.lref": adlib.retrieve_field_name(
+#                    record[0], "acquisition.method.lref"
+#                )[0]
+#            }
+#        )
     if "Acquisition_source" in str(record):
         item.append(
             {
@@ -469,7 +477,7 @@ def create_digital_original_filenames(
     """
     payload = f"<adlibXML><recordList><record priref='{priref}'>"
     pay_mid = f"<Acquired_filename><digital.acquired_filename>{digital_note}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
-    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Amazon automated digital acquired filename update</edit.notes></Edit>"
+    pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Disney+ automated digital acquired filename update</edit.notes></Edit>"
     payload_end = "</record></recordList></adlibXML>"
     payload = payload + pay_mid + pay_edit + payload_end
 
@@ -513,7 +521,7 @@ def defaults() -> list[dict[str, str]]:
         {"input.name": "datadigipres"},
         {"input.date": str(datetime.datetime.now())[:10]},
         {"input.time": str(datetime.datetime.now())[11:19]},
-        {"input.notes": "Amazon metadata integration - automated bulk documentation"},
+        {"input.notes": "Disney+ metadata integration - automated bulk documentation"},
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
         {"record_access.reason": "SENSITIVE_LEGAL"},
@@ -538,10 +546,7 @@ def defaults() -> list[dict[str, str]]:
         {"record_access.user": "Librarian"},
         {"record_access.rights": "2"},
         {"record_access.reason": "SENSITIVE_LEGAL"},
-        # {'record_access.user': '$REST'},
-        # {'record_access.rights': '1'},
-        # {'record_access.reason': 'SENSITIVE_LEGAL'},
-        {"grouping.lref": "401361"},
+        {"grouping.lref": "403765"},
         {"record_type": "ITEM"},
         {"item_type": "DIGITAL"},
         {"copy_status": "M"},

@@ -98,16 +98,16 @@ def get_folder_title(article: str, title: str) -> str:
     title = (
         title.replace("/", "")
         .replace("'", "")
-        .replace("&", "and")
+        # .replace("&", "and")
         .replace("(", "")
         .replace(")", "")
         .replace("!", "")
         .replace("’", "")
     )
     if article != "-":
-        title = f'{article}_{title.replace(" ", "_")}_'
+        title = f'{article.strip()}_{title.strip().replace(" ", "_")}_'
     else:
-        title = f'{title.replace(" ", "_")}_'
+        title = f'{title.strip().replace(" ", "_")}_'
     print(title)
     return title
 
@@ -283,10 +283,12 @@ def get_json_data(data=None) -> Optional[dict[str, str]]:
     if val.contributor:
         val.contributor and j_data.update({"contributors": val.contributor})
     if val.vod:
-        val.vod.get("netflix-uk").get("start") and j_data.update(
-            {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
-        )
-
+        try:
+            val.vod.get("netflix-uk").get("start") and j_data.update(
+                {"start_date": val.vod.get("netflix-uk").get("start")[:10]}
+            )
+        except Exception:
+            pass
     return j_data
 
 
@@ -450,6 +452,7 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
             genre_one: list[str] = []
             genre_two: list[str] = []
             try:
+                print(data["genres"])
                 genre_one = data["genres"][category_code.strip("u")]["Genre"]
                 print(f"genre_retrieval(): Genre one: {genre_one}")
                 if "Undefined" in genre_one:
@@ -465,12 +468,16 @@ def genre_retrieval(category_code: str, description: str, title: str) -> list[st
                             f"Category: {category_code}     Title: {title}     Description: {description}"
                         )
                     genre_one_priref: str = ""
-                else:
+                elif isinstance(genre_one, dict):
                     for _, val in genre_one.items():
                         genre_one_priref: str = val
                     print(
                         f"genre_retrieval(): Key value for genre_one_priref: {genre_one_priref}"
                     )
+                elif isinstance(genre_one, str):
+                    genre_one_priref = genre_one.split(":")[-1]
+                else:
+                    genre_one_priref = ""
             except (IndexError, KeyError, TypeError):
                 genre_one_priref = ""
             try:
@@ -695,6 +702,7 @@ def main():
         print(f"Episode only wanted: {episode}")
 
         if platform != "Netflix":
+            LOGGER.warning("Platform is not Netflix, exiting!")
             continue
         LOGGER.info("** Processing item: %s %s", article, title)
 
@@ -723,12 +731,15 @@ def main():
                 if title_count == folder_length:
                     matched_folders = [fold]
             if len(matched_folders) != 1:
-                print(
-                    f"More than one entry found for {article} {title}. Manual assistance needed.\n{matched_folders}"
+                LOGGER.warning(
+                    "More than one entry found for %s %s. Manual assistance needed.\n%s",
+                    article,
+                    title,
+                    matched_folders,
                 )
                 continue
         if len(matched_folders) == 0:
-            print(f"No match found: {article} {title}")
+            LOGGER.warning("No match found: %s %s", article, title)
             # At some point initiate 'title' search in PATV data
             continue
 
@@ -787,7 +798,7 @@ def main():
                 mono_dct = {}
 
             if not cat_dct:
-                print("SKIPPING: Missing data from JSON files.")
+                LOGGER.warning("SKIPPING: Missing data from JSON files.")
                 continue
 
             # Make monographic work here
@@ -892,6 +903,9 @@ def main():
                     if x.startswith("series_") and x.endswith(".json")
                 ]
                 if not len(series_json) == 1:
+                    LOGGER.warning(
+                        "Length of Series JSON does not equal 1 %s", len(series_json)
+                    )
                     continue
 
                 # Get series ID title and genre
@@ -910,12 +924,13 @@ def main():
 
                 # Make series work here
                 if not series_data_dct:
+                    LOGGER.warning("No series data dictionary found")
                     continue
                 series_priref = create_series_work(
                     patv_id, series_data_dct, series_work, work_restricted, record
                 )
                 if not series_priref:
-                    print("Series work creation failure. Skipping episodes...")
+                    LOGGER.warning("Series work creation failure. Skipping episodes...")
                     continue
 
             season_fpaths = [
@@ -1340,7 +1355,15 @@ def create_series_work(
     series_work_xml = adlib.create_record_data(CID_API, "works", "", series_work_values)
     try:
         print("Attempting to create CID record")
-        work_rec = adlib.post(CID_API, series_work_xml, "works", "insertrecord")
+        work_rec = adlib.post_with_verify(
+            CID_API,
+            series_work_xml,
+            "works",
+            "insertrecord",
+            f"Df=WORK and grouping.lref='400947' and alternative_number={patv_id}",
+            3,
+            10
+        )
         if work_rec:
             try:
                 print("Populating series_work_id and object_number variables")
@@ -1368,7 +1391,15 @@ def create_series_work(
             series_work_id, "Content_genre", series_genres
         )
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            genre_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={series_work_id} and content.genre.lref={extracted[-1]}",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info(
                 "Failed to update genres to Series Work record: %s", series_work_id
@@ -1389,7 +1420,15 @@ def create_series_work(
             series_work_id, "Content_subject", series_subjects
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            subject_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={series_work_id} and content.subject.lref={subs[-1]}",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info(
                 "Failed to update subjects to Series Work record: %s", series_work_id
@@ -1431,7 +1470,15 @@ def create_series_work(
     if len(label_fields) > 0:
         label_xml = adlib.create_grouped_data(series_work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            label_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={series_work_id} and label.source='EBS augmented EPG supply'",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info(
                 "Failed to update Labels to Series Work record: %s", series_work_id
@@ -1518,7 +1565,15 @@ def create_work(
     work_xml = adlib.create_record_data(CID_API, "works", "", work_values)
     try:
         print("Attempting to create CID record")
-        work_rec = adlib.post(CID_API, work_xml, "works", "insertrecord")
+        work_rec = adlib.post_with_verify(
+            CID_API,
+            work_xml,
+            "works",
+            "insertrecord",
+            f"Df=WORK and grouping.lref='400947' and alternative_number={work_dict["episode_id"]}",
+            3,
+            10
+        )
         if work_rec:
             try:
                 print("Populating work_id and object_number variables")
@@ -1544,7 +1599,15 @@ def create_work(
     if len(work_genres) > 0:
         genre_xml = adlib.create_grouped_data(work_id, "Content_genre", work_genres)
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            genre_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={work_id} and content.genre.lref={extracted[-1]}",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info("Failed to update genres to Work record: %s", work_id)
         elif "Content_genre" in str(update_rec):
@@ -1561,7 +1624,15 @@ def create_work(
             work_id, "Content_subject", work_subjects
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            subject_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={work_id} and content.subject.lref={subs[-1]}",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info("Failed to update subjects to Work record: %s", work_id)
         elif "Content_subject" in str(update_rec):
@@ -1599,7 +1670,15 @@ def create_work(
     if len(label_fields) > 0:
         label_xml = adlib.create_grouped_data(work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            label_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={work_id} and label.source='EBS augmented EPG supply'",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info("Failed to update Labels to Work record: %s", work_id)
         elif "Label" in str(update_rec):
@@ -1669,8 +1748,14 @@ def create_manifestation(
     )
     try:
         print("Attempting to create CID record")
-        man_rec = adlib.post(
-            CID_API, manifestation_xml, "manifestations", "insertrecord"
+        man_rec = adlib.post_with_verify(
+            CID_API,
+            manifestation_xml,
+            "manifestations",
+            "insertrecord",
+            f"Df=MANIFESTATION and grouping.lref='400947' and alternative_number={work_dict["episode_id"]}",
+            3,
+            10
         )
         if man_rec:
             try:
@@ -1702,7 +1787,15 @@ def create_manifestation(
     )
     print("**** Attempting to write work genres to records ****")
 
-    success = adlib.post(CID_API, broadcast_xml, "manifestations", "updaterecord")
+    success = adlib.post_with_verify(
+        CID_API,
+        broadcast_xml,
+        "manifestations",
+        "updaterecord",
+        f"Df=MANIFESTATION and priref={manifestation_id} and broadcast_company.lref='143463'",
+        3,
+        10
+    )
     if success is None:
         LOGGER.info(
             "Failed to update Broadcast Company data to Manifestation record: %s",
@@ -1723,7 +1816,15 @@ def append_url_data(work_priref: str, man_priref: str, data=None) -> None:
     payload_end = "</URL></record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
 
-    success = adlib.post(CID_API, payload, "manifestations", "updaterecord")
+    success = adlib.post_with_verify(
+        CID_API,
+        payload,
+        "manifestations",
+        "updaterecord",
+        f"Df=MANIFESTATION and priref={man_priref} and URL.description='Netflix viewing URL'",
+        3,
+        10
+    )
     if success is None:
         LOGGER.info(
             "append_url_data(): Failed to update Watch URL data to Manifestation record: %s",
@@ -1736,7 +1837,15 @@ def append_url_data(work_priref: str, man_priref: str, data=None) -> None:
     payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
     payload = payload_head + payload_mid + payload_end
 
-    success = adlib.post(CID_API, payload, "works", "updaterecord")
+    success = adlib.post_with_verify(
+        CID_API,
+        payload,
+        "works",
+        "updaterecord"
+        f"Df=WORK and priref={work_priref} and URL.description='Netflix viewing URL'",
+        3,
+        10
+    )
     if success is None:
         LOGGER.info(
             "append_url_data(): Failed to update Watch URL data to Work record: %s",
@@ -1782,7 +1891,15 @@ def create_item(
     item_xml = adlib.create_record_data(CID_API, "items", "", item_values)
     try:
         print("Attempting to create CID Item record")
-        item_rec = adlib.post(CID_API, item_xml, "items", "insertrecord")
+        item_rec = adlib.post_with_verify(
+            CID_API,
+            item_xml,
+            "items",
+            "insertrecord",
+            f"Df=ITEM and grouping.lref='400947' and part_of_reference.lref='{man_priref}'",
+            3,
+            10
+        )
         if item_rec:
             try:
                 print("Populating item_id and object_number variables")

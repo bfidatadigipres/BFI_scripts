@@ -29,7 +29,7 @@ import yaml
 import adlib_v3 as adlib
 
 # Global imports
-LOG_PATH: Final = os.environ.get("LOG_PATH", "/mnt/qnap_04/Admin/Logs")
+LOG_PATH: Final = os.environ.get("LOG_PATH", "")
 CONTROL_JSON: str = os.path.join(LOG_PATH, "downtime_control.json")
 STORAGE_JSON: str = os.path.join(LOG_PATH, "storage_control.json")
 GLOBAL_LOG: Final = os.path.join(LOG_PATH, "autoingest", "global.log")
@@ -700,7 +700,7 @@ def local_file_search(fpath, fname):
 
 
 def send_email(
-    email: str, subject: str, body: str, files: str | None
+    email: str, send_email: str, subject: str, body: str, files: str | None
 ) -> tuple[bool, str | None]:
     """
     automate the process of sending out simple emails
@@ -709,7 +709,7 @@ def send_email(
     storage = "right size"
     try:
         msg = MIMEMultipart()
-        msg["From"] = "digitalpreservationsystems@bfi.org.uk"
+        msg["From"] = send_email
         msg["To"] = email
         msg["Subject"] = subject
 
@@ -732,9 +732,7 @@ def send_email(
 
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=CONTEXT) as smtp:
             smtp.login(EMAIL, PASSWORD)
-            smtp.sendmail(
-                "digitalpreservationsystems@bfi.org.uk", email, msg.as_string()
-            )
+            smtp.sendmail(send_email, email, msg.as_string())
 
         print(f"Email notification sent to {email}")
         success = True

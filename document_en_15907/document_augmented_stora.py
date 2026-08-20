@@ -38,6 +38,7 @@ from time import sleep
 
 import tenacity
 import yaml
+from dataclasses import dataclass
 from series_retrieve import check_id, retrieve
 
 sys.path.append(os.environ["CODE"])
@@ -58,7 +59,7 @@ LOG_PATH = os.environ["LOG_PATH"]
 CONTROL_JSON = os.path.join(LOG_PATH, "downtime_control.json")
 CSV_FAILURES = os.path.join(LOG_PATH, "failed_mpeg_ts_files.csv")
 MPEG_TS_POLICY = os.path.join(os.environ["MEDIACONCH"], "mpeg_ts_policy.xml")
-SUBS_PTH = os.environ["SUBS_PATH2"]
+SUBS_PTH = os.environ["SUBS_PATH"]
 GENRE_PTH = SUBS_PTH.split("subtitles_not_in_cid/")[0]
 CID_API = utils.get_current_api()
 FAILURE_COUNTER = 0
@@ -78,6 +79,14 @@ YESTERDAY_CLEAN = YESTERDAY.strftime("%Y-%m-%d")
 YEAR_PATH = YESTERDAY_CLEAN[:4]
 # YEAR_PATH = '2025'
 STORAGE_PATH = STORAGE + YEAR_PATH
+TIME_FORMAT = "%H:%M:%S"
+DATE_FORMAT = "%Y-%m-%d"
+
+@dataclass
+class TransmissionInfo:
+    date: str
+    start_time: str
+    end_time: str
 
 NEWS_CHANNELS = ["Al Jazeera", "BBC NEWS HD", "Sky News", "GB News", "QVC"]
 
@@ -1086,13 +1095,17 @@ def main():
                 )
                 continue
 
-        """
-        # Build webvtt payload [deprecated]
+        # Build webvtt payload
         if webvtt_payload:
-            success = push_payload(item_data[1], webvtt_payload, sess)
+            transmission_info = create_subtitle_date(manifestation_priref, sess)
+            subtitle_date = adjust_date_for_midnight(transmission_info)
+            success = push_payload(item_data[1], webvtt_payload, sess, subtitle_date)
+            manifesation_payload_success = post_accessibility_resource(manifestation_priref, sess)
             if not success:
                 logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
-        """
+            if not manifesation_payload_success:
+                logger.warning("Unable to push webvtt_payload to CID manifestation %s", manifestation_priref)
+
         # Rename JSON with .documented
         documented = f"{fullpath}.documented"
         print(f"* Renaming {fullpath} to {documented}")
@@ -1126,7 +1139,7 @@ def main():
                 err,
             )
 
-        # Rename .vtt subtitle file with Item object number and move to Isilon for use later in MTQ workflow
+        # Rename .vtt subtitle file with Item object number / move
         if webvtt_payload is not None:
             new_vtt_name = f"{item_object_number_underscore}_01of01.vtt"
             new_vtt = f"{SUBS_PTH}{new_vtt_name}"
@@ -1142,7 +1155,8 @@ def main():
                     old_webvtt,
                     new_vtt,
                     err,
-                )
+                 )
+
     logger.info(
         "========== STORA documentation script END ===================================================\n"
     )
@@ -1337,7 +1351,16 @@ def create_series(
     sleep(0.5)
     try:
         logger.info("Attempting to create CID series record for %s", series_title_full)
-        work_rec = adlib.post(CID_API, series_values_xml, "works", "insertrecord", sess)
+        work_rec = adlib.post_with_verify(
+            CID_API,
+            series_values_xml,
+            "works",
+            "insertrecord",
+            sess,
+            f"Df=WORK and grouping.lref='398775' and alternative_number='{series_id}'",
+            3,
+            10,
+        )
     except Exception as err:
         print(f"* Unable to create Series Work record for <{series_title_full}> {err}")
         logger.warning(
@@ -1353,8 +1376,15 @@ def create_series(
             logger.info(
                 "Attempting to create CID series record for %s", series_title_full
             )
-            work_rec = adlib.post(
-                CID_API, series_values_xml, "works", "insertrecord", sess
+            work_rec = adlib.post_with_verify(
+                CID_API,
+                series_values_xml,
+                "works",
+                "insertrecord",
+                sess,
+                f"Df=WORK and grouping.lref='398775' and alternative_number='{series_id}'",
+                3,
+                10,
             )
         except Exception as err:
             print(
@@ -1403,7 +1433,17 @@ def create_series(
             series_work_id, "Content_genre", series_content_genres
         )
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            genre_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{series_work_id}' and content.genre.lref='{series_genre_one}'",
+            3,
+            10,
+        )
+
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_genre" in str(update_rec):
@@ -1425,7 +1465,16 @@ def create_series(
             series_work_id, "Content_subject", series_content_subject
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            subject_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{series_work_id}' and content.subject.lref='{series_subject_one}'",
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_subject" in str(update_rec):
@@ -1472,7 +1521,16 @@ def create_series(
     if labels is True:
         label_xml = adlib.create_grouped_data(series_work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            label_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{series_work_id}' and label.source='EBS augmented EPG supply'",
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Label" in str(update_rec):
@@ -1701,7 +1759,16 @@ def create_work(
     try:
         sleep(0.5)
         logger.info("Attempting to create Work record for item %s", epg_dict["title"])
-        work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord", sess)
+        work_rec = adlib.post_with_verify(
+            CID_API,
+            work_values_xml,
+            "works",
+            "insertrecord",
+            sess,
+            f"Df=WORK and grouping.lref='398775' and title={epg_dict["title"]}",
+            3,
+            10,
+        )
         print(f"create_work(): {work_rec}")
     except Exception as err:
         print(f"* Unable to create Work record for <{epg_dict['title']}>\n{err}")
@@ -1720,8 +1787,15 @@ def create_work(
             logger.info(
                 "Attempting to create Work record for item %s", epg_dict["title"]
             )
-            work_rec = adlib.post(
-                CID_API, work_values_xml, "works", "insertrecord", sess
+            work_rec = adlib.post_with_verify(
+                CID_API,
+                work_values_xml,
+                "works",
+                "insertrecord",
+                sess,
+                f"Df=WORK and grouping.lref='398775' and title={epg_dict["title"]}",
+                3,
+                10,
             )
             print(f"create_work(): {work_rec}")
         except Exception as err:
@@ -1763,7 +1837,16 @@ def create_work(
     if genre is True:
         genre_xml = adlib.create_grouped_data(work_id, "Content_genre", content_genres)
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            genre_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{work_id}' and content.genre.lref='{epg_dict["work_genre_one"]}'",
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_genre" in str(update_rec):
@@ -1783,7 +1866,16 @@ def create_work(
             work_id, "Content_subject", content_subject
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            subject_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{work_id}' and content.subject.lref='{epg_dict["work_subject_one"]}'",
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Content_subject" in str(update_rec):
@@ -1828,7 +1920,16 @@ def create_work(
     if labels is True:
         label_xml = adlib.create_grouped_data(work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord", sess)
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            label_xml,
+            "works",
+            "updaterecord",
+            sess,
+            f"Df=WORK and priref='{work_id}' and label.source='EBS augmented EPG supply'",
+            3,
+            10,
+        )
         if update_rec is False:
             raise Exception("Recycle of API exception raised.")
         if "Label" in str(update_rec):
@@ -1902,8 +2003,15 @@ def create_manifestation(
     try:
         sleep(0.5)
         logger.info("Attempting to create Manifestation record for item %s", title)
-        man_rec = adlib.post(
-            CID_API, man_values_xml, "manifestations", "insertrecord", sess
+        man_rec = adlib.post_with_verify(
+            CID_API,
+            man_values_xml,
+            "manifestations",
+            "insertrecord",
+            sess,
+            f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_priref}'",
+            3,
+            10,
         )
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:
@@ -1917,8 +2025,15 @@ def create_manifestation(
         try:
             sleep(1)
             logger.info("Attempting to create Manifestation record for item %s", title)
-            man_rec = adlib.post(
-                CID_API, man_values_xml, "manifestations", "insertrecord", sess
+            man_rec = adlib.post_with_verify(
+                CID_API,
+                man_values_xml,
+                "manifestations",
+                "insertrecord",
+                sess,
+                f"Df=MANIFESTATION and grouping.lref='398775' and part_of_reference.lref='{work_priref}'",
+                3,
+                10,
             )
             print(f"create_manifestation(): {man_rec}")
         except Exception as err:
@@ -1986,7 +2101,16 @@ def create_cid_item_record(
         logger.info(
             "Attempting to create CID item record for item %s", epg_dict["title"]
         )
-        item_rec = adlib.post(CID_API, item_values_xml, "items", "insertrecord", sess)
+        item_rec = adlib.post_with_verify(
+            CID_API,
+            item_values_xml,
+            "items",
+            "insertrecord",
+            sess,
+            f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'",
+            3,
+            10,
+        )
         print(f"create_cid_item_record(): {item_rec}")
     except Exception as err:
         logger.warning(
@@ -2003,8 +2127,15 @@ def create_cid_item_record(
             logger.info(
                 "Attempting to create CID item record for item %s", epg_dict["title"]
             )
-            item_rec = adlib.post(
-                CID_API, item_values_xml, "items", "insertrecord", sess
+            item_rec = adlib.post_with_verify(
+                CID_API,
+                item_values_xml,
+                "items",
+                "insertrecord",
+                sess,
+                f"Df=ITEM and grouping.lref='398775' and part_of_reference.lref='{manifestation_id}'",
+                3,
+                10,
             )
             print(f"create_cid_item_record(): {item_rec}")
         except Exception as err:
@@ -2057,7 +2188,16 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, sess):
     payload = payload_start + payload_mid + payload_end
     try:
         sleep(0.5)
-        response = adlib.post(CID_API, payload, "manifestations", "updaterecord", sess)
+        response = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "manifestations",
+            "updaterecord",
+            sess,
+            f"Df=MANIFESTATION and grouping.lref='398775' and priref='{manifestation_id}'",
+            3,
+            10,
+        )
         if response:
             logger.info(
                 "%s\tRenamed Manifestation %s with deletion prompt in title",
@@ -2088,7 +2228,16 @@ def clean_up_work_man(fullpath, manifestation_id, new_work, work_id, sess):
         payload = payload_start + payload_mid + payload_end
         try:
             sleep(0.5)
-            response = adlib.post(CID_API, payload, "works", "updaterecord", sess)
+            response = adlib.post_with_verify(
+                CID_API,
+                payload,
+                "works",
+                "updaterecord",
+                sess,
+                f"Df=WORK and grouping.lref='398775' and priref='{work_id}'",
+                3,
+                10,
+            )
             if "priref" in str(response):
                 logger.info(
                     "%s\tRenamed Work %s with deletion prompt in title, for bulk deletion",
@@ -2195,24 +2344,104 @@ def update_broken_ts(vpath, work_priref, response, epg_dict=None):
         writer.writerow(data)
 
 
-@tenacity.retry(stop=tenacity.stop_after_attempt(1))
-def push_payload(item_id, webvtt_payload, sess):
+def create_subtitle_date(manifestation_priref, session):
+    """Fetch transmission dates from parent manifestation"""
+    fields = [
+        "transmission_date",
+        "transmission_end_time",
+        "transmission_start_time",
+    ]
+    query = f'priref={manifestation_priref}'
+
+    _, records = adlib.retrieve_record(CID_API, "manifestations", query, "1", session, fields=fields)
+    trans_date = adlib.retrieve_field_name(records[0], "transmission_date")[0]
+    end_time = adlib.retrieve_field_name(records[0],"transmission_end_time")[0]
+    start_time = adlib.retrieve_field_name(records[0], "transmission_start_time")[0]
+
+    if not all([trans_date, end_time, start_time]):
+            logger.error(
+                "Incomplete transmission data for priref=%s " "(date=%s, end=%s, start=%s)",
+                manifestation_priref,
+                trans_date,
+                end_time,
+                start_time,
+            )
+            return None
+
+    return TransmissionInfo(
+            date=trans_date, start_time=start_time, end_time=end_time
+        )
+
+
+def adjust_date_for_midnight(info: TransmissionInfo) -> str:
+    """Check if a show ran past midnight and adjust the date accordingly."""
+    try:
+        end = datetime.datetime.strptime(info.end_time, TIME_FORMAT)
+        start = datetime.datetime.strptime(info.start_time, TIME_FORMAT)
+    except ValueError as exc:
+        raise ValueError(f"Invalid time format in {info}") from exc
+
+    date = datetime.datetime.strptime(info.date, DATE_FORMAT)
+    if end < start:
+        date += datetime.timedelta(days=1)
+        logger.info(
+            "Show ran past midnight - date adjusted to %s",
+            date.strftime(DATE_FORMAT),
+        )
+    return date.strftime(DATE_FORMAT)
+
+
+def post_accessibility_resource(manifestation_priref, sess):
+    """Post subtitle data to Manifestation if present"""
+    edit_entries = [{"accessibility_resource": "SUBTITLES"}]
+    manifestation_xml = adlib.create_record_data(CID_API, "manifestations", sess, manifestation_priref, edit_entries)
+    try:
+            post_resp = adlib.post_with_verify(
+                CID_API,
+                manifestation_xml,
+                "manifestations",
+                "updaterecord",
+                sess,
+                f"Df=MANIFESTATION and priref='{manifestation_priref}' and accessibility_resource='SUBTITLES'",
+                3,
+                10,
+            )
+    except Exception as err:
+            logger.warning(
+                "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err
+            )
+            if post_resp is False:
+                raise Exception("Recycle of API exception raised.")
+            if post_resp:
+                return True
+            else:
+                return False
+
+
+def push_payload(item_id, webvtt_payload, sess, subtitle_date):
     """
-    DEPRECATED
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     """
-    label_type = "SUBWEBVTT"
-    label_source = "Extracted from MPEG-TS created by STORA recording"
-    # Make payload
+    SUBTITLE_TYPE= "WEBVTT_C"
+    EDITOR_NOTES = "Extracted from MPEG-TS created by STORA recording"
     pay_head = f'<adlibXML><recordList><record priref="{item_id}">'
-    label_type_addition = f"<label.type>{label_type}</label.type>"
-    label_addition = f"<label.source>{label_source}</label.source><label.text><![CDATA[{webvtt_payload}]]></label.text>"
+    subtitle_type_addition = f"<subtitle.type>{SUBTITLE_TYPE}</subtitle.type>"
+    subtitle_source_addition = f"<subtitle.source>{EDITOR_NOTES}</subtitle.source><subtitle.text><![CDATA[{webvtt_payload}]]></subtitle.text><subtitle.date>{subtitle_date}</subtitle.date>"
     pay_end = "</record></recordList></adlibXML>"
-    payload = pay_head + label_type_addition + label_addition + pay_end
+    payload = pay_head + subtitle_type_addition + subtitle_source_addition + pay_end
 
     try:
-        post_resp = adlib.post(CID_API, payload, "items", "updaterecord", sess)
+        post_resp = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "items",
+            "updaterecord",
+            sess,
+            f"Df=ITEM and priref='{item_id}' and subtitle.type='WEBVTT_C'",
+            3,
+            10,
+        )
     except Exception as err:
         logger.warning(
             "push_payload()): Unable to write Webvtt to record %s \n%s", item_id, err

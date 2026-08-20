@@ -21,9 +21,11 @@ jobs:
           echo "github.ref: ${{ github.ref }}"
           echo "github.head_ref: ${{ github.head_ref }}"
           echo "repo owner: ${{ github.repository_owner }}"
+          
       - uses: actions/checkout@v4
         with:
-          ref:  ${{ github.head_ref != '' && github.head_ref || github.ref != '' && github.ref || 'main' }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.head_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
@@ -127,18 +129,33 @@ jobs:
       runs-on: ubuntu-latest
       needs: format-and-create-pr
       steps:
-        - name: Set up GitHub CLI
-          run: |
-            curl -fsSL https://cli.github.com/install.sh | bash
-
         - name: Authenticate GitHub CLI
           run: |
              unset GH_TOKEN
              echo "${{ secrets.BFI_BOT_TOKEN}}" | gh auth login --with-token
+          env:
+            GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
 
+        - name: Debug token presence
+          run: |
+            if [ -z "${{ secrets.BFI_BOT_TOKEN }}" ]; then
+              echo "BFI_BOT_TOKEN is EMPTY"
+            else
+              echo "BFI_BOT_TOKEN is set (length: ${#TOKEN})"
+            fi
+          env:
+            TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
+
+        - name: Debug PR origin
+          run: |
+            echo "Head repo: ${{ github.event.pull_request.head.repo.full_name }}"
+            echo "Base repo: ${{ github.repository }}"      
+        
         - uses: actions/checkout@v4
           with:
+            repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
             ref: ${{ github.head_ref || github.ref }}
+            token: ${{ secrets.GITHUB_TOKEN }}
             fetch-depth: 0
 
         - run: git pull
@@ -148,25 +165,36 @@ jobs:
             python-version: '3.12'
 
         - run: pip install pylint
-
+        
         - id: pylint
           run: |
             export LANG=en_US.UTF-8
-            changed_files=($(git diff --name-only HEAD~1 HEAD | grep '\.py$'))
+            export LC_ALL=en_US.UTF-8
+            
+            # Check if there's a previous commit before attempting git diff
+            set -x
+            if git rev-parse HEAD~1 >/dev/null 2>&1; then
+              changed_files=($(git diff --name-only HEAD~1 HEAD | grep '\.py$' || true))
+            else
+              # For initial commit, get all Python files
+              changed_files=($(git ls-files '*.py' || true))
+            fi
+            
             mkdir -p reports
             if [ ${#changed_files[@]} -gt 0 ]; then
                 python -m pylint "${changed_files[@]}" > reports/pylint-report.txt || true
             else
-                echo "help breaking"
-                # python -m pylint *.py > reports/pylint-report.txt || true
+                echo "No Python files to lint" > reports/pylint-report.txt
             fi
-            sed -i 's/\(.*:[0-9]\+:[0-9]\+:[[:space:]]*\)\(E[0-9]\{4\}\)/\1🚨 \2/' reports/pylint-report.txt
-            sed -i 's/\(.*:[0-9]\+:[0-9]\+:[[:space:]]*\)\(W[0-9]\{4\}\)/\1⚠️ \2/' reports/pylint-report.txt
-            sed -i 's/\(.*:[0-9]\+:[0-9]\+:[[:space:]]*\)\(I[0-9]\{4\}\)/\1ℹ️ \2/' reports/pylint-report.txt
-            sed -i 's/\(.*:[0-9]\+:[0-9]\+:[[:space:]]*\)\(C[0-9]\{4\}\)/\1🎨 \2/' reports/pylint-report.txt
-            sed -i 's/\(.*:[0-9]\+:[0-9]\+:[[:space:]]*\)\(F[0-9]\{4\}\)/\1🛑 \2/' reports/pylint-report.txt
-            sed -i 's/\(.*:[0-9]\+:[0-9]\+:[[:space:]]*\)\(R[0-9]\{4\}\)/\1♻️ \2/' reports/pylint-report.txt
-
+            
+            # Use perl instead of sed for better Unicode handling
+            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(E[0-9]{4})/$1🚨 $2/g' reports/pylint-report.txt
+            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(W[0-9]{4})/$1⚠️ $2/g' reports/pylint-report.txt
+            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(I[0-9]{4})/$1ℹ️ $2/g' reports/pylint-report.txt
+            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(C[0-9]{4})/$1🎨 $2/g' reports/pylint-report.txt
+            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(F[0-9]{4})/$1🛑 $2/g' reports/pylint-report.txt
+            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(R[0-9]{4})/$1♻️ $2/g' reports/pylint-report.txt
+                      
         - name: print file
           run: cat reports/pylint-report.txt
 
@@ -199,7 +227,7 @@ jobs:
             fi
 
         - name: Comment on PR with Full Pylint Report
-          if: steps.check-pr.outputs.exists == 'true'
+          if: steps.check-pr.outputs.exists == 'true' && github.event.pull_request.head.repo.full_name == github.repository
           uses: peter-evans/create-or-update-comment@f5b41f6a455733f2c5f73ca67a62631e75861578
           with:
             issue-number: ${{ steps.check-pr.outputs.number }}
@@ -207,11 +235,9 @@ jobs:
             repository: bfidatadigipres/BFI_scripts
             body: |
               **Automated Pylint Report** 🧑‍💻
-
               Here is the **formatted** Pylint report:
               ```plaintext
-              ${{ env.pylint_report }}
+                    ${{ env.pylint_report }}
               ```
-
-              **Note:** 🚨 Errors need immediate attention! ⚠️ Warnings should be reviewed, but are less critical. ℹ️ Information messages are for your reference.
-            token: ${{ secrets.BFI_BOT_TOKEN }}
+                    **Note:** 🚨 Errors need immediate attention! ⚠️ Warnings should be reviewed, but are less critical. ℹ️ Information messages are for your reference.
+                  token: ${{ secrets.BFI_BOT_TOKEN }}

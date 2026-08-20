@@ -7,21 +7,19 @@ Python interface for Adlib API v3.7.17094.1+
 2024
 """
 
-import datetime
+from datetime import datetime, timedelta
 import json
 from time import sleep
-from typing import Any, Final, Iterable, Mapping, Optional, List, Dict
-
+from typing import Any, Optional, List, Dict, Tuple, Union
+from tenacity import retry, stop_after_attempt
 import requests
 import xmltodict
-from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
 TIMEOUT = 100
 
 
-# (api: str) -> dict[Any, Any]:
-def check(api):
+def check(api: str) -> dict[str, Any]:
     """
     Check API responds
     """
@@ -30,8 +28,7 @@ def check(api):
     return get(api, query)
 
 
-# (api: str, database: str, search: str, limit: str, fields=None) -> tuple[int, list[dict[str, str]]]
-def retrieve_record(api, database, search, limit, fields=None):
+def retrieve_record(api: str, database: str, search: str, limit: Union[int, str], fields: Optional[list[str]] = None) -> tuple[Optional[int], Union[list[dict[str, Any]], dict[str, Any], None]]:
     """
     Retrieve data from CID using new API
     """
@@ -76,9 +73,8 @@ def retrieve_record(api, database, search, limit, fields=None):
     return hits, record["adlibJSON"]["recordList"]["record"]
 
 
-# (api: str, query: dict[str, str]) -> dict[Any, Any]:
 @retry(stop=stop_after_attempt(10))
-def get(api, query):
+def get(api: str, query: dict[str, str]) -> dict[str, Any]:
     """
     Send a GET request
     """
@@ -104,9 +100,67 @@ def get(api, query):
         raise Exception from err
 
 
-# (api: str, payload: str, database: str, method: str) -> dict[Any, Any]:
-@retry(stop=stop_after_attempt(3))
-def post(api, payload, database, method):
+def _time_window_last_15min(type: str) -> str:
+    """
+    Return a search string for records created in the last 15 minutes.
+    Type determines search against 'creation' or 'modification'
+    """
+    now = datetime.now()
+    window_start = now - timedelta(minutes=15)
+    return f"{type} > '{window_start.strftime('%Y-%m-%d %H:%M:%S')}'"
+
+
+def post_with_verify(
+    api: str,
+    payload: str,
+    database: str,
+    method: str,
+    search_value: str,
+    max_retries: int = 3,
+    retry_delay: int = 10,
+) -> Optional[dict[str, Any]]:
+    """
+    POST a record, then verify with a GET if the POST appears to fail.
+    Handles both network failures (no response) and false SQL failures
+    search_value is the unique field to search for in the
+    GET verification query. Returns the parsed record dict on success,
+    None after all retries exhausted.
+    """
+    for attempt in range(1, max_retries + 1):
+        result = post(api, payload, database, method)
+
+        if result and "{'@attributes': {'priref':" in str(result):
+            return result
+
+        # POST returned None/False
+        print(f"post_with_verify(): POST attempt {attempt} returned no priref, "
+              f"waiting {retry_delay}s then checking if record exists via GET...")
+        sleep(retry_delay)
+
+        # GET verification
+        if method == 'updaterecord':
+            search = f"{_time_window_last_15min('modification')} and {search_value}"
+        else:
+            search = f"{_time_window_last_15min('creation')} and {search_value}"
+        try:
+            hits, record = retrieve_record(api, database, search, 1)
+            if hits and hits > 0:
+                print(f"post_with_verify(): Record found on GET after POST failure "
+                      f"(attempt {attempt}) — returning existing record, no orphan created")
+                return record[0]
+        except Exception as err:
+            print(f"post_with_verify(): GET verification failed: {err}")
+
+        # GET found nothing — genuine failure, retry the POST
+        print(f"post_with_verify(): Record not found on GET, retrying POST "
+              f"(attempt {attempt}/{max_retries})")
+
+    print(f"post_with_verify(): All {max_retries} attempts exhausted for "
+          f"{database}/{search_value}")
+    return None
+
+
+def post(api: str, payload: str, database: str, method: str) -> Union[dict[str, Any], bool, None]:
     """
     Send a POST request
     """
@@ -117,28 +171,28 @@ def post(api, payload, database, method):
         "output": "jsonv1",
     }
     payload = payload.encode("utf-8")
-    record = {}
 
     try:
         response = requests.request(
             "POST", api, headers=HEADERS, params=params, data=payload, timeout=TIMEOUT
         )
     except requests.exceptions.Timeout as err:
-        print(err)
-        raise Exception from err
+        print(f"POST timeout: {err}")
+        return None
     except requests.exceptions.ConnectionError as err:
-        print(err)
-        raise Exception from err
+        print(f"POST connection error: {err}")
+        return None
     except requests.exceptions.HTTPError as err:
-        print(err)
-        raise Exception from err
+        print(f"POST HTTP error: {err}")
+        return None
     except Exception as err:
-        print(err)
-        raise Exception from err
+        print(f"POST unexpected error: {err}")
+        return None
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
     print("-------------------------------------")
+
     boolean = check_response(response.text, api)
     if boolean is True:
         return False
@@ -147,8 +201,7 @@ def post(api, payload, database, method):
         try:
             if isinstance(record["adlibJSON"]["recordList"]["record"], list):
                 return record["adlibJSON"]["recordList"]["record"][0]
-            else:
-                return record["adlibJSON"]["recordList"]["record"]
+            return record["adlibJSON"]["recordList"]["record"]
         except (KeyError, IndexError, TypeError):
             return record
     elif "@attributes" in response.text:
@@ -160,8 +213,7 @@ def post(api, payload, database, method):
     return None
 
 
-# (record: dict, fieldname: str) -> list[str]:
-def retrieve_field_name(record, fieldname):
+def retrieve_field_name(record: dict[str, Any], fieldname: str) -> list[Any]:
     """
     Retrieve record, check for language data
     Alter retrieval method. record ==
@@ -189,8 +241,7 @@ def retrieve_field_name(record, fieldname):
     return field_list
 
 
-# (record: dict, field: str) -> list[str]:
-def traverse_sub_records(record, field):
+def traverse_sub_records(record: dict[str, Any], field: str) -> list[str]:
     """
     Where there is group nesting check for
     fieldname in other layers
@@ -215,8 +266,7 @@ def traverse_sub_records(record, field):
     return field_list
 
 
-# (record: dict, fname: str) -> dict[any, any]:
-def retrieve_facet_list(record, fname):
+def retrieve_facet_list(record: dict[str, Any], fname: str) -> list[str]:
     """
     Retrieve list of facets
     """
@@ -228,8 +278,7 @@ def retrieve_facet_list(record, fname):
     return facets
 
 
-# (record: dict, fname: str) -> list[str]:
-def group_check(record, fname):
+def group_check(record: dict[str, Any], fname: str) -> Union[list[str], list[dict[str, Any]], None]:
     """
     Get group that contains field key
     """
@@ -280,8 +329,7 @@ def group_check(record, fname):
         return None
 
 
-# (api: str, database: str) -> dict[str]
-def get_grouped_items(api, database):
+def get_grouped_items(api: str, database: str) -> Union[dict[str, list[str]], tuple[None, None]]:
     """
     Check dB for groupings and ensure
     these are added to XML configuration
@@ -308,7 +356,7 @@ def get_grouped_items(api, database):
     return grouped
 
 
-def create_record_data(api, database, priref, data=None):
+def create_record_data(api: str, database: str, priref: Union[str, int], data: Optional[list[dict[str, str]]] = None) -> str:
     if data is None:
         data = []
     if not isinstance(data, list):
@@ -397,8 +445,7 @@ def escape_xml(s: str) -> str:
     )
 
 
-# (priref: str, grouping: str, field_pairs: list[str]) -> str:
-def create_grouped_data(priref, grouping, field_pairs):
+def create_grouped_data(priref: Optional[str], grouping: str, field_pairs: list[Union[list[dict[str, str]], dict[str, str]]]) -> Optional[str]:
     """
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append
@@ -430,8 +477,7 @@ def create_grouped_data(priref, grouping, field_pairs):
         return payload_mid
 
 
-# (api: str, priref: str, comments: str) -> bool:
-def add_quality_comments(api, priref, comments):
+def add_quality_comments(api: str, priref: str, comments: str) -> bool:
     """
     Receive comments string
     convert to XML quality comments
@@ -439,7 +485,7 @@ def add_quality_comments(api, priref, comments):
     """
 
     p_start: str = f"<adlibXML><recordList><record priref='{priref}'><quality_comments>"
-    date_now: str = str(datetime.datetime.now())[:10]
+    date_now: str = str(datetime.now())[:10]
     p_comm: str = f"<quality_comments><![CDATA[{comments}]]></quality_comments>"
     p_date: str = f"<quality_comments.date>{date_now}</quality_comments.date>"
     p_writer: str = "<quality_comments.writer>datadigipres</quality_comments.writer>"
@@ -457,8 +503,7 @@ def add_quality_comments(api, priref, comments):
         return True
 
 
-# (rec: dict, api: str) -> bool:
-def check_response(rec, api):
+def check_response(rec: str, api: str) -> Optional[bool]:
     """
     Collate list of received API failures
     and check for these reponses from post
@@ -466,7 +511,7 @@ def check_response(rec, api):
     """
     failures = [
         "A severe error occurred on the current command.",
-        "Execution Timout Expired. The timeout period elapsed",
+        "Execution Timeout Expired. The timeout period elapsed",
     ]
 
     for warning in failures:
@@ -475,8 +520,7 @@ def check_response(rec, api):
             return True
 
 
-# (api: str) -> None:
-def recycle_api(api):
+def recycle_api(api: str) -> None:
     """
     Adds a search call to API which
     triggers Powershell recycle
@@ -488,7 +532,7 @@ def recycle_api(api):
     sleep(120)
 
 
-def write_lock(api, priref, database):
+def write_lock(api: str, priref: str, database: str) -> Optional[bool]:
     """
     Apply a writing lock to the record before updating
     """
@@ -512,7 +556,7 @@ def write_lock(api, priref, database):
         print(f"Lock record wasn't applied to record {priref}\n{err}")
 
 
-def unlock_record(api, priref, database):
+def unlock_record(api: str, priref: str, database: str) -> Optional[bool]:
     """
     Only used if write fails and lock was successful, to guard against file remaining locked
     """

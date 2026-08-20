@@ -58,7 +58,7 @@ LOGGER.setLevel(logging.INFO)
 
 STORAGE = {
     "Netflix": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/separate5_1/')}",
-    "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate_atmos/')}",
+    "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate_atmos/')}"
 }
 
 ORDER = {"L": "01", "R": "02", "C": "03", "LFE": "04", "Ls": "05", "Rs": "06"}
@@ -141,6 +141,7 @@ def main():
                     fpath,
                 )
                 continue
+
             LOGGER.info(
                 "File(s) found in target %s folder %s: %s",
                 platform,
@@ -182,7 +183,7 @@ def main():
                 old_fname = value
                 filename_dct[old_fname] = new_fname
 
-                if not old_fname.endswith((".WAV", ".wav")):
+                if not old_fname.lower().endswith((".mov", ".wav")):
                     LOGGER.warning(
                         "File contained in separate audio folder that is not WAV/MOV: %s",
                         old_fname,
@@ -238,6 +239,7 @@ def main():
                 )
             elif platform == "Amazon":
                 qual_comm = "Dolby Atmos supplied separately as 5.1 audio contained within supplied ProRes."
+
             success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
             if not success:
                 LOGGER.warning(
@@ -408,6 +410,7 @@ def make_item_record_dict(
             item.append({"title": f"{title} (5.1 audio)"})
         elif platform == "Amazon":
             item.append({"title": f"{title} (Dolby Atmos)"})
+
         if adlib.retrieve_field_name(record[0], "title_article")[0]:
             item.append(
                 {
@@ -432,10 +435,13 @@ def make_item_record_dict(
     item.append({"related_object.reference.lref": priref})
     if platform == "Netflix":
         item.append({"related_object.notes": "5.1 audio for"})
+        item.append({"file_type": "WAV"})
+        item.append({"code_type": "WAV"})
     elif platform == "Amazon":
         item.append({"related_object.notes": "Dolby Atmos for"})
-    item.append({"file_type": "WAV"})
-    item.append({"code_type": "WAV"})
+        item.append({"file_type": "WAV"})
+        item.append({"code_type": "WAV"})
+
     if "acquisition.date" in str(record):
         item.append(
             {
@@ -459,6 +465,7 @@ def make_item_record_dict(
         elif platform == "Amazon":
             item.append({"acquisition.source.lref": "999923912"})
             item.append({"acquisition.source.type": "DONOR"})
+
     item.append(
         {
             "access_conditions": "Access requests for this collection are subject to an approval process. "
@@ -485,6 +492,7 @@ def create_digital_original_filenames(
     and append to the CID item record.
     """
     payload = f"<adlibXML><recordList><record priref='{priref}'>"
+    filename = ""
     for key, val in asset_list_dct.items():
         filename = f"{key} - Renamed to: {val}"
         LOGGER.info("Writing to digital.acquired_filename: %s", filename)
@@ -499,7 +507,15 @@ def create_digital_original_filenames(
     LOGGER.info(payload)
 
     try:
-        result = adlib.post(CID_API, payload, "items", "updaterecord")
+        result = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "items",
+            "updaterecord"
+            f"Df=ITEM and priref={priref} and digital.acquired_filename='{filename}'",
+            3,
+            10
+        )
         print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info(
             "Successfully appended digital.acquired_filenames to Item record %s", priref
@@ -524,7 +540,15 @@ def create_new_item_record(
     item_dct = make_item_record_dict(priref, platform, record)
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data(CID_API, "items", "", item_dct)
-    new_record = adlib.post(CID_API, item_xml, "items", "insertrecord")
+    new_record = adlib.post_with_verify(
+        CID_API,
+        item_xml,
+        "items",
+        "insertrecord",
+        f"Df=ITEM and related_object.reference.lref='{priref}'",
+        3,
+        10
+    )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

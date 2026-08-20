@@ -39,7 +39,7 @@ _ALLOWED_DIR_NAME = "adverts_techedge_no_dupes"
 _MAX_ERROR_VALUE_LEN = 50
 _DATE_RE = re.compile(r"^\d{2}/\d{2}/\d{4}$")
 _TIME_RE = re.compile(r"^\d{2}:\d{2}:\d{2}$")
-_CSV_INJECTION_PREFIXES = ("=", "+", "-", "@")
+_CSV_INJECTION_PREFIXES = ("=", "+", "@")
 
 
 def _safe_repr(v: object) -> str:

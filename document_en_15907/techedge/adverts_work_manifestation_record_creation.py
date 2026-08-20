@@ -308,7 +308,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
     if hits == 1:
         maj_priref = adlib.retrieve_field_name(rec[0], "priref")[0]
         if mid_priref in str(rec):
-            LOGGER.info("Mid term %s is linked to Major term %s", mid, major)s
+            LOGGER.info("Mid term %s is linked to Major term %s", mid, major)
         else:
             term_dct = get_existing_terms("narrower_term", maj_priref, mid_priref)
             maj_xml = adlib.create_record_data(
@@ -746,9 +746,10 @@ def get_csv_path() -> Optional[str]:
     """
     with open(CSV_LIST, 'r') as completed:
         completed_csvs = completed.readlines()
-
+    print(completed_csvs)
     for csv in os.listdir(CSV_PATH):
-        if not csv.endswith(".csv)"):
+        print(csv)
+        if not csv.endswith(".csv"):
             continue
         elif csv in completed_csvs:
             continue
@@ -783,10 +784,6 @@ def main():
 
     LOGGER.info("Targetting CSV path: %s", csv_pth)
     for row in te.iter_techedge_rows(csv_pth):
-        if working_day_check(datetime.now()):
-            LOGGER.info("Exiting: Cannot operate in working hours")
-            sys.exit("Exiting: Cannot operate in working hours")
-
         first_showing = False
         if not utils.check_control("pause_scripts"):
             LOGGER.info(
@@ -879,11 +876,16 @@ def convert_transmission_time(transmission_start_time: str) -> str:
     Handle cases where times supplied greater
     than 23:59:59, eg 27:35:50
     """
-    hours = int(transmission_start_time.split(":")[0])
+    if ":" in transmission_start_time:
+        tsr = transmission_start_time.replace(":", "-")
+    else:
+        tsr = transmission_start_time
+
+    hours = int(tsr.split("-")[0])
     if hours > 23:
-        start_time_int = int(transmission_start_time.split(":")[0]) - 24
+        start_time_int = int(tsr.split("-")[0]) - 24
         adjusted_start_time = ":".join(
-            [str(start_time_int).zfill(2)] + transmission_start_time.split(":")[1:]
+            [str(start_time_int).zfill(2)] + tsr.split("-")[1:]
         )
         return adjusted_start_time
     else:

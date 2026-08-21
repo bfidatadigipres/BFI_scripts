@@ -42,8 +42,27 @@ def _validate_https_url(value: Optional[str]) -> Optional[str]:
     return value
 
 
-def _validate_non_negative(value: Optional[int]) -> Optional[int]:
-    if value is not None and value < 0:
+def _try_int(value: Any) -> Optional[int]:
+    """Coerce to int; return None if not coercible (let Pydantic handle it)."""
+    if value is None:
+        return None
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+    if isinstance(value, float):
+        return int(value)
+    return None
+
+
+def _validate_non_negative(value: Any) -> Any:
+    if value is None:
+        return value
+    n = _try_int(value)
+    if n is not None and n < 0:
         raise ValueError(f"Value must be non-negative: {value}")
     return value
 
@@ -99,7 +118,7 @@ class RenditionDefault(APIModel):
 
     @field_validator("width", "height", mode="before")
     @classmethod
-    def _non_negative_resolution(cls, v: Optional[int]) -> Optional[int]:
+    def _non_negative_resolution(cls, v: Any) -> Any:
         return _validate_non_negative(v)
 
     @field_validator("href", mode="before")
@@ -129,7 +148,7 @@ class Related(APIModel):
 
     @field_validator("number", mode="before")
     @classmethod
-    def _non_negative_number(cls, v: Optional[int]) -> Optional[int]:
+    def _non_negative_number(cls, v: Any) -> Any:
         return _validate_non_negative(v)
 
 
@@ -186,8 +205,20 @@ class Contributor(APIModel):
 
     @field_validator("dob", mode="before")
     @classmethod
-    def _validate_dob(cls, v: Optional[date]) -> Optional[date]:
-        if v is not None and v.year < 1800:
+    def _validate_dob(cls, v: Any) -> Any:
+        if v is None:
+            return v
+        year = None
+        if isinstance(v, date) and not isinstance(v, datetime):
+            year = v.year
+        elif isinstance(v, datetime):
+            year = v.year
+        elif isinstance(v, str):
+            try:
+                year = date.fromisoformat(v).year
+            except ValueError:
+                pass
+        if year is not None and year < 1800:
             raise ValueError("DOB year must be >= 1800")
         return v
 
@@ -238,13 +269,16 @@ class Asset(APIModel):
 
     @field_validator("number", "total", "runtime", "productionYear", mode="before")
     @classmethod
-    def _non_negative_int(cls, v: Optional[int]) -> Optional[int]:
+    def _non_negative_int(cls, v: Any) -> Any:
         return _validate_non_negative(v)
 
     @field_validator("productionYear", mode="before")
     @classmethod
-    def _validate_production_year(cls, v: Optional[int]) -> Optional[int]:
-        if v is not None and (v < 1800 or v > 2100):
+    def _validate_production_year(cls, v: Any) -> Any:
+        if v is None:
+            return v
+        n = _try_int(v)
+        if n is not None and (n < 1800 or n > 2100):
             raise ValueError("productionYear must be between 1800 and 2100")
         return v
 
@@ -276,8 +310,11 @@ class Item(APIModel):
 
     @field_validator("duration", mode="before")
     @classmethod
-    def _validate_duration(cls, v: Optional[int]) -> Optional[int]:
-        if v is not None and (v < 0 or v > 500):
+    def _validate_duration(cls, v: Any) -> Any:
+        if v is None:
+            return v
+        n = _try_int(v)
+        if n is not None and (n < 0 or n > 500):
             raise ValueError("duration must be between 0 and 500")
         return v
 
@@ -300,7 +337,7 @@ class RootPayload(APIModel):
 
     @field_validator("total", mode="before")
     @classmethod
-    def _non_negative_total(cls, v: Optional[int]) -> Optional[int]:
+    def _non_negative_total(cls, v: Any) -> Any:
         return _validate_non_negative(v)
 
 

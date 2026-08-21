@@ -242,7 +242,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -287,7 +287,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -333,7 +333,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -392,7 +392,7 @@ def manage_advertiser_people(
                 {"input.date": str(datetime.now())[:10]},
                 {"input.time": str(datetime.now())[11:19]},
                 {
-                    "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                    "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
                 },
             ]
             sleep(0.25)
@@ -528,7 +528,7 @@ def manage_advertiser_people(
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -570,7 +570,7 @@ def manage_advertiser_people(
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -605,7 +605,7 @@ def manage_advertiser_people(
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -639,7 +639,7 @@ def manage_advertiser_people(
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -1008,7 +1008,7 @@ def build_rec_details(row):
         {"input.date": str(datetime.now())[:10]},
         {"input.time": str(datetime.now())[11:19]},
         {
-            "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+            "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
         },
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
@@ -1211,12 +1211,12 @@ def create_manifestation(
     confirm = over_two_weeks(first_showing, row.date)
     if confirm is False:
         manifestation_values.append(
-            {"notes": "Manifestation representing advert broadcast time and date."}
+            {"notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."}
         )
     else:
         manifestation_values.append(
             {
-                "notes": "Manifestation representing advert first broadcast time and date."
+                "notes": "Manifestation representing advert first broadcast time and date. Actual time may vary by up to 2 minutes."
             }
         )
 

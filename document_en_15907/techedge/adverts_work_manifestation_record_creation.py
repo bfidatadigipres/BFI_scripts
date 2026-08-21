@@ -821,10 +821,10 @@ def main():
           - make Manifestation
     """
     count = 0
-    if not utils.check_storage(STORAGE):
-        sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    if not utils.check_control("pause_scripts"):
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    #if not utils.check_storage(STORAGE):
+    #    sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    #if not utils.check_control("pause_scripts"):
+    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     #if working_day_check(datetime.now()):
     #    sys.exit("Exiting: Cannot operate in working hours")
     csv_pth = get_csv_path()
@@ -838,11 +838,11 @@ def main():
     LOGGER.info("Targetting CSV path: %s", csv_pth)
     for row in te.iter_techedge_rows(csv_pth):
         first_showing = False
-        if not utils.check_control("pause_scripts"):
-            LOGGER.info(
-                "Script run prevented by downtime_control.json. Script exiting."
-            )
-            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        #if not utils.check_control("pause_scripts"):
+        #    LOGGER.info(
+        #        "Script run prevented by downtime_control.json. Script exiting."
+        #    )
+        #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         if not utils.cid_check(CID_API):
             LOGGER.warning("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
@@ -907,7 +907,7 @@ def main():
         else:
             print("SKIPPING: Manifestation exists for this Ad.")
         count += 1
-        if count == 4:
+        if count == 10:
             sys.exit("Tests, four entries only!")
 
     with open(CSV_LIST, 'a') as file:
@@ -1224,16 +1224,20 @@ def create_work(row, work_values: dict) -> Optional[str]:
 
 
 def create_manifestation(
-    row, manifestation_values: dict
+    first_showing, row, manifestation_values: dict
 ) -> Optional[str]:
     """
     Create a manifestation record,
     linked to work_priref
     """
-
-    manifestation_values.append(
-        {"notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."}
-    )
+    if first_showing:
+        manifestation_values.append(
+            {"notes": "Manifestation representing advert first broadcast time and date. Actual time may vary by up to 2 minutes."}
+        )
+    else:
+        manifestation_values.append(
+            {"notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."}
+        )
     man_values_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values
     )

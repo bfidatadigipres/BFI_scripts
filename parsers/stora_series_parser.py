@@ -25,17 +25,9 @@ from pydantic import (
     model_validator,
 )
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
 MAX_JSON_SIZE = 5 * 1024 * 1024  # 5 MB
-
 HTTPS_URL_RE = re.compile(r"^https://[^\s]+$")
 
-# ---------------------------------------------------------------------------
-# Custom errors
-# ---------------------------------------------------------------------------
 
 class UnexpectedFieldError(ValueError):
     """Raised if a JSON contains unanticipated fields."""
@@ -44,10 +36,6 @@ class UnexpectedFieldError(ValueError):
 class PayloadTooLargeError(ValueError):
     """Raised if the raw JSON payload exceeds the maximum allowed size."""
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _validate_https_url(value: Optional[str]) -> Optional[str]:
     if value is not None and not HTTPS_URL_RE.match(value):
@@ -99,19 +87,11 @@ def _extract_extra_field_errors(e: ValidationError) -> List[Tuple[str, str]]:
     return out
 
 
-# ---------------------------------------------------------------------------
-# Base model
-# ---------------------------------------------------------------------------
-
 class APIModel(BaseModel):
     """Base model: forbids unexpected fields."""
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-
-# ---------------------------------------------------------------------------
-# Leaf / nested models
-# ---------------------------------------------------------------------------
 
 class Summary(APIModel):
     short: Optional[str] = Field(default=None, max_length=500)
@@ -309,10 +289,6 @@ class Series(APIModel):
                         raise ValueError(f"meta value for '{k}' exceeds max length of 5000")
         return values
 
-
-# ---------------------------------------------------------------------------
-# Parsers
-# ---------------------------------------------------------------------------
 
 def parse_payload(data: Dict[str, Any]) -> Series:
     """Parse a decoded JSON dict into typed models."""

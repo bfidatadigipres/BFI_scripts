@@ -42,7 +42,6 @@ from time import sleep
 from typing import Dict, Iterator, List, Optional
 from zoneinfo import ZoneInfo
 
-from typing import Optional, List, Dict
 import tenacity
 
 sys.path.append(os.environ.get("CODE"))

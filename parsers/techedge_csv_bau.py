@@ -135,7 +135,7 @@ class Data(BaseModel):
     major_category: SanitizedStr = Field(default=None, alias="Major category", max_length=150)
     mid_category: SanitizedStr = Field(default=None, alias="Mid category", max_length=150)
     minor_category: SanitizedStr = Field(default=None, alias="Minor category", max_length=150)
-    pib_rel: SanitizedStr = Field(default=None, alias="All PIB rel", max_length=20)
+    pib_rel: SanitizedStr = Field(default=None, alias="All PIB rel", max_length=100)
     pib_pos: ImpactsPosInt = Field(default=None, alias="All PIB pos")
     log_station: SanitizedStr = Field(default=None, alias="Log Station (2010-)", max_length=20)
     impacts: SanitizedStr = Field(default=None, alias="Impacts A4+", max_length=20)

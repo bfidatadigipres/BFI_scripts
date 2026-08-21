@@ -134,7 +134,7 @@ class Rendition(APIModel):
 class Media(APIModel):
     kind: Optional[str] = Field(default=None, max_length=50)
     rendition: Optional[Rendition] = None
-    copyright: Optional[str] = Field(default=None, max_length=20)
+    copyright: Optional[str] = Field(default=None, max_length=500)
     expiry: Optional[datetime] = None
 
 

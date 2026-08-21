@@ -195,6 +195,7 @@ class Contributor(APIModel):
     id: Optional[str] = Field(default=None, max_length=64)
     name: Optional[str] = Field(default=None, max_length=200)
     dob: Optional[date] = None
+    dod: Optional[date] = None
     from_: Optional[str] = Field(default=None, alias="from", max_length=200)
     gender: Optional[str] = Field(default=None, max_length=20)
     meta: Optional[Dict[str, str]] = None
@@ -203,9 +204,9 @@ class Contributor(APIModel):
     character: Optional[List[Character]] = None
     role: Optional[List[str]] = Field(default=None, max_length=50)
 
-    @field_validator("dob", mode="before")
+    @field_validator("dob", "dod", mode="before")
     @classmethod
-    def _validate_dob(cls, v: Any) -> Any:
+    def _validate_date_fields(cls, v: Any) -> Any:
         if v is None:
             return v
         year = None
@@ -219,7 +220,7 @@ class Contributor(APIModel):
             except ValueError:
                 pass
         if year is not None and year < 1800:
-            raise ValueError("DOB year must be >= 1800")
+            raise ValueError("Date year must be >= 1800")
         return v
 
     @model_validator(mode="before")

@@ -59,7 +59,7 @@ HOLDING_COMP_DOC = os.path.join(STORAGE, "techedge_holding_company_change.yaml")
 # Setup logging
 LOGGER = logging.getLogger("document_augmented_work_adverts")
 HDLR = logging.FileHandler(
-    os.path.join(LOG_PATH, "document_augmented_work_adverts.log")
+    os.path.join(LOG_PATH, "adverts_work_manifestation_record_creation.log")
 )
 FORMATTER = logging.Formatter("%(asctime)s\t%(levelname)s\t%(message)s")
 HDLR.setFormatter(FORMATTER)

@@ -290,7 +290,9 @@ def test_get_invalid_query(mocker):
 def test_post(mocker, expected_method_input):
     mock_response = mocker.Mock()
     mock_response.status_code = 200
-    mock_response.text = json_response = """
+    mock_response.text = (
+        json_response
+    ) = """
     {
         "adlibJSON": {
             "recordList": {

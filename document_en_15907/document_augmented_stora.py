@@ -1166,7 +1166,6 @@ def main():
                     err,
                 )
 
-
     logger.info(
         "========== STORA documentation script END ===================================================\n"
     )

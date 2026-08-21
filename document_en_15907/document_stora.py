@@ -908,7 +908,7 @@ def create_subtitle_date(manifestation_priref, session):
             start_time,
         )
         return None
-      
+
     return TransmissionInfo(
             date=trans_date, start_time=start_time, end_time=end_time
         )

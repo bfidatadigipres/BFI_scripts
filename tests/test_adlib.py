@@ -448,7 +448,9 @@ def test_create_grouped_data(priref, grouping, field_pairs, outcome):
 
 def test_post(mocker):
     mock_reponse = mocker.Mock()
-    mock_reponse.text = json_response = """
+    mock_reponse.text = (
+        json_response
+    ) = """
     {
         "adlibJSON": {
             "recordList": {

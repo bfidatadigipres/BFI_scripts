@@ -609,7 +609,7 @@ def manage_advertiser_people(
             CID_API,
             hc_xml,
             "people",
-            "insertrecord"
+            "insertrecord",
             f"name='{holding_comp}' and activity_type='Sponsor' and source='TechEdge adverts data supply'"
         )
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]

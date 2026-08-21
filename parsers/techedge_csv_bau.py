@@ -101,7 +101,10 @@ def parse_film_code(v):
 def parse_impacts_pos(v):
     if v is None or v == "":
         return None
-    v = int(v)
+    try:
+        v = int(v)
+    except (ValueError, TypeError):
+        return None
     if v < 0 or v > 99:
         raise ValueError(f"Invalid length/range for number: {_safe_repr(v)}")
     return v

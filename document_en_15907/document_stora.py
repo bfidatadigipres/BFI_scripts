@@ -257,7 +257,7 @@ def build_defaults(
     if len(utc_timestamp) > 10:
         bst_data = utils.check_bst_adjustment(utc_timestamp)
         if len(bst_data) != 2:
-            LOGGER.warning(
+            logger.warning(
                 "BST date time conversion failed. Resorting to UTC time stamps"
             )
             bst_date = title_date_start
@@ -480,9 +480,7 @@ def main() -> None:
                 transmission_info = create_subtitle_date(man_id, session)
                 subtitle_date = adjust_date_for_midnight(transmission_info)
                 success = push_payload(item_id, webvtt_payload, session, subtitle_date)
-                manifesation_payload_success = post_accessibility_resource(
-                    man_id, session
-                )
+                manifesation_payload_success = post_accessibility_resource(man_id, session)
                 if not success:
                     logger.warning(
                         "Unable to push webvtt_payload to CID Item %s", item_id
@@ -549,6 +547,7 @@ def main() -> None:
                 print(
                     "Subtitle data is absent. Subtitle.vtt file will not be renamed or moved"
                 )
+
 
     logger.info(
         "========== STORA documentation script END ===================================================\n"
@@ -909,6 +908,11 @@ def create_subtitle_date(manifestation_priref, session):
             start_time,
         )
         return None
+      
+    return TransmissionInfo(
+            date=trans_date, start_time=start_time, end_time=end_time
+        )
+        return None
 
     return TransmissionInfo(date=trans_date, start_time=start_time, end_time=end_time)
 
@@ -943,7 +947,7 @@ def post_accessibility_resource(manifestation_priref, sess):
             "manifestations",
             "updaterecord",
             sess,
-            f"Df=MANIFESTATION and priref='{manifestation_priref}'",
+            f"Df=MANIFESTATION and priref='{manifestation_priref}' and accessibility_resource='SUBTITLES'",
             3,
             10,
         )

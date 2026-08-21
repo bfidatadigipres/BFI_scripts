@@ -364,6 +364,7 @@ def sort_ext(ext):
             "csv",
             "txt",
             "ttml",
+            "txt",
         ],
     }
 

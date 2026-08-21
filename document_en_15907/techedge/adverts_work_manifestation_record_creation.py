@@ -2,18 +2,19 @@
 
 """
 BAU Adverts record creation:
-- Work through CSV of adverts without dupes
+- Work through daily CSVs of adverts
   prior to LLM enhanced descriptive metadata.
-  Note to be added to input.notes:
+  Note to be prepended to input.notes:
     "LLM data cleaning to follow"
 - Validate CSV row data with Pydantic
-- Inform creation of Work, People and
-  single manifestation for the first advert
+- Inform creation of Work, People, Thesaurus
+  and Manifestation for the first advert
   with a given film_code.
-- Attach creation of repeat manifestation
-  where repeated showing of film_code
+- Attach to Work repeated Manifestation
+  where film_code match but not UTC timestamp
 
-NOTES: Must handle weird times 24:00:00+
+Must handle weird time/date carry over, eg
+08/08/2026, 29:58:51 → 09/08/2026, 05:58:51
 
 Long-term dependencies:
 2 week delay for TechEdge full
@@ -41,12 +42,13 @@ from time import sleep
 from typing import Dict, Iterator, List, Optional
 from zoneinfo import ZoneInfo
 
+from typing import Optional, List, Dict
 import tenacity
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3 as adlib
 import utils
-from parsers import techedge_csv as te
+from parsers import techedge_csv_bau as te
 
 # Global variable
 STORAGE = os.path.join(os.environ.get("ADMIN"), "datasets")
@@ -243,7 +245,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -288,7 +290,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -334,7 +336,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -393,7 +395,7 @@ def manage_advertiser_people(
                 {"input.date": str(datetime.now())[:10]},
                 {"input.time": str(datetime.now())[11:19]},
                 {
-                    "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                    "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
                 },
             ]
             sleep(0.25)
@@ -529,7 +531,7 @@ def manage_advertiser_people(
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -571,7 +573,7 @@ def manage_advertiser_people(
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -606,7 +608,7 @@ def manage_advertiser_people(
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -640,7 +642,7 @@ def manage_advertiser_people(
             {"input.date": str(datetime.now())[:10]},
             {"input.time": str(datetime.now())[11:19]},
             {
-                "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+                "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
             },
         ]
         sleep(0.25)
@@ -728,16 +730,18 @@ def make_utb_data_for_man(row, mpriref):
         }
     )
 
-    if len(row.original) > 1:
-        orig_list = ", ".join(
-            str(row.original).rsplit(":", maxsplit=1)[-1].strip().split("-")
-        )
-        utb_dct.append(
-            {
-                "utb.fieldname": "Original Advertiser, Brand, Agency and Holding Company values from TechEdge",
-                "utb.content": orig_list,
-            }
-        )
+    original = []
+    original.append(row.advertiser)
+    original.append(row.brand)
+    original.append(row.agency)
+    original.append(row.hold_comp)
+    orig_list = ", ".join(original)
+    utb_dct.append(
+        {
+            "utb.fieldname": "Original Advertiser, Brand, Agency and Holding Company values from TechEdge",
+            "utb.content": orig_list,
+        }
+    )
     print(utb_dct)
     utb_xml = adlib.create_grouped_data(mpriref, "utb", utb_dct)
     return utb_xml
@@ -750,9 +754,10 @@ def get_csv_path() -> Optional[str]:
     """
     with open(CSV_LIST, "r") as completed:
         completed_csvs = completed.readlines()
-
+    print(completed_csvs)
     for csv in os.listdir(CSV_PATH):
-        if not csv.endswith(".csv)"):
+        print(csv)
+        if not csv.endswith(".csv"):
             continue
         elif csv in completed_csvs:
             continue
@@ -762,34 +767,31 @@ def get_csv_path() -> Optional[str]:
 
 def main():
     """
-    Iterates through LLM cleaned CSV supply (single or date dependent)
-    extracts necessary data into variables. Checks if Work advert exists
+    Iterates through raw supply with dupe data removed
+    extracts necessary row data into variables. Checks if Work advert exists
     if yes - skip Work creation and create manifestation if needed
-             borrowing LLM cleansed data where appropriate
     if no - make work record
           - make people record if needed
+          - make thesaurus entries if needed
           - make Manifestation
     """
-
+    count = 0
     if not utils.check_storage(STORAGE):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    if working_day_check(datetime.now()):
-        sys.exit("Exiting: Cannot operate in working hours")
-    LOGGER.info(
-        "========== Adverts work documentation script STARTED ==============================================="
-    )
-
+    #if working_day_check(datetime.now()):
+    #    sys.exit("Exiting: Cannot operate in working hours")
     csv_pth = get_csv_path()
     if not csv_pth:
         sys.exit("No unique CSV file available at this time")
 
-    for row in te.iter_techedge_rows(csv_pth):
-        if working_day_check(datetime.now()):
-            LOGGER.info("Exiting: Cannot operate in working hours")
-            sys.exit("Exiting: Cannot operate in working hours")
+    LOGGER.info(
+        "========== Adverts work documentation script STARTED ==============================================="
+    )
 
+    LOGGER.info("Targetting CSV path: %s", csv_pth)
+    for row in te.iter_techedge_rows(csv_pth):
         first_showing = False
         if not utils.check_control("pause_scripts"):
             LOGGER.info(
@@ -831,20 +833,17 @@ def main():
                 print(f"Work creation error for data: {work_values}")
                 continue
         else:
-            print("SKIPPING: Work exists for this Ad")
+            print(f"SKIPPING: Work exists for this Ad {row.brand} {film_code}")
 
-        title_date_start = datetime.strftime(
-            datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d"
-        )
-        title_date_start = convert_transmission_time(title_date_start)
-        utc_timestamp = get_utc(title_date_start, row.start_time)
+        title_date_start, transmission_start_time = convert_transmission_time(row.date, row.start_time)
+        utc_timestamp = get_utc(title_date_start, transmission_start_time)
         mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
         if mpriref is False:
             LOGGER.info(
                 "Manifestation match not found '%s' - %s %s",
                 row.brand,
                 row.date,
-                row.start_time,
+                utc_timestamp
             )
 
             rec_def, _, _, manifestation = build_rec_details(row)
@@ -862,8 +861,11 @@ def main():
                 )
         else:
             print("SKIPPING: Manifestation exists for this Ad.")
+        count += 1
+        if count == 4:
+            sys.exit("Tests, four entries only!")
 
-    with open(CSV_LIST, "a") as file:
+    with open(CSV_LIST, 'a') as file:
         file.write(f"{csv_pth}\n")
 
     LOGGER.info(
@@ -877,20 +879,20 @@ def time_to_secs(timestamp):
     return dt.hour * 3600 + dt.minute * 60 + dt.second
 
 
-def convert_transmission_time(transmission_start_time: str) -> str:
+def convert_transmission_time(date: str, start_time: str) -> str:
     """
     Handle cases where times supplied greater
     than 23:59:59, eg 27:35:50
     """
-    hours = int(transmission_start_time.split(":")[0])
-    if hours > 23:
-        start_time_int = int(transmission_start_time.split(":")[0]) - 24
-        adjusted_start_time = ":".join(
-            [str(start_time_int).zfill(2)] + transmission_start_time.split(":")[1:]
-        )
-        return adjusted_start_time
-    else:
-        return transmission_start_time
+    if ":" not in start_time:
+        return None, None
+
+    dt = datetime.strptime(date, "%d/%m/%Y")
+    parts = start_time.split(":")
+    hours, minutes, seconds = int(parts[0]), int(parts[1]), int(parts[2])
+    dt = dt + timedelta(hours=hours, minutes=minutes, seconds=seconds)
+    
+    return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M:%S")
 
 
 def get_duration_total_parts(
@@ -904,11 +906,16 @@ def get_duration_total_parts(
         STORAGE, f"adverts_techedge_no_dupes/{title_date_start}_BFIExport.csv"
     )
     print(f"Targeting path for next data: {csv_path}")
+    base_real = os.path.realpath(os.path.join(STORAGE, "adverts_techedge_no_dupes"))
+    target_real = os.path.realpath(csv_path)
+    if os.path.commonpath([base_real, target_real]) != base_real:
+        raise Exception("Invalid file path")
     rows = []
-    with open(csv_path, "r", encoding="utf-8") as file:
+    with open(target_real, "r", encoding="utf-8") as file:
         for lines in file:
             parts = lines.strip().split(",")
             try:
+                date = parts[1]
                 start = parts[2]
                 alt_num = parts[3]
                 part_total = parts[-3]
@@ -917,6 +924,7 @@ def get_duration_total_parts(
 
             rows.append(
                 {
+                    "date": date,
                     "start_time": start,
                     "alt_num": alt_num,
                     "part_total": part_total,
@@ -929,7 +937,7 @@ def get_duration_total_parts(
                 i
                 for i, r in enumerate(rows)
                 if r["alt_num"] == alternative_number
-                and convert_transmission_time(r["start_time"])
+                and convert_transmission_time(r["date"], r["start_time"])[-1]
                 == transmission_start_time
             ),
             None,
@@ -958,8 +966,8 @@ def get_duration_total_parts(
 
         dur_row = rows[target_index + 1]
         stop_time = dur_row["start_time"]
-        converted_stop_time = convert_transmission_time(stop_time)
-        converted_start_time = convert_transmission_time(row["start_time"])
+        converted_stop_time = convert_transmission_time(date, stop_time)[-1]
+        converted_start_time = convert_transmission_time(date, row["start_time"])[-1]
         dur_start_secs = time_to_secs(converted_start_time)
         duration_stop_secs = time_to_secs(converted_stop_time)
         duration = duration_stop_secs - dur_start_secs
@@ -981,12 +989,8 @@ def build_rec_details(row):
 
     title_art = row.brand or ""
     title, title_article = utils.split_title(title_art)
-    title_date_start = row.start_time
+    title_date_start, transmission_start_time = convert_transmission_time(row.date, row.start_time)
     alternative_number = row.film_code
-    title_date_start = datetime.strftime(
-        datetime.strptime(row.date, "%d/%m/%Y"), "%Y-%m-%d"
-    )
-    transmission_start_time = row.start_time
     utc_timestamp = get_utc(title_date_start, transmission_start_time)
 
     # Broadcast details
@@ -1007,7 +1011,7 @@ def build_rec_details(row):
         {"input.date": str(datetime.now())[:10]},
         {"input.time": str(datetime.now())[11:19]},
         {
-            "input.notes": "LLM data cleansing to follow. Automated bulk record creation using data supplied by TechEdge"
+            "input.notes": "Automated data cleansing of Advertiser, Brand, Categories and Holding Company to follow. Automated bulk record creation using data supplied by TechEdge"
         },
         {"record_access.user": "BFIiispublic"},
         {"record_access.rights": "0"},
@@ -1210,12 +1214,12 @@ def create_manifestation(
     confirm = over_two_weeks(first_showing, row.date)
     if confirm is False:
         manifestation_values.append(
-            {"notes": "Manifestation representing advert broadcast time and date."}
+            {"notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."}
         )
     else:
         manifestation_values.append(
             {
-                "notes": "Manifestation representing advert first broadcast time and date."
+                "notes": "Manifestation representing advert first broadcast time and date. Actual time may vary by up to 2 minutes."
             }
         )
 

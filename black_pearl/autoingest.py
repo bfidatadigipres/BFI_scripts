@@ -674,7 +674,7 @@ def main():
 
             if ".DS_Store" in fname:
                 continue
-            if fname.endswith((".txt", ".md5", ".log", ".mhl", ".ini", ".json")):
+            if fname.endswith((".md5", ".log", ".mhl", ".ini", ".json")):
                 continue
             ext = fname.split(".")[-1]
 

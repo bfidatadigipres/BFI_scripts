@@ -1166,6 +1166,7 @@ def main():
                     err,
                 )
 
+
     logger.info(
         "========== STORA documentation script END ===================================================\n"
     )
@@ -2412,7 +2413,7 @@ def post_accessibility_resource(manifestation_priref, sess):
             "manifestations",
             "updaterecord",
             sess,
-            f"Df=MANIFESTATION and priref='{manifestation_priref}'",
+            f"Df=MANIFESTATION and priref='{manifestation_priref}' and accessibility_resource='SUBTITLES'",
             3,
             10,
         )

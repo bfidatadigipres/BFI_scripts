@@ -32,14 +32,16 @@ being worked on - no repeats.
 2026
 """
 
+import logging
+
 # Public packages
 import os
 import sys
-from datetime import datetime, timedelta, time
-from zoneinfo import ZoneInfo
-import logging
+from datetime import datetime, time, timedelta
 from time import sleep
-from typing import Optional, List, Dict
+from typing import Dict, Iterator, List, Optional
+from zoneinfo import ZoneInfo
+
 import tenacity
 
 sys.path.append(os.environ.get("CODE"))
@@ -749,7 +751,7 @@ def get_csv_path() -> Optional[str]:
     Keep track of CSVs that have been
     been read and had all records completed
     """
-    with open(CSV_LIST, 'r') as completed:
+    with open(CSV_LIST, "r") as completed:
         completed_csvs = completed.readlines()
     print(completed_csvs)
     for csv in os.listdir(CSV_PATH):
@@ -777,7 +779,7 @@ def main():
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    #if working_day_check(datetime.now()):
+    # if working_day_check(datetime.now()):
     #    sys.exit("Exiting: Cannot operate in working hours")
     csv_pth = get_csv_path()
     if not csv_pth:
@@ -832,7 +834,9 @@ def main():
         else:
             print(f"SKIPPING: Work exists for this Ad {row.brand} {film_code}")
 
-        title_date_start, transmission_start_time = convert_transmission_time(row.date, row.start_time)
+        title_date_start, transmission_start_time = convert_transmission_time(
+            row.date, row.start_time
+        )
         utc_timestamp = get_utc(title_date_start, transmission_start_time)
         mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
         if mpriref is False:
@@ -840,7 +844,7 @@ def main():
                 "Manifestation match not found '%s' - %s %s",
                 row.brand,
                 row.date,
-                utc_timestamp
+                utc_timestamp,
             )
 
             rec_def, _, _, manifestation = build_rec_details(row)
@@ -862,7 +866,7 @@ def main():
         if count == 4:
             sys.exit("Tests, four entries only!")
 
-    with open(CSV_LIST, 'a') as file:
+    with open(CSV_LIST, "a") as file:
         file.write(f"{csv_pth}\n")
 
     LOGGER.info(
@@ -888,7 +892,7 @@ def convert_transmission_time(date: str, start_time: str) -> str:
     parts = start_time.split(":")
     hours, minutes, seconds = int(parts[0]), int(parts[1]), int(parts[2])
     dt = dt + timedelta(hours=hours, minutes=minutes, seconds=seconds)
-    
+
     return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M:%S")
 
 
@@ -986,7 +990,9 @@ def build_rec_details(row):
 
     title_art = row.brand or ""
     title, title_article = utils.split_title(title_art)
-    title_date_start, transmission_start_time = convert_transmission_time(row.date, row.start_time)
+    title_date_start, transmission_start_time = convert_transmission_time(
+        row.date, row.start_time
+    )
     alternative_number = row.film_code
     utc_timestamp = get_utc(title_date_start, transmission_start_time)
 
@@ -1211,7 +1217,9 @@ def create_manifestation(
     confirm = over_two_weeks(first_showing, row.date)
     if confirm is False:
         manifestation_values.append(
-            {"notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."}
+            {
+                "notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."
+            }
         )
     else:
         manifestation_values.append(

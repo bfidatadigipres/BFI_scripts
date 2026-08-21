@@ -11,9 +11,10 @@ Must run from ENV with
 elasticsearch7
 """
 
-import os
 import csv
 import logging
+import os
+
 import elasticsearch7 as es
 
 ES_HOST = os.environ.get("ES_PATH")

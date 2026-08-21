@@ -1,11 +1,12 @@
-import json
-from datetime import datetime, timezone, timedelta
-import sys
-import os
 import csv
-from pathlib import Path
-from tenacity import retry, wait_fixed
+import json
 import logging
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+from tenacity import retry, wait_fixed
 
 # LOGGING
 LOG = sys.argv[1].split("/")[-1] + "_matches.log"
@@ -18,12 +19,13 @@ logger.setLevel(logging.INFO)
 
 
 sys.path.append(os.environ["CODE"])
-import adlib_v3 as adlib
-from document_en_15907 import title_article
-import utils
-
 import glob
+
 import pandas as pd
+
+import adlib_v3 as adlib
+import utils
+from document_en_15907 import title_article
 
 BASE_DIR = Path(sys.argv[1])
 BATCH_SIZE = 4

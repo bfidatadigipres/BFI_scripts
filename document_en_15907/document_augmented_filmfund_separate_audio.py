@@ -24,13 +24,15 @@ after CID Item record object_number.
 2026
 """
 
+import datetime
+import logging
+
 # Public packages
 import os
-import sys
 import shutil
-import logging
-import datetime
-from typing import Any, Iterable, Final, Optional
+import sys
+from typing import Any, Final, Iterable, Optional
+
 import ffmpeg
 
 # Local packages
@@ -209,9 +211,13 @@ def main():
 
         # Write quality comments to new CID item record
         if wav_type == "mono":
-            qual_comm = "Mono unmixed audio description supplied separately as WAV PCM file."
+            qual_comm = (
+                "Mono unmixed audio description supplied separately as WAV PCM file."
+            )
         elif wav_type == "stereo":
-            qual_comm = "Stereo unmixed audio description supplied separately as WAV PCM file."
+            qual_comm = (
+                "Stereo unmixed audio description supplied separately as WAV PCM file."
+            )
         else:
             qual_comm = ""
         success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
@@ -341,7 +347,7 @@ def make_item_record_dict(
             }
         )
     item.append({"acquisition.method": "Acquired"})
-    item.append({"acquisition.source.lref": "999692024"}) # BFI Film Fund
+    item.append({"acquisition.source.lref": "999692024"})  # BFI Film Fund
     item.append(
         {
             "access_conditions": "Access requests for this collection are subject to an approval process. "
@@ -349,7 +355,7 @@ def make_item_record_dict(
         }
     )
     item.append({"access_conditions.date": str(datetime.datetime.now())[:10]})
-    item.append({"grouping.lref": "394433"}) # BFI Film Fund
+    item.append({"grouping.lref": "394433"})  # BFI Film Fund
     item.append({"language": "English"})
     item.append({"language.type": "AUDDES"})
 
@@ -366,7 +372,7 @@ def create_digital_original_filenames(priref: str, file, new_file) -> bool:
     filename = f"{file} - Renamed to: {new_file}"
     LOGGER.info("Writing to digital.acquired_filename: %s", filename)
     pay_mid = f"<Acquired_filename><digital.acquired_filename>{filename}</digital.acquired_filename><digital.acquired_filename.type>FILE</digital.acquired_filename.type></Acquired_filename>"
-    pay_mid2 = "<grouping.lref>400745</grouping.lref>" # Lottery grouping
+    pay_mid2 = "<grouping.lref>400745</grouping.lref>"  # Lottery grouping
     payload = payload + pay_mid + pay_mid2
 
     pay_edit = f"<Edit><edit.name>datadigipres</edit.name><edit.date>{str(datetime.datetime.now())[:10]}</edit.date><edit.time>{str(datetime.datetime.now())[11:19]}</edit.time><edit.notes>Film Fund digital acquired filename update</edit.notes></Edit>"
@@ -384,7 +390,7 @@ def create_digital_original_filenames(priref: str, file, new_file) -> bool:
             "updaterecord"
             f"Df=ITEM and priref={priref} and digital.acquired_filename='{filename}'",
             3,
-            10
+            10,
         )
         print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info(
@@ -417,7 +423,7 @@ def create_new_item_record(
         "insertrecord",
         f"Df=ITEM and acquisition.source.lref='143463' and related_object.reference.lref='{priref}'",
         3,
-        10
+        10,
     )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)

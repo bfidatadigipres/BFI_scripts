@@ -34,11 +34,11 @@ import logging
 import os
 import shutil
 import sys
+from dataclasses import dataclass
 from time import sleep
 
 import tenacity
 import yaml
-from dataclasses import dataclass
 from series_retrieve import check_id, retrieve
 
 sys.path.append(os.environ["CODE"])
@@ -82,11 +82,13 @@ STORAGE_PATH = STORAGE + YEAR_PATH
 TIME_FORMAT = "%H:%M:%S"
 DATE_FORMAT = "%Y-%m-%d"
 
+
 @dataclass
 class TransmissionInfo:
     date: str
     start_time: str
     end_time: str
+
 
 NEWS_CHANNELS = ["Al Jazeera", "BBC NEWS HD", "Sky News", "GB News", "QVC"]
 
@@ -1095,16 +1097,23 @@ def main():
                 )
                 continue
 
-        # Build webvtt payload
+        # Build webvtt payload [deprecated]
         if webvtt_payload:
             transmission_info = create_subtitle_date(manifestation_priref, sess)
             subtitle_date = adjust_date_for_midnight(transmission_info)
             success = push_payload(item_data[1], webvtt_payload, sess, subtitle_date)
-            manifesation_payload_success = post_accessibility_resource(manifestation_priref, sess)
+            manifesation_payload_success = post_accessibility_resource(
+                manifestation_priref, sess
+            )
             if not success:
-                logger.warning("Unable to push webvtt_payload to CID Item %s", item_data[1])
+                logger.warning(
+                    "Unable to push webvtt_payload to CID Item %s", item_data[1]
+                )
             if not manifesation_payload_success:
-                logger.warning("Unable to push webvtt_payload to CID manifestation %s", manifestation_priref)
+                logger.warning(
+                    "Unable to push webvtt_payload to CID manifestation %s",
+                    manifestation_priref,
+                )
 
         # Rename JSON with .documented
         documented = f"{fullpath}.documented"
@@ -1155,8 +1164,7 @@ def main():
                     old_webvtt,
                     new_vtt,
                     err,
-                 )
-
+                )
 
     logger.info(
         "========== STORA documentation script END ===================================================\n"
@@ -2352,11 +2360,13 @@ def create_subtitle_date(manifestation_priref, session):
         "transmission_end_time",
         "transmission_start_time",
     ]
-    query = f'priref={manifestation_priref}'
+    query = f"priref={manifestation_priref}"
 
-    _, records = adlib.retrieve_record(CID_API, "manifestations", query, "1", session, fields=fields)
+    _, records = adlib.retrieve_record(
+        CID_API, "manifestations", query, "1", session, fields=fields
+    )
     trans_date = adlib.retrieve_field_name(records[0], "transmission_date")[0]
-    end_time = adlib.retrieve_field_name(records[0],"transmission_end_time")[0]
+    end_time = adlib.retrieve_field_name(records[0], "transmission_end_time")[0]
     start_time = adlib.retrieve_field_name(records[0], "transmission_start_time")[0]
 
     if not all([trans_date, end_time, start_time]):
@@ -2369,9 +2379,7 @@ def create_subtitle_date(manifestation_priref, session):
         )
         return None
 
-    return TransmissionInfo(
-            date=trans_date, start_time=start_time, end_time=end_time
-        )
+    return TransmissionInfo(date=trans_date, start_time=start_time, end_time=end_time)
 
 
 def adjust_date_for_midnight(info: TransmissionInfo) -> str:
@@ -2393,9 +2401,10 @@ def adjust_date_for_midnight(info: TransmissionInfo) -> str:
 
 
 def post_accessibility_resource(manifestation_priref, sess):
-    """Post subtitle data to Manifestation if present"""
     edit_entries = [{"accessibility_resource": "SUBTITLES"}]
-    manifestation_xml = adlib.create_record_data(CID_API, "manifestations", sess, manifestation_priref, edit_entries)
+    manifestation_xml = adlib.create_grouped_data(
+        manifestation_priref, "Edit", [edit_entries]
+    )
     try:
         post_resp = adlib.post_with_verify(
             CID_API,
@@ -2419,12 +2428,13 @@ def post_accessibility_resource(manifestation_priref, sess):
         return False
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def push_payload(item_id, webvtt_payload, sess, subtitle_date):
     """
     Push webvtt payload separately to Item record
     creation, to manage escape character injects
     """
-    SUBTITLE_TYPE= "WEBVTT_C"
+    SUBTITLE_TYPE = "WEBVTT_C"
     EDITOR_NOTES = "Extracted from MPEG-TS created by STORA recording"
     pay_head = f'<adlibXML><recordList><record priref="{item_id}">'
     subtitle_type_addition = f"<subtitle.type>{SUBTITLE_TYPE}</subtitle.type>"

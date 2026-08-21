@@ -40,6 +40,7 @@ import logging
 import os
 import sys
 from typing import Any, Final, Generator, Iterable, Optional
+
 import requests
 
 # Local packages

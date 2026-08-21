@@ -6,50 +6,49 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
-  issues: write
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   format-and-create-pr:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Debug Branch Info
         run: |
           echo "github.ref: ${{ github.ref }}"
           echo "github.head_ref: ${{ github.head_ref }}"
           echo "repo owner: ${{ github.repository_owner }}"
-          
+
       - uses: actions/checkout@v4
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.head_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-
+          persist-credentials: true
 
       - name: Setup Git
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Set up GitHub CLI
+      - name: Verify bot token
         run: |
-              sudo apt-get update && sudo apt-get install -y gh
+          if [ -z "${{ secrets.BFI_BOT_TOKEN }}" ]; then
+            echo "::error::BFI_BOT_TOKEN is not configured in this repo's secrets. Fork runs require it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
 
       - name: Authenticate GitHub CLI
-        run: |
-              echo "${{ secrets.BFI_BOT_TOKEN }}" | gh auth login --with-token
+        run: echo "${{ secrets.BFI_BOT_TOKEN }}" | gh auth login --with-token
 
-      # - name: Run security scans with CodeQL
-      #   uses: github/codeql-action/init@v3
-      #   with:
-      #         languages: python
-
-      # - name: Analyze code with CodeQL
-      #   uses: github/codeql-action/analyze@v2
+      - name: Pull latest changes
+        run: git pull --ff-only
 
       - name: Run Black (format instead of check)
         uses: psf/black@6305bf1ae645ab7541be4f5028a86239316178eb
@@ -67,177 +66,243 @@ jobs:
         id: check-changes
         run: |
           if [[ -n "$(git status --porcelain)" ]]; then
-            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "changes=true" >> "$GITHUB_OUTPUT"
             echo "Formatting changes were needed and have been applied"
           else
-            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "changes=false" >> "$GITHUB_OUTPUT"
             echo "No formatting changes needed"
           fi
-      - name: Commit changes back to branch
-        if: steps.check-changes.outputs.changes == 'true'
+
+      - name: Commit and push formatting changes
+        if: steps.check-changes.outputs.changes == 'true' && github.event_name == 'push'
+        env:
+          BRANCH: ${{ github.ref_name }}
         run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add .
-          git commit -m "Apply automatic formatting with Black and isort"
+          git commit -m "Apply automatic formatting with Black and isort" || exit 1
+
+          for attempt in 1 2 3 4 5; do
+            echo "----- Push attempt $attempt -----"
+            git fetch origin "$BRANCH" || true
+
+            if git rebase "origin/$BRANCH"; then
+              :
+            else
+              echo "Rebase conflict — pulling latest and re-formatting"
+              git rebase --abort 2>/dev/null || true
+              git pull --ff-only origin "$BRANCH" || git reset --hard "origin/$BRANCH"
+              pip install --quiet black isort || true
+              python -m black . || true
+              isort --profile black . || true
+              git add .
+              git commit -m "Apply automatic formatting with Black and isort" || exit 1
+            fi
+
+            if git push origin "HEAD:$BRANCH"; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Push rejected (remote moved) — retrying"
+          done
+
+          echo "::error::Could not push formatting changes after 5 attempts; remote branch kept moving."
+          exit 1
+
+      - name: Compute PR head
+        id: pr-head
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if [ "${{ github.repository_owner }}" = "bfidatadigipres" ]; then
+            echo "head=$BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            echo "head=${{ github.repository_owner }}:$BRANCH" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Check if PR exists
         id: check-pr
-        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
-        run: |
-            echo "Checking for PR in bfidatadigipres/BFI_scripts for branch: $BRANCH_NAME"
-
-            # Query the GitHub API to check for existing PRs
-            PR_EXISTS=$(gh pr list \
-                --repo "bfidatadigipres/BFI_scripts" \
-                --head "${BRANCH_NAME}" \
-                --base main \
-                --state open \
-                --json number \
-                --jq 'length' 2>/dev/null || echo "error")
-            echo "PR_EXISTS raw value: $PR_EXISTS"
-
-            if [ "$PR_EXISTS" = "error" ]; then
-              echo "Error querying GitHub API — assuming no PR exists"
-              echo "create_pr=true" >> $GITHUB_OUTPUT
-            elif [ "$PR_EXISTS" -gt 0 ]; then
-              echo "PR for branch $BRANCH_NAME already exists"
-              echo "create_pr=false" >> $GITHUB_OUTPUT
-            else
-              echo "No PR exists for branch $BRANCH_NAME"
-              echo "create_pr=true" >> $GITHUB_OUTPUT
-            fi
+        if: steps.pr-head.outputs.head != null
         env:
-            GH_TOKEN: ${{secrets.BFI_BOT_TOKEN}}
-            BRANCH_NAME: ${{ github.ref_name || github.ref}}
+          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
+          TARGET_HEAD: ${{ steps.pr-head.outputs.head }}
+        run: |
+          PR_NUMBER=$(gh pr list \
+            --repo bfidatadigipres/BFI_scripts \
+            --head "$TARGET_HEAD" \
+            --base main \
+            --state open \
+            --json number \
+            --jq '.[0].number // ""' 2>/dev/null || echo "error")
+          echo "Existing PR number: $PR_NUMBER"
+          if [ "$PR_NUMBER" = "error" ]; then
+            echo "Error querying GitHub API — assuming no PR exists"
+            echo "create_pr=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "$PR_NUMBER" ]; then
+            echo "PR $PR_NUMBER already exists for branch"
+            echo "create_pr=false" >> "$GITHUB_OUTPUT"
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          else
+            echo "No PR exists for branch"
+            echo "create_pr=true" >> "$GITHUB_OUTPUT"
+          fi
 
+      - name: Comment on existing PR
+        if: steps.check-pr.outputs.create_pr == 'false'
+        uses: peter-evans/create-or-update-comment@f5b41f6a455733f2c5f73ca67a62631e75861578
+        with:
+          token: ${{ secrets.BFI_BOT_TOKEN }}
+          issue-number: ${{ steps.check-pr.outputs.number }}
+          edit-mode: replace
+          repository: bfidatadigipres/BFI_scripts
+          body: |
+            **🤖 Automated Workflow Status**
+            Branch `${{ github.ref_name }}` already has PR #${{ steps.check-pr.outputs.number }}.
+            Formatting and linting completed. No duplicate PR was created.
 
       - name: Create PR
         if: steps.check-pr.outputs.create_pr == 'true' && github.event_name == 'push' && github.ref != 'refs/heads/main'
         run: |
-              echo "Creating PR for branch $REF_NAME"
-              gh pr create \
-                --repo "bfidatadigipres/BFI_scripts" \
-                --base main \
-                --head "$REPO_OWNER:$REF_NAME" \
-                --title "Automated PR for branch: $REF_NAME" \
-                --body "This PR was automatically created from branch: $REF_NAME" \
+          echo "Creating PR for branch $REF_NAME"
+          gh pr create \
+            --repo "bfidatadigipres/BFI_scripts" \
+            --base main \
+            --head "$REPO_OWNER:$REF_NAME" \
+            --title "Automated PR for branch: $REF_NAME" \
+            --body "This PR was automatically created from branch: $REF_NAME" || \
+          if [ $? -eq 1 ]; then
+            echo "PR already exists or creation failed — this is acceptable"
+            exit 0
+          fi
         env:
-           GH_TOKEN: ${{secrets.BFI_BOT_TOKEN }}
-           REPO_OWNER: ${{ github.repository_owner }}
-           REF_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{secrets.BFI_BOT_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REF_NAME: ${{ github.ref_name }}
 
   lint:
-      runs-on: ubuntu-latest
-      needs: format-and-create-pr
-      steps:
-        - name: Authenticate GitHub CLI
-          run: |
-             unset GH_TOKEN
-             echo "${{ secrets.BFI_BOT_TOKEN}}" | gh auth login --with-token
-          env:
-            GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
+    runs-on: ubuntu-latest
+    needs: format-and-create-pr
+    permissions:
+      contents: read
+    steps:
+      - name: Authenticate GitHub CLI
+        run: echo "${{ secrets.BFI_BOT_TOKEN }}" | gh auth login --with-token
 
-        - name: Debug token presence
-          run: |
-            if [ -z "${{ secrets.BFI_BOT_TOKEN }}" ]; then
-              echo "BFI_BOT_TOKEN is EMPTY"
-            else
-              echo "BFI_BOT_TOKEN is set (length: ${#TOKEN})"
-            fi
-          env:
-            TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
+      - name: Debug token presence
+        run: |
+          if [ -z "${{ secrets.BFI_BOT_TOKEN }}" ]; then
+            echo "BFI_BOT_TOKEN is EMPTY"
+          else
+            echo "BFI_BOT_TOKEN is set"
+          fi
 
-        - name: Debug PR origin
-          run: |
-            echo "Head repo: ${{ github.event.pull_request.head.repo.full_name }}"
-            echo "Base repo: ${{ github.repository }}"      
-        
-        - uses: actions/checkout@v4
-          with:
-            repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-            ref: ${{ github.head_ref || github.ref }}
-            token: ${{ secrets.GITHUB_TOKEN }}
-            fetch-depth: 0
+      - name: Debug PR origin
+        run: |
+          echo "Head repo: ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "Base repo: ${{ github.repository }}"
 
-        - run: git pull
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.head_ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
 
-        - uses: actions/setup-python@v5
-          with:
-            python-version: '3.12'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-        - run: pip install pylint
-        
-        - id: pylint
-          run: |
-            export LANG=en_US.UTF-8
-            export LC_ALL=en_US.UTF-8
-            
-            # Check if there's a previous commit before attempting git diff
-            set -x
-            if git rev-parse HEAD~1 >/dev/null 2>&1; then
-              changed_files=($(git diff --name-only HEAD~1 HEAD | grep '\.py$' || true))
-            else
-              # For initial commit, get all Python files
-              changed_files=($(git ls-files '*.py' || true))
-            fi
-            
-            mkdir -p reports
-            if [ ${#changed_files[@]} -gt 0 ]; then
-                python -m pylint "${changed_files[@]}" > reports/pylint-report.txt || true
-            else
-                echo "No Python files to lint" > reports/pylint-report.txt
-            fi
-            
-            # Use perl instead of sed for better Unicode handling
-            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(E[0-9]{4})/$1🚨 $2/g' reports/pylint-report.txt
-            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(W[0-9]{4})/$1⚠️ $2/g' reports/pylint-report.txt
-            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(I[0-9]{4})/$1ℹ️ $2/g' reports/pylint-report.txt
-            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(C[0-9]{4})/$1🎨 $2/g' reports/pylint-report.txt
-            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(F[0-9]{4})/$1🛑 $2/g' reports/pylint-report.txt
-            perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(R[0-9]{4})/$1♻️ $2/g' reports/pylint-report.txt
-                      
-        - name: print file
-          run: cat reports/pylint-report.txt
+      - run: pip install pylint
 
-        - name: Save Pylint report content to an environment file
-          id: save_report
-          run: |
-           {
+      - id: pylint
+        run: |
+          export LANG=en_US.UTF-8
+          export LC_ALL=en_US.UTF-8
+
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            changed_files=($(git diff --name-only HEAD~1 HEAD | grep '\.py$' || true))
+          else
+            changed_files=($(git ls-files '*.py' || true))
+          fi
+
+          mkdir -p reports
+          if [ ${#changed_files[@]} -gt 0 ]; then
+            python -m pylint "${changed_files[@]}" > reports/pylint-report.txt || true
+          else
+            echo "No Python files to lint" > reports/pylint-report.txt
+          fi
+
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(E[0-9]{4})/$1🚨 $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(W[0-9]{4})/$1⚠️ $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(I[0-9]{4})/$1ℹ️ $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(C[0-9]{4})/$1🎨 $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(F[0-9]{4})/$1🛑 $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(R[0-9]{4})/$1♻️ $2/g' reports/pylint-report.txt
+
+      - name: print file
+        run: cat reports/pylint-report.txt
+
+      - name: Save Pylint report content to an environment file
+        id: save_report
+        run: |
+          {
             pylint_report=$(cat reports/pylint-report.txt)
             echo "pylint_report<<EOF"
             echo "$pylint_report"
             echo "EOF"
-            } >> $GITHUB_ENV
+          } >> "$GITHUB_ENV"
 
-        - name: Check if PR exists
-          id: check-pr
-          env:
-            GITHUB_TOKEN: ${{secrets.BFI_BOT_TOKEN}}
-            BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-          run: |
-            echo "Checking for PR on branch: $BRANCH_NAME"
+      - name: Compute PR head
+        id: pr-head
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          if [ -n "${{ github.event.pull_request.head.repo.owner.login }}" ]; then
+            OWNER="${{ github.event.pull_request.head.repo.owner.login }}"
+          else
+            OWNER="${{ github.repository_owner }}"
+          fi
+          if [ "$OWNER" = "bfidatadigipres" ]; then
+            echo "head=$BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            echo "head=$OWNER:$BRANCH" >> "$GITHUB_OUTPUT"
+          fi
 
-            PR_NUMBER=$(gh pr list --repo "bfidatadigipres/BFI_scripts" --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' 2>/dev/null || echo "error")
+      - name: Check if PR exists
+        id: check-pr
+        env:
+          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
+          TARGET_HEAD: ${{ steps.pr-head.outputs.head }}
+        run: |
+          PR_NUMBER=$(gh pr list \
+            --repo bfidatadigipres/BFI_scripts \
+            --head "$TARGET_HEAD" \
+            --state open \
+            --json number \
+            --jq '.[0].number' 2>/dev/null || echo "error")
+          echo "Found PR number: $PR_NUMBER"
+          if [ "$PR_NUMBER" != "error" ] && [ -n "$PR_NUMBER" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
-            echo "Found PR number: $PR_NUMBER"
-            if [  "$PR_NUMBER" != "error" ]; then
-              echo "exists=true" >> $GITHUB_OUTPUT
-              echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
-            else
-              echo "exists=false" >> $GITHUB_OUTPUT
-            fi
-
-        - name: Comment on PR with Full Pylint Report
-          if: steps.check-pr.outputs.exists == 'true' && github.event.pull_request.head.repo.full_name == github.repository
-          uses: peter-evans/create-or-update-comment@f5b41f6a455733f2c5f73ca67a62631e75861578
-          with:
-            issue-number: ${{ steps.check-pr.outputs.number }}
-            edit-mode: replace
-            repository: bfidatadigipres/BFI_scripts
-            body: |
-              **Automated Pylint Report** 🧑‍💻
-              Here is the **formatted** Pylint report:
-              ```plaintext
-                    ${{ env.pylint_report }}
-              ```
-                    **Note:** 🚨 Errors need immediate attention! ⚠️ Warnings should be reviewed, but are less critical. ℹ️ Information messages are for your reference.
-                  token: ${{ secrets.BFI_BOT_TOKEN }}
+      - name: Comment on PR with Full Pylint Report
+        if: steps.check-pr.outputs.exists == 'true'
+        uses: peter-evans/create-or-update-comment@f5b41f6a455733f2c5f73ca67a62631e75861578
+        with:
+          token: ${{ secrets.BFI_BOT_TOKEN }}
+          issue-number: ${{ steps.check-pr.outputs.number }}
+          edit-mode: replace
+          repository: bfidatadigipres/BFI_scripts
+          body: |
+            **Automated Pylint Report** 🧑‍💻
+            Here is the **formatted** Pylint report:
+            ```plaintext
+                  ${{ env.pylint_report }}
+            ```

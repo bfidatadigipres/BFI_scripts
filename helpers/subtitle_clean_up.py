@@ -7,8 +7,8 @@ renamed/moved after Log folder permissions changed
 
 # Public packages
 import os
-import sys
 import shutil
+import sys
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib

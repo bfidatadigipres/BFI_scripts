@@ -31,6 +31,7 @@ to determine correct transcode paths (RNA or BFI).
 2022
 Python 3.6+
 """
+
 # Public packages
 import logging
 import os

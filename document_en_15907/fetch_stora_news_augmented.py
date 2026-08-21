@@ -16,15 +16,16 @@ folder_check():
 2020
 """
 
+import datetime
+import errno
+import json
+import logging
+
 # Python packages
 import os
-import sys
-import json
-import time
-import errno
 import shutil
-import logging
-import datetime
+import sys
+import time
 
 # ENV packages
 import requests

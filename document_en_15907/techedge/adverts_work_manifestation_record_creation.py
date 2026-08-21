@@ -820,7 +820,6 @@ def main():
           - make thesaurus entries if needed
           - make Manifestation
     """
-    count = 0
     #if not utils.check_storage(STORAGE):
     #    sys.exit("Script run prevented by storage_control.json. Script exiting.")
     #if not utils.check_control("pause_scripts"):
@@ -906,9 +905,6 @@ def main():
                 )
         else:
             print("SKIPPING: Manifestation exists for this Ad.")
-        count += 1
-        if count == 10:
-            sys.exit("Tests, four entries only!")
 
     with open(CSV_LIST, 'a') as file:
         file.write(f"{csv_pth}\n")

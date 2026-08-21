@@ -247,7 +247,13 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         ]
         sleep(0.25)
         minor_xml = adlib.create_record_data(CID_API, "thesaurus", "", minordct)
-        minor_rec = adlib.post(CID_API, minor_xml, "thesaurus", "insertrecord")
+        minor_rec = adlib.post_with_verify(
+            CID_API,
+            minor_xml,
+            "thesaurus",
+            "insertrecord",
+            f"term.type='PROD_CAT' and term='{minor}' and source='TechEdge adverts data supply'"
+        )
         minor_priref = adlib.retrieve_field_name(minor_rec, "priref")[0]
         if minor_priref:
             LOGGER.info(
@@ -292,7 +298,13 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         ]
         sleep(0.25)
         mid_xml = adlib.create_record_data(CID_API, "thesaurus", "", middct)
-        mid_rec = adlib.post(CID_API, mid_xml, "thesaurus", "insertrecord")
+        mid_rec = adlib.post_with_verify(
+            CID_API,
+            mid_xml,
+            "thesaurus",
+            "insertrecord",
+            f"term.type='PROD_CAT' and term='{mid}' and source='TechEdge adverts data supply'"
+        )
         mid_priref = adlib.retrieve_field_name(mid_rec, "priref")[0]
         if mid_priref:
             LOGGER.info(
@@ -338,7 +350,13 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
         ]
         sleep(0.25)
         maj_xml = adlib.create_record_data(CID_API, "thesaurus", "", majdct)
-        maj_rec = adlib.post(CID_API, maj_xml, "thesaurus", "insertrecord")
+        maj_rec = adlib.post_with_verify(
+            CID_API,
+            maj_xml,
+            "thesaurus",
+            "insertrecord",
+            f"term.type='PROD_CAT' and term='{major}' and source='TechEdge adverts data supply'"
+        )
         maj_priref = adlib.retrieve_field_name(maj_rec, "priref")[0]
         if maj_priref:
             LOGGER.info(
@@ -397,7 +415,13 @@ def manage_advertiser_people(
             ]
             sleep(0.25)
             agency_xml = adlib.create_record_data(CID_API, "people", "", agency_dct)
-            agency_rec = adlib.post(CID_API, agency_xml, "people", "insertrecord")
+            agency_rec = adlib.post_with_verify(
+                CID_API,
+                agency_xml,
+                "people",
+                "insertrecord",
+                f"name='{agency}' and activity_type='Advertising Agency' and source='TechEdge adverts data supply'"
+            )
             agency_priref = adlib.retrieve_field_name(agency_rec, "priref")[0]
             if agency_priref:
                 LOGGER.info(
@@ -533,7 +557,13 @@ def manage_advertiser_people(
         ]
         sleep(0.25)
         ad_xml = adlib.create_record_data(CID_API, "people", "", ad_dct)
-        ad_rec = adlib.post(CID_API, ad_xml, "people", "insertrecord")
+        ad_rec = adlib.post_with_verify(
+            CID_API,
+            ad_xml,
+            "people",
+            "insertrecord",
+            f"name='{advertiser}' and activity_type='Sponsor' and source='TechEdge adverts data supply'"
+        )
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
         if ad_priref:
             LOGGER.info(
@@ -575,7 +605,13 @@ def manage_advertiser_people(
         ]
         sleep(0.25)
         hc_xml = adlib.create_record_data(CID_API, "people", "", hc_dct)
-        hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
+        hc_rec = adlib.post_with_verify(
+            CID_API,
+            hc_xml,
+            "people",
+            "insertrecord"
+            f"name='{holding_comp}' and activity_type='Sponsor' and source='TechEdge adverts data supply'"
+        )
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
         if hc_priref:
             LOGGER.info(
@@ -610,7 +646,13 @@ def manage_advertiser_people(
         ]
         sleep(0.25)
         ad_xml = adlib.create_record_data(CID_API, "people", "", ad_dct)
-        ad_rec = adlib.post(CID_API, ad_xml, "people", "insertrecord")
+        ad_rec = adlib.post_with_verify(
+            CID_API,
+            ad_xml,
+            "people",
+            "insertrecord",
+            f"name='{advertiser}' and activity_type='Sponsor' and source='TechEdge adverts data supply'"
+        )
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
         if ad_priref:
             LOGGER.info(
@@ -644,7 +686,13 @@ def manage_advertiser_people(
         ]
         sleep(0.25)
         hc_xml = adlib.create_record_data(CID_API, "people", "", hc_dct)
-        hc_rec = adlib.post(CID_API, hc_xml, "people", "insertrecord")
+        hc_rec = adlib.post_with_verify(
+            CID_API,
+            hc_xml,
+            "people",
+            "insertrecord",
+            f"name='{holding_comp}' and activity_type='Sponsor' and source='TechEdge adverts data supply'"
+        )
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
         if hc_priref:
             LOGGER.info(
@@ -1090,7 +1138,6 @@ def build_rec_details(row):
     return record, work, work_restricted, manifestation
 
 
-@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_work(row, work_values: dict) -> Optional[str]:
     """
     Build the dictionary and pass to CID for XML conversion
@@ -1112,28 +1159,19 @@ def create_work(row, work_values: dict) -> Optional[str]:
     try:
         sleep(0.25)
         LOGGER.info("Attempting to create Work record for item '%s'...", title)
-        work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
+        work_rec = adlib.post_with_verify(
+            CID_API,
+            work_values_xml,
+            "works",
+            "insertrecord",
+            f"Df=WORK and alternative_number='{row.film_code}'"
+        )
         print(f"create_work(): {work_rec}")
     except Exception as err:
         print(f"* Unable to create Work record for <{title}>\n{err}")
         LOGGER.warning("Unable to create Work record for '%s'", title)
         LOGGER.warning(err)
-
-    # Allow for retry if record priref creation crash:
-    if len(work_rec) == 0:
-        sleep(0.25)
-        raise Exception("Recycle of API exception raised.")
-
-    if "Duplicate key in unique index 'invno':" in str(work_rec):
-        try:
-            sleep(0.25)
-            LOGGER.info("Attempting to create Work record for item %s", title)
-            work_rec = adlib.post(CID_API, work_values_xml, "works", "insertrecord")
-            print(f"create_work(): {work_rec}")
-        except Exception as err:
-            print(f"* Unable to create Work record for <{title}>\n{err}")
-            LOGGER.warning("Unable to create Work record for <%s>", title)
-            LOGGER.warning(err)
+        return None
 
     try:
         print("Populating work_id and object_number variables")
@@ -1185,41 +1223,17 @@ def create_work(row, work_values: dict) -> Optional[str]:
     return work_id
 
 
-def over_two_weeks(first_showing: bool, date_start: str) -> bool:
-    """
-    JMW remove when BAU work starts
-    Temporary function to be removed
-    for notes fixed to 'first showing'
-    """
-    if first_showing is False:
-        return False
-    date_obj = datetime.strptime(date_start, "%d/%m/%Y")
-    start_dt = datetime(2016, 1, 1) + timedelta(weeks=2)
-    return date_obj > start_dt
-
-
-@tenacity.retry(stop=tenacity.stop_after_attempt(1))
 def create_manifestation(
-    first_showing, row, manifestation_values: dict
+    row, manifestation_values: dict
 ) -> Optional[str]:
     """
     Create a manifestation record,
     linked to work_priref
     """
 
-    # JMW BAU just check first_showing is True for "first" addition
-    confirm = over_two_weeks(first_showing, row.date)
-    if confirm is False:
-        manifestation_values.append(
-            {"notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."}
-        )
-    else:
-        manifestation_values.append(
-            {
-                "notes": "Manifestation representing advert first broadcast time and date. Actual time may vary by up to 2 minutes."
-            }
-        )
-
+    manifestation_values.append(
+        {"notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."}
+    )
     man_values_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values
     )
@@ -1234,31 +1248,18 @@ def create_manifestation(
         LOGGER.info(
             "Attempting to create Manifestation record for item '%s'...", row.brand
         )
-        man_rec = adlib.post(CID_API, man_values_xml, "manifestations", "insertrecord")
+        man_rec = adlib.post_with_verify(
+            CID_API,
+            man_values_xml,
+            "manifestations",
+            "insertrecord",
+            f"Df=MANIFESTATION and alternative_number='{row.film_code}'"
+        )
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:
         print(f"Unable to write manifestation record: {err}")
         LOGGER.warning("Unable to write manifestation record '%s'\n%s", row.brand, err)
 
-    # Allow for retry if record priref creation crash:
-    if "Duplicate key in unique index 'invno':" in str(man_rec):
-        try:
-            sleep(0.25)
-            LOGGER.info(
-                "Retry creation of Manifestation record for item '%s'...", row.brand
-            )
-            man_rec = adlib.post(
-                CID_API, man_values_xml, "manifestations", "insertrecord"
-            )
-            print(f"create_manifestation(): {man_rec}")
-        except Exception as err:
-            print(f"Unable to write manifestation record: {err}")
-            LOGGER.warning(
-                "Unable to write manifestation record '%s'\n%s", row.brand, err
-            )
-
-    if man_rec is False:
-        raise Exception("Recycle of API exception raised.")
     try:
         manifestation_id = adlib.retrieve_field_name(man_rec, "priref")[0]
         object_number = adlib.retrieve_field_name(man_rec, "object_number")[0]

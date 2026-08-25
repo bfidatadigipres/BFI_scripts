@@ -182,6 +182,7 @@ class Deeplink(APIModel):
 
 class VodProvider(APIModel):
     start: Optional[datetime] = None
+    end: Optional[datetime] = None
     region: Optional[str] = Field(default=None, max_length=10)
     href: Optional[str] = Field(default=None, max_length=2000)
 

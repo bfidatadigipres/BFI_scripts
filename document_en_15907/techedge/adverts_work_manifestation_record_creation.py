@@ -820,12 +820,12 @@ def main():
           - make thesaurus entries if needed
           - make Manifestation
     """
-    #if not utils.check_storage(STORAGE):
-    #    sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    #if not utils.check_control("pause_scripts"):
-    #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    #if working_day_check(datetime.now()):
-    #    sys.exit("Exiting: Cannot operate in working hours")
+    if not utils.check_storage(STORAGE):
+        sys.exit("Script run prevented by storage_control.json. Script exiting.")
+    if not utils.check_control("pause_scripts"):
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+    if working_day_check(datetime.now()):
+        sys.exit("Exiting: Cannot operate in working hours")
     csv_pth = get_csv_path()
     if not csv_pth:
         sys.exit("No unique CSV file available at this time")
@@ -837,11 +837,14 @@ def main():
     LOGGER.info("Targetting CSV path: %s", csv_pth)
     for row in te.iter_techedge_rows(csv_pth):
         first_showing = False
-        #if not utils.check_control("pause_scripts"):
-        #    LOGGER.info(
-        #        "Script run prevented by downtime_control.json. Script exiting."
-        #    )
-        #    sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        if working_day_check(datetime.now()):
+            LOGGER.info("Script closed for BFI operational hours - Mon to Fri 8am to 6pm")
+            sys.exit("Exiting: Cannot operate in working hours")
+        if not utils.check_control("pause_scripts"):
+            LOGGER.info(
+                "Script run prevented by downtime_control.json. Script exiting."
+            )
+            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         if not utils.cid_check(CID_API):
             LOGGER.warning("* Cannot establish CID session, exiting script")
             sys.exit("* Cannot establish CID session, exiting script")
@@ -932,7 +935,7 @@ def convert_transmission_time(date: str, start_time: str) -> str:
     parts = start_time.split(":")
     hours, minutes, seconds = int(parts[0]), int(parts[1]), int(parts[2])
     dt = dt + timedelta(hours=hours, minutes=minutes, seconds=seconds)
-    
+
     return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M:%S")
 
 

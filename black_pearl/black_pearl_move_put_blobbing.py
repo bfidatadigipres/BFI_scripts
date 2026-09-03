@@ -326,7 +326,7 @@ def main():
         )
 
         for fname in files:
-            if not utils.check_control("black_pearl") or not utils.check_control(
+            if not utils.check_control("black_pearl_put") or not utils.check_control(
                 "pause_scripts"
             ):
                 sys.exit(

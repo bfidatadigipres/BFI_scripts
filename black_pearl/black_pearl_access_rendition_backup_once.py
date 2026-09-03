@@ -205,7 +205,7 @@ def main():
         file_list: list = []
         replace_list: list = []
         for folder in folder_list:
-            if not utils.check_control("black_pearl") or not utils.check_control(
+            if not utils.check_control("black_pearl_put") or not utils.check_control(
                 "pause_scripts"
             ):
                 sys.exit(
@@ -293,7 +293,7 @@ def main():
             os.makedirs(new_path, mode=0o777, exist_ok=True)
             LOGGER.info("Created new ingest path: %s", new_path)
             while file_list:
-                if not utils.check_control("black_pearl"):
+                if not utils.check_control("black_pearl_put"):
                     sys.exit(
                         "Script run prevented by downtime_control.json. Script exiting."
                     )

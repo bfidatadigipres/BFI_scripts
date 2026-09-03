@@ -369,7 +369,7 @@ def main():
     of files for download from DPI. Map in digital_pick.csv
     to avoid repeating unecessary DPI downloads
     """
-    if not utils.check_control("black_pearl") or not utils.check_control(
+    if not utils.check_control("black_pearl_get") or not utils.check_control(
         "pause_scripts"
     ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")

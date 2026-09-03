@@ -364,7 +364,7 @@ def main():
     tuples and process one at a time.
     """
     if not utils.check_control("pause_scripts") or not utils.check_control(
-        "black_pearl"
+        "black_pearl_get"
     ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     data = retrieve_requested()
@@ -380,7 +380,7 @@ def main():
     )
     for row in data:
         if not utils.check_control("pause_scripts") or not utils.check_control(
-            "black_pearl"
+            "black_pearl_get"
         ):
             LOGGER.info(
                 "Script run prevented by downtime_control.json. Script exiting."

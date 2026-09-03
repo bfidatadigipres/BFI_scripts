@@ -131,14 +131,14 @@ class Data(BaseModel):
     hold_comp: SanitizedStr = Field(default=None, alias="Holding Company", max_length=100)
     barb_before: SanitizedStr = Field(default=None, alias="BARB Prog Before", max_length=100)
     barb_after: SanitizedStr = Field(default=None, alias="BARB Prog After", max_length=100)
-    sales_house: SanitizedStr = Field(default=None, alias="Sales House", max_length=50)
+    sales_house: SanitizedStr = Field(default=None, alias="Sales House", max_length=100)
     major_category: SanitizedStr = Field(default=None, alias="Major category", max_length=150)
     mid_category: SanitizedStr = Field(default=None, alias="Mid category", max_length=150)
     minor_category: SanitizedStr = Field(default=None, alias="Minor category", max_length=150)
     pib_rel: SanitizedStr = Field(default=None, alias="All PIB rel", max_length=100)
     pib_pos: ImpactsPosInt = Field(default=None, alias="All PIB pos")
-    log_station: SanitizedStr = Field(default=None, alias="Log Station (2010-)", max_length=20)
-    impacts: SanitizedStr = Field(default=None, alias="Impacts A4+", max_length=20)
+    log_station: SanitizedStr = Field(default=None, alias="Log Station (2010-)", max_length=100)
+    impacts: SanitizedStr = Field(default=None, alias="Impacts A4+", max_length=100)
 
 
 def iter_techedge_rows(csv_path: str, max_rows: int = 10000):

@@ -316,8 +316,8 @@ class Item(APIModel):
         if v is None:
             return v
         n = _try_int(v)
-        if n is not None and (n < 0 or n > 500):
-            raise ValueError("duration must be between 0 and 500")
+        if n is not None and (n < 0 or n > 1000):
+            raise ValueError("duration must be between 0 and 1000")
         return v
 
     @model_validator(mode="before")

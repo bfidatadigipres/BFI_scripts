@@ -798,13 +798,16 @@ def get_csv_path() -> Optional[str]:
     been read and had all records completed
     """
     with open(CSV_LIST, 'r') as completed:
-        completed_csvs = completed.readlines()
-    print(completed_csvs)
-    for csv in os.listdir(CSV_PATH):
-        print(csv)
+        completed_csvs = set(completed.readlines())
+
+    csv_list = os.listdir(CSV_PATH)
+    csv_list.sort()
+    for csv in csv_list:
         if not csv.endswith(".csv"):
+            print(f"File not CSV, skipping: {csv}")
             continue
-        elif csv in completed_csvs:
+        elif str(csv) in str(completed_csvs):
+            print(f"Processed CSV skipped: {csv}")
             continue
         else:
             return os.path.join(CSV_PATH, csv)

@@ -195,6 +195,7 @@ class VodProvider(APIModel):
 class Contributor(APIModel):
     id: Optional[str] = Field(default=None, max_length=64)
     name: Optional[str] = Field(default=None, max_length=200)
+    suffix: Optional[str] = Field(default=None, max_length=50)
     dob: Optional[date] = None
     dod: Optional[date] = None
     from_: Optional[str] = Field(default=None, alias="from", max_length=200)

@@ -88,8 +88,8 @@ CHANNELS = {
 def working_day_check(dt: datetime) -> bool:
     """Check for clash with working week"""
     work_days = {0, 1, 2, 3, 4}
-    start = time(8, 00, 0)
-    end = time(19, 55, 0)
+    start = time(8, 45, 0)
+    end = time(18, 15, 0)
 
     if dt.weekday() not in work_days:
         return False

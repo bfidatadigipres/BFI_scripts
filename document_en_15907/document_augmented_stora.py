@@ -77,8 +77,9 @@ TODAY = datetime.date.today()
 YESTERDAY = TODAY - datetime.timedelta(days=1)
 YESTERDAY_CLEAN = YESTERDAY.strftime("%Y-%m-%d")
 YEAR_PATH = YESTERDAY_CLEAN[:4]
-# YEAR_PATH = '2025'
+#YEAR_PATH = '2025'
 STORAGE_PATH = STORAGE + YEAR_PATH
+#STORAGE_PATH = os.path.join(STORAGE, "2025/11")
 TIME_FORMAT = "%H:%M:%S"
 DATE_FORMAT = "%Y-%m-%d"
 

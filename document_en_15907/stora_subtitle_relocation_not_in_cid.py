@@ -241,7 +241,7 @@ def main():
     )
     args = parser.parse_args()
 
-    # if working_day_check(datetime.now()):
+    #if working_day_check(datetime.now()):
     #    sys.exit("Exiting: Cannot operate in working hours")
     if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -260,10 +260,14 @@ def main():
     successes = 0
     errors = 0
 
-    for file in list_files:
+    for index, file in enumerate(list_files):
+        if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
+            sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         object_number = utils.get_object_number(file)
         logger.info(
-            "PROCESSING start | file=%s | object_number=%s",
+            "PROCESSING start (%d/%d) | file=%s | object_number=%s",
+            index + 1,
+            len(list_files),
             file,
             object_number,
         )

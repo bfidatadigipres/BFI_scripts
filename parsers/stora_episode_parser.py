@@ -145,6 +145,8 @@ class Related(APIModel):
     number: Optional[int] = None
     subject: Optional[List[Subject]] = None
     media: Optional[List[Media]] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
 
     @field_validator("number", mode="before")
     @classmethod
@@ -196,6 +198,7 @@ class Contributor(APIModel):
     id: Optional[str] = Field(default=None, max_length=64)
     name: Optional[str] = Field(default=None, max_length=200)
     suffix: Optional[str] = Field(default=None, max_length=50)
+    prefix: Optional[str] = Field(default=None, max_length=50)
     dob: Optional[date] = None
     dod: Optional[date] = None
     from_: Optional[str] = Field(default=None, alias="from", max_length=200)
@@ -205,6 +208,8 @@ class Contributor(APIModel):
     subject: Optional[List[Subject]] = None
     character: Optional[List[Character]] = None
     role: Optional[List[str]] = Field(default=None, max_length=50)
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
 
     @field_validator("dob", "dod", mode="before")
     @classmethod
@@ -269,6 +274,8 @@ class Asset(APIModel):
     link: Optional[List[Link]] = None
     deeplink: Optional[List[Deeplink]] = None
     vod: Optional[Dict[str, VodProvider]] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
 
     @field_validator("number", "total", "runtime", "productionYear", mode="before")
     @classmethod
@@ -310,6 +317,8 @@ class Item(APIModel):
     meta: Optional[Dict[str, str]] = None
 
     asset: Optional[Asset] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
 
     @field_validator("duration", mode="before")
     @classmethod

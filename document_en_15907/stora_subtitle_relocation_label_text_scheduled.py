@@ -14,7 +14,7 @@ import adlib_v3_sess as adlib_sess
 import logging
 import time as clock
 
-CID_API = os.environ["CID_API4"]
+CID_API = utils.get_current_api()
 LOG_PATH = os.environ["LOG_PATH"]
 
 logger = logging.getLogger("stora_subtitle_relocation_label_text_scheduled")

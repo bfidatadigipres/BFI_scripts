@@ -139,8 +139,8 @@ def compute_initial_window(start_date: str) -> tuple[str, str]:
 
 
 # --- Main ---
-
-DEFAULT_CHECKPOINT_FILE = "/mnt/qnap_04/Admin/Logs/epg_improvement_config.json" 
+CODE_PATH = os.environ["CODE_DEPENDS"]
+DEFAULT_CHECKPOINT_FILE = os.path.join(CODE_PATH, "epg_improvement_config.json")
 
 def main():
     parser = argparse.ArgumentParser(

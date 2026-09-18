@@ -35,7 +35,7 @@ import utils
 MP4_POLICY: Final = os.environ["MP4_POLICY"]
 LOG_PATH: Final = os.environ["LOG_PATH"]
 LOG_FILE: Final = os.path.join(LOG_PATH, "mp4_viewing_copy_access.log")
-STORAGE_PATH: Final = os.path.join(os.environ.get("QNAP_11"), "bbc_access/")
+STORAGE_PATH: Final = os.path.join(os.environ.get("QNAP_11_BBC"), "bbc_access/")
 
 # Setup logging
 LOGGER = logging.getLogger("mp4_viewing_copy_access")

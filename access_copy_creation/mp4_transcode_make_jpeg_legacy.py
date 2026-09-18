@@ -323,6 +323,7 @@ def main():
                 shell=False,
                 check=True,
                 universal_newlines=True,
+                errors="replace",
                 stderr=subprocess.PIPE,
             ).stderr
         except subprocess.CalledProcessError as e:

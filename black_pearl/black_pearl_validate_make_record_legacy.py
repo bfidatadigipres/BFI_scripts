@@ -171,7 +171,7 @@ def main():
     not starting with 'ingest_'. When found, check in json path for
     matching folder names to json filename
     """
-    if not utils.check_control("black_pearl") or not utils.check_control(
+    if not utils.check_control("black_pearl_get") or not utils.check_control(
         "pause_scripts"
     ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -210,7 +210,7 @@ def main():
             continue
 
         for folder in folders:
-            if not utils.check_control("black_pearl"):
+            if not utils.check_control("black_pearl_get"):
                 logger.info(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )

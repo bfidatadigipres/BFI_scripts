@@ -265,14 +265,14 @@ def make_item_record_dict(priref, file, record):
     for creation of new CID item record
     """
     ext = file.split(".")[-1]
-    if "Acquisition_source" in str(record):
-        platform = adlib.retrieve_field_name(record[0], "acquisition.source")[0]
-        record_default = build_record_defaults(platform)
-        if not platform:
-            platform = ""
-    else:
-        platform = ""
-        record_default = build_record_defaults("Film Fund")
+    #if "Acquisition_source" in str(record):
+    #    platform = adlib.retrieve_field_name(record[0], "acquisition.source")[0]
+    #    record_default = build_record_defaults(platform)
+    #    if not platform:
+    #        platform = ""
+    #else:
+    platform = ""
+    record_default = build_record_defaults("Film Fund")
 
     item = []
     item.extend(record_default)
@@ -326,9 +326,9 @@ def make_item_record_dict(priref, file, record):
                 )[0]
             }
         )
-    if len(platform) > 0:
-        item.append({"acquisition.source": platform})
-        item.append({"acquisition.source.type": "DONOR"})
+    #if len(platform) > 0:
+    #    item.append({"acquisition.source": platform})
+    #    item.append({"acquisition.source.type": "DONOR"})
     item.append(
         {
             "access_conditions": "Access requests for this collection are subject to an approval process. "
@@ -362,7 +362,16 @@ def create_new_item_record(
     item_xml = adlib.create_record_data(CID_API, "items", session, "", item_dct)
     print(item_xml)
     LOGGER.info(item_xml)
-    new_record = adlib.post(CID_API, item_xml, "items", "insertrecord", session)
+    new_record = adlib.post_with_verify(
+        CID_API,
+        item_xml,
+        "items",
+        "insertrecord",
+        session,
+        f"Df=ITEM and related_object.reference.lref='{priref}' and digital.acquired_filename='{fname}'",
+        3,
+        10
+    )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

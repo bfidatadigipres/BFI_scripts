@@ -25,10 +25,10 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-INGEST: Final = os.path.join(os.environ.get("BP_DIGITAL"), "autoingest/")
+INGEST: Final = os.path.join(os.environ.get("BP_DIGITAL"), "automation/")
 STORAGE: Final = os.path.join(INGEST, "access_edits")
 LOCAL_LOG: Final = os.path.join(STORAGE, "access_edits_renamed.log")
-AUTOINGEST: Final = os.path.join(INGEST, "ingest/autodetect")
+AUTOINGEST: Final = os.path.join(os.environ.get("BP_DIGITAL"), "autoingest/ingest/autodetect")
 LOGS: Final = os.environ.get("LOG_PATH")
 CONTROL_JSON: Final = os.path.join(LOGS, "downtime_control.json")
 CID_API: Final = utils.get_current_api()
@@ -178,7 +178,15 @@ def create_new_item_record(
     item_dct = make_item_record_dict(source_priref, file, source_record[0])
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data(CID_API, "items", "", item_dct)
-    new_record = adlib.post(CID_API, item_xml, "items", "insertrecord")
+    new_record = adlib.post_with_verify(
+        CID_API,
+        item_xml,
+        "items",
+        "insertrecord",
+        f"Df=ITEM and digital.acquired_filename={file}",
+        3,
+        10
+    )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

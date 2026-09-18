@@ -54,7 +54,7 @@ import adlib_v3 as adlib
 import utils
 
 # Global links / set up ds3 and adlib
-MP4_ACCESS = os.environ["MP4_ACCESS2"]
+MP4_ACCESS = os.path.join(os.environ["BP_TRANSCODING"], "bfi/")
 LOGS = os.environ["LOG_PATH"]
 CID_API = utils.get_current_api()
 
@@ -213,7 +213,7 @@ def main():
         )
     if not utils.check_storage(MP4_ACCESS):
         sys.exit("Script run prevented by storage_control.json. Script exiting.")
-    if not utils.check_control("black_pearl") or not utils.check_control(
+    if not utils.check_control("black_pearl_get") or not utils.check_control(
         "pause_scripts"
     ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")

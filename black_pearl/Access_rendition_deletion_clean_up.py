@@ -104,7 +104,7 @@ def main() -> None:
     )
     for row in yield_csv_rows(CSV_PTH):
         print(row)
-        if not utils.check_control("black_pearl"):
+        if not utils.check_control("black_pearl_put"):
             sys.exit("Black Pearl facing code cannot run at this time.")
 
         # LOGGER.info("Row entry: %s", row[1])

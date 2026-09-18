@@ -402,7 +402,15 @@ def create_digital_original_filenames(
     LOGGER.info(payload)
 
     try:
-        result = adlib.post(CID_API, payload, "items", "updaterecord")
+        result = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "items",
+            "updaterecord",
+            f"Df=ITEM and digital.acquired_filename={filename}",
+            3,
+            10
+        )
         print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info(
             "Successfully appended IMP digital.acquired_filenames to Item record %s",
@@ -437,7 +445,15 @@ def xml_item_append(priref: str, xml_data: list[str]) -> bool:
     LOGGER.info(payload)
 
     try:
-        result = adlib.post(CID_API, payload, "items", "updaterecord")
+        result = adlib.post_with_verify(
+            CID_API,
+            payload,
+            "items",
+            "updaterecord",
+            f"Df=ITEM and label.source={text}",
+            3,
+            10
+        )
         print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info("Successfully appended Label fields to Item record %s", priref)
         print(result)

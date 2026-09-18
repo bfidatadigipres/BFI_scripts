@@ -196,7 +196,13 @@ def new_no_segments_mopup(
     print(rec)
     rec_xml = adlib.create_record_data(CID_API, "items", "", rec)
     print(rec_xml)
-    new_record = adlib.post(CID_API, rec_xml, "items", "insertrecord")
+    new_record = adlib.post_with_verify(
+        CID_API,
+        rec_xml,
+        "items",
+        "insertrecord",
+        f"Df=ITEM and part_of_reference.lref='{str(parent_priref)}' and source_item.lref='{str(source_lref)}'"
+    )
     if new_record:
         try:
             new_object = adlib.retrieve_field_name(new_record, "object_number")[0]
@@ -266,7 +272,13 @@ def new_no_segments(
 
     rec_xml = adlib.create_record_data(CID_API, "items", "", rec)
     print(rec_xml)
-    new_record = adlib.post(CID_API, rec_xml, "items", "insertrecord")
+    new_record = adlib.post_with_verify(
+        CID_API,
+        rec_xml,
+        "items",
+        "insertrecord",
+        f"Df=ITEM and part_of_reference.lref='{str(parent_priref)}' and source_item.lref='{str(source_lref)}'"
+    )
     if new_record:
         try:
             new_object = adlib.retrieve_field_name(new_record, "object_number")[0]
@@ -350,7 +362,13 @@ def new(
     print(rec)
     rec_xml = adlib.create_record_data(CID_API, "items", "", rec)
     print(rec_xml)
-    new_record = adlib.post(CID_API, rec_xml, "items", "insertrecord")
+    new_record = adlib.post_with_verify(
+        CID_API,
+        rec_xml,
+        "items",
+        "insertrecord",
+        f"Df=ITEM and part_of_reference.lref='{str(parent_priref)}' and source_item.lref='{str(source_lref)}'"
+    )
     if new_record:
         try:
             new_object = adlib.retrieve_field_name(new_record, "object_number")[0]

@@ -46,6 +46,7 @@ def postJsonHandler():
     notification_string = json.dumps(notification)
     with open(json_filename, "w") as json_file:
         json_file.write(notification_string)
+    os.chmod(json_filename, 0o777)
     return "JSON posted", 200
     logging.info("%s %s", notification_string, jobID)
 

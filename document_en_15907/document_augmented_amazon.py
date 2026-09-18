@@ -1340,7 +1340,15 @@ def create_series_work(
     series_work_xml = adlib.create_record_data(CID_API, "works", "", series_work_values)
     try:
         print("Attempting to create CID record")
-        work_rec = adlib.post(CID_API, series_work_xml, "works", "insertrecord")
+        work_rec = adlib.post_with_verify(
+            CID_API,
+            series_work_xml,
+            "works",
+            "insertrecord",
+            f"Df=WORK and grouping.lref='401361' and alternative_number={patv_id}",
+            3,
+            10
+        )
         if work_rec:
             try:
                 print("Populating series_work_id and object_number variables")
@@ -1368,7 +1376,15 @@ def create_series_work(
             series_work_id, "Content_genre", series_genres
         )
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            genre_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={series_work_id} and content.genre.lref={extracted[-1]}",
+            3,
+            10
+        )
         if "Content_genre" in str(update_rec):
             LOGGER.info(
                 "Label text successfully updated to Series Work %s", series_work_id
@@ -1385,7 +1401,15 @@ def create_series_work(
             series_work_id, "Content_subject", series_subjects
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            subject_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={series_work_id} and content.subject.lref={subs[-1]}",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info(
                 "Failed to update subjects to Series Work record: %s", series_work_id
@@ -1427,7 +1451,15 @@ def create_series_work(
     if len(label_fields) > 0:
         label_xml = adlib.create_grouped_data(series_work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            label_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={series_work_id} and label.source='EBS augmented EPG supply'",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info(
                 "Failed to update Labels to Series Work record: %s", series_work_id
@@ -1515,7 +1547,15 @@ def create_work(
     work_xml = adlib.create_record_data(CID_API, "works", "", work_values)
     try:
         print("Attempting to create CID record")
-        work_rec = adlib.post(CID_API, work_xml, "works", "insertrecord")
+        work_rec = adlib.post_with_verify(
+            CID_API,
+            work_xml,
+            "works",
+            "insertrecord",
+            f"Df=WORK and grouping.lref='401361' and alternative_number={work_dict["patv_id"]}",
+            3,
+            10
+        )
         if work_rec:
             try:
                 print("Populating work_id and object_number variables")
@@ -1541,7 +1581,15 @@ def create_work(
     if len(work_genres) > 0:
         genre_xml = adlib.create_grouped_data(work_id, "Content_genre", work_genres)
         print(genre_xml)
-        update_rec = adlib.post(CID_API, genre_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            genre_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={work_id} and content.genre.lref={extracted[-1]}",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info("Failed to update genres to Work record: %s", work_id)
         elif "Content_genre" in str(update_rec):
@@ -1558,7 +1606,15 @@ def create_work(
             work_id, "Content_subject", work_subjects
         )
         print(subject_xml)
-        update_rec = adlib.post(CID_API, subject_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            subject_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={work_id} and content.subject.lref={subs[-1]}",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info("Failed to update subjects to Work record: %s", work_id)
         elif "Content_subject" in str(update_rec):
@@ -1596,7 +1652,15 @@ def create_work(
     if len(label_fields) > 0:
         label_xml = adlib.create_grouped_data(work_id, "Label", label_fields)
         print(label_xml)
-        update_rec = adlib.post(CID_API, label_xml, "works", "updaterecord")
+        update_rec = adlib.post_with_verify(
+            CID_API,
+            label_xml,
+            "works",
+            "updaterecord",
+            f"Df=WORK and priref={work_id} and label.source='EBS augmented EPG supply'",
+            3,
+            10
+        )
         if update_rec is None:
             LOGGER.info("Failed to update Labels to Work record: %s", work_id)
         elif "Label" in str(update_rec):
@@ -1665,8 +1729,14 @@ def create_manifestation(
     )
     try:
         print("Attempting to create CID record")
-        man_rec = adlib.post(
-            CID_API, manifestation_xml, "manifestations", "insertrecord"
+        man_rec = adlib.post_with_verify(
+            CID_API,
+            manifestation_xml,
+            "manifestations",
+            "insertrecord",
+            f"Df=MANIFESTATION and grouping.lref='401361' and alternative_number={work_dict["episode_id"]}",
+            3,
+            10
         )
         if man_rec:
             try:
@@ -1700,7 +1770,15 @@ def create_manifestation(
     )
     print("**** Attempting to write work genres to records ****")
 
-    success = adlib.post(CID_API, broadcast_xml, "manifestations", "updaterecord")
+    success = adlib.post_with_verify(
+        CID_API,
+        broadcast_xml,
+        "manifestations",
+        "updaterecord",
+        f"Df=MANIFESTATION and priref={manifestation_id} and broadcast_company.lref='999823516'",
+        3,
+        10
+    )
     if success is None:
         LOGGER.info(
             "Failed to update Broadcast Company data to Manifestation record: %s",
@@ -1726,7 +1804,15 @@ def append_url_data(work_priref: str, man_priref: str, data=None):
     payload_end = "</URL></record></recordList></adlibXML>"
     payload = payload_head + payload_mid + payload_end
 
-    success = adlib.post(CID_API, payload, "manifestations", "updaterecord")
+    success = adlib.post_with_verify(
+        CID_API,
+        payload,
+        "manifestations",
+        "updaterecord",
+        f"Df=MANIFESTATION and priref={man_priref} and URL.description='Amazon viewing URL'",
+        3,
+        10
+    )
     if success is None:
         LOGGER.info(
             "append_url_data(): Failed to update Watch URL data to Manifestation record: %s",
@@ -1739,7 +1825,15 @@ def append_url_data(work_priref: str, man_priref: str, data=None):
     payload_head = f"<adlibXML><recordList><record priref='{work_priref}'><URL>"
     payload = payload_head + payload_mid + payload_end
 
-    success = adlib.post(CID_API, payload, "works", "updaterecord")
+    success = adlib.post_with_verify(
+        CID_API,
+        payload,
+        "works",
+        "updaterecord"
+        f"Df=WORK and priref={work_priref} and URL.description='Amazon viewing URL'",
+        3,
+        10
+    )
     if success is None:
         LOGGER.info(
             "append_url_data(): Failed to update Watch URL data to Work record: %s",
@@ -1780,7 +1874,15 @@ def create_item(
     item_xml = adlib.create_record_data(CID_API, "items", "", item_values)
     try:
         print("Attempting to create CID Item record")
-        item_rec = adlib.post(CID_API, item_xml, "items", "insertrecord")
+        item_rec = adlib.post_with_verify(
+            CID_API,
+            item_xml,
+            "items",
+            "insertrecord",
+            f"Df=ITEM and grouping.lref='401361' and part_of_reference.lref='{man_priref}'",
+            3,
+            10
+        )
         if item_rec:
             try:
                 print("Populating item_id and object_number variables")

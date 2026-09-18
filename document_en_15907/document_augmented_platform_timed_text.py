@@ -54,6 +54,7 @@ LOGGER.setLevel(logging.INFO)
 STORAGE = {
     "Netflix": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/timed_text/')}",
     "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/timed_text/')}",
+    "Disney": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('DISNEY_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/disney/timed_text/')}",
 }
 
 
@@ -360,6 +361,9 @@ def make_item_record_dict(priref: str, file: str, record: dict[Any, Any]):
         elif "Amazon" in adlib.retrieve_field_name(record[0], "acquisition.source")[0]:
             item.append({"acquisition.source.lref": "999923912"})
             item.append({"acquisition.source.type": "DONOR"})
+        elif "Disney" in adlib.retrieve_field_name(record[0], "acquisition.source")[0]:
+            item.append({"acquisition.source.lref": "1145185"})
+            item.append({"acquisition.source.type": "DONOR"})
     item.append(
         {
             "access_conditions": "Access requests for this collection are subject to an approval process. "
@@ -389,6 +393,15 @@ def create_new_item_record(
     item_xml = adlib.create_record_data(CID_API, "items", "", item_dct)
     LOGGER.info(item_xml)
     new_record = adlib.post(CID_API, item_xml, "items", "insertrecord")
+    new_record = adlib.post_with_verify(
+        CID_API,
+        item_xml,
+        "items",
+        "insertrecord",
+        f"Df=ITEM and related_object.reference.lref='{priref}' and digital.acquired_filename='{fname}'",
+        3,
+        10
+    )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None
@@ -398,3 +411,4 @@ def create_new_item_record(
 
 if __name__ == "__main__":
     main()
+

@@ -95,7 +95,7 @@ def main():
         if not utils.check_storage(root):
             continue
         if not utils.check_control("split_control_delete") or not utils.check_control(
-            "black_pearl"
+            "black_pearl_get"
         ):
             sys.exit("Script run prevented by downtime_control.json. Script exiting.")
         if not utils.check_control("pause_scripts"):

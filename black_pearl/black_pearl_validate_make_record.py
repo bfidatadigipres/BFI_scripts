@@ -84,14 +84,12 @@ LOG_PATHS = {
     os.environ["QNAP_05"]: os.environ["L_QNAP05"],
     os.environ["QNAP_VID"]: os.environ["L_QNAP01"],
     os.environ["QNAP_08"]: os.environ["L_QNAP08"],
-    os.environ["QNAP_10"]: os.environ["L_QNAP10"],
-    os.environ["QNAP_H22"]: os.environ["L_QNAP02"],
-    os.environ["GRACK_H22"]: os.environ["L_GRACK02"],
-    os.environ["QNAP_06"]: os.environ["L_QNAP06"],
-    os.environ["QNAP_IMAGEN"]: os.environ["L_QNAP04"],
-    os.environ["QNAP_FILM"]: os.environ["L_QNAP03"],
+   # os.environ["QNAP_10"]: os.environ["L_QNAP10"],
+   # os.environ["QNAP_06"]: os.environ["L_QNAP06"],
+    #os.environ["QNAP_IMAGEN"]: os.environ["L_QNAP04"],
+    #os.environ["QNAP_FILM"]: os.environ["L_QNAP03"],
     os.environ["QNAP_07"]: os.environ["L_QNAP07"],
-    os.environ["QNAP_09"]: os.environ["L_QNAP09"],
+    #os.environ["QNAP_09"]: os.environ["L_QNAP09"],
     os.environ["QNAP_11"]: os.environ["L_QNAP11"],
     os.environ["QNAP_TEMP"]: os.environ["L_QNAP_TEMP"],
     os.environ["EDITSHARE"]: os.environ["L_EDITSHARE"],
@@ -204,7 +202,7 @@ def main():
     not starting with 'ingest_'. When found, check in json path for
     matching folder names to json filename
     """
-    if not utils.check_control("black_pearl") or not utils.check_control(
+    if not utils.check_control("black_pearl_get") or not utils.check_control(
         "pause_scripts"
     ):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
@@ -257,7 +255,7 @@ def main():
             continue
 
         for folder in folders:
-            if not utils.check_control("black_pearl"):
+            if not utils.check_control("black_pearl_get"):
                 logger.info(
                     "Script run prevented by downtime_control.json. Script exiting."
                 )

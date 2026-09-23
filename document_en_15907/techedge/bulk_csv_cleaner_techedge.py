@@ -19,10 +19,10 @@ from typing import List, Optional
 
 # Global vars
 SOURCE = os.path.join(os.environ.get("ADMIN"), "datasets/adverts_techedge/")
-DEST = os.path.join(os.environ.get("ADMIN"), "datasets/adverts_techedge_no_dupes/")
+DEST = os.path.join(os.environ.get("ADMIN"), "datasets/")
 LOG_PATH = os.environ.get("LOG_PATH")
-START_DATE = "2016-12-31"
-END_DATE = "2026-02-20"
+START_DATE = "2016-01-27"
+END_DATE = "2016-01-29"
 FMT = "%Y-%m-%d"
 
 # Setup logging

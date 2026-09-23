@@ -25,10 +25,10 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-INGEST: Final = os.path.join(os.environ.get("BP_DIGITAL"), "autoingest/")
+INGEST: Final = os.path.join(os.environ.get("BP_DIGITAL"), "automation/")
 STORAGE: Final = os.path.join(INGEST, "access_edits")
 LOCAL_LOG: Final = os.path.join(STORAGE, "access_edits_renamed.log")
-AUTOINGEST: Final = os.path.join(INGEST, "ingest/autodetect")
+AUTOINGEST: Final = os.path.join(os.environ.get("BP_DIGITAL"), "autoingest/ingest/autodetect")
 LOGS: Final = os.environ.get("LOG_PATH")
 CONTROL_JSON: Final = os.path.join(LOGS, "downtime_control.json")
 CID_API: Final = utils.get_current_api()

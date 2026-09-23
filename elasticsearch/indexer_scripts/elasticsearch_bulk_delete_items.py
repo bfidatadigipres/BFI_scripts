@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+Manually operated script for deletion of unwanted
+proxy files in DPI browser/MediaTheque, where an
+elasticsearch index exists and needs removing
+"""
+
 
 from __future__ import annotations
 import os

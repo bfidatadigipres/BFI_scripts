@@ -40,7 +40,7 @@ ES_INDEX = "dpi_screencraft_works"
 DB_NAME = "elasticsearchscreencraft_works"
 ROOT_XML_TAG = "screencraft"
 DEFAULT_DATE_QUERY = (
-    "Df=work and (modification>='{date_from}' and modification<='{date_to}')"
+    "Df=work and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
 )
 CID_ITEM_URL_TEMPLATE = (
     "{base_url}?database={db_name}&search=priref={priref}"

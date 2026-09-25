@@ -42,7 +42,7 @@ ROOT_XML_TAG = "screencraft"
 
 DEFAULT_DATE_QUERY = (
     "Df='archival item','digital derivative','internal object'"
-    " and (modification>='{date_from}' and modification<='{date_to}')"
+    " and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
 )
 
 CID_ITEM_URL_TEMPLATE = (

@@ -58,7 +58,7 @@ ROOT_XML_TAG = "screencraft"
 LOG = os.environ.get("LOG_PATH")
 OBJECTS_DF = "'archival item','digital derivative','internal object'"
 DEFAULT_DATE_QUERY = (
-    "Df={df} and (modification>='{date_from}' and modification<='{date_to}')"
+    "Df={df} and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
 )
 REVERSE_QUERY_TEMPLATE = "related_object.reference->(priref={priref})"
 CID_ITEM_URL_TEMPLATE = (

@@ -281,7 +281,7 @@ def build_priref_url(date_from: str, date_to: str, query_label: str) -> str:
 
     if query_label == "items":
         search = (
-            f"Df=item and (modification>='{date_from}' and modification<='{date_to}')"
+            f"Df=item and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
         )
     elif query_label == "works":
         search = (

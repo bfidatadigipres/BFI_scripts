@@ -240,20 +240,20 @@ def parse_args() -> argparse.Namespace:
         description="Fetch item prirefs from CID, retrieve XML, and bulk index into Elasticsearch."
     )
 
-    date_group = parser.add_mutually_exclusive_group()
-
-    date_group.add_argument(
+    parser.add_argument(
         "--date-from",
         default=None,
         type=validate_date,
         help="Lower bound date inclusive, format YYYY-MM-DD (default: today-2)",
     )
-    date_group.add_argument(
+    parser.add_argument(
         "--date-to",
         default=None,
         type=validate_date,
         help="Upper bound date inclusive, format YYYY-MM-DD (default: today-2)",
     )
+
+    date_group = parser.add_mutually_exclusive_group()
     date_group.add_argument(
         "--prirefs",
         default=None,

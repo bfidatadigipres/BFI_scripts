@@ -55,7 +55,7 @@ LOG_PATH = os.path.join(LOGS, "screencraft_object_indexing.log")
 DEAD_LETTER_PATH = os.path.join(LOGS, "screencraft_object_dead_letter.jsonl")
 
 # HTTP / CID settings
-HTTP_TIMEOUT = (10, 60)
+HTTP_TIMEOUT = (10, 600)
 HTTP_RETRIES = 5
 HTTP_BACKOFF = 1.0
 

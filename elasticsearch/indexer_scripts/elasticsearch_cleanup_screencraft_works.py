@@ -32,6 +32,7 @@ from elasticsearch_index_shared import (
     build_requests_session,
     fetch_prirefs,
     fetch_text,
+    fetch_xml_guarded,
     ping_es,
     resolve_date_range,
     setup_logger,
@@ -67,6 +68,7 @@ CID_ITEM_URL_TEMPLATE = (
 OUTPUT_FILE_PATH = os.path.join(LOG, "screencraft_work_cleanup_prirefs.txt")
 LOG_PATH = os.path.join(LOG, "screencraft_work_cleanup.log")
 DEAD_LETTER_PATH = os.path.join(LOG, "screencraft_work_cleanup_dead_letter.jsonl")
+SLOW_RECORDS_PATH = os.path.join(LOG, "screencraft_work_cleanup_slow_records.csv")
 
 # HTTP / CID settings
 HTTP_TIMEOUT = (10, 600)
@@ -121,6 +123,8 @@ class CleanupStats:
         self.es_ok = 0
         self.es_fail = 0
         self.dead_letter_written = 0
+        self.slow_records_skipped = 0
+        self.slow_streak = 0
         self.start_time = time.time()
 
     def log_summary(self, logger) -> None:
@@ -132,7 +136,8 @@ class CleanupStats:
             "anomalies=%d stale_docs=%d reverse_links=%d "
             "reverse_links_in_scope=%d reverse_links_out_of_scope=%d "
             "stale_updated=%d "
-            "stale_deleted=%d es_ok=%d es_fail=%d dead_letter_written=%d",
+            "stale_deleted=%d es_ok=%d es_fail=%d dead_letter_written=%d "
+            "slow_records_skipped=%d",
             elapsed,
             self.prirefs_total,
             self.prirefs_unique,
@@ -154,6 +159,7 @@ class CleanupStats:
             self.es_ok,
             self.es_fail,
             self.dead_letter_written,
+            self.slow_records_skipped,
         )
 
 
@@ -297,7 +303,15 @@ def count_in_scope_reverse_links(
             priref=linked_priref
         )
         try:
-            xml_text = fetch_item_xml(session, linked_priref)
+            xml_text = fetch_xml_guarded(
+                cid_url,
+                linked_priref,
+                stats=stats,
+                logger=logger,
+                slow_records_path=SLOW_RECORDS_PATH,
+            )
+            if xml_text is None:
+                continue
             stats.cid_fetch_ok += 1
             time.sleep(0.25)
         except requests.RequestException as e:
@@ -490,7 +504,15 @@ def process_candidates(
             priref=priref
         )
         try:
-            xml_text = fetch_item_xml(session, priref)
+            xml_text = fetch_xml_guarded(
+                cid_url,
+                priref,
+                stats=stats,
+                logger=logger,
+                slow_records_path=SLOW_RECORDS_PATH,
+            )
+            if xml_text is None:
+                continue
             stats.cid_fetch_ok += 1
             time.sleep(0.25)
         except requests.HTTPError as e:

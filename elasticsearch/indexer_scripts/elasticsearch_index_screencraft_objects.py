@@ -42,7 +42,7 @@ ROOT_XML_TAG = "screencraft"
 
 DEFAULT_DATE_QUERY = (
     "Df='archival item','digital derivative','internal object'"
-    " and (modification>='{date_from}' and modification<='{date_to}')"
+    " and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
 )
 
 CID_ITEM_URL_TEMPLATE = (
@@ -53,9 +53,10 @@ LOGS = os.environ.get("LOG_PATH")
 OUTPUT_FILE_PATH = os.path.join(LOGS, "screencraft_object_prirefs.txt")
 LOG_PATH = os.path.join(LOGS, "screencraft_object_indexing.log")
 DEAD_LETTER_PATH = os.path.join(LOGS, "screencraft_object_dead_letter.jsonl")
+SLOW_RECORDS_PATH = os.path.join(LOGS, "screencraft_object_slow_records.csv")
 
 # HTTP / CID settings
-HTTP_TIMEOUT = (10, 60)
+HTTP_TIMEOUT = (10, 600)
 HTTP_RETRIES = 5
 HTTP_BACKOFF = 1.0
 
@@ -275,8 +276,8 @@ def main() -> int:
             prirefs,
             stats,
             es_index=ES_INDEX,
-            fetch_xml=fetch_item_xml,
             xml_to_doc=xml_to_document,
+            slow_records_path=SLOW_RECORDS_PATH,
             dead_letter_path=DEAD_LETTER_PATH,
             cid_item_url_template=item_url,
             progress_every=PROGRESS_EVERY,

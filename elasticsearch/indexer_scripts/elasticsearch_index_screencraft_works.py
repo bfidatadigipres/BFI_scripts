@@ -40,7 +40,7 @@ ES_INDEX = "dpi_screencraft_works"
 DB_NAME = "elasticsearchscreencraft_works"
 ROOT_XML_TAG = "screencraft"
 DEFAULT_DATE_QUERY = (
-    "Df=work and (modification>='{date_from}' and modification<='{date_to}')"
+    "Df=work and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
 )
 CID_ITEM_URL_TEMPLATE = (
     "{base_url}?database={db_name}&search=priref={priref}"
@@ -49,9 +49,10 @@ LOGS = os.environ.get("LOG_PATH")
 OUTPUT_FILE_PATH = os.path.join(LOGS, "screencraft_work_prirefs.txt")
 LOG_PATH = os.path.join(LOGS, "screencraft_work_indexing.log")
 DEAD_LETTER_PATH = os.path.join(LOGS, "screencraft_work_dead_letter.jsonl")
+SLOW_RECORDS_PATH = os.path.join(LOGS, "screencraft_work_slow_records.csv")
 
 # HTTP / CID settings
-HTTP_TIMEOUT = (10, 60)
+HTTP_TIMEOUT = (10, 600)
 HTTP_RETRIES = 5
 HTTP_BACKOFF = 1.0
 
@@ -264,8 +265,8 @@ def main() -> int:
             prirefs,
             stats,
             es_index=ES_INDEX,
-            fetch_xml=fetch_item_xml,
             xml_to_doc=xml_to_document,
+            slow_records_path=SLOW_RECORDS_PATH,
             dead_letter_path=DEAD_LETTER_PATH,
             cid_item_url_template=item_url,
             progress_every=PROGRESS_EVERY,

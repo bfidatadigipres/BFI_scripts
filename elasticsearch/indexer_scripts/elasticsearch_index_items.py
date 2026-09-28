@@ -24,6 +24,8 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import streaming_bulk
 from elastic_transport import ApiError
 
+from elasticsearch_index_shared import fetch_xml_guarded
+
 
 # =========================
 # Configuration
@@ -43,9 +45,10 @@ LOGS = os.environ.get("LOG_PATH")
 OUTPUT_FILE_PATH = os.path.join(LOGS, "item_prirefs.txt")
 LOG_PATH = os.path.join(LOGS, "item_indexing.log")
 DEAD_LETTER_PATH = os.path.join(LOGS, "item_dead_letter.jsonl")
+SLOW_RECORDS_PATH = os.path.join(LOGS, "item_slow_records.csv")
 
 # HTTP / CID settings
-HTTP_TIMEOUT = (10, 60)
+HTTP_TIMEOUT = (10, 600)
 HTTP_RETRIES = 5
 HTTP_BACKOFF = 1.0
 
@@ -105,6 +108,8 @@ class Stats:
         self.es_index_ok = 0
         self.es_index_fail = 0
         self.dead_letter_written = 0
+        self.slow_records_skipped = 0
+        self.slow_streak = 0
         self.start_time = time.time()
 
     def log_summary(self) -> None:
@@ -112,7 +117,8 @@ class Stats:
         logger.info(
             "SUMMARY elapsed=%.2fs total_prirefs=%d unique_prirefs=%d "
             "cid_fetch_ok=%d cid_fetch_fail=%d xml_parse_ok=%d xml_parse_fail=%d "
-            "docs_prepared=%d es_index_ok=%d es_index_fail=%d dead_letter_written=%d",
+            "docs_prepared=%d es_index_ok=%d es_index_fail=%d dead_letter_written=%d "
+            "slow_records_skipped=%d",
             elapsed,
             self.prirefs_total,
             self.prirefs_unique,
@@ -124,6 +130,7 @@ class Stats:
             self.es_index_ok,
             self.es_index_fail,
             self.dead_letter_written,
+            self.slow_records_skipped,
         )
 
 
@@ -240,20 +247,20 @@ def parse_args() -> argparse.Namespace:
         description="Fetch item prirefs from CID, retrieve XML, and bulk index into Elasticsearch."
     )
 
-    date_group = parser.add_mutually_exclusive_group()
-
-    date_group.add_argument(
+    parser.add_argument(
         "--date-from",
         default=None,
         type=validate_date,
         help="Lower bound date inclusive, format YYYY-MM-DD (default: today-2)",
     )
-    date_group.add_argument(
+    parser.add_argument(
         "--date-to",
         default=None,
         type=validate_date,
         help="Upper bound date inclusive, format YYYY-MM-DD (default: today-2)",
     )
+
+    date_group = parser.add_mutually_exclusive_group()
     date_group.add_argument(
         "--prirefs",
         default=None,
@@ -281,7 +288,7 @@ def build_priref_url(date_from: str, date_to: str, query_label: str) -> str:
 
     if query_label == "items":
         search = (
-            f"Df=item and (modification>='{date_from}' and modification<='{date_to}')"
+            f"Df=item and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
         )
     elif query_label == "works":
         search = (
@@ -530,7 +537,15 @@ def action_generator(
         xml_text = None
 
         try:
-            xml_text = fetch_item_xml(session, priref)
+            xml_text = fetch_xml_guarded(
+                cid_url,
+                priref,
+                stats=stats,
+                logger=logger,
+                slow_records_path=SLOW_RECORDS_PATH,
+            )
+            if xml_text is None:
+                continue
             stats.cid_fetch_ok += 1
             time.sleep(CID_REQUEST_DELAY)
         except requests.HTTPError as e:

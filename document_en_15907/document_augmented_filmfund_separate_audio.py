@@ -115,111 +115,108 @@ def main():
         if not file_list:
             LOGGER.warning("Skipping. No files found in folder path: %s", fpath)
             continue
-        if len(file_list) != 1:
-            LOGGER.warning("More than one file found... problem?")
-            continue
-        wav_type = ""
-        file = file_list[0]
-        ext = file.split(".")[-1]
-        filepath = os.path.join(fpath, file)
-        if ext.lower() != "wav":
-            LOGGER.warning("File found is not WAV file. Skipping")
-            continue
-        mdata = ffmpeg.probe(filepath)
-        if not len(mdata.get("streams")) == 1:
-            LOGGER.warning("File has more than one stream. Skipping")
-            continue
-        channels = mdata.get("streams")[0].get("channels")
-        if int(channels) == 1:
-            wav_type = "mono"
-        elif int(channels) == 2:
-            wav_type = "stereo"
+        for file in file_list:
+            wav_type = ""
+            ext = file.split(".")[-1]
+            filepath = os.path.join(fpath, file)
+            if ext.lower() != "wav":
+                LOGGER.warning("File found is not WAV file. Skipping")
+                continue
+            mdata = ffmpeg.probe(filepath)
+            if not len(mdata.get("streams")) == 1:
+                LOGGER.warning("File has more than one stream. Skipping")
+                continue
+            channels = mdata.get("streams")[0].get("channels")
+            if int(channels) == 1:
+                wav_type = "mono"
+            elif int(channels) == 2:
+                wav_type = "stereo"
 
-        if not wav_type:
-            LOGGER.warning("No WAV type identified, skipping file")
-            continue
+            if not wav_type:
+                LOGGER.warning("No WAV type identified, skipping file")
+                continue
 
-        LOGGER.info("File being processed %s in folder %s", file, folder)
+            LOGGER.info("File being processed %s in folder %s", file, folder)
 
-        # Check object number valid
-        record = cid_check_ob_num(object_number)
-        if record is None:
-            LOGGER.warning("Skipping: Record could not be matched with object_number")
-            continue
+            # Check object number valid
+            record = cid_check_ob_num(object_number)
+            if record is None:
+                LOGGER.warning("Skipping: Record could not be matched with object_number")
+                continue
 
-        source_priref = adlib.retrieve_field_name(record[0], "priref")[0]
-        if not source_priref:
-            continue
-        print(f"Priref matched with retrieved folder name: {source_priref}")
-        LOGGER.info("Priref %s matched with folder name: %s", source_priref, folder)
+            source_priref = adlib.retrieve_field_name(record[0], "priref")[0]
+            if not source_priref:
+                continue
+            print(f"Priref matched with retrieved folder name: {source_priref}")
+            LOGGER.info("Priref %s matched with folder name: %s", source_priref, folder)
 
-        # Create CID item record for mono/stereo audio files in folder
-        item_record = create_new_item_record(source_priref, wav_type, record)
-        if item_record is None:
-            continue
+            # Create CID item record for mono/stereo audio files in folder
+            item_record = create_new_item_record(source_priref, wav_type, record)
+            if item_record is None:
+                continue
 
-        print(item_record)
-        new_priref = adlib.retrieve_field_name(item_record, "priref")[0]
-        new_ob_num = adlib.retrieve_field_name(item_record, "object_number")[0]
-        LOGGER.info("** CID Item record created: %s - %s", new_priref, new_ob_num)
-        print(f"CID Item record created: {new_priref}, {new_ob_num}")
+            print(item_record)
+            new_priref = adlib.retrieve_field_name(item_record, "priref")[0]
+            new_ob_num = adlib.retrieve_field_name(item_record, "object_number")[0]
+            LOGGER.info("** CID Item record created: %s - %s", new_priref, new_ob_num)
+            print(f"CID Item record created: {new_priref}, {new_ob_num}")
 
-        # Rename file and move to autoingest
-        new_file = f"{new_ob_num.replace("-", "_")}_01of01.{ext}"
-        new_filepath = os.path.join(fpath, new_file)
-        success = rename_or_move("rename", filepath, new_filepath)
-        if success is False:
-            if not os.path.exists(new_filepath):
+            # Rename file and move to autoingest
+            new_file = f"{new_ob_num.replace("-", "_")}_01of01.{ext}"
+            new_filepath = os.path.join(fpath, new_file)
+            success = rename_or_move("rename", filepath, new_filepath)
+            if success is False:
+                if not os.path.exists(new_filepath):
+                    LOGGER.warning(
+                        "File was not renamed successfully. Manual assistance needed."
+                    )
+                    continue
+            elif success == "Path error":
+                LOGGER.warning("Path error: %s", os.path.join(filepath, new_filepath))
+                continue
+            LOGGER.info("File successfully renamed. Moving to %s ingest path", AUTOINGEST)
+            move_success = rename_or_move(
+                "move", new_filepath, os.path.join(AUTOINGEST, new_file)
+            )
+            if move_success is False:
                 LOGGER.warning(
-                    "File was not renamed successfully. Manual assistance needed."
+                    "Error with file move to autoingest, leaving in place for manual assistance"
+                )
+            elif move_success is True:
+                LOGGER.info(
+                    "File %s successfully moved to ingest path: %s\n",
+                    new_file,
+                    AUTOINGEST,
+                )
+            elif move_success == "Path error":
+                LOGGER.warning("Manual help needed: Path error %s", new_filepath)
+                continue
+
+            # Write all dict names to digital.acquired_filename in CID item record
+            success = create_digital_original_filenames(new_priref, file, new_file)
+            if not success:
+                LOGGER.warning(
+                    "Skipping further actions. Digital acquired filenames not written to CID item record: %s",
+                    new_priref,
                 )
                 continue
-        elif success == "Path error":
-            LOGGER.warning("Path error: %s", os.path.join(filepath, new_filepath))
-            continue
-        LOGGER.info("File successfully renamed. Moving to %s ingest path", AUTOINGEST)
-        move_success = rename_or_move(
-            "move", new_filepath, os.path.join(AUTOINGEST, new_file)
-        )
-        if move_success is False:
-            LOGGER.warning(
-                "Error with file move to autoingest, leaving in place for manual assistance"
-            )
-        elif move_success is True:
             LOGGER.info(
-                "File %s successfully moved to ingest path: %s\n",
-                new_file,
-                AUTOINGEST,
+                "Digital Acquired Filename data added to CID item record %s", new_priref
             )
-        elif move_success == "Path error":
-            LOGGER.warning("Manual help needed: Path error %s", new_filepath)
-            continue
 
-        # Write all dict names to digital.acquired_filename in CID item record
-        success = create_digital_original_filenames(new_priref, file, new_file)
-        if not success:
-            LOGGER.warning(
-                "Skipping further actions. Digital acquired filenames not written to CID item record: %s",
-                new_priref,
-            )
-            continue
-        LOGGER.info(
-            "Digital Acquired Filename data added to CID item record %s", new_priref
-        )
-
-        # Write quality comments to new CID item record
-        if wav_type == "mono":
-            qual_comm = "Mono unmixed audio description supplied separately as WAV PCM file."
-        elif wav_type == "stereo":
-            qual_comm = "Stereo unmixed audio description supplied separately as WAV PCM file."
-        else:
-            qual_comm = ""
-        success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
-        if not success:
-            LOGGER.warning(
-                "Quality comments were not written to record: %s", new_priref
-            )
-        LOGGER.info("Quality comments added to CID item record %s", new_priref)
+            # Write quality comments to new CID item record
+            if wav_type == "mono":
+                qual_comm = "Mono unmixed audio description supplied separately as WAV PCM file."
+            elif wav_type == "stereo":
+                qual_comm = "Stereo unmixed audio description supplied separately as WAV PCM file."
+            else:
+                qual_comm = ""
+            success = adlib.add_quality_comments(CID_API, new_priref, qual_comm)
+            if not success:
+                LOGGER.warning(
+                    "Quality comments were not written to record: %s", new_priref
+                )
+            LOGGER.info("Quality comments added to CID item record %s", new_priref)
 
         # Check fpath is empty and delete
         if len(os.listdir(fpath)) == 0:

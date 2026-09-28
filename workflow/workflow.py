@@ -515,7 +515,6 @@ class D3Batch:
       - Return
 
     To use:
-
         # Items
         item_prirefs = [123, 567]
 
@@ -541,6 +540,105 @@ class D3Batch:
             },
             "payload": {
                 "Pick items": {"destination": "PBK03A06000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
+
+        # Add any additional metadata to the topNode
+        for k in kwargs:
+            d["topNode"][k] = kwargs[k]
+
+        # Create
+        self.batch = Batch(items, **d)
+
+    @property
+    def successfully_completed(self):
+        return self.batch.successfully_completed
+
+
+class SIMDigiBatch:
+    """
+    Create a tree of Workflow activities specific to SIM Digital Betacam video encoding (currently modelled from VT10):
+      - Pick
+      - Encode
+      - Return
+
+    To use:
+        # Items
+        item_prirefs = [123, 567]
+
+        # Job metadata
+        topnode_metadata = {'description': 'Digital Betacam / SIM / etc',
+                            'completion.date': '*'}
+
+        # Create
+        b = SIMDigiBatch(l, **topnode_metadata)
+    """
+
+    def __init__(self, items=None, **kwargs):
+        # Default metadata
+        d = {
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "404264",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "F47",
+                "request.details": "Transfer to preservation formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK06B03000000: F47 Video Operations"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
+
+        # Add any additional metadata to the topNode
+        for k in kwargs:
+            d["topNode"][k] = kwargs[k]
+
+        # Create
+        self.batch = Batch(items, **d)
+
+    @property
+    def successfully_completed(self):
+        return self.batch.successfully_completed
+
+
+class SIMBetaBatch:
+    """
+    Create a tree of Workflow activities specific to SIM Betacam SP encoding (currently modelled from VT10):
+      - Pick
+
+    To use:
+
+        # Items
+        item_prirefs = [123, 567]
+
+        # Job metadata
+        topnode_metadata = {'description': 'Betacam SP / SIM / etc',
+                            'completion.date': '*'}
+
+        # Create
+        b = SIMBetaBatch(l, **topnode_metadata)
+    """
+
+    def __init__(self, items=None, **kwargs):
+        # Default metadata
+        d = {
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "404264",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "G80",
+                "request.details": "Transfer to preservation formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK03A06000000: VTR 10 - Video Copying"},
                 "Video Encoding": {"handling.name": "Television Operations"},
                 "Return items": {},
             },

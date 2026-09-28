@@ -82,14 +82,6 @@ logger.setLevel(logging.INFO)
 
 LOG_PATHS = {
     os.environ["QNAP_05"]: os.environ["L_QNAP05"],
-    os.environ["QNAP_VID"]: os.environ["L_QNAP01"],
-    os.environ["QNAP_08"]: os.environ["L_QNAP08"],
-   # os.environ["QNAP_10"]: os.environ["L_QNAP10"],
-   # os.environ["QNAP_06"]: os.environ["L_QNAP06"],
-    #os.environ["QNAP_IMAGEN"]: os.environ["L_QNAP04"],
-    #os.environ["QNAP_FILM"]: os.environ["L_QNAP03"],
-    os.environ["QNAP_07"]: os.environ["L_QNAP07"],
-    #os.environ["QNAP_09"]: os.environ["L_QNAP09"],
     os.environ["QNAP_11"]: os.environ["L_QNAP11"],
     os.environ["QNAP_TEMP"]: os.environ["L_QNAP_TEMP"],
     os.environ["EDITSHARE"]: os.environ["L_EDITSHARE"],
@@ -104,6 +96,10 @@ LOG_PATHS = {
     os.environ["BP_FILM5"]: os.environ["L_BP_FILM5"],
     os.environ["BP_FILM6"]: os.environ["L_BP_FILM6"],
 }
+
+OLD_HOSTS = [
+    os.environ["QNAP_08"],
+]
 
 
 def retrieve_json_data(foldername: str) -> str:
@@ -225,6 +221,10 @@ def main():
                 autoingest_list.append(os.path.join(pth, BPINGEST_NETFLIX))
                 autoingest_list.append(os.path.join(pth, BPINGEST_AMAZON))
                 autoingest_list.append(os.path.join(pth, BPINGEST_DISNEY))
+
+    for old_host in OLD_HOSTS:
+        # Build autoingest list for decommissioned autoingest paths
+        autoingest_list.append(os.path.join(old_host, 'autoingest_old/black_pearl_ingest'))
 
     print(autoingest_list)
     for autoingest in autoingest_list:

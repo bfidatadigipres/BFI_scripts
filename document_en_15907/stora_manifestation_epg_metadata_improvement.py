@@ -27,6 +27,14 @@ logger.info("Logger initialised")
 
 _SAFE_VALUE_RE = re.compile(r"^[a-zA-Z0-9_\-.*?()' /:]+$")
 
+CW_TEXT = {
+    "sexual-nature": "Sexual Nature",
+    "violent-scenes": "Violent Scenes",
+    "strong-language": "Strong Language",
+    "mature-scenes": "Mature Scenes",
+}
+
+
 def is_safe_search_value(value: str) -> bool:
     return bool(_SAFE_VALUE_RE.fullmatch(value))
 
@@ -200,13 +208,14 @@ def main():
         f"input.date>='{window_start}' and input.date<'{window_end}')"
     )
 
-    fields = ["priref", "utb.content", "utb.fieldname"]
+    fields = ["priref", "utb.content", "utb.fieldname", "input.date"]
 
     # Initial hit count
     if last_priref is None:
         initial_search = search_query
     else:
         initial_search = f"(priref>{last_priref}) and {search_query}"
+    
 
     hits, _ = adlib.retrieve_record(CID_API, "manifestations", initial_search, "1", fields=fields)
     logger.info("Remaining hits in window: %s", hits)
@@ -216,13 +225,15 @@ def main():
 
     session = adlib_sess.create_session()
     total = hits 
-    current_priref = last_priref
+    current_priref = None
+    #current_priref = last_priref
     successes = 0
     errors = 0
 
     for i in range(hits):
         if current_priref is None:
-            search = search_query
+            #search = search_query
+            search = "priref=158772256"
         else:
             search = f"(priref>{current_priref}) and {search_query}"
 
@@ -233,6 +244,7 @@ def main():
             break
 
         priref_values = adlib.retrieve_field_name(manifestation_record[0], "priref")
+        input_date = adlib.retrieve_field_name(manifestation_record[0], "input.date")[0]
         if not priref_values:
             logger.error("Skipping: no priref found")
             errors += 1
@@ -256,9 +268,9 @@ def main():
             save_checkpoint(args.checkpoint_file, checkpoint)
             errors += 1
             continue
-
         # Build edit entries from utb_content
         edit_entries = []
+        matched = [text for token, text in CW_TEXT.items() if token in utb_content]
         if utb_content is not None:
             if 'repeat' in utb_content:
                 edit_entries.append({"schedule_context": "REPEAT"})
@@ -280,6 +292,13 @@ def main():
                 edit_entries.append({"accessibility_resource": "SIGN_LANGUAGE"})
             if "audio-description" in utb_content:
                 edit_entries.append({"accessibility_resource": "AUDIO_DES"})
+            for text in matched:
+                edit_entries.append({"warning.type": "CW"})
+                edit_entries.append({"warning.date": f"{input_date}"})
+                edit_entries.append({"warning.source": "PA Media automated data"})
+                edit_entries.append({"warning.note": "Metadata augmentation of STORA EPG data from PA Media"})
+                edit_entries.append({"warning.text": text})
+
 
         logger.info("manifestation priref: %s", current_priref)
         logger.info("(%d/%d) priref=%s", i + 1, hits, current_priref)
@@ -299,6 +318,8 @@ def main():
 
         manifestation_xml = adlib_sess.create_record_data(CID_API, "manifestations", session, current_priref, edit_entries)
         logger.info("manifestation_xml: %s", manifestation_xml)
+        print("\n" + manifestation_xml)
+        
 
         # Post manifestation
         manifestation_success, manifestation_reason = post_xml_to_cid(manifestation_xml, "manifestations", session)
@@ -315,7 +336,7 @@ def main():
             })
             save_checkpoint(args.checkpoint_file, checkpoint)
             errors += 1
-
+            sys.exit(1)
         # Save checkpoint after each successful record
         checkpoint["last_processed_priref"] = current_priref
         save_checkpoint(args.checkpoint_file, checkpoint)

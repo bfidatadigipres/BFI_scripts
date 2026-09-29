@@ -118,6 +118,7 @@ def accepted_file_type(ext):
         "pdf": "pdf",
         "txt": "txt",
         "ttml": "ttml",
+        "m4v": "m4v"
     }
 
     ext = ext.lower()

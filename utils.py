@@ -343,6 +343,7 @@ def sort_ext(ext):
             "ts",
             "mpeg",
             "m2ts",
+            "m4v"
         ],
         "image": ["png", "gif", "jpeg", "jpg", "tif", "pct", "tiff"],
         "audio": ["wav", "flac", "mp3"],

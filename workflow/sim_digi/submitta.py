@@ -131,7 +131,7 @@ def main():
         job_metadata = dict(configuration["WorkflowMetadata"])
 
         # Append date and batch number to title
-        q = 'topNode="x" and description="Digital Betacam / SIM / video preservation*" and input.name="collectionssystems"'
+        q = 'topNode="x" and description="SIM / Digital Betacam / video preservation*" and input.name="collectionssystems"'
         lifetime_batches = workflow.count_jobs_submitted(q) + 1
         job_metadata["description"] = "{} / {} / {}".format(
             job_metadata["description"], today, lifetime_batches

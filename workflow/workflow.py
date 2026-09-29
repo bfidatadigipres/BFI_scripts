@@ -563,13 +563,12 @@ class SIMDigiBatch:
       - Pick
       - Encode
       - Return
-
     To use:
         # Items
         item_prirefs = [123, 567]
 
         # Job metadata
-        topnode_metadata = {'description': 'Digital Betacam / SIM / etc',
+        topnode_metadata = {'description': 'SIM / Digital Betacam / etc',
                             'completion.date': '*'}
 
         # Create
@@ -589,7 +588,7 @@ class SIMDigiBatch:
                 "assigned_to": "Television Operations",
             },
             "payload": {
-                "Pick items": {"destination": "PBK06B03000000: F47 Video Operations"},
+                "Pick items": {"destination": "PBK06B03000000"},
                 "Video Encoding": {"handling.name": "Television Operations"},
                 "Return items": {},
             },
@@ -611,14 +610,15 @@ class SIMBetaBatch:
     """
     Create a tree of Workflow activities specific to SIM Betacam SP encoding (currently modelled from VT10):
       - Pick
-
+      - Encode
+      - Return
     To use:
 
         # Items
         item_prirefs = [123, 567]
 
         # Job metadata
-        topnode_metadata = {'description': 'Betacam SP / SIM / etc',
+        topnode_metadata = {'description': 'SIM / Betacam SP / etc',
                             'completion.date': '*'}
 
         # Create
@@ -638,7 +638,7 @@ class SIMBetaBatch:
                 "assigned_to": "Television Operations",
             },
             "payload": {
-                "Pick items": {"destination": "PBK03A06000000: VTR 10 - Video Copying"},
+                "Pick items": {"destination": "PBK03A06000000"},
                 "Video Encoding": {"handling.name": "Television Operations"},
                 "Return items": {},
             },

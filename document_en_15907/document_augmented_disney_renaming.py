@@ -222,6 +222,7 @@ def main():
                 new_filename = f"{ob_num.replace('-', '_')}_01of01.{ext}"
                 new_fpath = os.path.join(fpath, new_filename)
                 digital_note = f"{mov_file} - Renamed to: {new_filename}"
+                qcomm = "HDR version"
                 success: bool = create_digital_original_filenames(
                     priref, folder.strip(), digital_note
                 )
@@ -240,7 +241,7 @@ def main():
                     qcomm,
                     priref,
                 )
-                if not adlib.add_quality_comments(CID_API, priref, "HDR version"):
+                if not adlib.add_quality_comments(CID_API, priref, qcomm):
                     LOGGER.warning(
                         "Quality Comment 'HDR version' failed to CID item record: %s",
                         priref,

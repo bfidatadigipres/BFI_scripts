@@ -69,7 +69,7 @@ def validate_date(date_str: str) -> str:
 
 
 MAX_DIRECT_PRIREFS = 1000
-CID_REQUEST_DELAY = 0.25
+CID_REQUEST_DELAY = float(os.environ.get("CID_REQUEST_DELAY", "1"))
 
 
 SLOW_RECORD_TIMEOUT_SECONDS = float(os.environ.get("SLOW_RECORD_TIMEOUT_SECONDS", "3"))

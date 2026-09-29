@@ -28,6 +28,7 @@ import requests
 import defusedxml.ElementTree as ET
 
 from elasticsearch_index_shared import (
+    CID_REQUEST_DELAY,
     build_es_client,
     build_requests_session,
     fetch_prirefs,
@@ -315,7 +316,7 @@ def count_in_scope_reverse_links(
             if xml_text is None:
                 continue
             stats.cid_fetch_ok += 1
-            time.sleep(0.25)
+            time.sleep(CID_REQUEST_DELAY)
         except requests.RequestException as e:
             stats.cid_fetch_fail += 1
             logger.warning(
@@ -420,7 +421,7 @@ def prepare_work_update(
     try:
         xml_text = fetch_work_xml(session, priref)
         stats.cid_fetch_ok += 1
-        time.sleep(0.25)
+        time.sleep(CID_REQUEST_DELAY)
     except requests.RequestException as e:
         stats.cid_fetch_fail += 1
         logger.error(
@@ -516,7 +517,7 @@ def process_candidates(
             if xml_text is None:
                 continue
             stats.cid_fetch_ok += 1
-            time.sleep(0.25)
+            time.sleep(CID_REQUEST_DELAY)
         except requests.HTTPError as e:
             stats.cid_fetch_fail += 1
             status_code = e.response.status_code if e.response is not None else None

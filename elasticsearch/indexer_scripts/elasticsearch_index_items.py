@@ -35,7 +35,7 @@ CID_BASE_URL = os.environ.get("CID_API1")
 DEFAULT_QUERY_MODE = "both"
 DIRECT_QUERY_MAX_DAYS = 2  # if range is more than this, split into per-day CID calls
 MAX_DIRECT_PRIREFS = 1000
-CID_REQUEST_DELAY = 0.25
+CID_REQUEST_DELAY = float(os.environ.get("CID_REQUEST_DELAY", "1"))
 CID_ITEM_URL_TEMPLATE = ("{base_url}?database=elasticsearchitems&search=priref={priref}")
 
 ES_URL = os.environ.get("ES_SEARCH_PATH")

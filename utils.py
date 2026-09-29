@@ -75,6 +75,7 @@ ACCEPTED_EXT: Final = [
     "txt",
     "vtt",
     "ttml",
+    "m4v"
 ]
 
 

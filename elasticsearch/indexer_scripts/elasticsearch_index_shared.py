@@ -73,7 +73,7 @@ CID_REQUEST_DELAY = 0.25
 
 
 SLOW_RECORD_TIMEOUT_SECONDS = float(os.environ.get("SLOW_RECORD_TIMEOUT_SECONDS", "3"))
-SLOW_RECORD_ABORT_CONSECUTIVE = int(os.environ.get("SLOW_RECORD_ABORT_CONSECUTIVE", "25"))
+SLOW_RECORD_ABORT_CONSECUTIVE = int(os.environ.get("SLOW_RECORD_ABORT_CONSECUTIVE", "0"))
 SLOW_RECORD_USE_CACHE = os.environ.get("SLOW_RECORD_USE_CACHE", "1").lower() not in ("0", "false", "no")
 
 
@@ -130,8 +130,9 @@ def fetch_xml_guarded(
     Returns the XML text on success. A record that exceeds
     SLOW_RECORD_TIMEOUT_SECONDS is appended to slow_records_path and skipped
     (returns None). If SLOW_RECORD_ABORT_CONSECUTIVE records are skipped in a
-    row, raises SlowRecordAbort so a degraded CID does not silently mark the
-    whole corpus as slow. Set SLOW_RECORD_TIMEOUT_SECONDS=0 to disable.
+    row, raises SlowRecordAbort (disabled by default; set
+    SLOW_RECORD_ABORT_CONSECUTIVE>0 to re-enable). Set
+    SLOW_RECORD_TIMEOUT_SECONDS=0 to disable the guard entirely.
     """
     cap = SLOW_RECORD_TIMEOUT_SECONDS
     if cap <= 0:

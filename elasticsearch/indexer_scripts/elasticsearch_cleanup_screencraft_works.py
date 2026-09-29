@@ -124,6 +124,7 @@ class CleanupStats:
         self.es_fail = 0
         self.dead_letter_written = 0
         self.slow_records_skipped = 0
+        self.slow_records_cached = 0
         self.slow_streak = 0
         self.start_time = time.time()
 
@@ -137,7 +138,7 @@ class CleanupStats:
             "reverse_links_in_scope=%d reverse_links_out_of_scope=%d "
             "stale_updated=%d "
             "stale_deleted=%d es_ok=%d es_fail=%d dead_letter_written=%d "
-            "slow_records_skipped=%d",
+            "slow_records_skipped=%d slow_records_cached=%d",
             elapsed,
             self.prirefs_total,
             self.prirefs_unique,
@@ -160,6 +161,7 @@ class CleanupStats:
             self.es_fail,
             self.dead_letter_written,
             self.slow_records_skipped,
+            self.slow_records_cached,
         )
 
 

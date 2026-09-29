@@ -109,6 +109,7 @@ class Stats:
         self.es_index_fail = 0
         self.dead_letter_written = 0
         self.slow_records_skipped = 0
+        self.slow_records_cached = 0
         self.slow_streak = 0
         self.start_time = time.time()
 
@@ -118,7 +119,7 @@ class Stats:
             "SUMMARY elapsed=%.2fs total_prirefs=%d unique_prirefs=%d "
             "cid_fetch_ok=%d cid_fetch_fail=%d xml_parse_ok=%d xml_parse_fail=%d "
             "docs_prepared=%d es_index_ok=%d es_index_fail=%d dead_letter_written=%d "
-            "slow_records_skipped=%d",
+            "slow_records_skipped=%d slow_records_cached=%d",
             elapsed,
             self.prirefs_total,
             self.prirefs_unique,
@@ -131,6 +132,7 @@ class Stats:
             self.es_index_fail,
             self.dead_letter_written,
             self.slow_records_skipped,
+            self.slow_records_cached,
         )
 
 

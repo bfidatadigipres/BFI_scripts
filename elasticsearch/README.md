@@ -1,6 +1,12 @@
 # Elasticsearch Indexing
 
-Fetches records from the CID API (Collections Information Database), converts XML to JSON documents, and bulk indexes them into Elasticsearch.
+Indexers that fetch records from the CID API (Collections Information Database),
+convert the XML to JSON documents and bulk-index them into Elasticsearch, plus
+supporting utilities.
+
+Everything lives under `elasticsearch/indexer_scripts/` and reads its
+configuration from the environment (see [Environment](#environment)) — no hosts,
+paths or credentials are hard-coded in the code.
 
 ## Scripts
 
@@ -11,37 +17,57 @@ Fetches records from the CID API (Collections Information Database), converts XM
 | `elasticsearch_index_screencraft_works.py` | Index screencraft **works** into `dpi_screencraft_works` |
 | `elasticsearch_bulk_delete_items.py` | Bulk-delete documents from `dpi_items` by priref (CSV input) |
 | `elasticsearch_cleanup_screencraft_works.py` | Detect and clean stale works in `dpi_screencraft_works` |
-| `elasticsearch_index_shared.py` | Shared utilities (HTTP session, ES client, XML parsing, bulk pipeline) |
+| `elasticsearch_check_missing_items.py` | Compare a CSV of prirefs with an index and list what is missing |
+| `elasticsearch_index_shared.py` | Shared utilities (HTTP session, ES client, XML parsing, bulk pipeline, slow-record guard) |
 
-## Dependencies
+## Requirements
 
-Python dependencies are declared in `pyproject.toml` and locked in `uv.lock`. Python version is pinned in `.python-version`.
+- Python 3.12+
+- `elasticsearch`, `requests`, `defusedxml`, `xmljson`
 
-- **Primary tool**: [uv](https://docs.astral.sh/uv/) — installs from the lockfile for reproducible builds.
+In this deployment a pre-provisioned virtualenv is used; the interpreter is
+referenced by the `ELASTIC_ENV` environment variable (see below), so nothing is
+installed from the repository at run time. To run from a different environment,
+create a venv and install the packages above.
 
-The repository lives on a network filesystem (`/mnt/qnap_04`), which is far too slow (and fragile) to host a virtualenv. The venv is created on **local disk** instead, at `~/.venvs/elasticsearch-indexing`:
+## Environment
 
-```sh
-# With uv (recommended) — create/refresh the local venv from this repo
-UV_PROJECT_ENVIRONMENT=~/.venvs/elasticsearch-indexing uv sync
+The scripts read all configuration from the environment:
 
-# Or with pip (won't use the lockfile)
-python3 -m venv ~/.venvs/elasticsearch-indexing
-~/.venvs/elasticsearch-indexing/bin/pip install -e .
-```
+| Variable | Purpose |
+|---|---|
+| `CID_API1` | CID web-service base URL (`.../wwwopac.ashx`) |
+| `ES_SEARCH_PATH` | Elasticsearch HTTP endpoint |
+| `LOG_PATH` | Directory for run logs, dead-letter files and slow-record CSVs |
+| `ELASTIC_ENV` | Python interpreter of the venv the jobs run with |
+| `CODE` | Root of this repository checkout, used in job command lines |
+| `SLOW_RECORD_TIMEOUT_SECONDS` | Per-record CID response cap in seconds (default `3`; `0` disables the guard) |
+| `SLOW_RECORD_ABORT_CONSECUTIVE` | Abort the run after N consecutive slow records (default `0` = disabled) |
+| `SLOW_RECORD_USE_CACHE` | Skip prirefs already listed in the slow-records CSV, without re-probing (default on) |
 
-To add a dependency:
-```sh
-uv add <package>
-```
+These are provided system-wide on the indexing host (loaded by PAM, so scheduled
+jobs see them too). Values are environment-specific and are not kept in the repository.
 
-This updates both `pyproject.toml` and `uv.lock` in one step (then re-run `uv sync` as above).
+## Running the indexers
 
-The venv is self-contained — no need for `pip install -e` in your crontab. Use the local venv's Python binary directly:
+Four jobs run in order overnight, each covering a recent window, so that only one
+indexer is ever talking to CID at a time:
+
+| Time | Script |
+|---|---|
+| 00:00 | `elasticsearch_cleanup_screencraft_works.py` |
+| 02:00 | `elasticsearch_index_items.py` |
+| 04:00 | `elasticsearch_index_screencraft_objects.py` |
+| 06:00 | `elasticsearch_index_screencraft_works.py` |
+
+Command lines use the environment variables, for example:
 
 ```cron
-30 2 * * * cd /path/to/code/elasticsearch && /home/mcconnachies/.venvs/elasticsearch-indexing/bin/python elasticsearch_index_screencraft_objects.py >> /tmp/cron_screencraft.log 2>&1
+0 2 * * * datadigipres ${ELASTIC_ENV} ${CODE}elasticsearch/indexer_scripts/elasticsearch_index_items.py > /tmp/python_cron.log 2>&1
 ```
+
+Each run appends a `SUMMARY` line to its own log under `${LOG_PATH}`. Do not run
+two indexers at once, and avoid overlapping a backfill with the overnight jobs.
 
 ## Usage
 
@@ -49,44 +75,44 @@ The venv is self-contained — no need for `pip install -e` in your crontab. Use
 
 ```sh
 # Default: query both items + works for today-2
-python3 elasticsearch_index_items.py
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py
 
-# Specific date range
-python3 elasticsearch_index_items.py --date-from 2026-03-18 --date-to 2026-03-18
+# Specific date range (inclusive)
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py --date-from 2026-03-18 --date-to 2026-03-18
 
-# Query mode
-python3 elasticsearch_index_items.py --query items
+# Query mode: items, works or both (default)
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py --query items
 
 # Direct priref lookup
-python3 elasticsearch_index_items.py --prirefs 123456,234567
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py --prirefs 123456,234567
 
 # CSV priref input (no limit)
-python3 elasticsearch_index_items.py --prirefs-csv prirefs.csv
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py --prirefs-csv prirefs.csv
 ```
 
 ### Screencraft indexers
 
 ```sh
 # Date range
-python3 elasticsearch_index_screencraft_objects.py --date-from 2026-03-01 --date-to 2026-03-31
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_screencraft_objects.py --date-from 2026-03-01 --date-to 2026-03-31
 
-# Custom CID search (replaces date-range query)
-python3 elasticsearch_index_screencraft_objects.py --search "Df='archival item','digital derivative','internal object' and ..."
-python3 elasticsearch_index_screencraft_works.py --search "Df=work and ..."
+# Custom CID search (replaces the date-range query)
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_screencraft_objects.py --search "Df='archival item','digital derivative','internal object' and ..."
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_screencraft_works.py --search "Df=work and ..."
 
 # Direct prirefs
-python3 elasticsearch_index_screencraft_objects.py --prirefs 11,12,13
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_screencraft_objects.py --prirefs 11,12,13
 
 # CSV priref input (no limit)
-python3 elasticsearch_index_screencraft_objects.py --prirefs-csv prirefs.csv
-python3 elasticsearch_index_screencraft_works.py --prirefs-csv prirefs.csv
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_screencraft_objects.py --prirefs-csv prirefs.csv
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_screencraft_works.py --prirefs-csv prirefs.csv
 ```
 
 ### Bulk delete
 
 ```sh
-python3 elasticsearch_bulk_delete_items.py --csv prirefs.csv --dry-run
-python3 elasticsearch_bulk_delete_items.py --csv prirefs.csv
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_bulk_delete_items.py --csv prirefs.csv --dry-run
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_bulk_delete_items.py --csv prirefs.csv
 ```
 
 ### Screencraft works cleanup
@@ -99,14 +125,14 @@ when none do.
 
 ```sh
 # Date range (default: today-2)
-python3 elasticsearch_cleanup_screencraft_works.py --date-from 2026-09-01 --date-to 2026-09-03 --dry-run
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_cleanup_screencraft_works.py --date-from 2026-09-01 --date-to 2026-09-03 --dry-run
 
 # Direct prirefs / CSV input
-python3 elasticsearch_cleanup_screencraft_works.py --prirefs 11232350,11232352
-python3 elasticsearch_cleanup_screencraft_works.py --prirefs-csv prirefs.csv
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_cleanup_screencraft_works.py --prirefs 11232350,11232352
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_cleanup_screencraft_works.py --prirefs-csv prirefs.csv
 
 # Run for real (writes to Elasticsearch)
-python3 elasticsearch_cleanup_screencraft_works.py --date-from 2026-09-01 --date-to 2026-09-03
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_cleanup_screencraft_works.py --date-from 2026-09-01 --date-to 2026-09-03
 ```
 
 Flow:
@@ -121,31 +147,73 @@ Flow:
 
 `--dry-run` performs the full analysis and reports planned actions without writing to Elasticsearch.
 
+### Missing-items check
+
+Compares a CSV of prirefs (first column; a header row is fine) against an index
+and writes the prirefs that are **not** present, so they can be re-indexed:
+
+```sh
+python3 elasticsearch/indexer_scripts/elasticsearch_check_missing_items.py --csv all_items.csv
+# -> all_items_missing_from_es.csv
+
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py --prirefs-csv all_items_missing_from_es.csv
+```
+
+Options: `--index` (default `dpi_items`), `--es` (default `$ES_SEARCH_PATH`),
+`--batch`, `--out`. Read-only against Elasticsearch; safe to re-run.
+
+## Slow records
+
+Some CID records are pathologically slow to render through the per-record lookup
+(seconds to ~40s, versus the usual 0.05–0.5s), and a handful of them would hold
+up a whole run. Each record fetch is therefore time-capped:
+
+- a record slower than `SLOW_RECORD_TIMEOUT_SECONDS` (default 3) is skipped and
+  appended to `<prefix>_slow_records.csv` as `priref,seconds`;
+- the run continues; the `SUMMARY` line reports `slow_records_skipped` and
+  `slow_records_cached`;
+- prirefs already listed in the slow-records CSV are skipped without re-probing
+  (`SLOW_RECORD_USE_CACHE=1` by default);
+- `SLOW_RECORD_ABORT_CONSECUTIVE` can abort the run after N consecutive slow
+  records — default `0` (disabled), because genuine slow clusters can run to
+  thousands of records;
+- the guarded fetch uses a session without automatic retries, so the cap is a
+  hard bound. Other failures still go to the dead-letter file as before.
+
+Re-index a slow set once the CID side is fixed:
+
+```sh
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py --prirefs-csv item_slow_records.csv
+```
+
 ## How it works
 
 1. Resolve the requested date range or priref list
-2. Fetch prirefs from the CID API (prirefcollectraw)
+2. Fetch prirefs from the CID API (`prirefcollectraw`)
 3. Write raw priref responses to a trace file (`*_prirefs.txt`)
 4. Deduplicate prirefs
-5. Fetch full XML for each unique priref
+5. Fetch full XML for each unique priref (with the slow-record guard above)
 6. Parse XML securely with `defusedxml`
 7. Convert XML to a JSON document using `xmljson/parker`
 8. Bulk index into Elasticsearch (priref used as `_id`)
 9. Log failures to a dead-letter file (`*_dead_letter.jsonl`)
 
-For date ranges larger than 2 days, the scripts automatically split into per-day CID calls to avoid timeouts.
+For date ranges larger than 2 days, the scripts automatically split into
+per-day CID calls to avoid timeouts.
 
-Individual item XML fetches are throttled to 250ms between requests to avoid overwhelming the CID API.
+Individual item XML fetches are throttled to 250ms between requests to avoid
+overwhelming the CID API.
 
 ## Output files
 
 - `*_prirefs.txt` — raw CID priref responses (trace only)
 - `*_indexing.log` / `*_cleanup.log` — run log (stdout + file)
 - `*_dead_letter.jsonl` — JSONL failure records (indexers: cid_fetch, xml_parse, es_index; cleanup: cid_fetch, xml_parse, es_search, cid_reverse, es_review, es_update, es_delete)
+- `*_slow_records.csv` — prirefs skipped for exceeding the slow-record timeout, with the measured seconds
 
 ## CID endpoints
 
-- Base: `http://212.114.101.119/CIDDataSandbox/wwwopac.ashx`
+- Base: `${CID_API1}` (`.../wwwopac.ashx`)
 - Priref collection: `database=prirefcollectraw`
 - Item XML lookup: `database=elasticsearchitems`
 - Screencraft XML lookup: `database=elasticsearchscreencraft_objects` / `elasticsearchscreencraft_works`
@@ -157,3 +225,10 @@ Individual item XML fetches are throttled to 250ms between requests to avoid ove
 | `dpi_items` | `elasticsearch_index_items.py` |
 | `dpi_screencraft` | `elasticsearch_index_screencraft_objects.py` |
 | `dpi_screencraft_works` | `elasticsearch_index_screencraft_works.py` / `elasticsearch_cleanup_screencraft_works.py` |
+
+## Utilities
+
+- `utils/update_es_urls.py` — bulk-update a URL prefix in a field across an
+  index (e.g. repointing links at a new collections-search host). Takes
+  `--index`, `--field`, `--old`, `--new`, optional `--es`, and supports
+  `--dry-run`.

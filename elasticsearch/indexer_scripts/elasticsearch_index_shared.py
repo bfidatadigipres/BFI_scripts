@@ -72,8 +72,9 @@ MAX_DIRECT_PRIREFS = 1000
 CID_REQUEST_DELAY = 0.25
 
 
-SLOW_RECORD_TIMEOUT_SECONDS = float(os.environ.get("SLOW_RECORD_TIMEOUT_SECONDS", "10"))
+SLOW_RECORD_TIMEOUT_SECONDS = float(os.environ.get("SLOW_RECORD_TIMEOUT_SECONDS", "3"))
 SLOW_RECORD_ABORT_CONSECUTIVE = int(os.environ.get("SLOW_RECORD_ABORT_CONSECUTIVE", "25"))
+SLOW_RECORD_USE_CACHE = os.environ.get("SLOW_RECORD_USE_CACHE", "1").lower() not in ("0", "false", "no")
 
 
 class SlowRecordAbort(RuntimeError):
@@ -93,6 +94,27 @@ def _guarded_http_session() -> requests.Session:
         session.mount("https://", adapter)
         _guarded_session = session
     return _guarded_session
+
+
+
+
+_slow_cache: dict[str, set[str]] = {}
+
+
+def _known_slow(slow_records_path: str) -> set[str]:
+    """Return the set of prirefs already recorded as slow (loaded once per process)."""
+    known = _slow_cache.get(slow_records_path)
+    if known is None:
+        known = set()
+        try:
+            with open(slow_records_path, newline="", encoding="utf-8") as fh:
+                for row in csv.reader(fh):
+                    if row and row[0].strip().isdigit():
+                        known.add(row[0].strip())
+        except OSError:
+            pass
+        _slow_cache[slow_records_path] = known
+    return known
 
 
 def fetch_xml_guarded(
@@ -117,6 +139,20 @@ def fetch_xml_guarded(
         response.raise_for_status()
         return response.text
 
+    if SLOW_RECORD_USE_CACHE:
+        first_load = slow_records_path not in _slow_cache
+        known_slow = _known_slow(slow_records_path)
+        if first_load:
+            logger.info(
+                "slow-record cache: %d known slow prirefs loaded from %s",
+                len(known_slow),
+                slow_records_path,
+            )
+        if priref in known_slow:
+            stats.slow_records_cached += 1
+            logger.debug("%s - known slow record, skipped without probing", priref)
+            return None
+
     started = time.monotonic()
     try:
         response = _guarded_http_session().get(url, timeout=(10, cap))
@@ -130,6 +166,7 @@ def fetch_xml_guarded(
             if new_file:
                 fh.write("priref,seconds\n")
             fh.write(f"{priref},{elapsed:.1f}\n")
+        _known_slow(slow_records_path).add(priref)
         logger.warning(
             "%s - CID response exceeded %.0fs (%.1fs) - skipped and logged to %s",
             priref,
@@ -330,6 +367,7 @@ class Stats:
         self.es_index_fail = 0
         self.dead_letter_written = 0
         self.slow_records_skipped = 0
+        self.slow_records_cached = 0
         self.slow_streak = 0
         self.start_time = time.time()
 
@@ -339,7 +377,7 @@ class Stats:
             "SUMMARY elapsed=%.2fs total_prirefs=%d unique_prirefs=%d "
             "cid_fetch_ok=%d cid_fetch_fail=%d xml_parse_ok=%d xml_parse_fail=%d "
             "docs_prepared=%d es_index_ok=%d es_index_fail=%d dead_letter_written=%d "
-            "slow_records_skipped=%d",
+            "slow_records_skipped=%d slow_records_cached=%d",
             elapsed,
             self.prirefs_total,
             self.prirefs_unique,
@@ -352,6 +390,7 @@ class Stats:
             self.es_index_fail,
             self.dead_letter_written,
             self.slow_records_skipped,
+            self.slow_records_cached,
         )
 
 

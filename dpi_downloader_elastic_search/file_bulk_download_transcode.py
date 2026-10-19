@@ -368,7 +368,7 @@ def write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath):
     else:
         message = f"Checksum DO NOT MATCH: {bp_md5} | {local_md5}"
     with open(f"{dpath}/{new_fpath}_md5.txt", "w", encoding="utf-8") as f:
-        f.write(f"Created from download: {bp_md5} | Retrieved from BP: {local_md5}\n")
+        f.write(f"Created from download: {local_md5} | Retrieved from BP: {bp_md5}\n")
         f.write(message)
     return
 

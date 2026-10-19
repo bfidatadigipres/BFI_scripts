@@ -224,7 +224,9 @@ def main():
 
     for old_host in OLD_HOSTS:
         # Build autoingest list for decommissioned autoingest paths
-        autoingest_list.append(os.path.join(old_host, 'autoingest_old/black_pearl_ingest'))
+        autoingest_list.append(
+            os.path.join(old_host, "autoingest_old/black_pearl_ingest")
+        )
 
     print(autoingest_list)
     for autoingest in autoingest_list:

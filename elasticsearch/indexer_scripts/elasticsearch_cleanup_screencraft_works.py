@@ -63,9 +63,7 @@ DEFAULT_DATE_QUERY = (
     "Df={df} and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
 )
 REVERSE_QUERY_TEMPLATE = "related_object.reference->(priref={priref})"
-CID_ITEM_URL_TEMPLATE = (
-    "{base_url}?database={db_name}&search=priref={priref}"
-)
+CID_ITEM_URL_TEMPLATE = "{base_url}?database={db_name}&search=priref={priref}"
 OUTPUT_FILE_PATH = os.path.join(LOG, "screencraft_work_cleanup_prirefs.txt")
 LOG_PATH = os.path.join(LOG, "screencraft_work_cleanup.log")
 DEAD_LETTER_PATH = os.path.join(LOG, "screencraft_work_cleanup_dead_letter.jsonl")
@@ -204,9 +202,7 @@ def build_reverse_url(priref: str) -> str:
 
 def fetch_item_xml(session: requests.Session, priref: str) -> str:
     url = CID_ITEM_URL_TEMPLATE.format(
-        base_url=CID_BASE_URL,
-        db_name=OBJECTS_DB,
-        priref=priref
+        base_url=CID_BASE_URL, db_name=OBJECTS_DB, priref=priref
     )
     response = session.get(url, timeout=HTTP_TIMEOUT)
     response.raise_for_status()
@@ -215,9 +211,7 @@ def fetch_item_xml(session: requests.Session, priref: str) -> str:
 
 def fetch_work_xml(session: requests.Session, priref: str) -> str:
     url = CID_ITEM_URL_TEMPLATE.format(
-        base_url=CID_BASE_URL,
-        db_name=WORKS_DB,
-        priref=priref
+        base_url=CID_BASE_URL, db_name=WORKS_DB, priref=priref
     )
     response = session.get(url, timeout=HTTP_TIMEOUT)
     response.raise_for_status()
@@ -301,9 +295,7 @@ def count_in_scope_reverse_links(
     out_of_scope = 0
     for linked_priref in linked_prirefs:
         cid_url = CID_ITEM_URL_TEMPLATE.format(
-            base_url=CID_BASE_URL,
-            db_name=OBJECTS_DB,
-            priref=linked_priref
+            base_url=CID_BASE_URL, db_name=OBJECTS_DB, priref=linked_priref
         )
         try:
             xml_text = fetch_xml_guarded(
@@ -414,9 +406,7 @@ def prepare_work_update(
 ) -> Optional[dict]:
     """Fetch a work record from CID and convert to a fresh ES document."""
     cid_url = CID_ITEM_URL_TEMPLATE.format(
-        base_url=CID_BASE_URL,
-        db_name=WORKS_DB,
-        priref=priref
+        base_url=CID_BASE_URL, db_name=WORKS_DB, priref=priref
     )
     try:
         xml_text = fetch_work_xml(session, priref)
@@ -502,9 +492,7 @@ def process_candidates(
             logger.info("Progress: processed %d/%d candidates", count, len(prirefs))
 
         cid_url = CID_ITEM_URL_TEMPLATE.format(
-            base_url=CID_BASE_URL,
-            db_name=OBJECTS_DB,
-            priref=priref
+            base_url=CID_BASE_URL, db_name=OBJECTS_DB, priref=priref
         )
         try:
             xml_text = fetch_xml_guarded(

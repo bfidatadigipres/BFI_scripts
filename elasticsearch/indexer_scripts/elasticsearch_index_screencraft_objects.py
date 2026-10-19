@@ -45,9 +45,7 @@ DEFAULT_DATE_QUERY = (
     " and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
 )
 
-CID_ITEM_URL_TEMPLATE = (
-    "{base_url}?database={db_name}&search=priref={priref}"
-)
+CID_ITEM_URL_TEMPLATE = "{base_url}?database={db_name}&search=priref={priref}"
 
 LOGS = os.environ.get("LOG_PATH")
 OUTPUT_FILE_PATH = os.path.join(LOGS, "screencraft_object_prirefs.txt")
@@ -114,9 +112,7 @@ def build_custom_url(search: str) -> str:
 
 def fetch_item_xml(session: requests.Session, priref: str) -> str:
     url = CID_ITEM_URL_TEMPLATE.format(
-        base_url=CID_BASE_URL,
-        db_name=DB_NAME,
-        priref=priref
+        base_url=CID_BASE_URL, db_name=DB_NAME, priref=priref
     )
     response = session.get(url, timeout=HTTP_TIMEOUT)
     response.raise_for_status()
@@ -266,9 +262,7 @@ def main() -> int:
         ping_es(es, ES_URL, logger)
 
         item_url = CID_ITEM_URL_TEMPLATE.format(
-            base_url=CID_BASE_URL,
-            db_name=DB_NAME,
-            priref="{priref}"
+            base_url=CID_BASE_URL, db_name=DB_NAME, priref="{priref}"
         )
 
         actions = action_generator(

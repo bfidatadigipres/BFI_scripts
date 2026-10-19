@@ -18,7 +18,9 @@ CID_API = utils.get_current_api()
 LOG_PATH = os.environ["LOG_PATH"]
 
 logger = logging.getLogger("stora_subtitle_relocation_label_text_scheduled")
-hdlr = logging.FileHandler(os.path.join(LOG_PATH, "stora_subtitle_relocation_label_text_scheduled.log"))
+hdlr = logging.FileHandler(
+    os.path.join(LOG_PATH, "stora_subtitle_relocation_label_text_scheduled.log")
+)
 formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -27,13 +29,16 @@ logger.info("Logger initialised")
 
 _SAFE_VALUE_RE = re.compile(r"^[a-zA-Z0-9_\-.*?()' /:]+$")
 
+
 def is_safe_search_value(value: str) -> bool:
     return bool(_SAFE_VALUE_RE.fullmatch(value))
+
 
 def safe_search_query(field: str, value: str) -> str:
     if not is_safe_search_value(value):
         raise ValueError(f"Unsafe search value for {field}={value!r}")
     return f"{field}='{value}'"
+
 
 def get_field(record: dict, field_name: str) -> Optional[str]:
     values = adlib_sess.retrieve_field_name(record, field_name)
@@ -54,25 +59,32 @@ def get_field(record: dict, field_name: str) -> Optional[str]:
 
     return None
 
+
 def retrieve_single_record(
     database: str,
     search_field: str,
     search_value: str,
 ) -> Optional[list[dict]]:
     query = safe_search_query(search_field, search_value)
-    hits, records = adlib.retrieve_record(
-        CID_API, database, query, "1"
-    )
+    hits, records = adlib.retrieve_record(CID_API, database, query, "1")
     if not hits or not records:
         return None
     return records
 
 
-def post_xml_to_cid(edit_xml, database, session, search_value: str = "") -> tuple[bool, str]:
+def post_xml_to_cid(
+    edit_xml, database, session, search_value: str = ""
+) -> tuple[bool, str]:
     try:
         record = adlib_sess.post_with_verify(
-            CID_API, edit_xml, database, "updaterecord", session,
-            search_value=search_value, max_retries=3, retry_delay=10
+            CID_API,
+            edit_xml,
+            database,
+            "updaterecord",
+            session,
+            search_value=search_value,
+            max_retries=3,
+            retry_delay=10,
         )
     except Exception as err:
         if hasattr(err, "__cause__"):
@@ -96,27 +108,34 @@ def post_xml_to_cid(edit_xml, database, session, search_value: str = "") -> tupl
         return False, reason
     return True, ""
 
+
 def build_subtitle_edit_xml(
-        priref: str, input_date: str, subtitle_text: str, subtitle_source: str, subtitle_type:str, manifestation=False
+    priref: str,
+    input_date: str,
+    subtitle_text: str,
+    subtitle_source: str,
+    subtitle_type: str,
+    manifestation=False,
 ) -> str:
     """Build XML edit record payload with subtitle metadata and VTT content."""
     now = datetime.now()
     edit_entries = [
-            {"edit.date": now.strftime("%Y-%m-%d")},
-            {"edit.name": "datadigipres"},
-            {"edit.notes": "Automated subtitle relocation project"},
-            {"edit.time": now.strftime("%H:%M:%S")},
-            {"subtitle.date": input_date},
-            {"subtitle.text": subtitle_text.replace("ï»¿", "")},
-            {"subtitle.type": subtitle_type},
-            {"subtitle.source": subtitle_source},
-        ]
+        {"edit.date": now.strftime("%Y-%m-%d")},
+        {"edit.name": "datadigipres"},
+        {"edit.notes": "Automated subtitle relocation project"},
+        {"edit.time": now.strftime("%H:%M:%S")},
+        {"subtitle.date": input_date},
+        {"subtitle.text": subtitle_text.replace("ï»¿", "")},
+        {"subtitle.type": subtitle_type},
+        {"subtitle.source": subtitle_source},
+    ]
     if manifestation:
         edit_entries = [{"accessibility_resource": "SUBTITLES"}]
     return adlib_sess.create_grouped_data(priref, "Edit", [edit_entries])
 
 
 # --- Checkpoint functions ---
+
 
 def load_checkpoint(checkpoint_file: str) -> dict:
     """Load checkpoint from file, or return default structure."""
@@ -129,10 +148,10 @@ def load_checkpoint(checkpoint_file: str) -> dict:
         "updated_at": None,
         "failed_records": [],
     }
-    
+
     if not os.path.exists(checkpoint_file):
         return default_checkpoint
-    
+
     try:
         with open(checkpoint_file, "r") as f:
             content = f.read().strip()
@@ -141,8 +160,11 @@ def load_checkpoint(checkpoint_file: str) -> dict:
                 return default_checkpoint
             return json.loads(content)
     except json.JSONDecodeError as e:
-        logger.warning("Invalid JSON in checkpoint file, using default checkpoint: %s", e)
+        logger.warning(
+            "Invalid JSON in checkpoint file, using default checkpoint: %s", e
+        )
         return default_checkpoint
+
 
 def save_checkpoint(checkpoint_file: str, checkpoint: dict):
     """Save checkpoint to file."""
@@ -174,7 +196,11 @@ def advance_window(checkpoint: dict, end_date: str):
     checkpoint["last_processed_priref"] = None
     checkpoint["last_completed_date"] = None
     checkpoint["status"] = "running"
-    logger.info("Advanced to window: %s → %s", checkpoint["current_window_start"], checkpoint["current_window_end"])
+    logger.info(
+        "Advanced to window: %s → %s",
+        checkpoint["current_window_start"],
+        checkpoint["current_window_end"],
+    )
 
 
 def compute_initial_window(start_date: str) -> tuple[str, str]:
@@ -188,7 +214,10 @@ def compute_initial_window(start_date: str) -> tuple[str, str]:
 
 # --- Main ---
 CODE_PATH = os.environ["CODE_DEPENDS"]
-DEFAULT_CHECKPOINT_FILE = os.path.join(CODE_PATH, "document_en_15907/historical_stora_subtitle.json")
+DEFAULT_CHECKPOINT_FILE = os.path.join(
+    CODE_PATH, "document_en_15907/historical_stora_subtitle.json"
+)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -213,7 +242,9 @@ def main():
     args = parser.parse_args()
 
     if not args.checkpoint_file:
-        parser.error("--checkpoint-file is required. Set DEFAULT_CHECKPOINT_FILE in script or pass via CLI.")
+        parser.error(
+            "--checkpoint-file is required. Set DEFAULT_CHECKPOINT_FILE in script or pass via CLI."
+        )
 
     END_DATE = "2025-12-31"
 
@@ -245,7 +276,12 @@ def main():
     window_end = checkpoint["current_window_end"]
     last_priref = checkpoint["last_processed_priref"]
 
-    logger.info("Processing window: %s → %s (resuming from priref=%s)", window_start, window_end, last_priref)
+    logger.info(
+        "Processing window: %s → %s (resuming from priref=%s)",
+        window_start,
+        window_end,
+        last_priref,
+    )
 
     # Build search query
     search_query = (
@@ -254,7 +290,18 @@ def main():
         f"input.date>='{window_start}' and input.date<'{window_end}')"
     )
 
-    fields = ["label.type", "label.text", "label.source", "subtitle.text", "subtitle.type", "subtitle.source", "accessibility_resource", "input.date", "priref", "part_of_reference"]
+    fields = [
+        "label.type",
+        "label.text",
+        "label.source",
+        "subtitle.text",
+        "subtitle.type",
+        "subtitle.source",
+        "accessibility_resource",
+        "input.date",
+        "priref",
+        "part_of_reference",
+    ]
 
     # Initial hit count
     if last_priref is None:
@@ -262,7 +309,9 @@ def main():
     else:
         initial_search = f"(priref>{last_priref}) and {search_query}"
 
-    hits, _ = adlib.retrieve_record(CID_API, "items", initial_search, "1", fields=fields)
+    hits, _ = adlib.retrieve_record(
+        CID_API, "items", initial_search, "1", fields=fields
+    )
     logger.info("Remaining hits in window: %s", hits)
 
     if args.limit:
@@ -285,7 +334,9 @@ def main():
             search = f"(priref>{current_priref}) and {search_query}"
 
         clock.sleep(0.3)
-        _, item_record = adlib.retrieve_record(CID_API, "items", search, "1", fields=fields)
+        _, item_record = adlib.retrieve_record(
+            CID_API, "items", search, "1", fields=fields
+        )
 
         if not item_record:
             break
@@ -308,13 +359,15 @@ def main():
             logger.error("subtitle_text: %s", subtitle_text)
             logger.error("subtitle_type: %s", subtitle_type)
             logger.error("subtitle_source: %s", subtitle_source)
-            checkpoint["failed_records"].append({
-                "priref": str(current_priref),
-                "post_type": "items",
-                "reason": "missing subtitle fields",
-                "date": input_date or "unknown",
-                "failed_at": datetime.now().isoformat(),
-            })
+            checkpoint["failed_records"].append(
+                {
+                    "priref": str(current_priref),
+                    "post_type": "items",
+                    "reason": "missing subtitle fields",
+                    "date": input_date or "unknown",
+                    "failed_at": datetime.now().isoformat(),
+                }
+            )
             save_checkpoint(args.checkpoint_file, checkpoint)
             errors += 1
             continue
@@ -323,9 +376,18 @@ def main():
         existing_subtitle_text = get_field(item_record[0], "subtitle.text")
         existing_subtitle_type = get_field(item_record[0], "subtitle.type")
         existing_subtitle_source = get_field(item_record[0], "subtitle.source")
-        if existing_subtitle_text and existing_subtitle_type and existing_subtitle_source:
-            logger.info("SKIP priref=%s: already has subtitle data (text=%s, type=%s, source=%s)",
-                        current_priref, existing_subtitle_text, existing_subtitle_type, existing_subtitle_source)
+        if (
+            existing_subtitle_text
+            and existing_subtitle_type
+            and existing_subtitle_source
+        ):
+            logger.info(
+                "SKIP priref=%s: already has subtitle data (text=%s, type=%s, source=%s)",
+                current_priref,
+                existing_subtitle_text,
+                existing_subtitle_type,
+                existing_subtitle_source,
+            )
             successes += 1
             if not args.dry_run:
                 checkpoint["last_processed_priref"] = current_priref
@@ -333,7 +395,9 @@ def main():
                 save_checkpoint(args.checkpoint_file, checkpoint)
             continue
 
-        edit_xml = build_subtitle_edit_xml(current_priref, input_date, subtitle_text, subtitle_source, subtitle_type)
+        edit_xml = build_subtitle_edit_xml(
+            current_priref, input_date, subtitle_text, subtitle_source, subtitle_type
+        )
         mani_priref = get_field(item_record[0], "Part_of.part_of_reference.priref")
         logger.info("manifestation priref: %s", mani_priref)
 
@@ -342,57 +406,100 @@ def main():
         manifestation_already_pushed = existing_accessibility == "SUBTITLES"
 
         if not manifestation_already_pushed:
-            manifestation_xml = build_subtitle_edit_xml(mani_priref, "", "", "", "", True)
+            manifestation_xml = build_subtitle_edit_xml(
+                mani_priref, "", "", "", "", True
+            )
         logger.info("(%d/%d) priref=%s", i + 1, hits, current_priref)
 
         if args.dry_run:
             logger.info("DRY RUN | Would push ITEM for priref=%s", current_priref)
             if manifestation_already_pushed:
-                logger.info("DRY RUN | SKIP MANIFESTATION: already has accessibility_resource=SUBTITLES | priref=%s", mani_priref)
+                logger.info(
+                    "DRY RUN | SKIP MANIFESTATION: already has accessibility_resource=SUBTITLES | priref=%s",
+                    mani_priref,
+                )
             else:
-                logger.info("DRY RUN | Would push MANIFESTATION for priref=%s", mani_priref)
+                logger.info(
+                    "DRY RUN | Would push MANIFESTATION for priref=%s", mani_priref
+                )
             successes += 2
             continue
 
         # Post item
         step += 1
-        success, reason = post_xml_to_cid(edit_xml, "items", session, search_value=f"priref='{current_priref}'")
+        success, reason = post_xml_to_cid(
+            edit_xml, "items", session, search_value=f"priref='{current_priref}'"
+        )
         if success:
-            logger.info("SUCCESS | ITEM PUSHED: OK | (%d/%d) priref=%s", step, total, current_priref)
+            logger.info(
+                "SUCCESS | ITEM PUSHED: OK | (%d/%d) priref=%s",
+                step,
+                total,
+                current_priref,
+            )
             successes += 1
         else:
-            logger.error("FAIL TO PUSH ITEM | (%d/%d) priref=%s | reason=%s", step, total, current_priref, reason)
-            checkpoint["failed_records"].append({
-                "priref": str(current_priref) if current_priref else "unknown priref",
-                "post_type": "items",
-                "reason": reason,
-                "date": input_date,
-                "failed_at": datetime.now().isoformat(),
-            })
+            logger.error(
+                "FAIL TO PUSH ITEM | (%d/%d) priref=%s | reason=%s",
+                step,
+                total,
+                current_priref,
+                reason,
+            )
+            checkpoint["failed_records"].append(
+                {
+                    "priref": (
+                        str(current_priref) if current_priref else "unknown priref"
+                    ),
+                    "post_type": "items",
+                    "reason": reason,
+                    "date": input_date,
+                    "failed_at": datetime.now().isoformat(),
+                }
+            )
             save_checkpoint(args.checkpoint_file, checkpoint)
             errors += 1
 
         # Post manifestation
         step += 1
         if manifestation_already_pushed:
-            logger.info("SKIP MANIFESTATION: already has accessibility_resource=SUBTITLES | priref=%s", mani_priref)
+            logger.info(
+                "SKIP MANIFESTATION: already has accessibility_resource=SUBTITLES | priref=%s",
+                mani_priref,
+            )
             successes += 1
         else:
             manifestation_success, manifestation_reason = post_xml_to_cid(
-                manifestation_xml, "manifestations", session, search_value=f"priref='{mani_priref}'"
+                manifestation_xml,
+                "manifestations",
+                session,
+                search_value=f"priref='{mani_priref}'",
             )
             if manifestation_success:
                 successes += 1
-                logger.info("SUCCESS | MANIFESTATION | Manifestation Post Successful | (%d/%d) priref=%s", step, total, mani_priref)
+                logger.info(
+                    "SUCCESS | MANIFESTATION | Manifestation Post Successful | (%d/%d) priref=%s",
+                    step,
+                    total,
+                    mani_priref,
+                )
             else:
-                logger.error("FAIL TO PUSH MANIFESTATION| (%d/%d) priref=%s | reason=%s", step, total, current_priref, manifestation_reason)
-                checkpoint["failed_records"].append({
-                    "priref": str(mani_priref) if mani_priref else "unknown",
-                    "post_type": "manifestation",
-                    "reason": manifestation_reason,
-                    "date": input_date,
-                    "failed_at": datetime.now().isoformat(),
-                })
+                logger.error(
+                    "FAIL TO PUSH MANIFESTATION| (%d/%d) priref=%s | reason=%s",
+                    step,
+                    total,
+                    current_priref,
+                    manifestation_reason,
+                )
+                checkpoint["failed_records"].append(
+                    {
+                        "priref": str(mani_priref) if mani_priref else "unknown",
+                        "post_type": "manifestation",
+                        "reason": manifestation_reason,
+                        "date": input_date,
+                        "failed_at": datetime.now().isoformat(),
+                    }
+                )
                 save_checkpoint(args.checkpoint_file, checkpoint)
                 errors += 1
 
@@ -414,5 +521,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

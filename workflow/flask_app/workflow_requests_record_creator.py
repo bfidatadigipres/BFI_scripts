@@ -268,7 +268,7 @@ def main():
         job_metadata["description"] = job[10].strip()
         # job_metadata["description"] = (
         #    f"{job[10].strip()} / {str(datetime.today())[:19]}"
-        #)
+        # )
         job_metadata["completion.date"] = job[11].strip()
         job_metadata["final_destination"] = job[12].strip()
         job_metadata["request.details"] = job[13].strip()

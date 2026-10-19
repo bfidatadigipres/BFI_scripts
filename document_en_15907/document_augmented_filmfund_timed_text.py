@@ -265,12 +265,12 @@ def make_item_record_dict(priref, file, record):
     for creation of new CID item record
     """
     ext = file.split(".")[-1]
-    #if "Acquisition_source" in str(record):
+    # if "Acquisition_source" in str(record):
     #    platform = adlib.retrieve_field_name(record[0], "acquisition.source")[0]
     #    record_default = build_record_defaults(platform)
     #    if not platform:
     #        platform = ""
-    #else:
+    # else:
     platform = ""
     record_default = build_record_defaults("Film Fund")
 
@@ -326,7 +326,7 @@ def make_item_record_dict(priref, file, record):
                 )[0]
             }
         )
-    #if len(platform) > 0:
+    # if len(platform) > 0:
     #    item.append({"acquisition.source": platform})
     #    item.append({"acquisition.source.type": "DONOR"})
     item.append(
@@ -370,7 +370,7 @@ def create_new_item_record(
         session,
         f"Df=ITEM and related_object.reference.lref='{priref}' and digital.acquired_filename='{fname}'",
         3,
-        10
+        10,
     )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)

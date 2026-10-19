@@ -18,7 +18,9 @@ CID_API = utils.get_current_api()
 LOG_PATH = os.environ["LOG_PATH"]
 
 logger = logging.getLogger("stora_subtitle_relocation_label_text")
-hdlr = logging.FileHandler(os.path.join(LOG_PATH, "stora_subtitle_relocation_label_text.log"))
+hdlr = logging.FileHandler(
+    os.path.join(LOG_PATH, "stora_subtitle_relocation_label_text.log")
+)
 formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -27,13 +29,16 @@ logger.info("Logger initialised")
 
 _SAFE_VALUE_RE = re.compile(r"^[a-zA-Z0-9_\-.*?()' /:]+$")
 
+
 def is_safe_search_value(value: str) -> bool:
     return bool(_SAFE_VALUE_RE.fullmatch(value))
+
 
 def safe_search_query(field: str, value: str) -> str:
     if not is_safe_search_value(value):
         raise ValueError(f"Unsafe search value for {field}={value!r}")
     return f"{field}='{value}'"
+
 
 def get_field(record: dict, field_name: str) -> Optional[str]:
     values = adlib_sess.retrieve_field_name(record, field_name)
@@ -54,6 +59,7 @@ def get_field(record: dict, field_name: str) -> Optional[str]:
 
     return None
 
+
 def retrieve_single_record(
     database: str,
     search_field: str,
@@ -61,9 +67,7 @@ def retrieve_single_record(
     fields: Optional[list[str]] = None,
 ) -> Optional[list[dict]]:
     query = safe_search_query(search_field, search_value)
-    hits, records = adlib.retrieve_record(
-        CID_API, database, query, "1", fields=fields
-    )
+    hits, records = adlib.retrieve_record(CID_API, database, query, "1", fields=fields)
     if not hits or not records:
         return None
     return records
@@ -92,24 +96,31 @@ def post_xml_to_cid(edit_xml, database, session) -> tuple[bool, str]:
         return False, reason
     return True, ""
 
+
 def build_subtitle_edit_xml(
-        priref: str, input_date: str, subtitle_text: str, subtitle_source: str, subtitle_type:str, manifestation=False
+    priref: str,
+    input_date: str,
+    subtitle_text: str,
+    subtitle_source: str,
+    subtitle_type: str,
+    manifestation=False,
 ) -> str:
     """Build XML edit record payload with subtitle metadata and VTT content."""
     now = datetime.now()
     edit_entries = [
-            {"edit.date": now.strftime("%Y-%m-%d")},
-            {"edit.name": "datadigipres"},
-            {"edit.notes": "Automated subtitle relocation project"},
-            {"edit.time": now.strftime("%H:%M:%S")},
-            {"subtitle.date": input_date},
-            {"subtitle.text": subtitle_text.replace("ï»¿", "")},
-            {"subtitle.type": subtitle_type},
-            {"subtitle.source": subtitle_source},
-        ]
+        {"edit.date": now.strftime("%Y-%m-%d")},
+        {"edit.name": "datadigipres"},
+        {"edit.notes": "Automated subtitle relocation project"},
+        {"edit.time": now.strftime("%H:%M:%S")},
+        {"subtitle.date": input_date},
+        {"subtitle.text": subtitle_text.replace("ï»¿", "")},
+        {"subtitle.type": subtitle_type},
+        {"subtitle.source": subtitle_source},
+    ]
     if manifestation:
         edit_entries = [{"accessibility_resource": "SUBTITLES"}]
     return adlib_sess.create_grouped_data(priref, "Edit", [edit_entries])
+
 
 def get_manifestation_priref(item_priref: str, session: Session) -> Optional[str]:
     """Look up the parent manifestation priref for a given item priref."""
@@ -118,6 +129,7 @@ def get_manifestation_priref(item_priref: str, session: Session) -> Optional[str
         logger.warning("No manifestation record for item_priref=%s", item_priref)
         return None
     return get_field(records[0], "part_of_reference.lref")
+
 
 def main():
     # adding limit for testing purposes
@@ -141,7 +153,14 @@ def main():
         f"{safe_search_query('label.type', '*VTT')} and "
         f"input.date>'2022-09-01' and input.date<'2022-09-10')"
     )
-    fields = ["label.type", "label.text", "label.source", "input.date", "priref", "part_of_reference"]
+    fields = [
+        "label.type",
+        "label.text",
+        "label.source",
+        "input.date",
+        "priref",
+        "part_of_reference",
+    ]
     hits, item_record = adlib.retrieve_record(
         CID_API, "items", search_query, "1", fields=fields
     )
@@ -190,12 +209,14 @@ def main():
             errors += 1
             continue
 
-        edit_xml = build_subtitle_edit_xml(current_priref, input_date, subtitle_text, subtitle_source, subtitle_type)
-        #get manifestation priref :)
+        edit_xml = build_subtitle_edit_xml(
+            current_priref, input_date, subtitle_text, subtitle_source, subtitle_type
+        )
+        # get manifestation priref :)
         mani_priref = get_field(item_record[0], "Part_of.part_of_reference.priref")
         print(f"manifestation priref: {mani_priref}")
         logger.info("manifestation priref: %s", mani_priref)
-        manifestation_xml = build_subtitle_edit_xml(mani_priref,"", "",  "", "", True)
+        manifestation_xml = build_subtitle_edit_xml(mani_priref, "", "", "", "", True)
         logger.info("(%d/%d) priref=%s", i + 1, hits, current_priref)
 
         success, reason = post_xml_to_cid(edit_xml, "items", session)
@@ -211,7 +232,9 @@ def main():
                 reason,
             )
             errors += 1
-        manifestation_success, manifestation_reason = post_xml_to_cid(manifestation_xml, "manifestations", session)
+        manifestation_success, manifestation_reason = post_xml_to_cid(
+            manifestation_xml, "manifestations", session
+        )
         if manifestation_success:
             successes += 1
             logger.info("SUCCESS | Manifestation Post Successful")
@@ -233,4 +256,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

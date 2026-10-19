@@ -36,7 +36,7 @@ DEFAULT_QUERY_MODE = "both"
 DIRECT_QUERY_MAX_DAYS = 2  # if range is more than this, split into per-day CID calls
 MAX_DIRECT_PRIREFS = 1000
 CID_REQUEST_DELAY = float(os.environ.get("CID_REQUEST_DELAY", "1"))
-CID_ITEM_URL_TEMPLATE = ("{base_url}?database=elasticsearchitems&search=priref={priref}")
+CID_ITEM_URL_TEMPLATE = "{base_url}?database=elasticsearchitems&search=priref={priref}"
 
 ES_URL = os.environ.get("ES_SEARCH_PATH")
 ES_INDEX = "dpi_items"
@@ -289,9 +289,7 @@ def build_priref_url(date_from: str, date_to: str, query_label: str) -> str:
     safe_chars = "()=*' "
 
     if query_label == "items":
-        search = (
-            f"Df=item and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
-        )
+        search = f"Df=item and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
     elif query_label == "works":
         search = (
             "Df=item and "
@@ -368,12 +366,14 @@ def write_dead_letter(
         "cid_url": cid_url,
         "http_status": http_status,
         "xml_snippet": truncate_text(xml_text, MAX_XML_SNIPPET) if xml_text else None,
-        "document_snippet": safe_json_dumps(document, MAX_DOC_SNIPPET)
-        if document is not None
-        else None,
-        "es_error": safe_json_dumps(es_error, MAX_ERROR_SNIPPET)
-        if es_error is not None
-        else None,
+        "document_snippet": (
+            safe_json_dumps(document, MAX_DOC_SNIPPET) if document is not None else None
+        ),
+        "es_error": (
+            safe_json_dumps(es_error, MAX_ERROR_SNIPPET)
+            if es_error is not None
+            else None
+        ),
     }
 
     with open(DEAD_LETTER_PATH, "a", encoding="utf-8") as f:

@@ -27,25 +27,39 @@ from elasticsearch import Elasticsearch, helpers
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--es", default=os.environ.get("ES_SEARCH_PATH"),
-                        help="Elasticsearch endpoint (default: $ES_SEARCH_PATH)")
+    parser.add_argument(
+        "--es",
+        default=os.environ.get("ES_SEARCH_PATH"),
+        help="Elasticsearch endpoint (default: $ES_SEARCH_PATH)",
+    )
     parser.add_argument("--index", required=True, help="Index to update")
-    parser.add_argument("--field", default="url_collections_search",
-                        help="Field holding the URL (default: url_collections_search)")
+    parser.add_argument(
+        "--field",
+        default="url_collections_search",
+        help="Field holding the URL (default: url_collections_search)",
+    )
     parser.add_argument("--old", required=True, help="URL prefix to replace")
     parser.add_argument("--new", required=True, help="Replacement URL prefix")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Report how many documents match, then exit")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report how many documents match, then exit",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     if not args.es:
-        print("No Elasticsearch endpoint: pass --es or set ES_SEARCH_PATH", file=sys.stderr)
+        print(
+            "No Elasticsearch endpoint: pass --es or set ES_SEARCH_PATH",
+            file=sys.stderr,
+        )
         return 2
 
-    es = Elasticsearch(args.es, request_timeout=60, max_retries=5, retry_on_timeout=True)
+    es = Elasticsearch(
+        args.es, request_timeout=60, max_retries=5, retry_on_timeout=True
+    )
 
     # Exact prefix match against the keyword subfield
     query = {"query": {"prefix": {f"{args.field}.keyword": args.old}}}
@@ -60,8 +74,9 @@ def main() -> int:
 
     def actions():
         nonlocal seen
-        for hit in helpers.scan(es, index=args.index, query=query, _source=True,
-                                scroll="30m", size=1000):
+        for hit in helpers.scan(
+            es, index=args.index, query=query, _source=True, scroll="30m", size=1000
+        ):
             old_url = hit["_source"][args.field]
             new_url = old_url.replace(args.old, args.new, 1)
             seen += 1
@@ -74,8 +89,14 @@ def main() -> int:
                 "doc": {args.field: new_url},
             }
 
-    success, errors = helpers.bulk(es, actions(), chunk_size=500, max_retries=5,
-                                   request_timeout=120, stats_only=True)
+    success, errors = helpers.bulk(
+        es,
+        actions(),
+        chunk_size=500,
+        max_retries=5,
+        request_timeout=120,
+        stats_only=True,
+    )
     print(f"\nDone — updated {success} documents")
     if errors:
         print(f"Errors: {errors}")

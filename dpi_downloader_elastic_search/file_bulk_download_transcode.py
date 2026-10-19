@@ -358,6 +358,7 @@ def check_download_exists(
 
     return new_fpath, skip_download
 
+
 def write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath):
     download_local_md5 = local_md5
     black_pearl_md5 = bp_md5
@@ -369,7 +370,8 @@ def write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath):
     with open(f"{dpath}/{new_fpath}_md5.txt", "w", encoding="utf-8") as f:
         f.write(f"Created from download: {bp_md5} | Retrieved from BP: {local_md5}\n")
         f.write(message)
-    return 
+    return
+
 
 def main():
     """
@@ -763,7 +765,7 @@ def main():
                     # Delete source download from DPI if not failed transcode/already found in path
                     if trans == "no_transcode":
                         LOGGER.info("No transcode requested for this asset.")
-                        write_checksum_similarity(local_md5,  bp_md5, dpath, new_fpath)
+                        write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath)
                     elif not skip_download or not failed_trans:
                         LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                         os.remove(new_fpath)

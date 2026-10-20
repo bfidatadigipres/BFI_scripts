@@ -19,7 +19,9 @@ CID_API = utils.get_current_api()
 LOG_PATH = os.environ["LOG_PATH"]
 
 logger = logging.getLogger("stora_subtitle_relocation_label_text")
-hdlr = logging.FileHandler(os.path.join(LOG_PATH, "stora_subtitle_relocation_label_text.log"))
+hdlr = logging.FileHandler(
+    os.path.join(LOG_PATH, "stora_subtitle_relocation_label_text.log")
+)
 formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
@@ -34,13 +36,16 @@ DATE_FORMAT = "%Y-%m-%d"
 
 _SAFE_VALUE_RE = re.compile(r"^[a-zA-Z0-9_\-.*?()' /:]+$")
 
+
 def is_safe_search_value(value: str) -> bool:
     return bool(_SAFE_VALUE_RE.fullmatch(value))
+
 
 def safe_search_query(field: str, value: str) -> str:
     if not is_safe_search_value(value):
         raise ValueError(f"Unsafe search value for {field}={value!r}")
     return f"{field}='{value}'"
+
 
 def get_field(record: dict, field_name: str) -> Optional[str]:
     values = adlib_sess.retrieve_field_name(record, field_name)
@@ -61,6 +66,7 @@ def get_field(record: dict, field_name: str) -> Optional[str]:
 
     return None
 
+
 def retrieve_single_record(
     database: str,
     search_field: str,
@@ -68,9 +74,7 @@ def retrieve_single_record(
     fields: Optional[list[str]] = None,
 ) -> Optional[list[dict]]:
     query = safe_search_query(search_field, search_value)
-    hits, records = adlib.retrieve_record(
-        CID_API, database, query, "1", fields=fields
-    )
+    hits, records = adlib.retrieve_record(CID_API, database, query, "1", fields=fields)
     if not hits or not records:
         return None
     return records
@@ -99,24 +103,31 @@ def post_xml_to_cid(edit_xml, database, session) -> tuple[bool, str]:
         return False, reason
     return True, ""
 
+
 def build_subtitle_edit_xml(
-        priref: str, input_date: str, subtitle_text: str, subtitle_source: str, subtitle_type:str, manifestation=False
+    priref: str,
+    input_date: str,
+    subtitle_text: str,
+    subtitle_source: str,
+    subtitle_type: str,
+    manifestation=False,
 ) -> str:
     """Build XML edit record payload with subtitle metadata and VTT content."""
     now = datetime.now()
     edit_entries = [
-            {"edit.date": now.strftime("%Y-%m-%d")},
-            {"edit.name": "datadigipres"},
-            {"edit.notes": "Automated subtitle relocation project"},
-            {"edit.time": now.strftime("%H:%M:%S")},
-            {"subtitle.date": input_date},
-            {"subtitle.text": subtitle_text.replace("ï»¿", "")},
-            {"subtitle.type": subtitle_type},
-            {"subtitle.source": subtitle_source},
-        ]
+        {"edit.date": now.strftime("%Y-%m-%d")},
+        {"edit.name": "datadigipres"},
+        {"edit.notes": "Automated subtitle relocation project"},
+        {"edit.time": now.strftime("%H:%M:%S")},
+        {"subtitle.date": input_date},
+        {"subtitle.text": subtitle_text.replace("ï»¿", "")},
+        {"subtitle.type": subtitle_type},
+        {"subtitle.source": subtitle_source},
+    ]
     if manifestation:
         edit_entries = [{"accessibility_resource": "SUBTITLES"}]
     return adlib_sess.create_grouped_data(priref, "Edit", [edit_entries])
+
 
 def get_manifestation_priref(item_priref: str) -> Optional[str]:
     """Look up the parent manifestation priref for a given item priref."""
@@ -155,8 +166,20 @@ def add_months(source: datetime, months: int) -> datetime:
     month = month % 12 + 1
     day = min(
         source.day,
-        [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
-         31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1],
+        [
+            31,
+            29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+            31,
+            30,
+            31,
+            30,
+            31,
+            31,
+            30,
+            31,
+            30,
+            31,
+        ][month - 1],
     )
     return source.replace(year=year, month=month, day=day)
 
@@ -169,7 +192,9 @@ def generate_ranges(start_str: str, stop_str: str, step_months: int = 4) -> list
         end = add_months(cursor, step_months)
         if end > stop:
             end = stop
-        ranges.append({"start": cursor.strftime(DATE_FORMAT), "end": end.strftime(DATE_FORMAT)})
+        ranges.append(
+            {"start": cursor.strftime(DATE_FORMAT), "end": end.strftime(DATE_FORMAT)}
+        )
         cursor = end
     return ranges
 
@@ -250,7 +275,10 @@ def process_range(
             if not all([input_date, subtitle_text, subtitle_type, subtitle_source]):
                 logger.error(
                     "Skipping priref=%s: missing subtitle fields (text=%s type=%s source=%s)",
-                    current_priref, subtitle_text, subtitle_type, subtitle_source,
+                    current_priref,
+                    subtitle_text,
+                    subtitle_type,
+                    subtitle_source,
                 )
                 errors += 1
                 last_priref = current_priref
@@ -260,50 +288,78 @@ def process_range(
                 continue
 
             edit_xml = build_subtitle_edit_xml(
-                current_priref, input_date, subtitle_text, subtitle_source, subtitle_type,
+                current_priref,
+                input_date,
+                subtitle_text,
+                subtitle_source,
+                subtitle_type,
             )
 
             mani_priref = get_field(item_record[0], "Part_of.part_of_reference.priref")
-            logger.info("Manifestation priref for item %s: %s", current_priref, mani_priref)
+            logger.info(
+                "Manifestation priref for item %s: %s", current_priref, mani_priref
+            )
 
             manifestation_xml = None
             if mani_priref:
                 manifestation_xml = build_subtitle_edit_xml(
-                    mani_priref, "", "", "", "", manifestation=True,
+                    mani_priref,
+                    "",
+                    "",
+                    "",
+                    "",
+                    manifestation=True,
                 )
 
             logger.info("Record %d/%d priref=%s", i + 1, hits, current_priref)
 
             success, reason = post_xml_to_cid(edit_xml, "items", session)
             if success:
-                logger.info("Items post OK | record %d/%d priref=%s", i + 1, hits, current_priref)
+                logger.info(
+                    "Items post OK | record %d/%d priref=%s",
+                    i + 1,
+                    hits,
+                    current_priref,
+                )
                 successes += 1
             else:
                 logger.error(
                     "Items post FAIL | record %d/%d priref=%s | reason=%s",
-                    i + 1, hits, current_priref, reason,
+                    i + 1,
+                    hits,
+                    current_priref,
+                    reason,
                 )
                 errors += 1
 
             if manifestation_xml:
                 mani_success, mani_reason = post_xml_to_cid(
-                    manifestation_xml, "manifestations", session,
+                    manifestation_xml,
+                    "manifestations",
+                    session,
                 )
                 if mani_success:
                     logger.info(
                         "Manifestation post OK | record %d/%d priref=%s",
-                        i + 1, hits, current_priref,
+                        i + 1,
+                        hits,
+                        current_priref,
                     )
                     successes += 1
                 else:
                     logger.error(
                         "Manifestation post FAIL | record %d/%d priref=%s | reason=%s",
-                        i + 1, hits, current_priref, mani_reason,
+                        i + 1,
+                        hits,
+                        current_priref,
+                        mani_reason,
                     )
                     errors += 1
 
         except Exception as exc:
-            logger.exception("Unexpected error processing priref=%s: %s", current_priref, exc)
+            logger.exception(
+                "Unexpected error processing priref=%s: %s", current_priref, exc
+            )
             errors += 1
 
         last_priref = current_priref
@@ -311,7 +367,9 @@ def process_range(
             config["in_progress"]["last_priref"] = current_priref
             write_config(config)
 
-    logger.info("Range %s to %s done: %d succeeded, %d failed", start, end, successes, errors)
+    logger.info(
+        "Range %s to %s done: %d succeeded, %d failed", start, end, successes, errors
+    )
 
 
 def main():
@@ -336,10 +394,19 @@ def main():
     )
 
     session = adlib_sess.create_session()
-    fields = ["label.type", "label.text", "label.source", "input.date", "priref", "part_of_reference"]
+    fields = [
+        "label.type",
+        "label.text",
+        "label.source",
+        "input.date",
+        "priref",
+        "part_of_reference",
+    ]
 
     if args.test:
-        logger.info("TEST MODE: using range 2022-09-01 to 2022-09-10, no state file touched")
+        logger.info(
+            "TEST MODE: using range 2022-09-01 to 2022-09-10, no state file touched"
+        )
         test_range = {"start": "2022-09-01", "end": "2022-09-10"}
         process_range(session, fields, test_range, last_priref=None, limit=args.limit)
         logger.info(
@@ -361,12 +428,16 @@ def main():
         last_priref = current_range.get("last_priref")
         logger.info(
             "Resuming range %s to %s from priref=%s",
-            current_range["start"], current_range["end"], last_priref,
+            current_range["start"],
+            current_range["end"],
+            last_priref,
         )
     else:
         next_range = next_unprocessed_range(config)
         if next_range is None:
-            logger.info("All ranges completed up to %s. Nothing to do.", config["stop_date"])
+            logger.info(
+                "All ranges completed up to %s. Nothing to do.", config["stop_date"]
+            )
             logger.info(
                 "========== Transfer subtitle fields script END ==============================================="
             )
@@ -379,27 +450,34 @@ def main():
             "last_priref": None,
         }
         write_config(config)
-        logger.info("Starting new range %s to %s", current_range["start"], current_range["end"])
+        logger.info(
+            "Starting new range %s to %s", current_range["start"], current_range["end"]
+        )
 
     process_range(session, fields, current_range, last_priref, args.limit, config)
 
     remaining = range_remaining_count(current_range["start"], current_range["end"])
     if remaining == 0:
-        config["completed_ranges"].append({
-            "start": current_range["start"],
-            "end": current_range["end"],
-        })
+        config["completed_ranges"].append(
+            {
+                "start": current_range["start"],
+                "end": current_range["end"],
+            }
+        )
         config["in_progress"] = None
         write_config(config)
         logger.info(
             "Range %s to %s fully completed. Total ranges done: %d",
-            current_range["start"], current_range["end"],
+            current_range["start"],
+            current_range["end"],
             len(config["completed_ranges"]),
         )
     else:
         logger.info(
             "Range %s to %s partially processed (%d records remaining). Next run will resume.",
-            current_range["start"], current_range["end"], remaining,
+            current_range["start"],
+            current_range["end"],
+            remaining,
         )
 
     logger.info(
@@ -409,4 +487,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

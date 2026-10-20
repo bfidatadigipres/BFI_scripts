@@ -86,6 +86,7 @@ CONTROL_JSON: Final = os.environ["CONTROL_JSON"]
 CODEPTH: Final = os.environ["CODE"]
 ES_SEARCH: Final = os.environ["ES_SEARCH_PATH"]
 FMT: Final = "%Y-%m-%d %H:%M:%s"
+DPI_PATH = "/mnt/qnap_11/hold/"
 
 # CONNECT TO ES
 ES: Final = Elasticsearch([ES_SEARCH])
@@ -358,6 +359,20 @@ def check_download_exists(
     return new_fpath, skip_download
 
 
+def write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath):
+    download_local_md5 = local_md5
+    black_pearl_md5 = bp_md5
+    message = ""
+    if download_local_md5 == black_pearl_md5:
+        message = f"Checksum MATCH: {bp_md5} | {local_md5}"
+    else:
+        message = f"Checksum DO NOT MATCH: {bp_md5} | {local_md5}"
+    with open(f"{dpath}/{new_fpath}_md5.txt", "w", encoding="utf-8") as f:
+        f.write(f"Created from download: {local_md5} | Retrieved from BP: {bp_md5}\n")
+        f.write(message)
+    return
+
+
 def main():
     """
     Retrieve 'Requested' rows from database.db as list of
@@ -552,6 +567,7 @@ def main():
             # Delete source download from DPI if not failed transcode/already found in path
             if trans == "no_transcode":
                 LOGGER.info("No transcode requested for this asset.")
+                write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath)
             elif not skip_download or not failed_trans:
                 LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                 os.remove(new_fpath)
@@ -749,6 +765,7 @@ def main():
                     # Delete source download from DPI if not failed transcode/already found in path
                     if trans == "no_transcode":
                         LOGGER.info("No transcode requested for this asset.")
+                        write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath)
                     elif not skip_download or not failed_trans:
                         LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                         os.remove(new_fpath)

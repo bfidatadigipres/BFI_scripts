@@ -82,7 +82,9 @@ def main():
         print("* Cannot establish CID session, exiting script")
         sys.exit()
 
-    write_to_log(f"=== Processing Items in SIM Digital Betacam Pointer File === {DT_STR}\n")
+    write_to_log(
+        f"=== Processing Items in SIM Digital Betacam Pointer File === {DT_STR}\n"
+    )
     write_to_log(
         "Fetching csv data, building selected items list and fetching candidates.\n"
     )
@@ -157,7 +159,9 @@ def main():
             write_to_log("Failed to write data to selections.csv")
             sys.exit("Failed to write data to selections.csv")
 
-    write_to_log(f"=== Items in SIM Digital Betacam Pointer File completed === {DT_STR}\n")
+    write_to_log(
+        f"=== Items in SIM Digital Betacam Pointer File completed === {DT_STR}\n"
+    )
 
 
 def selections_add(data):

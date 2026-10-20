@@ -409,7 +409,7 @@ def create_digital_original_filenames(
             "updaterecord",
             f"Df=ITEM and digital.acquired_filename={filename}",
             3,
-            10
+            10,
         )
         print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info(
@@ -452,7 +452,7 @@ def xml_item_append(priref: str, xml_data: list[str]) -> bool:
             "updaterecord",
             f"Df=ITEM and label.source={text}",
             3,
-            10
+            10,
         )
         print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info("Successfully appended Label fields to Item record %s", priref)

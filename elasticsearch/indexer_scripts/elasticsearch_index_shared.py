@@ -73,8 +73,14 @@ CID_REQUEST_DELAY = float(os.environ.get("CID_REQUEST_DELAY", "1"))
 
 
 SLOW_RECORD_TIMEOUT_SECONDS = float(os.environ.get("SLOW_RECORD_TIMEOUT_SECONDS", "3"))
-SLOW_RECORD_ABORT_CONSECUTIVE = int(os.environ.get("SLOW_RECORD_ABORT_CONSECUTIVE", "0"))
-SLOW_RECORD_USE_CACHE = os.environ.get("SLOW_RECORD_USE_CACHE", "1").lower() not in ("0", "false", "no")
+SLOW_RECORD_ABORT_CONSECUTIVE = int(
+    os.environ.get("SLOW_RECORD_ABORT_CONSECUTIVE", "0")
+)
+SLOW_RECORD_USE_CACHE = os.environ.get("SLOW_RECORD_USE_CACHE", "1").lower() not in (
+    "0",
+    "false",
+    "no",
+)
 
 
 class SlowRecordAbort(RuntimeError):
@@ -94,8 +100,6 @@ def _guarded_http_session() -> requests.Session:
         session.mount("https://", adapter)
         _guarded_session = session
     return _guarded_session
-
-
 
 
 _slow_cache: dict[str, set[str]] = {}
@@ -175,7 +179,10 @@ def fetch_xml_guarded(
             elapsed,
             slow_records_path,
         )
-        if SLOW_RECORD_ABORT_CONSECUTIVE > 0 and stats.slow_streak >= SLOW_RECORD_ABORT_CONSECUTIVE:
+        if (
+            SLOW_RECORD_ABORT_CONSECUTIVE > 0
+            and stats.slow_streak >= SLOW_RECORD_ABORT_CONSECUTIVE
+        ):
             raise SlowRecordAbort(
                 f"{stats.slow_streak} consecutive CID records exceeded the {cap:.0f}s "
                 f"slow-record timeout - CID looks degraded; see {slow_records_path}"

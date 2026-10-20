@@ -84,7 +84,9 @@ def retrieve_single_record(
 ) -> Optional[list[dict]]:
     """Query adlib for a single record matching search_field=search_value."""
     query = safe_search_query(search_field, search_value)
-    hits, records = adlib_sess.retrieve_record(CID_API, database, query, "1", session, fields=fields)
+    hits, records = adlib_sess.retrieve_record(
+        CID_API, database, query, "1", session, fields=fields
+    )
     if not hits or not records:
         return None
     return records
@@ -115,8 +117,7 @@ def get_manifestation_priref(item_priref: str, session: Session) -> Optional[str
 
 
 def get_transmission_info(
-    manifestation_priref: str,
-    session: Session
+    manifestation_priref: str, session: Session
 ) -> Optional[TransmissionInfo]:
     """Retrieve transmission date, start, and end time for a manifestation."""
     records = retrieve_single_record(
@@ -148,9 +149,7 @@ def get_transmission_info(
         )
         return None
 
-    return TransmissionInfo(
-        date=trans_date, start_time=start_time, end_time=end_time
-    )
+    return TransmissionInfo(date=trans_date, start_time=start_time, end_time=end_time)
 
 
 def working_day_check(dt: datetime) -> bool:
@@ -241,18 +240,15 @@ def main():
     )
     args = parser.parse_args()
 
-    #if working_day_check(datetime.now()):
+    # if working_day_check(datetime.now()):
     #    sys.exit("Exiting: Cannot operate in working hours")
     if not utils.check_control("pause_scripts") or not utils.check_control("stora"):
-       sys.exit("Script run prevented by downtime_control.json. Script exiting.")
+        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     logger.info(
         "========== subtitle creation script STARTED "
         "==============================================="
     )
-    list_files = [
-        f for f in os.listdir(SUBTITLE_FOLDER)
-        if f.endswith(".vtt")
-    ]
+    list_files = [f for f in os.listdir(SUBTITLE_FOLDER) if f.endswith(".vtt")]
     if args.limit:
         list_files = list_files[: args.limit]
 
@@ -326,9 +322,7 @@ def main():
             subtitle_date = adjust_date_for_midnight(trans_info)
             logger.info("subtitle_date: %s", subtitle_date)
         except ValueError as exc:
-            logger.error(
-                "Date adjustment failed for %s: %s", file, exc
-            )
+            logger.error("Date adjustment failed for %s: %s", file, exc)
             errors += 1
             continue
 
@@ -358,7 +352,9 @@ def main():
             logger.error("FAIL | reason=%s", reason)
             errors += 1
 
-        manifestation_success, manifestation_reason = post_xml_to_cid(manifestation_xml, "manifestations", session)
+        manifestation_success, manifestation_reason = post_xml_to_cid(
+            manifestation_xml, "manifestations", session
+        )
         if manifestation_success:
             successes += 1
             logger.info("SUCCESS | Manifestation Post Successful")
@@ -369,7 +365,6 @@ def main():
         if manifestation_success and success:
             shutil.move(file_path, str(PROCESSED_FOLDER / file))
             logger.info("Moved %s -> %s", file, PROCESSED_FOLDER / file)
-
 
         logger.info(
             "PROCESSED ok | file=%s | object_number=%s",

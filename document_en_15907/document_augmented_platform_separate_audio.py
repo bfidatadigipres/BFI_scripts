@@ -511,7 +511,7 @@ def create_digital_original_filenames(
             CID_API,
             payload,
             "items",
-            "updaterecord"
+            "updaterecord",
             f"Df=ITEM and priref={priref} and digital.acquired_filename='{filename}'",
             3,
             10

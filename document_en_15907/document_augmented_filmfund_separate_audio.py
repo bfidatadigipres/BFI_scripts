@@ -111,6 +111,7 @@ def main():
             continue
 
         object_number = folder
+        print(f"object number: {object_number}")
         file_list = os.listdir(fpath)
         if not file_list:
             LOGGER.warning("Skipping. No files found in folder path: %s", fpath)
@@ -140,6 +141,7 @@ def main():
 
             # Check object number valid
             record = cid_check_ob_num(object_number)
+            print(f"record: {record}")
             if record is None:
                 LOGGER.warning("Skipping: Record could not be matched with object_number")
                 continue
@@ -378,7 +380,7 @@ def create_digital_original_filenames(priref: str, file, new_file) -> bool:
             CID_API,
             payload,
             "items",
-            "updaterecord"
+            "updaterecord",
             f"Df=ITEM and priref={priref} and digital.acquired_filename='{filename}'",
             3,
             10

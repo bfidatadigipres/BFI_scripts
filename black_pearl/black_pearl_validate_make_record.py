@@ -827,7 +827,7 @@ def create_media_record(
         item_rec = adlib.post(
             CID_API, record_data_xml, "media", "insertrecord", session
         )
-        logger.info("Item record: %s", item_rec)
+        print("Item record: %s", item_rec)
         if item_rec:
             try:
                 media_priref = adlib.retrieve_field_name(item_rec, "priref")[0]

@@ -410,6 +410,11 @@ def create_new_item_record(
     """
     Build new CID item record from existing data and make CID item record
     """
+    if wav_type == "mono"
+        search = f"Df=ITEM and acquisition.source.lref='143463' and related_object.reference.lref='{priref}' and related_object.notes='Mono audio for'"
+    elif wav_type == "stereo":
+        search = f"Df=ITEM and acquisition.source.lref='143463' and related_object.reference.lref='{priref}' and related_object.notes='Stereo audio for'"
+
     item_dct = make_item_record_dict(priref, wav_type, record)
     LOGGER.info(item_dct)
     item_xml = adlib.create_record_data(CID_API, "items", "", item_dct)
@@ -418,7 +423,7 @@ def create_new_item_record(
         item_xml,
         "items",
         "insertrecord",
-        f"Df=ITEM and acquisition.source.lref='143463' and related_object.reference.lref='{priref}'",
+        search,
         3,
         10,
     )

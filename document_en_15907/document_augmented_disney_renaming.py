@@ -233,7 +233,7 @@ def main():
                     )
                     break
                 LOGGER.info(
-                    "CID item record <%s> filenames appended to digital.acquired_filenamed field",
+                    "CID item record <%s> filenames appended to digital.acquired_filename field",
                     priref,
                 )
                 LOGGER.info(
@@ -298,7 +298,7 @@ def main():
                 item_xml,
                 "items",
                 "insertrecord",
-                f"Df=ITEM and related_object.reference.lref={priref}",
+                f"Df=ITEM and related_object.reference.lref={priref} and quality_comments={qcomm}",
                 3,
                 10,
             )

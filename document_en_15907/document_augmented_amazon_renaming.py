@@ -221,7 +221,7 @@ def main():
                 new_filename = f"{ob_num.replace('-', '_')}_01of01.{ext}"
                 new_fpath = os.path.join(fpath, new_filename)
                 digital_note = f"{mov_file} - Renamed to: {new_filename}"
-
+                qcomm = "HDR version"
                 success: bool = create_digital_original_filenames(
                     priref, folder.strip(), digital_note
                 )
@@ -232,9 +232,19 @@ def main():
                     )
                     break
                 LOGGER.info(
-                    "CID item record <%s> filenames appended to digital.acquired_filenamed field",
+                    "CID item record <%s> filenames appended to digital.acquired_filename field",
                     priref,
                 )
+                LOGGER.info(
+                    'Appending quality comments "%s" to CID item record: %s',
+                    qcomm,
+                    priref,
+                )
+                if not adlib.add_quality_comments(CID_API, priref, qcomm):
+                    LOGGER.warning(
+                        "Quality Comment 'HDR version' failed to CID item record: %s",
+                        priref,
+                    )
                 LOGGER.info("Renaming file %s to %s", mov_file, new_filename)
                 os.rename(os.path.join(fpath, mov_file), new_fpath)
                 if os.path.exists(new_fpath):

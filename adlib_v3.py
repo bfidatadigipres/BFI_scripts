@@ -106,13 +106,13 @@ def get(api: str, query: dict[str, str]) -> dict[str, Any]:
         raise Exception from err
 
 
-def _time_window_last_15min(type: str) -> str:
+def _time_window_last_mins(type: str) -> str:
     """
-    Return a search string for records created in the last 15 minutes.
+    Return a search string for records created in the last 3 minutes.
     Type determines search against 'creation' or 'modification'
     """
     now = datetime.now()
-    window_start = now - timedelta(minutes=15)
+    window_start = now - timedelta(minutes=3)
     return f"{type} > '{window_start.strftime('%Y-%m-%d %H:%M:%S')}'"
 
 
@@ -147,9 +147,9 @@ def post_with_verify(
 
         # GET verification
         if method == "updaterecord":
-            search = f"{_time_window_last_15min('modification')} and {search_value}"
+            search = f"{_time_window_last_mins('modification')} and {search_value}"
         else:
-            search = f"{_time_window_last_15min('creation')} and {search_value}"
+            search = f"{_time_window_last_mins('creation')} and {search_value}"
         try:
             hits, record = retrieve_record(api, database, search, 1)
             if hits and hits > 0:
@@ -453,7 +453,6 @@ def create_record_data(
     return f"<adlibXML><recordList><record>{payload}</record></recordList></adlibXML>"
 
 
-####
 def escape_xml(s: str) -> str:
     """
     Escape characters that break

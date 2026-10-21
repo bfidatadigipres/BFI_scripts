@@ -410,7 +410,7 @@ def create_new_item_record(
     """
     Build new CID item record from existing data and make CID item record
     """
-    if wav_type == "mono"
+    if wav_type == "mono":
         search = f"Df=ITEM and acquisition.source.lref='143463' and related_object.reference.lref='{priref}' and related_object.notes='Mono audio for'"
     elif wav_type == "stereo":
         search = f"Df=ITEM and acquisition.source.lref='143463' and related_object.reference.lref='{priref}' and related_object.notes='Stereo audio for'"

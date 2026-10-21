@@ -928,6 +928,11 @@ def create_transcode(
 
     crop_ntsc_640x480: list[str] = ["-vf", "yadif,pad=768:480:-1:-1"]
 
+    crop_narrow_sd_16x9 = [
+        "-vf",
+        f"yadif,crop={width}:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10",
+    ]
+
     crop_sd_16x9: list[str] = [
         "-vf",
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos",
@@ -989,6 +994,8 @@ def create_transcode(
         cmd_mid = crop_ntsc_486
     elif height <= 486 and width == 640:
         cmd_mid = crop_ntsc_640x480
+    elif height <= 576 and dar == "16:9" and width < 704:
+        cmd_mid = crop_narrow_sd_16x9
     elif height <= 576 and dar == "16:9":
         cmd_mid = crop_sd_16x9
     elif height <= 576 and width == 768:

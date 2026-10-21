@@ -551,6 +551,7 @@ def create_new_item_record(
     )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
+        # Call CID again here to check and if none found retry
         return None
     LOGGER.info("New CID item record created: %s", new_record)
     return new_record

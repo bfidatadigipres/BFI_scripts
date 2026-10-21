@@ -28,7 +28,13 @@ def check(api: str) -> dict[str, Any]:
     return get(api, query)
 
 
-def retrieve_record(api: str, database: str, search: str, limit: Union[int, str], fields: Optional[list[str]] = None) -> tuple[Optional[int], Union[list[dict[str, Any]], dict[str, Any], None]]:
+def retrieve_record(
+    api: str,
+    database: str,
+    search: str,
+    limit: Union[int, str],
+    fields: Optional[list[str]] = None,
+) -> tuple[Optional[int], Union[list[dict[str, Any]], dict[str, Any], None]]:
     """
     Retrieve data from CID using new API
     """
@@ -133,34 +139,44 @@ def post_with_verify(
             return result
 
         # POST returned None/False
-        print(f"post_with_verify(): POST attempt {attempt} returned no priref, "
-              f"waiting {retry_delay}s then checking if record exists via GET...")
+        print(
+            f"post_with_verify(): POST attempt {attempt} returned no priref, "
+            f"waiting {retry_delay}s then checking if record exists via GET..."
+        )
         sleep(retry_delay)
 
         # GET verification
-        if method == 'updaterecord':
+        if method == "updaterecord":
             search = f"{_time_window_last_15min('modification')} and {search_value}"
         else:
             search = f"{_time_window_last_15min('creation')} and {search_value}"
         try:
             hits, record = retrieve_record(api, database, search, 1)
             if hits and hits > 0:
-                print(f"post_with_verify(): Record found on GET after POST failure "
-                      f"(attempt {attempt}) — returning existing record, no orphan created")
+                print(
+                    f"post_with_verify(): Record found on GET after POST failure "
+                    f"(attempt {attempt}) — returning existing record, no orphan created"
+                )
                 return record[0]
         except Exception as err:
             print(f"post_with_verify(): GET verification failed: {err}")
 
         # GET found nothing — genuine failure, retry the POST
-        print(f"post_with_verify(): Record not found on GET, retrying POST "
-              f"(attempt {attempt}/{max_retries})")
+        print(
+            f"post_with_verify(): Record not found on GET, retrying POST "
+            f"(attempt {attempt}/{max_retries})"
+        )
 
-    print(f"post_with_verify(): All {max_retries} attempts exhausted for "
-          f"{database}/{search_value}")
+    print(
+        f"post_with_verify(): All {max_retries} attempts exhausted for "
+        f"{database}/{search_value}"
+    )
     return None
 
 
-def post(api: str, payload: str, database: str, method: str) -> Union[dict[str, Any], bool, None]:
+def post(
+    api: str, payload: str, database: str, method: str
+) -> Union[dict[str, Any], bool, None]:
     """
     Send a POST request
     """
@@ -278,7 +294,9 @@ def retrieve_facet_list(record: dict[str, Any], fname: str) -> list[str]:
     return facets
 
 
-def group_check(record: dict[str, Any], fname: str) -> Union[list[str], list[dict[str, Any]], None]:
+def group_check(
+    record: dict[str, Any], fname: str
+) -> Union[list[str], list[dict[str, Any]], None]:
     """
     Get group that contains field key
     """
@@ -329,7 +347,9 @@ def group_check(record: dict[str, Any], fname: str) -> Union[list[str], list[dic
         return None
 
 
-def get_grouped_items(api: str, database: str) -> Union[dict[str, list[str]], tuple[None, None]]:
+def get_grouped_items(
+    api: str, database: str
+) -> Union[dict[str, list[str]], tuple[None, None]]:
     """
     Check dB for groupings and ensure
     these are added to XML configuration
@@ -356,7 +376,12 @@ def get_grouped_items(api: str, database: str) -> Union[dict[str, list[str]], tu
     return grouped
 
 
-def create_record_data(api: str, database: str, priref: Union[str, int], data: Optional[list[dict[str, str]]] = None) -> str:
+def create_record_data(
+    api: str,
+    database: str,
+    priref: Union[str, int],
+    data: Optional[list[dict[str, str]]] = None,
+) -> str:
     if data is None:
         data = []
     if not isinstance(data, list):
@@ -445,7 +470,11 @@ def escape_xml(s: str) -> str:
     )
 
 
-def create_grouped_data(priref: Optional[str], grouping: str, field_pairs: list[Union[list[dict[str, str]], dict[str, str]]]) -> Optional[str]:
+def create_grouped_data(
+    priref: Optional[str],
+    grouping: str,
+    field_pairs: list[Union[list[dict[str, str]], dict[str, str]]],
+) -> Optional[str]:
     """
     Handle repeated groups of fields pairs, suppied as list of dcts per group
     along with grouping known in advance and priref for append

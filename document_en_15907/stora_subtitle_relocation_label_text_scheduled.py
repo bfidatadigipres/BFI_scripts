@@ -313,7 +313,6 @@ def main():
         window_end,
         last_priref,
     )
-
     # Build search query
     search_query = build_window_query(window_start, window_end)
 
@@ -445,7 +444,6 @@ def main():
             current_priref, input_date, subtitle_text, subtitle_source, subtitle_type
         )
 
-        print(f"XML: {edit_xml}")
         mani_priref = get_field(item_record[0], "Part_of.part_of_reference.priref")
         logger.info("manifestation priref: %s", mani_priref)
 
@@ -475,7 +473,6 @@ def main():
 
         # Post item
         step += 1
-        ## current_priref
         success, reason = post_xml_to_cid(
             edit_xml, "items", session, search_value=f"priref='{current_priref}'"
         )
@@ -618,4 +615,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

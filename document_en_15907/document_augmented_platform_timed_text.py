@@ -400,7 +400,7 @@ def create_new_item_record(
         "insertrecord",
         f"Df=ITEM and related_object.reference.lref='{priref}' and digital.acquired_filename='{fname}'",
         3,
-        10
+        10,
     )
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
@@ -411,4 +411,3 @@ def create_new_item_record(
 
 if __name__ == "__main__":
     main()
-

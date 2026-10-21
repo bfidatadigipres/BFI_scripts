@@ -21,7 +21,7 @@ jobs:
           echo "github.ref: ${{ github.ref }}"
           echo "github.head_ref: ${{ github.head_ref }}"
           echo "repo owner: ${{ github.repository_owner }}"
-          
+
       - uses: actions/checkout@v4
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
@@ -149,8 +149,8 @@ jobs:
         - name: Debug PR origin
           run: |
             echo "Head repo: ${{ github.event.pull_request.head.repo.full_name }}"
-            echo "Base repo: ${{ github.repository }}"      
-        
+            echo "Base repo: ${{ github.repository }}"
+
         - uses: actions/checkout@v4
           with:
             repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
@@ -165,12 +165,12 @@ jobs:
             python-version: '3.12'
 
         - run: pip install pylint
-        
+
         - id: pylint
           run: |
             export LANG=en_US.UTF-8
             export LC_ALL=en_US.UTF-8
-            
+
             # Check if there's a previous commit before attempting git diff
             set -x
             if git rev-parse HEAD~1 >/dev/null 2>&1; then
@@ -179,14 +179,14 @@ jobs:
               # For initial commit, get all Python files
               changed_files=($(git ls-files '*.py' || true))
             fi
-            
+
             mkdir -p reports
             if [ ${#changed_files[@]} -gt 0 ]; then
                 python -m pylint "${changed_files[@]}" > reports/pylint-report.txt || true
             else
                 echo "No Python files to lint" > reports/pylint-report.txt
             fi
-            
+
             # Use perl instead of sed for better Unicode handling
             perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(E[0-9]{4})/$1🚨 $2/g' reports/pylint-report.txt
             perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(W[0-9]{4})/$1⚠️ $2/g' reports/pylint-report.txt
@@ -194,7 +194,7 @@ jobs:
             perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(C[0-9]{4})/$1🎨 $2/g' reports/pylint-report.txt
             perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(F[0-9]{4})/$1🛑 $2/g' reports/pylint-report.txt
             perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(R[0-9]{4})/$1♻️ $2/g' reports/pylint-report.txt
-                      
+
         - name: print file
           run: cat reports/pylint-report.txt
 

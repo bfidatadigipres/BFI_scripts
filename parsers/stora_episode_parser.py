@@ -28,6 +28,7 @@ from pydantic import (
 MAX_JSON_SIZE = 5 * 1024 * 1024  # 5 MB
 HTTPS_URL_RE = re.compile(r"^https://[^\s]+$")
 
+
 class UnexpectedFieldError(ValueError):
     """Raised if a JSON contains unanticipated fields."""
 
@@ -238,7 +239,9 @@ class Contributor(APIModel):
             if isinstance(meta, dict):
                 for k, v in meta.items():
                     if isinstance(v, str) and len(v) > 5000:
-                        raise ValueError(f"meta value for '{k}' exceeds max length of 5000")
+                        raise ValueError(
+                            f"meta value for '{k}' exceeds max length of 5000"
+                        )
         return values
 
 
@@ -300,7 +303,9 @@ class Asset(APIModel):
             if isinstance(meta, dict):
                 for k, v in meta.items():
                     if isinstance(v, str) and len(v) > 5000:
-                        raise ValueError(f"meta value for '{k}' exceeds max length of 5000")
+                        raise ValueError(
+                            f"meta value for '{k}' exceeds max length of 5000"
+                        )
         return values
 
 
@@ -338,7 +343,9 @@ class Item(APIModel):
             if isinstance(meta, dict):
                 for k, v in meta.items():
                     if isinstance(v, str) and len(v) > 5000:
-                        raise ValueError(f"meta value for '{k}' exceeds max length of 5000")
+                        raise ValueError(
+                            f"meta value for '{k}' exceeds max length of 5000"
+                        )
         return values
 
 

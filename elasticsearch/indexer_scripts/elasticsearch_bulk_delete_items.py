@@ -29,7 +29,9 @@ ES_URL = os.environ.get("ES_SEARCH_PATH")
 ES_INDEX = "dpi_items"
 
 LOG_PATH = os.path.join(os.environ.get("LOG_PATH"), "item_bulk_delete.log")
-DEAD_LETTER_PATH = os.path.join(os.environ.get("LOG_PATH"), "item_bulk_delete_dead_letter.jsonl")
+DEAD_LETTER_PATH = os.path.join(
+    os.environ.get("LOG_PATH"), "item_bulk_delete_dead_letter.jsonl"
+)
 
 # Elasticsearch settings
 ES_REQUEST_TIMEOUT = 60
@@ -72,6 +74,7 @@ logger.addHandler(stdout_handler)
 # Stats
 # =========================
 
+
 class Stats:
     def __init__(self) -> None:
         self.prirefs_total = 0
@@ -99,8 +102,10 @@ class Stats:
 # Helpers
 # =========================
 
+
 def utc_now_iso() -> str:
     from datetime import datetime, timezone
+
     return datetime.now(timezone.utc).isoformat()
 
 
@@ -124,6 +129,7 @@ def safe_json_dumps(value, max_len: int) -> str | None:
 # ES helpers
 # =========================
 
+
 def build_es_client() -> Elasticsearch:
     return Elasticsearch(
         ES_URL,
@@ -143,12 +149,15 @@ def ping_es(es: Elasticsearch) -> None:
             info.get("version", {}).get("number"),
         )
     except Exception as e:
-        raise RuntimeError(f"Could not connect to Elasticsearch at {ES_URL}: {e}") from e
+        raise RuntimeError(
+            f"Could not connect to Elasticsearch at {ES_URL}: {e}"
+        ) from e
 
 
 # =========================
 # Dead letter
 # =========================
+
 
 def write_dead_letter(
     stats: Stats,
@@ -165,7 +174,11 @@ def write_dead_letter(
         "priref": priref,
         "error": truncate_text(error, MAX_ERROR_SNIPPET),
         "http_status": http_status,
-        "es_error": safe_json_dumps(es_error, MAX_ERROR_SNIPPET) if es_error is not None else None,
+        "es_error": (
+            safe_json_dumps(es_error, MAX_ERROR_SNIPPET)
+            if es_error is not None
+            else None
+        ),
     }
 
     with open(DEAD_LETTER_PATH, "a", encoding="utf-8") as f:
@@ -177,6 +190,7 @@ def write_dead_letter(
 # =========================
 # CSV reading
 # =========================
+
 
 def read_prirefs_from_csv(csv_path: str) -> list[str]:
     """Read a single-column CSV of prirefs.
@@ -207,6 +221,7 @@ def read_prirefs_from_csv(csv_path: str) -> list[str]:
 # Bulk delete actions
 # =========================
 
+
 def make_delete_action(priref: str) -> dict:
     return {
         "_op_type": "delete",
@@ -218,7 +233,9 @@ def make_delete_action(priref: str) -> dict:
 def delete_action_generator(prirefs: list[str], stats: Stats) -> Iterator[dict]:
     for count, priref in enumerate(prirefs, 1):
         if count % PROGRESS_EVERY == 0:
-            logger.info("Progress: prepared %d/%d prirefs for deletion", count, len(prirefs))
+            logger.info(
+                "Progress: prepared %d/%d prirefs for deletion", count, len(prirefs)
+            )
         yield make_delete_action(priref)
 
 
@@ -242,7 +259,9 @@ def bulk_delete(es: Elasticsearch, actions: Iterator[dict], stats: Stats) -> Non
             delete_result = result.get("result", "")
             if delete_result == "not_found":
                 stats.not_found += 1
-                logger.warning("%s - document not found (already deleted or never existed)", priref)
+                logger.warning(
+                    "%s - document not found (already deleted or never existed)", priref
+                )
             else:
                 stats.deleted_ok += 1
                 if stats.deleted_ok % PROGRESS_EVERY == 0:
@@ -276,6 +295,7 @@ def bulk_delete(es: Elasticsearch, actions: Iterator[dict], stats: Stats) -> Non
 # Argument parsing
 # =========================
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Bulk-delete Elasticsearch documents by priref from a CSV file.",
@@ -299,6 +319,7 @@ def parse_args() -> argparse.Namespace:
 # =========================
 # Main
 # =========================
+
 
 def main() -> int:
     args = parse_args()
@@ -328,7 +349,11 @@ def main() -> int:
 
     # --- Dry-run ---
     if args.dry_run:
-        logger.info("DRY RUN — %d documents would be deleted from index '%s'", len(prirefs), ES_INDEX)
+        logger.info(
+            "DRY RUN — %d documents would be deleted from index '%s'",
+            len(prirefs),
+            ES_INDEX,
+        )
         for i, p in enumerate(prirefs, 1):
             print(f"  would delete priref={p}")
             if i >= 20 and len(prirefs) > 20:

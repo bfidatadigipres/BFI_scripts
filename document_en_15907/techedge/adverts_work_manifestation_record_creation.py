@@ -252,7 +252,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             minor_xml,
             "thesaurus",
             "insertrecord",
-            f"term.type='PROD_CAT' and term='{minor}' and source='TechEdge adverts data supply'"
+            f"term.type='PROD_CAT' and term='{minor}' and source='TechEdge adverts data supply'",
         )
         minor_priref = adlib.retrieve_field_name(minor_rec, "priref")[0]
         if minor_priref:
@@ -303,7 +303,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             mid_xml,
             "thesaurus",
             "insertrecord",
-            f"term.type='PROD_CAT' and term='{mid}' and source='TechEdge adverts data supply'"
+            f"term.type='PROD_CAT' and term='{mid}' and source='TechEdge adverts data supply'",
         )
         mid_priref = adlib.retrieve_field_name(mid_rec, "priref")[0]
         if mid_priref:
@@ -355,7 +355,7 @@ def manage_product_category(major: str, mid: str, minor: str) -> Optional[str]:
             maj_xml,
             "thesaurus",
             "insertrecord",
-            f"term.type='PROD_CAT' and term='{major}' and source='TechEdge adverts data supply'"
+            f"term.type='PROD_CAT' and term='{major}' and source='TechEdge adverts data supply'",
         )
         maj_priref = adlib.retrieve_field_name(maj_rec, "priref")[0]
         if maj_priref:
@@ -420,7 +420,7 @@ def manage_advertiser_people(
                 agency_xml,
                 "people",
                 "insertrecord",
-                f"name='{agency}' and activity_type='Advertising Agency' and source='TechEdge adverts data supply'"
+                f"name='{agency}' and activity_type='Advertising Agency' and source='TechEdge adverts data supply'",
             )
             agency_priref = adlib.retrieve_field_name(agency_rec, "priref")[0]
             if agency_priref:
@@ -562,7 +562,7 @@ def manage_advertiser_people(
             ad_xml,
             "people",
             "insertrecord",
-            f"name='{advertiser}' and activity_type='Sponsor' and source='TechEdge adverts data supply'"
+            f"name='{advertiser}' and activity_type='Sponsor' and source='TechEdge adverts data supply'",
         )
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
         if ad_priref:
@@ -610,7 +610,7 @@ def manage_advertiser_people(
             hc_xml,
             "people",
             "insertrecord",
-            f"name='{holding_comp}' and activity_type='Sponsor' and source='TechEdge adverts data supply'"
+            f"name='{holding_comp}' and activity_type='Sponsor' and source='TechEdge adverts data supply'",
         )
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
         if hc_priref:
@@ -651,7 +651,7 @@ def manage_advertiser_people(
             ad_xml,
             "people",
             "insertrecord",
-            f"name='{advertiser}' and activity_type='Sponsor' and source='TechEdge adverts data supply'"
+            f"name='{advertiser}' and activity_type='Sponsor' and source='TechEdge adverts data supply'",
         )
         ad_priref = adlib.retrieve_field_name(ad_rec, "priref")[0]
         if ad_priref:
@@ -691,7 +691,7 @@ def manage_advertiser_people(
             hc_xml,
             "people",
             "insertrecord",
-            f"name='{holding_comp}' and activity_type='Sponsor' and source='TechEdge adverts data supply'"
+            f"name='{holding_comp}' and activity_type='Sponsor' and source='TechEdge adverts data supply'",
         )
         hc_priref = adlib.retrieve_field_name(hc_rec, "priref")[0]
         if hc_priref:
@@ -797,7 +797,7 @@ def get_csv_path() -> Optional[str]:
     Keep track of CSVs that have been
     been read and had all records completed
     """
-    with open(CSV_LIST, 'r') as completed:
+    with open(CSV_LIST, "r") as completed:
         completed_csvs = set(completed.readlines())
 
     csv_list = os.listdir(CSV_PATH)
@@ -841,7 +841,9 @@ def main():
     for row in te.iter_techedge_rows(csv_pth):
         first_showing = False
         if working_day_check(datetime.now()):
-            LOGGER.info("Script closed for BFI operational hours - Mon to Fri 8am to 6pm")
+            LOGGER.info(
+                "Script closed for BFI operational hours - Mon to Fri 8am to 6pm"
+            )
             sys.exit("Exiting: Cannot operate in working hours")
         if not utils.check_control("pause_scripts"):
             LOGGER.info(
@@ -885,7 +887,9 @@ def main():
         else:
             print(f"SKIPPING: Work exists for this Ad {row.brand} {film_code}")
 
-        title_date_start, transmission_start_time = convert_transmission_time(row.date, row.start_time)
+        title_date_start, transmission_start_time = convert_transmission_time(
+            row.date, row.start_time
+        )
         utc_timestamp = get_utc(title_date_start, transmission_start_time)
         mpriref = manifestation_exists_query(film_code, utc_timestamp, wpriref)
         if mpriref is False:
@@ -893,7 +897,7 @@ def main():
                 "Manifestation match not found '%s' - %s %s",
                 row.brand,
                 row.date,
-                utc_timestamp
+                utc_timestamp,
             )
 
             rec_def, _, _, manifestation = build_rec_details(row)
@@ -912,7 +916,7 @@ def main():
         else:
             print("SKIPPING: Manifestation exists for this Ad.")
 
-    with open(CSV_LIST, 'a') as file:
+    with open(CSV_LIST, "a") as file:
         file.write(f"{csv_pth}\n")
 
     LOGGER.info(
@@ -1036,7 +1040,9 @@ def build_rec_details(row):
 
     title_art = row.brand or ""
     title, title_article = utils.split_title(title_art)
-    title_date_start, transmission_start_time = convert_transmission_time(row.date, row.start_time)
+    title_date_start, transmission_start_time = convert_transmission_time(
+        row.date, row.start_time
+    )
     alternative_number = row.film_code
     utc_timestamp = get_utc(title_date_start, transmission_start_time)
 
@@ -1166,7 +1172,7 @@ def create_work(row, work_values: dict) -> Optional[str]:
             work_values_xml,
             "works",
             "insertrecord",
-            f"Df=WORK and alternative_number='{row.film_code}'"
+            f"Df=WORK and alternative_number='{row.film_code}'",
         )
         print(f"create_work(): {work_rec}")
     except Exception as err:
@@ -1234,11 +1240,15 @@ def create_manifestation(
     """
     if first_showing:
         manifestation_values.append(
-            {"notes": "Manifestation representing advert first broadcast time and date. Actual time may vary by up to 2 minutes."}
+            {
+                "notes": "Manifestation representing advert first broadcast time and date. Actual time may vary by up to 2 minutes."
+            }
         )
     else:
         manifestation_values.append(
-            {"notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."}
+            {
+                "notes": "Manifestation representing advert broadcast time and date. Actual time may vary by up to 2 minutes."
+            }
         )
     man_values_xml = adlib.create_record_data(
         CID_API, "manifestations", "", manifestation_values
@@ -1259,7 +1269,7 @@ def create_manifestation(
             man_values_xml,
             "manifestations",
             "insertrecord",
-            f"Df=MANIFESTATION and alternative_number='{row.film_code}'"
+            f"Df=MANIFESTATION and alternative_number='{row.film_code}'",
         )
         print(f"create_manifestation(): {man_rec}")
     except Exception as err:

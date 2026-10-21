@@ -161,7 +161,7 @@ def new(
         rec_xml,
         "items",
         "insertrecord",
-        f"Df=ITEM and part_of_reference.lref='{str(parent_priref)}' and source_item.lref='{str(source_lref)}'"
+        f"Df=ITEM and part_of_reference.lref='{str(parent_priref)}' and source_item.lref='{str(source_lref)}'",
     )
     if new_record:
         try:

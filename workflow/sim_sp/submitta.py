@@ -28,7 +28,9 @@ import utils
 
 # Global variables
 LOGS = os.environ["LOG_PATH"]
-SUB_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/sim_sp/submissions.csv")
+SUB_CSV = os.path.join(
+    os.environ.get("CODE_DEPENDS"), "workflow/sim_sp/submissions.csv"
+)
 SEL_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/sim_sp/selections.csv")
 ERR_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/sim_sp/errors.csv")
 CONFIG = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/sim_sp/config.yaml")
@@ -59,7 +61,9 @@ def main():
     """
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-    write_to_log(f"=== Processing Items in SIM Betacam SP selections.csv === {DT_STR}\n")
+    write_to_log(
+        f"=== Processing Items in SIM Betacam SP selections.csv === {DT_STR}\n"
+    )
 
     # Load configuration variables
     configuration = yaml.safe_load(open(CONFIG, "r"))

@@ -316,6 +316,7 @@ def main():
                 edit_entries.append({"accessibility_resource": "SIGN_LANGUAGE"})
             if "audio-description" in utb_content:
                 edit_entries.append({"accessibility_resource": "AUDIO_DES"})
+
             for token, text in CW_TEXT.items():
                 if token in utb_content:
                     edit_entries.append({"warning.type": "CW"})
@@ -397,4 +398,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

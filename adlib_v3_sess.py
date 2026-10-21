@@ -119,7 +119,7 @@ def get(
         raise Exception from err
 
 
-def _time_window_last_15min(type: str) -> str:
+def _time_window_last_mins(type: str) -> str:
     """
     Return a search string for records created in the last 15 minutes.
     Type determines search against 'creation' or 'modification'

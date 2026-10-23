@@ -125,7 +125,7 @@ def _time_window_last_mins(type: str) -> str:
     Type determines search against 'creation' or 'modification'
     """
     now = datetime.now()
-    window_start = now - timedelta(minutes=3)
+    window_start = now - timedelta(minutes=1)
     return f"{type} > '{window_start.strftime('%Y-%m-%d %H:%M:%S')}'"
 
 

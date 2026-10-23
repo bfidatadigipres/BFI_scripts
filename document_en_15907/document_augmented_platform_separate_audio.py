@@ -539,19 +539,24 @@ def create_new_item_record(
     """
     item_dct = make_item_record_dict(priref, platform, record)
     LOGGER.info(item_dct)
+    if platform == "Netflix":
+        search = f"Df=ITEM and related_object.reference.lref='{priref}' and title='*(5.1 audio)'"
+    elif platform == "Amazon":
+        search = f"Df=ITEM and related_object.reference.lref='{priref}' and title='*(Dolby Atmos)'"
+
     item_xml = adlib.create_record_data(CID_API, "items", "", item_dct)
     new_record = adlib.post_with_verify(
         CID_API,
         item_xml,
         "items",
         "insertrecord",
-        f"Df=ITEM and related_object.reference.lref='{priref}'",
+        search,
         3,
         10,
     )
+
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
-        # Call CID again here to check and if none found retry
         return None
     LOGGER.info("New CID item record created: %s", new_record)
     return new_record

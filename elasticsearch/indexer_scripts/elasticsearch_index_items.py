@@ -2,30 +2,27 @@
 
 from __future__ import annotations
 
-import os
 import argparse
 import csv
 import json
 import logging
+import os
 import sys
 import time
-from datetime import datetime, timezone, timedelta, date
+from datetime import date, datetime, timedelta, timezone
 from typing import Iterator, Optional
 from urllib.parse import quote
 
-import requests
 import defusedxml.ElementTree as ET
+import requests
+from elastic_transport import ApiError
+from elasticsearch.helpers import streaming_bulk
+from elasticsearch_index_shared import fetch_xml_guarded
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-
 from xmljson import parker
 
 from elasticsearch import Elasticsearch
-from elasticsearch.helpers import streaming_bulk
-from elastic_transport import ApiError
-
-from elasticsearch_index_shared import fetch_xml_guarded
-
 
 # =========================
 # Configuration

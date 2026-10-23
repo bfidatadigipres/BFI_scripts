@@ -7,8 +7,8 @@ using FFmpeg
 """
 
 import os
-import sys
 import subprocess
+import sys
 from datetime import timedelta
 
 

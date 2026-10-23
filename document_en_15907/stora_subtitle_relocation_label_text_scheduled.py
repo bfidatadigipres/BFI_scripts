@@ -1,18 +1,20 @@
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import datetime, timedelta
 from typing import Optional
-import re
+
 from requests import Session
 
 sys.path.append(os.environ["CODE"])
-import utils
-import adlib_v3 as adlib
-import adlib_v3_sess as adlib_sess
 import logging
 import time as clock
+
+import adlib_v3 as adlib
+import adlib_v3_sess as adlib_sess
+import utils
 
 CID_API = utils.get_current_api()
 LOG_PATH = os.environ["LOG_PATH"]
@@ -149,7 +151,7 @@ def build_window_query(
         f"input.date>='{window_start}' and input.date<'{window_end}')"
     )
     if cursor:
-        #return f"priref='{cursor}'"
+        # return f"priref='{cursor}'"
         return f"(priref>{cursor}) and {query}"
     return query
 
@@ -548,7 +550,6 @@ def main():
                 )
                 save_checkpoint(args.checkpoint_file, checkpoint)
                 errors += 1
-
 
         # Save checkpoint after each successful record
         checkpoint["last_processed_priref"] = current_priref

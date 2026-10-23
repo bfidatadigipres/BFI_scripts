@@ -15,13 +15,13 @@ file in case.
 2026
 """
 
+import csv
 import logging
 import os
 import sys
-import csv
-from time import sleep
 from datetime import datetime
-from typing import Final, Dict, List, Any
+from time import sleep
+from typing import Any, Dict, Final, List
 
 # Local imports
 import bp_utils as bp

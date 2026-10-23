@@ -7,19 +7,20 @@ elasticsearch index exists and needs removing
 
 
 from __future__ import annotations
-import os
+
 import argparse
 import csv
 import json
 import logging
+import os
 import sys
 import time
 from typing import Iterator
 
 from elastic_transport import ApiError
-from elasticsearch import Elasticsearch
 from elasticsearch.helpers import streaming_bulk
 
+from elasticsearch import Elasticsearch
 
 # =========================
 # Configuration

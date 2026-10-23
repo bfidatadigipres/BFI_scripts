@@ -8,11 +8,12 @@ AIP UUID and status of record OPEN or CLOSED
 2026
 """
 
+import logging
 import os
 import sys
-import logging
-import requests
+
 import archivematica_sip_utils as ut
+import requests
 
 sys.path.append(os.environ.get("CODE"))
 import adlib_v3_sess as adlib

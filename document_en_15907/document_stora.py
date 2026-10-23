@@ -956,7 +956,7 @@ def post_accessibility_resource(manifestation_priref, sess):
 def push_payload(item_id, webvtt_payload, sess, subtitle_date):
     """
     Push webvtt payload separately to Item record
-    creation, to manage escape character injects
+    creation, to manage escape character injects.
     """
     SUBTITLE_TYPE = "WEBVTT_C"
     EDITOR_NOTES = "Extracted from MPEG-TS created by STORA recording"

@@ -21,10 +21,9 @@ import logging
 import os
 import shutil
 import sys
-from dataclasses import dataclass
 from time import sleep
 from typing import Any, Final, Optional
-
+from dataclasses import dataclass
 import requests
 
 # Private packages
@@ -956,7 +955,7 @@ def post_accessibility_resource(manifestation_priref, sess):
 def push_payload(item_id, webvtt_payload, sess, subtitle_date):
     """
     Push webvtt payload separately to Item record
-    creation, to manage escape character injects
+    creation, to manage escape character injects.
     """
     SUBTITLE_TYPE = "WEBVTT_C"
     EDITOR_NOTES = "Extracted from MPEG-TS created by STORA recording"

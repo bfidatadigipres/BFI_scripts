@@ -1,19 +1,21 @@
 import argparse
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
-import re
+
 from requests import Session
 
 sys.path.append(os.environ["CODE"])
-import utils
-import adlib_v3 as adlib
-import adlib_v3_sess as adlib_sess
 import logging
 import time as clock
+
+import adlib_v3 as adlib
+import adlib_v3_sess as adlib_sess
+import utils
 
 CID_API = utils.get_current_api()
 LOG_PATH = os.environ["LOG_PATH"]

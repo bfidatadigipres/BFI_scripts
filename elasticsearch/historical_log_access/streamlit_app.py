@@ -3,8 +3,9 @@ import os
 import elasticsearch_helper as elastic_helper
 import pandas as pd
 import streamlit as st
-from elasticsearch import Elasticsearch
 from streamlit_dynamic_filters import DynamicFilters
+
+from elasticsearch import Elasticsearch
 
 ELASTIC_PASS = os.environ["ELASTIC_PASS"]
 ELASTIC_PATH = os.environ["ELASTIC_PATH"]

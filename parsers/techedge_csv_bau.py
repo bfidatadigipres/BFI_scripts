@@ -11,10 +11,11 @@ Notes
 2026
 """
 
+import re
 from pathlib import Path
 from typing import Annotated
-import re
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import BeforeValidator
 from pydantic_csv import BasemodelCSVReader
 

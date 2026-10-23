@@ -6,12 +6,12 @@ Elasticsearch (dpi_screencraft_works).
 
 from __future__ import annotations
 
-import os
 import argparse
+import os
 from urllib.parse import quote
 
 import requests
-
+from elastic_transport import ApiError
 from elasticsearch_index_shared import (
     Stats,
     action_generator,
@@ -26,9 +26,8 @@ from elasticsearch_index_shared import (
     validate_date,
     validate_prirefs,
     validate_prirefs_csv,
-    xml_to_document as generic_xml_to_document,
 )
-from elastic_transport import ApiError
+from elasticsearch_index_shared import xml_to_document as generic_xml_to_document
 
 # =========================
 # Configuration

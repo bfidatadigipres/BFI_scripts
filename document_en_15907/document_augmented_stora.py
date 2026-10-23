@@ -34,11 +34,11 @@ import logging
 import os
 import shutil
 import sys
+from dataclasses import dataclass
 from time import sleep
 
 import tenacity
 import yaml
-from dataclasses import dataclass
 from series_retrieve import check_id, retrieve
 
 sys.path.append(os.environ["CODE"])

@@ -113,7 +113,7 @@ def _time_window_last_mins(type: str) -> str:
     Type determines search against 'creation' or 'modification'
     """
     now = datetime.now()
-    window_start = now - timedelta(minutes=3)
+    window_start = now - timedelta(minutes=1)
     return f"{type} > '{window_start.strftime('%Y-%m-%d %H:%M:%S')}'"
 
 
@@ -268,7 +268,7 @@ def traverse_sub_records(record: dict[str, Any], field: str) -> list[str]:
         if field in str(record[sub_rec]):
             new_rec = record[sub_rec]
             if isinstance(field, list):
-                for nr in new_rec:
+                for f in new_rec:
                     if isinstance(f, str):
                         field_list.append(f)
                     elif "'@lang'" in str(f):

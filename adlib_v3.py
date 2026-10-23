@@ -7,13 +7,14 @@ Python interface for Adlib API v3.7.17094.1+
 2024
 """
 
-from datetime import datetime, timedelta
 import json
+from datetime import datetime, timedelta
 from time import sleep
-from typing import Any, Optional, List, Dict, Tuple, Union
-from tenacity import retry, stop_after_attempt
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import requests
 import xmltodict
+from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
 TIMEOUT = 100

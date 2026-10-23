@@ -1,0 +1,118 @@
+name: Lint pull request
+
+on:
+  repository_dispatch:
+    types:
+      - format-complete
+
+permissions: {}
+
+concurrency:
+  group: lint-${{ github.event.client_payload.branch }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      BRANCH: ${{ github.event.client_payload.branch }}
+      BASE_BRANCH: ${{ github.event.client_payload.base || github.event.repository.default_branch }}
+    steps:
+      - name: Find the open pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          number="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$BRANCH" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty' 2>/dev/null || true)"
+          number="${number//[^0-9]/}"
+          if [[ -n "$number" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "number=$number" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out branch
+        if: steps.pr.outputs.exists == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Python
+        if: steps.pr.outputs.exists == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pylint
+        if: steps.pr.outputs.exists == 'true'
+        run: pip install "pylint==3.3.1"
+
+      - name: Run pylint on changed files
+        if: steps.pr.outputs.exists == 'true'
+        run: |
+          export LANG=en_US.UTF-8
+          export LC_ALL=en_US.UTF-8
+
+          mkdir -p reports
+          mapfile -t changed_files < <(git diff --name-only --diff-filter=ACMR \
+            "origin/${BASE_BRANCH}...HEAD" -- '*.py')
+
+          if (( ${#changed_files[@]} == 0 )); then
+            echo "No Python files changed in this pull request." > reports/pylint-report.txt
+          else
+            python -m pylint "${changed_files[@]}" > reports/pylint-report.txt 2>&1 || true
+          fi
+
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(E[0-9]{4})/$1🚨 $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(W[0-9]{4})/$1⚠️ $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(I[0-9]{4})/$1ℹ️ $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(C[0-9]{4})/$1🎨 $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(F[0-9]{4})/$1🛑 $2/g' reports/pylint-report.txt
+          perl -i -pe 's/(.*:[0-9]+:[0-9]+:\s*)(R[0-9]{4})/$1♻️ $2/g' reports/pylint-report.txt
+
+      - name: Build the comment body
+        if: steps.pr.outputs.exists == 'true'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          report = Path("reports/pylint-report.txt")
+          text = report.read_text(encoding="utf-8", errors="replace").strip()
+          if len(text) > 55000:
+              text = text[:55000] + "\n\n... report truncated ..."
+          if not text:
+              text = "No Pylint messages."
+
+          body = (
+              "**Automated Pylint Report** 🧑‍💻\n\n"
+              "Here is the **formatted** Pylint report:\n\n"
+              "```plaintext\n"
+              f"{text}\n"
+              "```\n\n"
+              "**Note:** 🚨 Errors need immediate attention! "
+              "⚠️ Warnings should be reviewed, but are less critical. "
+              "ℹ️ Information messages are for your reference.\n"
+          )
+          Path("reports/pylint-comment.md").write_text(body, encoding="utf-8")
+          PY
+
+      - name: Comment the pylint report on the pull request
+        if: steps.pr.outputs.exists == 'true'
+        uses: peter-evans/create-or-update-comment@f5b41f6a455733f2c5f73ca67a62631e75861578
+        with:
+          token: ${{ secrets.BFI_BOT_TOKEN || github.token }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ steps.pr.outputs.number }}
+          edit-mode: replace
+          body-path: reports/pylint-comment.md

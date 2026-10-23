@@ -60,13 +60,14 @@ import sys
 from datetime import datetime
 from typing import Final, Optional
 
-from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import (
     ConflictError,
     NotFoundError,
     RequestError,
     TransportError,
 )
+
+from elasticsearch import Elasticsearch
 
 # Local packages
 sys.path.append(os.environ["CODE"])
@@ -370,7 +371,7 @@ def write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath):
     with open(f"{dpath}/{new_fpath}_md5.txt", "w", encoding="utf-8") as f:
         f.write(f"Created from download: {local_md5} | Retrieved from BP: {bp_md5}\n")
         f.write(message)
-    return 
+    return
 
 
 def main():
@@ -766,7 +767,9 @@ def main():
                     if trans == "no_transcode":
                         LOGGER.info("No transcode requested for this asset.")
                         if not blob:
-                            write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath)
+                            write_checksum_similarity(
+                                local_md5, bp_md5, dpath, new_fpath
+                            )
                     elif not skip_download or not failed_trans:
                         LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                         os.remove(new_fpath)

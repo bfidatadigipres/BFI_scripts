@@ -1,0 +1,104 @@
+name: Format and open PR
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - master
+
+permissions: {}
+
+concurrency:
+  group: format-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          token: ${{ github.token }}
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install formatters
+        run: pip install "black==24.10.0" "isort==5.13.2"
+
+      - name: Apply formatting
+        run: |
+          black .
+          isort --profile black .
+
+      - name: Commit and push formatting changes
+        run: |
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "No formatting changes needed."
+            exit 0
+          fi
+          git add -u
+          git commit -m "Apply automatic formatting with black and isort"
+          git push
+
+      - name: Check for an existing pull request
+        id: check-pr
+        env:
+          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          count="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$BRANCH" \
+            --state open \
+            --json number \
+            --jq 'length' 2>/dev/null || echo 0)"
+          if ! [[ "$count" =~ ^[0-9]+$ ]]; then
+            count=0
+          fi
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if (( count > 0 )); then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.check-pr.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+          BASE: ${{ github.event.repository.default_branch }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base "$BASE" \
+            --head "$BRANCH" \
+            --title "Automated PR for branch: $BRANCH" \
+            --body "This PR was automatically created from branch: \`$BRANCH\`."
+
+      - name: Trigger lint workflow
+        env:
+          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+          BASE: ${{ github.event.repository.default_branch }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          payload="$(jq -cn \
+            --arg branch "$BRANCH" \
+            --arg base "$BASE" \
+            '{event_type: "format-complete", client_payload: {branch: $branch, base: $base}}')"
+          printf '%s' "$payload" | \
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/dispatches" --input -

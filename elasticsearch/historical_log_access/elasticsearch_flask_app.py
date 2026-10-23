@@ -3,8 +3,9 @@ from functools import lru_cache
 
 import elasticsearch_helper as elastic_helper
 import pandas as pd
-from elasticsearch import Elasticsearch
 from flask import Flask, render_template, request
+
+from elasticsearch import Elasticsearch
 
 app = Flask(__name__, template_folder="templates/")
 

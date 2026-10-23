@@ -15,19 +15,20 @@ Work in progress
 import datetime
 import os
 import re
-import sys
 import sqlite3
+import sys
 from contextlib import closing
+
 from flask import (
     Flask,
+    abort,
+    flash,
+    g,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
     session,
-    abort,
-    g,
-    flash,
+    url_for,
 )
 
 sys.path.append("/home/datadigipres/code/git/BFI_scripts")

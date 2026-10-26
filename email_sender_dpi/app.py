@@ -56,7 +56,7 @@ def is_safe_path(filepath):
         base_path = Path(ALLOWED_BASE_PATH).resolve()
 
         # Check if the resolved path is within the allowed base path
-        if not str(requested_path).startswith(str(base_path)):
+        if requested_path != base_path and base_path not in requested_path.parents:
             return False, "Access denied: File must be within allowed directory"
 
         # Check if file exists
@@ -66,6 +66,11 @@ def is_safe_path(filepath):
         # Check if it's a file (not a directory)
         if not requested_path.is_file():
             return False, "Path must point to a file"
+
+        # Check file extension allowlist
+        file_extension = requested_path.suffix.lower()
+        if file_extension not in ALLOWED_EXTENSIONS:
+            return False, "File type is not allowed"
 
         max_size = 6600 * 1024 * 1024
         file_size = requested_path.stat().st_size

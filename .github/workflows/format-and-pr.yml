@@ -17,7 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
+    env:
+      UPSTREAM_REPO: bfidatadigipres/BFI_scripts
+      UPSTREAM_BASE: main
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
@@ -25,6 +27,29 @@ jobs:
           token: ${{ github.token }}
           persist-credentials: true
           fetch-depth: 0
+
+      - name: Require bot token
+        env:
+          BOT_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
+        run: |
+          if [[ -z "$BOT_TOKEN" ]]; then
+            echo "::error::BFI_BOT_TOKEN is not configured for this repository"
+            exit 1
+          fi
+
+      - name: Verify bot can write to the fork
+        env:
+          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
+        run: |
+          if ! push="$(gh api "repos/${GITHUB_REPOSITORY}" \
+            --jq '.permissions.push' 2>/dev/null)"; then
+            echo "::error::The bot cannot access ${GITHUB_REPOSITORY}. Add it as a collaborator on the fork."
+            exit 1
+          fi
+          if [[ "$push" != "true" ]]; then
+            echo "::error::The bot needs write access to ${GITHUB_REPOSITORY} to open a pull request from this fork. Add it as a collaborator with write permission."
+            exit 1
+          fi
 
       - name: Configure git
         run: |
@@ -57,14 +82,13 @@ jobs:
       - name: Check for an existing pull request
         id: check-pr
         env:
-          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
           BRANCH: ${{ github.ref_name }}
+          HEAD_OWNER: ${{ github.repository_owner }}
         run: |
-          count="$(gh pr list \
-            --repo "$GITHUB_REPOSITORY" \
-            --head "$BRANCH" \
-            --state open \
-            --json number \
+          count="$(gh api --method GET "repos/${UPSTREAM_REPO}/pulls" \
+            -f head="${HEAD_OWNER}:${BRANCH}" \
+            -f state=open \
             --jq 'length' 2>/dev/null || echo 0)"
           if ! [[ "$count" =~ ^[0-9]+$ ]]; then
             count=0
@@ -79,26 +103,28 @@ jobs:
       - name: Create pull request
         if: steps.check-pr.outputs.exists == 'false'
         env:
-          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN || secrets.GITHUB_TOKEN }}
-          BASE: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN }}
           BRANCH: ${{ github.ref_name }}
+          HEAD_OWNER: ${{ github.repository_owner }}
         run: |
           gh pr create \
-            --repo "$GITHUB_REPOSITORY" \
-            --base "$BASE" \
-            --head "$BRANCH" \
+            --repo "$UPSTREAM_REPO" \
+            --base "$UPSTREAM_BASE" \
+            --head "${HEAD_OWNER}:${BRANCH}" \
             --title "Automated PR for branch: $BRANCH" \
             --body "This PR was automatically created from branch: \`$BRANCH\`."
 
       - name: Trigger lint workflow
         env:
-          GH_TOKEN: ${{ secrets.BFI_BOT_TOKEN || secrets.GITHUB_TOKEN }}
-          BASE: ${{ github.event.repository.default_branch }}
+          GH_TOKEN: ${{ github.token }}
           BRANCH: ${{ github.ref_name }}
+          HEAD_OWNER: ${{ github.repository_owner }}
         run: |
           payload="$(jq -cn \
             --arg branch "$BRANCH" \
-            --arg base "$BASE" \
-            '{event_type: "format-complete", client_payload: {branch: $branch, base: $base}}')"
+            --arg base "$UPSTREAM_BASE" \
+            --arg target_repo "$UPSTREAM_REPO" \
+            --arg head_owner "$HEAD_OWNER" \
+            '{event_type: "format-complete", client_payload: {branch: $branch, base: $base, target_repo: $target_repo, head_owner: $head_owner}}')"
           printf '%s' "$payload" | \
             gh api --method POST "repos/${GITHUB_REPOSITORY}/dispatches" --input -

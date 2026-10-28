@@ -222,6 +222,7 @@ def main():
                 new_filename = f"{ob_num.replace('-', '_')}_01of01.{ext}"
                 new_fpath = os.path.join(fpath, new_filename)
                 digital_note = f"{mov_file} - Renamed to: {new_filename}"
+                qcomm = "HDR version"
                 success: bool = create_digital_original_filenames(
                     priref, folder.strip(), digital_note
                 )
@@ -232,7 +233,7 @@ def main():
                     )
                     break
                 LOGGER.info(
-                    "CID item record <%s> filenames appended to digital.acquired_filenamed field",
+                    "CID item record <%s> filenames appended to digital.acquired_filename field",
                     priref,
                 )
                 LOGGER.info(
@@ -240,7 +241,7 @@ def main():
                     qcomm,
                     priref,
                 )
-                if not adlib.add_quality_comments(CID_API, priref, "HDR version"):
+                if not adlib.add_quality_comments(CID_API, priref, qcomm):
                     LOGGER.warning(
                         "Quality Comment 'HDR version' failed to CID item record: %s",
                         priref,
@@ -297,9 +298,9 @@ def main():
                 item_xml,
                 "items",
                 "insertrecord",
-                f"Df=ITEM and related_object.reference.lref={priref}",
+                f"Df=ITEM and related_object.reference.lref={priref} and quality_comments={qcomm}",
                 3,
-                10
+                10,
             )
             if new_record is None:
                 LOGGER.warning(
@@ -425,14 +426,14 @@ def make_item_record_dict(
                 )[0]
             }
         )
-#    if "acquisition.method" in str(record):
-#        item.append(
-#            {
-#                "acquisition.method.lref": adlib.retrieve_field_name(
-#                    record[0], "acquisition.method.lref"
-#                )[0]
-#            }
-#        )
+    #    if "acquisition.method" in str(record):
+    #        item.append(
+    #            {
+    #                "acquisition.method.lref": adlib.retrieve_field_name(
+    #                    record[0], "acquisition.method.lref"
+    #                )[0]
+    #            }
+    #        )
     if "Acquisition_source" in str(record):
         item.append(
             {
@@ -492,7 +493,7 @@ def create_digital_original_filenames(
             "updaterecord",
             f"Df=ITEM and digital.acquired_filename={digital_note}",
             3,
-            10
+            10,
         )
         print(f"Item appended successful! {priref}\n{result}")
         print(f"Item appended successful! {priref}")

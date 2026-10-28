@@ -11,20 +11,20 @@ import argparse
 import csv
 import json
 import logging
+import os
 import sys
 import time
-from datetime import date, datetime, timezone, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable, Iterator, Optional
 
-import requests
 import defusedxml.ElementTree as ET
+import requests
+from elasticsearch.helpers import streaming_bulk
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-
 from xmljson import parker
 
 from elasticsearch import Elasticsearch
-from elasticsearch.helpers import streaming_bulk
 
 # =========================
 # Logging setup
@@ -68,7 +68,128 @@ def validate_date(date_str: str) -> str:
 
 
 MAX_DIRECT_PRIREFS = 1000
-CID_REQUEST_DELAY = 0.25
+CID_REQUEST_DELAY = float(os.environ.get("CID_REQUEST_DELAY", "1"))
+
+
+SLOW_RECORD_TIMEOUT_SECONDS = float(os.environ.get("SLOW_RECORD_TIMEOUT_SECONDS", "3"))
+SLOW_RECORD_ABORT_CONSECUTIVE = int(
+    os.environ.get("SLOW_RECORD_ABORT_CONSECUTIVE", "0")
+)
+SLOW_RECORD_USE_CACHE = os.environ.get("SLOW_RECORD_USE_CACHE", "1").lower() not in (
+    "0",
+    "false",
+    "no",
+)
+
+
+class SlowRecordAbort(RuntimeError):
+    """Raised when too many consecutive CID records exceed the slow-record timeout."""
+
+
+_guarded_session: Optional[requests.Session] = None
+
+
+def _guarded_http_session() -> requests.Session:
+    """Session without automatic retries, so the per-record time cap is a hard bound."""
+    global _guarded_session
+    if _guarded_session is None:
+        session = requests.Session()
+        adapter = HTTPAdapter(max_retries=0)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        _guarded_session = session
+    return _guarded_session
+
+
+_slow_cache: dict[str, set[str]] = {}
+
+
+def _known_slow(slow_records_path: str) -> set[str]:
+    """Return the set of prirefs already recorded as slow (loaded once per process)."""
+    known = _slow_cache.get(slow_records_path)
+    if known is None:
+        known = set()
+        try:
+            with open(slow_records_path, newline="", encoding="utf-8") as fh:
+                for row in csv.reader(fh):
+                    if row and row[0].strip().isdigit():
+                        known.add(row[0].strip())
+        except OSError:
+            pass
+        _slow_cache[slow_records_path] = known
+    return known
+
+
+def fetch_xml_guarded(
+    url: str,
+    priref: str,
+    *,
+    stats: "Stats",
+    logger: logging.Logger,
+    slow_records_path: str,
+) -> Optional[str]:
+    """Fetch a CID record, skipping records slower than the configured cap.
+
+    Returns the XML text on success. A record that exceeds
+    SLOW_RECORD_TIMEOUT_SECONDS is appended to slow_records_path and skipped
+    (returns None). If SLOW_RECORD_ABORT_CONSECUTIVE records are skipped in a
+    row, raises SlowRecordAbort (disabled by default; set
+    SLOW_RECORD_ABORT_CONSECUTIVE>0 to re-enable). Set
+    SLOW_RECORD_TIMEOUT_SECONDS=0 to disable the guard entirely.
+    """
+    cap = SLOW_RECORD_TIMEOUT_SECONDS
+    if cap <= 0:
+        response = _guarded_http_session().get(url, timeout=(10, 600))
+        response.raise_for_status()
+        return response.text
+
+    if SLOW_RECORD_USE_CACHE:
+        first_load = slow_records_path not in _slow_cache
+        known_slow = _known_slow(slow_records_path)
+        if first_load:
+            logger.info(
+                "slow-record cache: %d known slow prirefs loaded from %s",
+                len(known_slow),
+                slow_records_path,
+            )
+        if priref in known_slow:
+            stats.slow_records_cached += 1
+            logger.debug("%s - known slow record, skipped without probing", priref)
+            return None
+
+    started = time.monotonic()
+    try:
+        response = _guarded_http_session().get(url, timeout=(10, cap))
+        response.raise_for_status()
+    except requests.exceptions.ReadTimeout:
+        elapsed = time.monotonic() - started
+        stats.slow_records_skipped += 1
+        stats.slow_streak += 1
+        new_file = not os.path.exists(slow_records_path)
+        with open(slow_records_path, "a", encoding="utf-8") as fh:
+            if new_file:
+                fh.write("priref,seconds\n")
+            fh.write(f"{priref},{elapsed:.1f}\n")
+        _known_slow(slow_records_path).add(priref)
+        logger.warning(
+            "%s - CID response exceeded %.0fs (%.1fs) - skipped and logged to %s",
+            priref,
+            cap,
+            elapsed,
+            slow_records_path,
+        )
+        if (
+            SLOW_RECORD_ABORT_CONSECUTIVE > 0
+            and stats.slow_streak >= SLOW_RECORD_ABORT_CONSECUTIVE
+        ):
+            raise SlowRecordAbort(
+                f"{stats.slow_streak} consecutive CID records exceeded the {cap:.0f}s "
+                f"slow-record timeout - CID looks degraded; see {slow_records_path}"
+            )
+        return None
+
+    stats.slow_streak = 0
+    return response.text
 
 
 def validate_prirefs(priref_string: str) -> list[str]:
@@ -252,6 +373,9 @@ class Stats:
         self.es_index_ok = 0
         self.es_index_fail = 0
         self.dead_letter_written = 0
+        self.slow_records_skipped = 0
+        self.slow_records_cached = 0
+        self.slow_streak = 0
         self.start_time = time.time()
 
     def log_summary(self, logger: logging.Logger) -> None:
@@ -259,7 +383,8 @@ class Stats:
         logger.info(
             "SUMMARY elapsed=%.2fs total_prirefs=%d unique_prirefs=%d "
             "cid_fetch_ok=%d cid_fetch_fail=%d xml_parse_ok=%d xml_parse_fail=%d "
-            "docs_prepared=%d es_index_ok=%d es_index_fail=%d dead_letter_written=%d",
+            "docs_prepared=%d es_index_ok=%d es_index_fail=%d dead_letter_written=%d "
+            "slow_records_skipped=%d slow_records_cached=%d",
             elapsed,
             self.prirefs_total,
             self.prirefs_unique,
@@ -271,6 +396,8 @@ class Stats:
             self.es_index_ok,
             self.es_index_fail,
             self.dead_letter_written,
+            self.slow_records_skipped,
+            self.slow_records_cached,
         )
 
 
@@ -527,8 +654,8 @@ def action_generator(
     stats: Stats,
     *,
     es_index: str,
-    fetch_xml: Callable[[requests.Session, str], str],
     xml_to_doc: Callable[[str, str], dict],
+    slow_records_path: str,
     dead_letter_path: str,
     cid_item_url_template: str,
     progress_every: int = 100,
@@ -545,7 +672,15 @@ def action_generator(
         xml_text = None
 
         try:
-            xml_text = fetch_xml(session, priref)
+            xml_text = fetch_xml_guarded(
+                cid_url,
+                priref,
+                stats=stats,
+                logger=logger,
+                slow_records_path=slow_records_path,
+            )
+            if xml_text is None:
+                continue
             stats.cid_fetch_ok += 1
             time.sleep(CID_REQUEST_DELAY)
         except requests.HTTPError as e:

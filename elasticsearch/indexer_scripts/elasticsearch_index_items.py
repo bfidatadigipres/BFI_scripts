@@ -2,28 +2,27 @@
 
 from __future__ import annotations
 
-import os
 import argparse
 import csv
 import json
 import logging
+import os
 import sys
 import time
-from datetime import datetime, timezone, timedelta, date
+from datetime import date, datetime, timedelta, timezone
 from typing import Iterator, Optional
 from urllib.parse import quote
 
-import requests
 import defusedxml.ElementTree as ET
+import requests
+from elastic_transport import ApiError
+from elasticsearch.helpers import streaming_bulk
+from elasticsearch_index_shared import fetch_xml_guarded
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-
 from xmljson import parker
 
 from elasticsearch import Elasticsearch
-from elasticsearch.helpers import streaming_bulk
-from elastic_transport import ApiError
-
 
 # =========================
 # Configuration
@@ -33,8 +32,8 @@ CID_BASE_URL = os.environ.get("CID_API1")
 DEFAULT_QUERY_MODE = "both"
 DIRECT_QUERY_MAX_DAYS = 2  # if range is more than this, split into per-day CID calls
 MAX_DIRECT_PRIREFS = 1000
-CID_REQUEST_DELAY = 0.25
-CID_ITEM_URL_TEMPLATE = ("{base_url}?database=elasticsearchitems&search=priref={priref}")
+CID_REQUEST_DELAY = float(os.environ.get("CID_REQUEST_DELAY", "1"))
+CID_ITEM_URL_TEMPLATE = "{base_url}?database=elasticsearchitems&search=priref={priref}"
 
 ES_URL = os.environ.get("ES_SEARCH_PATH")
 ES_INDEX = "dpi_items"
@@ -43,9 +42,10 @@ LOGS = os.environ.get("LOG_PATH")
 OUTPUT_FILE_PATH = os.path.join(LOGS, "item_prirefs.txt")
 LOG_PATH = os.path.join(LOGS, "item_indexing.log")
 DEAD_LETTER_PATH = os.path.join(LOGS, "item_dead_letter.jsonl")
+SLOW_RECORDS_PATH = os.path.join(LOGS, "item_slow_records.csv")
 
 # HTTP / CID settings
-HTTP_TIMEOUT = (10, 60)
+HTTP_TIMEOUT = (10, 600)
 HTTP_RETRIES = 5
 HTTP_BACKOFF = 1.0
 
@@ -105,6 +105,9 @@ class Stats:
         self.es_index_ok = 0
         self.es_index_fail = 0
         self.dead_letter_written = 0
+        self.slow_records_skipped = 0
+        self.slow_records_cached = 0
+        self.slow_streak = 0
         self.start_time = time.time()
 
     def log_summary(self) -> None:
@@ -112,7 +115,8 @@ class Stats:
         logger.info(
             "SUMMARY elapsed=%.2fs total_prirefs=%d unique_prirefs=%d "
             "cid_fetch_ok=%d cid_fetch_fail=%d xml_parse_ok=%d xml_parse_fail=%d "
-            "docs_prepared=%d es_index_ok=%d es_index_fail=%d dead_letter_written=%d",
+            "docs_prepared=%d es_index_ok=%d es_index_fail=%d dead_letter_written=%d "
+            "slow_records_skipped=%d slow_records_cached=%d",
             elapsed,
             self.prirefs_total,
             self.prirefs_unique,
@@ -124,6 +128,8 @@ class Stats:
             self.es_index_ok,
             self.es_index_fail,
             self.dead_letter_written,
+            self.slow_records_skipped,
+            self.slow_records_cached,
         )
 
 
@@ -240,20 +246,20 @@ def parse_args() -> argparse.Namespace:
         description="Fetch item prirefs from CID, retrieve XML, and bulk index into Elasticsearch."
     )
 
-    date_group = parser.add_mutually_exclusive_group()
-
-    date_group.add_argument(
+    parser.add_argument(
         "--date-from",
         default=None,
         type=validate_date,
         help="Lower bound date inclusive, format YYYY-MM-DD (default: today-2)",
     )
-    date_group.add_argument(
+    parser.add_argument(
         "--date-to",
         default=None,
         type=validate_date,
         help="Upper bound date inclusive, format YYYY-MM-DD (default: today-2)",
     )
+
+    date_group = parser.add_mutually_exclusive_group()
     date_group.add_argument(
         "--prirefs",
         default=None,
@@ -280,9 +286,7 @@ def build_priref_url(date_from: str, date_to: str, query_label: str) -> str:
     safe_chars = "()=*' "
 
     if query_label == "items":
-        search = (
-            f"Df=item and (modification>='{date_from}' and modification<='{date_to}')"
-        )
+        search = f"Df=item and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
     elif query_label == "works":
         search = (
             "Df=item and "
@@ -359,12 +363,14 @@ def write_dead_letter(
         "cid_url": cid_url,
         "http_status": http_status,
         "xml_snippet": truncate_text(xml_text, MAX_XML_SNIPPET) if xml_text else None,
-        "document_snippet": safe_json_dumps(document, MAX_DOC_SNIPPET)
-        if document is not None
-        else None,
-        "es_error": safe_json_dumps(es_error, MAX_ERROR_SNIPPET)
-        if es_error is not None
-        else None,
+        "document_snippet": (
+            safe_json_dumps(document, MAX_DOC_SNIPPET) if document is not None else None
+        ),
+        "es_error": (
+            safe_json_dumps(es_error, MAX_ERROR_SNIPPET)
+            if es_error is not None
+            else None
+        ),
     }
 
     with open(DEAD_LETTER_PATH, "a", encoding="utf-8") as f:
@@ -530,7 +536,15 @@ def action_generator(
         xml_text = None
 
         try:
-            xml_text = fetch_item_xml(session, priref)
+            xml_text = fetch_xml_guarded(
+                cid_url,
+                priref,
+                stats=stats,
+                logger=logger,
+                slow_records_path=SLOW_RECORDS_PATH,
+            )
+            if xml_text is None:
+                continue
             stats.cid_fetch_ok += 1
             time.sleep(CID_REQUEST_DELAY)
         except requests.HTTPError as e:

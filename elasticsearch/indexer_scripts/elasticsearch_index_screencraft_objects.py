@@ -6,12 +6,12 @@ Elasticsearch (dpi_screencraft).
 
 from __future__ import annotations
 
-import os
 import argparse
+import os
 from urllib.parse import quote
 
 import requests
-
+from elastic_transport import ApiError
 from elasticsearch_index_shared import (
     Stats,
     action_generator,
@@ -26,9 +26,8 @@ from elasticsearch_index_shared import (
     validate_date,
     validate_prirefs,
     validate_prirefs_csv,
-    xml_to_document as generic_xml_to_document,
 )
-from elastic_transport import ApiError
+from elasticsearch_index_shared import xml_to_document as generic_xml_to_document
 
 # =========================
 # Configuration
@@ -42,20 +41,19 @@ ROOT_XML_TAG = "screencraft"
 
 DEFAULT_DATE_QUERY = (
     "Df='archival item','digital derivative','internal object'"
-    " and (modification>='{date_from}' and modification<='{date_to}')"
+    " and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
 )
 
-CID_ITEM_URL_TEMPLATE = (
-    "{base_url}?database={db_name}&search=priref={priref}"
-)
+CID_ITEM_URL_TEMPLATE = "{base_url}?database={db_name}&search=priref={priref}"
 
 LOGS = os.environ.get("LOG_PATH")
 OUTPUT_FILE_PATH = os.path.join(LOGS, "screencraft_object_prirefs.txt")
 LOG_PATH = os.path.join(LOGS, "screencraft_object_indexing.log")
 DEAD_LETTER_PATH = os.path.join(LOGS, "screencraft_object_dead_letter.jsonl")
+SLOW_RECORDS_PATH = os.path.join(LOGS, "screencraft_object_slow_records.csv")
 
 # HTTP / CID settings
-HTTP_TIMEOUT = (10, 60)
+HTTP_TIMEOUT = (10, 600)
 HTTP_RETRIES = 5
 HTTP_BACKOFF = 1.0
 
@@ -113,9 +111,7 @@ def build_custom_url(search: str) -> str:
 
 def fetch_item_xml(session: requests.Session, priref: str) -> str:
     url = CID_ITEM_URL_TEMPLATE.format(
-        base_url=CID_BASE_URL,
-        db_name=DB_NAME,
-        priref=priref
+        base_url=CID_BASE_URL, db_name=DB_NAME, priref=priref
     )
     response = session.get(url, timeout=HTTP_TIMEOUT)
     response.raise_for_status()
@@ -265,9 +261,7 @@ def main() -> int:
         ping_es(es, ES_URL, logger)
 
         item_url = CID_ITEM_URL_TEMPLATE.format(
-            base_url=CID_BASE_URL,
-            db_name=DB_NAME,
-            priref="{priref}"
+            base_url=CID_BASE_URL, db_name=DB_NAME, priref="{priref}"
         )
 
         actions = action_generator(
@@ -275,8 +269,8 @@ def main() -> int:
             prirefs,
             stats,
             es_index=ES_INDEX,
-            fetch_xml=fetch_item_xml,
             xml_to_doc=xml_to_document,
+            slow_records_path=SLOW_RECORDS_PATH,
             dead_letter_path=DEAD_LETTER_PATH,
             cid_item_url_template=item_url,
             progress_every=PROGRESS_EVERY,

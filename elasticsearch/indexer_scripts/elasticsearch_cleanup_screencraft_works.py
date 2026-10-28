@@ -18,20 +18,23 @@ directly by priref), the script:
 
 from __future__ import annotations
 
-import os
 import argparse
+import os
 import time
 from typing import Optional
 from urllib.parse import quote
 
-import requests
 import defusedxml.ElementTree as ET
-
+import requests
+from elastic_transport import ApiError
+from elasticsearch.helpers import streaming_bulk
 from elasticsearch_index_shared import (
+    CID_REQUEST_DELAY,
     build_es_client,
     build_requests_session,
     fetch_prirefs,
     fetch_text,
+    fetch_xml_guarded,
     ping_es,
     resolve_date_range,
     setup_logger,
@@ -40,10 +43,8 @@ from elasticsearch_index_shared import (
     validate_prirefs_csv,
     validate_xml_root,
     write_dead_letter,
-    xml_to_document as generic_xml_to_document,
 )
-from elastic_transport import ApiError
-from elasticsearch.helpers import streaming_bulk
+from elasticsearch_index_shared import xml_to_document as generic_xml_to_document
 
 # =========================
 # Configuration
@@ -58,18 +59,17 @@ ROOT_XML_TAG = "screencraft"
 LOG = os.environ.get("LOG_PATH")
 OBJECTS_DF = "'archival item','digital derivative','internal object'"
 DEFAULT_DATE_QUERY = (
-    "Df={df} and (modification>='{date_from}' and modification<='{date_to}')"
+    "Df={df} and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
 )
 REVERSE_QUERY_TEMPLATE = "related_object.reference->(priref={priref})"
-CID_ITEM_URL_TEMPLATE = (
-    "{base_url}?database={db_name}&search=priref={priref}"
-)
+CID_ITEM_URL_TEMPLATE = "{base_url}?database={db_name}&search=priref={priref}"
 OUTPUT_FILE_PATH = os.path.join(LOG, "screencraft_work_cleanup_prirefs.txt")
 LOG_PATH = os.path.join(LOG, "screencraft_work_cleanup.log")
 DEAD_LETTER_PATH = os.path.join(LOG, "screencraft_work_cleanup_dead_letter.jsonl")
+SLOW_RECORDS_PATH = os.path.join(LOG, "screencraft_work_cleanup_slow_records.csv")
 
 # HTTP / CID settings
-HTTP_TIMEOUT = (10, 60)
+HTTP_TIMEOUT = (10, 600)
 HTTP_RETRIES = 5
 HTTP_BACKOFF = 1.0
 
@@ -121,6 +121,9 @@ class CleanupStats:
         self.es_ok = 0
         self.es_fail = 0
         self.dead_letter_written = 0
+        self.slow_records_skipped = 0
+        self.slow_records_cached = 0
+        self.slow_streak = 0
         self.start_time = time.time()
 
     def log_summary(self, logger) -> None:
@@ -132,7 +135,8 @@ class CleanupStats:
             "anomalies=%d stale_docs=%d reverse_links=%d "
             "reverse_links_in_scope=%d reverse_links_out_of_scope=%d "
             "stale_updated=%d "
-            "stale_deleted=%d es_ok=%d es_fail=%d dead_letter_written=%d",
+            "stale_deleted=%d es_ok=%d es_fail=%d dead_letter_written=%d "
+            "slow_records_skipped=%d slow_records_cached=%d",
             elapsed,
             self.prirefs_total,
             self.prirefs_unique,
@@ -154,6 +158,8 @@ class CleanupStats:
             self.es_ok,
             self.es_fail,
             self.dead_letter_written,
+            self.slow_records_skipped,
+            self.slow_records_cached,
         )
 
 
@@ -195,9 +201,7 @@ def build_reverse_url(priref: str) -> str:
 
 def fetch_item_xml(session: requests.Session, priref: str) -> str:
     url = CID_ITEM_URL_TEMPLATE.format(
-        base_url=CID_BASE_URL,
-        db_name=OBJECTS_DB,
-        priref=priref
+        base_url=CID_BASE_URL, db_name=OBJECTS_DB, priref=priref
     )
     response = session.get(url, timeout=HTTP_TIMEOUT)
     response.raise_for_status()
@@ -206,9 +210,7 @@ def fetch_item_xml(session: requests.Session, priref: str) -> str:
 
 def fetch_work_xml(session: requests.Session, priref: str) -> str:
     url = CID_ITEM_URL_TEMPLATE.format(
-        base_url=CID_BASE_URL,
-        db_name=WORKS_DB,
-        priref=priref
+        base_url=CID_BASE_URL, db_name=WORKS_DB, priref=priref
     )
     response = session.get(url, timeout=HTTP_TIMEOUT)
     response.raise_for_status()
@@ -292,14 +294,20 @@ def count_in_scope_reverse_links(
     out_of_scope = 0
     for linked_priref in linked_prirefs:
         cid_url = CID_ITEM_URL_TEMPLATE.format(
-            base_url=CID_BASE_URL,
-            db_name=OBJECTS_DB,
-            priref=linked_priref
+            base_url=CID_BASE_URL, db_name=OBJECTS_DB, priref=linked_priref
         )
         try:
-            xml_text = fetch_item_xml(session, linked_priref)
+            xml_text = fetch_xml_guarded(
+                cid_url,
+                linked_priref,
+                stats=stats,
+                logger=logger,
+                slow_records_path=SLOW_RECORDS_PATH,
+            )
+            if xml_text is None:
+                continue
             stats.cid_fetch_ok += 1
-            time.sleep(0.25)
+            time.sleep(CID_REQUEST_DELAY)
         except requests.RequestException as e:
             stats.cid_fetch_fail += 1
             logger.warning(
@@ -397,14 +405,12 @@ def prepare_work_update(
 ) -> Optional[dict]:
     """Fetch a work record from CID and convert to a fresh ES document."""
     cid_url = CID_ITEM_URL_TEMPLATE.format(
-        base_url=CID_BASE_URL,
-        db_name=WORKS_DB,
-        priref=priref
+        base_url=CID_BASE_URL, db_name=WORKS_DB, priref=priref
     )
     try:
         xml_text = fetch_work_xml(session, priref)
         stats.cid_fetch_ok += 1
-        time.sleep(0.25)
+        time.sleep(CID_REQUEST_DELAY)
     except requests.RequestException as e:
         stats.cid_fetch_fail += 1
         logger.error(
@@ -485,14 +491,20 @@ def process_candidates(
             logger.info("Progress: processed %d/%d candidates", count, len(prirefs))
 
         cid_url = CID_ITEM_URL_TEMPLATE.format(
-            base_url=CID_BASE_URL,
-            db_name=OBJECTS_DB,
-            priref=priref
+            base_url=CID_BASE_URL, db_name=OBJECTS_DB, priref=priref
         )
         try:
-            xml_text = fetch_item_xml(session, priref)
+            xml_text = fetch_xml_guarded(
+                cid_url,
+                priref,
+                stats=stats,
+                logger=logger,
+                slow_records_path=SLOW_RECORDS_PATH,
+            )
+            if xml_text is None:
+                continue
             stats.cid_fetch_ok += 1
-            time.sleep(0.25)
+            time.sleep(CID_REQUEST_DELAY)
         except requests.HTTPError as e:
             stats.cid_fetch_fail += 1
             status_code = e.response.status_code if e.response is not None else None

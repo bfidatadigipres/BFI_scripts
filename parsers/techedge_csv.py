@@ -9,7 +9,8 @@ Notes
 """
 
 from typing import Annotated
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import BeforeValidator
 from pydantic_csv import BasemodelCSVReader
 

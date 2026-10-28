@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import (
@@ -235,7 +235,9 @@ class Contributor(APIModel):
             if isinstance(meta, dict):
                 for k, v in meta.items():
                     if isinstance(v, str) and len(v) > 5000:
-                        raise ValueError(f"meta value for '{k}' exceeds max length of 5000")
+                        raise ValueError(
+                            f"meta value for '{k}' exceeds max length of 5000"
+                        )
         return values
 
 
@@ -286,7 +288,9 @@ class Series(APIModel):
             if isinstance(meta, dict):
                 for k, v in meta.items():
                     if isinstance(v, str) and len(v) > 5000:
-                        raise ValueError(f"meta value for '{k}' exceeds max length of 5000")
+                        raise ValueError(
+                            f"meta value for '{k}' exceeds max length of 5000"
+                        )
         return values
 
 

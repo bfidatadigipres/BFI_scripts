@@ -17,8 +17,9 @@ import os
 import re
 import sqlite3
 
-from elasticsearch import Elasticsearch
 from flask import Flask, render_template, request
+
+from elasticsearch import Elasticsearch
 
 # Initiate Flask app / Elastic search
 app = Flask(__name__)

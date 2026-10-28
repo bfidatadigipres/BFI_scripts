@@ -1085,6 +1085,11 @@ def create_transcode(
         "yadif,crop=704:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10",
     ]
 
+    crop_narrow_sd_16x9 = [
+        "-vf",
+        f"yadif,crop={width.strip()}:572:8:2,scale=1024:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10",
+    ]
+
     sd_downscale_4x3 = [
         "-vf",
         "yadif,scale=768:576:flags=lanczos,blackdetect=d=0.05:pix_th=0.10",
@@ -1210,6 +1215,8 @@ def create_transcode(
         cmd_mid = scale_sd_16x9
     elif height < 576 and width > 720 and dar == "4:3":
         cmd_mid = sd_downscale_4x3
+    elif height <= 576 and dar == "16:9" and width < 704:
+        cmd_mid = crop_narrow_sd_16x9
     elif height <= 576 and dar == "16:9":
         cmd_mid = crop_sd_16x9
     elif height <= 576 and width == 768:

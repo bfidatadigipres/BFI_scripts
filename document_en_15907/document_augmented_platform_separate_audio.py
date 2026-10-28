@@ -58,7 +58,7 @@ LOGGER.setLevel(logging.INFO)
 
 STORAGE = {
     "Netflix": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('NETFLIX_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/netflix/separate5_1/')}",
-    "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate_atmos/')}"
+    "Amazon": f"{os.path.join(PLATFORM_STORAGE, os.environ.get('AMAZON_INGEST'))}, {os.path.join(PLATFORM_STORAGE, 'svod/amazon/separate_atmos/')}",
 }
 
 ORDER = {"L": "01", "R": "02", "C": "03", "LFE": "04", "Ls": "05", "Rs": "06"}
@@ -511,10 +511,10 @@ def create_digital_original_filenames(
             CID_API,
             payload,
             "items",
-            "updaterecord"
+            "updaterecord",
             f"Df=ITEM and priref={priref} and digital.acquired_filename='{filename}'",
             3,
-            10
+            10,
         )
         print(f"Item appended successful! {priref}\n{result}")
         LOGGER.info(
@@ -539,16 +539,22 @@ def create_new_item_record(
     """
     item_dct = make_item_record_dict(priref, platform, record)
     LOGGER.info(item_dct)
+    if platform == "Netflix":
+        search = f"Df=ITEM and related_object.reference.lref='{priref}' and title='*(5.1 audio)'"
+    elif platform == "Amazon":
+        search = f"Df=ITEM and related_object.reference.lref='{priref}' and title='*(Dolby Atmos)'"
+
     item_xml = adlib.create_record_data(CID_API, "items", "", item_dct)
     new_record = adlib.post_with_verify(
         CID_API,
         item_xml,
         "items",
         "insertrecord",
-        f"Df=ITEM and related_object.reference.lref='{priref}'",
+        search,
         3,
-        10
+        10,
     )
+
     if new_record is None:
         LOGGER.warning("Skipping: CID item record creation failed: %s", item_xml)
         return None

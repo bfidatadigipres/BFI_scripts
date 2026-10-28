@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
+import json
 import os
 import sys
+from pathlib import Path
+
 import pytest
 import requests
-import json
-from pathlib import Path
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib
-
 
 CASES = json.loads((Path(__file__).parent / "data" / "test_data.json").read_text())
 

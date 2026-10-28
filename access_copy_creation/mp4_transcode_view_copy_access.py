@@ -15,16 +15,18 @@ Script to be launched from watch folder entry.
 2026
 """
 
+import glob
+
 # Public packages
 import logging
 import os
 import re
-import glob
 import subprocess
 import sys
 import time
 from datetime import datetime
 from typing import Final, Optional, Union
+
 import pytz
 
 # Local packages

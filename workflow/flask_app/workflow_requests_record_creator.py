@@ -10,15 +10,19 @@ Dependencies:
 3. workflow_requests.py - remodelling from ../workflow.py
 4. ../records.py
 
+Requested the CID API pause script removed by CollectionSystems
+to allow the app to run throughout bulk of downtime.
+
 2026
 """
 
+import itertools
+import logging
+import os
+
 # Public imports
 import sqlite3
-import os
 import sys
-import logging
-import itertools
 from datetime import datetime
 from typing import Final, Optional
 
@@ -206,9 +210,6 @@ def main():
     """
     Process all items found returned from Flask app
     """
-    if not utils.check_control("pause_scripts"):
-        sys.exit("Script run prevented by downtime_control.json. Script exiting.")
-
     requested_jobs = retrieve_requested()
     print(requested_jobs)
     if len(requested_jobs) == 0:
@@ -268,7 +269,7 @@ def main():
         job_metadata["description"] = job[10].strip()
         # job_metadata["description"] = (
         #    f"{job[10].strip()} / {str(datetime.today())[:19]}"
-        #)
+        # )
         job_metadata["completion.date"] = job[11].strip()
         job_metadata["final_destination"] = job[12].strip()
         job_metadata["request.details"] = job[13].strip()

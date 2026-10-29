@@ -174,14 +174,13 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
 
     if result["adlibJSON"]["recordList"]["record"] == []:
         return None
-    
+
     try:
         prirefs = result["adlibJSON"]["recordList"]["record"][0]["hitlist"]
         LOGGER.info("Prirefs retrieved: %s", prirefs)
     except Exception as err:
         print(err)
         return None
-
 
     item_list = []
     for priref in prirefs:

@@ -81,20 +81,20 @@ logger.addHandler(HDLR)
 logger.setLevel(logging.INFO)
 
 LOG_PATHS = {
-    os.environ["QNAP_05"]: os.environ["L_QNAP05"],
-    os.environ["QNAP_11"]: os.environ["L_QNAP11"],
-    os.environ["QNAP_TEMP"]: os.environ["L_QNAP_TEMP"],
+    #os.environ["QNAP_05"]: os.environ["L_QNAP05"],
+    #os.environ["QNAP_11"]: os.environ["L_QNAP11"],
+    #os.environ["QNAP_TEMP"]: os.environ["L_QNAP_TEMP"],
     os.environ["EDITSHARE"]: os.environ["L_EDITSHARE"],
-    os.environ["BP_VIDEO"]: os.environ["L_BP_VIDEO"],
-    os.environ["BP_AUDIO"]: os.environ["L_BP_AUDIO"],
-    os.environ["BP_SC"]: os.environ["L_BP_SC"],
-    os.environ["BP_DIGITAL"]: os.environ["L_BP_DIGITAL"],
-    os.environ["BP_FILM1"]: os.environ["L_BP_FILM1"],
-    os.environ["BP_FILM2"]: os.environ["L_BP_FILM2"],
-    os.environ["BP_FILM3"]: os.environ["L_BP_FILM3"],
-    os.environ["BP_FILM4"]: os.environ["L_BP_FILM4"],
-    os.environ["BP_FILM5"]: os.environ["L_BP_FILM5"],
-    os.environ["BP_FILM6"]: os.environ["L_BP_FILM6"],
+    #os.environ["BP_VIDEO"]: os.environ["L_BP_VIDEO"],
+    #os.environ["BP_AUDIO"]: os.environ["L_BP_AUDIO"],
+    #os.environ["BP_SC"]: os.environ["L_BP_SC"],
+    #os.environ["BP_DIGITAL"]: os.environ["L_BP_DIGITAL"],
+    #os.environ["BP_FILM1"]: os.environ["L_BP_FILM1"],
+    #os.environ["BP_FILM2"]: os.environ["L_BP_FILM2"],
+    #os.environ["BP_FILM3"]: os.environ["L_BP_FILM3"],
+    #os.environ["BP_FILM4"]: os.environ["L_BP_FILM4"],
+    #os.environ["BP_FILM5"]: os.environ["L_BP_FILM5"],
+    #os.environ["BP_FILM6"]: os.environ["L_BP_FILM6"],
 }
 
 OLD_HOSTS = [

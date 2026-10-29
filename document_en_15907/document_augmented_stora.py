@@ -61,7 +61,8 @@ CSV_FAILURES = os.path.join(LOG_PATH, "failed_mpeg_ts_files.csv")
 MPEG_TS_POLICY = os.path.join(os.environ["MEDIACONCH"], "mpeg_ts_policy.xml")
 SUBS_PTH = os.environ["SUBS_PATH"]
 GENRE_PTH = SUBS_PTH.split("subtitles_not_in_cid/")[0]
-CID_API = utils.get_current_api()
+#CID_API = utils.get_current_api()
+CID_API = os.environ.get("CID_API_CHECK")
 FAILURE_COUNTER = 0
 
 # Setup logging
@@ -205,7 +206,7 @@ def cid_series_query(series_id, sess):
         print(err)
         raise Exception
 
-    print(f"cid_series_query(): {hit_count}\n{series_query_result}")
+    print(f"cid_series_query(): {hit_count}")
     if hit_count is None or hit_count == 0:
         print(
             f"cid_series_query(): Unable to access series data from CID using Series ID: {series_id}"
@@ -236,7 +237,7 @@ def find_repeats(asset_id, sess):
     )
     sleep(0.5)
     hits, result = adlib.retrieve_record(CID_API, "manifestations", search, "1", sess)
-    print(f"*** find_repeats(): {hits}\n{result}")
+    print(f"*** find_repeats(): {hits}")
     if hits is None:
         print(f"CID API could not be reached for Manifestations search: {search}")
         return None
@@ -258,7 +259,6 @@ def find_repeats(asset_id, sess):
     if not full_result:
         return None
     try:
-        print(full_result[0])
         alt_num_type = adlib.retrieve_field_name(
             full_result[0], "alternative_number.type"
         )[0]
@@ -840,7 +840,7 @@ def main():
             continue
         new_work = False
 
-        print(f"\nFullpath for file being handled: {fullpath}")
+        print(f"\n*** Fullpath for file being handled: {fullpath}")
         with open(fullpath, "r", encoding="utf-8") as inf:
             json_data = inf.read()
 
@@ -896,7 +896,7 @@ def main():
         if "asset_id" in epg_dict:
             print(f"Checking if this asset_id already in CID: {epg_dict['asset_id']}")
             work_priref = find_repeats(epg_dict["asset_id"], sess)
-            print(work_priref)
+            print(f"Work Priref: {work_priref}")
         if work_priref is None:
             print(
                 "Cannot retrieve Work parent data. Maybe missing in CID or problems accessing dB via API. Skipping"
@@ -910,35 +910,20 @@ def main():
             new_work = True
         elif len(work_priref) > 4:
             print(
-                f"**** JSON file found to have repeated Asset ID, previous work: {work_priref}"
+                f"* JSON file found to have repeated Asset ID, previous work: {work_priref}"
             )
             if generic is True:
                 print("Generic in title, assuming programme is new content")
                 new_work = True
             else:
                 logger.info(
-                    "** Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s",
+                    "* Programme found to be a repeat. Making manifestation/item only and linking to Priref: %s",
                     work_priref,
                 )
 
         # Check file health with policy verification - skip if broken MPEG file
         acquired_filename = os.path.join(root, "stream.mpeg2.ts")
         print(f"Path for programme stream content: {acquired_filename}")
-        """
-        success, response = utils.get_mediaconch(acquired_filename, MPEG_TS_POLICY)
-        if success is False:
-            # Fix 'BROKEN' to folder name, update failure CSV
-            logger.warning(
-                "File found that has failed MPEG-TS policy:\n%s", acquired_filename
-            )
-            logger.warning("Marking JSON with .PROBLEM")
-            mark_broken_stream(fullpath, acquired_filename)
-            logger.warning("Marking stream.mpeg2.ts.BROKEN and updating CSV")
-            update_broken_ts(acquired_filename, work_priref, response, epg_dict)
-            continue
-        logger.info("MPEG-TS passed MediaConch check: %s", success)
-        print(response)
-        """
 
         # Make news channels new works for all live programming
         if channel in NEWS_CHANNELS:
@@ -1089,12 +1074,12 @@ def main():
             )
             if new_work:
                 print(
-                    f"*** Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}"
+                    f"* Manual clean up needed for Work {work_priref} and Manifestation {manifestation_priref}"
                 )
                 continue
             else:
                 print(
-                    f"*** Manual clean up needed for Manifestation {manifestation_priref}"
+                    f"* Manual clean up needed for Manifestation {manifestation_priref}"
                 )
                 continue
 
@@ -1408,7 +1393,6 @@ def create_series(
 
     if work_rec is False:
         raise Exception("Recycle of API exception raised.")
-    print(f"create_series(): {work_rec}")
     try:
         series_work_id = adlib.retrieve_field_name(work_rec, "priref")[0]
         object_number = adlib.retrieve_field_name(work_rec, "object_number")[0]
@@ -2102,7 +2086,6 @@ def create_cid_item_record(
         print("Title article is not present")
 
     item_values_xml = adlib.create_record_data(CID_API, "items", sess, "", item_values)
-    print(item_values_xml)
     if item_values_xml is None:
         return None
 
@@ -2121,7 +2104,6 @@ def create_cid_item_record(
             3,
             10,
         )
-        print(f"create_cid_item_record(): {item_rec}")
     except Exception as err:
         logger.warning(
             "%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion",
@@ -2147,7 +2129,6 @@ def create_cid_item_record(
                 3,
                 10,
             )
-            print(f"create_cid_item_record(): {item_rec}")
         except Exception as err:
             logger.warning(
                 "%s\tPROBLEM: Unable to create Item record for <%s> marking Work and Manifestation records for deletion",

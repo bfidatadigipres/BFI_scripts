@@ -87,6 +87,7 @@ PERS_LOG: Final = os.path.join(LOGS, "persistence_confirmation.log")
 PERS_QUEUE: Final = os.path.join(LOGS, "autoingest/persistence_queue.csv")
 PERS_QUEUE2: Final = os.path.join(LOGS, "autoingest/persistence_queue2.csv")
 CONFIG: Final = os.environ["CONFIG_YAML"]
+CONFIG2: Final = os.environ["CONFIG_YAML2"]
 DPI_BUCKETS: Final = os.environ["DPI_BUCKET"]
 
 # Setup logging
@@ -576,11 +577,7 @@ def get_mappings(pth: str, mappings: str) -> list[str]:
     Get files within config.yaml mappings
     Path limitations for slow storage
     """
-    if "/mnt/qnap_01/Public/F47" in pth:
-        max_ = 1000
-    else:
-        max_ = 2000
-
+    max_ = 2000
     mapped = []
     count = 0
     for directory in mappings:
@@ -601,354 +598,325 @@ def get_mappings(pth: str, mappings: str) -> list[str]:
 
 def main():
     """
-    Iterate config hosts, using autoingest mappings
-    navigate all autoingest paths and sort files for ingest
-    or deletion.
+    Iterate config host list for autoingest/ and autoingest_old/,
+    using autoingest mappings navigate all autoingest paths and
+    sort files for ingest or deletion.
     """
     messages: dict = {}
     messages = get_persistence_messages()
     print("* Finished collecting persistence_queue messages...")
 
     print("* Collecting ingest sources from config.yaml...")
-    config_dict = utils.read_yaml(CONFIG)
-    print(f"utils.read_yaml: {config_dict}")
+    config_list = []
+    config_list.append(utils.read_yaml(CONFIG))
+    config_list.append(utils.read_yaml(CONFIG2))
+
+    print(f"utils.read_yaml: {config_list}")
 
     sess = adlib.create_session()
-    for host in config_dict["Hosts"]:
-        print(host)
-        linux_host = list(host.keys())[0]
-        tree = list(host.keys())[0]
-        if not utils.check_storage(linux_host):
-            logger.info(
-                "Skipping path %s - prevented by storage_control.json", linux_host
-            )
-            continue
-
-        # Collect files
-        files = get_mappings(tree, config_dict["Mappings"])
-        print(files)
-        for pth in files:
-            if not utils.check_control("autoingest"):
-                sys.exit(
-                    "Script run prevented by downtime_control.json. Script exiting."
-                )
-            fpath = os.path.abspath(pth)
-            fname = os.path.split(fpath)[-1]
-
-            # Attempt permissions mod
-            try:
-                os.chmod(fpath, 0o777)
-            except OSError as err:
-                print(err)
-
-            # Allow path changes for black_pearl_ingest Netflix
-            if "ingest/netflix" in str(fpath):
+    for config_dict in config_list:
+        for host in config_dict["Hosts"]:
+            print(host)
+            linux_host = list(host.keys())[0]
+            tree = list(host.keys())[0]
+            if not utils.check_storage(linux_host):
                 logger.info(
-                    "%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder"
+                    "Skipping path %s - prevented by storage_control.json", linux_host
                 )
-                black_pearl_folder = os.path.join(
-                    linux_host, f"{os.environ['BP_INGEST_NETFLIX']}"
-                )
-                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
-            elif "ingest/amazon" in str(fpath):
-                logger.info(
-                    "%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder"
-                )
-                black_pearl_folder = os.path.join(
-                    linux_host, f"{os.environ['BP_INGEST_AMAZON']}"
-                )
-                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
-            elif "ingest/disney" in str(fpath):
-                logger.info(
-                    "%s\tIngest-ready file is from Disney ingest path, setting Black Pearl Disney ingest folder"
-                )
-                black_pearl_folder = os.path.join(
-                    linux_host, f"{os.environ['BP_INGEST_DISNEY']}"
-                )
-                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
-            else:
-                black_pearl_folder = os.path.join(
-                    linux_host, f"{os.environ['BP_INGEST']}"
-                )
-                black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
-
-            if ".DS_Store" in fname:
-                continue
-            if fname.endswith((".md5", ".log", ".mhl", ".ini", ".json")):
-                continue
-            ext = fname.split(".")[-1]
-
-            if "qnap_04/autoingest/ingest/" in fpath:
-                print("Skipping QNAP-04 for autoingest V3 trials")
                 continue
 
-            print(f"\n====== CURRENT FILE: {fpath} ===========================")
+            # Collect files
+            files = get_mappings(tree, config_dict["Mappings"])
+            print(files)
+            for pth in files:
+                if not utils.check_control("autoingest"):
+                    sys.exit(
+                        "Script run prevented by downtime_control.json. Script exiting."
+                    )
+                fpath = os.path.abspath(pth)
+                fname = os.path.split(fpath)[-1]
 
-            # Create paths and join for logs
-            relative_nix_path = fpath.replace(tree, host[tree])
-            relative_path = ntpath.normpath(relative_nix_path)
-            log_paths = "\t".join([fpath, relative_path, fname])
+                # Attempt permissions mod
+                try:
+                    os.chmod(fpath, 0o777)
+                except OSError as err:
+                    print(err)
 
-            if "autoingest/completed/" in fpath:
-                # Push completed/ paths straight to deletions checks
-                print("* Item is in completed/ path, moving to persistence checks")
-                boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
-                print(f"File successfully deleted: {boole}")
-                continue
-            # Check archive/ and archives_catalogue/ path
-            elif "/Screencraft/" in fpath and "proxy/image/archive" in fpath:
-                print("* File is Screenscraft Archive Image")
-                # Simplified name check
-                if not re.search("^[A-Za-z0-9_.]*$", fname):
-                    print(f"* Filename formatted incorrectly {fname}")
-                    logger.warning("%s\tFilename formatted incorrectly", log_paths)
+                # Allow path changes for black_pearl_ingest Netflix
+                if "ingest/netflix" in str(fpath):
+                    logger.info(
+                        "%s\tIngest-ready file is from Netflix ingest path, setting Black Pearl Netflix ingest folder"
+                    )
+                    black_pearl_folder = os.path.join(
+                        linux_host, f"{os.environ['BP_INGEST_NETFLIX']}"
+                    )
+                    black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+                elif "ingest/amazon" in str(fpath):
+                    logger.info(
+                        "%s\tIngest-ready file is from Amazon ingest path, setting Black Pearl Amazon ingest folder"
+                    )
+                    black_pearl_folder = os.path.join(
+                        linux_host, f"{os.environ['BP_INGEST_AMAZON']}"
+                    )
+                    black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+                elif "ingest/disney" in str(fpath):
+                    logger.info(
+                        "%s\tIngest-ready file is from Disney ingest path, setting Black Pearl Disney ingest folder"
+                    )
+                    black_pearl_folder = os.path.join(
+                        linux_host, f"{os.environ['BP_INGEST_DISNEY']}"
+                    )
+                    black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+                else:
+                    black_pearl_folder = os.path.join(
+                        linux_host, f"{os.environ['BP_INGEST']}"
+                    )
+                    black_pearl_blobbing = f"{black_pearl_folder}/blobbing"
+
+                if ".DS_Store" in fname:
                     continue
-                object_number, part, whole, ext = process_image_archive(
-                    fname, log_paths
-                )
-                if not object_number or not part:
+                if fname.endswith((".md5", ".log", ".mhl", ".ini", ".json")):
                     continue
-            elif "qnap_05/Public" in fpath and "ingest/aip_ingest" in fpath:
-                print("* File is Screencraft Archivematica AIP ingest")
-                # Simplified name check
-                if not fname.startswith("GUR_"):
-                    print(f"* Incorrect file placed into folder: {fname}")
+                ext = fname.split(".")[-1]
+
+                if "qnap_04/autoingest/ingest/" in fpath:
+                    print("Skipping QNAP-04 for autoingest V3 trials")
+                    continue
+
+                print(f"\n====== CURRENT FILE: {fpath} ===========================")
+
+                # Create paths and join for logs
+                relative_nix_path = fpath.replace(tree, host[tree])
+                relative_path = ntpath.normpath(relative_nix_path)
+                log_paths = "\t".join([fpath, relative_path, fname])
+
+                if "autoingest/completed/" in fpath or "autoingest_old/completed/" in fpath:
+                    # Push completed/ paths straight to deletions checks
+                    print("* Item is in completed/ path, moving to persistence checks")
+                    boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
+                    print(f"File successfully deleted: {boole}")
+                    continue
+                elif not "/ingest/" in fpath:
+                    print("* Filepath is not an ingest path")
+                    continue
+                else:
+                    # NAME/PART WHOLE VALIDATIONS
+                    if not utils.check_filename(fname):
+                        print(f"* Filename formatted incorrectly {fname}")
+                        logger.warning("%s\tFilename formatted incorrectly", log_paths)
+                        continue
+                    part, whole = utils.check_part_whole(fname)
+                    print(f"utils.check_part_whole: {part} {whole}")
+                    if not part or not whole:
+                        print("* Cannot parse partWhole from filename")
+                        logger.warning(
+                            "%s\tCannot parse partWhole from filename", log_paths
+                        )
+                        continue
+                    # Get object_number
+                    object_number = utils.get_object_number(fname)
+                    print(f"utils.get_object_number: {object_number}")
+                    if not object_number:
+                        print("* Cannot parse <object_number> from filename")
+                        logger.warning(
+                            "%s\tCannot parse <object_number> from filename", log_paths
+                        )
+                        continue
+
+                # MIME/TYPE VALIDATIONS
+                if not check_mime_type(fpath, log_paths):
+                    continue
+
+                # CID checks
+                priref = get_item_priref(object_number, sess)
+                if not priref:
+                    print(f"* Cannot find record with <object_number>...<{object_number}>")
                     logger.warning(
-                        "%s\tIncorrect file found in aip_ingest path", log_paths
+                        "%s\tCannot find record with <object_number>... <%s>",
+                        log_paths,
+                        object_number,
                     )
                     continue
-                if not re.search("^[A-Za-z0-9_.]*$", fname):
-                    print(f"* Filename formatted incorrectly {fname}")
-                    logger.warning("%s\tFilename formatted incorrectly", log_paths)
-                    continue
-                object_number, part, whole, ext = process_image_archive(
-                    fname, log_paths
-                )
-                if not object_number or not part:
-                    continue
-
-            elif not "/ingest/" in fpath:
-                print("* Filepath is not an ingest path")
-                continue
-
-            else:
-                # NAME/PART WHOLE VALIDATIONS
-                if not utils.check_filename(fname):
-                    print(f"* Filename formatted incorrectly {fname}")
-                    logger.warning("%s\tFilename formatted incorrectly", log_paths)
-                    continue
-                part, whole = utils.check_part_whole(fname)
-                print(f"utils.check_part_whole: {part} {whole}")
-                if not part or not whole:
-                    print("* Cannot parse partWhole from filename")
-                    logger.warning(
-                        "%s\tCannot parse partWhole from filename", log_paths
-                    )
-                    continue
-                # Get object_number
-                object_number = utils.get_object_number(fname)
-                print(f"utils.get_object_number: {object_number}")
-                if not object_number:
-                    print("* Cannot parse <object_number> from filename")
-                    logger.warning(
-                        "%s\tCannot parse <object_number> from filename", log_paths
-                    )
-                    continue
-
-            # MIME/TYPE VALIDATIONS
-            if not check_mime_type(fpath, log_paths):
-                continue
-
-            # CID checks
-            priref = get_item_priref(object_number, sess)
-            if not priref:
-                print(f"* Cannot find record with <object_number>...<{object_number}>")
-                logger.warning(
-                    "%s\tCannot find record with <object_number>... <%s>",
-                    log_paths,
-                    object_number,
-                )
-                continue
-            print(
-                f"* CID item record found with object number {object_number}: priref {priref}"
-            )
-
-            # Ext in file_type and file_type validity in Collect database
-            confirmed = ext_in_file_type(ext, priref, log_paths, object_number, sess)
-            if not confirmed:
-                continue
-
-            # CID media record check
-            media_check = check_media_record(fname, sess)
-            if media_check is None:
-                print("Skipping. Exceptionion raised for call to CID API")
-                continue
-            if media_check is True:
                 print(
-                    f"* Filename {fname} already has a CID Media record. Manual clean up needed."
+                    f"* CID item record found with object number {object_number}: priref {priref}"
                 )
-                logger.warning(
-                    "%s\tFilename already has a CID Media record: %s", log_paths, fname
-                )
-                continue
-            elif media_check is False:
-                print(f"* File {fname} has no CID Media record.")
-            elif "Hits exceed 1" in media_check:
-                print(
-                    f"* Filename {fname} has more than one CID Media record. Manual attention needed."
-                )
-                logger.warning(
-                    "%s\tFilename has more than one CID Media record: %s",
-                    log_paths,
-                    fname,
-                )
-                continue
 
-            # Get BP buckets
-            bucket_list = []
-            if "ingest/netflix" in fpath:
-                bucket_list = get_buckets("netflix")
-            elif "ingest/amazon" in fpath:
-                bucket_list = get_buckets("amazon")
-            elif "ingest/disney" in fpath:
-                bucket_list = get_buckets("disney")
-            else:
-                bucket_list = get_buckets("bfi")
+                # Ext in file_type and file_type validity in Collect database
+                confirmed = ext_in_file_type(ext, priref, log_paths, object_number, sess)
+                if not confirmed:
+                    continue
 
-            # BP ingest check
-            status = bp.check_no_bp_status(fname, bucket_list)
-            print(f"bp.check_no_bp_status: {status}")
-            if status is False:
-                print(
-                    f"* Filename {fname} has already been ingested to DPI. Manual clean up needed."
-                )
-                logger.warning(
-                    "%s\tFilename has aleady been ingested to DPI: %s", log_paths, fname
-                )
-                continue
-            print(f"* File {fname} has not been ingested to DPI yet.")
-
-            # Begin ingest pass
-            do_ingest = False
-
-            # Move first part of incomplete scans
-            if "/incomplete_scans/" in fpath:
-                print("\n*** File is an incomplete scan. Moving for ingest ======")
-                do_ingest = True
-            else:
-                # Move items for ingest if they are single parts, first parts, or next in queue
-                print("\n*** TEST for ASSET_MULTIPART ======")
-                if whole == 1:
-                    print("\t* file is not multipart...")
+                # CID media record check
+                media_check = check_media_record(fname, sess)
+                if media_check is None:
+                    print("Skipping. Exceptionion raised for call to CID API")
+                    continue
+                if media_check is True:
                     print(
-                        "\t* asset is single part and not yet ingested, preparing for ingest..."
+                        f"* Filename {fname} already has a CID Media record. Manual clean up needed."
                     )
-                    do_ingest = True
-                elif part == 1:
-                    print("\t* file is multipart...")
+                    logger.warning(
+                        "%s\tFilename already has a CID Media record: %s", log_paths, fname
+                    )
+                    continue
+                elif media_check is False:
+                    print(f"* File {fname} has no CID Media record.")
+                elif "Hits exceed 1" in media_check:
                     print(
-                        "\t* asset is first part and not yet ingested, preparing for ingest..."
+                        f"* Filename {fname} has more than one CID Media record. Manual attention needed."
                     )
+                    logger.warning(
+                        "%s\tFilename has more than one CID Media record: %s",
+                        log_paths,
+                        fname,
+                    )
+                    continue
+
+                # Get BP buckets
+                bucket_list = []
+                if "ingest/netflix" in fpath:
+                    bucket_list = get_buckets("netflix")
+                elif "ingest/amazon" in fpath:
+                    bucket_list = get_buckets("amazon")
+                elif "ingest/disney" in fpath:
+                    bucket_list = get_buckets("disney")
+                else:
+                    bucket_list = get_buckets("bfi")
+
+                # BP ingest check
+                status = bp.check_no_bp_status(fname, bucket_list)
+                print(f"bp.check_no_bp_status: {status}")
+                if status is False:
+                    print(
+                        f"* Filename {fname} has already been ingested to DPI. Manual clean up needed."
+                    )
+                    logger.warning(
+                        "%s\tFilename has aleady been ingested to DPI: %s", log_paths, fname
+                    )
+                    continue
+                print(f"* File {fname} has not been ingested to DPI yet.")
+
+                # Begin ingest pass
+                do_ingest = False
+
+                # Move first part of incomplete scans
+                if "/incomplete_scans/" in fpath:
+                    print("\n*** File is an incomplete scan. Moving for ingest ======")
                     do_ingest = True
                 else:
-                    print("\t* file is multi-part...")
-                    print("\t\t* === AUTOINGEST - TEST for ASSET_IS_NEXT ======")
-                    result = asset_is_next(
-                        fname, ext, object_number, part, whole, black_pearl_folder, sess
-                    )
-                    if "No index" in result:
-                        print("\t\t***** Indexing logic broken")
-                        continue
-                    if "Ingested already" in result:
-                        print("\t\t* Already ingested! Not to be reingested")
-                        logger.warning(
-                            "%s\tThis file name has already been ingested and has CID Media record",
-                            log_paths,
-                        )
-                        continue
-                    if "False" in result:
+                    # Move items for ingest if they are single parts, first parts, or next in queue
+                    print("\n*** TEST for ASSET_MULTIPART ======")
+                    if whole == 1:
+                        print("\t* file is not multipart...")
                         print(
-                            "\t\t* multi-part file, not suitable for ingest at this time..."
+                            "\t* asset is single part and not yet ingested, preparing for ingest..."
                         )
-                        logger.info(
-                            "%s\tSkip object as previous part not yet ingested or queued for ingest",
-                            log_paths,
+                        do_ingest = True
+                    elif part == 1:
+                        print("\t* file is multipart...")
+                        print(
+                            "\t* asset is first part and not yet ingested, preparing for ingest..."
                         )
-                        continue
-                    # Prepare multiparter ingest configuration
-                    print("\n*** TEST for ASSET_MULTIPART and ASSET_IS_NEXT ======")
-                    print("\t* asset is multipart and is next in queue...")
-                    print("\t\t* multi-part file, suitable for ingest...")
-                    do_ingest = True
-
-            # Check if path / no ingests to take place
-            if not utils.check_control("do_ingest"):
-                print("* do_ingest set to false in control json, skipping")
-                do_ingest = False
-            if not utils.check_control(tree):
-                print("* Path set to false in control json, turning ingest off")
-                do_ingest = False
-
-            # Perform ingest if under 1TB
-            if do_ingest:
-                size = utils.get_size(fpath)
-                if size is None:
-                    print(
-                        "Unable to retrieve file size. Skipping for repeat try later."
-                    )
-                    continue
-                print(f"utils.get_size: {size}")
-                print(
-                    "\t* file has not been ingested, so moving it into Black Pearl ingest folder..."
-                )
-                if int(size) > 1099511627776:
-                    logger.info(
-                        "%s\tFile is larger than 1TB. Checking file is ProRes, MKV or TAR",
-                        log_paths,
-                    )
-                    accepted_file_type = check_accepted_file_type(fpath)
-                    if accepted_file_type is True:
-                        try:
-                            shutil.move(
-                                fpath, os.path.join(black_pearl_blobbing, fname)
+                        do_ingest = True
+                    else:
+                        print("\t* file is multi-part...")
+                        print("\t\t* === AUTOINGEST - TEST for ASSET_IS_NEXT ======")
+                        result = asset_is_next(
+                            fname, ext, object_number, part, whole, black_pearl_folder, sess
+                        )
+                        if "No index" in result:
+                            print("\t\t***** Indexing logic broken")
+                            continue
+                        if "Ingested already" in result:
+                            print("\t\t* Already ingested! Not to be reingested")
+                            logger.warning(
+                                "%s\tThis file name has already been ingested and has CID Media record",
+                                log_paths,
                             )
+                            continue
+                        if "False" in result:
                             print(
-                                f"\t** File moved to {os.path.join(black_pearl_blobbing, fname)}"
+                                "\t\t* multi-part file, not suitable for ingest at this time..."
                             )
                             logger.info(
-                                "%s\tMoved ingest-ready file to BlackPearl ingest blobbing folder",
+                                "%s\tSkip object as previous part not yet ingested or queued for ingest",
                                 log_paths,
                             )
-                        except Exception as err:
-                            print(
-                                f"Failed to move file to blobbing folder: {black_pearl_blobbing} {err}"
-                            )
+                            continue
+                        # Prepare multiparter ingest configuration
+                        print("\n*** TEST for ASSET_MULTIPART and ASSET_IS_NEXT ======")
+                        print("\t* asset is multipart and is next in queue...")
+                        print("\t\t* multi-part file, suitable for ingest...")
+                        do_ingest = True
+
+                # Check if path / no ingests to take place
+                if not utils.check_control("do_ingest"):
+                    print("* do_ingest set to false in control json, skipping")
+                    do_ingest = False
+                if not utils.check_control(tree):
+                    print("* Path set to false in control json, turning ingest off")
+                    do_ingest = False
+
+                # Perform ingest if under 1TB
+                if do_ingest:
+                    size = utils.get_size(fpath)
+                    if size is None:
+                        print(
+                            "Unable to retrieve file size. Skipping for repeat try later."
+                        )
+                        continue
+                    print(f"utils.get_size: {size}")
+                    print(
+                        "\t* file has not been ingested, so moving it into Black Pearl ingest folder..."
+                    )
+                    if int(size) > 1099511627776:
+                        logger.info(
+                            "%s\tFile is larger than 1TB. Checking file is ProRes, MKV or TAR",
+                            log_paths,
+                        )
+                        accepted_file_type = check_accepted_file_type(fpath)
+                        if accepted_file_type is True:
+                            try:
+                                shutil.move(
+                                    fpath, os.path.join(black_pearl_blobbing, fname)
+                                )
+                                print(
+                                    f"\t** File moved to {os.path.join(black_pearl_blobbing, fname)}"
+                                )
+                                logger.info(
+                                    "%s\tMoved ingest-ready file to BlackPearl ingest blobbing folder",
+                                    log_paths,
+                                )
+                            except Exception as err:
+                                print(
+                                    f"Failed to move file to blobbing folder: {black_pearl_blobbing} {err}"
+                                )
+                                logger.warning(
+                                    "%s\tFailed to move ingest-ready file to blobbing folder",
+                                    log_paths,
+                                )
+                        else:
                             logger.warning(
-                                "%s\tFailed to move ingest-ready file to blobbing folder",
+                                "%s\tFile is larger than 1TB and not ProRes. Leaving in ingest folder",
                                 log_paths,
                             )
-                    else:
+                        continue
+                    try:
+                        shutil.move(fpath, os.path.join(black_pearl_folder, fname))
+                        print(
+                            f"\t** File moved to {os.path.join(black_pearl_folder, fname)}"
+                        )
+                        logger.info(
+                            "%s\tMoved ingest-ready file to BlackPearl ingest folder",
+                            log_paths,
+                        )
+                    except Exception as err:
+                        print(f"Failed to move file to black_pearl_ingest: {err}")
                         logger.warning(
-                            "%s\tFile is larger than 1TB and not ProRes. Leaving in ingest folder",
+                            "%s\tFailed to move ingest-ready file to BlackPearl ingest folder",
                             log_paths,
                         )
                     continue
-                try:
-                    shutil.move(fpath, os.path.join(black_pearl_folder, fname))
-                    print(
-                        f"\t** File moved to {os.path.join(black_pearl_folder, fname)}"
-                    )
-                    logger.info(
-                        "%s\tMoved ingest-ready file to BlackPearl ingest folder",
-                        log_paths,
-                    )
-                except Exception as err:
-                    print(f"Failed to move file to black_pearl_ingest: {err}")
-                    logger.warning(
-                        "%s\tFailed to move ingest-ready file to BlackPearl ingest folder",
-                        log_paths,
-                    )
-                continue
 
 
 def check_for_deletions(fpath, fname, log_paths, messages, session: requests.Session):
@@ -959,6 +927,7 @@ def check_for_deletions(fpath, fname, log_paths, messages, session: requests.Ses
 
     # Check if CID media record exists
     media_check = check_media_record(fname, session)
+
     if media_check is None:
         print("** Exception raised for API request. Skipping this deletion.")
         return False

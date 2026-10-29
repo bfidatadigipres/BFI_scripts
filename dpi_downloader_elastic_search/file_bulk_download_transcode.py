@@ -568,6 +568,7 @@ def main():
             # Delete source download from DPI if not failed transcode/already found in path
             if trans == "no_transcode":
                 LOGGER.info("No transcode requested for this asset.")
+                LOGGER.info("checksum filepath: %s", new_fpath)
                 write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath)
             elif not skip_download or not failed_trans:
                 LOGGER.info("Deleting downloaded asset: %s", new_fpath)
@@ -767,6 +768,7 @@ def main():
                     if trans == "no_transcode":
                         LOGGER.info("No transcode requested for this asset.")
                         if not blob:
+                            LOGGER.info("checksum filepath: %s", new_fpath)
                             write_checksum_similarity(
                                 local_md5, bp_md5, dpath, new_fpath
                             )

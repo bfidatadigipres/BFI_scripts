@@ -18,15 +18,16 @@ directly by priref), the script:
 
 from __future__ import annotations
 
-import os
 import argparse
+import os
 import time
 from typing import Optional
 from urllib.parse import quote
 
-import requests
 import defusedxml.ElementTree as ET
-
+import requests
+from elastic_transport import ApiError
+from elasticsearch.helpers import streaming_bulk
 from elasticsearch_index_shared import (
     CID_REQUEST_DELAY,
     build_es_client,
@@ -42,10 +43,8 @@ from elasticsearch_index_shared import (
     validate_prirefs_csv,
     validate_xml_root,
     write_dead_letter,
-    xml_to_document as generic_xml_to_document,
 )
-from elastic_transport import ApiError
-from elasticsearch.helpers import streaming_bulk
+from elasticsearch_index_shared import xml_to_document as generic_xml_to_document
 
 # =========================
 # Configuration

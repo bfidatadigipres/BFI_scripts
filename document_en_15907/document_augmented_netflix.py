@@ -39,16 +39,18 @@ import logging
 import os
 import sys
 from typing import Final, Optional
+
 import pandas
 import yaml
 
 sys.path.append(os.environ["CODE"])
+from document_augmented_streaming_cast import create_contributors
+
 import adlib_v3 as adlib
 import utils
 from parsers import stream_catalogue as ct
 from parsers import stream_episode as ep
 from parsers import stream_season as sp
-from document_augmented_streaming_cast import create_contributors
 
 # Global variables
 STORAGE: Final = os.environ.get("QNAP_IMAGEN")

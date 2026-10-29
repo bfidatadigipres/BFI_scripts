@@ -11,12 +11,12 @@ RECORDS. REFACTORING NEEDED IF THIS HAPPENS
 2026
 """
 
-import re
-import os
-import sys
 import csv
-import shutil
 import logging
+import os
+import re
+import shutil
+import sys
 from time import sleep
 from typing import List, Optional
 

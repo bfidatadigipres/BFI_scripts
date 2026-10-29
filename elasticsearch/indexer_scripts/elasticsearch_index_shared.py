@@ -14,18 +14,17 @@ import logging
 import os
 import sys
 import time
-from datetime import date, datetime, timezone, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable, Iterator, Optional
 
-import requests
 import defusedxml.ElementTree as ET
+import requests
+from elasticsearch.helpers import streaming_bulk
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-
 from xmljson import parker
 
 from elasticsearch import Elasticsearch
-from elasticsearch.helpers import streaming_bulk
 
 # =========================
 # Logging setup

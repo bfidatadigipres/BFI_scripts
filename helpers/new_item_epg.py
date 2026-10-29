@@ -1,7 +1,8 @@
-import pandas as pd
+import csv
 import os
 import sys
-import csv
+
+import pandas as pd
 
 sys.path.append(os.environ["CODE"])
 import adlib_v3 as adlib

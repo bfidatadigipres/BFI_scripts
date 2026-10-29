@@ -16,12 +16,13 @@ to allow the app to run throughout bulk of downtime.
 2026
 """
 
+import itertools
+import logging
+import os
+
 # Public imports
 import sqlite3
-import os
 import sys
-import logging
-import itertools
 from datetime import datetime
 from typing import Final, Optional
 
@@ -173,8 +174,14 @@ def get_prirefs(pointer: str) -> Optional[list[str]]:
 
     if result["adlibJSON"]["recordList"]["record"] == []:
         return None
-    prirefs = result["adlibJSON"]["recordList"]["record"][0]["hitlist"]
-    LOGGER.info("Prirefs retrieved: %s", prirefs)
+    
+    try:
+        prirefs = result["adlibJSON"]["recordList"]["record"][0]["hitlist"]
+        LOGGER.info("Prirefs retrieved: %s", prirefs)
+    except Exception as err:
+        print(err)
+        return None
+
 
     item_list = []
     for priref in prirefs:

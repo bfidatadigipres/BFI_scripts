@@ -2,6 +2,7 @@ import os
 from functools import lru_cache
 
 import pandas as pd
+
 from elasticsearch import Elasticsearch
 
 ELASTIC_PASS = os.environ["ELASTIC_PASS"]

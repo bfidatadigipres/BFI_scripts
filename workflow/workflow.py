@@ -608,21 +608,7 @@ class SIMDigiBatch:
 
 class SIMBetaBatch:
     """
-    Create a tree of Workflow activities specific to SIM Betacam SP encoding (currently modelled from VT10):
-      - Pick
-      - Encode
-      - Return
-    To use:
-
-        # Items
-        item_prirefs = [123, 567]
-
-        # Job metadata
-        topnode_metadata = {'description': 'SIM / Betacam SP / etc',
-                            'completion.date': '*'}
-
-        # Create
-        b = SIMBetaBatch(l, **topnode_metadata)
+    As per SIM batch above
     """
 
     def __init__(self, items=None, **kwargs):
@@ -639,6 +625,186 @@ class SIMBetaBatch:
             },
             "payload": {
                 "Pick items": {"destination": "PBK03A06000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
+
+        # Add any additional metadata to the topNode
+        for k in kwargs:
+            d["topNode"][k] = kwargs[k]
+
+        # Create
+        self.batch = Batch(items, **d)
+
+    @property
+    def successfully_completed(self):
+        return self.batch.successfully_completed
+
+
+class SIMOneInchBatch:
+    """
+    As per SIM batches above
+    """
+
+    def __init__(self, items=None, **kwargs):
+        # Default metadata
+        d = {
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "404264",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "G80",
+                "request.details": "Transfer to preservation formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK03A06000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
+
+        # Add any additional metadata to the topNode
+        for k in kwargs:
+            d["topNode"][k] = kwargs[k]
+
+        # Create
+        self.batch = Batch(items, **d)
+
+    @property
+    def successfully_completed(self):
+        return self.batch.successfully_completed
+
+
+class SIMTwoInchBatch:
+    """
+    As per SIM batches above
+    """
+
+    def __init__(self, items=None, **kwargs):
+        # Default metadata
+        d = {
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "404264",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "G80",
+                "request.details": "Transfer to preservation formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK03A06000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
+
+        # Add any additional metadata to the topNode
+        for k in kwargs:
+            d["topNode"][k] = kwargs[k]
+
+        # Create
+        self.batch = Batch(items, **d)
+
+    @property
+    def successfully_completed(self):
+        return self.batch.successfully_completed
+
+
+class SIMDThreeBatch:
+    """
+    As per SIM batches above
+    """
+
+    def __init__(self, items=None, **kwargs):
+        # Default metadata
+        d = {
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "404264",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "F47",
+                "request.details": "Transfer to preservation formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK06B03000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
+
+        # Add any additional metadata to the topNode
+        for k in kwargs:
+            d["topNode"][k] = kwargs[k]
+
+        # Create
+        self.batch = Batch(items, **d)
+
+    @property
+    def successfully_completed(self):
+        return self.batch.successfully_completed
+
+
+class SIMMiiBatch:
+    """
+    As per SIM batches above
+    """
+
+    def __init__(self, items=None, **kwargs):
+        # Default metadata
+        d = {
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "404264",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "F47",
+                "request.details": "Transfer to preservation formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK06B03000000"},
+                "Video Encoding": {"handling.name": "Television Operations"},
+                "Return items": {},
+            },
+        }
+
+        # Add any additional metadata to the topNode
+        for k in kwargs:
+            d["topNode"][k] = kwargs[k]
+
+        # Create
+        self.batch = Batch(items, **d)
+
+    @property
+    def successfully_completed(self):
+        return self.batch.successfully_completed
+
+
+class SIMHDcamBatch:
+    """
+    As per SIM batches above
+    """
+
+    def __init__(self, items=None, **kwargs):
+        # Default metadata
+        d = {
+            "activities": ["Pick items", "Video Encoding", "Return items"],
+            "topNode": {
+                "activity.code.lref": "404264",
+                "purpose": "Preservation",
+                "request_type": "VIDEOCOPY",
+                "final_destination": "F47",
+                "request.details": "Transfer to preservation formats",
+                "assigned_to": "Television Operations",
+            },
+            "payload": {
+                "Pick items": {"destination": "PBK06B03000000"},
                 "Video Encoding": {"handling.name": "Television Operations"},
                 "Return items": {},
             },

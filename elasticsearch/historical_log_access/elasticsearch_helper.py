@@ -1,8 +1,8 @@
-'''
+"""
 Streamlit app for searching historical logs.
 
 2026
-'''
+"""
 
 import os
 from functools import lru_cache

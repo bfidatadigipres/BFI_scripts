@@ -364,11 +364,12 @@ def write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath):
     download_local_md5 = local_md5
     black_pearl_md5 = bp_md5
     message = ""
+    checksum_path = f"{new_fpath}_md5.txt"
     if download_local_md5 == black_pearl_md5:
         message = f"Checksum MATCH: {bp_md5} | {local_md5}"
     else:
         message = f"Checksum DO NOT MATCH: {bp_md5} | {local_md5}"
-    with open(f"{dpath}/{new_fpath}_md5.txt", "w", encoding="utf-8") as f:
+    with open(checksum_path, "w+", encoding="utf-8") as f:
         f.write(f"Created from download: {local_md5} | Retrieved from BP: {bp_md5}\n")
         f.write(message)
     return
@@ -567,8 +568,10 @@ def main():
 
             # Delete source download from DPI if not failed transcode/already found in path
             if trans == "no_transcode":
-                LOGGER.info("No transcode requested for this asset.")
-                write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath)
+                LOGGER.info("No transcode requested for this asset. option 1")
+                LOGGER.info("checksum filepath: %s  |  dpath: %s", new_fpath, dpath)
+                if '/mnt/qnap_11/hold' in dpath:
+                    write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath)
             elif not skip_download or not failed_trans:
                 LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                 os.remove(new_fpath)
@@ -766,7 +769,9 @@ def main():
                     # Delete source download from DPI if not failed transcode/already found in path
                     if trans == "no_transcode":
                         LOGGER.info("No transcode requested for this asset.")
-                        if not blob:
+                        LOGGER.info("option 2")
+                        if '/mnt/qnap_11/hold' in dpath:
+                            LOGGER.info("checksum filepath: %s  |  dpath: %s", new_fpath, dpath)
                             write_checksum_similarity(
                                 local_md5, bp_md5, dpath, new_fpath
                             )

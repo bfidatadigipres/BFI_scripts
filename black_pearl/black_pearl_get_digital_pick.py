@@ -484,6 +484,7 @@ def main():
                 download_job_id = bp.download_bp_object(download_fname, outpath, bucket)
                 if os.path.exists(os.path.join(outpath, download_fname)):
                     # Write successful download to CSV
+                    os.chmod(os.path.join(outpath, download_fname), 0o777)
                     if umid:
                         os.rename(
                             os.path.join(outpath, download_fname),
@@ -559,6 +560,7 @@ def main():
                     )
                     if os.path.exists(os.path.join(outpath, dpart_fname)):
                         # Write successful download to CSV
+                        os.chmod(os.path.join(outpath, download_fname), 0o777)
                         if part_fname != dpart_fname:
                             os.rename(
                                 os.path.join(outpath, dpart_fname),

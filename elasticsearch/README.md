@@ -89,6 +89,28 @@ no date arguments, a run processes exactly one day.
   threshold is 2 days), so a long backfill does not become one huge CID request.
 - `--prirefs`, `--prirefs-csv` and `--search` bypass the date window entirely.
 
+### Logs and run artefacts
+
+Everything is written under `${LOG_PATH}`. Each script has its own run log and
+side files, named after the script:
+
+| Script | Run log | Prirefs from the run | Failed records | Slow records |
+|---|---|---|---|---|
+| `elasticsearch_index_items.py` | `item_indexing.log` | `item_prirefs.txt` | `item_dead_letter.jsonl` | `item_slow_records.csv` |
+| `elasticsearch_index_screencraft_objects.py` | `screencraft_object_indexing.log` | `screencraft_object_prirefs.txt` | `screencraft_object_dead_letter.jsonl` | `screencraft_object_slow_records.csv` |
+| `elasticsearch_index_screencraft_works.py` | `screencraft_work_indexing.log` | `screencraft_work_prirefs.txt` | `screencraft_work_dead_letter.jsonl` | `screencraft_work_slow_records.csv` |
+| `elasticsearch_cleanup_screencraft_works.py` | `screencraft_work_cleanup.log` | `screencraft_work_cleanup_prirefs.txt` | `screencraft_work_cleanup_dead_letter.jsonl` | `screencraft_work_cleanup_slow_records.csv` |
+| `elasticsearch_bulk_delete_items.py` | `item_bulk_delete.log` | — | `item_bulk_delete_dead_letter.jsonl` | — |
+
+- The run log is appended to on every run, and each run ends with a `SUMMARY` line.
+- The prirefs file holds the CID selection from the most recent date or search run;
+  direct `--prirefs` / `--prirefs-csv` runs do not write it.
+- Dead-letter files are append-only JSONL. Slow-record CSVs are append-only and
+  also act as the cache of known-slow prirefs for the guard.
+- The overnight cron jobs redirect their own stdout/stderr to `/tmp/python_cron*.log`.
+  Those files are overwritten each run and cleared on reboot, so treat `${LOG_PATH}`
+  as the authoritative copy.
+
 ## Usage
 
 ### Items indexer

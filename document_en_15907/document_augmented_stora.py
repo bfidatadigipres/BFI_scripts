@@ -61,7 +61,7 @@ CSV_FAILURES = os.path.join(LOG_PATH, "failed_mpeg_ts_files.csv")
 MPEG_TS_POLICY = os.path.join(os.environ["MEDIACONCH"], "mpeg_ts_policy.xml")
 SUBS_PTH = os.environ["SUBS_PATH"]
 GENRE_PTH = SUBS_PTH.split("subtitles_not_in_cid/")[0]
-#CID_API = utils.get_current_api()
+# CID_API = utils.get_current_api()
 CID_API = os.environ.get("CID_API_CHECK")
 FAILURE_COUNTER = 0
 
@@ -180,13 +180,13 @@ def look_up_series_list(alternative_num):
     Check if series requires annual series creation
     """
     monthly_resets = [
-        "2af14f77-ef15-517c-a463-04dc0a7c81ad", # BBC News
-        "9ea02f50-c5db-528b-8202-5055d62df112", # Business Today
+        "2af14f77-ef15-517c-a463-04dc0a7c81ad",  # BBC News
+        "9ea02f50-c5db-528b-8202-5055d62df112",  # Business Today
         # "62d9be16-0740-5746-a11d-f5695605668a", # This is BBC Two
-        "02ea631f-023d-5d6a-8ebf-f8b156c84a46", # BBC News Now
-        "9d4095db-cbda-55c4-ac1e-cc6ad13c0525", # Verified Live
-        "7d5ccc6d-39f3-575d-b94c-e651234857b9", # World Today
-        "8435ce3f-38d5-5114-b92b-bc4bc4bb2ba1", # Entertainment News of 5
+        "02ea631f-023d-5d6a-8ebf-f8b156c84a46",  # BBC News Now
+        "9d4095db-cbda-55c4-ac1e-cc6ad13c0525",  # Verified Live
+        "7d5ccc6d-39f3-575d-b94c-e651234857b9",  # World Today
+        "8435ce3f-38d5-5114-b92b-bc4bc4bb2ba1",  # Entertainment News of 5
     ]
 
     if alternative_num.strip() in monthly_resets:

@@ -45,7 +45,7 @@ def get_candidates():
     q = {
         "command": "getpointerfile",
         "database": "items",
-        "number": 1416, # JMW
+        "number": 1416,  # JMW
         "output": "jsonv1",
     }
 
@@ -83,7 +83,9 @@ def main():
         print("* Cannot establish CID session, exiting script")
         sys.exit()
 
-    write_to_log(f"=== Processing Items in SIM HD Cam & HD Cam SR Pointer File === {DT_STR}\n") # JMW
+    write_to_log(
+        f"=== Processing Items in SIM HD Cam & HD Cam SR Pointer File === {DT_STR}\n"
+    )  # JMW
     write_to_log(
         "Fetching csv data, building selected items list and fetching candidates.\n"
     )
@@ -102,7 +104,7 @@ def main():
         for sel in selected_items:
             if obj == sel:
                 write_to_log(
-                    f"* Item already in sim_hdcam/selections.csv: {priref} {obj} - Matched to {sel}\n" # JMW
+                    f"* Item already in sim_hdcam/selections.csv: {priref} {obj} - Matched to {sel}\n"  # JMW
                 )
                 matched = True
                 break
@@ -140,7 +142,7 @@ def main():
         d["location"] = t.location()
         d["uid"] = str(uuid.uuid4())
 
-        write_to_log("This tape will be added to sim_hdcam/selections.csv:\n") # JMW
+        write_to_log("This tape will be added to sim_hdcam/selections.csv:\n")  # JMW
         write_to_log(f"{str(d)}\n")
 
         # Add tape to sim_hdcam/selections.csv if unique JMW
@@ -158,7 +160,9 @@ def main():
             write_to_log("Failed to write data to selections.csv")
             sys.exit("Failed to write data to selections.csv")
 
-    write_to_log(f"=== Items in SIM HD Cam & HD Cam SR Pointer File completed === {DT_STR}\n") # JMW
+    write_to_log(
+        f"=== Items in SIM HD Cam & HD Cam SR Pointer File completed === {DT_STR}\n"
+    )  # JMW
 
 
 def selections_add(data):
@@ -223,7 +227,7 @@ def write_to_log(message):
     """
     Write to SIM HD Cam & HD Cam SR selecta log # JMW
     """
-    with open(os.path.join(LOGS, "sim_hdcam_selecta.log"), "a") as file: # JMW
+    with open(os.path.join(LOGS, "sim_hdcam_selecta.log"), "a") as file:  # JMW
         file.write(message)
         file.close()
 

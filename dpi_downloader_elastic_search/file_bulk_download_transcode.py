@@ -378,7 +378,9 @@ def write_checksum_similarity(local_md5, bp_md5, new_fpath, blob=False):
     else:
         message = f"Checksum DO NOT MATCH: {black_pearl_md5} | {download_local_md5}"
     with open(checksum_path, "w+", encoding="utf-8") as f:
-        f.write(f"Created from download: {download_local_md5} | Retrieved from BP: {black_pearl_md5}\n")
+        f.write(
+            f"Created from download: {download_local_md5} | Retrieved from BP: {black_pearl_md5}\n"
+        )
         f.write(message)
     return
 
@@ -578,7 +580,7 @@ def main():
             if trans == "no_transcode":
                 LOGGER.info("No transcode requested for this asset. option 1")
                 LOGGER.info("checksum filepath: %s  |  dpath: %s", new_fpath, dpath)
-                if '/mnt/qnap_11/hold' in dpath:
+                if "/mnt/qnap_11/hold" in dpath:
                     write_checksum_similarity(local_md5, bp_md5, new_fpath)
             elif not skip_download or not failed_trans:
                 LOGGER.info("Deleting downloaded asset: %s", new_fpath)
@@ -790,11 +792,11 @@ def main():
                     if trans == "no_transcode":
                         LOGGER.info("No transcode requested for this asset.")
                         LOGGER.info("option 2")
-                        if '/mnt/qnap_11/hold' in dpath:
-                            LOGGER.info("checksum filepath: %s  |  dpath: %s", new_fpath, dpath)
-                            write_checksum_similarity(
-                                local_md5, bp_md5, new_fpath
+                        if "/mnt/qnap_11/hold" in dpath:
+                            LOGGER.info(
+                                "checksum filepath: %s  |  dpath: %s", new_fpath, dpath
                             )
+                            write_checksum_similarity(local_md5, bp_md5, new_fpath)
                     elif not skip_download or not failed_trans:
                         LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                         os.remove(new_fpath)

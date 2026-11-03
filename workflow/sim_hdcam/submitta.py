@@ -30,11 +30,17 @@ import utils
 # Global variables
 LOGS = os.environ["LOG_PATH"]
 SUB_CSV = os.path.join(
-    os.environ.get("CODE_DEPENDS"), "workflow/sim_hdcam/submissions.csv" # JMW
+    os.environ.get("CODE_DEPENDS"), "workflow/sim_hdcam/submissions.csv"  # JMW
 )
-SEL_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/sim_hdcam/selections.csv") # JMW
-ERR_CSV = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/sim_hdcam/errors.csv") # JMW
-CONFIG = os.path.join(os.environ.get("CODE_DEPENDS"), "workflow/sim_hdcam/config.yaml") # JMW
+SEL_CSV = os.path.join(
+    os.environ.get("CODE_DEPENDS"), "workflow/sim_hdcam/selections.csv"
+)  # JMW
+ERR_CSV = os.path.join(
+    os.environ.get("CODE_DEPENDS"), "workflow/sim_hdcam/errors.csv"
+)  # JMW
+CONFIG = os.path.join(
+    os.environ.get("CODE_DEPENDS"), "workflow/sim_hdcam/config.yaml"
+)  # JMW
 NOW = datetime.now()
 DT_STR = NOW.strftime("%d/%m/%Y %H:%M:%S")
 
@@ -63,7 +69,7 @@ def main():
     if not utils.check_control("pause_scripts"):
         sys.exit("Script run prevented by downtime_control.json. Script exiting.")
     write_to_log(
-        f"=== Processing Items in SIM HD Cam & HD Cam SR selections.csv === {DT_STR}\n" # JMW
+        f"=== Processing Items in SIM HD Cam & HD Cam SR selections.csv === {DT_STR}\n"  # JMW
     )
 
     # Load configuration variables
@@ -75,16 +81,16 @@ def main():
     for _ in range(0, batches_per_iteration):
 
         # Load submissions
-        print("* Opening sim_hdcam/submissions.csv...") # JMW
+        print("* Opening sim_hdcam/submissions.csv...")  # JMW
         submissions = {}
         submissions = get_csv(SUB_CSV)
 
         # Load selections
-        print("* Opening sim_hdcam/selections.csv...") # JMW
+        print("* Opening sim_hdcam/selections.csv...")  # JMW
         df = pd.read_csv(SEL_CSV)
 
         # Remove submissions from selections data frame
-        print("* Removing SIM HD Cam & HD Cam SR submissions from selections...") # JMW
+        print("* Removing SIM HD Cam & HD Cam SR submissions from selections...")  # JMW
         unsubmitted_df = df[~df["uid"].isin(submissions)]
 
         # Replace NaNs with blank strings
@@ -125,7 +131,9 @@ def main():
             batch_items.extend(prirefs)
 
             # Track submission
-            print("* Writing SIM HD Cam & HD Cam SR submissions to sim_hdcam/submissions.csv...") # JMW
+            print(
+                "* Writing SIM HD Cam & HD Cam SR submissions to sim_hdcam/submissions.csv..."
+            )  # JMW
             with open(SUB_CSV, "a") as of:
                 writer = csv.writer(of)
                 writer.writerow(submission)
@@ -149,7 +157,7 @@ def main():
 
         # MAY NEED TO CREATE NEW BATCH - Create Workflow records
         print("* Creating Workflow records in CID...")
-        batch = workflow.SIMHDcamBatch(items=batch_items, **job_metadata) # JMW
+        batch = workflow.SIMHDcamBatch(items=batch_items, **job_metadata)  # JMW
         if not batch.successfully_completed:
             print(batch_items, batch)
             error_row = [
@@ -164,14 +172,16 @@ def main():
                 writer.writerow(error_row)
 
             write_to_log(f"{str(error_row)}\n")
-            print(f"Error creating SIM HD Cam & HD Cam SR Workflow job: {batch.priref}") # JMW
+            print(
+                f"Error creating SIM HD Cam & HD Cam SR Workflow job: {batch.priref}"
+            )  # JMW
 
 
 def write_to_log(message):
     """
     Write to SIM HD Cam & HD Cam SR submitta log
     """
-    with open(os.path.join(LOGS, "sim_hdcam_submitta.log"), "a") as file: # JMW
+    with open(os.path.join(LOGS, "sim_hdcam_submitta.log"), "a") as file:  # JMW
         file.write(message)
         file.close()
 

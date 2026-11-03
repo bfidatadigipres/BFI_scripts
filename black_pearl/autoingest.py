@@ -690,7 +690,10 @@ def main():
                 relative_path = ntpath.normpath(relative_nix_path)
                 log_paths = "\t".join([fpath, relative_path, fname])
 
-                if "autoingest/completed/" in fpath or "autoingest_old/completed/" in fpath:
+                if (
+                    "autoingest/completed/" in fpath
+                    or "autoingest_old/completed/" in fpath
+                ):
                     # Push completed/ paths straight to deletions checks
                     print("* Item is in completed/ path, moving to persistence checks")
                     boole = check_for_deletions(fpath, fname, log_paths, messages, sess)
@@ -730,7 +733,9 @@ def main():
                 # CID checks
                 priref = get_item_priref(object_number, sess)
                 if not priref:
-                    print(f"* Cannot find record with <object_number>...<{object_number}>")
+                    print(
+                        f"* Cannot find record with <object_number>...<{object_number}>"
+                    )
                     logger.warning(
                         "%s\tCannot find record with <object_number>... <%s>",
                         log_paths,
@@ -742,7 +747,9 @@ def main():
                 )
 
                 # Ext in file_type and file_type validity in Collect database
-                confirmed = ext_in_file_type(ext, priref, log_paths, object_number, sess)
+                confirmed = ext_in_file_type(
+                    ext, priref, log_paths, object_number, sess
+                )
                 if not confirmed:
                     continue
 
@@ -756,7 +763,9 @@ def main():
                         f"* Filename {fname} already has a CID Media record. Manual clean up needed."
                     )
                     logger.warning(
-                        "%s\tFilename already has a CID Media record: %s", log_paths, fname
+                        "%s\tFilename already has a CID Media record: %s",
+                        log_paths,
+                        fname,
                     )
                     continue
                 elif media_check is False:
@@ -791,7 +800,9 @@ def main():
                         f"* Filename {fname} has already been ingested to DPI. Manual clean up needed."
                     )
                     logger.warning(
-                        "%s\tFilename has aleady been ingested to DPI: %s", log_paths, fname
+                        "%s\tFilename has aleady been ingested to DPI: %s",
+                        log_paths,
+                        fname,
                     )
                     continue
                 print(f"* File {fname} has not been ingested to DPI yet.")
@@ -822,7 +833,13 @@ def main():
                         print("\t* file is multi-part...")
                         print("\t\t* === AUTOINGEST - TEST for ASSET_IS_NEXT ======")
                         result = asset_is_next(
-                            fname, ext, object_number, part, whole, black_pearl_folder, sess
+                            fname,
+                            ext,
+                            object_number,
+                            part,
+                            whole,
+                            black_pearl_folder,
+                            sess,
                         )
                         if "No index" in result:
                             print("\t\t***** Indexing logic broken")

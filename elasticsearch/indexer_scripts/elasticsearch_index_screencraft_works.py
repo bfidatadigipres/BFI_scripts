@@ -38,8 +38,15 @@ ES_URL = os.environ.get("ES_SEARCH_PATH")
 ES_INDEX = "dpi_screencraft_works"
 DB_NAME = "elasticsearchscreencraft_works"
 ROOT_XML_TAG = "screencraft"
+# Only works that have a linked screencraft object whose reproduction carries a
+# large image - or the legacy Imagen thumbnail UMID - are publishable, so the
+# selection query has to join work -> related object -> reproduction -> media.
+# Without this clause the date window returns every modified work, including
+# works with no linked media at all.
 DEFAULT_DATE_QUERY = (
-    "Df=work and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
+    "Df=work and (modification>='{date_from}' and modification<='{date_to} 23:59:59') "
+    "and (related_object.reference->reproduction.reference->"
+    "(access_rendition.largeimage=* or imagen.media.thumbnail_umid=*))"
 )
 CID_ITEM_URL_TEMPLATE = "{base_url}?database={db_name}&search=priref={priref}"
 LOGS = os.environ.get("LOG_PATH")

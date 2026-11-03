@@ -222,11 +222,52 @@ up a whole run. Each record fetch is therefore time-capped:
 - the guarded fetch uses a session without automatic retries, so the cap is a
   hard bound. Other failures still go to the dead-letter file as before.
 
-Re-index a slow set once the CID side is fixed:
+### Retrying slow records
+
+The slow-records CSV is also the guard's cache, so a retry must turn the cache
+off — otherwise every priref in the file is skipped without being probed:
 
 ```sh
-"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py --prirefs-csv item_slow_records.csv
+SLOW_RECORD_USE_CACHE=0 \
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py \
+  --prirefs-csv "$LOG_PATH/item_slow_records.csv"
 ```
+
+If the records are expected to be merely slow rather than broken, raise
+`SLOW_RECORD_TIMEOUT_SECONDS` (default `3`) or set it to `0` to remove the cap.
+
+### Retrying dead-letter failures
+
+The dead-letter file is JSONL, one object per failure (`timestamp`, `stage`,
+`priref`, `error`, plus stage-specific fields such as `cid_url`, `http_status`,
+`xml_snippet` and `es_error`). Extract the prirefs and feed them back:
+
+```sh
+jq -r 'select(.priref) | .priref' "$LOG_PATH/item_dead_letter.jsonl" \
+  | sort -u > /tmp/item_dead_letter_retry.csv
+
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_index_items.py \
+  --prirefs-csv /tmp/item_dead_letter_retry.csv
+```
+
+Filter by date or stage if you only want part of the file:
+
+```sh
+jq -r 'select(.priref and .timestamp >= "2026-10-01") | .priref' \
+  "$LOG_PATH/item_dead_letter.jsonl" | sort -u > /tmp/retry.csv
+```
+
+### Both sets together
+
+```sh
+{ jq -r 'select(.priref) | .priref' "$LOG_PATH/item_dead_letter.jsonl"
+  tail -n +2 "$LOG_PATH/item_slow_records.csv" | cut -d, -f1
+} | sort -u > /tmp/item_retry.csv
+```
+
+`--prirefs-csv` bypasses the date window and has no size limit. Both files are
+append-only, so old entries stay after a successful retry — check the run's
+`SUMMARY` line to confirm what was indexed.
 
 ## How it works
 

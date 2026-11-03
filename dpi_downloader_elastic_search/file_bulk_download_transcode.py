@@ -360,17 +360,25 @@ def check_download_exists(
     return new_fpath, skip_download
 
 
-def write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath):
+def write_checksum_similarity(local_md5, bp_md5, new_fpath, blob=False):
     download_local_md5 = local_md5
     black_pearl_md5 = bp_md5
     message = ""
     checksum_path = f"{new_fpath}_md5.txt"
+
+    if blob:
+        # get the md5 from cid
+        fname = new_fpath.split("/")[-1]
+        search = f"imagen.media.original_filename='{fname}'"
+        result = adlib.retrieve_record(CID_API, "media", search, "0")[1]
+        black_pearl_md5 = adlib.retrieve_field_name(result[0], "checksum.value")[0]
+
     if download_local_md5 == black_pearl_md5:
-        message = f"Checksum MATCH: {bp_md5} | {local_md5}"
+        message = f"Checksum MATCH: {black_pearl_md5} | {download_local_md5}"
     else:
-        message = f"Checksum DO NOT MATCH: {bp_md5} | {local_md5}"
+        message = f"Checksum DO NOT MATCH: {black_pearl_md5} | {download_local_md5}"
     with open(checksum_path, "w+", encoding="utf-8") as f:
-        f.write(f"Created from download: {local_md5} | Retrieved from BP: {bp_md5}\n")
+        f.write(f"Created from download: {download_local_md5} | Retrieved from BP: {black_pearl_md5}\n")
         f.write(message)
     return
 
@@ -571,7 +579,7 @@ def main():
                 LOGGER.info("No transcode requested for this asset. option 1")
                 LOGGER.info("checksum filepath: %s  |  dpath: %s", new_fpath, dpath)
                 if '/mnt/qnap_11/hold' in dpath:
-                    write_checksum_similarity(local_md5, bp_md5, dpath, new_fpath)
+                    write_checksum_similarity(local_md5, bp_md5, new_fpath)
             elif not skip_download or not failed_trans:
                 LOGGER.info("Deleting downloaded asset: %s", new_fpath)
                 os.remove(new_fpath)
@@ -785,7 +793,7 @@ def main():
                         if '/mnt/qnap_11/hold' in dpath:
                             LOGGER.info("checksum filepath: %s  |  dpath: %s", new_fpath, dpath)
                             write_checksum_similarity(
-                                local_md5, bp_md5, dpath, new_fpath
+                                local_md5, bp_md5, new_fpath
                             )
                     elif not skip_download or not failed_trans:
                         LOGGER.info("Deleting downloaded asset: %s", new_fpath)

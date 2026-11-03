@@ -69,6 +69,26 @@ Command lines use the environment variables, for example:
 Each run appends a `SUMMARY` line to its own log under `${LOG_PATH}`. Do not run
 two indexers at once, and avoid overlapping a backfill with the overnight jobs.
 
+### Default date ranges
+
+Every indexer and the cleanup job default to the **same single day: two days before
+today** (`today − 2`), used for both `--date-from` and `--date-to`. They do not
+default to "the last two days", and they do not include today or yesterday — with
+no date arguments, a run processes exactly one day.
+
+| Script | Default window | What the window applies to |
+|---|---|---|
+| `elasticsearch_cleanup_screencraft_works.py` | today − 2 | Objects modified that day; their linked works are then checked |
+| `elasticsearch_index_items.py` | today − 2 | Both query sets by default (`--query both`): items modified that day, and items whose parent work was edited that day (`edit.date`) |
+| `elasticsearch_index_screencraft_objects.py` | today − 2 | Objects modified that day |
+| `elasticsearch_index_screencraft_works.py` | today − 2 | Works modified that day |
+
+- Both bounds are inclusive, and `--date-to` covers the whole day (through `23:59:59`).
+- If only one bound is supplied, the other still falls back to `today − 2`.
+- A span longer than 2 days is split into one CID call per day (the direct-query
+  threshold is 2 days), so a long backfill does not become one huge CID request.
+- `--prirefs`, `--prirefs-csv` and `--search` bypass the date window entirely.
+
 ## Usage
 
 ### Items indexer

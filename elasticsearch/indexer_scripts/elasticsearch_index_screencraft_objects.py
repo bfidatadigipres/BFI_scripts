@@ -39,9 +39,16 @@ ES_INDEX = "dpi_screencraft"
 DB_NAME = "elasticsearchscreencraft_objects"
 ROOT_XML_TAG = "screencraft"
 
+# Only objects that carry a reproduction with a large image - or the legacy
+# Imagen thumbnail UMID, or a legacy Proxy reproduction (filename-based IIIF
+# image) - are publishable. Without this clause the date window indexes every
+# modified object, including records that have no media at all.
 DEFAULT_DATE_QUERY = (
     "Df='archival item','digital derivative','internal object'"
     " and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
+    " and (reproduction.reference->"
+    "(access_rendition.largeimage=* or imagen.media.thumbnail_umid=* "
+    "or reproduction_type='Proxy'))"
 )
 
 CID_ITEM_URL_TEMPLATE = "{base_url}?database={db_name}&search=priref={priref}"

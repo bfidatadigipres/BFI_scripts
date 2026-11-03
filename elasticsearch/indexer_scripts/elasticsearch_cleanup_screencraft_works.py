@@ -251,13 +251,18 @@ def fetch_reverse_links(session: requests.Session, priref: str) -> list[str]:
 
 
 def object_has_media(xml_text: str) -> bool:
-    """True if a screencraft object XML carries an indexed media record."""
+    """True if a screencraft object XML carries a publishable large image.
+
+    Uses identifier_largeimage, the same test as the works index selection
+    query (access_rendition.largeimage or the legacy Imagen thumbnail UMID).
+    A preservation file or original filename on its own is not publishable
+    media, so it no longer counts as in scope.
+    """
     root = ET.fromstring(xml_text)
     for block in root.findall("media_objects"):
-        for tag in ("original_filename", "identifier_preservation_file"):
-            element = block.find(tag)
-            if element is not None and element.text:
-                return True
+        element = block.find("identifier_largeimage")
+        if element is not None and element.text:
+            return True
     return False
 
 

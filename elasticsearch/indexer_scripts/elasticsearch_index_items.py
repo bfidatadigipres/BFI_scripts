@@ -285,13 +285,24 @@ def parse_args() -> argparse.Namespace:
 def build_priref_url(date_from: str, date_to: str, query_label: str) -> str:
     safe_chars = "()=*' "
 
+    # Items are only publishable when they have media, which for this database
+    # means a reproduction that resolves to a media record with an original
+    # filename. Thumbnails, mp4s and large images are optional, so they are not
+    # tested here.
+    media_clause = "(reproduction.reference->imagen.media.original_filename=*)"
+
     if query_label == "items":
-        search = f"Df=item and (modification>='{date_from}' and modification<='{date_to} 23:59:59')"
+        search = (
+            "Df=item and "
+            f"(modification>='{date_from}' and modification<='{date_to} 23:59:59') "
+            f"and {media_clause}"
+        )
     elif query_label == "works":
         search = (
             "Df=item and "
             f"(part_of_reference->part_of_reference->(edit.date>='{date_from}' "
-            f"and edit.date<='{date_to}'))"
+            f"and edit.date<='{date_to}')) "
+            f"and {media_clause}"
         )
     else:
         raise ValueError(f"Unknown query_label: {query_label}")

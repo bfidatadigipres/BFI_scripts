@@ -69,6 +69,48 @@ Command lines use the environment variables, for example:
 Each run appends a `SUMMARY` line to its own log under `${LOG_PATH}`. Do not run
 two indexers at once, and avoid overlapping a backfill with the overnight jobs.
 
+### Default date ranges
+
+Every indexer and the cleanup job default to the **same single day: two days before
+today** (`today − 2`), used for both `--date-from` and `--date-to`. They do not
+default to "the last two days", and they do not include today or yesterday — with
+no date arguments, a run processes exactly one day.
+
+| Script | Default window | What the window applies to |
+|---|---|---|
+| `elasticsearch_cleanup_screencraft_works.py` | today − 2 | Objects modified that day; their linked works are then checked |
+| `elasticsearch_index_items.py` | today − 2 | Both query sets by default (`--query both`): items modified that day, and items whose parent work was edited that day (`edit.date`) |
+| `elasticsearch_index_screencraft_objects.py` | today − 2 | Objects modified that day |
+| `elasticsearch_index_screencraft_works.py` | today − 2 | Works modified that day |
+
+- Both bounds are inclusive, and `--date-to` covers the whole day (through `23:59:59`).
+- If only one bound is supplied, the other still falls back to `today − 2`.
+- A span longer than 2 days is split into one CID call per day (the direct-query
+  threshold is 2 days), so a long backfill does not become one huge CID request.
+- `--prirefs`, `--prirefs-csv` and `--search` bypass the date window entirely.
+
+### Logs and run artefacts
+
+Everything is written under `${LOG_PATH}`. Each script has its own run log and
+side files, named after the script:
+
+| Script | Run log | Prirefs from the run | Failed records | Slow records |
+|---|---|---|---|---|
+| `elasticsearch_index_items.py` | `item_indexing.log` | `item_prirefs.txt` | `item_dead_letter.jsonl` | `item_slow_records.csv` |
+| `elasticsearch_index_screencraft_objects.py` | `screencraft_object_indexing.log` | `screencraft_object_prirefs.txt` | `screencraft_object_dead_letter.jsonl` | `screencraft_object_slow_records.csv` |
+| `elasticsearch_index_screencraft_works.py` | `screencraft_work_indexing.log` | `screencraft_work_prirefs.txt` | `screencraft_work_dead_letter.jsonl` | `screencraft_work_slow_records.csv` |
+| `elasticsearch_cleanup_screencraft_works.py` | `screencraft_work_cleanup.log` | `screencraft_work_cleanup_prirefs.txt` | `screencraft_work_cleanup_dead_letter.jsonl` | `screencraft_work_cleanup_slow_records.csv` |
+| `elasticsearch_bulk_delete_items.py` | `item_bulk_delete.log` | — | `item_bulk_delete_dead_letter.jsonl` | — |
+
+- The run log is appended to on every run, and each run ends with a `SUMMARY` line.
+- The prirefs file holds the CID selection from the most recent date or search run;
+  direct `--prirefs` / `--prirefs-csv` runs do not write it.
+- Dead-letter files are append-only JSONL. Slow-record CSVs are append-only and
+  also act as the cache of known-slow prirefs for the guard.
+- The overnight cron jobs redirect their own stdout/stderr to `/tmp/python_cron*.log`.
+  Those files are overwritten each run and cleared on reboot, so treat `${LOG_PATH}`
+  as the authoritative copy.
+
 ## Usage
 
 ### Items indexer

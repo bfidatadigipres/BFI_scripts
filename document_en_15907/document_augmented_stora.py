@@ -187,6 +187,7 @@ def look_up_series_list(alternative_num):
         "9d4095db-cbda-55c4-ac1e-cc6ad13c0525", # Verified Live
         "7d5ccc6d-39f3-575d-b94c-e651234857b9", # World Today
         "8435ce3f-38d5-5114-b92b-bc4bc4bb2ba1", # Entertainment News of 5
+        "04d7e9ca-0ff4-5fba-a6d7-ab683ae929bd", # BBC News (BBC2)
     ]
 
     if alternative_num.strip() in monthly_resets:

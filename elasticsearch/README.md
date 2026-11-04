@@ -269,6 +269,54 @@ jq -r 'select(.priref and .timestamp >= "2026-10-01") | .priref' \
 append-only, so old entries stay after a successful retry — check the run's
 `SUMMARY` line to confirm what was indexed.
 
+## Automatic dead-letter retry
+
+`elasticsearch_retry_dead_letter.py` retries dead-letter failures for one index
+and is safe to run daily from cron:
+
+- it keeps only the **latest failure per priref** — the dead-letter file is
+  append-only and historical, so retrying every line would re-check records that
+  have already been fixed;
+- it skips prirefs already listed in the slow-records CSV;
+- it caps each run at `--max-batch` prirefs (default 500);
+- it records successes in `${LOG_PATH}/<prefix>_dead_letter_attempts.json`, so a
+  priref is not retried again once it has been re-indexed;
+- it **parks** a priref after `--max-attempts` failed retries (default 5) — delete
+  its entry from the state file to unpark it;
+- it takes a lock, so two runs cannot overlap.
+
+Dry run:
+
+```sh
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_retry_dead_letter.py --kind items --dry-run
+```
+
+Cron — after the overnight jobs, never alongside them:
+
+```cron
+30 7 * * * datadigipres ${ELASTIC_ENV} ${CODE}elasticsearch/indexer_scripts/elasticsearch_retry_dead_letter.py --kind items >> ${LOG_PATH}dead_letter_retry_cron.log 2>&1
+```
+
+`--kind` accepts `items`, `objects`, `works` and `cleanup`. Add the other indexes
+at 07:45/08:00 if you want them retried too. Each run appends a `SUMMARY` line to
+`${LOG_PATH}/<prefix>_dead_letter_retry.log` with `attempted`, `indexed`,
+`still_failing`, `parked_total` and the indexer's own counters.
+
+## Problems report
+
+`elasticsearch_indexing_problems_summary.py` writes a spreadsheet-friendly CSV
+combining the dead-letter and slow-record files, with a `type` column (`error` or
+`slow`):
+
+```sh
+"$ELASTIC_ENV" elasticsearch/indexer_scripts/elasticsearch_indexing_problems_summary.py --kind items
+# -> ${LOG_PATH}/item_indexing_problems.csv
+```
+
+Columns: `priref, type, last_seen, stage, detail, attempts, status`. Resolved
+dead-letter entries are hidden by default; `--include-resolved` shows them. This
+is a read-only report — the JSONL and slow CSV remain the source of truth.
+
 ## How it works
 
 1. Resolve the requested date range or priref list

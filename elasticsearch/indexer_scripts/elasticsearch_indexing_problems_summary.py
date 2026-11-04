@@ -75,8 +75,8 @@ def latest_failures(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return latest
 
 
-def read_slow(path: Path) -> dict[str, str]:
-    slow: dict[str, str] = {}
+def read_slow(path: Path) -> dict[str, tuple[str, str]]:
+    slow: dict[str, tuple[str, str]] = {}
     try:
         with open(path, newline="", encoding="utf-8") as fh:
             for row in csv.reader(fh):
@@ -84,10 +84,8 @@ def read_slow(path: Path) -> dict[str, str]:
                     continue
                 priref = row[0].strip()
                 seconds = row[1].strip() if len(row) > 1 else ""
-                if seconds:
-                    slow[priref] = seconds
-                else:
-                    slow.setdefault(priref, "")
+                logged_at = row[2].strip() if len(row) > 2 else ""
+                slow[priref] = (seconds, logged_at)
     except FileNotFoundError:
         pass
     return slow
@@ -172,16 +170,16 @@ def main() -> int:
                 "status": status,
             }
         )
-    for priref, seconds in slow.items():
+    for priref, (seconds, logged_at) in slow.items():
         rows.append(
             {
                 "priref": priref,
                 "type": "slow",
-                "last_seen": "",
+                "last_seen": logged_at,
                 "stage": "",
                 "detail": f"{seconds}s" if seconds else "",
                 "attempts": "",
-                "status": "slow",
+                "status": "known-slow",
             }
         )
 

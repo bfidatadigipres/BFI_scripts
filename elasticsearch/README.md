@@ -211,7 +211,8 @@ Some CID records are pathologically slow to render through the per-record lookup
 up a whole run. Each record fetch is therefore time-capped:
 
 - a record slower than `SLOW_RECORD_TIMEOUT_SECONDS` (default 3) is skipped and
-  appended to `<prefix>_slow_records.csv` as `priref,seconds`;
+  appended to `<prefix>_slow_records.csv` as `priref,seconds,logged_at` (older
+  rows may have only the first two columns);
 - the run continues; the `SUMMARY` line reports `slow_records_skipped` and
   `slow_records_cached`;
 - prirefs already listed in the slow-records CSV are skipped without re-probing
@@ -313,9 +314,12 @@ combining the dead-letter and slow-record files, with a `type` column (`error` o
 # -> ${LOG_PATH}/item_indexing_problems.csv
 ```
 
-Columns: `priref, type, last_seen, stage, detail, attempts, status`. Resolved
-dead-letter entries are hidden by default; `--include-resolved` shows them. This
-is a read-only report — the JSONL and slow CSV remain the source of truth.
+Columns: `priref, type, last_seen, stage, detail, attempts, status`. `last_seen`,
+`stage` and `attempts` are dead-letter fields; slow rows show `detail=<seconds>s`
+and `status=known-slow`, with `last_seen` filled for rows written since the
+`logged_at` column was added (older rows are blank). Resolved dead-letter entries
+are hidden by default; `--include-resolved` shows them. This is a read-only report
+— the JSONL and slow CSV remain the source of truth.
 
 ## How it works
 

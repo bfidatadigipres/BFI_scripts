@@ -7,6 +7,8 @@ Python interface for Adlib API v3.7.17094.1+
 2024
 """
 
+import os
+import csv
 import json
 import time
 from datetime import datetime, timedelta
@@ -301,9 +303,9 @@ def capture_timings(
     Keep a tab of POSTs durations and problems
     TEMPORARY FEATURE TO BE DEPRECATED
     """
-    TIMINGS_CSV = os.path.join(LOG_PATH, "stora_post_timings.csv")
+    TIMINGS_CSV = os.path.join(os.environ["LOG_PATH"], "stora_post_timings.csv")
 
-    data = [str(datetime.datetime.now())[:19], type, database, f"{duration} seconds", error, payload]
+    data = [str(datetime.now())[:19], type, database, f"{duration} seconds", error, payload]
 
     with open(TIMINGS_CSV, "a+", newline="") as csv_file:
         data_writer = csv.writer(csv_file)

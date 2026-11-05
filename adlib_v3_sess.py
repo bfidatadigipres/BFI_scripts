@@ -8,6 +8,7 @@ Python interface for Adlib API v3.7.17094.1+
 """
 
 import json
+import time
 from datetime import datetime, timedelta
 from time import sleep
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -97,25 +98,44 @@ def get(
     """
     if not session:
         session = create_session()
+    tic = time.perf_counter()
     try:
         req = session.get(api, headers=HEADERS, params=query, timeout=TIMEOUT)
         if req.status_code != 200:
             raise Exception
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("GET", query.get("database", ""), duration, "", query.get("search", ""))
         dct = json.loads(req.text)
         return dct
     except exceptions.HTTPError as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed GET", query.get("database", ""), duration, err, query.get("search", ""))
         print(f"HTTP error: {err}")
         raise Exception from err
     except exceptions.ConnectionError as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed GET", query.get("database", ""), duration, err, query.get("search", ""))
         print(f"Connection error: {err}")
         raise Exception from err
     except exceptions.Timeout as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed GET", query.get("database", ""), duration, err, query.get("search", ""))
         print(f"Timeout error: {err}")
         raise Exception from err
     except exceptions.RequestException as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed GET", query.get("database", ""), duration, err, query.get("search", ""))
         print(f"Request exception: {err}")
         raise Exception from err
     except Exception as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed GET", query.get("database", ""), duration, err, query.get("search", ""))
         print(err)
         raise Exception from err
 
@@ -149,6 +169,7 @@ def post_with_verify(
     """
     if not session:
         session = create_session()
+    err = ""
 
     for attempt in range(1, max_retries + 1):
         result = post(api, payload, database, method, session)
@@ -209,25 +230,45 @@ def post(
     if not session:
         session = create_session()
 
+    tic = time.perf_counter()
     try:
         response = session.post(
             api, headers=HEADERS, params=params, data=payload, timeout=TIMEOUT
         )
     except exceptions.Timeout as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed POST", database, duration, err, payload)
         print(f"POST timeout: {err}")
         return None
     except exceptions.ConnectionError as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed POST", database, duration, err, payload)
         print(f"POST connection error: {err}")
         return None
     except exceptions.HTTPError as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed POST", database, duration, err, payload)
         print(f"POST HTTP error: {err}")
         return None
     except exceptions.RequestException as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed POST", database, duration, err, payload)
         print(f"POST request exception: {err}")
         return None
     except Exception as err:
+        toc = time.perf_counter()
+        duration = (toc - tic)
+        capture_timings("Failed POST", database, duration, err, payload)
         print(f"POST unexpected error: {err}")
         return None
+    toc = time.perf_counter()
+    duration = (toc - tic)
+    capture_timings("POST", database, duration, "", payload)
+
 
     print("-------------------------------------")
     print(f"adlib_v3.POST(): {response.text}")
@@ -251,6 +292,23 @@ def post(
         return None
 
     return None
+
+
+def capture_timings(
+    type: str, database: str, duration: int, error: str, payload: str
+) -> None:
+    """
+    Keep a tab of POSTs durations and problems
+    TEMPORARY FEATURE TO BE DEPRECATED
+    """
+    TIMINGS_CSV = os.path.join(LOG_PATH, "stora_post_timings.csv")
+
+    data = [str(datetime.datetime.now())[:19], type, database, f"{duration} seconds", error, payload]
+
+    with open(TIMINGS_CSV, "a+", newline="") as csv_file:
+        data_writer = csv.writer(csv_file)
+        print(f"Adding to CSV timings logs:\n{data}")
+        data_writer.writerow(data)
 
 
 def retrieve_field_name(record: dict[str, Any], fieldname: str) -> list[Any]:

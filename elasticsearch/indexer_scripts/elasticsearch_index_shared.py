@@ -168,8 +168,8 @@ def fetch_xml_guarded(
         new_file = not os.path.exists(slow_records_path)
         with open(slow_records_path, "a", encoding="utf-8") as fh:
             if new_file:
-                fh.write("priref,seconds\n")
-            fh.write(f"{priref},{elapsed:.1f}\n")
+                fh.write("priref,seconds,logged_at\n")
+            fh.write(f"{priref},{elapsed:.1f},{utc_now_iso()}\n")
         _known_slow(slow_records_path).add(priref)
         logger.warning(
             "%s - CID response exceeded %.0fs (%.1fs) - skipped and logged to %s",

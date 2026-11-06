@@ -15,6 +15,7 @@ from elastic_transport import ApiError
 from elasticsearch_index_shared import (
     Stats,
     action_generator,
+    apply_priref_csv_timeout_default,
     build_es_client,
     build_requests_session,
     bulk_index,
@@ -193,6 +194,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+
+    if args.prirefs_csv:
+        apply_priref_csv_timeout_default()
+
     logger = setup_logger("screencraft_object_indexer", LOG_PATH)
 
     stats = Stats()

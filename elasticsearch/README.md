@@ -41,7 +41,7 @@ The scripts read all configuration from the environment:
 | `LOG_PATH` | Directory for run logs, dead-letter files and slow-record CSVs |
 | `ELASTIC_ENV` | Python interpreter of the venv the jobs run with |
 | `CODE` | Root of this repository checkout, used in job command lines |
-| `SLOW_RECORD_TIMEOUT_SECONDS` | Per-record CID response cap in seconds (default `3`; `0` disables the guard) |
+| `SLOW_RECORD_TIMEOUT_SECONDS` | Per-record CID response cap in seconds (default `3`; `120` automatically for `--prirefs-csv` runs unless set explicitly; `0` disables the guard) |
 | `SLOW_RECORD_ABORT_CONSECUTIVE` | Abort the run after N consecutive slow records (default `0` = disabled) |
 | `SLOW_RECORD_USE_CACHE` | Skip prirefs already listed in the slow-records CSV, without re-probing (default on) |
 
@@ -213,6 +213,10 @@ up a whole run. Each record fetch is therefore time-capped:
 - a record slower than `SLOW_RECORD_TIMEOUT_SECONDS` (default 3) is skipped and
   appended to `<prefix>_slow_records.csv` as `priref,seconds,logged_at` (older
   rows may have only the first two columns);
+- `--prirefs-csv` runs raise the cap to 120 s automatically when
+  `SLOW_RECORD_TIMEOUT_SECONDS` is unset. Abandoning a request does not cancel
+  it on the CID side, so a short cap on a large CSV can exhaust CID's SQL
+  connection pool; set the variable explicitly to force a different cap;
 - the run continues; the `SUMMARY` line reports `slow_records_skipped` and
   `slow_records_cached`;
 - prirefs already listed in the slow-records CSV are skipped without re-probing
@@ -234,8 +238,10 @@ SLOW_RECORD_USE_CACHE=0 \
   --prirefs-csv "$LOG_PATH/item_slow_records.csv"
 ```
 
-If the records are expected to be merely slow rather than broken, raise
-`SLOW_RECORD_TIMEOUT_SECONDS` (default `3`) or set it to `0` to remove the cap.
+If the records are expected to be merely slow rather than broken, note that
+`--prirefs-csv` already raises the cap to 120 s when
+`SLOW_RECORD_TIMEOUT_SECONDS` is unset. Set the variable explicitly to force a
+different cap, or to `0` to remove it.
 
 ### Retrying dead-letter failures
 

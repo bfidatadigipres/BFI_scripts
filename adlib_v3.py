@@ -17,7 +17,7 @@ import xmltodict
 from tenacity import retry, stop_after_attempt
 
 HEADERS = {"Content-Type": "text/xml"}
-TIMEOUT = 100
+TIMEOUT = 200
 
 
 def check(api: str) -> dict[str, Any]:

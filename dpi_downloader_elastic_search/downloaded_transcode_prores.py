@@ -416,14 +416,7 @@ def create_ffmpeg_command(
             "0:v:0",
         ]
 
-    video_settings = ["-c:v", "prores_ks", "-profile:v", "3", "-flags", "+ildct"]
-
-    if video_data[5] == "tff":
-        interlace = ["-flags", "+ildct+ilme", "-top", '1']
-    elif video_data[5] == "bff":
-        interlace = ["-flags", "+ildct+ilme", "-top", '0']
-    else:
-        interlace = []
+    video_settings = ["-c:v", "prores_ks", "-profile:v", "3"]
 
     prores_build = [
         "-pix_fmt",
@@ -447,12 +440,12 @@ def create_ffmpeg_command(
     else:
         map_audio = ["-map", "0:a?", "-dn"]
 
-    if video_data[5] == "prog":
+    if len(video_data[5]) > 0:
         crop_sd_608 = [
             "-vf",
-            "bwdif=send_frame,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1",
+            f"setfield={video_data[5]},crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1",
         ]
-        no_crop = ["-vf", "bwdif=send_frame"]
+        no_crop = ["-vf", f"setfield={video_data[5]}"]
     else:
         crop_sd_608 = [
             "-vf",

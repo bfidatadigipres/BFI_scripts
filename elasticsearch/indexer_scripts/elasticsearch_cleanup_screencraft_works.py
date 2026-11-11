@@ -30,6 +30,7 @@ from elastic_transport import ApiError
 from elasticsearch.helpers import streaming_bulk
 from elasticsearch_index_shared import (
     CID_REQUEST_DELAY,
+    apply_priref_csv_timeout_default,
     build_es_client,
     build_requests_session,
     fetch_prirefs,
@@ -831,6 +832,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+
+    if args.prirefs_csv:
+        apply_priref_csv_timeout_default()
+
     logger = setup_logger("screencraft_work_cleanup", LOG_PATH)
 
     stats = CleanupStats()

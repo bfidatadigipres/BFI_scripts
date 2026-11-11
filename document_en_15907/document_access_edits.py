@@ -25,7 +25,7 @@ import adlib_v3 as adlib
 import utils
 
 # Global variables
-INGEST: Final = os.path.join(os.environ.get("BP_DIGITAL"), "automation/")
+INGEST: Final = os.environ.get("BP_DIGITAL")
 STORAGE: Final = os.path.join(INGEST, "access_edits")
 LOCAL_LOG: Final = os.path.join(STORAGE, "access_edits_renamed.log")
 AUTOINGEST: Final = os.path.join(

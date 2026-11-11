@@ -17,7 +17,10 @@ import defusedxml.ElementTree as ET
 import requests
 from elastic_transport import ApiError
 from elasticsearch.helpers import streaming_bulk
-from elasticsearch_index_shared import fetch_xml_guarded
+from elasticsearch_index_shared import (
+    apply_priref_csv_timeout_default,
+    fetch_xml_guarded,
+)
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from xmljson import parker
@@ -688,6 +691,9 @@ def ping_es(es: Elasticsearch) -> None:
 
 def main() -> int:
     args = parse_args()
+
+    if args.prirefs_csv:
+        apply_priref_csv_timeout_default()
 
     stats = Stats()
     session = build_requests_session()

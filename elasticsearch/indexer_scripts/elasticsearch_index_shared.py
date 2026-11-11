@@ -71,7 +71,8 @@ MAX_DIRECT_PRIREFS = 1000
 CID_REQUEST_DELAY = float(os.environ.get("CID_REQUEST_DELAY", "1"))
 
 
-SLOW_RECORD_TIMEOUT_SECONDS = float(os.environ.get("SLOW_RECORD_TIMEOUT_SECONDS", "3"))
+_SLOW_RECORD_TIMEOUT_ENV = os.environ.get("SLOW_RECORD_TIMEOUT_SECONDS")
+SLOW_RECORD_TIMEOUT_SECONDS = float(_SLOW_RECORD_TIMEOUT_ENV or "3")
 SLOW_RECORD_ABORT_CONSECUTIVE = int(
     os.environ.get("SLOW_RECORD_ABORT_CONSECUTIVE", "0")
 )
@@ -81,9 +82,26 @@ SLOW_RECORD_USE_CACHE = os.environ.get("SLOW_RECORD_USE_CACHE", "1").lower() not
     "no",
 )
 
+# A priref CSV is an explicit backfill/retry list. Abandoning a request at the
+# interactive 3 s cap leaves CID working on it and can exhaust its SQL
+# connection pool, so wait for the response instead. An explicit
+# SLOW_RECORD_TIMEOUT_SECONDS always wins.
+PRIREF_CSV_SLOW_RECORD_TIMEOUT_SECONDS = 120.0
+
 
 class SlowRecordAbort(RuntimeError):
     """Raised when too many consecutive CID records exceed the slow-record timeout."""
+
+
+def apply_priref_csv_timeout_default() -> None:
+    """Raise the slow-record cap when a priref CSV is driving the run.
+
+    Only applies when SLOW_RECORD_TIMEOUT_SECONDS was not set explicitly, so
+    callers can still force any cap, including 0 to disable the guard.
+    """
+    global SLOW_RECORD_TIMEOUT_SECONDS
+    if not _SLOW_RECORD_TIMEOUT_ENV:
+        SLOW_RECORD_TIMEOUT_SECONDS = PRIREF_CSV_SLOW_RECORD_TIMEOUT_SECONDS
 
 
 _guarded_session: Optional[requests.Session] = None

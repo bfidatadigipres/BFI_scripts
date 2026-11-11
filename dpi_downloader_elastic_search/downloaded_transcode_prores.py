@@ -416,7 +416,7 @@ def create_ffmpeg_command(
             "0:v:0",
         ]
 
-    video_settings = ["-c:v", "prores_ks", "-profile:v", "3"]
+    video_settings = ["-c:v", "prores_ks", "-profile:v", "3", "-flags", "+ildct"]
 
     if video_data[5] == "tff":
         interlace = ["-flags", "+ildct+ilme", "-top", '1']

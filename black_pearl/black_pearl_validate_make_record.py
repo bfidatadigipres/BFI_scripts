@@ -84,7 +84,7 @@ LOG_PATHS = {
     #os.environ["QNAP_05"]: os.environ["L_QNAP05"],
     #os.environ["QNAP_11"]: os.environ["L_QNAP11"],
     #os.environ["QNAP_TEMP"]: os.environ["L_QNAP_TEMP"],
-    os.environ["EDITSHARE"]: os.environ["L_EDITSHARE"],
+    #os.environ["EDITSHARE"]: os.environ["L_EDITSHARE"],
     #os.environ["BP_VIDEO"]: os.environ["L_BP_VIDEO"],
     #os.environ["BP_AUDIO"]: os.environ["L_BP_AUDIO"],
     #os.environ["BP_SC"]: os.environ["L_BP_SC"],
@@ -209,6 +209,7 @@ def main():
     hosts = ingest_data["Host_size"]
     sess = adlib.create_session()
     autoingest_list = []
+    """ DEPRECATED
     for host in hosts:
         # Paths to avoid processing
         if "/mnt/qnap_04" in str(host):
@@ -221,7 +222,7 @@ def main():
                 autoingest_list.append(os.path.join(pth, BPINGEST_NETFLIX))
                 autoingest_list.append(os.path.join(pth, BPINGEST_AMAZON))
                 autoingest_list.append(os.path.join(pth, BPINGEST_DISNEY))
-
+    """
     for old_host in OLD_HOSTS:
         # Build autoingest list for decommissioned autoingest paths
         autoingest_list.append(

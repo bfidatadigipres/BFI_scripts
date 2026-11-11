@@ -364,6 +364,32 @@ def check_audio(fullpath: str) -> tuple[Optional[str], Optional[str], Optional[s
         return ("Audio", None, None)
 
 
+def get_interl(fullpath):
+    '''
+    Retrieves interlacing data and returns in correct FFmpeg format
+    '''
+    mediainfo_cmd = [
+        'mediainfo',
+        '--Language=raw',
+        '--Output=Video;%ScanOrder%',
+        fullpath
+    ]
+
+    interl_setting = subprocess.check_output(mediainfo_cmd)
+    interl_setting = str(interl_setting)
+
+    if 'TFF' in interl_setting:
+        setfield = 'tff'
+    elif 'BFF' in interl_setting:
+        setfield = 'bff'
+    elif 'PROG' in interl_setting:
+        setfield = 'prog'
+    else:
+        setfield = ''
+
+    return setfield
+
+
 def create_ffmpeg_command(
     fullpath: str, output: str, video_data: list[Optional[str]]
 ) -> list[str]:
@@ -392,6 +418,13 @@ def create_ffmpeg_command(
 
     video_settings = ["-c:v", "prores_ks", "-profile:v", "3"]
 
+    if video_data[5] == "tff":
+        interlace = ["-flags", "+ildct+ilme", "-top", '1']
+    elif video_data[5] == "bff":
+        interlace = ["-flags", "+ildct+ilme", "-top", '0']
+    else:
+        interlace = []
+
     prores_build = [
         "-pix_fmt",
         "yuv422p10le",
@@ -414,12 +447,18 @@ def create_ffmpeg_command(
     else:
         map_audio = ["-map", "0:a?", "-dn"]
 
-    crop_sd_608 = [
-        "-vf",
-        "bwdif=send_frame,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1",
-    ]
-
-    no_crop = ["-vf", "bwdif=send_frame"]
+    if video_data[5] == "prog":
+        crop_sd_608 = [
+            "-vf",
+            "bwdif=send_frame,crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1",
+        ]
+        no_crop = ["-vf", "bwdif=send_frame"]
+    else:
+        crop_sd_608 = [
+            "-vf",
+            "crop=672:572:24:32,scale=734:576:flags=lanczos,pad=768:576:-1:-1",
+        ]
+        no_crop = []
 
     output_settings = ["-nostdin", "-y", output, "-f", "null", "-"]
 
@@ -435,6 +474,7 @@ def create_ffmpeg_command(
             + input_video_file
             + map_video
             + video_settings
+            + interlace
             + cmd_mid
             + prores_build
             + output_settings
@@ -446,6 +486,7 @@ def create_ffmpeg_command(
             + map_video
             + map_audio
             + video_settings
+            + interlace
             + cmd_mid
             + prores_build
             + output_settings
@@ -528,7 +569,8 @@ def transcode_mov(fullpath):
     height = get_height(fullpath)
     width = get_width(fullpath)
     duration, vs = get_duration(fullpath)
-    video_data = [vs, height, audio, stream_default, stereo]
+    setfield = get_interl(fullpath)
+    video_data = [vs, height, audio, stream_default, stereo, setfield]
 
     logger_data.append(f"** File being processed: {fullpath}")
     logger_data.append(

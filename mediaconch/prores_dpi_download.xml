@@ -19,6 +19,9 @@
     <rule name="Video/FrameRate is 16 or greater" value="FrameRate" tracktype="Video" occurrence="*" operator=">=">16</rule>
     <rule name="Video/ColorSpace is YUV" value="ColorSpace" tracktype="Video" occurrence="*" operator="starts with">YUV</rule>
     <rule name="Video/ChromaSubsampling is 4:2:2" value="ChromaSubsampling" tracktype="Video" occurrence="*" operator="=">4:2:2</rule>
-    <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+    <policy type="or" name="Check for interlacement or progressive">
+      <rule name="Video/ScanType is Progressive" value="ScanType" tracktype="Video" occurrence="*" operator="=">Progressive</rule>
+      <rule name="Video/ScanType is Interlaced" value="ScanType" tracktype="Video" occurrence="*" operator="=">Interlaced</rule>
+    </policy>
   </policy>
 </policy>

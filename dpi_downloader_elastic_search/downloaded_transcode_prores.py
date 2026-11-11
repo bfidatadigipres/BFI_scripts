@@ -467,7 +467,6 @@ def create_ffmpeg_command(
             + input_video_file
             + map_video
             + video_settings
-            + interlace
             + cmd_mid
             + prores_build
             + output_settings
@@ -479,7 +478,6 @@ def create_ffmpeg_command(
             + map_video
             + map_audio
             + video_settings
-            + interlace
             + cmd_mid
             + prores_build
             + output_settings

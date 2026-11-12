@@ -263,21 +263,6 @@ def put_directory(directory_pth: str, bucket: str) -> Optional[list[str]]:
     return job_list
 
 
-def put_notification(job_id: str) -> str:
-    """
-    Ensure job notification is sent to Isilon/ BP NAS
-    """
-    job_completed_registration = (
-        CLIENT.put_job_completed_notification_registration_spectra_s3(
-            ds3.PutJobCompletedNotificationRegistrationSpectraS3Request(
-                notification_end_point=JSON_END, format="JSON", job_id=job_id
-            )
-        )
-    )
-
-    return job_completed_registration.result["NotificationEndPoint"]
-
-
 def download_bp_object(fname: str, outpath: str, bucket: str) -> str:
     """
     Download the BP object from SpectraLogic

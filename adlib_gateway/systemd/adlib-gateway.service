@@ -1,0 +1,32 @@
+[Unit]
+Description=BFI Adlib API Gateway (queue controller for the Axiell CID API)
+Documentation=file:/home/whitej/git/BFI_scripts/adlib_gateway/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=whitej
+# Note: the primary group of 'whitej' is used. systemd Group= cannot contain
+# spaces, so if you need the "domain users" group specifically, add it via a
+# drop-in or run gunicorn under a dedicated service account.
+EnvironmentFile=/etc/adlib-gateway/adlib-gateway.env
+WorkingDirectory=/home/whitej/git/BFI_scripts/adlib_gateway/gateway
+ExecStart=/opt/adlib-gateway/venv/bin/gunicorn \
+    --workers 1 \
+    --threads 64 \
+    --timeout 1800 \
+    --graceful-timeout 30 \
+    --bind ${ADLIB_GW_BIND} \
+    --access-logfile - \
+    --error-logfile - \
+    app:app
+Restart=always
+RestartSec=5
+
+# Hardening (relax if it interferes with network/file access you need)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

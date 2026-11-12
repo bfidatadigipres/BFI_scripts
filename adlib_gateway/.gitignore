@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtualenvs (gateway host uses /opt/adlib-gateway/venv, not in-repo)
+venv/
+ENV/
+
+# Logs / secrets
+*.log
+adlib-gateway.env

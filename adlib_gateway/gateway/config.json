@@ -1,0 +1,27 @@
+{
+  "bind_host": "0.0.0.0",
+  "bind_port": 8080,
+  "token_env": "ADLIB_GATEWAY_TOKEN",
+  "writer_workers": 1,
+  "reader_workers": 3,
+  "max_queue_depth": 500,
+  "max_queue_wait_s": 120,
+  "op_budget_s": 900,
+  "api_timeout_s": 100,
+  "upstream_retries": 5,
+  "backoff_base_s": 0.5,
+  "backoff_max_s": 10.0,
+  "recycle_pause_s": 120,
+  "recycle_search": "title=recycle.application.pool.data.test",
+  "failure_strings": [
+    "A severe error occurred on the current command.",
+    "Execution Timeout Expired. The timeout period elapsed"
+  ],
+  "allowed_target_hosts": [],
+  "log_file": "",
+  "verify": {
+    "max_retries": 3,
+    "retry_delay_s": 10,
+    "verify_window_minutes": 1
+  }
+}
